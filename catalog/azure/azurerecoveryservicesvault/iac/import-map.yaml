@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurerecoveryservicesvault
+spec:
+  # The vault's identity is its full ARM resource ID
+  # (.../providers/Microsoft.RecoveryServices/vaults/{name}); the
+  # composed Resource Guard association derives from it (ARM pins the
+  # proxy name to the literal "VaultProxy").
+  values:
+    - name: recovery_services_vault_id
+      derivations:
+        - from_stack_output: recovery_services_vault_id
+      where_to_find: >-
+        `az backup vault show -g <rg> -n <name> --query id`, or compose
+        /subscriptions/{sub}/resourceGroups/{rg}/providers/
+        Microsoft.RecoveryServices/vaults/{name}.

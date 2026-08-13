@@ -119,11 +119,13 @@ message GcpCloudTasksQueueHttpTarget {
   // HTTP method override for all tasks in this queue.
   // When specified, overrides the method on individual tasks.
   // Note: if set to GET, the task body is ignored at execution time.
-  // Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS".
+  // Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS",
+  // or the API's explicit "HTTP_METHOD_UNSPECIFIED" sentinel (equivalent to
+  // leaving the override unset).
   string http_method = 1 [(buf.validate.field).cel = {
     id: "valid_http_method"
-    expression: "this == '' || this in ['POST', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']"
-    message: "http_method must be one of: POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS"
+    expression: "this == '' || this in ['HTTP_METHOD_UNSPECIFIED', 'POST', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']"
+    message: "http_method must be one of: HTTP_METHOD_UNSPECIFIED, POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS"
   }];
 
   // HTTP headers to set on all tasks dispatched from this queue.
@@ -254,9 +256,9 @@ message GcpCloudTasksQueueLoggingConfig {
 //
 //   - Cloud Tasks queues do NOT support GCP labels.
 //
-//   - Pause/resume (the API's queue state) is a runtime operation, not part
-//     of this declarative surface. Use the gcloud CLI or the Cloud Tasks API
-//     to pause or resume dispatch on a provisioned queue.
+//   - Pause/resume is declarative here: desired_state pins the queue's
+//     dispatch state (RUNNING or PAUSED) and reconciles it on every apply —
+//     a gcloud pause is undone by the next apply unless the spec says PAUSED.
 //
 //   - Rate limits and retry config have GCP-computed defaults when not specified.
 //     For most workloads, the defaults are reasonable starting points.
@@ -310,4 +312,32 @@ message GcpCloudTasksQueueSpec {
 
   // Cloud Logging configuration for task dispatch operations.
   GcpCloudTasksQueueLoggingConfig stackdriver_logging_config = 8;
+
+  // Dispatch state the queue is held in:
+  //   ""        -- same as "RUNNING" (the provider default)
+  //   "RUNNING" -- tasks are dispatched to their targets
+  //   "PAUSED"  -- tasks accumulate in the queue but none are dispatched —
+  //                the safe holding state during target maintenance or
+  //                incident response
+  // Declarative and reconciled on every apply: an out-of-band gcloud
+  // pause/resume is reverted to this value on the next apply.
+  string desired_state = 9 [(buf.validate.field).cel = {
+    id: "valid_desired_state"
+    expression: "this == '' || this in ['RUNNING', 'PAUSED']"
+    message: "desired_state must be RUNNING or PAUSED"
+  }];
+
+  // What destroying this resource does to the queue:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the queue and every task still in it are deleted; the
+  //                queue's ID is reserved by the API for up to 7 days
+  //   "PREVENT" -- destroy FAILS; protects a queue whose backlog must not
+  //                be lost
+  //   "ABANDON" -- the queue is removed from management but keeps running
+  //                (and dispatching) in GCP
+  string deletion_policy = 10 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

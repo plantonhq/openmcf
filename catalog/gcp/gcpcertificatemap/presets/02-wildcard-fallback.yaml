@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertificateMap
+metadata:
+  name: wildcard-fallback
+spec:
+  description: One wildcard certificate serving every subdomain via PRIMARY.
+
+  entries:
+    # A single PRIMARY entry — every handshake (any SNI, or none) is
+    # served by the wildcard. The simplest map that can work, and the
+    # base to grow per-domain entries onto later.
+    - entryName: wildcard
+      matcher: PRIMARY
+      certificates:
+        - value: projects/my-project/locations/global/certificates/wildcard-cert
+
+  deletionPolicy: PREVENT

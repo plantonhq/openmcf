@@ -70,6 +70,12 @@ func globalAddress(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		args.PrefixLength = pulumi.IntPtr(int(*spec.PrefixLength))
 	}
 
+	// What destroy does to the reservation: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep the IP reserved).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdAddress, err := compute.NewGlobalAddress(ctx, "global-address", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {

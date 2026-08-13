@@ -23,5 +23,8 @@ spec:
   displayName: planton-oss-e2e-vaiep-public-${E2E_RUN_ID}
   location: us-central1
   publicEndpointEnabled: true
+  # Explicit DELETE proves the client-side lever round-trips (the
+  # provider defaults it server-side; every scenario arms it).
+  deletionPolicy: DELETE
   labels:
     e2e: public

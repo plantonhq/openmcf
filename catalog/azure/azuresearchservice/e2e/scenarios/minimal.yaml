@@ -1,0 +1,51 @@
+# Minimal AzureSearchService scenario: a standard-SKU service (the
+# provider's own shared-private-link acceptance pairing -- SPL is not
+# exercised on free) with a system identity and ONE composed shared
+# private link to the fixture storage account's blob subresource --
+# the flagship proof of the composed child surfacing in the name-keyed
+# shared_private_link_service_ids output. The storage target is
+# scenario-declared via the e2e-prerequisites annotation (the kind
+# itself needs only a resource group).
+#
+# The link sits "Pending" by design -- nothing in the lane approves
+# the target side; the verifier asserts ARM state, never connection
+# health. The service name is GLOBALLY unique (it forms the endpoint
+# DNS name): a name-taken error is a genuine global collision, not a
+# ghost (search has no soft-delete class). The standard service bills
+# ~$0.34/hour pro-rated for the minutes the lane runs.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSearchService
+metadata:
+  name: planton-oss-e2e-azuresearchservice-smoke
+  id: planton-oss-e2e-azuresearchservice-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresearchservice
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-search-smoke
+  sku: standard
+  identity:
+    type: SYSTEM_ASSIGNED
+  sharedPrivateLinkServices:
+    - name: e2e-to-blob
+      subresourceName: blob
+      targetResourceId:
+        valueFrom:
+          kind: AzureStorageAccount
+          name: planton-oss-e2e-azure-fixture-sa
+          fieldPath: status.outputs.storage_account_id
+      requestMessage: planton e2e smoke -- no approval expected
+  tags:
+    e2e-suite: azure
+    purpose: smoke

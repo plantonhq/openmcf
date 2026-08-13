@@ -1,7 +1,7 @@
 # =============================================================================
 # Terraform Modules Release (Reusable Workflow)
 # =============================================================================
-# Zips all Terraform deployment component folders across all providers and
+# Zips all Terraform component folders across all providers and
 # uploads them to Cloudflare R2 (downloads.planton.dev).
 #
 # Features:

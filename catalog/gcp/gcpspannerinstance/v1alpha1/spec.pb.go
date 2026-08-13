@@ -123,8 +123,15 @@ type GcpSpannerInstanceAutoscalingTargets struct {
 	// couples storage capacity to compute capacity). Google recommends 80
 	// to leave headroom for growth spikes.
 	StorageUtilizationPercent int32 `protobuf:"varint,2,opt,name=storage_utilization_percent,json=storageUtilizationPercent,proto3" json:"storage_utilization_percent,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// Target percentage of TOTAL CPU utilization — user traffic plus
+	// Spanner's background maintenance work — as a second CPU signal
+	// alongside high_priority_cpu_utilization_percent. Useful when
+	// background work (change streams, backups) is a meaningful share of
+	// the load and scaling on user traffic alone would run the instance
+	// hot. Scale 0 (no utilization) to 100 (full utilization).
+	TotalCpuUtilizationPercent int32 `protobuf:"varint,3,opt,name=total_cpu_utilization_percent,json=totalCpuUtilizationPercent,proto3" json:"total_cpu_utilization_percent,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *GcpSpannerInstanceAutoscalingTargets) Reset() {
@@ -171,19 +178,53 @@ func (x *GcpSpannerInstanceAutoscalingTargets) GetStorageUtilizationPercent() in
 	return 0
 }
 
-// GcpSpannerInstanceAsymmetricAutoscalingOverrides bounds the autoscaler
-// for one specific replica location, overriding the instance-wide
-// autoscaling_limits there. Only node-based bounds are supported for
-// per-replica overrides.
+func (x *GcpSpannerInstanceAutoscalingTargets) GetTotalCpuUtilizationPercent() int32 {
+	if x != nil {
+		return x.TotalCpuUtilizationPercent
+	}
+	return 0
+}
+
+// GcpSpannerInstanceAsymmetricAutoscalingOverrides tunes the autoscaler
+// for one specific replica location: capacity bounds (nodes or processing
+// units) that replace the instance-wide autoscaling_limits there, its own
+// CPU targets, or switches disabling a CPU signal for that replica
+// entirely. Every field is optional — an override may set only bounds,
+// only targets, or only disable switches.
 type GcpSpannerInstanceAsymmetricAutoscalingOverrides struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Minimum number of nodes for the selected replica location.
+	// Use together with max_nodes; mutually exclusive with the
+	// processing-unit bounds.
 	MinNodes int32 `protobuf:"varint,1,opt,name=min_nodes,json=minNodes,proto3" json:"min_nodes,omitempty"`
 	// Maximum number of nodes for the selected replica location.
 	// Must be >= min_nodes.
-	MaxNodes      int32 `protobuf:"varint,2,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaxNodes int32 `protobuf:"varint,2,opt,name=max_nodes,json=maxNodes,proto3" json:"max_nodes,omitempty"`
+	// Minimum number of processing units for the selected replica
+	// location — the fine-grained alternative to node bounds. Per-replica
+	// PU bounds must be multiples of 1000 (unlike instance-wide limits,
+	// which allow multiples of 100 below 1000). Use together with
+	// max_processing_units; mutually exclusive with the node bounds.
+	MinProcessingUnits int32 `protobuf:"varint,3,opt,name=min_processing_units,json=minProcessingUnits,proto3" json:"min_processing_units,omitempty"`
+	// Maximum number of processing units for the selected replica
+	// location. Must be >= min_processing_units and a multiple of 1000.
+	MaxProcessingUnits int32 `protobuf:"varint,4,opt,name=max_processing_units,json=maxProcessingUnits,proto3" json:"max_processing_units,omitempty"`
+	// Target high-priority CPU utilization percentage for THIS replica,
+	// overriding the instance-wide autoscaling_targets value there.
+	// Scale 0-100.
+	AutoscalingTargetHighPriorityCpuUtilizationPercent int32 `protobuf:"varint,5,opt,name=autoscaling_target_high_priority_cpu_utilization_percent,json=autoscalingTargetHighPriorityCpuUtilizationPercent,proto3" json:"autoscaling_target_high_priority_cpu_utilization_percent,omitempty"`
+	// Target total CPU utilization percentage for THIS replica, overriding
+	// the instance-wide autoscaling_targets value there. Scale 0-100.
+	AutoscalingTargetTotalCpuUtilizationPercent int32 `protobuf:"varint,6,opt,name=autoscaling_target_total_cpu_utilization_percent,json=autoscalingTargetTotalCpuUtilizationPercent,proto3" json:"autoscaling_target_total_cpu_utilization_percent,omitempty"`
+	// Disable high-priority CPU autoscaling for this replica: the
+	// instance-wide high_priority_cpu_utilization_percent target is
+	// ignored there and only the remaining signals drive scaling.
+	DisableHighPriorityCpuAutoscaling bool `protobuf:"varint,7,opt,name=disable_high_priority_cpu_autoscaling,json=disableHighPriorityCpuAutoscaling,proto3" json:"disable_high_priority_cpu_autoscaling,omitempty"`
+	// Disable total CPU autoscaling for this replica: the instance-wide
+	// total_cpu_utilization_percent target is ignored there.
+	DisableTotalCpuAutoscaling bool `protobuf:"varint,8,opt,name=disable_total_cpu_autoscaling,json=disableTotalCpuAutoscaling,proto3" json:"disable_total_cpu_autoscaling,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) Reset() {
@@ -230,6 +271,48 @@ func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetMaxNodes() int32 {
 	return 0
 }
 
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetMinProcessingUnits() int32 {
+	if x != nil {
+		return x.MinProcessingUnits
+	}
+	return 0
+}
+
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetMaxProcessingUnits() int32 {
+	if x != nil {
+		return x.MaxProcessingUnits
+	}
+	return 0
+}
+
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetAutoscalingTargetHighPriorityCpuUtilizationPercent() int32 {
+	if x != nil {
+		return x.AutoscalingTargetHighPriorityCpuUtilizationPercent
+	}
+	return 0
+}
+
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetAutoscalingTargetTotalCpuUtilizationPercent() int32 {
+	if x != nil {
+		return x.AutoscalingTargetTotalCpuUtilizationPercent
+	}
+	return 0
+}
+
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetDisableHighPriorityCpuAutoscaling() bool {
+	if x != nil {
+		return x.DisableHighPriorityCpuAutoscaling
+	}
+	return false
+}
+
+func (x *GcpSpannerInstanceAsymmetricAutoscalingOverrides) GetDisableTotalCpuAutoscaling() bool {
+	if x != nil {
+		return x.DisableTotalCpuAutoscaling
+	}
+	return false
+}
+
 // GcpSpannerInstanceAsymmetricAutoscalingOption scales one read-only replica
 // region independently of the rest of a multi-region instance. The classic
 // use case: a read-heavy region (say, analytics traffic in asia-east1) gets
@@ -241,8 +324,10 @@ type GcpSpannerInstanceAsymmetricAutoscalingOption struct {
 	// The replica location (a region of the multi-region configuration,
 	// e.g. "europe-west1") whose autoscaling this option overrides.
 	ReplicaLocation string `protobuf:"bytes,1,opt,name=replica_location,json=replicaLocation,proto3" json:"replica_location,omitempty"`
-	// Node bounds for this replica location, replacing the instance-wide
-	// autoscaling_limits for it.
+	// The per-replica tuning applied at this location: capacity bounds
+	// (nodes or processing units) replacing the instance-wide
+	// autoscaling_limits, replica-local CPU targets, or switches disabling
+	// a CPU signal for this replica.
 	Overrides     *GcpSpannerInstanceAsymmetricAutoscalingOverrides `protobuf:"bytes,2,opt,name=overrides,proto3" json:"overrides,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -307,8 +392,8 @@ type GcpSpannerInstanceAutoscalingConfig struct {
 	AutoscalingTargets *GcpSpannerInstanceAutoscalingTargets `protobuf:"bytes,2,opt,name=autoscaling_targets,json=autoscalingTargets,proto3" json:"autoscaling_targets,omitempty"`
 	// Per-replica-location overrides for multi-region instances: scale a
 	// read-heavy region independently instead of sizing every region for the
-	// hottest one. Each entry selects one replica location and bounds its
-	// node range.
+	// hottest one. Each entry selects one replica location and overrides its
+	// capacity bounds, CPU targets, or both.
 	AsymmetricAutoscalingOptions []*GcpSpannerInstanceAsymmetricAutoscalingOption `protobuf:"bytes,3,rep,name=asymmetric_autoscaling_options,json=asymmetricAutoscalingOptions,proto3" json:"asymmetric_autoscaling_options,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
@@ -464,9 +549,21 @@ type GcpSpannerInstanceSpec struct {
 	// When false (default), destroy fails if any database on the instance
 	// has backups — a safety net against losing the last restore point. Set
 	// true only when the backups are intentionally disposable.
-	ForceDestroy  bool `protobuf:"varint,12,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ForceDestroy bool `protobuf:"varint,12,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// Deletion policy for the instance — what happens when this resource
+	// is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the instance is deleted, taking every database and
+	//	             backup on it with it (backups additionally gated by
+	//	             force_destroy above)
+	//	"PREVENT" -- destroy FAILS; protects the instance every database
+	//	             in the topology depends on
+	//	"ABANDON" -- the instance is removed from management but left
+	//	             running (and billing) in GCP with its data intact
+	DeletionPolicy string `protobuf:"bytes,13,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpSpannerInstanceSpec) Reset() {
@@ -583,6 +680,13 @@ func (x *GcpSpannerInstanceSpec) GetForceDestroy() bool {
 	return false
 }
 
+func (x *GcpSpannerInstanceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpspannerinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpspannerinstance_v1alpha1_spec_proto_rawDesc = "" +
@@ -595,21 +699,31 @@ const file_catalog_gcp_gcpspannerinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14max_processing_units\x18\x04 \x01(\x05R\x12maxProcessingUnits:\xec\x05\xbaH\xe8\x05\x1a\x84\x02\n" +
 	"\x1cautoscaling_limits_same_unit\x12tuse either nodes (min_nodes + max_nodes) or processing_units (min_processing_units + max_processing_units), not both\x1an(this.min_nodes > 0 || this.max_nodes > 0) != (this.min_processing_units > 0 || this.max_processing_units > 0)\x1a\xc8\x01\n" +
 	"$autoscaling_limits_nodes_max_gte_min\x128max_nodes must be >= min_nodes and both must be positive\x1afthis.min_nodes == 0 && this.max_nodes == 0 || (this.min_nodes > 0 && this.max_nodes >= this.min_nodes)\x1a\x93\x02\n" +
-	"!autoscaling_limits_pu_max_gte_min\x12Nmax_processing_units must be >= min_processing_units and both must be positive\x1a\x9d\x01this.min_processing_units == 0 && this.max_processing_units == 0 || (this.min_processing_units > 0 && this.max_processing_units >= this.min_processing_units)\"\xce\x01\n" +
+	"!autoscaling_limits_pu_max_gte_min\x12Nmax_processing_units must be >= min_processing_units and both must be positive\x1a\x9d\x01this.min_processing_units == 0 && this.max_processing_units == 0 || (this.min_processing_units > 0 && this.max_processing_units >= this.min_processing_units)\"\x9c\x02\n" +
 	"$GcpSpannerInstanceAutoscalingTargets\x12[\n" +
 	"%high_priority_cpu_utilization_percent\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R!highPriorityCpuUtilizationPercent\x12I\n" +
-	"\x1bstorage_utilization_percent\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x19storageUtilizationPercent\"\xe8\x01\n" +
-	"0GcpSpannerInstanceAsymmetricAutoscalingOverrides\x12$\n" +
-	"\tmin_nodes\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\bminNodes\x12$\n" +
-	"\tmax_nodes\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\bmaxNodes:h\xbaHe\x1ac\n" +
-	"\x1fasymmetric_override_max_gte_min\x12\x1emax_nodes must be >= min_nodes\x1a this.max_nodes >= this.min_nodes\"\xe8\x01\n" +
+	"\x1bstorage_utilization_percent\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x19storageUtilizationPercent\x12L\n" +
+	"\x1dtotal_cpu_utilization_percent\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x1atotalCpuUtilizationPercent\"\xd3\n" +
+	"\n" +
+	"0GcpSpannerInstanceAsymmetricAutoscalingOverrides\x12\x1b\n" +
+	"\tmin_nodes\x18\x01 \x01(\x05R\bminNodes\x12\x1b\n" +
+	"\tmax_nodes\x18\x02 \x01(\x05R\bmaxNodes\x120\n" +
+	"\x14min_processing_units\x18\x03 \x01(\x05R\x12minProcessingUnits\x120\n" +
+	"\x14max_processing_units\x18\x04 \x01(\x05R\x12maxProcessingUnits\x12\x7f\n" +
+	"8autoscaling_target_high_priority_cpu_utilization_percent\x18\x05 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R2autoscalingTargetHighPriorityCpuUtilizationPercent\x12p\n" +
+	"0autoscaling_target_total_cpu_utilization_percent\x18\x06 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R+autoscalingTargetTotalCpuUtilizationPercent\x12P\n" +
+	"%disable_high_priority_cpu_autoscaling\x18\a \x01(\bR!disableHighPriorityCpuAutoscaling\x12A\n" +
+	"\x1ddisable_total_cpu_autoscaling\x18\b \x01(\bR\x1adisableTotalCpuAutoscaling:\xf8\x05\xbaH\xf4\x05\x1a\x8e\x02\n" +
+	"#asymmetric_override_one_unit_family\x12tuse either nodes (min_nodes + max_nodes) or processing units (min_processing_units + max_processing_units), not both\x1aq!((this.min_nodes > 0 || this.max_nodes > 0) && (this.min_processing_units > 0 || this.max_processing_units > 0))\x1a\xc9\x01\n" +
+	"%asymmetric_override_nodes_max_gte_min\x128max_nodes must be >= min_nodes and both must be positive\x1afthis.min_nodes == 0 && this.max_nodes == 0 || (this.min_nodes > 0 && this.max_nodes >= this.min_nodes)\x1a\x94\x02\n" +
+	"\"asymmetric_override_pu_max_gte_min\x12Nmax_processing_units must be >= min_processing_units and both must be positive\x1a\x9d\x01this.min_processing_units == 0 && this.max_processing_units == 0 || (this.min_processing_units > 0 && this.max_processing_units >= this.min_processing_units)\"\xe8\x01\n" +
 	"-GcpSpannerInstanceAsymmetricAutoscalingOption\x121\n" +
 	"\x10replica_location\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0freplicaLocation\x12\x83\x01\n" +
 	"\toverrides\x18\x02 \x01(\v2].dev.planton.gcp.gcpspannerinstance.v1alpha1.GcpSpannerInstanceAsymmetricAutoscalingOverridesB\x06\xbaH\x03\xc8\x01\x01R\toverrides\"\xd7\x03\n" +
 	"#GcpSpannerInstanceAutoscalingConfig\x12\x87\x01\n" +
 	"\x12autoscaling_limits\x18\x01 \x01(\v2P.dev.planton.gcp.gcpspannerinstance.v1alpha1.GcpSpannerInstanceAutoscalingLimitsB\x06\xbaH\x03\xc8\x01\x01R\x11autoscalingLimits\x12\x82\x01\n" +
 	"\x13autoscaling_targets\x18\x02 \x01(\v2Q.dev.planton.gcp.gcpspannerinstance.v1alpha1.GcpSpannerInstanceAutoscalingTargetsR\x12autoscalingTargets\x12\xa0\x01\n" +
-	"\x1easymmetric_autoscaling_options\x18\x03 \x03(\v2Z.dev.planton.gcp.gcpspannerinstance.v1alpha1.GcpSpannerInstanceAsymmetricAutoscalingOptionR\x1casymmetricAutoscalingOptions\"\xc8\x10\n" +
+	"\x1easymmetric_autoscaling_options\x18\x03 \x03(\v2Z.dev.planton.gcp.gcpspannerinstance.v1alpha1.GcpSpannerInstanceAsymmetricAutoscalingOptionR\x1casymmetricAutoscalingOptions\"\x86\x12\n" +
 	"\x16GcpSpannerInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12L\n" +
@@ -627,7 +741,9 @@ const file_catalog_gcp_gcpspannerinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13edition_valid_value\x128edition must be STANDARD, ENTERPRISE, or ENTERPRISE_PLUS\x1aCthis == '' || this in ['STANDARD', 'ENTERPRISE', 'ENTERPRISE_PLUS']R\aedition\x12\xd9\x01\n" +
 	"\x1cdefault_backup_schedule_type\x18\v \x01(\tB\x97\x01\xbaH\x93\x01\xba\x01\x8f\x01\n" +
 	"(default_backup_schedule_type_valid_value\x126default_backup_schedule_type must be NONE or AUTOMATIC\x1a+this == '' || this in ['NONE', 'AUTOMATIC']R\x19defaultBackupScheduleType\x12#\n" +
-	"\rforce_destroy\x18\f \x01(\bR\fforceDestroy\x1a9\n" +
+	"\rforce_destroy\x18\f \x01(\bR\fforceDestroy\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb7\x06\xbaH\xb3\x06\x1a\xd8\x01\n" +

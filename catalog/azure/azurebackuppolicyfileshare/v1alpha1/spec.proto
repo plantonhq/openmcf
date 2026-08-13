@@ -1,0 +1,371 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackuppolicyfileshare.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureBackupPolicyFileShareSpec** defines an Azure Backup policy
+// for Azure Files shares (ARM: Microsoft.RecoveryServices/vaults/
+// {vault}/backupPolicies/{name}) -- WHEN shares under it are backed
+// up (the schedule) and HOW LONG each backup is kept (the retention
+// rules, layered daily/weekly/monthly/yearly like
+// grandfather-father-son tape rotation). The policy itself is a free
+// configuration object; cost follows the protected shares and their
+// backup storage.
+//
+// **File-share schedules run Daily or Hourly only** (unlike VM
+// policies there is no Weekly schedule -- the provider's own
+// surface). A Daily schedule names its time of day; an Hourly
+// schedule configures a window (start, interval, duration) instead.
+// retention_daily is ALWAYS required -- it is the base layer both
+// frequencies retain into.
+//
+// **backup_tier picks where backups live**: "snapshot" (the default)
+// keeps share snapshots in the storage account itself -- fast
+// restores, but the data shares the account's fate; "vault-standard"
+// ADDITIONALLY copies backups into the vault (protection against
+// account deletion/compromise), with snapshot_retention_in_days
+// governing how long the local snapshots persist alongside.
+message AzureBackupPolicyFileShareSpec {
+  // The Azure resource group the policy's VAULT lives in (a policy is
+  // an ARM child of its vault). Can be a literal resource-group name
+  // or a reference to an AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Recovery Services vault the policy lives in, by NAME (ARM
+  // addresses backup policies as children of a vault). Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef recovery_vault_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureRecoveryServicesVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.recovery_services_vault_name"
+  ];
+
+  // The policy's name, unique on the vault: 3-150 characters,
+  // starting with a letter; letters, digits, hyphens, underscores and
+  // '!' (the provider's own rule). Changing the name replaces the
+  // policy.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z][-_!a-zA-Z0-9]{2,149}$"
+  ];
+
+  // When backups run.
+  AzureBackupPolicyFileShareSchedule backup = 4 [(buf.validate.field).required = true];
+
+  // Where backups live (the wire values). "snapshot" keeps share
+  // snapshots in the storage account only; "vault-standard" also
+  // copies backups into the vault (survives storage-account deletion
+  // and compromise -- and unlocks snapshot_retention_in_days).
+  // Unspecified applies snapshot (the provider's default).
+  optional string backup_tier = 5 [
+    (dev.planton.shared.options.default) = "snapshot",
+    (buf.validate.field).string = {
+      in: [
+        "snapshot",
+        "vault-standard"
+      ]
+    }
+  ];
+
+  // For vault-standard ONLY: how many days the LOCAL share snapshots
+  // are kept alongside the vaulted copies (fast restores without a
+  // vault round-trip). Must be LESS THAN retention_daily.count (the
+  // provider's own contract). Unspecified lets the service manage
+  // snapshot retention.
+  optional int32 snapshot_retention_in_days = 6 [(buf.validate.field).int32.gte = 1];
+
+  // The IANA/Windows timezone the schedule's time is interpreted in,
+  // e.g. "UTC" or "Pacific Standard Time". Unspecified applies UTC.
+  optional string timezone = 7 [(dev.planton.shared.options.default) = "UTC"];
+
+  // How long each daily/hourly backup is kept: ALWAYS required (the
+  // base retention layer for both frequencies).
+  AzureBackupPolicyFileShareRetentionDaily retention_daily = 8 [(buf.validate.field).required = true];
+
+  // Keeps one backup per configured weekday for N weeks.
+  AzureBackupPolicyFileShareRetentionWeekly retention_weekly = 9;
+
+  // Keeps one backup per month (chosen by week-of-month days or by
+  // month days) for N months.
+  AzureBackupPolicyFileShareRetentionMonthly retention_monthly = 10;
+
+  // Keeps one backup per year (chosen months, then week-of-month days
+  // or month days) for N years.
+  AzureBackupPolicyFileShareRetentionYearly retention_yearly = 11;
+
+  // The provider's vault-standard contract, front-loaded so the error
+  // lands in seconds instead of at plan/apply time.
+  option (buf.validate.message).cel = {
+    id: "bpfs_snapshot_retention_needs_vault_standard"
+    message: "snapshot_retention_in_days only applies when backup_tier is vault-standard -- on the snapshot tier, retention_daily IS the snapshot retention"
+    expression: "!has(this.snapshot_retention_in_days) || (has(this.backup_tier) && this.backup_tier == 'vault-standard')"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpfs_snapshot_retention_below_daily"
+    message: "snapshot_retention_in_days must be less than retention_daily.count (the provider's own contract)"
+    expression: "!has(this.snapshot_retention_in_days) || this.snapshot_retention_in_days < this.retention_daily.count"
+  };
+}
+
+// When backups run. A Daily schedule names its time of day; an Hourly
+// schedule configures a window instead -- exactly one of the two
+// shapes, matched to the frequency (the provider's create contract,
+// front-loaded here).
+message AzureBackupPolicyFileShareSchedule {
+  // How often backups run (the wire values). File-share policies have
+  // no Weekly schedule -- the provider's own surface.
+  string frequency = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Daily",
+        "Hourly"
+      ]
+    }
+  ];
+
+  // For Daily schedules ONLY: the time of day the backup runs,
+  // "HH:mm" on the hour or half past (e.g. "23:00", "02:30") -- the
+  // provider's own rule.
+  string time = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([01][0-9]|[2][0-3]):([03][0])$"
+  ];
+
+  // For Hourly schedules ONLY: the backup window (start, interval,
+  // duration).
+  AzureBackupPolicyFileShareHourlySchedule hourly = 3;
+
+  option (buf.validate.message).cel = {
+    id: "bpfs_schedule_shape_matches_frequency"
+    message: "a Daily schedule requires time (and no hourly block); an Hourly schedule requires the hourly block (and no time)"
+    expression: "this.frequency == 'Daily' ? (this.time != '' && !has(this.hourly)) : (has(this.hourly) && this.time == '')"
+  };
+}
+
+// The Hourly schedule's backup window: backups run every `interval`
+// hours starting at `start_time`, for `window_duration` hours.
+message AzureBackupPolicyFileShareHourlySchedule {
+  // Hours between backups inside the window -- 4, 6, 8 or 12 (the
+  // provider's own set).
+  int32 interval = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      in: [
+        4,
+        6,
+        8,
+        12
+      ]
+    }
+  ];
+
+  // The window's start time, "HH:mm" on the hour or half past (e.g.
+  // "06:00", "20:30") -- the provider's own rule.
+  string start_time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([01][0-9]|[2][0-3]):([03][0])$"
+  ];
+
+  // The window's length in hours: 4-24.
+  int32 window_duration = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 4,
+    (buf.validate.field).int32.lte = 24
+  ];
+}
+
+// How long each daily/hourly backup is kept.
+message AzureBackupPolicyFileShareRetentionDaily {
+  // Days each backup is kept: 1-200 (file-share retention runs
+  // shorter than VM retention -- the provider's own bounds).
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 200
+  ];
+}
+
+// Keeps one backup per configured weekday for N weeks.
+message AzureBackupPolicyFileShareRetentionWeekly {
+  // Weeks each kept backup is retained: 1-200.
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 200
+  ];
+
+  // The weekdays whose backups are kept (wire values).
+  repeated string weekdays = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "Sunday",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday"
+      ]
+    }
+  ];
+}
+
+// Keeps one backup per month for N months. Pick the backup either by
+// WEEK-OF-MONTH (weeks + weekdays together, e.g. "First Sunday") or
+// by MONTH DAYS (days and/or include_last_days) -- the two forms are
+// mutually exclusive (the provider's own contract).
+message AzureBackupPolicyFileShareRetentionMonthly {
+  // Months each kept backup is retained: 1-120 (the provider's own
+  // bound for file shares).
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 120
+  ];
+
+  // Week-of-month form: which weeks (wire values First, Second,
+  // Third, Fourth, Last). Requires weekdays.
+  repeated string weeks = 2 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "First",
+      "Second",
+      "Third",
+      "Fourth",
+      "Last"
+    ]
+  }];
+
+  // Week-of-month form: which weekdays inside those weeks (wire
+  // values). Requires weeks.
+  repeated string weekdays = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
+  }];
+
+  // Month-days form: which days of the month (1-31).
+  repeated int32 days = 4 [(buf.validate.field).repeated.items.int32 = {
+    gte: 1
+    lte: 31
+  }];
+
+  // Month-days form: whether the month's LAST day's backup is kept
+  // (months differ in length; this covers "the last day" exactly).
+  bool include_last_days = 5;
+
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_monthly_one_form"
+    message: "pick ONE form: weeks+weekdays (week-of-month) or days/include_last_days (month days) -- they are mutually exclusive"
+    expression: "(this.weeks.size() == 0 && this.weekdays.size() == 0) || (this.days.size() == 0 && !this.include_last_days)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_monthly_at_least_one"
+    message: "configure which backup each month keeps: weeks+weekdays, days, or include_last_days"
+    expression: "this.weeks.size() > 0 || this.weekdays.size() > 0 || this.days.size() > 0 || this.include_last_days"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_monthly_weeks_weekdays_paired"
+    message: "weeks and weekdays go together -- 'First Sunday' needs both the week and the weekday"
+    expression: "(this.weeks.size() > 0) == (this.weekdays.size() > 0)"
+  };
+}
+
+// Keeps one backup per year for N years, in the configured months.
+// Pick the backup either by WEEK-OF-MONTH (weeks + weekdays) or by
+// MONTH DAYS (days and/or include_last_days) -- mutually exclusive
+// (the provider's own contract).
+message AzureBackupPolicyFileShareRetentionYearly {
+  // Years each kept backup is retained: 1-10 (the provider's own
+  // bound for file shares).
+  int32 count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 10
+  ];
+
+  // The months whose backup is kept (wire values, e.g. "January").
+  repeated string months = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  ];
+
+  // Week-of-month form: which weeks (wire values). Requires weekdays.
+  repeated string weeks = 3 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "First",
+      "Second",
+      "Third",
+      "Fourth",
+      "Last"
+    ]
+  }];
+
+  // Week-of-month form: which weekdays inside those weeks (wire
+  // values). Requires weeks.
+  repeated string weekdays = 4 [(buf.validate.field).repeated.items.string = {
+    in: [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday"
+    ]
+  }];
+
+  // Month-days form: which days of the month (1-31).
+  repeated int32 days = 5 [(buf.validate.field).repeated.items.int32 = {
+    gte: 1
+    lte: 31
+  }];
+
+  // Month-days form: whether the month's LAST day's backup is kept.
+  bool include_last_days = 6;
+
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_yearly_one_form"
+    message: "pick ONE form: weeks+weekdays (week-of-month) or days/include_last_days (month days) -- they are mutually exclusive"
+    expression: "(this.weeks.size() == 0 && this.weekdays.size() == 0) || (this.days.size() == 0 && !this.include_last_days)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_yearly_at_least_one"
+    message: "configure which backup each year keeps: weeks+weekdays, days, or include_last_days"
+    expression: "this.weeks.size() > 0 || this.weekdays.size() > 0 || this.days.size() > 0 || this.include_last_days"
+  };
+  option (buf.validate.message).cel = {
+    id: "bpfs_retention_yearly_weeks_weekdays_paired"
+    message: "weeks and weekdays go together -- 'First Sunday' needs both the week and the weekday"
+    expression: "(this.weeks.size() > 0) == (this.weekdays.size() > 0)"
+  };
+}

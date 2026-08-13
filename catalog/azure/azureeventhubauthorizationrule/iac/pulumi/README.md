@@ -1,7 +1,7 @@
 # AzureEventHubAuthorizationRule - Pulumi Module
 
 Pulumi (Go) implementation for the AzureEventHubAuthorizationRule
-deployment component, at 100% behavioral parity with the Terraform
+component, at 100% behavioral parity with the Terraform
 module.
 
 ## Resources Created

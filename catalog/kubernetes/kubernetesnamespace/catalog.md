@@ -103,4 +103,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-This component references no other deployment components -- it IS the placement unit the rest of the Kubernetes catalog builds on. Nearly every namespaced kind (Deployment, Secret, ConfigMap, ServiceAccount, Ingress, and the rest) carries a `spec.namespace` field that references this component's `spec.name`, so infra charts create the namespace first and place everything else inside it in dependency order.
+This component references no other components -- it IS the placement unit the rest of the Kubernetes catalog builds on. Nearly every namespaced kind (Deployment, Secret, ConfigMap, ServiceAccount, Ingress, and the rest) carries a `spec.namespace` field that references this component's `spec.name`, so infra charts create the namespace first and place everything else inside it in dependency order.

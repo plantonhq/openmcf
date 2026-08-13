@@ -1,0 +1,4 @@
+name: gcpmonitoringuptimecheck-pulumi-project
+runtime:
+  name: go
+description: Planton GcpMonitoringUptimeCheck Pulumi module

@@ -1,0 +1,43 @@
+# Hourly vault-standard scenario: the grammar the minimal smoke does
+# NOT carry -- the hourly window dials (interval/start/duration) and
+# the vault-standard tier with its snapshot-retention bound, proven
+# live in their own lane so a tier-side failure implicates only this
+# policy kind, never the protected-share lane riding the minimal
+# smoke. Still a free configuration object (the tier prices backup
+# STORAGE, and no share is protected under this policy).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyFileShare
+metadata:
+  name: planton-oss-e2e-azurebackuppolicyfileshare-hourly
+  id: planton-oss-e2e-azurebackuppolicyfileshare-hourly
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackuppolicyfileshare
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  name: planton-oss-e2e-bpfs-hourly
+  backup:
+    frequency: Hourly
+    hourly:
+      interval: 4
+      startTime: "06:00"
+      windowDuration: 12
+  backupTier: vault-standard
+  snapshotRetentionInDays: 5
+  retentionDaily:
+    count: 30
+  retentionMonthly:
+    count: 3
+    days: [1]
+    includeLastDays: true

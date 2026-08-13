@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaifoundryproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureAiFoundryProjectSpec** defines an Azure AI Foundry project
+// (ARM: Microsoft.MachineLearningServices/workspaces with kind
+// "Project") -- the workspace one AI team works in, created inside an
+// AzureAiFoundry hub. The project INHERITS the hub's posture (key
+// vault, storage, insights, registry, managed network, encryption)
+// and carries only its own identity, naming, and description -- which
+// is why this spec has no companion-service fields.
+//
+// **The project deploys into the HUB's resource group** (the
+// provider derives it from the hub reference -- there is no
+// resource-group field here), and the hub linkage is fixed at
+// creation.
+message AzureAiFoundryProjectSpec {
+  // The Azure region the project lives in, e.g. "eastus" --
+  // typically the hub's region. Changing the region replaces the
+  // project.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The project's name: 3-33 characters, starting with an
+  // alphanumeric character, then alphanumerics, hyphens or
+  // underscores (the provider's own code regex -- its error text
+  // understates the length by one and omits the underscore).
+  // Changing the name replaces the project.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_-]{2,32}$"
+  ];
+
+  // The AzureAiFoundry hub the project is created in, by ARM ID.
+  // Fixed at creation -- a project cannot move between hubs. The
+  // project deploys into this hub's resource group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ai_services_hub_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureAiFoundry,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.ai_foundry_id"
+  ];
+
+  // The project's managed identity. Optional -- most projects use
+  // SYSTEM_ASSIGNED so per-project grants can be scoped to the team.
+  AzureAiFoundryProjectIdentity identity = 4;
+
+  // For projects with a user-assigned identity: which of the
+  // attached identities the project uses as its primary, by ARM ID.
+  // Only legal alongside the identity block (the provider's own
+  // pairing, front-loaded below).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_user_assigned_identity = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Marks the project as handling sensitive business data ("high
+  // business impact") -- Azure reduces the diagnostic data it
+  // collects. Fixed at creation. False means "leave it to the
+  // service": the modules omit the property when false because the
+  // service flips it true when hub encryption applies, and a pinned
+  // false would fight that (the provider reads the value back).
+  bool high_business_impact_enabled = 6;
+
+  // What the project is for.
+  string description = 7;
+
+  // The display name shown in the Azure AI Foundry portal.
+  string friendly_name = 8;
+
+  // Free-form tags applied to the project, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 9;
+
+  // The provider enforces this pairing in its schema
+  // (RequiredWith): the primary identity only makes sense when an
+  // identity block is configured.
+  option (buf.validate.message).cel = {
+    id: "primary_identity_requires_identity_block"
+    message: "primary_user_assigned_identity requires the identity block -- add identity with type USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED"
+    expression: "!(has(this.primary_user_assigned_identity) && (has(this.primary_user_assigned_identity.value) || has(this.primary_user_assigned_identity.value_from))) || has(this.identity)"
+  };
+}
+
+// The project's managed identity.
+message AzureAiFoundryProjectIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the project; USER_ASSIGNED brings identities you manage --
+  // pair with primary_user_assigned_identity;
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureAiFoundryProjectIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the project, by ARM ID.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The project's managed-identity flavor.
+enum AzureAiFoundryProjectIdentityType {
+  // Not specified: rejected when the identity block is present.
+  azure_ai_foundry_project_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the project.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

@@ -245,7 +245,10 @@ message KubernetesKarpenterEc2NodeClassSpec {
   option (buf.validate.message).cel = {
     id: "spec.ami_family_matches_alias"
     message: "when an alias term is used, ami_family may only be set to the alias's own family or 'Custom'"
-    expression: "!has(this.ami_family) || this.ami_family == '' || this.ami_selector_terms.all(x, !has(x.alias) || x.alias == '' || this.ami_family == 'Custom' || this.ami_family.lowerAscii() == x.alias.split('@')[0])"
+    // Portable form (no lowerAscii/split -- those are engine-specific CEL
+    // extensions): the alias's family prefix is case-insensitively equal to
+    // ami_family exactly when alias matches "(?i)<family>@...".
+    expression: "!has(this.ami_family) || this.ami_family == '' || this.ami_selector_terms.all(x, !has(x.alias) || x.alias == '' || this.ami_family == 'Custom' || x.alias.matches('^(?i)' + this.ami_family + '@'))"
   };
 }
 
@@ -263,7 +266,7 @@ message KubernetesKarpenterEc2NodeClassAmiSelectorTerm {
     (buf.validate.field).cel = {
       id: "spec.ami_term.alias_format"
       message: "alias must match 'family@version' with family one of al2, al2023, bottlerocket, windows2019, windows2022, windows2025 (Windows families only support 'latest')"
-      expression: "this == '' || (this.matches('^[a-zA-Z0-9]+@.+$') && this.split('@')[0] in ['al2', 'al2023', 'bottlerocket', 'windows2019', 'windows2022', 'windows2025'] && (!(this.split('@')[0] in ['windows2019', 'windows2022', 'windows2025']) || this.split('@')[1] == 'latest'))"
+      expression: "this == '' || this.matches('^(al2|al2023|bottlerocket)@.+$') || this.matches('^(windows2019|windows2022|windows2025)@latest$')"
     }
   ];
 

@@ -42,7 +42,7 @@ Open the deployment store, find **DNS Record on Google Cloud**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDnsRecord
 metadata:
   name: api-a-record

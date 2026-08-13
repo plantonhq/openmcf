@@ -60,11 +60,13 @@ message GcpServiceAccountSpec {
   // (disable first, observe breakage, then delete).
   optional bool disabled = 5 [(dev.planton.shared.options.default) = "false"];
 
-  // Whether to create a user-managed JSON key for this service account.
-  // Default false (keyless). When true, the private key is exported in stack outputs
-  // as `key_base64` — treat that output as a live credential. Prefer Workload Identity
-  // or federation over keys wherever the workload supports it.
-  optional bool create_key = 6 [(dev.planton.shared.options.default) = "false"];
+  // Create a user-managed key for this service account. Omit for keyless
+  // (the recommended default — prefer Workload Identity, impersonation, or
+  // federation wherever the workload supports it). When present, a key is
+  // created with the configured algorithm and formats, and the private key
+  // (unless public_key_data supplies your own public key) is exported in
+  // stack outputs as `key_base64` — treat that output as a live credential.
+  GcpServiceAccountUserManagedKey user_managed_key = 6;
 
   // IAM roles granted to this service account at the PROJECT scope, e.g.
   // ["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
@@ -84,9 +86,103 @@ message GcpServiceAccountSpec {
   // organization — grant sparingly.
   repeated string org_iam_roles = 9;
 
+  // If true, creating the service account succeeds (as a no-op adoption)
+  // when an account with the same email already exists, instead of
+  // failing. Useful for idempotent bootstrap flows that may race other
+  // provisioning paths onto well-known identity names.
+  bool create_ignore_already_exists = 10;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the service account is deleted
+  //   "PREVENT" -- destroy FAILS; a guard rail for identities whose
+  //                deletion would invalidate IAM bindings fleet-wide
+  // Mutable in place.
+  string deletion_policy = 11 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT']"
+    message: "deletion_policy must be one of: DELETE, PREVENT"
+  }];
+
   option (buf.validate.message).cel = {
     id: "org_roles_require_org_id"
     message: "org_id is required when org_iam_roles is set"
     expression: "size(this.org_iam_roles) == 0 || this.org_id != ''"
   };
+}
+
+// Configuration of a user-managed service account key. The message's
+// presence is the decision to create a key; every field is optional and
+// defaults to GCP's own defaults, so `user_managed_key: {}` creates the
+// classic 2048-bit RSA JSON key.
+message GcpServiceAccountUserManagedKey {
+  // Two mutually exclusive key flows exist:
+  //   - GENERATE (default): GCP generates the key pair and returns the
+  //     private key once (exported as the key_base64 stack output).
+  //     algorithm / private_key_type / public_key_type shape the result.
+  //   - UPLOAD: you supply your own public key via public_key_data; GCP
+  //     never sees or returns a private key (key_base64 stays empty).
+  //     Conflicts with private_key_type and public_key_type.
+  option (buf.validate.message).cel = {
+    id: "public_key_data_conflicts_with_key_types"
+    expression: "this.public_key_data == '' || (this.private_key_type == '' && this.public_key_type == '')"
+    message: "public_key_data (upload flow) cannot be combined with private_key_type or public_key_type (generate flow)"
+  };
+
+  // Algorithm used to generate the key:
+  //   ""                  -- GCP default ("KEY_ALG_RSA_2048")
+  //   "KEY_ALG_RSA_2048"  -- 2048-bit RSA (the standard choice)
+  //   "KEY_ALG_RSA_1024"  -- 1024-bit RSA (legacy; weaker — avoid for
+  //                          new keys)
+  // Create-time only: changing it replaces the key.
+  string algorithm = 1 [(buf.validate.field).cel = {
+    id: "valid_key_algorithm"
+    expression: "this == '' || this in ['KEY_ALG_RSA_2048', 'KEY_ALG_RSA_1024']"
+    message: "algorithm must be one of: KEY_ALG_RSA_2048, KEY_ALG_RSA_1024"
+  }];
+
+  // Output format of the generated private key:
+  //   ""                             -- GCP default
+  //                                     ("TYPE_GOOGLE_CREDENTIALS_FILE")
+  //   "TYPE_GOOGLE_CREDENTIALS_FILE" -- the standard JSON credentials file
+  //   "TYPE_PKCS12_FILE"             -- PKCS#12 bundle (password "notasecret";
+  //                                     for legacy tooling that requires p12)
+  string private_key_type = 2 [(buf.validate.field).cel = {
+    id: "valid_private_key_type"
+    expression: "this == '' || this in ['TYPE_GOOGLE_CREDENTIALS_FILE', 'TYPE_PKCS12_FILE']"
+    message: "private_key_type must be one of: TYPE_GOOGLE_CREDENTIALS_FILE, TYPE_PKCS12_FILE"
+  }];
+
+  // Output format of the public key:
+  //   ""                    -- GCP default ("TYPE_X509_PEM_FILE")
+  //   "TYPE_X509_PEM_FILE"  -- X.509 certificate PEM
+  //   "TYPE_RAW_PUBLIC_KEY" -- raw public key bytes
+  //   "TYPE_NONE"           -- do not return the public key
+  string public_key_type = 3 [(buf.validate.field).cel = {
+    id: "valid_public_key_type"
+    expression: "this == '' || this in ['TYPE_X509_PEM_FILE', 'TYPE_RAW_PUBLIC_KEY', 'TYPE_NONE']"
+    message: "public_key_type must be one of: TYPE_X509_PEM_FILE, TYPE_RAW_PUBLIC_KEY, TYPE_NONE"
+  }];
+
+  // Your own public key (base64-encoded X.509 PEM) — the UPLOAD flow: the
+  // matching private key never leaves your custody and GCP returns no
+  // private key material (the key_base64 stack output stays empty).
+  // The strongest key posture when a user-managed key is unavoidable.
+  string public_key_data = 4;
+
+  // Arbitrary key/value pairs whose CHANGE forces a new key to be
+  // generated — the idiomatic rotation trigger. Set e.g.
+  // {"rotation": "2026-08"} and bump the value on your rotation cadence;
+  // the old key is destroyed and a fresh one exported.
+  map<string, string> keepers = 5;
+
+  // Deletion policy for the key itself:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the key is deleted on destroy
+  //   "PREVENT" -- destroy FAILS while this key exists
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_key_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT']"
+    message: "deletion_policy must be one of: DELETE, PREVENT"
+  }];
 }

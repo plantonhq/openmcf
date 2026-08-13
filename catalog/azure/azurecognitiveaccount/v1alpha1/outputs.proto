@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitiveaccount.v1alpha1;
+
+// **AzureCognitiveAccountStackOutputs** captures the outputs of
+// provisioning an Azure AI services account.
+message AzureCognitiveAccountStackOutputs {
+  // The Azure Resource Manager ID of the account -- what model
+  // deployments and projects reference as their cognitive_account_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}
+  string cognitive_account_id = 1;
+
+  // The name of the account. ARM addresses deployments, projects and
+  // responsible-AI children as children of this name.
+  string cognitive_account_name = 2;
+
+  // The account's endpoint URL -- what applications call (with a key
+  // or an Entra ID token). With a custom_subdomain_name this is
+  // "https://{subdomain}.cognitiveservices.azure.com/"; without one,
+  // the regional shared endpoint.
+  string endpoint = 3;
+
+  // The account's primary access key. Marked sensitive in both
+  // engines. Empty when local_auth_enabled is false (token auth
+  // only).
+  string primary_access_key = 4;
+
+  // The account's secondary access key (for zero-downtime rotation).
+  // Marked sensitive in both engines. Empty when local_auth_enabled
+  // is false.
+  string secondary_access_key = 5;
+
+  // The principal (object) ID of the account's system-assigned
+  // identity, when one is enabled -- what Key Vault and storage grants
+  // bind to.
+  string system_assigned_identity_principal_id = 6;
+
+  // The ARM ID of each responsible-AI blocklist on the account, keyed
+  // by the blocklist's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.rai_blocklist_ids.competitor-names
+  map<string, string> rai_blocklist_ids = 7;
+
+  // The ARM ID of each responsible-AI policy on the account, keyed by
+  // the policy's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.rai_policy_ids.strict-chat
+  map<string, string> rai_policy_ids = 8;
+}

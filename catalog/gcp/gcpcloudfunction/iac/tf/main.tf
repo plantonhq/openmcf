@@ -37,6 +37,10 @@ resource "google_cloudfunctions2_function" "function" {
   # the Cloud Functions + Artifact Registry service agents.
   kms_key_name = var.spec.kms_key_name != "" ? var.spec.kms_key_name : null
 
+  # DELETE (provider default) removes the function on destroy; PREVENT
+  # fails the destroy; ABANDON leaves it serving and consuming events.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   build_config {
     runtime     = var.spec.build_config.runtime
     entry_point = var.spec.build_config.entry_point
@@ -112,8 +116,8 @@ resource "google_cloudfunctions2_function" "function" {
           secret  = secret_environment_variables.value.secret
           version = secret_environment_variables.value.version != "" ? secret_environment_variables.value.version : "latest"
           # The API requires an explicit project on every entry; default to
-          # the function's own project when unset.
-          project_id = secret_environment_variables.value.project_id != "" ? secret_environment_variables.value.project_id : data.google_project.function.project_id
+          # the function's own (or ambient) project when unset.
+          project_id = secret_environment_variables.value.project_id != "" ? secret_environment_variables.value.project_id : local.effective_secret_project
         }
       }
 
@@ -122,7 +126,7 @@ resource "google_cloudfunctions2_function" "function" {
         content {
           mount_path = secret_volumes.value.mount_path
           secret     = secret_volumes.value.secret
-          project_id = secret_volumes.value.project_id != "" ? secret_volumes.value.project_id : data.google_project.function.project_id
+          project_id = secret_volumes.value.project_id != "" ? secret_volumes.value.project_id : local.effective_secret_project
 
           dynamic "versions" {
             for_each = secret_volumes.value.versions
@@ -137,6 +141,20 @@ resource "google_cloudfunctions2_function" "function" {
       vpc_connector                 = local.vpc_connector
       vpc_connector_egress_settings = local.vpc_egress
       ingress_settings              = local.ingress_settings
+
+      # Direct VPC egress: the connectorless path (mutually exclusive
+      # with vpc_connector — the spec's CEL enforces it pre-deploy).
+      dynamic "direct_vpc_network_interface" {
+        for_each = local.direct_vpc != null ? [local.direct_vpc] : []
+        content {
+          network    = direct_vpc_network_interface.value.network != "" ? direct_vpc_network_interface.value.network : null
+          subnetwork = direct_vpc_network_interface.value.subnetwork != "" ? direct_vpc_network_interface.value.subnetwork : null
+          tags       = length(direct_vpc_network_interface.value.tags) > 0 ? direct_vpc_network_interface.value.tags : null
+        }
+      }
+
+      # Sent explicitly whenever the interface is present (see locals.tf).
+      direct_vpc_egress = local.direct_vpc_egress
 
       # true (the API default) sends 100% of traffic to the latest ready
       # revision; false holds traffic for manual canary/rollback on the
@@ -174,11 +192,13 @@ resource "google_cloudfunctions2_function" "function" {
   depends_on = [google_project_service.apis]
 }
 
-# Resolves the effective project (spec.project_id or the provider default)
-# — secret references need an explicit project id per entry even when the
-# function itself rides the ambient project.
+# Resolves the ambient project for secret references that omit their own —
+# the one case that needs a live lookup (secret entries need an explicit
+# project id in the API payload). Count-gated so every plan that names its
+# project (or carries no ambient-project secrets) runs credential-free;
+# the Pulumi module gates its client-config lookup identically.
 data "google_project" "function" {
-  project_id = local.project_id
+  count = local.needs_project_lookup ? 1 : 0
 }
 
 # Public invocation for HTTP functions: Gen 2 functions are served by Cloud

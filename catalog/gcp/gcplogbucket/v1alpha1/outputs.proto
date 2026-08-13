@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcplogbucket.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Logging bucket.
+message GcpLogBucketStackOutputs {
+  // The full resource name of the bucket, e.g.
+  // projects/{project}/locations/{location}/buckets/{bucket_id} (or the
+  // folders/organizations/billingAccounts form for those scopes).
+  // THE composition handle: a GcpLoggingSink routes into this bucket with
+  // destination raw_uri "logging.googleapis.com/{bucket_name}", and a
+  // bucket-scoped GcpLogMetric references it directly.
+  string bucket_name = 1;
+
+  // The BigQuery dataset ID of the linked dataset, when
+  // linked_bigquery_dataset is configured (empty otherwise). Query the
+  // bucket's entries from BigQuery through this dataset.
+  string linked_dataset_id = 2;
+}

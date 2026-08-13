@@ -118,7 +118,9 @@ These are the most important decisions when configuring a Dataproc cluster. Expl
 
 **Secondary workers for cost optimization** -- Configure `clusterConfig.secondaryWorkerConfig` with `preemptibility: SPOT` for cost-optimized burst capacity. Spot VMs can be preempted at any time, so use them for fault-tolerant batch workloads with Spark's dynamic allocation enabled.
 
-**Lifecycle management** -- Set `clusterConfig.lifecycleConfig.idleDeleteTtl` (e.g., `"1800s"` for 30 minutes) to auto-delete idle clusters. Critical for ephemeral batch clusters to avoid runaway costs. Use `autoDeleteTime` for time-boxed clusters with a known end date.
+**Lifecycle management** -- Set `clusterConfig.lifecycleConfig.idleDeleteTtl` (e.g., `"1800s"` for 30 minutes) to auto-delete idle clusters. Critical for ephemeral batch clusters to avoid runaway costs. Use `autoDeleteTime` for time-boxed clusters with a known end date. The stop variants — `idleStopTtl` / `autoStopTime` — shut the VMs down instead of deleting, keeping the cluster restartable; and `deletionPolicy: ABANDON` releases a cluster from IaC management without destroying it.
+
+**Structural type and engine** -- `clusterConfig.clusterType: SINGLE_NODE` runs everything on one VM (the modern form of the zero-workers property); `ZERO_SCALE` keeps only the control plane warm and provisions workers on demand. `engine: LIGHTNING` enables the Lightning Engine, Google's accelerated Spark runtime (premium tier). Both are immutable.
 
 **Software and components** -- Set `clusterConfig.softwareConfig.imageVersion` (e.g., `"2.2-debian12"`) and add optional components like `JUPYTER`, `FLINK`, or `PRESTO` via `optionalComponents`. Override framework properties via the `properties` map (e.g., `"spark:spark.executor.memory": "12g"`).
 

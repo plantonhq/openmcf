@@ -23,17 +23,17 @@ Planton takes a different path: consistency of structure and workflow, not abstr
 
 Every resource across every provider follows the same manifest format (the Kubernetes Resource Model), uses the same validation framework (Protocol Buffers with buf-validate), is deployed with the same CLI commands, and is managed through the same module and state systems. But the spec -- the actual configuration surface -- is provider-specific. An `AwsS3Bucket` exposes the full S3 feature set. A `GcpGcsBucket` exposes the full GCS feature set. Neither pretends to be the other.
 
-The result: you learn one set of tools and one workflow pattern, then apply it to 400+ deployment components across 17 cloud providers. The learning curve is one workflow, not each provider's toolchain.
+The result: you learn one set of tools and one workflow pattern, then apply it to 400+ components across 17 cloud providers. The learning curve is one workflow, not each provider's toolchain.
 
 ## Key Concepts
 
-### Deployment Components
+### Components
 
-A deployment component is the atomic unit of Planton -- a self-contained package combining a Protocol Buffer API definition, dual IaC module implementations (Pulumi and Terraform), and auto-generated documentation. Planton ships with 360+ components spanning 17 providers.
+A component is the atomic unit of Planton -- a self-contained package combining a Protocol Buffer API definition, dual IaC module implementations (Pulumi and Terraform), and auto-generated documentation. Planton ships with 360+ components spanning 17 providers.
 
 Every component follows the same four-file protobuf contract: `api.proto` (resource envelope), `spec.proto` (configuration surface), `input.proto` (IaC input), and `outputs.proto` (IaC output).
 
-**[Read more: Deployment Components](deployment-components)**
+**[Read more: Components](components)**
 
 ### Manifests
 

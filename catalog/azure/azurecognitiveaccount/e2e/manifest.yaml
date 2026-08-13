@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccount
+metadata:
+  name: test-cognitive-account
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: acme-openai-test
+  kind: OpenAI
+  skuName: S0
+  customSubdomainName: acme-openai-test
+  raiBlocklists:
+    - name: blocked-terms
+      description: Custom blocked words for chat deployments.
+  raiPolicies:
+    - name: strict-chat
+      basePolicyName: Microsoft.Default
+      contentFilters:
+        - name: Hate
+          filterEnabled: true
+          blockEnabled: true
+          source: Prompt
+          severityThreshold: LOW
+        - name: Jailbreak
+          filterEnabled: true
+          blockEnabled: true
+          source: Prompt
+      mode: BLOCKING
+  tags:
+    purpose: hack-test

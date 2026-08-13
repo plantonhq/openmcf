@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains the Pulumi implementation for deploying Cloud SQL instances using Planton's `GcpCloudSql` API. The module is written in Go and leverages the Pulumi GCP provider to create `sql.DatabaseInstance` resources (backed by `google_sql_database_instance`), enabling the Cloud SQL Admin API first so a fresh project works on the first deploy.
+This directory contains the Pulumi implementation for deploying Cloud SQL instances using Planton's `GcpCloudSql` API. The module is written in Go and leverages the Pulumi GCP provider to create `sql.DatabaseInstance` resources (backed by `google_sql_database_instance`), enabling the Cloud SQL Admin API first so a fresh project works on the first deploy. The full instance surface is modeled: primaries, read replicas, and read pools (with auto scaling), restore provenance (clone / backup-run restore / Backup-and-DR point-in-time restore), cross-region DR pairing, hyperdisk provisioned performance, final backup on delete, PSC DNS automation, SQL Server Active Directory and Entra ID authentication, and the `deletion_policy` teardown lever — with identical zero-vs-omit semantics to the Terraform module.
 
 One resource is one instance: a primary, or a read replica when `masterInstanceName` is set. Databases and users inside the instance are separate Planton kinds composed by instance name.
 

@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpComputeInstanceSpec defines the configuration for a Google Compute
 Engine virtual machine — the general-purpose compute node behind
 databases-on-VM, stateful application servers, GPU workers, bastion
@@ -48,6 +50,11 @@ spec:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
+    # Explicit guest OS features are additive to what the image already
+    # declares — modern Debian images carry both of these natively.
+    guestOsFeatures:
+      - UEFI_COMPATIBLE
+      - GVNIC
   networkInterfaces:
     - network:
         value: default
@@ -59,6 +66,9 @@ spec:
     instanceTerminationAction: DELETE
   shieldedInstanceConfig:
     enableSecureBoot: true
+  # DELETE is the provider default — armed explicitly to prove the
+  # round-trip stays diff-free.
+  deletionPolicy: DELETE
   labels:
     env: testing
   tags:
@@ -93,11 +103,26 @@ spec:
 | `spec.bootDisk.enableConfidentialCompute` | `bool` |  |  |  |
 | `spec.bootDisk.resourcePolicies` | `[]string` |  |  |  |
 | `spec.bootDisk.storagePool` | `string` |  |  |  |
+| `spec.bootDisk.mode` | `string` |  |  |  |
+| `spec.bootDisk.interface` | `string` |  |  |  |
+| `spec.bootDisk.forceAttach` | `bool` |  |  |  |
+| `spec.bootDisk.guestOsFeatures` | `[]string` |  |  |  |
+| `spec.bootDisk.replicaZones` | `[]string` |  |  |  |
+| `spec.bootDisk.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.bootDisk.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.bootDisk.sourceImageEncryption` | `GcpComputeInstanceSourceEncryption` |  |  |  |
+| `spec.bootDisk.sourceImageEncryption.kmsKey` | `string \| valueFrom` | yes |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.bootDisk.sourceImageEncryption.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.bootDisk.sourceSnapshotEncryption` | `GcpComputeInstanceSourceEncryption` |  |  |  |
+| `spec.bootDisk.sourceSnapshotEncryption.kmsKey` | `string \| valueFrom` | yes |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.bootDisk.sourceSnapshotEncryption.kmsKeyServiceAccount` | `string` |  |  |  |
 | `spec.attachedDisks` | `[]GcpComputeInstanceAttachedDisk` |  |  |  |
 | `spec.attachedDisks[].source` | `string \| valueFrom` | yes |  | GcpComputeDisk (`status.outputs.self_link`) |
 | `spec.attachedDisks[].deviceName` | `string` |  |  |  |
 | `spec.attachedDisks[].mode` | `string` |  |  |  |
 | `spec.attachedDisks[].kmsKey` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.attachedDisks[].kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.attachedDisks[].forceAttach` | `bool` |  |  |  |
 | `spec.scratchDisks` | `[]GcpComputeInstanceScratchDisk` |  |  |  |
 | `spec.scratchDisks[].interface` | `string` | yes |  |  |
 | `spec.scratchDisks[].sizeGb` | `int32` |  |  |  |
@@ -114,12 +139,20 @@ spec:
 | `spec.networkInterfaces[].ipv6AccessConfigs` | `[]GcpComputeInstanceIpv6AccessConfig` |  |  |  |
 | `spec.networkInterfaces[].ipv6AccessConfigs[].networkTier` | `string` | yes |  |  |
 | `spec.networkInterfaces[].ipv6AccessConfigs[].publicPtrDomainName` | `string` |  |  |  |
+| `spec.networkInterfaces[].ipv6AccessConfigs[].externalIpv6` | `string` |  |  |  |
+| `spec.networkInterfaces[].ipv6AccessConfigs[].externalIpv6PrefixLength` | `string` |  |  |  |
+| `spec.networkInterfaces[].ipv6AccessConfigs[].name` | `string` |  |  |  |
 | `spec.networkInterfaces[].stackType` | `string` |  |  |  |
 | `spec.networkInterfaces[].nicType` | `string` |  |  |  |
 | `spec.networkInterfaces[].queueCount` | `int32` |  |  |  |
 | `spec.networkInterfaces[].aliasIpRanges` | `[]GcpComputeInstanceAliasIpRange` |  |  |  |
 | `spec.networkInterfaces[].aliasIpRanges[].ipCidrRange` | `string` | yes |  |  |
 | `spec.networkInterfaces[].aliasIpRanges[].subnetworkRangeName` | `string` |  |  |  |
+| `spec.networkInterfaces[].networkAttachment` | `string` |  |  |  |
+| `spec.networkInterfaces[].vlan` | `int32` |  |  |  |
+| `spec.networkInterfaces[].igmpQuery` | `string` |  |  |  |
+| `spec.networkInterfaces[].ipv6Address` | `string` |  |  |  |
+| `spec.networkInterfaces[].internalIpv6PrefixLength` | `int32` |  |  |  |
 | `spec.serviceAccount` | `GcpComputeInstanceServiceAccount` |  |  |  |
 | `spec.serviceAccount.email` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
 | `spec.serviceAccount.scopes` | `[]string` | yes |  |  |
@@ -174,6 +207,10 @@ spec:
 | `spec.desiredStatus` | `string` |  |  |  |
 | `spec.allowStoppingForUpdate` | `bool` |  | `true` |  |
 | `spec.keyRevocationActionType` | `string` |  |  |  |
+| `spec.instanceEncryptionKey` | `GcpComputeInstanceEncryptionKey` |  |  |  |
+| `spec.instanceEncryptionKey.kmsKey` | `string \| valueFrom` | yes |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.instanceEncryptionKey.kmsKeyServiceAccount` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -243,6 +280,8 @@ Boot disk configuration — the disk the OS boots from.
 
 - rule: {"required":true}
 - rule: exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)
+- rule: source_image_encryption is only valid together with image
+- rule: source_snapshot_encryption is only valid together with source_snapshot
 
 ### spec.bootDisk.image
 
@@ -277,9 +316,10 @@ already owns them.
 `int32`
 
 Size of the boot disk in GB. When omitted, the image or snapshot size
-is used. Grows in place; never shrinks.
+is used. Grows in place; never shrinks. Most OS images need at least
+10 GB; the API floor itself is 1 GB.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":65536,"gte":10}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":65536,"gte":1}}
 
 ### spec.bootDisk.type
 
@@ -380,6 +420,126 @@ Changing this replaces the instance.
 URL of the storage pool to create the boot disk in (hyperdisk storage
 pools).
 
+### spec.bootDisk.mode
+
+`string`
+
+Attachment mode: "READ_WRITE" (default) or "READ_ONLY" (share one
+boot disk read-only across many VMs).
+
+- rule: mode must be READ_WRITE or READ_ONLY
+
+### spec.bootDisk.interface
+
+`string`
+
+Disk attachment interface: "SCSI" or "NVME". GCP normally selects
+the right interface from the machine type and disk type — the
+provider's own guidance is "only used for specific cases, please
+don't specify this field without advice from Google". Leave unset
+unless you have such a case.
+
+- rule: interface must be SCSI or NVME
+
+### spec.bootDisk.forceAttach
+
+`bool`
+
+Force-attach a REGIONAL boot disk even if it is currently attached
+to another instance (regional-disk failover takeover). Attempting to
+force-attach a zonal disk fails. Changing this replaces the VM.
+
+### spec.bootDisk.guestOsFeatures
+
+`[]string`
+
+Guest OS features to enable on the boot disk, e.g.
+["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+"WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+operating system features" in the Compute Engine docs. Create-time
+only.
+
+### spec.bootDisk.replicaZones
+
+`[]string`
+
+Zones for a REGIONAL boot disk (exactly two, one of which must be
+the instance's own zone; short names or self links). Setting this
+converts the boot disk to a regional disk replicated across both
+zones. Ignored when booting from an existing source_disk.
+Create-time only.
+
+- rule: replica_zones takes exactly two zones (one must be the instance's zone)
+
+### spec.bootDisk.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the boot disk at create time. Keys in
+the form "tagKeys/{id}", values "tagValues/{id}". Create-time only —
+changing them replaces the VM. Ignored when booting from an existing
+source_disk.
+
+### spec.bootDisk.kmsKeyServiceAccount
+
+`string`
+
+Service account used for the encryption request of kms_key (CMEK).
+When omitted, the Compute Engine default service agent is used.
+Only meaningful together with kms_key.
+
+### spec.bootDisk.sourceImageEncryption
+
+`GcpComputeInstanceSourceEncryption`
+
+Decrypts the source image when it is itself CMEK-encrypted. Only
+valid together with image.
+
+### spec.bootDisk.sourceImageEncryption.kmsKey
+
+`string | valueFrom` · required
+
+The KMS key the source was encrypted with, referenced as a GcpKmsKey
+or a literal self link. The service agent performing the read needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.bootDisk.sourceImageEncryption.kmsKeyServiceAccount
+
+`string`
+
+Service account used for the decryption request. When omitted, the
+Compute Engine default service agent is used.
+
+### spec.bootDisk.sourceSnapshotEncryption
+
+`GcpComputeInstanceSourceEncryption`
+
+Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+valid together with source_snapshot.
+
+### spec.bootDisk.sourceSnapshotEncryption.kmsKey
+
+`string | valueFrom` · required
+
+The KMS key the source was encrypted with, referenced as a GcpKmsKey
+or a literal self link. The service agent performing the read needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.bootDisk.sourceSnapshotEncryption.kmsKeyServiceAccount
+
+`string`
+
+Service account used for the decryption request. When omitted, the
+Compute Engine default service agent is used.
+
 ### spec.attachedDisks
 
 `[]GcpComputeInstanceAttachedDisk`
@@ -427,6 +587,22 @@ present the same key the disk was created with.
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
 
+### spec.attachedDisks[].kmsKeyServiceAccount
+
+`string`
+
+Service account used for the encryption request of kms_key (CMEK).
+When omitted, the Compute Engine default service agent is used.
+Only meaningful together with kms_key.
+
+### spec.attachedDisks[].forceAttach
+
+`bool`
+
+Force-attach a REGIONAL disk even if it is currently attached to
+another instance (regional-disk failover takeover). Attempting to
+force-attach a zonal disk fails. Changing this replaces the VM.
+
 ### spec.scratchDisks
 
 `[]GcpComputeInstanceScratchDisk`
@@ -467,7 +643,7 @@ attach to a different VPC network. NIC count and their target
 networks are immutable after creation.
 
 - rule: {"required":true,"repeated":{"minItems":"1"}}
-- rule: each network interface needs a network (auto-mode VPC) or a subnetwork (custom-mode VPC) — set at least one
+- rule: each network interface needs an attachment point: a network (auto-mode VPC), a subnetwork (custom-mode VPC), or a network_attachment (Private Service Connect) — set at least one
 
 ### spec.networkInterfaces[].network
 
@@ -568,6 +744,31 @@ Network service tier for IPv6 traffic. Only "PREMIUM" is valid.
 Domain name for the public PTR (reverse DNS) record of the external
 IPv6 range.
 
+### spec.networkInterfaces[].ipv6AccessConfigs[].externalIpv6
+
+`string`
+
+Static EXTERNAL IPv6 address (the first address of the external
+range) to pin to this interface. Must be unused and in the same
+region as the instance's zone. When omitted, GCP assigns an external
+IPv6 range from the subnetwork. Changing it replaces the VM.
+
+### spec.networkInterfaces[].ipv6AccessConfigs[].externalIpv6PrefixLength
+
+`string`
+
+Prefix length of the external IPv6 range (the provider models this
+as a string). Normally read back from GCP rather than set — only
+meaningful together with external_ipv6. Changing it replaces the VM.
+
+### spec.networkInterfaces[].ipv6AccessConfigs[].name
+
+`string`
+
+Name of this IPv6 access configuration; GCP's recommended value is
+"External IPv6". When omitted, GCP assigns one. Changing it replaces
+the VM.
+
 ### spec.networkInterfaces[].stackType
 
 `string`
@@ -622,6 +823,57 @@ a netmask ("/24") to auto-allocate from the range.
 Secondary range name on the subnetwork to allocate from. When omitted
 the primary range is used.
 
+### spec.networkInterfaces[].networkAttachment
+
+`string`
+
+URL of a Private Service Connect NETWORK ATTACHMENT this interface
+connects to, in the form
+"projects/{projectNumber}/regions/{region}/networkAttachments/{name}"
+— the consumer side of PSC interfaces, connecting this VM into a
+producer's VPC. An attachment-only interface is legal (no network or
+subnetwork). Immutable after creation.
+
+### spec.networkInterfaces[].vlan
+
+`int32` · optional (explicit presence)
+
+VLAN tag (2-255) making this a DYNAMIC network interface — a
+sub-interface multiplexed onto a parent NIC. Immutable after
+creation.
+
+- rule: {"int32":{"lte":255,"gte":2}}
+
+### spec.networkInterfaces[].igmpQuery
+
+`string`
+
+IGMP multicast query support on this interface:
+  ""                    -- GCP default (disabled)
+  "IGMP_QUERY_V2"       -- IGMPv2 queries enabled (multicast)
+  "IGMP_QUERY_DISABLED" -- explicitly disabled
+Updatable in place.
+
+- rule: igmp_query must be IGMP_QUERY_V2 or IGMP_QUERY_DISABLED
+
+### spec.networkInterfaces[].ipv6Address
+
+`string`
+
+Static INTERNAL IPv6 address for this interface (requires an
+IPv6-enabled stack_type and subnetwork). When omitted, GCP assigns
+one from the subnetwork's internal IPv6 range. Long-form and
+compressed spellings are equivalent.
+
+### spec.networkInterfaces[].internalIpv6PrefixLength
+
+`int32` · optional (explicit presence)
+
+Prefix length of the primary internal IPv6 range assigned to this
+interface. When omitted, GCP assigns its default.
+
+- rule: {"int32":{"lte":128,"gte":1}}
+
 ### spec.serviceAccount
 
 `GcpComputeInstanceServiceAccount`
@@ -664,13 +916,20 @@ behavior, run-duration limits, and sole-tenant node placement.
 `string`
 
 Provisioning model:
-  ""         -- same as "STANDARD"
-  "STANDARD" -- on-demand capacity
-  "SPOT"     -- deeply discounted preemptible capacity; GCP may
-                reclaim the VM at any time
+  ""                  -- same as "STANDARD"
+  "STANDARD"          -- on-demand capacity
+  "SPOT"              -- deeply discounted preemptible capacity; GCP
+                         may reclaim the VM at any time
+  "FLEX_START"        -- discounted capacity with a flexible start
+                         time (Dynamic Workload Scheduler); requires
+                         max_run_duration_seconds and is deleted when
+                         reclaimed
+  "RESERVATION_BOUND" -- runs only on capacity from one specific
+                         reservation (pair with reservation_affinity
+                         type SPECIFIC_RESERVATION)
 Create-time only.
 
-- rule: provisioning_model must be STANDARD or SPOT
+- rule: provisioning_model must be STANDARD, SPOT, FLEX_START, or RESERVATION_BOUND
 
 ### spec.scheduling.automaticRestart
 
@@ -696,9 +955,11 @@ maintenance — required for GPUs and confidential VMs).
 
 `string`
 
-What GCP does when a Spot VM is preempted or its run duration
-expires: "STOP" (keep the stopped VM and disks) or "DELETE" (remove
-the VM). Spot only.
+What GCP does when the VM is reclaimed (Spot preemption, FLEX_START
+expiry) or a run-duration limit fires: "STOP" (keep the stopped VM
+and disks) or "DELETE" (remove the VM). Applies to SPOT and
+FLEX_START models and to timed-run VMs
+(max_run_duration_seconds/termination_time).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["STOP","DELETE"]}}
 
@@ -1098,10 +1359,55 @@ revoked: "NONE" (default) or "STOP".
 
 - rule: key_revocation_action_type must be NONE or STOP
 
+### spec.instanceEncryptionKey
+
+`GcpComputeInstanceEncryptionKey`
+
+Customer-managed encryption key (CMEK) for INSTANCE-LEVEL data —
+memory contents and other instance state, distinct from the per-disk
+keys on boot_disk/attached_disks. Create-time only.
+
+### spec.instanceEncryptionKey.kmsKey
+
+`string | valueFrom` · required
+
+The KMS key encrypting instance-level data, referenced as a
+GcpKmsKey or a literal self link. The Compute Engine service agent
+needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.instanceEncryptionKey.kmsKeyServiceAccount
+
+`string`
+
+Service account used for the encryption request. When omitted, the
+Compute Engine default service agent is used.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted (disks follow their own
+               lifecycle: boot auto_delete, GcpComputeDisk configs)
+  "PREVENT" -- destroy FAILS; a guard rail beyond deletion_protection
+               because it blocks the IaC destroy itself
+  "ABANDON" -- the instance is removed from management but left
+               running in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
-- `spot_requires_no_automatic_restart`: Spot VMs cannot automatically restart after preemption — leave scheduling.automatic_restart unset or set it to false when provisioning_model is SPOT
-- `termination_action_requires_spot`: scheduling.instance_termination_action applies only to Spot VMs — set scheduling.provisioning_model to SPOT or remove the termination action
+- `reclaimable_models_require_no_automatic_restart`: SPOT and FLEX_START VMs cannot automatically restart after reclamation — leave scheduling.automatic_restart unset or set it to false
+- `termination_action_requires_reclaimable_or_timed_vm`: scheduling.instance_termination_action applies to SPOT/FLEX_START VMs and to timed-run VMs (max_run_duration_seconds or termination_time) — configure one of those or remove the termination action
+- `flex_start_requires_max_run_duration`: FLEX_START VMs must bound their runtime — set scheduling.max_run_duration_seconds
+- `flex_start_terminates_by_delete`: FLEX_START VMs are deleted when reclaimed — leave scheduling.instance_termination_action unset or set it to DELETE
+- `reservation_bound_requires_specific_reservation`: RESERVATION_BOUND VMs consume one named reservation — set reservation_affinity.type to SPECIFIC_RESERVATION and name the reservation
 - `confidential_requires_terminate_maintenance`: confidential VMs cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when confidential_instance_config is configured
 - `accelerators_require_terminate_maintenance`: VMs with guest accelerators (GPUs) cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when guest_accelerators are attached
 - `max_run_duration_conflicts_with_termination_time`: max_run_duration_seconds and termination_time both bound the VM's lifetime — set at most one
@@ -1131,6 +1437,8 @@ Fields that can point at another resource's outputs:
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.bootDisk.sourceDisk` | GcpComputeDisk | `status.outputs.self_link` |
 | `spec.bootDisk.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.bootDisk.sourceImageEncryption.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.bootDisk.sourceSnapshotEncryption.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.attachedDisks[].source` | GcpComputeDisk | `status.outputs.self_link` |
 | `spec.attachedDisks[].kmsKey` | GcpKmsKey | `status.outputs.key_id` |
 | `spec.networkInterfaces[].network` | GcpVpcNetwork | `status.outputs.network_self_link` |
@@ -1138,6 +1446,7 @@ Fields that can point at another resource's outputs:
 | `spec.networkInterfaces[].networkIp` | GcpAddress | `status.outputs.address` |
 | `spec.networkInterfaces[].accessConfigs[].natIp` | GcpAddress | `status.outputs.address` |
 | `spec.serviceAccount.email` | GcpServiceAccount | `status.outputs.email` |
+| `spec.instanceEncryptionKey.kmsKey` | GcpKmsKey | `status.outputs.key_id` |
 
 ## See Also
 

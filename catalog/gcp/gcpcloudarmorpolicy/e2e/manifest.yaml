@@ -14,6 +14,13 @@ spec:
   advancedOptionsConfig:
     jsonParsing: STANDARD
     logLevel: VERBOSE
+    # Inspect deeper request bodies than the 8KB default.
+    requestBodyInspectionSize: 16KB
+  # User labels, merged with the platform labels.
+  labels:
+    team: security
+  # Ephemeral test fixture: delete the policy on destroy.
+  deletionPolicy: DELETE
   rules:
     - action: allow
       priority: 100

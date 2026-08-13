@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurebackupprotectedvm
+spec:
+  # The protected item's identity is its full ARM resource ID; ARM
+  # derives both container and item segments from the VM's group and
+  # name (VM;iaasvmcontainerv2;{vm-rg};{vm-name}).
+  values:
+    - name: backup_protected_vm_id
+      derivations:
+        - from_stack_output: backup_protected_vm_id
+      where_to_find: >-
+        `az backup item show -g <rg> -v <vault> -c <container> -n <item>
+        --query id`, or compose {vault-id}/backupFabrics/Azure/
+        protectionContainers/iaasvmcontainer;iaasvmcontainerv2;{vm-rg};
+        {vm-name}/protectedItems/VM;iaasvmcontainerv2;{vm-rg};{vm-name}.

@@ -1,0 +1,50 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringDashboard
+metadata:
+  name: my-sample-dashboard
+spec:
+  # The whole dashboard as ONE JSON document in the Monitoring API's
+  # Dashboard format (https://cloud.google.com/monitoring/api/ref_v3/rest/v1/projects.dashboards):
+  # displayName plus exactly one layout (gridLayout / mosaicLayout /
+  # rowLayout / columnLayout) whose widgets carry the charts. Build
+  # visually in the GCP console, then JSON-export (dashboard settings ->
+  # "JSON editor") and paste the document here — server-assigned keys
+  # round-trip cleanly.
+  dashboardJson: |
+    {
+      "displayName": "API health",
+      "gridLayout": {
+        "columns": "2",
+        "widgets": [
+          {
+            "title": "CPU utilization",
+            "xyChart": {
+              "dataSets": [
+                {
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"compute.googleapis.com/instance/cpu/utilization\" resource.type=\"gce_instance\"",
+                      "aggregation": {
+                        "alignmentPeriod": "60s",
+                        "perSeriesAligner": "ALIGN_MEAN"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "title": "Notes",
+            "text": {
+              "content": "Managed by Planton — edit the manifest, not the console.",
+              "format": "MARKDOWN"
+            }
+          }
+        ]
+      }
+    }
+
+  # What a destroy does: DELETE (default; dashboards are views — the
+  # metrics keep flowing), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

@@ -54,5 +54,28 @@ locals {
 
   ingress_settings = try(local.service_config.ingress_settings, "") != "" ? local.service_config.ingress_settings : null
 
+  # Direct VPC egress (the connectorless path; mutually exclusive with
+  # vpc_connector, enforced pre-deploy). The egress mode is sent
+  # explicitly whenever the interface is present — the field is
+  # Optional+Computed on the provider, so an ALL_TRAFFIC ->
+  # PRIVATE_RANGES_ONLY spec edit would otherwise silently keep the old
+  # live value. The API takes VPC_EGRESS_-prefixed values; the spec
+  # carries the bare enum names.
+  direct_vpc        = try(local.service_config.direct_vpc_network_interface, null)
+  direct_vpc_egress = local.direct_vpc != null ? "VPC_EGRESS_${try(local.service_config.direct_vpc_egress, "") != "" ? local.service_config.direct_vpc_egress : "PRIVATE_RANGES_ONLY"}" : null
+
+  # A Secret Manager entry that omits its project needs a concrete project
+  # id in the API payload. Only when the function itself also rides the
+  # ambient project (spec.project_id empty) must the module LOOK UP that
+  # project — count-gating the data source keeps every explicitly-scoped
+  # plan credential-free.
+  needs_project_lookup = local.project_id == null && local.service_config != null && (
+    length([for s in try(local.service_config.secret_environment_variables, []) : s if s.project_id == ""]) > 0 ||
+    length([for v in try(local.service_config.secret_volumes, []) : v if v.project_id == ""]) > 0
+  )
+
+  # The project stamped on secret entries that omit their own.
+  effective_secret_project = local.project_id != null ? local.project_id : (local.needs_project_lookup ? data.google_project.function[0].project_id : null)
+
   build_update_policy = var.spec.build_config.update_policy
 }

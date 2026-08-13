@@ -405,4 +405,34 @@ var _ = ginkgo.Describe("GcpVertexAiIndexSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// ──────────────── CMEK and deletion policy ────────────────
+
+	ginkgo.It("should accept a CMEK key", func() {
+		msg := minimal()
+		msg.Spec.KmsKeyName = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+				Value: "projects/p/locations/us-central1/keyRings/kr/cryptoKeys/k",
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept all deletion_policy values", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("deletion_policy"))
+	})
 })

@@ -8,8 +8,6 @@ spec:
   # the fully qualified topic_id path); the http-target scenario composes
   # the GcpServiceAccount prerequisite (OIDC token FK).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

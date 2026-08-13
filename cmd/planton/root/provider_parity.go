@@ -193,6 +193,9 @@ func printKindAccounting(acc providerparity.Accounting, kind string) {
 		for _, res := range k.InternalResources {
 			fmt.Printf("  internal resource: %s\n", res)
 		}
+		for _, res := range k.ExternalResources {
+			fmt.Printf("  external resource: %s\n", res)
+		}
 		for _, arg := range k.UnaccountedArgs {
 			fmt.Printf("  UNACCOUNTED arg: %s\n", arg)
 		}

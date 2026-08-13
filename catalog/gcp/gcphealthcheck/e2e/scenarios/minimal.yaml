@@ -23,3 +23,6 @@ spec:
     portSpecification: USE_SERVING_PORT
     requestPath: /healthz
   enableLogging: false
+  # Explicit provider default on the GLOBAL resource: proves the DELETE
+  # round-trip on re-plan.
+  deletionPolicy: DELETE

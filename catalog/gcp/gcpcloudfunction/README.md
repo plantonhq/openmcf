@@ -70,6 +70,7 @@ planton apply -f function.yaml
 | `description` | `string` | — | Human-readable description. |
 | `labels` | `map` | — | User labels; merged beneath platform attribution. |
 | `kmsKeyName` | `StringValueOrRef` | — | CMEK for image + source artifacts. Can reference GcpKmsKey. Requires a customer-managed `dockerRepository`. |
+| `deletionPolicy` | `string` | `DELETE` | `PREVENT` fails the destroy; `ABANDON` leaves the function serving and consuming events unmanaged. |
 
 ### Build
 
@@ -97,6 +98,8 @@ planton apply -f function.yaml
 | `secretVolumes` | `list` | — | Secret versions projected as files under `mountPath`. |
 | `vpcConnector` | `StringValueOrRef` | — | Serverless VPC Access connector for private egress. Can reference GcpServerlessVpcConnector. |
 | `vpcConnectorEgressSettings` | enum | `PRIVATE_RANGES_ONLY` | Or `ALL_TRAFFIC` (static egress IPs via Cloud NAT). |
+| `directVpcNetworkInterface` | object | — | Direct VPC egress — attach straight to a `network`/`subnetwork` (refs to GcpVpcNetwork/GcpSubnetwork) + firewall `tags`; no connector to size or pay for. Mutually exclusive with `vpcConnector`. |
+| `directVpcEgress` | enum | `PRIVATE_RANGES_ONLY` | Or `ALL_TRAFFIC`; which egress takes the direct-VPC path. |
 | `ingressSettings` | enum | `ALLOW_ALL` | `ALLOW_INTERNAL_ONLY`, `ALLOW_INTERNAL_AND_GCLB` (for LB fronting). |
 | `scaling.minInstanceCount` | `int` | 0 | > 0 eliminates cold starts at idle cost. |
 | `scaling.maxInstanceCount` | `int` | 100 | Cost / backpressure ceiling (≤ 3000). |

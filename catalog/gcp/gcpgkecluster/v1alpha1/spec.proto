@@ -63,6 +63,24 @@ message GcpGkeClusterSpec {
     expression: "!this.allow_net_admin || this.enable_autopilot"
   };
 
+  option (buf.validate.message).cel = {
+    id: "autopilot_policy_requires_autopilot"
+    message: "autopilot_policy applies to Autopilot clusters only"
+    expression: "!has(this.autopilot_policy) || this.enable_autopilot"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "privileged_admission_requires_autopilot"
+    message: "autopilot_privileged_admission_paths applies to Autopilot clusters only"
+    expression: "size(this.autopilot_privileged_admission_paths) == 0 || this.enable_autopilot"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "node_pool_auto_config_requires_autopilot"
+    message: "node_pool_auto_config configures the nodes GKE manages on an Autopilot cluster — on Standard clusters configure each GcpGkeNodePool instead"
+    expression: "!has(this.node_pool_auto_config) || this.enable_autopilot"
+  };
+
   // The GCP project in which to create this cluster.
   // Can be a literal project ID or a reference to a GcpProject resource.
   // If omitted, the provider's default project is used.
@@ -219,13 +237,14 @@ message GcpGkeClusterSpec {
   // If omitted, GKE uses its platform default.
   GcpGkeClusterDnsConfig dns_config = 22;
 
-  // Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs and
-  // the GKE Gateway controller (the successor to Ingress);
+  // Gateway API support: CHANNEL_STANDARD installs the Gateway API CRDs
+  // and the GKE Gateway controller (the successor to Ingress);
+  // CHANNEL_EXPERIMENTAL adds experimental-channel CRDs;
   // CHANNEL_DISABLED turns it off. Mutable.
   string gateway_api_channel = 23 [(buf.validate.field).cel = {
     id: "gateway_api_channel_valid"
-    message: "gateway_api_channel must be empty, CHANNEL_DISABLED, or CHANNEL_STANDARD"
-    expression: "this == '' || this in ['CHANNEL_DISABLED', 'CHANNEL_STANDARD']"
+    message: "gateway_api_channel must be empty, CHANNEL_DISABLED, CHANNEL_EXPERIMENTAL, or CHANNEL_STANDARD"
+    expression: "this == '' || this in ['CHANNEL_DISABLED', 'CHANNEL_EXPERIMENTAL', 'CHANNEL_STANDARD']"
   }];
 
   // Allows Services of type LoadBalancer/ClusterIP to use external IPs.
@@ -403,6 +422,367 @@ message GcpGkeClusterSpec {
   // multi-cluster features: multi-cluster ingress/services, config
   // management, team scopes).
   string fleet_project = 56;
+
+  // Fleet membership type. LIGHTWEIGHT registers a lightweight membership
+  // (reduced fleet feature surface, no Connect agent). Empty uses the
+  // fleet default (full membership).
+  string fleet_membership_type = 57 [(buf.validate.field).cel = {
+    id: "fleet_membership_type_valid"
+    message: "fleet_membership_type must be empty or LIGHTWEIGHT"
+    expression: "this == '' || this == 'LIGHTWEIGHT'"
+  }];
+
+  // Destroy-time stance of the IaC engines toward the cluster itself:
+  // DELETE (default) destroys it, PREVENT fails any plan that would
+  // destroy it, ABANDON removes it from state and leaves the cluster
+  // running in GCP. This is an engine-side control layered UNDER
+  // deletion_protection (the GKE-native guard): deletion_protection
+  // blocks the API call itself; deletion_policy governs what the engines
+  // even attempt.
+  string deletion_policy = 58 [(buf.validate.field).cel = {
+    id: "deletion_policy_valid"
+    message: "deletion_policy must be empty, DELETE, PREVENT, or ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
+  // Skips the per-pool Instance Group Manager queries during cluster
+  // reads — a quota/performance optimization for clusters with many
+  // pools. While true, node-count drift is invisible to plans and
+  // managed-instance-group outputs go stale on every pool.
+  bool ignore_node_count_changes = 59;
+
+  // Skips refreshing inline node-pool state from the API during cluster
+  // reads — a substantial plan/apply speedup on clusters with many pools.
+  // Safe in this composition because node pools are always separate
+  // GcpGkeNodePool resources, never inline blocks on the cluster.
+  bool skip_node_pool_refresh = 60;
+
+  // Creates an ALPHA cluster: all Kubernetes alpha feature gates enabled,
+  // no SLA, cannot be upgraded, and GKE DELETES the cluster after 30
+  // days. Strictly for short-lived feature evaluation. Immutable.
+  bool enable_kubernetes_alpha = 61;
+
+  // Specific Kubernetes BETA API groups enabled on the cluster, e.g.
+  // ["resource.k8s.io/v1beta1/deviceclasses"]. Beta APIs are off by
+  // default on new clusters; list exactly the groups a workload needs.
+  repeated string k8s_beta_apis = 62 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Dataplane optimization mode (pass-through to the GKE API; GKE
+  // validates accepted modes per version). Immutable.
+  string dataplane_optimization_mode = 63;
+
+  // Issues a legacy client certificate for control-plane authentication.
+  // Off on modern clusters — certificate auth bypasses IAM and cannot be
+  // revoked short of rotating the cluster CA; leave unset unless a legacy
+  // client genuinely requires it.
+  optional bool issue_client_certificate = 64;
+
+  // How nodes register themselves: VIA_KUBELET (nodes self-register, the
+  // classic path) or VIA_CONTROL_PLANE (the control plane creates node
+  // objects — hardens against node impersonation). Immutable.
+  string node_creation_mode = 65 [(buf.validate.field).cel = {
+    id: "node_creation_mode_valid"
+    message: "node_creation_mode must be empty, VIA_KUBELET, or VIA_CONTROL_PLANE"
+    expression: "this == '' || this in ['VIA_KUBELET', 'VIA_CONTROL_PLANE']"
+  }];
+
+  // Auto-upgrade patch cadence: ACCELERATED upgrades to the latest patch
+  // available in the cluster's minor and channel as soon as it ships
+  // (instead of the channel's default rollout pacing).
+  string gke_auto_upgrade_patch_mode = 66 [(buf.validate.field).cel = {
+    id: "gke_auto_upgrade_patch_mode_valid"
+    message: "gke_auto_upgrade_patch_mode must be empty or ACCELERATED"
+    expression: "this == '' || this == 'ACCELERATED'"
+  }];
+
+  // Locks down the legacy RBAC bindings to system:authenticated /
+  // system:unauthenticated — the hardening that prevents accidentally
+  // granting cluster access to every Google account on earth.
+  GcpGkeClusterRbacBindingConfig rbac_binding_config = 67;
+
+  // Autopilot-only conversion/posture policies (standard-pool
+  // prohibition, system mutation/impersonation guards, webhook safety).
+  GcpGkeClusterAutopilotPolicy autopilot_policy = 68;
+
+  // Autopilot-only: Cloud Storage / GKE allowlist paths authorizing
+  // PRIVILEGED workloads on Autopilot (partner agents etc.). Entries must
+  // start with gke:// or gs://; [] allows the default partner allowlists.
+  repeated string autopilot_privileged_admission_paths = 69 [(buf.validate.field).repeated.items = {
+    string: {pattern: "^((gke|gs)://.+)?$"}
+  }];
+
+  // Node settings GKE applies to the pools IT manages on an Autopilot
+  // cluster (network tags, Resource Manager tags, kubelet/OS hardening) —
+  // the Autopilot counterpart of per-pool node_config.
+  GcpGkeClusterNodePoolAutoConfig node_pool_auto_config = 70;
+
+  // Defaults inherited by every node pool at CREATION time on a Standard
+  // cluster (image streaming, kubelet read-only port, logging variant,
+  // containerd registry access). A pool's own node_config overrides
+  // these.
+  GcpGkeClusterNodePoolDefaults node_pool_defaults = 71;
+
+  // Bring-your-own control-plane keys: customer-managed CAs for the
+  // cluster/etcd/aggregation trust domains and KMS keys for control-plane
+  // disk encryption and ServiceAccount JWT signing. For regulated
+  // environments that must own the entire trust chain. Immutable.
+  GcpGkeClusterUserManagedKeys user_managed_keys = 72;
+
+  // Rotation of Secret Manager secrets mounted through the built-in CSI
+  // add-on (requires enable_secret_manager_csi): re-fetch cadence for
+  // mounted secret values.
+  GcpGkeClusterSecretRotation secret_manager_rotation = 73;
+
+  // The Secret Manager SYNC add-on: syncs Secret Manager secrets into
+  // Kubernetes Secret objects (as opposed to the CSI add-on's volume
+  // mounts), with its own rotation cadence.
+  GcpGkeClusterSecretSync secret_sync = 74;
+}
+
+// GcpGkeClusterRbacBindingConfig restricts legacy catch-all RBAC subjects.
+message GcpGkeClusterRbacBindingConfig {
+  // Allow ClusterRoleBindings/RoleBindings that grant to
+  // system:authenticated (every Google-authenticated identity). Leave
+  // false — granting to system:authenticated is almost always a mistake.
+  optional bool enable_insecure_binding_system_authenticated = 1;
+
+  // Allow bindings that grant to system:unauthenticated /
+  // system:anonymous. Leave false.
+  optional bool enable_insecure_binding_system_unauthenticated = 2;
+}
+
+// GcpGkeClusterAutopilotPolicy carries Autopilot conversion/posture
+// policies.
+message GcpGkeClusterAutopilotPolicy {
+  // Prohibit standard node pools — the cluster runs pure Autopilot.
+  optional bool no_standard_node_pools = 1;
+
+  // Disallow impersonating system identities.
+  optional bool no_system_impersonation = 2;
+
+  // Disallow mutating system-managed objects.
+  optional bool no_system_mutation = 3;
+
+  // Disallow admission webhooks that intercept system-critical requests.
+  optional bool no_unsafe_webhooks = 4;
+}
+
+// GcpGkeClusterNodePoolAutoConfig configures the nodes GKE itself manages
+// on an Autopilot cluster.
+message GcpGkeClusterNodePoolAutoConfig {
+  // GCE network tags applied to Autopilot-managed nodes — what VPC
+  // firewall rules match.
+  repeated string network_tags = 1 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Resource Manager tags bound to Autopilot-managed node VMs, as
+  // {"tagKeys/123": "tagValues/456"} pairs.
+  map<string, string> resource_manager_tags = 2;
+
+  // Container runtime cgroup mode on Autopilot-managed nodes.
+  string cgroup_mode = 3 [(buf.validate.field).cel = {
+    id: "npac_cgroup_mode_valid"
+    message: "cgroup_mode must be empty, CGROUP_MODE_UNSPECIFIED, CGROUP_MODE_V1, or CGROUP_MODE_V2"
+    expression: "this == '' || this in ['CGROUP_MODE_UNSPECIFIED', 'CGROUP_MODE_V1', 'CGROUP_MODE_V2']"
+  }];
+
+  // Signed-kernel-module enforcement on Autopilot-managed nodes.
+  string node_kernel_module_loading_policy = 4 [(buf.validate.field).cel = {
+    id: "npac_kernel_module_policy_valid"
+    message: "node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES"
+    expression: "this == '' || this in ['POLICY_UNSPECIFIED', 'ENFORCE_SIGNED_MODULES', 'DO_NOT_ENFORCE_SIGNED_MODULES']"
+  }];
+
+  // The kubelet's insecure read-only port 10255 on Autopilot-managed
+  // nodes: FALSE closes it (hardened), TRUE keeps it open for legacy
+  // agents.
+  string insecure_kubelet_readonly_port_enabled = 5 [(buf.validate.field).cel = {
+    id: "npac_readonly_port_valid"
+    message: "insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE"
+    expression: "this == '' || this in ['TRUE', 'FALSE']"
+  }];
+}
+
+// GcpGkeClusterNodePoolDefaults sets creation-time defaults for node pools
+// on a Standard cluster.
+message GcpGkeClusterNodePoolDefaults {
+  // Image streaming (GCFS) default for new pools: containers start before
+  // the full image is pulled.
+  optional bool gcfs_enabled = 1;
+
+  // Default posture of the kubelet's insecure read-only port 10255 on new
+  // pools: FALSE closes it (hardened), TRUE keeps it open.
+  string insecure_kubelet_readonly_port_enabled = 2 [(buf.validate.field).cel = {
+    id: "npd_readonly_port_valid"
+    message: "insecure_kubelet_readonly_port_enabled must be empty, TRUE, or FALSE"
+    expression: "this == '' || this in ['TRUE', 'FALSE']"
+  }];
+
+  // Default node system-log throughput for new pools: DEFAULT (100 KiB/s)
+  // or MAX_THROUGHPUT (10 MiB/s).
+  string logging_variant = 3 [(buf.validate.field).cel = {
+    id: "npd_logging_variant_valid"
+    message: "logging_variant must be empty, DEFAULT, or MAX_THROUGHPUT"
+    expression: "this == '' || this in ['DEFAULT', 'MAX_THROUGHPUT']"
+  }];
+
+  // Default containerd registry configuration for new pools: private-CA
+  // registry trust, per-registry host overrides, writable cgroups.
+  GcpGkeClusterContainerdDefaults containerd_config = 4;
+}
+
+// GcpGkeClusterContainerdDefaults tunes the containerd runtime defaults
+// for node pools created on this cluster.
+message GcpGkeClusterContainerdDefaults {
+  // Trust custom certificate authorities for specific registry domains.
+  GcpGkeClusterPrivateRegistryAccess private_registry_access = 1;
+
+  // Per-registry host overrides (mirrors, capabilities, auth, headers).
+  repeated GcpGkeClusterRegistryHost registry_hosts = 2;
+
+  // Writable cgroup filesystem inside containers.
+  optional bool writable_cgroups_enabled = 3;
+}
+
+// GcpGkeClusterPrivateRegistryAccess trusts private-CA registries on
+// cluster-default node configuration.
+message GcpGkeClusterPrivateRegistryAccess {
+  // Master toggle for private registry access configuration.
+  bool enabled = 1;
+
+  // Per-domain CA trust entries.
+  repeated GcpGkeClusterRegistryCaDomain certificate_authority_domains = 2;
+}
+
+// GcpGkeClusterRegistryCaDomain trusts one CA for a set of registry
+// domains.
+message GcpGkeClusterRegistryCaDomain {
+  // Registry FQDNs this CA vouches for, e.g. ["registry.internal:5000"].
+  repeated string fqdns = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Secret Manager secret URI holding the CA certificate, in the form
+  // "projects/{project}/secrets/{secret}/versions/{version}".
+  string gcp_secret_manager_certificate_uri = 2 [(buf.validate.field).required = true];
+}
+
+// GcpGkeClusterRegistryHost overrides containerd behavior for one registry
+// server on cluster-default node configuration.
+message GcpGkeClusterRegistryHost {
+  // The registry server the overrides apply to, e.g. "docker.io".
+  string server = 1 [(buf.validate.field).required = true];
+
+  // Host endpoints serving this registry (mirrors first, in order).
+  repeated GcpGkeClusterRegistryHostEndpoint hosts = 2;
+}
+
+// GcpGkeClusterRegistryHostEndpoint is one endpoint (mirror) entry for a
+// registry server.
+message GcpGkeClusterRegistryHostEndpoint {
+  // Endpoint URL, e.g. "https://mirror.internal".
+  string host = 1 [(buf.validate.field).required = true];
+
+  // Operations this endpoint can serve — typically "pull" and "resolve"
+  // (containerd hosts.toml capability names).
+  repeated string capabilities = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated.unique = true
+  ];
+
+  // Dial timeout for this endpoint, e.g. "10s".
+  string dial_timeout = 3;
+
+  // Path override on the endpoint host.
+  optional bool override_path = 4;
+
+  // Secret Manager secret URI for the CA certificate to trust for this
+  // endpoint.
+  string ca_secret_uri = 5;
+
+  // Secret Manager secret URI for the client TLS certificate presented to
+  // this endpoint.
+  string client_cert_secret_uri = 6;
+
+  // Secret Manager secret URI for the client TLS key presented to this
+  // endpoint.
+  string client_key_secret_uri = 7;
+
+  // Custom HTTP headers sent to this endpoint.
+  map<string, string> headers = 8;
+}
+
+// GcpGkeClusterUserManagedKeys points the control plane at
+// customer-managed CAs and KMS keys.
+message GcpGkeClusterUserManagedKeys {
+  // CA Service CaPool issuing the cluster CA
+  // ("projects/{p}/locations/{l}/caPools/{pool}").
+  string cluster_ca = 1;
+
+  // CA Service CaPool for the etcd API CA.
+  string etcd_api_ca = 2;
+
+  // CA Service CaPool for the etcd peer CA.
+  string etcd_peer_ca = 3;
+
+  // CA Service CaPool for the aggregation layer CA.
+  string aggregation_ca = 4;
+
+  // KMS key encrypting the control-plane disks
+  // ("projects/{p}/locations/{l}/keyRings/{r}/cryptoKeys/{k}"). Accepts a
+  // literal path or a reference to a GcpKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef control_plane_disk_encryption_key = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Cloud KMS crypto key resource path (a reference), not secret key material."
+  ];
+
+  // KMS key encrypting GKE-ops etcd backups. Accepts a literal path or a
+  // reference to a GcpKmsKey resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gkeops_etcd_backup_encryption_key = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id",
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Cloud KMS crypto key resource path (a reference), not secret key material."
+  ];
+
+  // KMS cryptoKeyVersions SIGNING ServiceAccount JWTs issued by the
+  // cluster ("projects/.../cryptoKeyVersions/1").
+  repeated string service_account_signing_keys = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Cloud KMS cryptoKeyVersion resource paths (references) — the private keys never leave KMS."
+  ];
+
+  // KMS cryptoKeyVersions accepted for VERIFYING ServiceAccount JWTs
+  // (include the previous version during signing-key rotation).
+  repeated string service_account_verification_keys = 8 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}
+
+// GcpGkeClusterSecretRotation paces re-fetching of CSI-mounted Secret
+// Manager secrets.
+message GcpGkeClusterSecretRotation {
+  // Whether mounted secrets are periodically re-fetched.
+  bool enabled = 1;
+
+  // Re-fetch cadence, seconds format (e.g. "120s"; default 120s).
+  string rotation_interval = 2 [(buf.validate.field).cel = {
+    id: "sm_rotation_interval_format"
+    message: "rotation_interval must be a seconds-format duration like \"120s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeClusterSecretSync configures the Secret Manager sync add-on
+// (secrets synced into Kubernetes Secret objects).
+message GcpGkeClusterSecretSync {
+  // Whether the sync add-on is enabled.
+  bool enabled = 1;
+
+  // Whether synced secrets are periodically refreshed.
+  bool rotation_enabled = 2;
+
+  // Refresh cadence, seconds format (e.g. "120s").
+  string rotation_interval = 3 [(buf.validate.field).cel = {
+    id: "ss_rotation_interval_format"
+    message: "rotation_interval must be a seconds-format duration like \"120s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
 }
 
 // GcpGkeClusterIpAllocation controls VPC-native pod/service IP assignment.
@@ -472,6 +852,39 @@ message GcpGkeClusterIpAllocation {
   // default — doubles node density per pod range at the cost of headroom
   // for pod churn. Immutable.
   bool pod_cidr_overprovision_disabled = 7;
+
+  // Additional SUBNETWORKS whose secondary ranges node pools may draw pod
+  // IPs from — grows pod address space across subnetworks (beyond
+  // additional_pod_range_names, which only names more ranges on the
+  // cluster's own subnetwork).
+  repeated GcpGkeClusterAdditionalIpRange additional_ip_ranges = 8;
+
+  // Automatic IP address management: GKE plans and allocates the pod and
+  // service ranges itself (no manual CIDR planning). Immutable.
+  bool auto_ipam_enabled = 9;
+
+  // Network tier for the cluster's IP allocation (e.g. "PREMIUM" or
+  // "STANDARD"). GKE validates accepted tiers at apply.
+  string network_tier = 10;
+}
+
+// GcpGkeClusterAdditionalIpRange adds one subnetwork's secondary ranges to
+// the cluster's pod address space.
+message GcpGkeClusterAdditionalIpRange {
+  // The subnetwork carrying the ranges. Accepts a self link or a
+  // reference to a GcpSubnetwork resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Secondary range names on that subnetwork usable for pod IPs.
+  repeated string pod_ipv4_range_names = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Lifecycle status of the subnetwork for scheduling: set "DRAINING" to
+  // stop NEW node pools from selecting it (existing pools keep running).
+  string status = 3;
 }
 
 // GcpGkeClusterDnsConfig selects and scopes the cluster DNS provider.
@@ -488,12 +901,13 @@ message GcpGkeClusterDnsConfig {
     expression: "this.cluster_dns_scope == '' || this.cluster_dns == 'CLOUD_DNS'"
   };
 
-  // In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to scale)
-  // or PLATFORM_DEFAULT (kube-dns).
+  // In-cluster DNS provider: CLOUD_DNS (managed, no kube-dns pods to
+  // scale), KUBE_DNS (explicit kube-dns), or PLATFORM_DEFAULT (GKE
+  // chooses).
   string cluster_dns = 1 [(buf.validate.field).cel = {
     id: "cluster_dns_valid"
-    message: "cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, or CLOUD_DNS"
-    expression: "this == '' || this in ['PROVIDER_UNSPECIFIED', 'PLATFORM_DEFAULT', 'CLOUD_DNS']"
+    message: "cluster_dns must be empty, PROVIDER_UNSPECIFIED, PLATFORM_DEFAULT, CLOUD_DNS, or KUBE_DNS"
+    expression: "this == '' || this in ['PROVIDER_UNSPECIFIED', 'PLATFORM_DEFAULT', 'CLOUD_DNS', 'KUBE_DNS']"
   }];
 
   // Cloud DNS scope: CLUSTER_SCOPE (records visible in-cluster only) or
@@ -602,6 +1016,14 @@ message GcpGkeClusterControlPlaneEndpoints {
   // at all. Set false for DNS-endpoint-only clusters — the strongest
   // endpoint posture.
   optional bool ip_endpoints_enabled = 2 [(dev.planton.shared.options.default) = "true"];
+
+  // Serve Kubernetes ServiceAccount TOKENS via the DNS endpoint —
+  // workloads outside the VPC can authenticate without IP connectivity to
+  // the control plane.
+  optional bool enable_k8s_tokens_via_dns = 3;
+
+  // Serve Kubernetes client CERTIFICATES via the DNS endpoint.
+  optional bool enable_k8s_certs_via_dns = 4;
 }
 
 // GcpGkeClusterMaintenancePolicy controls when GKE may perform automatic
@@ -624,6 +1046,29 @@ message GcpGkeClusterMaintenancePolicy {
   // freezes). Maximum 20; the allowed scope/duration depends on the release
   // channel.
   repeated GcpGkeClusterMaintenanceExclusion exclusions = 3 [(buf.validate.field).repeated.max_items = 20];
+
+  // Minimum spacing between consecutive disruptive maintenance events —
+  // a floor on how often GKE may disrupt the cluster with version
+  // changes, independent of windows.
+  GcpGkeClusterDisruptionBudget disruption_budget = 4;
+}
+
+// GcpGkeClusterDisruptionBudget spaces disruptive maintenance events.
+message GcpGkeClusterDisruptionBudget {
+  // Minimum interval between MINOR version disruptions, seconds format,
+  // e.g. "2419200s" (28 days).
+  string minor_version_disruption_interval = 1 [(buf.validate.field).cel = {
+    id: "minor_disruption_interval_format"
+    message: "minor_version_disruption_interval must be a seconds-format duration like \"2419200s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // Minimum interval between PATCH version disruptions, seconds format.
+  string patch_version_disruption_interval = 2 [(buf.validate.field).cel = {
+    id: "patch_disruption_interval_format"
+    message: "patch_version_disruption_interval must be a seconds-format duration like \"604800s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
 }
 
 // GcpGkeClusterDailyMaintenanceWindow is a fixed daily window.
@@ -659,6 +1104,12 @@ message GcpGkeClusterRecurringMaintenanceWindow {
 
 // GcpGkeClusterMaintenanceExclusion blocks maintenance during a date range.
 message GcpGkeClusterMaintenanceExclusion {
+  option (buf.validate.message).cel = {
+    id: "end_time_behavior_requires_scope"
+    message: "end_time_behavior refines the exclusion scope — set scope alongside it"
+    expression: "this.end_time_behavior == '' || this.scope != ''"
+  };
+
   // Name of the exclusion, e.g. "year-end-freeze".
   string exclusion_name = 1 [
     (buf.validate.field).required = true,
@@ -684,6 +1135,15 @@ message GcpGkeClusterMaintenanceExclusion {
     id: "exclusion_scope_valid"
     message: "scope must be empty, NO_UPGRADES, NO_MINOR_UPGRADES, or NO_MINOR_OR_NODE_UPGRADES"
     expression: "this == '' || this in ['NO_UPGRADES', 'NO_MINOR_UPGRADES', 'NO_MINOR_OR_NODE_UPGRADES']"
+  }];
+
+  // UNTIL_END_OF_SUPPORT stretches the exclusion until the running minor
+  // version's end of support, instead of stopping at end_time — the
+  // "never force this cluster off its minor" stance. Requires scope.
+  string end_time_behavior = 5 [(buf.validate.field).cel = {
+    id: "end_time_behavior_valid"
+    message: "end_time_behavior must be empty or UNTIL_END_OF_SUPPORT"
+    expression: "this == '' || this == 'UNTIL_END_OF_SUPPORT'"
   }];
 }
 
@@ -736,6 +1196,12 @@ message GcpGkeClusterAutoscaling {
   // Defaults applied to every node pool NAP creates (identity, disks,
   // image, shielding, auto-repair/upgrade).
   GcpGkeClusterAutoProvisioningDefaults auto_provisioning_defaults = 5;
+
+  // Default compute classes: NAP provisions through the cluster's default
+  // ComputeClass definitions instead of the legacy per-resource limits
+  // path — the newer Autopilot-style provisioning model on Standard
+  // clusters.
+  optional bool default_compute_class_enabled = 6;
 }
 
 // GcpGkeClusterAutoscalingResourceLimit bounds one resource type for NAP.
@@ -783,15 +1249,21 @@ message GcpGkeClusterAutoProvisioningDefaults {
     lte: 65536
   }];
 
-  // Boot disk type: pd-standard (default), pd-balanced, or pd-ssd.
+  // Boot disk type: pd-standard (default), pd-balanced, pd-ssd, or
+  // hyperdisk-balanced.
   string disk_type = 4 [(buf.validate.field).cel = {
     id: "nap_disk_type_valid"
-    message: "disk_type must be empty, pd-standard, pd-balanced, or pd-ssd"
-    expression: "this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd']"
+    message: "disk_type must be empty, pd-standard, pd-balanced, pd-ssd, or hyperdisk-balanced"
+    expression: "this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd', 'hyperdisk-balanced']"
   }];
 
-  // Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD".
-  string image_type = 5;
+  // Node image, e.g. "COS_CONTAINERD" (default) or "UBUNTU_CONTAINERD"
+  // (legacy "COS"/"UBUNTU" accepted for old clusters).
+  string image_type = 5 [(buf.validate.field).cel = {
+    id: "nap_image_type_valid"
+    message: "image_type must be empty, COS_CONTAINERD, COS, UBUNTU_CONTAINERD, or UBUNTU"
+    expression: "this == '' || this in ['COS_CONTAINERD', 'COS', 'UBUNTU_CONTAINERD', 'UBUNTU']"
+  }];
 
   // Minimum CPU platform, e.g. "Intel Ice Lake".
   string min_cpu_platform = 6;
@@ -816,6 +1288,83 @@ message GcpGkeClusterAutoProvisioningDefaults {
 
   // Automatic node repair on NAP-created pools (GCP default true).
   optional bool auto_repair = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // How upgrades roll through NAP-created pools: surge settings or
+  // blue-green, in the same shape as a GcpGkeNodePool's upgrade_settings.
+  GcpGkeClusterNapUpgradeSettings upgrade_settings = 12;
+}
+
+// GcpGkeClusterNapUpgradeSettings paces upgrades of NAP-created pools.
+message GcpGkeClusterNapUpgradeSettings {
+  option (buf.validate.message).cel = {
+    id: "nap_blue_green_settings_require_strategy"
+    message: "blue_green_settings apply only when strategy is BLUE_GREEN"
+    expression: "!has(this.blue_green_settings) || this.strategy == 'BLUE_GREEN'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "nap_surge_settings_conflict_blue_green"
+    message: "max_surge/max_unavailable apply to the SURGE strategy — remove them when strategy is BLUE_GREEN"
+    expression: "this.strategy != 'BLUE_GREEN' || (!has(this.max_surge) && !has(this.max_unavailable))"
+  };
+
+  // Additional nodes added during a surge upgrade.
+  optional uint32 max_surge = 1;
+
+  // Nodes that may be simultaneously unavailable during a surge upgrade.
+  optional uint32 max_unavailable = 2;
+
+  // SURGE (rolling replacement) or BLUE_GREEN (full new node set,
+  // migrate, soak, delete).
+  string strategy = 3 [(buf.validate.field).cel = {
+    id: "nap_strategy_valid"
+    message: "strategy must be empty, SURGE, or BLUE_GREEN"
+    expression: "this == '' || this in ['SURGE', 'BLUE_GREEN']"
+  }];
+
+  // Blue-green rollout pacing. Only with strategy BLUE_GREEN.
+  GcpGkeClusterNapBlueGreenSettings blue_green_settings = 4;
+}
+
+// GcpGkeClusterNapBlueGreenSettings paces a blue-green upgrade of
+// NAP-created pools.
+message GcpGkeClusterNapBlueGreenSettings {
+  // How the old (blue) node set drains, batch by batch.
+  GcpGkeClusterNapStandardRolloutPolicy standard_rollout_policy = 1;
+
+  // Soak time after the blue set is fully drained before deletion,
+  // seconds format, e.g. "3600s".
+  string node_pool_soak_duration = 2 [(buf.validate.field).cel = {
+    id: "nap_soak_duration_format"
+    message: "node_pool_soak_duration must be a seconds-format duration like \"3600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeClusterNapStandardRolloutPolicy sizes blue-green drain batches for
+// NAP-created pools.
+message GcpGkeClusterNapStandardRolloutPolicy {
+  option (buf.validate.message).cel = {
+    id: "nap_percentage_xor_node_count"
+    message: "set batch_percentage or batch_node_count, not both"
+    expression: "!(has(this.batch_percentage) && has(this.batch_node_count))"
+  };
+
+  // Fraction of blue nodes drained per batch, 0.0-1.0.
+  optional float batch_percentage = 1 [(buf.validate.field).float = {
+    gte: 0.0
+    lte: 1.0
+  }];
+
+  // Number of blue nodes drained per batch.
+  optional uint32 batch_node_count = 2;
+
+  // Soak time after each batch, seconds format, e.g. "600s".
+  string batch_soak_duration = 3 [(buf.validate.field).cel = {
+    id: "nap_batch_soak_format"
+    message: "batch_soak_duration must be a seconds-format duration like \"600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
 }
 
 // GcpGkeClusterDatabaseEncryption is CMEK envelope encryption for Kubernetes
@@ -827,13 +1376,15 @@ message GcpGkeClusterDatabaseEncryption {
     expression: "this.state != 'ENCRYPTED' || (has(this.key_name) && (has(this.key_name.value) || has(this.key_name.value_from)))"
   };
 
-  // ENCRYPTED (secrets wrapped with key_name) or DECRYPTED.
+  // ENCRYPTED (Kubernetes secrets wrapped with key_name),
+  // ALL_OBJECTS_ENCRYPTION_ENABLED (every etcd object wrapped, not just
+  // secrets), or DECRYPTED.
   string state = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).cel = {
       id: "encryption_state_valid"
-      message: "state must be ENCRYPTED or DECRYPTED"
-      expression: "this in ['ENCRYPTED', 'DECRYPTED']"
+      message: "state must be ENCRYPTED, ALL_OBJECTS_ENCRYPTION_ENABLED, or DECRYPTED"
+      expression: "this in ['ENCRYPTED', 'ALL_OBJECTS_ENCRYPTION_ENABLED', 'DECRYPTED']"
     }
   ];
 
@@ -883,8 +1434,8 @@ message GcpGkeClusterConfidentialNodes {
 // GcpGkeClusterLogging selects which components ship logs to Cloud Logging.
 message GcpGkeClusterLogging {
   // Components exposing logs: SYSTEM_COMPONENTS, WORKLOADS, APISERVER,
-  // CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA.
-  // An empty list disables Cloud Logging integration entirely.
+  // CONTROLLER_MANAGER, SCHEDULER, KCP_CONNECTION, KCP_SSHD, KCP_HPA,
+  // KCP_VPA. An empty list disables Cloud Logging integration entirely.
   repeated string components = 1 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).repeated = {
@@ -899,7 +1450,8 @@ message GcpGkeClusterLogging {
             "SCHEDULER",
             "KCP_CONNECTION",
             "KCP_SSHD",
-            "KCP_HPA"
+            "KCP_HPA",
+            "KCP_VPA"
           ]
         }
       }
@@ -1059,6 +1611,51 @@ message GcpGkeClusterAddons {
 
   // The Ray operator (KubeRay) for distributed Python/AI workloads.
   bool ray_operator_enabled = 10;
+
+  // Ray cluster logging integration (with ray_operator_enabled).
+  bool ray_cluster_logging_enabled = 11;
+
+  // Ray cluster monitoring integration (with ray_operator_enabled).
+  bool ray_cluster_monitoring_enabled = 12;
+
+  // Cloud Run for Anthos / Knative serving addon.
+  bool cloudrun_enabled = 13;
+
+  // Load balancer type for the Cloud Run addon:
+  // LOAD_BALANCER_TYPE_INTERNAL serves it on an internal LB instead of
+  // the default external one.
+  string cloudrun_load_balancer_type = 14 [(buf.validate.field).cel = {
+    id: "cloudrun_lb_type_valid"
+    message: "cloudrun_load_balancer_type must be empty or LOAD_BALANCER_TYPE_INTERNAL"
+    expression: "this == '' || this == 'LOAD_BALANCER_TYPE_INTERNAL'"
+  }];
+
+  // The Parallelstore CSI driver (managed parallel filesystem for
+  // AI/HPC).
+  bool parallelstore_csi_driver_enabled = 15;
+
+  // The Lustre CSI driver (Managed Lustre high-performance filesystem).
+  bool lustre_csi_driver_enabled = 16;
+
+  // Serve the Lustre protocol on the legacy port (compatibility with
+  // pre-GA Lustre deployments; with lustre_csi_driver_enabled).
+  bool lustre_csi_legacy_port_enabled = 17;
+
+  // Disable multi-NIC transport for the Lustre CSI driver (with
+  // lustre_csi_driver_enabled).
+  bool lustre_csi_disable_multi_nic = 18;
+
+  // Pod snapshot support (checkpoint/restore of running pods).
+  bool pod_snapshot_enabled = 19;
+
+  // GKE Sandbox (gVisor) agent addon for Autopilot sandbox pods.
+  bool agent_sandbox_enabled = 20;
+
+  // The slice controller addon (TPU slice management).
+  bool slice_controller_enabled = 21;
+
+  // The Slurm operator addon (Slurm-on-GKE for HPC scheduling).
+  bool slurm_operator_enabled = 22;
 }
 
 // GkeReleaseChannel selects the cluster's Kubernetes upgrade channel.

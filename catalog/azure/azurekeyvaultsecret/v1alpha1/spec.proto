@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurekeyvaultsecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureKeyVaultSecretSpec** defines the configuration for storing a
+// secret (a password, API key, connection string, or any small
+// sensitive string) inside an Azure Key Vault.
+//
+// A Key Vault secret is versioned: every change to the value creates
+// a NEW version and the versioned identifier moves with it, while the
+// versionless identifier always resolves to the latest version.
+// Consumers that should follow updates reference versionless_id;
+// consumers pinned by a compliance regime reference secret_id (one
+// frozen version).
+//
+// Composition seams: the parent vault is a first-class AzureKeyVault
+// (referenced by key_vault_id); the value is a sensitive
+// reference-resolved input (reference a managed secret or another
+// resource's output rather than embedding plaintext in manifests).
+// The deploying credential needs data-plane secret permissions on the
+// vault (the "Key Vault Administrator" or "Key Vault Secrets Officer"
+// RBAC role, or secret permissions in a legacy access policy).
+//
+// The provider's write-only `value_wo`/`value_wo_version` variant is
+// deliberately not modeled: it is an ephemeral input that duplicates
+// `value`, and secret values here are already reference-resolved at
+// deploy time rather than stored in the manifest.
+message AzureKeyVaultSecretSpec {
+  // The secret's name within the vault: 1-127 characters of letters,
+  // digits, and hyphens, unique among the vault's secrets. Changing
+  // the name replaces the secret. A deleted secret's name stays
+  // reserved for the vault's soft-delete retention window unless
+  // purged.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-zA-Z-]{1,127}$"
+  ];
+
+  // The vault the secret lives in, by ARM resource ID. Defaults to
+  // referencing an AzureKeyVault's key_vault_id output in composed
+  // environments. Changing the vault replaces the secret -- secret
+  // material never moves between vaults.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The secret's value. Changing it creates a NEW version of the
+  // secret (the old version remains readable until purged or
+  // expired). Reference a managed secret or another resource's output
+  // rather than embedding the literal in manifests. Key Vault strips
+  // raw newlines -- encode multi-line values (e.g. base64) before
+  // storing.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // A free-form hint for consumers about what the value is (e.g.
+  // "text/plain", "application/x-pkcs12b64"). Key Vault stores it
+  // verbatim and never interprets it. Updatable in place.
+  string content_type = 4;
+
+  // The UTC instant before which the secret must not be used, RFC
+  // 3339 format (e.g. "2027-01-01T00:00:00Z"). Leave unset for a
+  // secret usable immediately. Enforcement is the consumer's job --
+  // Key Vault returns the attribute; RBAC-permitted readers can still
+  // fetch the value.
+  optional string not_before_date = 5 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"];
+
+  // The UTC instant the secret expires, RFC 3339 format. Expiry is an
+  // attribute consumers should honor (and Azure Policy can audit) --
+  // set it for credentials that rotate on a schedule.
+  optional string expiration_date = 6 [(buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"];
+
+  // Free-form tags applied to the secret, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Key Vault caps a
+  // secret at 15 tags (the provider's own bound, mirrored here so the
+  // merged map still fits). Updatable in place.
+  map<string, string> tags = 7 [(buf.validate.field).map.max_pairs = 15];
+}

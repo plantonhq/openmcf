@@ -49,9 +49,15 @@ variable "spec" {
         squash_mode = optional(string, "")
         anon_uid    = optional(number)
         anon_gid    = optional(number)
+        # Source VPC network (name) for ip_ranges; required by GCP for
+        # PSC instances, optional otherwise.
+        network = optional(string, "")
       })), [])
-      # Restore from an existing backup. Create-time only.
+      # Restore from an existing Filestore backup. Create-time only.
       source_backup = optional(string, "")
+      # Restore from a Backup and DR Service backup. Create-time only;
+      # mutually exclusive with source_backup (CEL-enforced pre-deploy).
+      source_backupdr_backup = optional(string, "")
     })
 
     # The single VPC attachment. Immutable.
@@ -62,6 +68,9 @@ variable "spec" {
       reserved_ip_range = optional(string, "")
       # IP versions; empty means ["MODE_IPV4"].
       modes = optional(list(string), [])
+      # Consumer project for the PSC endpoint; only meaningful with
+      # connect_mode PRIVATE_SERVICE_CONNECT (CEL-enforced pre-deploy).
+      psc_endpoint_project = optional(string, "")
     })
 
     # IOPS tuning (ZONAL/REGIONAL/ENTERPRISE tiers).
@@ -86,5 +95,22 @@ variable "spec" {
 
     # Resource Manager tags (tagKeys/{id} => tagValues/{id}). Create-time.
     tags = optional(map(string), {})
+
+    # LDAP directory services for NFSv4.1 identity mapping. Requires
+    # protocol NFS_V4_1 (CEL-enforced pre-deploy).
+    ldap = optional(object({
+      domain    = string
+      servers   = list(string)
+      groups_ou = optional(string, "")
+      users_ou  = optional(string, "")
+    }), null)
+
+    # Replica-relationship state: READY (replicating, the default) or
+    # PAUSED. A virtual lever the provider drives via pause/resume
+    # replica calls; no effect on instances without a replica pair.
+    desired_replica_state = optional(string, "READY")
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

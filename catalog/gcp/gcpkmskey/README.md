@@ -56,6 +56,7 @@ This creates a symmetric encryption key with 90-day automatic rotation — the m
 | `importOnly` | bool | No | BYOK container: only imported versions ever. Immutable; requires `skipInitialVersionCreation` |
 | `cryptoKeyBackend` | StringValueOrRef | No | EKM connection path backing `EXTERNAL_VPC` keys. Immutable |
 | `labels` | map | No | User labels, merged beneath Planton's attribution labels. Mutable |
+| `deletionPolicy` | string | No | `DELETE` (default: destroy schedules EVERY key version for destruction — data becomes unrecoverable), `PREVENT` (destroy fails — the safe posture for production keys), `ABANDON` (the key leaves management with all versions intact). Mutable |
 
 Cross-field rules enforced before deploy: rotation only on ENCRYPT_DECRYPT keys; `importOnly` requires `skipInitialVersionCreation`; `cryptoKeyBackend` requires `EXTERNAL_VPC` protection.
 

@@ -1086,6 +1086,8 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	if engine == "pulumi" {
+		// GenerateStackName enforces the length cap uniqueness-preservingly
+		// (blind truncation here would collide long kind names' scenarios).
 		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 	}
 

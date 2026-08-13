@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpRedisInstanceSpec defines the configuration for a Google Cloud Memorystore
 for Redis instance.
 
@@ -40,8 +42,9 @@ Important behavioral notes:
 ```yaml
 # Exercises the deep instance surface offline: HA tier with pinned zones,
 # read replicas with the scale-out range, AUTH + TLS, tuned Redis configs,
-# RDB persistence with an anchored snapshot schedule, and a to-the-minute
-# maintenance window.
+# RDB persistence with an anchored snapshot schedule, a to-the-minute
+# maintenance window with a description, user labels, and both destroy
+# guards (protection on, policy DELETE).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRedisInstance
 metadata:
@@ -68,12 +71,20 @@ spec:
     day: SUNDAY
     hour: 3
     minute: 30
+    description: post-midnight window, after the nightly batch completes
   readReplicasMode: READ_REPLICAS_ENABLED
   replicaCount: 2
   persistenceConfig:
     persistenceMode: RDB
     rdbSnapshotPeriod: TWELVE_HOURS
     rdbSnapshotStartTime: "2026-01-01T03:00:00Z"
+  labels:
+    team: platform
+    cost-center: engineering
+  # Production posture: destroy is a deliberate two-step (flip protection
+  # to false, apply, destroy); the policy then deletes the instance.
+  deletionProtection: true
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -100,6 +111,7 @@ spec:
 | `spec.maintenanceWindow.day` | `string` | yes |  |  |
 | `spec.maintenanceWindow.hour` | `int32` |  |  |  |
 | `spec.maintenanceWindow.minute` | `int32` |  |  |  |
+| `spec.maintenanceWindow.description` | `string` |  |  |  |
 | `spec.maintenanceVersion` | `string` |  |  |  |
 | `spec.readReplicasMode` | `string` |  |  |  |
 | `spec.replicaCount` | `int32` |  |  |  |
@@ -108,6 +120,9 @@ spec:
 | `spec.persistenceConfig.rdbSnapshotPeriod` | `string` |  |  |  |
 | `spec.persistenceConfig.rdbSnapshotStartTime` | `string` |  |  |  |
 | `spec.customerManagedKey` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -306,6 +321,16 @@ useful for coordinating with maintenance windows of dependent systems
 
 - rule: {"int32":{"lte":59,"gte":0}}
 
+### spec.maintenanceWindow.description
+
+`string`
+
+Human-readable description of what this maintenance policy is for
+(e.g. "post-midnight window, after the nightly batch completes").
+Maximum 512 characters — the API rejects longer descriptions.
+
+- rule: {"string":{"maxLen":"512"}}
+
 ### spec.maintenanceVersion
 
 `string`
@@ -382,6 +407,42 @@ Immutable after creation.
 
 - references: GcpKmsKey (`status.outputs.key_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.labels
+
+`map<string, string>`
+
+User-defined labels to organize and track the instance, for cost
+attribution and fleet queries. Merged beneath Planton's platform
+attribution labels (platform keys win on conflict).
+
+### spec.deletionProtection
+
+`bool` · optional (explicit presence)
+
+Whether deletion protection is enabled. When true (the default —
+matching GCP's safety posture for stateful stores), destroying the
+instance fails until this is explicitly set to false. Both IaC
+engines send the value explicitly so destroy behavior is identical
+regardless of engine.
+
+- default: `true`
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the instance — what happens when this resource
+is destroyed (evaluated only after deletion_protection allows the
+destroy at all):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance is deleted; all in-memory data is lost
+  "PREVENT" -- destroy FAILS; a second, independent guard for a
+               cache whose loss would stampede the backing store
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its data intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

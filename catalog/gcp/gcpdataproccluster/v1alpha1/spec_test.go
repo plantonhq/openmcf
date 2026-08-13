@@ -1271,4 +1271,153 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	// ──────────────── Structural type, engine, teardown ────────────────
+
+	ginkgo.It("should accept every valid cluster_type", func() {
+		for _, t := range []string{"", "STANDARD", "SINGLE_NODE", "ZERO_SCALE"} {
+			msg := minimal()
+			msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{ClusterType: t}
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown cluster_type", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{ClusterType: "TINY"}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept both engines", func() {
+		for _, e := range []string{"", "DEFAULT", "LIGHTNING"} {
+			msg := minimal()
+			msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{Engine: e}
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown engine", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{Engine: "TURBO"}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept every valid deletion_policy", func() {
+		for _, p := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = p
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	// ──────────────── Stop-lifecycle and disk performance ────────────────
+
+	ginkgo.It("should accept stop-lifecycle settings", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			LifecycleConfig: &GcpDataprocClusterLifecycleConfig{
+				IdleStopTtl:  "1800s",
+				AutoStopTime: "2026-12-31T00:00:00Z",
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a malformed idle_stop_ttl", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			LifecycleConfig: &GcpDataprocClusterLifecycleConfig{IdleStopTtl: "30m"},
+		}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept provisioned boot-disk performance", func() {
+		iops := int64(3000)
+		throughput := int64(290)
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MasterConfig: &GcpDataprocClusterMasterConfig{
+				DiskConfig: &GcpDataprocClusterDiskConfig{
+					BootDiskProvisionedIops:       &iops,
+					BootDiskProvisionedThroughput: &throughput,
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	// ──────────────── Instance flexibility on master and workers ────────────────
+
+	ginkgo.It("should accept flexibility selections on master and primary workers", func() {
+		flexibility := &GcpDataprocClusterInstanceFlexibilityPolicy{
+			InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+				{MachineTypes: []string{"n2-standard-8", "n2d-standard-8"}, Rank: 1},
+			},
+		}
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MasterConfig: &GcpDataprocClusterMasterConfig{InstanceFlexibilityPolicy: flexibility},
+			WorkerConfig: &GcpDataprocClusterWorkerConfig{InstanceFlexibilityPolicy: flexibility},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a provisioning mix on master flexibility", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MasterConfig: &GcpDataprocClusterMasterConfig{
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{StandardCapacityBase: 2},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a provisioning mix on primary-worker flexibility", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			WorkerConfig: &GcpDataprocClusterWorkerConfig{
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{StandardCapacityBase: 2},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should still accept a provisioning mix on secondary workers", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			SecondaryWorkerConfig: &GcpDataprocClusterSecondaryWorkerConfig{
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					ProvisioningModelMix: &GcpDataprocClusterProvisioningModelMix{
+						StandardCapacityBase:             2,
+						StandardCapacityPercentAboveBase: 50,
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	// ──────────────── Resource manager tags ────────────────
+
+	ginkgo.It("should accept resource manager tags on the GCE config", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			GceConfig: &GcpDataprocClusterGceConfig{
+				ResourceManagerTags: map[string]string{
+					"tagKeys/281475039756228": "tagValues/281476599162946",
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
 })

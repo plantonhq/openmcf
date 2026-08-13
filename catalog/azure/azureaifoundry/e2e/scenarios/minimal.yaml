@@ -1,0 +1,45 @@
+# Minimal AzureAiFoundry scenario: a system-identity hub on the
+# fixture companions (resource group + key vault + HNS-off storage
+# account -- the registry prerequisite chain), default network mode.
+# The flagship proof is the Hub-kind ARM object itself: ARM creates an
+# ML workspace of kind "Hub" and returns the discovery URL and
+# workspace GUID the outputs surface.
+#
+# The hub provisions in a few minutes and is free at rest. Deletion is
+# a SOFT delete: the ghost holds the hub name until purged; the orphan
+# sweep's recycle-bin check is `az ml workspace list --archived`. The
+# CMK / user-assigned / isolation arms are offline-proven only (they
+# need pre-granted key access the minimal lane deliberately does not
+# compose).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundry
+metadata:
+  name: planton-oss-e2e-azureaifoundry-smoke
+  id: planton-oss-e2e-azureaifoundry-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureaifoundry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-aif-smoke
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: E2E Smoke AI Hub
+  tags:
+    e2e-suite: azure
+    purpose: smoke

@@ -258,9 +258,7 @@ message AwsEcsTaskDefinitionPlacementConstraint {
   // matching the expression) is the only type AWS supports at the task
   // definition level.
   string type = 1 [(buf.validate.field).string = {
-    in: [
-      "memberOf"
-    ]
+    in: ["memberOf"]
   }];
 
   // A cluster query language expression, e.g.

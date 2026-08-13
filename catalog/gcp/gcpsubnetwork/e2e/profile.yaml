@@ -7,10 +7,15 @@ spec:
   # network), resolves the subnet's network reference from its outputs, then
   # runs deploy -> compute subnetworks.get verify (incl. primary-range check)
   # -> destroy -> verify 404, on both provisioners. The scenario carries
-  # secondary ranges and flow logs so the deepened surface is exercised live.
+  # secondary ranges, flow logs, and the formerly-beta CIDR-routes-overlap
+  # flag (GA on the 7.x line) so the deepened surface is exercised live.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # pending_proof: the spec grew reserved_internal_range (top-level +
+  # per-secondary-range), internal_ipv6_prefix, ip_collection (BYOIP),
+  # resource_manager_tags, resolve_subnet_mask, and deletion_policy — the
+  # prior green described code that no longer exists. Offline-proven-only
+  # arms: reserved ranges (need a Network Connectivity internal-range
+  # fixture), BYOIP (needs a PublicDelegatedPrefix), resource_manager_tags
+  # (needs an org-level tagKeys/tagValues fixture — the standing item).
+  status: pending_proof
   timeout_minutes: 15

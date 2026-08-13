@@ -23,7 +23,7 @@ web identity, or ambient chain) from the stack input.
 ## Design Decisions
 
 - **Wire maps in `locals.go`**: spec enums arrive as proto values
-  (VPN_GW_1, EXPRESS_ROUTE, EGRESS_SNAT) and map to azurerm's exact
+  (VPN_GW_1_AZ, EXPRESS_ROUTE, EGRESS_SNAT) and map to azurerm's exact
   vocabulary, mirroring the Terraform module's `locals.tf` so both
   engines produce identical payloads.
 - **`BgpEnabled` over `EnableBgp`**: the classic SDK carries both names

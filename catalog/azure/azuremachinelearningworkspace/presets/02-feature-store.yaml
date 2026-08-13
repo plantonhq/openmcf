@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningWorkspace
+metadata:
+  name: feature-store
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: acme-feature-store
+  applicationInsightsId:
+    value: "<your-application-insights-id>"
+  keyVaultId:
+    value: "<your-key-vault-id>"
+  storageAccountId:
+    value: "<your-storage-account-id>"
+  identity:
+    type: SYSTEM_ASSIGNED
+  # The feature-store flavor requires its block (and vice versa) --
+  # both directions are validated at manifest time.
+  kind: FEATURE_STORE
+  featureStore:
+    # Leave unset for the service default; pin when your
+    # materialization jobs need a specific Spark runtime.
+    computerSparkRuntimeVersion: "3.4"
+  friendlyName: Feature Store

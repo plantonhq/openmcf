@@ -40,7 +40,7 @@ Open the deployment store, find **Workload Identity Pool on Google Cloud**, and 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpWorkloadIdentityPool
 metadata:
   name: github-actions

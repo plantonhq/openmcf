@@ -1,0 +1,32 @@
+# Minimal GcpEventarcTrigger scenario: Pub/Sub messagePublished to the
+# Cloud Run fixture (the registry prerequisite — deployed first, its
+# service_name resolved through the reference). Eventarc mints and owns
+# the transport topic.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcTrigger
+metadata:
+  name: planton-oss-e2e-gcpevtrg-minimal
+  id: planton-oss-e2e-gcpevtrg-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpeventarctrigger
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  location: us-central1
+  matchingCriteria:
+    - attribute: type
+      value: google.cloud.pubsub.topic.v1.messagePublished
+  destination:
+    cloudRunService:
+      service:
+        valueFrom:
+          kind: GcpCloudRun
+          name: planton-oss-e2e-gcprun-prereq
+          fieldPath: status.outputs.service_name
+      path: /events
+  deletionPolicy: DELETE

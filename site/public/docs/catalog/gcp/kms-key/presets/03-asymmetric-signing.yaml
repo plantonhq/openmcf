@@ -14,3 +14,6 @@ spec:
   purpose: ASYMMETRIC_SIGN
   versionTemplate:
     algorithm: EC_SIGN_P256_SHA256
+  # Destroyed signing versions break verification of everything they
+  # ever signed — destroys must fail unless deliberately re-decided.
+  deletionPolicy: PREVENT

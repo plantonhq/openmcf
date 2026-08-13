@@ -1,0 +1,43 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_machine_learning_workspace:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+
+  azurerm_machine_learning_workspace_network_outbound_rule_fqdn:
+    # Instantiated per spec.fqdn_outbound_rules entry (the workspace's
+    # composed FQDN outbound rules, keyed by name into the
+    # fqdn_outbound_rule_ids output).
+    specRoot: spec.fqdn_outbound_rules
+    exclusions:
+      - arg: workspace_id
+        reason: wired by the module to the workspace it creates -- never user surface
+
+  azurerm_machine_learning_workspace_network_outbound_rule_private_endpoint:
+    # Instantiated per spec.private_endpoint_outbound_rules entry, keyed
+    # by name into the private_endpoint_outbound_rule_ids output.
+    specRoot: spec.private_endpoint_outbound_rules
+    exclusions:
+      - arg: workspace_id
+        reason: wired by the module to the workspace it creates -- never user surface
+
+  azurerm_machine_learning_workspace_network_outbound_rule_service_tag:
+    # Instantiated per spec.service_tag_outbound_rules entry, keyed by
+    # name into the service_tag_outbound_rule_ids output.
+    specRoot: spec.service_tag_outbound_rules
+    exclusions:
+      - arg: workspace_id
+        reason: wired by the module to the workspace it creates -- never user surface

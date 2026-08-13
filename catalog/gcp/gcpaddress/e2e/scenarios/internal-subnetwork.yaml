@@ -29,3 +29,6 @@ spec:
       kind: GcpSubnetwork
       name: planton-oss-e2e-gcpsnw-addr-prereq
       fieldPath: status.outputs.subnetwork_self_link
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

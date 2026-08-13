@@ -9,8 +9,6 @@ spec:
   # scenario composes the GcpServiceAccount prerequisite live (OIDC token
   # FK resolution proof).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

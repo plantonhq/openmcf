@@ -23,13 +23,17 @@ spec:
   vpcSelfLink:
     valueFrom:
       kind: GcpVpcNetwork
-      name: planton-oss-e2e-gcpvpc-prereq
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-subnet
   region: us-central1
   ipCidrRange: 10.210.0.0/24
   description: Ephemeral subnet created by the Planton E2E harness; safe to delete
   privateIpGoogleAccess: true
+  # Formerly beta-only, GA on the 7.x provider line — armed here so the GA
+  # surface is live-proven. True on a fresh subnet is a no-op permission
+  # (no static routes exist to overlap), so behavior is unchanged.
+  allowSubnetCidrRoutesOverlap: true
   secondaryIpRanges:
     - rangeName: pods
       ipCidrRange: 10.211.0.0/24
@@ -39,3 +43,5 @@ spec:
     aggregationInterval: INTERVAL_5_MIN
     flowSampling: 0.1
     metadata: EXCLUDE_ALL_METADATA
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

@@ -1,0 +1,137 @@
+# Provider-parity mapping manifest for GcpGkeNodePool.
+#
+# Records the judgment half of total accounting against the pinned google
+# provider: every configurable argument of every consumed resource is
+# name-matched, mapped here, or excluded here with a reason. Only
+# divergences are recorded — an argument absent from this file must match
+# its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+resources:
+  google_container_node_pool:
+    mappings:
+      # Identity and parentage: the spec names follow the platform's
+      # reference grammar (cluster_name resolves from the parent cluster's
+      # output; project_id is the StringValueOrRef every GCP kind carries).
+      - spec: spec.cluster_name
+        arg: cluster
+      - spec: spec.node_pool_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+
+      # Autoscaling bounds: the spec drops the redundant _node_count
+      # suffix (the message is already about node counts).
+      - spec: spec.autoscaling.min_nodes
+        arg: autoscaling.min_node_count
+      - spec: spec.autoscaling.max_nodes
+        arg: autoscaling.max_node_count
+      - spec: spec.autoscaling.total_min_nodes
+        arg: autoscaling.total_min_node_count
+      - spec: spec.autoscaling.total_max_nodes
+        arg: autoscaling.total_max_node_count
+
+      # Single-field provider blocks flattened to spec leaves.
+      - spec: spec.queued_provisioning_enabled
+        arg: queued_provisioning.enabled
+      - spec: spec.network_config.total_egress_bandwidth_tier
+        arg: network_config.network_performance_config.total_egress_bandwidth_tier
+      - spec: spec.network_config.pod_cidr_overprovision_disabled
+        arg: network_config.pod_cidr_overprovision_config.disabled
+
+      # Multi-networking subtrees (plural spec names; exact matching
+      # resumes below).
+      - spec: spec.network_config.additional_node_networks
+        arg: network_config.additional_node_network_configs
+      - spec: spec.network_config.additional_pod_networks
+        arg: network_config.additional_pod_network_configs
+
+      # node_config subtree renames and flattenings.
+      - spec: spec.node_config.taints
+        arg: node_config.taint
+      - spec: spec.node_config.guest_accelerators
+        arg: node_config.guest_accelerator
+      - spec: spec.node_config.guest_accelerators.gpu_driver_version
+        arg: node_config.guest_accelerator.gpu_driver_installation_config.gpu_driver_version
+      - spec: spec.node_config.ephemeral_storage_local_ssd
+        arg: node_config.ephemeral_storage_local_ssd_config
+      - spec: spec.node_config.local_nvme_ssd_block
+        arg: node_config.local_nvme_ssd_block_config
+      - spec: spec.node_config.gcfs_enabled
+        arg: node_config.gcfs_config.enabled
+      - spec: spec.node_config.gvnic_enabled
+        arg: node_config.gvnic.enabled
+      - spec: spec.node_config.fast_socket_enabled
+        arg: node_config.fast_socket.enabled
+      - spec: spec.node_config.workload_metadata_mode
+        arg: node_config.workload_metadata_config.mode
+      - spec: spec.node_config.node_image
+        arg: node_config.node_image_config
+      - spec: spec.node_config.sole_tenant_config.node_affinities
+        arg: node_config.sole_tenant_config.node_affinity
+      - spec: spec.node_config.sandbox_type
+        arg: node_config.sandbox_config.type
+      - spec: spec.node_config.windows_os_version
+        arg: node_config.windows_node_config.osversion
+      - spec: spec.node_config.host_maintenance_interval
+        arg: node_config.host_maintenance_policy.maintenance_interval
+      - spec: spec.node_config.architecture_taint_behavior
+        arg: node_config.taint_config.architecture_taint_behavior
+
+      # containerd: the spec drops the provider's _config suffixes and
+      # holds Secret Manager URIs as flat leaves.
+      - spec: spec.node_config.containerd_config.private_registry_access
+        arg: node_config.containerd_config.private_registry_access_config
+      - spec: spec.node_config.containerd_config.private_registry_access.certificate_authority_domains
+        arg: node_config.containerd_config.private_registry_access_config.certificate_authority_domain_config
+      - spec: spec.node_config.containerd_config.private_registry_access.certificate_authority_domains.gcp_secret_manager_certificate_uri
+        arg: node_config.containerd_config.private_registry_access_config.certificate_authority_domain_config.gcp_secret_manager_certificate_config.secret_uri
+      - spec: spec.node_config.containerd_config.registry_hosts.hosts.ca_secret_uri
+        arg: node_config.containerd_config.registry_hosts.hosts.ca.gcp_secret_manager_secret_uri
+      - spec: spec.node_config.containerd_config.registry_hosts.hosts.client_cert_secret_uri
+        arg: node_config.containerd_config.registry_hosts.hosts.client.cert.gcp_secret_manager_secret_uri
+      - spec: spec.node_config.containerd_config.registry_hosts.hosts.client_key_secret_uri
+        arg: node_config.containerd_config.registry_hosts.hosts.client.key.gcp_secret_manager_secret_uri
+      # The provider models headers as key/value pairs; the spec holds one
+      # map — both argument sides land on the same map field.
+      - spec: spec.node_config.containerd_config.registry_hosts.hosts.headers
+        arg: node_config.containerd_config.registry_hosts.hosts.header.key
+      - spec: spec.node_config.containerd_config.registry_hosts.hosts.headers
+        arg: node_config.containerd_config.registry_hosts.hosts.header.value
+      - spec: spec.node_config.containerd_config.writable_cgroups_enabled
+        arg: node_config.containerd_config.writable_cgroups.enabled
+
+      # Linux node config flattenings.
+      - spec: spec.node_config.linux_node_config.node_kernel_module_loading_policy
+        arg: node_config.linux_node_config.node_kernel_module_loading.policy
+      - spec: spec.node_config.linux_node_config.enable_ptp_kvm_time_sync
+        arg: node_config.linux_node_config.accurate_time_config.enable_ptp_kvm_time_sync
+    exclusions:
+      # Not yet bridged by the pinned Pulumi SDK (pulumi-gcp v9.29.0,
+      # google-beta 7.38): modeling these only in Terraform would break
+      # cross-engine parity — a spec field one engine silently drops.
+      # Re-evaluate at the next SDK bump.
+      - arg: node_config.kubelet_config.shutdown_grace_period_seconds
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump (bridged from google-beta 7.39).
+      - arg: node_config.kubelet_config.shutdown_grace_period_critical_pods_seconds
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK;
+          modeling it would break cross-engine parity. Re-evaluate at the
+          next pulumi-gcp bump (bridged from google-beta 7.39).
+      - arg: node_config.linux_node_config.custom_node_init
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK
+          (entered google-beta at 7.40); modeling it would break
+          cross-engine parity. Re-evaluate at the next pulumi-gcp bump.
+      - arg: maintenance_policy.exclusion_until_end_of_support
+        reason: >-
+          GA at the pin but not yet bridged by the pinned Pulumi SDK
+          (entered google-beta at 7.40); modeling it would break
+          cross-engine parity. Re-evaluate at the next pulumi-gcp bump.
+  google_project_service:
+    internal: >-
+      API enablement plumbing — the module enables
+      container.googleapis.com with fixed arguments so a fresh project
+      works on the first deploy; not spec surface.

@@ -84,6 +84,7 @@ require (
 	github.com/pulumi/pulumi-auth0/sdk/v3 v3.35.0
 	github.com/pulumi/pulumi-aws-native/sdk v1.14.0
 	github.com/pulumi/pulumi-aws/sdk/v7 v7.41.0
+	github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1
 	github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0
 	github.com/pulumi/pulumi-civo/sdk/v2 v2.4.8

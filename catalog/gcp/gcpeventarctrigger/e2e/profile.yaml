@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpeventarctrigger
+spec:
+  # Two scenarios: minimal (Pub/Sub messagePublished -> the Cloud Run
+  # fixture — the registry prerequisite) and workflow-destination (the
+  # workflow arm via a scenario-level GcpWorkflow prerequisite).
+  # WATCH: the FIRST trigger in a fresh project provisions Eventarc's
+  # service agent (P4SA) — creation succeeds but the agent grant can lag;
+  # if the create fails on a service-agent IAM error, re-run after a few
+  # minutes. Two arms are offline-plan-proven only, with reasons:
+  # the audit-log arm (requires org-level Data Access audit-log config
+  # on the watched service — the recorded org-credential class) and the
+  # partner-channel arm (requires a real SaaS partner to redeem the
+  # activation token; no partner account exists in the test org).
+  # Unblock: an org-configured audit-log project / a partner sandbox.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

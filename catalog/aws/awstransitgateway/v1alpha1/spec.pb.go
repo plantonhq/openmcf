@@ -247,7 +247,7 @@ var File_catalog_aws_awstransitgateway_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awstransitgateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awstransitgateway/v1alpha1/spec.proto\x12*dev.planton.aws.awstransitgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\xe9\f\n" +
+	"1catalog/aws/awstransitgateway/v1alpha1/spec.proto\x12*dev.planton.aws.awstransitgateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\x81\r\n" +
 	"\x15AwsTransitGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x121\n" +
@@ -262,9 +262,9 @@ const file_catalog_aws_awstransitgateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11multicast_support\x18\n" +
 	" \x01(\bR\x10multicastSupport\x122\n" +
 	"\x12encryption_support\x18\v \x01(\bH\x04R\x11encryptionSupport\x88\x01\x01\x12=\n" +
-	"\x1btransit_gateway_cidr_blocks\x18\f \x03(\tR\x18transitGatewayCidrBlocks:\x8e\x06\xbaH\x8a\x06\x1a\x91\x01\n" +
-	"!transit_gateway_cidr_blocks_max_5\x12?transit_gateway_cidr_blocks supports a maximum of 5 CIDR blocks\x1a+size(this.transit_gateway_cidr_blocks) <= 5\x1a\xc3\x02\n" +
-	"!transit_gateway_cidr_blocks_valid\x12weach CIDR block must include a prefix length (IPv4 /24 or larger, IPv6 /64 or larger) and must not be in 169.254.0.0/16\x1a\xa4\x01this.transit_gateway_cidr_blocks.all(c, c.contains('/') && !c.startsWith('169.254.') && (c.contains(':') ? int(c.split('/')[1]) <= 64 : int(c.split('/')[1]) <= 24))\x1a\xad\x02\n" +
+	"\x1btransit_gateway_cidr_blocks\x18\f \x03(\tR\x18transitGatewayCidrBlocks:\xa6\x06\xbaH\xa2\x06\x1a\x91\x01\n" +
+	"!transit_gateway_cidr_blocks_max_5\x12?transit_gateway_cidr_blocks supports a maximum of 5 CIDR blocks\x1a+size(this.transit_gateway_cidr_blocks) <= 5\x1a\xdb\x02\n" +
+	"!transit_gateway_cidr_blocks_valid\x12weach CIDR block must include a prefix length (IPv4 /24 or larger, IPv6 /64 or larger) and must not be in 169.254.0.0/16\x1a\xbc\x01this.transit_gateway_cidr_blocks.all(c, c.contains('/') && !c.startsWith('169.254.') && (c.contains(':') ? c.matches('/([0-9]|[1-5][0-9]|6[0-4])$') : c.matches('/([0-9]|1[0-9]|2[0-4])$')))\x1a\xad\x02\n" +
 	"\x1bamazon_side_asn_valid_range\x12`amazon_side_asn must be in range 64512-65534 (16-bit) or 4200000000-4294967294 (32-bit) when set\x1a\xab\x01this.amazon_side_asn == 0 || (this.amazon_side_asn >= 64512 && this.amazon_side_asn <= 65534) || (this.amazon_side_asn >= 4200000000 && this.amazon_side_asn <= 4294967294)B\"\n" +
 	" _default_route_table_associationB\"\n" +
 	" _default_route_table_propagationB\x0e\n" +

@@ -26,6 +26,15 @@ resources:
       # The one-field encryption block flattened to the key reference.
       - spec: spec.kms_key_name
         arg: encryption.default_kms_key_name
+      # Per-encryption-type enforcement: the provider nests one required
+      # restriction_mode inside a block per encryption type; the spec
+      # models the three modes directly.
+      - spec: spec.encryption_enforcement.google_managed_restriction_mode
+        arg: encryption.google_managed_encryption_enforcement_config.restriction_mode
+      - spec: spec.encryption_enforcement.customer_managed_restriction_mode
+        arg: encryption.customer_managed_encryption_enforcement_config.restriction_mode
+      - spec: spec.encryption_enforcement.customer_supplied_restriction_mode
+        arg: encryption.customer_supplied_encryption_enforcement_config.restriction_mode
       # Repeated-message fields are plural per proto style; provider blocks
       # are singular. Exact matching resumes below each subtree mapping.
       - spec: spec.lifecycle_rules
@@ -61,6 +70,42 @@ resources:
     # authoritative iam_binding/iam_policy forms are deliberately not
     # modeled -- they clobber grants made elsewhere).
     specRoot: spec.iam_members
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
+  google_storage_folder:
+    # Instantiated per spec.folders entry (hierarchical-namespace
+    # directories; the module creates parents before children because the
+    # API never auto-creates them).
+    specRoot: spec.folders
+    mappings:
+      # The kind-level deletion_policy fans to every folder resource.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
+  google_storage_managed_folder:
+    # Instantiated per spec.managed_folders entry (prefix-scoped IAM
+    # anchors; the managed-folder IAM surface itself is composed, keeping
+    # the additive-grants doctrine).
+    specRoot: spec.managed_folders
+    mappings:
+      # The kind-level deletion_policy fans to every managed folder.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates -- never user surface
+
+  google_storage_notification:
+    # Instantiated per spec.notifications entry. The resource is immutable
+    # end to end and carries no deletion_policy. The GCS service agent's
+    # roles/pubsub.publisher grant on the topic is a composed prerequisite
+    # (the CMEK-grant grain), never module-created.
+    specRoot: spec.notifications
     exclusions:
       - arg: bucket
         reason: wired by the module to the bucket it creates -- never user surface

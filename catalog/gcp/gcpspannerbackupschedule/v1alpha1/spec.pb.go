@@ -166,8 +166,21 @@ type GcpSpannerBackupScheduleSpec struct {
 	// How the backups are encrypted. If omitted, backups use
 	// USE_DATABASE_ENCRYPTION (inherit the database's posture). Mutable.
 	EncryptionConfig *GcpSpannerBackupScheduleEncryptionConfig `protobuf:"bytes,8,opt,name=encryption_config,json=encryptionConfig,proto3" json:"encryption_config,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Deletion policy for the schedule — what happens when this resource
+	// is destroyed. The schedule is a control-plane object: none of these
+	// values touches the BACKUPS it already created (those live until
+	// their retention expires):
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the schedule is deleted; no further backups are taken
+	//	"PREVENT" -- destroy FAILS; protects the cadence a recovery
+	//	             objective depends on from riding along with a
+	//	             stack teardown
+	//	"ABANDON" -- the schedule is removed from management but keeps
+	//	             running (and creating backups) in GCP
+	DeletionPolicy string `protobuf:"bytes,9,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpSpannerBackupScheduleSpec) Reset() {
@@ -256,6 +269,13 @@ func (x *GcpSpannerBackupScheduleSpec) GetEncryptionConfig() *GcpSpannerBackupSc
 	return nil
 }
 
+func (x *GcpSpannerBackupScheduleSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpspannerbackupschedule_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpspannerbackupschedule_v1alpha1_spec_proto_rawDesc = "" +
@@ -268,7 +288,7 @@ const file_catalog_gcp_gcpspannerbackupschedule_v1alpha1_spec_proto_rawDesc = ""
 	"kmsKeyName\x12v\n" +
 	"\rkms_key_names\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xd6\x03\xbaH\xd2\x03\x1a\xee\x01\n" +
 	"#cmek_requires_exactly_one_key_shape\x12QCUSTOMER_MANAGED_ENCRYPTION requires exactly one of kms_key_name or kms_key_names\x1atthis.encryption_type != 'CUSTOMER_MANAGED_ENCRYPTION' || (has(this.kms_key_name) != (this.kms_key_names.size() > 0))\x1a\xde\x01\n" +
-	"\x1anon_cmek_must_not_set_keys\x12Jkms_key_name/kms_key_names are only valid with CUSTOMER_MANAGED_ENCRYPTION\x1atthis.encryption_type == 'CUSTOMER_MANAGED_ENCRYPTION' || (!has(this.kms_key_name) && this.kms_key_names.size() == 0)\"\xff\x06\n" +
+	"\x1anon_cmek_must_not_set_keys\x12Jkms_key_name/kms_key_names are only valid with CUSTOMER_MANAGED_ENCRYPTION\x1atthis.encryption_type == 'CUSTOMER_MANAGED_ENCRYPTION' || (!has(this.kms_key_name) && this.kms_key_names.size() == 0)\"\xbd\b\n" +
 	"\x1cGcpSpannerBackupScheduleSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
@@ -280,7 +300,9 @@ const file_catalog_gcp_gcpspannerbackupschedule_v1alpha1_spec_proto_rawDesc = ""
 	"\vbackup_type\x18\a \x01(\tBq\xbaHf\xba\x01c\n" +
 	"\x17backup_type_valid_value\x12'backup_type must be FULL or INCREMENTAL\x1a\x1fthis in ['FULL', 'INCREMENTAL']\x8a\xa6\x1d\x04FULLH\x00R\n" +
 	"backupType\x88\x01\x01\x12\x88\x01\n" +
-	"\x11encryption_config\x18\b \x01(\v2[.dev.planton.gcp.gcpspannerbackupschedule.v1alpha1.GcpSpannerBackupScheduleEncryptionConfigR\x10encryptionConfigB\x0e\n" +
+	"\x11encryption_config\x18\b \x01(\v2[.dev.planton.gcp.gcpspannerbackupschedule.v1alpha1.GcpSpannerBackupScheduleEncryptionConfigR\x10encryptionConfig\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\t \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\x0e\n" +
 	"\f_backup_typeB\x98\x03\n" +
 	"5com.dev.planton.gcp.gcpspannerbackupschedule.v1alpha1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/catalog/gcp/gcpspannerbackupschedule/v1alpha1;gcpspannerbackupschedulev1alpha1\xa2\x02\x04DPGG\xaa\x021Dev.Planton.Gcp.Gcpspannerbackupschedule.V1alpha1\xca\x021Dev\\Planton\\Gcp\\Gcpspannerbackupschedule\\V1alpha1\xe2\x02=Dev\\Planton\\Gcp\\Gcpspannerbackupschedule\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Gcp::Gcpspannerbackupschedule::V1alpha1b\x06proto3"
 

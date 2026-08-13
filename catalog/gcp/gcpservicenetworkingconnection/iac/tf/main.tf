@@ -45,6 +45,8 @@ resource "google_service_networking_connection" "this" {
   # with "Cannot modify allocated ranges" (see the spec comment).
   update_on_creation_fail = var.spec.update_on_creation_fail
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [
     google_project_service.servicenetworking_api,
     google_project_service.compute_api,

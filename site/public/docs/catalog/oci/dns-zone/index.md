@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### OCI Tenancy
 
 - A compartment to place the DNS zone in. Provide the compartment OCID directly or reference an OciCompartment Cloud Resource via ValueFromRef.
-- A DNS view OCID -- required only for private-scoped zones. OCI DNS views are not modeled as Planton deployment components; provide the OCID as a literal value or via ValueFromRef from an external source.
+- A DNS view OCID -- required only for private-scoped zones. OCI DNS views are not modeled as Planton components; provide the OCID as a literal value or via ValueFromRef from an external source.
 - External master DNS server addresses -- required only for secondary zones that replicate from on-premises or third-party DNS servers.
 - TSIG key OCIDs (optional) -- for authenticating zone transfers between this zone and external DNS servers.
 

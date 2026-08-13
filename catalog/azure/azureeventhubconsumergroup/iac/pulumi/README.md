@@ -1,7 +1,7 @@
 # AzureEventHubConsumerGroup - Pulumi Module
 
 Pulumi (Go) implementation for the AzureEventHubConsumerGroup
-deployment component, at 100% behavioral parity with the Terraform
+component, at 100% behavioral parity with the Terraform
 module.
 
 ## Resources Created

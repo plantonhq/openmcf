@@ -36,16 +36,16 @@ locals {
   # (GCP rejects TTLs it would ignore) — the spec's CEL rules enforce that
   # before deploy, so no TTL-stripping logic is needed here.
   cdn_policy = var.spec.cdn_policy == null ? null : {
-    cache_mode                   = try(var.spec.cdn_policy.cache_mode, null) != "" ? var.spec.cdn_policy.cache_mode : null
-    client_ttl                   = try(var.spec.cdn_policy.client_ttl, 0) != 0 ? var.spec.cdn_policy.client_ttl : null
-    default_ttl                  = try(var.spec.cdn_policy.default_ttl, 0) != 0 ? var.spec.cdn_policy.default_ttl : null
-    max_ttl                      = try(var.spec.cdn_policy.max_ttl, 0) != 0 ? var.spec.cdn_policy.max_ttl : null
-    negative_caching             = try(var.spec.cdn_policy.negative_caching, null)
-    negative_caching_policy      = try(var.spec.cdn_policy.negative_caching_policy, [])
-    serve_while_stale            = try(var.spec.cdn_policy.serve_while_stale, 0) != 0 ? var.spec.cdn_policy.serve_while_stale : null
-    request_coalescing           = try(var.spec.cdn_policy.request_coalescing, null)
-    signed_url_cache_max_age_sec = try(var.spec.cdn_policy.signed_url_cache_max_age_sec, 0) != 0 ? var.spec.cdn_policy.signed_url_cache_max_age_sec : null
-    cache_key_policy             = try(var.spec.cdn_policy.cache_key_policy, null)
+    cache_mode                      = try(var.spec.cdn_policy.cache_mode, null) != "" ? var.spec.cdn_policy.cache_mode : null
+    client_ttl                      = try(var.spec.cdn_policy.client_ttl, 0) != 0 ? var.spec.cdn_policy.client_ttl : null
+    default_ttl                     = try(var.spec.cdn_policy.default_ttl, 0) != 0 ? var.spec.cdn_policy.default_ttl : null
+    max_ttl                         = try(var.spec.cdn_policy.max_ttl, 0) != 0 ? var.spec.cdn_policy.max_ttl : null
+    negative_caching                = try(var.spec.cdn_policy.negative_caching, null)
+    negative_caching_policy         = try(var.spec.cdn_policy.negative_caching_policy, [])
+    serve_while_stale               = try(var.spec.cdn_policy.serve_while_stale, 0) != 0 ? var.spec.cdn_policy.serve_while_stale : null
+    request_coalescing              = try(var.spec.cdn_policy.request_coalescing, null)
+    signed_url_cache_max_age_sec    = try(var.spec.cdn_policy.signed_url_cache_max_age_sec, 0) != 0 ? var.spec.cdn_policy.signed_url_cache_max_age_sec : null
+    cache_key_policy                = try(var.spec.cdn_policy.cache_key_policy, null)
     bypass_cache_on_request_headers = try(var.spec.cdn_policy.bypass_cache_on_request_headers, [])
   }
 }

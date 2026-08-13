@@ -7,7 +7,7 @@ order: 40
 
 # Pulumi Commands
 
-The `planton pulumi` command group runs infrastructure operations using Pulumi as the IaC engine. Each deployment component in Planton ships with a Pulumi module written in Go that translates the manifest spec into cloud resources.
+The `planton pulumi` command group runs infrastructure operations using Pulumi as the IaC engine. Each component in Planton ships with a Pulumi module written in Go that translates the manifest spec into cloud resources.
 
 ## Prerequisites
 
@@ -114,7 +114,7 @@ All `planton pulumi` subcommands inherit persistent flags from the parent comman
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--manifest` | | Path to the deployment-component manifest file |
+| `--manifest` | | Path to the component manifest file |
 | `--stack-input` | `-i` | Path to YAML file containing stack input (extracts manifest from `target` field) |
 | `--input-dir` | | Directory containing `target.yaml` and credential YAML files |
 | `--kustomize-dir` | | Directory containing kustomize configuration |

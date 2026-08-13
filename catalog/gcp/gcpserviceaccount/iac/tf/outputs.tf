@@ -26,10 +26,12 @@ output "name" {
   value       = google_service_account.main.name
 }
 
-# The base64-encoded private key JSON, populated only when create_key was true.
-# A live, long-lived credential — marked sensitive so it never prints in plans.
+# The base64-encoded private key, populated only when user_managed_key
+# requested the GENERATE flow (empty in the upload flow — GCP never returns
+# a private key for an uploaded public key). A live, long-lived credential —
+# marked sensitive so it never prints in plans.
 output "key_base64" {
-  description = "The base64-encoded private key JSON for the service account (if create_key was true)"
+  description = "The base64-encoded private key for the service account (generate flow only)"
   value       = local.create_key ? google_service_account_key.main[0].private_key : null
   sensitive   = true
 }

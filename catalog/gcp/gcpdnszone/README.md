@@ -25,7 +25,8 @@ Managing DNS zones in GCP involves visibility modes, VPC bindings, DNSSEC, forwa
 - **`dnsName`** — optional FQDN; defaults to `metadata.name` + `.` when omitted
 - **`privateVisibilityConfig`** — network refs → GcpVpcNetwork `network_self_link`; GKE refs → GcpGkeCluster `cluster_id`
 - **`dnssecConfig`** — enable signing, custom key specs, NSEC/NSEC3
-- **`forwardingConfig` / `peeringConfig`** — private-only; mutually exclusive
+- **`forwardingConfig` / `peeringConfig`** — private-only; mutually exclusive; each forwarding target carries an IPv4 or IPv6 resolver address (never both)
+- **`deletionPolicy`** — the second destroy lever beside `forceDestroy`: `DELETE` (default), `PREVENT` (destroy refuses), or `ABANDON` (the zone keeps serving but leaves management)
 
 ### Deliberately Removed (Safety)
 

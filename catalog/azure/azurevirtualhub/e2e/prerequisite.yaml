@@ -1,0 +1,40 @@
+# AzureVirtualHub install profile used as a fixture by composed
+# components (declared via prerequisites: [AzureVirtualHub] in the kind
+# registry -- the hub connection, the ExpressRoute gateway, and the VPN
+# gateway family that follows them). The harness deploys this document
+# after the fixture WAN and captures its outputs -- virtual_hub_id in
+# particular -- for dependents' references to resolve against.
+#
+# COST AND TIME: the hub bills (~$0.25/hr class) from creation and ARM
+# takes 15-30 minutes to provision its router, so every lane that
+# chains through this fixture pays a full hub cycle. The address prefix
+# (10.250.0.0/23) deliberately avoids the fixture VNet's 10.240.0.0/16
+# -- ARM rejects an attachment whose spaces overlap the hub's.
+#
+# ONE HUB PER REGION PER WAN: scenario hubs deploy into a DIFFERENT
+# region (eastus2) so a concurrently-running hub lane never collides
+# with this fixture on ARM's one-hub-per-region rule.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHub
+metadata:
+  name: planton-oss-e2e-azure-fixture-vhub
+  id: planton-oss-e2e-azure-fixture-vhub
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualhub
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-vhub
+  virtualWanId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vwan
+  addressPrefix: "10.250.0.0/23"

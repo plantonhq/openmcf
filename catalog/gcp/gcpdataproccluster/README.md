@@ -122,12 +122,10 @@ This creates a cluster with 1 master, 2 workers, Spark 3.5, Component Gateway en
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`cluster_type` / `engine`** — absent from the released google provider 6.x line (schema-verified).
-- **`resource_manager_tags`** on `gce_cluster_config` — absent from the released line.
-- **Disk `boot_disk_provisioned_iops` / `boot_disk_provisioned_throughput`** — absent from the released line.
-- **Lifecycle `idle_stop_ttl` / `auto_stop_time`** — absent from the released line.
-- **Master/worker `instance_flexibility_policy`** — the released line carries it only on secondary workers.
-- **`deletion_policy`** — a client-side lever that conflicts with Planton-managed destroy (catalog-wide skip).
+Everything else on `google_dataproc_cluster` at the pinned provider is representable — including `clusterType` (SINGLE_NODE / ZERO_SCALE), the Lightning `engine`, stop-lifecycle TTLs, resource manager tags, boot-disk provisioned IOPS/throughput on every node group, master and primary-worker `instanceFlexibilityPolicy`, and `deletionPolicy`. The recorded exclusions:
+
+- **`confidential_instance_type`** — GA at the pin but not yet bridged by the pinned Pulumi SDK (which carries only the deprecated boolean the spec models); the field enters the spec at the next SDK bump.
+- **Per-selection `disk_config` inside `instance_flexibility_policy`** — same SDK-bridge gap, on all three node-group sites.
 - **Dataproc IAM member/binding/policy trios** — resource-scoped IAM deferred.
 - **`google_dataproc_job` / `batch` / `workflow_template` / `session_template`** — workloads, not infrastructure; Serverless Batches is a future kind candidate.
 - **Dataproc Metastore service** — future kind candidate; `metastoreConfig` accepts literal resource names today.

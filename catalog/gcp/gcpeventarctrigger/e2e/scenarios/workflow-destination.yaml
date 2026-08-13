@@ -1,0 +1,35 @@
+# Workflow-destination GcpEventarcTrigger scenario: the workflow arm —
+# the workflow fixture deploys first (scenario-level prerequisites
+# annotation; GcpWorkflow is NOT a registry prerequisite of this kind)
+# and the destination resolves from its workflow_id output. Also
+# exercises event_data_content_type and trigger labels.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcTrigger
+metadata:
+  name: planton-oss-e2e-gcpevtrg-workflow
+  id: planton-oss-e2e-gcpevtrg-workflow
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpeventarctrigger
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpWorkflow"
+  tags:
+    - planton-e2e
+spec:
+  location: us-central1
+  matchingCriteria:
+    - attribute: type
+      value: google.cloud.pubsub.topic.v1.messagePublished
+  destination:
+    workflow:
+      valueFrom:
+        kind: GcpWorkflow
+        name: planton-oss-e2e-gcpwflow-prereq
+        fieldPath: status.outputs.workflow_id
+  eventDataContentType: application/json
+  labels:
+    e2e-suite: gcp
+  deletionPolicy: DELETE

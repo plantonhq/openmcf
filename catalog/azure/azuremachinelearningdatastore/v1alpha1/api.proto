@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningdatastore.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremachinelearningdatastore/v1alpha1/outputs.proto";
+import "catalog/azure/azuremachinelearningdatastore/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMachineLearningDatastore is the top-level API resource
+// describing a datastore on an Azure Machine Learning workspace --
+// the saved connection that tells the workspace where data lives
+// (a blob container, Data Lake Gen2 filesystem, or file share) and
+// how to reach it.
+message AzureMachineLearningDatastore {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureMachineLearningDatastore".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMachineLearningDatastore'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Datastore specification.
+  AzureMachineLearningDatastoreSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureMachineLearningDatastoreStatus status = 5;
+}
+
+// AzureMachineLearningDatastoreStatus holds the deployment outputs.
+message AzureMachineLearningDatastoreStatus {
+  // Stack outputs from the IaC deployment.
+  AzureMachineLearningDatastoreStackOutputs outputs = 1;
+}

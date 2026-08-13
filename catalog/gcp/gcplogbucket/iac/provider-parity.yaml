@@ -1,0 +1,126 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, eight resources: four scope bucket_configs (the spec's scope
+# message selects which ONE the module creates -- the GcpLoggingSink
+# grain), the log-view fan-out (one google_logging_log_view per
+# spec.log_views entry), the linked BigQuery dataset, and the
+# folder/organization settings singletons (count-gated on scope +
+# scope_settings).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (bucket_id, location, description,
+# retention_days, locked, enable_analytics, the index_configs subtree,
+# and deletion_policy all auto-match that way on the bucket resources).
+# Every exclusion carries its reason: omission is a decision, never an
+# accident.
+
+resources:
+  google_logging_project_bucket_config:
+    mappings:
+      - spec: spec.scope.project_id
+        arg: project
+      # The provider wraps CMEK in a block whose one configurable argument
+      # is the key name; the spec carries the reference directly (a
+      # StringValueOrRef to GcpKmsKey's key_id output).
+      - spec: spec.cmek_kms_key
+        arg: cmek_settings.kms_key_name
+
+  google_logging_folder_bucket_config:
+    mappings:
+      - spec: spec.scope.folder_id
+        arg: folder
+      - spec: spec.cmek_kms_key
+        arg: cmek_settings.kms_key_name
+
+  google_logging_organization_bucket_config:
+    mappings:
+      - spec: spec.scope.organization_id
+        arg: organization
+      - spec: spec.cmek_kms_key
+        arg: cmek_settings.kms_key_name
+
+  google_logging_billing_account_bucket_config:
+    mappings:
+      - spec: spec.scope.billing_account
+        arg: billing_account
+      - spec: spec.cmek_kms_key
+        arg: cmek_settings.kms_key_name
+
+  google_logging_log_view:
+    # One view per spec.log_views entry; filter and description match
+    # name-for-name under the subtree.
+    specRoot: spec.log_views
+    mappings:
+      # The view's name argument is the spec's view_id (the last segment
+      # of the view resource name).
+      - spec: spec.log_views.view_id
+        arg: name
+      # The view rides the kind's OWN bucket: the module renders the
+      # created bucket's full resource name into the argument.
+      - spec: spec.bucket_id
+        arg: bucket
+      # The kind-level deletion contract fans out to every view.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: location
+        reason: >-
+          Derived by the provider from the bucket's full resource name the
+          module passes; setting it separately is redundant with (and can
+          only contradict) the bucket argument.
+      - arg: parent
+        reason: >-
+          Derived by the provider from the bucket's full resource name the
+          module passes; setting it separately is redundant with (and can
+          only contradict) the bucket argument.
+
+  google_logging_linked_dataset:
+    # The link's own fields (link_id, description) match name-for-name
+    # under the subtree.
+    specRoot: spec.linked_bigquery_dataset
+    mappings:
+      - spec: spec.bucket_id
+        arg: bucket
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: location
+        reason: >-
+          Derived by the provider from the bucket's full resource name the
+          module passes; setting it separately is redundant with (and can
+          only contradict) the bucket argument.
+      - arg: parent
+        reason: >-
+          Derived by the provider from the bucket's full resource name the
+          module passes; setting it separately is redundant with (and can
+          only contradict) the bucket argument.
+
+  google_logging_folder_settings:
+    # disable_default_sink and storage_location match name-for-name under
+    # the subtree.
+    specRoot: spec.scope_settings
+    mappings:
+      - spec: spec.scope.folder_id
+        arg: folder
+      # The settings CMEK argument takes the full key name; the spec
+      # carries the reference directly (a StringValueOrRef to GcpKmsKey).
+      - spec: spec.scope_settings.kms_key
+        arg: kms_key_name
+
+  google_logging_organization_settings:
+    specRoot: spec.scope_settings
+    mappings:
+      - spec: spec.scope.organization_id
+        arg: organization
+      - spec: spec.scope_settings.kms_key
+        arg: kms_key_name
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables logging.googleapis.com
+      (project-scope buckets only; folder/org/billing buckets are not
+      project resources) with fixed arguments (disable_on_destroy false so
+      destroying one bucket never disables logging project-wide); not spec
+      surface.

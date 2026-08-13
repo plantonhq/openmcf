@@ -1177,7 +1177,7 @@ var File_catalog_azure_azuremysqlflexibleserver_v1alpha1_spec_proto protoreflect
 
 const file_catalog_azure_azuremysqlflexibleserver_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	":catalog/azure/azuremysqlflexibleserver/v1alpha1/spec.proto\x123dev.planton.azure.azuremysqlflexibleserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc42\n" +
+	":catalog/azure/azuremysqlflexibleserver/v1alpha1/spec.proto\x123dev.planton.azure.azuremysqlflexibleserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb22\n" +
 	"\x1cAzureMysqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -1189,9 +1189,9 @@ const file_catalog_azure_azuremysqlflexibleserver_v1alpha1_spec_proto_rawDesc = 
 	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf2\x0f\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xb7\x02\n" +
 	"!point_in_time_restore_time_in_utc\x18\x06 \x01(\tB\xee\x01\xbaH\xea\x01\xba\x01\xe6\x01\n" +
 	"\x1amysql_restore_time_rfc3339\x12^point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x1bpointInTimeRestoreTimeInUtc\x12\x87\x01\n" +
-	"\x10replication_role\x18\a \x01(\x0e2\\.dev.planton.azure.azuremysqlflexibleserver.v1alpha1.AzureMysqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\x84\x03\n" +
-	"\x13administrator_login\x18\b \x01(\tB\xd2\x02\xbaH\xce\x02\xba\x01\xc6\x02\n" +
-	"\x18mysql_admin_login_format\x12\x93\x01administrator_login must contain only letters, digits, and underscores, and cannot be azure_superuser, admin, administrator, root, guest, or public\x1a\x93\x01this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !(this.lowerAscii() in ['azure_superuser', 'admin', 'administrator', 'root', 'guest', 'public']))r\x02\x18 R\x12administratorLogin\x12o\n" +
+	"\x10replication_role\x18\a \x01(\x0e2\\.dev.planton.azure.azuremysqlflexibleserver.v1alpha1.AzureMysqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\xf2\x02\n" +
+	"\x13administrator_login\x18\b \x01(\tB\xc0\x02\xbaH\xbc\x02\xba\x01\xb4\x02\n" +
+	"\x18mysql_admin_login_format\x12\x93\x01administrator_login must contain only letters, digits, and underscores, and cannot be azure_superuser, admin, administrator, root, guest, or public\x1a\x81\x01this == '' || (this.matches('^[a-zA-Z0-9_]+$') && !this.matches('^(?i)(azure_superuser|admin|administrator|root|guest|public)$'))r\x02\x18 R\x12administratorLogin\x12o\n" +
 	"\x16administrator_password\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x15administratorPassword\x12\x90\x01\n" +
 	"\aversion\x18\n" +
 	" \x01(\tBq\xbaHd\xba\x01a\n" +

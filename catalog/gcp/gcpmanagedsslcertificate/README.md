@@ -48,6 +48,7 @@ Reference the certificate's `self_link` from a target HTTPS proxy's `sslCertific
 | `certificateName` | `string` | `metadata.name` | Cloud-side name (RFC1035). Immutable. |
 | `description` | `string` | `""` | What this certificate secures. Immutable. |
 | `domains` | `string[]` | — (required, 1-100) | FQDNs the certificate is valid for. No wildcards. Immutable. |
+| `deletionPolicy` | `string` | `DELETE` | What happens on destroy: `DELETE`, `PREVENT`, or `ABANDON` (leave in GCP — useful mid-rotation handoff). |
 
 ## Stack Outputs
 

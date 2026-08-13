@@ -3,11 +3,13 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpproject
 spec:
-  # Live E2E is conditional on org-level Project Creator credentials.
-  # When unavailable, scenarios are exercised via offline converter plans only.
+  # Live E2E is conditional on org-level Project Creator credentials, which
+  # the shared test project's ambient ADC does not carry. Scenarios are
+  # exercised via offline converter plans only until an org-scoped test
+  # identity exists; validated_provisioners stays empty until the live
+  # lanes actually run.
   tier: 2
-  status: plan-only
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: deferred
+  deferred_reason: project creation requires org-level Project Creator credentials the E2E test identity does not hold; offline plans only
+  validated_provisioners: []
   timeout_minutes: 45

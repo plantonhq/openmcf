@@ -16,16 +16,20 @@ Clusters are always VPC-native (alias IP): pods and services draw from secondary
 
 ## Key Features
 
-- **Two modes, one kind**: Standard (you own node pools) and Autopilot (`enable_autopilot`; GKE owns nodes) with the API's conflict set enforced pre-deploy
+- **Two modes, one kind**: Standard (you own node pools) and Autopilot (`enable_autopilot`; GKE owns nodes) with the API's conflict set enforced pre-deploy — plus Autopilot's own controls: conversion/posture policies (`autopilot_policy`), privileged-workload allowlists, and managed-node settings (`node_pool_auto_config`: network/resource-manager tags, cgroups, kubelet hardening)
 - **Private clusters**: private nodes, peering-based (`master_ipv4_cidr_block`) or PSC-based (`private_endpoint_subnetwork`) control planes, master global access, private-only endpoints
-- **Control-plane access**: master authorized networks (CIDR allowlist, GCP-public-CIDR and private-endpoint enforcement toggles) and the modern DNS endpoint (`control_plane_endpoints`)
-- **Upgrades on rails**: release channels incl. EXTENDED, `min_master_version`, daily/recurring maintenance windows, up to 20 maintenance exclusions with scopes
-- **Node auto-provisioning (NAP)**: resource limits (the cost brake, required when enabled), autoscaling profiles, full auto-provisioning defaults (SA ref, disks, image, shielding, auto-repair/upgrade)
+- **Control-plane access**: master authorized networks (CIDR allowlist, GCP-public-CIDR and private-endpoint enforcement toggles), the modern DNS endpoint (`control_plane_endpoints`, incl. serving tokens and certs via DNS), legacy client-certificate stance, and node registration mode (`node_creation_mode`)
+- **Upgrades on rails**: release channels incl. EXTENDED, `min_master_version`, ACCELERATED patch mode, daily/recurring maintenance windows, up to 20 maintenance exclusions with scopes and end-of-support behavior, disruption budgets between disruptive events
+- **Node auto-provisioning (NAP)**: resource limits (the cost brake, required when enabled), autoscaling profiles, default compute classes, full auto-provisioning defaults (SA ref, disks, image, shielding, auto-repair/upgrade, surge/blue-green upgrade rollout)
+- **IP allocation**: named or GKE-created ranges, dual-stack, additional pod ranges AND additional subnetwork ranges (with draining), auto-IPAM, network tier
 - **Dataplane V2**: `datapath_provider`, FQDN / Cilium cluster-wide network policy, dataplane observability metrics and relay, in-transit pod traffic encryption
-- **Security**: CMEK etcd encryption (KMS key ref), Binary Authorization, Security Posture dashboard, authenticator groups, confidential nodes (SEV/SEV-SNP/TDX), anonymous-auth hardening, mesh certificates, Secret Manager CSI
-- **Observability**: per-component logging/monitoring, managed Prometheus (+ auto-monitoring scope), Pub/Sub lifecycle notifications, cost allocation, BigQuery usage export
-- **Addons**: HTTP LB, HPA, PD/Filestore/GCS-Fuse CSI drivers, Backup for GKE, NodeLocal DNSCache, Config Connector, Stateful HA, Ray operator
-- **Fleet registration**: `fleet_project` for multi-cluster features
+- **Security**: CMEK etcd encryption (KMS key ref, incl. all-objects encryption), customer-managed control-plane CAs and signing keys (`user_managed_keys`), Binary Authorization, Security Posture dashboard, RBAC binding lockdown, authenticator groups, confidential nodes (SEV/SEV-SNP/TDX), anonymous-auth hardening, mesh certificates
+- **Secrets**: Secret Manager CSI add-on with rotation cadence, and the Secret Manager sync add-on (secrets into Kubernetes Secrets) with its own rotation
+- **Observability**: per-component logging/monitoring (incl. KCP components), managed Prometheus (+ auto-monitoring scope), Pub/Sub lifecycle notifications, cost allocation, BigQuery usage export
+- **Addons**: HTTP LB, HPA, PD/Filestore/GCS-Fuse/Parallelstore/Lustre CSI drivers, Backup for GKE, NodeLocal DNSCache, Config Connector, Stateful HA, Ray operator (+ logging/monitoring), Cloud Run, pod snapshots, agent sandbox, slice controller, Slurm operator
+- **Node-pool defaults**: creation-time defaults for every pool (image streaming, kubelet read-only port, logging variant, containerd private-registry access)
+- **Fleet registration**: `fleet_project` + membership type for multi-cluster features
+- **Lifecycle & scale**: engine-side `deletion_policy` (DELETE/PREVENT/ABANDON) under `deletion_protection`, alpha clusters and beta API groups for evaluation, and read-side performance switches for very large clusters (`ignore_node_count_changes`, `skip_node_pool_refresh`)
 
 ## Stack Outputs
 
@@ -42,16 +46,19 @@ Clusters are always VPC-native (alias IP): pods and services draw from secondary
 
 ## Deliberately not modeled (recorded reasons)
 
+Every provider argument of `google_container_cluster` is accounted for —
+matched, mapped, or excluded with the reason recorded in
+`iac/provider-parity.yaml`. The exclusions, in plain terms:
+
 | Excluded Feature | Why |
 |---|---|
-| Default node pool `node_config` / inline `node_pool` blocks | Node pools are first-class `GcpGkeNodePool` resources; the default pool is always removed. Inline pools are ForceNew on the cluster — hostile to composition. |
-| `deletion_policy`, `ignore_node_count_changes`, `dataplane_optimization_mode`, `autopilot_privileged_admission`, `secret_sync_config`, `autopilot_cluster_policy_config`, `node_creation_config`, `maintenance_policy.disruption_budget`, `ip_allocation_policy.auto_ipam_config` / `network_tier_config`, pod-snapshot / slice-controller / slurm-operator / agent-sandbox addons | Exist only on the provider's unreleased main line, not on the released 6.x major the GCP modules pin. Revisit on the next provider major. |
-| `tpu_config`, `pod_security_policy_config`, `cluster_telemetry`, `protect_config`, `managed_opentelemetry_config`, `workload_alts_config` | Beta-provider-only surfaces on the released line. |
-| `master_auth.client_certificate_config` | Legacy client-certificate authentication — superseded by IAM and deprecated practice; the CA certificate output covers trust needs. |
-| `user_managed_keys_config` | Self-managed cluster CA / etcd / service-account signing keys — a deep-compliance niche with heavy operational burden; Google-managed keys plus CMEK etcd encryption cover the real cases. |
-| `enterprise_config` | Deprecated on the provider. |
-| `rbac_binding_config`, `enable_k8s_beta_apis`, `gke_auto_upgrade_config`, `enable_kubernetes_alpha`, `enable_tpu`, `cluster_ipv4_cidr` (routes-based), `default_snat_status` beyond the disable toggle, `network_performance_config` beyond the tier | Niche or legacy surfaces without real-world pull; each returns on demand. |
-| `logging_service` / `monitoring_service` legacy strings | Superseded by the `logging` / `monitoring` component configs. |
+| Inline `node_pool` blocks / default-pool `node_config` | Node pools are first-class `GcpGkeNodePool` resources; the default pool is always removed at create time. Inline pools mixed with external pool resources are the provider's own documented anti-pattern. |
+| `networking_mode` (ROUTES), `cluster_ipv4_cidr`, `node_version`, `logging_service` / `monitoring_service`, `enable_tpu` | Legacy surfaces superseded by what the spec models: clusters are always VPC-native, node versions live on the pools, observability uses the component configs, and TPU capacity is provisioned through TPU node pools. |
+| `network_policy.provider` | CALICO is the only legal value — the module wires it with `enable_network_policy`. |
+| `workload_identity_config.workload_pool` | The API fixes the pool name to `PROJECT_ID.svc.id.goog`; the spec holds the on/off decision and the module composes the only possible value. |
+| `maintenance_policy.recurring_maintenance_window`, `rollback_safe_upgrade` + `desired_emulated_version`, the node-readiness addon | GA at the pinned provider but not yet bridged by the pinned Pulumi SDK — modeling them only in Terraform would break cross-engine parity. Re-evaluated at every SDK bump. |
+| `tpu_config`, `pod_security_policy_config`, `cluster_telemetry`, `protect_config` and other beta-only blocks | Exist only in the `google-beta` provider; GA is the parity baseline and the beta admission list is empty. |
+| `enterprise_config` | Deprecated on the provider at the pinned version. |
 
 ## Related Components
 

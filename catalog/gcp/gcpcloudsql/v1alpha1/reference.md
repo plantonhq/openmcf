@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudSqlSpec defines a Cloud SQL instance (`google_sql_database_instance`) —
 a fully managed MySQL, PostgreSQL, or SQL Server database server.
 
@@ -26,8 +28,10 @@ public IPv4 reachable only through the Cloud SQL Auth Proxy / connectors
 
 ```yaml
 # Exercises the deep instance surface offline: engine/version/tier, disk,
-# explicit connectivity with an authorized network, HA with backups + PITR,
-# maintenance scheduling, Query Insights, flags, and both delete guards.
+# explicit connectivity with an authorized network, HA with backups + PITR
+# (with an explicit retention unit), a final backup on delete, maintenance
+# scheduling, Query Insights, flags, the ExecuteSql API posture, both
+# delete guards, and the teardown policy.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
@@ -58,6 +62,12 @@ spec:
     pointInTimeRecoveryEnabled: true
     transactionLogRetentionDays: 7
     retainedBackups: 14
+    retentionUnit: COUNT
+  finalBackup:
+    enabled: true
+    retentionDays: 7
+    description: decommission snapshot
+  dataApiAccess: DISALLOW_DATA_API
   maintenanceWindow:
     day: 7
     hour: 3
@@ -69,6 +79,7 @@ spec:
     max_connections: "200"
   deletionProtection: false
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE
   rootPassword: HackPassword123!
 ```
 
@@ -90,6 +101,8 @@ spec:
 | `spec.disk.sizeGb` | `int32` |  | `10` |  |
 | `spec.disk.autoResize` | `bool` |  | `true` |  |
 | `spec.disk.autoResizeLimit` | `int32` |  |  |  |
+| `spec.disk.provisionedIops` | `int64` |  |  |  |
+| `spec.disk.provisionedThroughput` | `int64` |  |  |  |
 | `spec.network` | `GcpCloudSqlNetwork` |  |  |  |
 | `spec.network.privateNetwork` | `string \| valueFrom` |  |  | GcpVpcNetwork (`status.outputs.network_id`) |
 | `spec.network.ipv4Enabled` | `bool` |  |  |  |
@@ -110,6 +123,9 @@ spec:
 | `spec.network.psc.autoConnections` | `[]GcpCloudSqlPscAutoConnection` |  |  |  |
 | `spec.network.psc.autoConnections[].consumerNetwork` | `string` | yes |  |  |
 | `spec.network.psc.autoConnections[].consumerServiceProjectId` | `string` |  |  |  |
+| `spec.network.psc.autoDnsEnabled` | `bool` |  |  |  |
+| `spec.network.psc.writeEndpointDnsEnabled` | `bool` |  |  |  |
+| `spec.network.serverCertificateRotationMode` | `string` |  |  |  |
 | `spec.locationPreference` | `GcpCloudSqlLocationPreference` |  |  |  |
 | `spec.locationPreference.zone` | `string` |  |  |  |
 | `spec.locationPreference.secondaryZone` | `string` |  |  |  |
@@ -121,6 +137,7 @@ spec:
 | `spec.backup.pointInTimeRecoveryEnabled` | `bool` |  |  |  |
 | `spec.backup.transactionLogRetentionDays` | `int32` |  |  |  |
 | `spec.backup.retainedBackups` | `int32` |  |  |  |
+| `spec.backup.retentionUnit` | `string` |  |  |  |
 | `spec.maintenanceWindow` | `GcpCloudSqlMaintenanceWindow` |  |  |  |
 | `spec.maintenanceWindow.day` | `int32` | yes |  |  |
 | `spec.maintenanceWindow.hour` | `int32` |  |  |  |
@@ -135,6 +152,7 @@ spec:
 | `spec.insightsConfig.recordApplicationTags` | `bool` |  |  |  |
 | `spec.insightsConfig.recordClientAddress` | `bool` |  |  |  |
 | `spec.insightsConfig.queryPlansPerMinute` | `int32` |  |  |  |
+| `spec.insightsConfig.enhancedQueryInsightsEnabled` | `bool` |  |  |  |
 | `spec.passwordValidationPolicy` | `GcpCloudSqlPasswordValidationPolicy` |  |  |  |
 | `spec.passwordValidationPolicy.enablePasswordPolicy` | `bool` |  |  |  |
 | `spec.passwordValidationPolicy.minLength` | `int32` |  |  |  |
@@ -154,7 +172,12 @@ spec:
 | `spec.sqlServerAuditConfig.bucket` | `string` |  |  |  |
 | `spec.sqlServerAuditConfig.retentionInterval` | `string` |  |  |  |
 | `spec.sqlServerAuditConfig.uploadInterval` | `string` |  |  |  |
-| `spec.activeDirectoryDomain` | `string` |  |  |  |
+| `spec.activeDirectory` | `GcpCloudSqlActiveDirectoryConfig` |  |  |  |
+| `spec.activeDirectory.domain` | `string` | yes |  |  |
+| `spec.activeDirectory.mode` | `string` |  |  |  |
+| `spec.activeDirectory.dnsServers` | `[]string` |  |  |  |
+| `spec.activeDirectory.adminCredentialSecretName` | `string` |  |  |  |
+| `spec.activeDirectory.organizationalUnit` | `string` |  |  |  |
 | `spec.connectorEnforcement` | `string` |  |  |  |
 | `spec.enableGoogleMlIntegration` | `bool` |  |  |  |
 | `spec.enableDataplexIntegration` | `bool` |  |  |  |
@@ -177,6 +200,51 @@ spec:
 | `spec.replicaConfiguration.sslCipher` | `string` |  |  |  |
 | `spec.replicaConfiguration.verifyServerCertificate` | `bool` |  |  |  |
 | `spec.rootPassword` | `string` (sensitive) | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.instanceType` | `string` |  |  |  |
+| `spec.nodeCount` | `int32` |  |  |  |
+| `spec.readPoolAutoScale` | `GcpCloudSqlReadPoolAutoScale` |  |  |  |
+| `spec.readPoolAutoScale.enabled` | `bool` |  |  |  |
+| `spec.readPoolAutoScale.minNodeCount` | `int32` |  |  |  |
+| `spec.readPoolAutoScale.maxNodeCount` | `int32` |  |  |  |
+| `spec.readPoolAutoScale.disableScaleIn` | `bool` |  |  |  |
+| `spec.readPoolAutoScale.scaleInCooldownSeconds` | `int32` |  |  |  |
+| `spec.readPoolAutoScale.scaleOutCooldownSeconds` | `int32` |  |  |  |
+| `spec.readPoolAutoScale.targetMetrics` | `[]GcpCloudSqlReadPoolTargetMetric` |  |  |  |
+| `spec.readPoolAutoScale.targetMetrics[].metric` | `string` | yes |  |  |
+| `spec.readPoolAutoScale.targetMetrics[].targetValue` | `double` |  |  |  |
+| `spec.clone` | `GcpCloudSqlClone` |  |  |  |
+| `spec.clone.sourceInstanceName` | `string` | yes |  |  |
+| `spec.clone.sourceProject` | `string` |  |  |  |
+| `spec.clone.pointInTime` | `string` |  |  |  |
+| `spec.clone.preferredZone` | `string` |  |  |  |
+| `spec.clone.databaseNames` | `[]string` |  |  |  |
+| `spec.clone.allocatedIpRange` | `string` |  |  |  |
+| `spec.clone.sourceInstanceDeletionTime` | `string` |  |  |  |
+| `spec.restoreBackupContext` | `GcpCloudSqlRestoreBackupContext` |  |  |  |
+| `spec.restoreBackupContext.backupRunId` | `int64` |  |  |  |
+| `spec.restoreBackupContext.instanceId` | `string` |  |  |  |
+| `spec.restoreBackupContext.project` | `string` |  |  |  |
+| `spec.pointInTimeRestoreContext` | `GcpCloudSqlPointInTimeRestoreContext` |  |  |  |
+| `spec.pointInTimeRestoreContext.datasource` | `string` | yes |  |  |
+| `spec.pointInTimeRestoreContext.pointInTime` | `string` | yes |  |  |
+| `spec.pointInTimeRestoreContext.targetInstance` | `string` |  |  |  |
+| `spec.pointInTimeRestoreContext.region` | `string` |  |  |  |
+| `spec.pointInTimeRestoreContext.preferredZone` | `string` |  |  |  |
+| `spec.pointInTimeRestoreContext.allocatedIpRange` | `string` |  |  |  |
+| `spec.backupdrBackup` | `string` |  |  |  |
+| `spec.maintenanceVersion` | `string` |  |  |  |
+| `spec.replicaNames` | `[]string` |  |  |  |
+| `spec.failoverDrReplicaName` | `string` |  |  |  |
+| `spec.autoUpgradeEnabled` | `bool` |  |  |  |
+| `spec.dataApiAccess` | `string` |  |  |  |
+| `spec.finalBackup` | `GcpCloudSqlFinalBackup` |  |  |  |
+| `spec.finalBackup.enabled` | `bool` |  |  |  |
+| `spec.finalBackup.retentionDays` | `int32` |  |  |  |
+| `spec.finalBackup.description` | `string` |  |  |  |
+| `spec.entraId` | `GcpCloudSqlEntraIdConfig` |  |  |  |
+| `spec.entraId.applicationId` | `string` | yes |  |  |
+| `spec.entraId.tenantId` | `string` | yes |  |  |
 
 ## Field Details
 
@@ -288,6 +356,7 @@ first-generation behavior.
 Data disk configuration. If omitted: 10 GB PD_SSD with auto-resize.
 
 - rule: HYPERDISK_BALANCED disks require size_gb of at least 20
+- rule: provisioned_iops and provisioned_throughput apply to HYPERDISK_BALANCED disks only
 
 ### spec.disk.type
 
@@ -329,6 +398,24 @@ bound.
 
 - rule: {"int32":{"gte":0}}
 
+### spec.disk.provisionedIops
+
+`int64` · optional (explicit presence)
+
+HYPERDISK_BALANCED only: provisioned I/O operations per second for the
+data disk — the IOPS dial decoupled from disk size.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.disk.provisionedThroughput
+
+`int64` · optional (explicit presence)
+
+HYPERDISK_BALANCED only: provisioned throughput in MiB/s for the data
+disk — the bandwidth dial decoupled from disk size.
+
+- rule: {"int64":{"gte":"1"}}
+
 ### spec.network
 
 `GcpCloudSqlNetwork`
@@ -345,6 +432,7 @@ Proxy or connectors (IAM-authenticated), which is a safe default.
 - rule: server_ca_pool is required when server_ca_mode is CUSTOMER_MANAGED_CAS_CA
 - rule: server_ca_pool applies only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA
 - rule: custom_subject_alternative_names apply only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA
+- rule: server_certificate_rotation_mode AUTOMATIC_ROTATION_DURING_MAINTENANCE requires server_ca_mode GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA
 
 ### spec.network.privateNetwork
 
@@ -509,6 +597,32 @@ PSC endpoint.
 The project owning the consumer network (defaults to the network's
 project).
 
+### spec.network.psc.autoDnsEnabled
+
+`bool`
+
+Automatically create DNS records for the PSC endpoints in the
+consumer networks — clients resolve the instance by name instead of
+tracking endpoint IPs.
+
+### spec.network.psc.writeEndpointDnsEnabled
+
+`bool`
+
+Enterprise Plus only: also create a DNS record for the PSA write
+endpoint, so clients follow the primary across switchovers by name.
+
+### spec.network.serverCertificateRotationMode
+
+`string`
+
+Controls automatic rotation of the server certificate.
+NO_AUTOMATIC_ROTATION (default) or
+AUTOMATIC_ROTATION_DURING_MAINTENANCE (requires a CA Service
+server_ca_mode: GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA).
+
+- rule: server_certificate_rotation_mode must be empty, NO_AUTOMATIC_ROTATION, or AUTOMATIC_ROTATION_DURING_MAINTENANCE
+
 ### spec.locationPreference
 
 `GcpCloudSqlLocationPreference`
@@ -596,6 +710,15 @@ Number of daily backups retained (default 7). Older backups are pruned
 automatically.
 
 - rule: {"int32":{"gte":1}}
+
+### spec.backup.retentionUnit
+
+`string`
+
+The unit retained_backups counts in. COUNT (the default and the only
+unit the API defines) retains that many most-recent backups.
+
+- rule: retention_unit must be empty or COUNT
 
 ### spec.maintenanceWindow
 
@@ -706,6 +829,13 @@ Sampled execution plans captured per minute across all queries
 (0 disables plan sampling; default 5).
 
 - rule: {"int32":{"lte":20,"gte":0}}
+
+### spec.insightsConfig.enhancedQueryInsightsEnabled
+
+`bool`
+
+Enhanced Query Insights: longer retention and finer-grained query
+telemetry than the standard tier.
 
 ### spec.passwordValidationPolicy
 
@@ -853,12 +983,60 @@ How often audit files are uploaded to the bucket, e.g. "1800s".
 
 - rule: upload_interval must be a seconds duration string such as 1800s
 
-### spec.activeDirectoryDomain
+### spec.activeDirectory
+
+`GcpCloudSqlActiveDirectoryConfig`
+
+SQL Server only: the Active Directory the instance joins for Windows
+authentication — a Managed Microsoft AD domain or (with mode
+CUSTOMER_MANAGED_ACTIVE_DIRECTORY) a self-managed AD reached through
+the listed domain controllers.
+
+- rule: dns_servers, admin_credential_secret_name, and organizational_unit apply to CUSTOMER_MANAGED_ACTIVE_DIRECTORY mode only
+
+### spec.activeDirectory.domain
+
+`string` · required
+
+The AD domain to join, e.g. "ad.example.com". With the default
+(managed) mode this is a Managed Microsoft AD domain in the project.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.activeDirectory.mode
 
 `string`
 
-SQL Server only: domain of the Managed Microsoft AD the instance joins
-for Windows authentication, e.g. "ad.example.com".
+MANAGED_ACTIVE_DIRECTORY (default) joins a Managed Microsoft AD
+domain; CUSTOMER_MANAGED_ACTIVE_DIRECTORY joins a self-managed AD
+bootstrapped through dns_servers and the admin credential.
+
+- rule: mode must be empty, MANAGED_ACTIVE_DIRECTORY, or CUSTOMER_MANAGED_ACTIVE_DIRECTORY
+
+### spec.activeDirectory.dnsServers
+
+`[]string`
+
+Customer-managed AD only: domain controller IPv4 addresses used to
+bootstrap the join.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}$"}}}}
+
+### spec.activeDirectory.adminCredentialSecretName
+
+`string`
+
+Customer-managed AD only: the Secret Manager secret
+(projects/{project}/secrets/{secret}) holding the AD administrator
+credential used to join the domain. A secret NAME, not the credential
+itself.
+
+### spec.activeDirectory.organizationalUnit
+
+`string`
+
+Customer-managed AD only: the organizational unit distinguished name
+(full hierarchical path) the instance's computer account joins under.
 
 ### spec.connectorEnforcement
 
@@ -929,8 +1107,9 @@ Makes this instance a READ REPLICA of the named primary instance.
 Accepts the primary's instance name or a reference to a GcpCloudSql
 resource. Immutable — an existing primary cannot be converted in place.
 The primary must have automated backups enabled (and binary logs on
-MySQL). Replica promotion (detaching a replica into a standalone
-primary) is an operational action performed outside IaC.
+MySQL). To promote a replica into a standalone primary, set
+instance_type to CLOUD_SQL_INSTANCE and clear this field and
+replica_configuration in the same change (the instance restarts).
 
 - references: GcpCloudSql (`status.outputs.instance_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpCloudSql, name: <that resource's name>, fieldPath: status.outputs.instance_name}} -- a bare string does not parse
@@ -1040,6 +1219,356 @@ GcpCloudSqlUser resources.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"8"}}
 
+### spec.deletionPolicy
+
+`string`
+
+Engine-side teardown behavior. "DELETE" (default) destroys the
+instance; "PREVENT" fails any plan that would destroy it; "ABANDON"
+removes it from IaC management while leaving it running in GCP.
+Distinct from deletion_protection (which blocks the destroy) — ABANDON
+is the lever for handing an instance over to out-of-band management.
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+### spec.instanceType
+
+`string`
+
+The instance's role. Usually derived by GCP (primary vs replica);
+set explicitly for two workflows: READ_POOL_INSTANCE turns the
+resource into a read pool (with node_count / read_pool_auto_scale),
+and CLOUD_SQL_INSTANCE promotes an existing read replica into a
+standalone primary (clear master_instance_name and
+replica_configuration in the same change).
+
+- rule: instance_type must be empty, CLOUD_SQL_INSTANCE, READ_REPLICA_INSTANCE, READ_POOL_INSTANCE, or ON_PREMISES_INSTANCE
+
+### spec.nodeCount
+
+`int32` · optional (explicit presence)
+
+Read pools only: number of nodes serving reads behind the pool's
+single endpoint. Read-only while read_pool_auto_scale is enabled (the
+autoscaler owns it).
+
+- rule: {"int32":{"gte":1}}
+
+### spec.readPoolAutoScale
+
+`GcpCloudSqlReadPoolAutoScale`
+
+Read pools only: automatic node-count scaling between min and max
+bounds, driven by target metrics.
+
+- rule: max_node_count must be greater than or equal to min_node_count
+
+### spec.readPoolAutoScale.enabled
+
+`bool`
+
+Whether auto scaling is active. While enabled, node_count is owned by
+the autoscaler and read-only.
+
+### spec.readPoolAutoScale.minNodeCount
+
+`int32` · optional (explicit presence)
+
+Lower bound of pool nodes; scale-in never goes below it.
+
+- rule: {"int32":{"gte":1}}
+
+### spec.readPoolAutoScale.maxNodeCount
+
+`int32` · optional (explicit presence)
+
+Upper bound of pool nodes; scale-out never exceeds it.
+
+- rule: {"int32":{"gte":1}}
+
+### spec.readPoolAutoScale.disableScaleIn
+
+`bool`
+
+Disables scale-in entirely: the pool only ever grows automatically.
+
+### spec.readPoolAutoScale.scaleInCooldownSeconds
+
+`int32` · optional (explicit presence)
+
+Cooldown in seconds after a scale-in before another may run.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.readPoolAutoScale.scaleOutCooldownSeconds
+
+`int32` · optional (explicit presence)
+
+Cooldown in seconds after a scale-out before another may run.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.readPoolAutoScale.targetMetrics
+
+`[]GcpCloudSqlReadPoolTargetMetric`
+
+Metrics the autoscaler steers by; nodes are added or removed to hold
+each metric at its target value.
+
+### spec.readPoolAutoScale.targetMetrics[].metric
+
+`string` · required
+
+Metric name, e.g. a CPU utilization metric.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.readPoolAutoScale.targetMetrics[].targetValue
+
+`double`
+
+Target value for the metric.
+
+### spec.clone
+
+`GcpCloudSqlClone`
+
+Creates this instance as a CLONE of another instance — a full copy of
+its data at a point in time. A create-time source: changing it on an
+existing instance triggers a new clone operation.
+
+### spec.clone.sourceInstanceName
+
+`string` · required
+
+Name of the source instance to clone.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.clone.sourceProject
+
+`string`
+
+Project of the source instance, for cross-project clones. Defaults to
+this instance's project.
+
+### spec.clone.pointInTime
+
+`string`
+
+RFC 3339 timestamp to clone from (point-in-time clone). Requires PITR
+(or binary logs on MySQL) on the source.
+
+### spec.clone.preferredZone
+
+`string`
+
+PostgreSQL point-in-time clones only: the zone the clone lands in.
+Defaults to the source's zone.
+
+### spec.clone.databaseNames
+
+`[]string`
+
+SQL Server point-in-time clones only: clone just the named databases.
+Empty clones all databases.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.clone.allocatedIpRange
+
+`string`
+
+Private-IP clones: the allocated IP range name (RFC 1035) the clone's
+private IP is drawn from.
+
+### spec.clone.sourceInstanceDeletionTime
+
+`string`
+
+Cloning a DELETED instance: the RFC 3339 timestamp of the source's
+deletion.
+
+### spec.restoreBackupContext
+
+`GcpCloudSqlRestoreBackupContext`
+
+Restores a specific backup run into this instance. An imperative
+restore trigger expressed declaratively: adding or changing the block
+runs the restore after the instance exists.
+
+### spec.restoreBackupContext.backupRunId
+
+`int64`
+
+The backup run ID to restore.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.restoreBackupContext.instanceId
+
+`string`
+
+The instance the backup was taken from. Defaults to this instance.
+
+### spec.restoreBackupContext.project
+
+`string`
+
+The full project ID of the source instance.
+
+### spec.pointInTimeRestoreContext
+
+`GcpCloudSqlPointInTimeRestoreContext`
+
+Restores this instance from a Backup and DR datasource to a point in
+time. Like restore_backup_context, adding or changing the block
+triggers the restore.
+
+### spec.pointInTimeRestoreContext.datasource
+
+`string` · required
+
+The Backup and DR datasource URI to restore from.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.pointInTimeRestoreContext.pointInTime
+
+`string` · required
+
+RFC 3339 timestamp to restore to.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.pointInTimeRestoreContext.targetInstance
+
+`string`
+
+Name of the target instance receiving the restore.
+
+### spec.pointInTimeRestoreContext.region
+
+`string`
+
+Region of the target instance, e.g. "us-central1".
+
+### spec.pointInTimeRestoreContext.preferredZone
+
+`string`
+
+The zone the restored instance lands in. Defaults to the source
+primary's zone.
+
+### spec.pointInTimeRestoreContext.allocatedIpRange
+
+`string`
+
+Private-IP restores: the allocated IP range name (RFC 1035) the
+restored instance's private IP is drawn from.
+
+### spec.backupdrBackup
+
+`string`
+
+Restores from a Backup and DR backup (the backup's full resource
+name). The backup must be in active state. Adding or changing this
+triggers the restore.
+
+### spec.maintenanceVersion
+
+`string`
+
+Pins the instance's maintenance (patch) version. Cannot be set at
+creation; updating it restarts the instance. Values older than the
+running version are ignored by the API.
+
+### spec.replicaNames
+
+`[]string`
+
+Declares the instance's read replicas by name from the primary's side.
+Most compositions leave this to GCP (replicas declare their primary
+via master_instance_name instead).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.failoverDrReplicaName
+
+`string`
+
+MySQL/PostgreSQL disaster recovery: names this primary's DR replica
+("project:instance" or plain instance name), enabling switchover /
+replica failover between regions.
+
+### spec.autoUpgradeEnabled
+
+`bool`
+
+MySQL 8.0 only: opts the instance into automatic minor-version
+upgrades. The database_version must be an eligible MYSQL_8_0 minor.
+
+### spec.dataApiAccess
+
+`string`
+
+Whether the ExecuteSql API may connect to this instance.
+DISALLOW_DATA_API (default) rejects it; ALLOW_DATA_API admits it —
+on private-IP instances this allows authorized users to reach the
+instance from the public internet through the API.
+
+- rule: data_api_access must be empty, ALLOW_DATA_API, or DISALLOW_DATA_API
+
+### spec.finalBackup
+
+`GcpCloudSqlFinalBackup`
+
+A final backup taken automatically when the instance is deleted — the
+safety net that survives the teardown itself.
+
+### spec.finalBackup.enabled
+
+`bool`
+
+Whether a final backup is taken on delete.
+
+### spec.finalBackup.retentionDays
+
+`int32` · optional (explicit presence)
+
+Days the final backup is retained.
+
+- rule: {"int32":{"gte":1}}
+
+### spec.finalBackup.description
+
+`string`
+
+Description recorded on the final backup.
+
+### spec.entraId
+
+`GcpCloudSqlEntraIdConfig`
+
+SQL Server only: Microsoft Entra ID (Azure AD) authentication for the
+instance.
+
+### spec.entraId.applicationId
+
+`string` · required
+
+The Entra ID application (client) ID.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.entraId.tenantId
+
+`string` · required
+
+The Entra ID tenant (directory) ID.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
 ## Validation Rules
 
 - `database_version_matches_engine`: database_version must match database_engine: MYSQL_* for MYSQL, POSTGRES_* for POSTGRESQL, SQLSERVER_* for SQLSERVER
@@ -1053,7 +1582,10 @@ GcpCloudSqlUser resources.
 - `collation_requires_sqlserver`: collation (server-level) applies to SQL Server instances only — MySQL and PostgreSQL set collation per database
 - `threads_per_core_requires_sqlserver`: threads_per_core applies to SQL Server instances only
 - `audit_config_requires_sqlserver`: sql_server_audit_config applies to SQL Server instances only
-- `active_directory_requires_sqlserver`: active_directory_domain applies to SQL Server instances only
+- `active_directory_requires_sqlserver`: active_directory applies to SQL Server instances only
+- `entra_id_requires_sqlserver`: entra_id applies to SQL Server instances only
+- `read_pool_requires_read_pool_instance`: node_count and read_pool_auto_scale apply to read pools only — set instance_type to READ_POOL_INSTANCE
+- `final_backup_description_requires_enabled`: final_backup.description applies only when final_backup.enabled is true
 - `password_change_interval_requires_postgres`: password_validation_policy.password_change_interval applies to POSTGRESQL instances only
 - `replica_configuration_requires_master`: replica_configuration is only meaningful on a read replica — set master_instance_name to the primary instance
 - `secondary_zone_requires_regional`: location_preference.secondary_zone applies only when availability_type is REGIONAL

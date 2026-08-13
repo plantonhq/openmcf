@@ -47,9 +47,11 @@ Reference the policy's `self_link` from a target HTTPS proxy's `sslPolicy` field
 | `sslPolicyName` | `string` | `metadata.name` | Cloud-side name (RFC1035). Immutable. |
 | `region` | `string` | `""` (global) | Region for a regional policy; empty means global. Immutable. |
 | `description` | `string` | `""` | Why this policy exists. Immutable (a GCP quirk on this resource). |
-| `profile` | `string` | `COMPATIBLE` | Cipher profile: `COMPATIBLE`, `MODERN`, `RESTRICTED`, or `CUSTOM`. Mutable. |
-| `minTlsVersion` | `string` | `TLS_1_0` | Minimum TLS version: `TLS_1_0`, `TLS_1_1`, or `TLS_1_2`. Mutable. |
+| `profile` | `string` | `COMPATIBLE` | Cipher profile: `COMPATIBLE`, `MODERN`, `RESTRICTED`, `CUSTOM`, or `FIPS_202205` (requires `minTlsVersion: TLS_1_2`). Mutable. |
+| `minTlsVersion` | `string` | `TLS_1_0` | Minimum TLS version: `TLS_1_0`, `TLS_1_1`, `TLS_1_2`, or `TLS_1_3` (requires `profile: RESTRICTED`). Mutable. |
 | `customFeatures` | `string[]` | `[]` | Exact cipher suites — required with (and only valid with) `CUSTOM`. Mutable. |
+| `postQuantumKeyExchange` | `string` | `DEFAULT` | Post-quantum key exchange (X25519MLKEM768) rollout stance: `DEFAULT`, `ENABLED`, or `DEFERRED`. Mutable. |
+| `deletionPolicy` | `string` | `DELETE` | What happens on destroy: `DELETE`, `PREVENT`, or `ABANDON`. |
 
 ## Stack Outputs
 
@@ -74,13 +76,10 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 - **Shared, mutable hardening**: `profile`, `minTlsVersion`, and `customFeatures` update in place and apply to every referencing proxy on the next client handshake — one change hardens a whole fleet.
 - **CUSTOM pairing**: the `CUSTOM` profile requires `customFeatures`, and `customFeatures` is rejected on every other profile — validated before deploy.
-- **TLS 1.3 is always on**: GCP has no maximum-version control and TLS 1.3 cipher suites are not listable in `customFeatures`; the allowlist governs TLS 1.2 and below.
+- **TLS 1.3 is always negotiable**: GCP has no maximum-version control and TLS 1.3 cipher suites are not listable in `customFeatures`; the allowlist governs TLS 1.2 and below. To make TLS 1.3 the *floor*, pair `minTlsVersion: TLS_1_3` with `profile: RESTRICTED`.
+- **Compliance pairings validated before deploy**: `FIPS_202205` requires a `TLS_1_2` floor, and a `TLS_1_3` floor requires `RESTRICTED` — both enforced at manifest validation, mirroring what GCP would reject at deploy time.
+- **Post-quantum is a rollout stance, not a switch**: `DEFAULT` follows GCP's own X25519MLKEM768 timeline, `ENABLED` opts in now, `DEFERRED` opts out until GCP's later mandatory date.
 - **Scope is permanent**: a policy cannot move between global and regional scope, and regional proxies can only reference policies in their own region.
-
-### Deliberately not modeled (recorded reasons)
-
-- **`post_quantum_key_exchange`, `FIPS_202205` profile, `TLS_1_3` minimum** — present only on the provider's unreleased main branch, absent from the released 6.x schema (GA and beta verified). Model when the released line ships them.
-- **`deletion_policy`** — a client-side Terraform lever that conflicts with Planton-managed destroy (catalog-wide decision).
 
 ## Related Components
 

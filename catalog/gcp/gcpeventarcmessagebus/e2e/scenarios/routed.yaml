@@ -1,0 +1,40 @@
+# Routed GcpEventarcMessageBus scenario: the full family fan-out — bus,
+# a pipeline delivering to the Pub/Sub topic fixture (scenario-level
+# prerequisite; the reference resolves its topic_id output), and a
+# route-everything enrollment binding them (the sibling-id contract).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcMessageBus
+metadata:
+  name: planton-oss-e2e-gcpevbus-routed
+  id: planton-oss-e2e-gcpevbus-routed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpeventarcmessagebus
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpPubSubTopic"
+  tags:
+    - planton-e2e
+spec:
+  location: us-central1
+  logSeverity: INFO
+  displayName: E2E routed bus
+  pipelines:
+    - pipelineId: deliver-to-topic
+      destination:
+        topic:
+          valueFrom:
+            kind: GcpPubSubTopic
+            name: planton-oss-e2e-gcptopic-prereq
+            fieldPath: status.outputs.topic_id
+      retryPolicy:
+        maxAttempts: 5
+        minRetryDelay: 5s
+        maxRetryDelay: 60s
+  enrollments:
+    - enrollmentId: route-everything
+      celMatch: "true"
+      pipeline: deliver-to-topic
+  deletionPolicy: DELETE

@@ -730,6 +730,103 @@ var _ = ginkgo.Describe("GcpMemorystoreInstanceSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	// ──────────────── Maintenance Minute, CA Mode, Deletion Policy ────────────────
+
+	ginkgo.It("should accept a maintenance window pinned to the minute", func() {
+		msg := minimal()
+		msg.Spec.MaintenancePolicy = &GcpMemorystoreInstanceMaintenancePolicy{
+			WeeklyMaintenanceWindow: &GcpMemorystoreInstanceMaintenanceWindow{
+				Day:    "SUNDAY",
+				Hour:   3,
+				Minute: 30,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a maintenance window minute out of range", func() {
+		msg := minimal()
+		msg.Spec.MaintenancePolicy = &GcpMemorystoreInstanceMaintenancePolicy{
+			WeeklyMaintenanceWindow: &GcpMemorystoreInstanceMaintenanceWindow{
+				Day:    "SUNDAY",
+				Minute: 60,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each documented node_type value", func() {
+		for _, nodeType := range []string{"", "SHARED_CORE_NANO", "CUSTOM_PICO", "CUSTOM_MICRO", "CUSTOM_MINI", "STANDARD_SMALL", "STANDARD_LARGE", "HIGHCPU_MEDIUM", "HIGHMEM_MEDIUM", "HIGHMEM_XLARGE", "HIGHMEM_2XLARGE"} {
+			msg := minimal()
+			msg.Spec.NodeType = nodeType
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "node_type %q should be accepted", nodeType)
+		}
+	})
+
+	ginkgo.It("should reject an unknown node_type value", func() {
+		msg := minimal()
+		msg.Spec.NodeType = "MEGA_LARGE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each valid server_ca_mode value", func() {
+		for _, mode := range []string{"", "GOOGLE_MANAGED_PER_INSTANCE_CA", "GOOGLE_MANAGED_SHARED_CA", "CUSTOMER_MANAGED_CAS_CA"} {
+			msg := minimal()
+			msg.Spec.ServerCaMode = mode
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "server_ca_mode %q should be accepted", mode)
+		}
+	})
+
+	ginkgo.It("should reject an invalid server_ca_mode value", func() {
+		msg := minimal()
+		msg.Spec.ServerCaMode = "SELF_SIGNED"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept server_ca_pool paired with CUSTOMER_MANAGED_CAS_CA", func() {
+		msg := minimal()
+		msg.Spec.ServerCaMode = "CUSTOMER_MANAGED_CAS_CA"
+		msg.Spec.ServerCaPool = "projects/my-project/locations/us-central1/caPools/my-pool"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject server_ca_pool without CUSTOMER_MANAGED_CAS_CA mode", func() {
+		msg := minimal()
+		msg.Spec.ServerCaPool = "projects/my-project/locations/us-central1/caPools/my-pool"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a maintenance_version", func() {
+		msg := minimal()
+		msg.Spec.MaintenanceVersion = "20260801_00_00"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept each valid deletion_policy value", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "deletion_policy %q should be accepted", policy)
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy value", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
 	ginkgo.It("should reject when metadata is missing", func() {
 		msg := minimal()
 		msg.Metadata = nil

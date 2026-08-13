@@ -82,6 +82,7 @@ spec:
 | `machineType` | `string` | `e2-micro` | `f1-micro` (~100 Mbps/instance), `e2-micro` (~200 Mbps), `e2-standard-4` (~1 Gbps class). Mutable in place. |
 | `minInstances` | `int` | GCP default (2) | Floor, 2–9. Must be < `maxInstances`. **Decreasing replaces the connector.** |
 | `maxInstances` | `int` | GCP default (10) | Ceiling, 3–10. Must be > `minInstances`. **Decreasing replaces the connector.** |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE` removes the connector, `PREVENT` fails the destroy (protects the region's serverless egress path), `ABANDON` leaves it forwarding unmanaged. |
 
 Two behaviors worth planning around: the fleet **never scales in on its own** — after a traffic burst it stays at the high-water mark; and while *increases* to the instance band apply in place, *decreases* force the connector to be replaced (a brief egress outage for every workload using it).
 

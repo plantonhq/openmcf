@@ -99,9 +99,20 @@ type GcpRegionNetworkEndpointGroupSpec struct {
 	// Front an App Engine service. One of the three serverless targets — set
 	// exactly one when network_endpoint_type is SERVERLESS. The block may be
 	// empty to route to the default App Engine application.
-	AppEngine     *GcpRegionNetworkEndpointGroupAppEngine `protobuf:"bytes,12,opt,name=app_engine,json=appEngine,proto3" json:"app_engine,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AppEngine *GcpRegionNetworkEndpointGroupAppEngine `protobuf:"bytes,12,opt,name=app_engine,json=appEngine,proto3" json:"app_engine,omitempty"`
+	// Deletion policy for the NEG — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the NEG is deleted (GCP refuses while a backend
+	//	             service still references it — create the replacement
+	//	             before destroying the original)
+	//	"PREVENT" -- destroy FAILS; protects the attachment a live backend
+	//	             service routes through
+	//	"ABANDON" -- the NEG is removed from management but left in GCP
+	DeletionPolicy string `protobuf:"bytes,13,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpRegionNetworkEndpointGroupSpec) Reset() {
@@ -216,6 +227,13 @@ func (x *GcpRegionNetworkEndpointGroupSpec) GetAppEngine() *GcpRegionNetworkEndp
 		return x.AppEngine
 	}
 	return nil
+}
+
+func (x *GcpRegionNetworkEndpointGroupSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // Cloud Run target for a SERVERLESS NEG. Set service (optionally with tag),
@@ -467,7 +485,7 @@ var File_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_spec_proto protorefl
 
 const file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/spec.proto\x126dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x87!\n" +
+	"=catalog/gcp/gcpregionnetworkendpointgroup/v1alpha1/spec.proto\x126dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc5\"\n" +
 	"!GcpRegionNetworkEndpointGroupSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xc9\x02\n" +
@@ -489,7 +507,9 @@ const file_catalog_gcp_gcpregionnetworkendpointgroup_v1alpha1_spec_proto_rawDesc
 	" \x01(\v2].dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1.GcpRegionNetworkEndpointGroupCloudRunR\bcloudRun\x12\x89\x01\n" +
 	"\x0ecloud_function\x18\v \x01(\v2b.dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1.GcpRegionNetworkEndpointGroupCloudFunctionR\rcloudFunction\x12}\n" +
 	"\n" +
-	"app_engine\x18\f \x01(\v2^.dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1.GcpRegionNetworkEndpointGroupAppEngineR\tappEngine:\xf3\x11\xbaH\xef\x11\x1a\xfd\x02\n" +
+	"app_engine\x18\f \x01(\v2^.dev.planton.gcp.gcpregionnetworkendpointgroup.v1alpha1.GcpRegionNetworkEndpointGroupAppEngineR\tappEngine\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xf3\x11\xbaH\xef\x11\x1a\xfd\x02\n" +
 	"%serverless_requires_exactly_one_block\x12da SERVERLESS network endpoint group requires exactly one of cloud_run, cloud_function, or app_engine\x1a\xed\x01(has(this.network_endpoint_type) && this.network_endpoint_type != '' ? this.network_endpoint_type : 'SERVERLESS') != 'SERVERLESS' || (has(this.cloud_run) ? 1 : 0) + (has(this.cloud_function) ? 1 : 0) + (has(this.app_engine) ? 1 : 0) == 1\x1a\xd7\x02\n" +
 	"%serverless_blocks_forbidden_otherwise\x12Zcloud_run, cloud_function, and app_engine apply only to SERVERLESS network endpoint groups\x1a\xd1\x01(has(this.network_endpoint_type) && this.network_endpoint_type != '' ? this.network_endpoint_type : 'SERVERLESS') == 'SERVERLESS' || (!has(this.cloud_run) && !has(this.cloud_function) && !has(this.app_engine))\x1a\xda\x02\n" +
 	"\x1bpsc_requires_target_service\x12\x88\x01a PRIVATE_SERVICE_CONNECT network endpoint group requires psc_target_service (the published service-attachment URL or Google API bundle)\x1a\xaf\x01(has(this.network_endpoint_type) && this.network_endpoint_type != '' ? this.network_endpoint_type : 'SERVERLESS') != 'PRIVATE_SERVICE_CONNECT' || this.psc_target_service != ''\x1a\xd9\x02\n" +

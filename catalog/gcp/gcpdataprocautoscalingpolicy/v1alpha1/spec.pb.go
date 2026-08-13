@@ -366,6 +366,12 @@ type GcpDataprocAutoscalingPolicySpec struct {
 	// The autoscaling algorithm: evaluation cadence + YARN scaling
 	// behavior.
 	BasicAlgorithm *GcpDataprocAutoscalingPolicyBasicAlgorithm `protobuf:"bytes,6,opt,name=basic_algorithm,json=basicAlgorithm,proto3" json:"basic_algorithm,omitempty"`
+	// Engine-side teardown behavior. "DELETE" (default) deletes the
+	// policy; "PREVENT" fails any plan that would delete it; "ABANDON"
+	// removes it from IaC management while leaving it in GCP. Note the API
+	// refuses to delete a policy while any cluster still references it,
+	// regardless of this setting.
+	DeletionPolicy string `protobuf:"bytes,7,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -442,6 +448,13 @@ func (x *GcpDataprocAutoscalingPolicySpec) GetBasicAlgorithm() *GcpDataprocAutos
 	return nil
 }
 
+func (x *GcpDataprocAutoscalingPolicySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpdataprocautoscalingpolicy_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpdataprocautoscalingpolicy_v1alpha1_spec_proto_rawDesc = "" +
@@ -471,7 +484,7 @@ const file_catalog_gcp_gcpdataprocautoscalingpolicy_v1alpha1_spec_proto_rawDesc 
 	"\x0fcooldown_period\x18\x01 \x01(\tB\x86\x01\xbaH\x82\x01\xba\x01\x7f\n" +
 	"\x16cooldown_period_format\x12<cooldown_period must be a duration in seconds (e.g., '120s')\x1a'this == '' || this.matches('^[0-9]+s$')R\x0ecooldownPeriod\x12\x86\x01\n" +
 	"\vyarn_config\x18\x02 \x01(\v2].dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicyYarnConfigB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"yarnConfig\"\xf8\x05\n" +
+	"yarnConfig\"\xb6\a\n" +
 	" GcpDataprocAutoscalingPolicySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Y\n" +
@@ -479,7 +492,9 @@ const file_catalog_gcp_gcpdataprocautoscalingpolicy_v1alpha1_spec_proto_rawDesc 
 	"\blocation\x18\x03 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-z]+-[a-z]+[0-9]+$R\blocation\x12\x8c\x01\n" +
 	"\rworker_config\x18\x04 \x01(\v2_.dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicyWorkerConfigB\x06\xbaH\x03\xc8\x01\x01R\fworkerConfig\x12\xa0\x01\n" +
 	"\x17secondary_worker_config\x18\x05 \x01(\v2h.dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicySecondaryWorkerConfigR\x15secondaryWorkerConfig\x12\x92\x01\n" +
-	"\x0fbasic_algorithm\x18\x06 \x01(\v2a.dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicyBasicAlgorithmB\x06\xbaH\x03\xc8\x01\x01R\x0ebasicAlgorithmB\xb4\x03\n" +
+	"\x0fbasic_algorithm\x18\x06 \x01(\v2a.dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicyBasicAlgorithmB\x06\xbaH\x03\xc8\x01\x01R\x0ebasicAlgorithm\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\a \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xb4\x03\n" +
 	"9com.dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1B\tSpecProtoP\x01Zsgithub.com/plantonhq/planton/catalog/gcp/gcpdataprocautoscalingpolicy/v1alpha1;gcpdataprocautoscalingpolicyv1alpha1\xa2\x02\x04DPGG\xaa\x025Dev.Planton.Gcp.Gcpdataprocautoscalingpolicy.V1alpha1\xca\x025Dev\\Planton\\Gcp\\Gcpdataprocautoscalingpolicy\\V1alpha1\xe2\x02ADev\\Planton\\Gcp\\Gcpdataprocautoscalingpolicy\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Gcp::Gcpdataprocautoscalingpolicy::V1alpha1b\x06proto3"
 
 var (

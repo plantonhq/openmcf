@@ -15,8 +15,6 @@ spec:
   # serverless NEG kind lands. IAP is offline-only: exercising it live needs
   # an OAuth client, an org-level artifact the test project does not own.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

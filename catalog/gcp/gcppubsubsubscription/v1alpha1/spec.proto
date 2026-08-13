@@ -232,19 +232,73 @@ message GcpPubSubSubscriptionMessageTransformJavascriptUdf {
   string code = 2 [(buf.validate.field).required = true];
 }
 
+// GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference
+// configures AI inference over arbitrary JSON payloads. The parameters
+// object is combined with each Pub/Sub message's data field to form the
+// inference request sent to the model.
+message GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference {
+  // A parameters object included in each inference request (e.g. model
+  // temperature or system-prompt knobs the endpoint understands). Combined
+  // with the message data to form the request body.
+  map<string, string> parameters = 1;
+}
+
+// GcpPubSubSubscriptionMessageTransformAiInference sends each message to a
+// Vertex AI model before delivery and replaces the message with the
+// inference response — enrich, classify, or redact messages for THIS
+// consumer with a model instead of hand-written JavaScript.
+message GcpPubSubSubscriptionMessageTransformAiInference {
+  // The Vertex AI model endpoint inference requests are sent to. Accepts a
+  // literal path — projects/{project}/locations/{location}/endpoints/{endpoint}
+  // for a dedicated endpoint, or
+  // projects/{project}/locations/{location}/publishers/{publisher}/models/{model}
+  // for a publisher model — or a reference to a GcpVertexAiEndpoint resource
+  // (its endpoint_id output is exactly the dedicated-endpoint form).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVertexAiEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint_id"
+  ];
+
+  // The service account used to make prediction requests against the
+  // endpoint (it needs Vertex AI invocation permission on the model).
+  // Accepts a literal email or a reference to a GcpServiceAccount resource.
+  // Defaults to the Pub/Sub service agent if not specified.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_account_email = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // Configuration for making inferences using arbitrary JSON payloads
+  // (rather than a model-specific request schema).
+  GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference unstructured_inference = 3;
+}
+
 // GcpPubSubSubscriptionMessageTransform is one step in the subscription's
 // ordered transform pipeline, applied to every message before delivery.
 // Use transforms to reshape payloads for one consumer without touching the
 // topic's canonical form (topic-level transforms change what ALL
 // subscriptions see; subscription-level transforms are per-consumer).
+//
+// Each step is exactly one transform: a JavaScript user-defined function
+// or an AI inference call (the Pub/Sub API models the step as a choice).
 message GcpPubSubSubscriptionMessageTransform {
+  option (buf.validate.message).cel = {
+    id: "exactly_one_transform"
+    expression: "(has(this.javascript_udf) ? 1 : 0) + (has(this.ai_inference) ? 1 : 0) == 1"
+    message: "each transform step is exactly one of: javascript_udf or ai_inference"
+  };
+
   // A JavaScript user-defined function transform.
-  GcpPubSubSubscriptionMessageTransformJavascriptUdf javascript_udf = 1 [(buf.validate.field).required = true];
+  GcpPubSubSubscriptionMessageTransformJavascriptUdf javascript_udf = 1;
 
   // When true, this transform is kept in the pipeline definition but not
   // applied — the staging lever for rolling a transform in or out without
   // losing its position in the ordered list.
   bool disabled = 2;
+
+  // An AI inference transform backed by a Vertex AI model endpoint.
+  GcpPubSubSubscriptionMessageTransformAiInference ai_inference = 3;
 }
 
 // GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription.
@@ -394,4 +448,25 @@ message GcpPubSubSubscriptionSpec {
   // Transforms run in list order; a transform returning null drops the
   // message.
   repeated GcpPubSubSubscriptionMessageTransform message_transforms = 17;
+
+  // Resource Manager tags bound to the subscription for org-policy and
+  // IAM conditions. Keys in the form "tagKeys/{id}", values
+  // "tagValues/{id}". Create-time only: changing them later replaces the
+  // subscription (its backlog is lost — plan tag changes deliberately).
+  map<string, string> resource_manager_tags = 18;
+
+  // Deletion policy for the subscription — what happens when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the subscription is deleted; its unacknowledged
+  //                backlog is lost immediately
+  //   "PREVENT" -- destroy FAILS; protects a consumer whose backlog
+  //                must never be silently dropped
+  //   "ABANDON" -- the subscription is removed from management but keeps
+  //                accumulating and serving messages in GCP
+  string deletion_policy = 19 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

@@ -1466,14 +1466,14 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cdefault_strategy_single_base\x12Ionly one default_capacity_provider_strategy entry may set a non-zero base\x1aIthis.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1\x1a\xc4\x01\n" +
 	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\x1a\xfd\x01\n" +
 	"0managed_instances_capacity_provider_names_unique\x12Cmanaged_instances_capacity_providers entries must have unique names\x1a\x83\x01this.managed_instances_capacity_providers.all(p, this.managed_instances_capacity_providers.filter(q, q.name == p.name).size() == 1)\x1a\xa0\x02\n" +
-	"+capacity_provider_names_unique_across_types\x12\x84\x01a managed_instances_capacity_providers entry may not reuse an ec2_capacity_providers name -- both lists share one provider namespace\x1ajthis.managed_instances_capacity_providers.all(p, !this.ec2_capacity_providers.exists(q, q.name == p.name))\"\xdc\b\n" +
+	"+capacity_provider_names_unique_across_types\x12\x84\x01a managed_instances_capacity_providers entry may not reuse an ec2_capacity_providers name -- both lists share one provider namespace\x1ajthis.managed_instances_capacity_providers.all(p, !this.ec2_capacity_providers.exists(q, q.name == p.name))\"\x80\b\n" +
 	" AwsEcsClusterEc2CapacityProvider\x124\n" +
 	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x9c\x01\n" +
 	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\b\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12l\n" +
 	"\x0fmanaged_scaling\x18\x03 \x01(\v2C.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScalingR\x0emanagedScaling\x12D\n" +
 	"\x1emanaged_termination_protection\x18\x04 \x01(\tR\x1cmanagedTerminationProtection\x12)\n" +
-	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\x83\x05\xbaH\xff\x04\x1a\xf6\x01\n" +
-	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a\x87\x01!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))\x1a\xdc\x01\n" +
+	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\xa7\x04\xbaH\xa3\x04\x1a\x9a\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a,!this.name.matches('^(?i)(aws|ecs|fargate)')\x1a\xdc\x01\n" +
 	"$managed_termination_protection_valid\x12Gmanaged_termination_protection must be 'ENABLED' or 'DISABLED' when set\x1akthis.managed_termination_protection == '' || this.managed_termination_protection in ['ENABLED', 'DISABLED']\x1a\xa4\x01\n" +
 	"\x16managed_draining_valid\x129managed_draining must be 'ENABLED' or 'DISABLED' when set\x1aOthis.managed_draining == '' || this.managed_draining in ['ENABLED', 'DISABLED']\"\x94\v\n" +
 	"\x1bAwsEcsClusterManagedScaling\x12\x16\n" +
@@ -1487,14 +1487,14 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0emin_step_range\x12>minimum_scaling_step_size must be between 1 and 10000 when set\x1awthis.minimum_scaling_step_size == 0 || (this.minimum_scaling_step_size >= 1 && this.minimum_scaling_step_size <= 10000)\x1a\xc9\x01\n" +
 	"\x0emax_step_range\x12>maximum_scaling_step_size must be between 1 and 10000 when set\x1awthis.maximum_scaling_step_size == 0 || (this.maximum_scaling_step_size >= 1 && this.maximum_scaling_step_size <= 10000)\x1a\xa4\x01\n" +
 	"\fwarmup_range\x12:instance_warmup_period_seconds must be between 0 and 10000\x1aXthis.instance_warmup_period_seconds >= 0 && this.instance_warmup_period_seconds <= 10000\x1a\x8d\x02\n" +
-	"\x12step_sizes_ordered\x12fmaximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set\x1a\x8e\x01this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size\"\xce\a\n" +
+	"\x12step_sizes_ordered\x12fmaximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set\x1a\x8e\x01this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size\"\xf2\x06\n" +
 	"-AwsEcsClusterManagedInstancesCapacityProvider\x124\n" +
 	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x92\x01\n" +
 	"\x17infrastructure_role_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x15infrastructureRoleArn\x12\x95\x01\n" +
 	"\x18instance_launch_template\x18\x03 \x01(\v2S.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplateB\x06\xbaH\x03\xc8\x01\x01R\x16instanceLaunchTemplate\x12M\n" +
 	"\x16scale_in_after_seconds\x18\x04 \x01(\x05B\x13\xbaH\x10\x1a\x0e\x18\x90\x1c(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01H\x00R\x13scaleInAfterSeconds\x88\x01\x01\x12%\n" +
-	"\x0epropagate_tags\x18\x05 \x01(\tR\rpropagateTags:\xa8\x03\xbaH\xa4\x03\x1a\xf6\x01\n" +
-	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a\x87\x01!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))\x1a\xa8\x01\n" +
+	"\x0epropagate_tags\x18\x05 \x01(\tR\rpropagateTags:\xcc\x02\xbaH\xc8\x02\x1a\x9a\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a,!this.name.matches('^(?i)(aws|ecs|fargate)')\x1a\xa8\x01\n" +
 	"\x14propagate_tags_valid\x12=propagate_tags must be 'CAPACITY_PROVIDER' or 'NONE' when set\x1aQthis.propagate_tags == '' || this.propagate_tags in ['CAPACITY_PROVIDER', 'NONE']B\x19\n" +
 	"\x17_scale_in_after_seconds\"\xd0\x0f\n" +
 	"+AwsEcsClusterManagedInstancesLaunchTemplate\x12\x9f\x01\n" +

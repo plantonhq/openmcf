@@ -1,4 +1,4 @@
-# Minimal AzureVirtualNetworkGateway scenario: a route-based VpnGw1
+# Minimal AzureVirtualNetworkGateway scenario: a route-based VpnGw1AZ
 # site-to-site gateway with BGP and a composed NAT rule -- the flagship
 # proof that the gateway, its GatewaySubnet ARM-name contract, its
 # exclusive public IP binding, and the child NAT rule (surfaced in the
@@ -8,7 +8,8 @@
 # and deletion 10-20 -- the profile's timeout budgets a full cycle plus
 # fixtures. The chain: fixture resource group -> fixture VNet -> the
 # gateway-shaped subnet instance (ARM name exactly "GatewaySubnet") ->
-# the dedicated no-zone public IP -> this gateway.
+# the dedicated zone-redundant public IP (AZ gateway SKUs require
+# zones on it) -> this gateway.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkGateway
 metadata:
@@ -29,7 +30,10 @@ spec:
     valueFrom:
       name: planton-oss-e2e-azure-fixture-rg
   name: planton-oss-e2e-vng-smoke
-  sku: VPN_GW_1
+  # VPN_GW_1_AZ: Azure retired new non-AZ VpnGw creates
+  # (NonAzSkusNotAllowedForVPNGateway, live-confirmed 2026-08-11); the AZ
+  # SKU deploys in every region -- regional where zones are absent.
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     - subnetId:
         valueFrom:

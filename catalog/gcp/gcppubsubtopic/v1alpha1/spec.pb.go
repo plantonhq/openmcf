@@ -98,9 +98,24 @@ type GcpPubSubTopicSchemaSettings struct {
 	Schema *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=schema,proto3" json:"schema,omitempty"`
 	// The encoding of messages validated against the schema.
 	// Valid values: "JSON" or "BINARY".
-	Encoding      string `protobuf:"bytes,2,opt,name=encoding,proto3" json:"encoding,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Encoding string `protobuf:"bytes,2,opt,name=encoding,proto3" json:"encoding,omitempty"`
+	// The minimum (inclusive) schema revision accepted for validating
+	// messages. When empty, any revision created before last_revision_id
+	// (or any revision at all, if that is also empty) is accepted.
+	// Accepts a literal revision ID or a reference to a GcpPubSubSchema
+	// resource — its revision_id output is the revision the schema's
+	// current definition committed, so referencing it pins the topic to
+	// the contract this deploy produced.
+	FirstRevisionId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=first_revision_id,json=firstRevisionId,proto3" json:"first_revision_id,omitempty"`
+	// The maximum (inclusive) schema revision accepted for validating
+	// messages. When empty, any revision created after first_revision_id
+	// (or any revision at all, if that is also empty) is accepted. Pinning
+	// BOTH bounds to the same revision freezes the contract exactly.
+	// Accepts a literal revision ID or a reference to a GcpPubSubSchema
+	// resource (its revision_id output).
+	LastRevisionId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=last_revision_id,json=lastRevisionId,proto3" json:"last_revision_id,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpPubSubTopicSchemaSettings) Reset() {
@@ -145,6 +160,20 @@ func (x *GcpPubSubTopicSchemaSettings) GetEncoding() string {
 		return x.Encoding
 	}
 	return ""
+}
+
+func (x *GcpPubSubTopicSchemaSettings) GetFirstRevisionId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FirstRevisionId
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicSchemaSettings) GetLastRevisionId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.LastRevisionId
+	}
+	return nil
 }
 
 // GcpPubSubTopicIngestionAwsKinesis defines settings for ingesting data from
@@ -923,10 +952,140 @@ func (x *GcpPubSubTopicMessageTransformJavascriptUdf) GetCode() string {
 	return ""
 }
 
+// GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference configures
+// AI inference over arbitrary JSON payloads. The parameters object is
+// combined with each Pub/Sub message's data field to form the inference
+// request sent to the model.
+type GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A parameters object included in each inference request (e.g. model
+	// temperature or system-prompt knobs the endpoint understands). Combined
+	// with the message data to form the request body.
+	Parameters    map[string]string `protobuf:"bytes,1,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) Reset() {
+	*x = GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference{}
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) ProtoMessage() {}
+
+func (x *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference.ProtoReflect.Descriptor instead.
+func (*GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference) GetParameters() map[string]string {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+// GcpPubSubTopicMessageTransformAiInference sends each published message to
+// a Vertex AI model and replaces the message with the inference response —
+// enrich, classify, or redact messages with a model instead of hand-written
+// JavaScript.
+type GcpPubSubTopicMessageTransformAiInference struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Vertex AI model endpoint inference requests are sent to. Accepts a
+	// literal path — projects/{project}/locations/{location}/endpoints/{endpoint}
+	// for a dedicated endpoint, or
+	// projects/{project}/locations/{location}/publishers/{publisher}/models/{model}
+	// for a publisher model — or a reference to a GcpVertexAiEndpoint resource
+	// (its endpoint_id output is exactly the dedicated-endpoint form).
+	Endpoint *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	// The service account used to make prediction requests against the
+	// endpoint (it needs Vertex AI invocation permission on the model).
+	// Accepts a literal email or a reference to a GcpServiceAccount resource.
+	// Defaults to the Pub/Sub service agent if not specified.
+	ServiceAccountEmail *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=service_account_email,json=serviceAccountEmail,proto3" json:"service_account_email,omitempty"`
+	// Configuration for making inferences using arbitrary JSON payloads
+	// (rather than a model-specific request schema).
+	UnstructuredInference *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference `protobuf:"bytes,3,opt,name=unstructured_inference,json=unstructuredInference,proto3" json:"unstructured_inference,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) Reset() {
+	*x = GcpPubSubTopicMessageTransformAiInference{}
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPubSubTopicMessageTransformAiInference) ProtoMessage() {}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPubSubTopicMessageTransformAiInference.ProtoReflect.Descriptor instead.
+func (*GcpPubSubTopicMessageTransformAiInference) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) GetEndpoint() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Endpoint
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) GetServiceAccountEmail() *v1.StringValueOrRef {
+	if x != nil {
+		return x.ServiceAccountEmail
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicMessageTransformAiInference) GetUnstructuredInference() *GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference {
+	if x != nil {
+		return x.UnstructuredInference
+	}
+	return nil
+}
+
 // GcpPubSubTopicMessageTransform is one step in the topic's ordered
 // transform pipeline, applied to every published message before it is
 // stored. Use transforms to redact fields, normalize payloads, or filter
 // messages at the topic boundary instead of in every subscriber.
+//
+// Each step is exactly one transform: a JavaScript user-defined function
+// or an AI inference call (the Pub/Sub API models the step as a choice).
 type GcpPubSubTopicMessageTransform struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// A JavaScript user-defined function transform.
@@ -934,14 +1093,16 @@ type GcpPubSubTopicMessageTransform struct {
 	// When true, this transform is kept in the pipeline definition but not
 	// applied — the staging lever for rolling a transform in or out without
 	// losing its position in the ordered list.
-	Disabled      bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	Disabled bool `protobuf:"varint,2,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// An AI inference transform backed by a Vertex AI model endpoint.
+	AiInference   *GcpPubSubTopicMessageTransformAiInference `protobuf:"bytes,3,opt,name=ai_inference,json=aiInference,proto3" json:"ai_inference,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpPubSubTopicMessageTransform) Reset() {
 	*x = GcpPubSubTopicMessageTransform{}
-	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -953,7 +1114,7 @@ func (x *GcpPubSubTopicMessageTransform) String() string {
 func (*GcpPubSubTopicMessageTransform) ProtoMessage() {}
 
 func (x *GcpPubSubTopicMessageTransform) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -966,7 +1127,7 @@ func (x *GcpPubSubTopicMessageTransform) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpPubSubTopicMessageTransform.ProtoReflect.Descriptor instead.
 func (*GcpPubSubTopicMessageTransform) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *GcpPubSubTopicMessageTransform) GetJavascriptUdf() *GcpPubSubTopicMessageTransformJavascriptUdf {
@@ -981,6 +1142,13 @@ func (x *GcpPubSubTopicMessageTransform) GetDisabled() bool {
 		return x.Disabled
 	}
 	return false
+}
+
+func (x *GcpPubSubTopicMessageTransform) GetAiInference() *GcpPubSubTopicMessageTransformAiInference {
+	if x != nil {
+		return x.AiInference
+	}
+	return nil
 }
 
 // GcpPubSubTopicSpec defines the configuration for a GCP Pub/Sub topic.
@@ -1047,13 +1215,29 @@ type GcpPubSubTopicSpec struct {
 	// boundary instead of in every subscriber. Transforms run in list
 	// order; a transform returning null drops the message.
 	MessageTransforms []*GcpPubSubTopicMessageTransform `protobuf:"bytes,9,rep,name=message_transforms,json=messageTransforms,proto3" json:"message_transforms,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Resource Manager tags bound to the topic for org-policy and IAM
+	// conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+	// Create-time only: changing them later replaces the topic (and detaches
+	// every subscription with it — plan tag changes deliberately).
+	ResourceManagerTags map[string]string `protobuf:"bytes,10,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the topic — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the topic is deleted. Its subscriptions survive but
+	//	             receive no new messages and drain to empty
+	//	"PREVENT" -- destroy FAILS; protects the topic an event pipeline
+	//	             publishes into
+	//	"ABANDON" -- the topic is removed from management but left serving
+	//	             in GCP (publishers and subscriptions keep working)
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpPubSubTopicSpec) Reset() {
 	*x = GcpPubSubTopicSpec{}
-	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1065,7 +1249,7 @@ func (x *GcpPubSubTopicSpec) String() string {
 func (*GcpPubSubTopicSpec) ProtoMessage() {}
 
 func (x *GcpPubSubTopicSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1078,7 +1262,7 @@ func (x *GcpPubSubTopicSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpPubSubTopicSpec.ProtoReflect.Descriptor instead.
 func (*GcpPubSubTopicSpec) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *GcpPubSubTopicSpec) GetProjectId() *v1.StringValueOrRef {
@@ -1144,6 +1328,20 @@ func (x *GcpPubSubTopicSpec) GetMessageTransforms() []*GcpPubSubTopicMessageTran
 	return nil
 }
 
+func (x *GcpPubSubTopicSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpPubSubTopicSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc = "" +
@@ -1151,11 +1349,13 @@ const file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc = "" +
 	".catalog/gcp/gcppubsubtopic/v1alpha1/spec.proto\x12'dev.planton.gcp.gcppubsubtopic.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9c\x01\n" +
 	"\"GcpPubSubTopicMessageStoragePolicy\x12H\n" +
 	"\x1ballowed_persistence_regions\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x19allowedPersistenceRegions\x12,\n" +
-	"\x12enforce_in_transit\x18\x02 \x01(\bR\x10enforceInTransit\"\x92\x02\n" +
+	"\x12enforce_in_transit\x18\x02 \x01(\bR\x10enforceInTransit\"\x9c\x04\n" +
 	"\x1cGcpPubSubTopicSchemaSettings\x12s\n" +
 	"\x06schema\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\x17\x92\xd4a\x18status.outputs.schema_idR\x06schema\x12}\n" +
 	"\bencoding\x18\x02 \x01(\tBa\xbaH^\xba\x01[\n" +
-	"\x0evalid_encoding\x12\x1fencoding must be JSON or BINARY\x1a(this == '' || this in ['JSON', 'BINARY']R\bencoding\"\xa9\x02\n" +
+	"\x0evalid_encoding\x12\x1fencoding must be JSON or BINARY\x1a(this == '' || this in ['JSON', 'BINARY']R\bencoding\x12\x83\x01\n" +
+	"\x11first_revision_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf8\x17\x92\xd4a\x1astatus.outputs.revision_idR\x0ffirstRevisionId\x12\x81\x01\n" +
+	"\x10last_revision_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB#\x88\xd4a\xf8\x17\x92\xd4a\x1astatus.outputs.revision_idR\x0elastRevisionId\"\xa9\x02\n" +
 	"!GcpPubSubTopicIngestionAwsKinesis\x12%\n" +
 	"\n" +
 	"stream_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tstreamArn\x12)\n" +
@@ -1213,10 +1413,23 @@ const file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16platform_logs_settings\x18\x06 \x01(\v2T.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionPlatformLogsSettingsR\x14platformLogsSettings\"v\n" +
 	"+GcpPubSubTopicMessageTransformJavascriptUdf\x12+\n" +
 	"\rfunction_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\ffunctionName\x12\x1a\n" +
-	"\x04code\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\"\xc2\x01\n" +
-	"\x1eGcpPubSubTopicMessageTransform\x12\x83\x01\n" +
-	"\x0ejavascript_udf\x18\x01 \x01(\v2T.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdfB\x06\xbaH\x03\xc8\x01\x01R\rjavascriptUdf\x12\x1a\n" +
-	"\bdisabled\x18\x02 \x01(\bR\bdisabled\"\xc0\t\n" +
+	"\x04code\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04code\"\x99\x02\n" +
+	">GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference\x12\x97\x01\n" +
+	"\n" +
+	"parameters\x18\x01 \x03(\v2w.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference.ParametersEntryR\n" +
+	"parameters\x1a=\n" +
+	"\x0fParametersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xcf\x03\n" +
+	")GcpPubSubTopicMessageTransformAiInference\x12y\n" +
+	"\bendpoint\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xff\x17\x92\xd4a\x1astatus.outputs.endpoint_idR\bendpoint\x12\x85\x01\n" +
+	"\x15service_account_email\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12\x9e\x01\n" +
+	"\x16unstructured_inference\x18\x03 \x01(\v2g.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInferenceR\x15unstructuredInference\"\xe4\x03\n" +
+	"\x1eGcpPubSubTopicMessageTransform\x12{\n" +
+	"\x0ejavascript_udf\x18\x01 \x01(\v2T.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdfR\rjavascriptUdf\x12\x1a\n" +
+	"\bdisabled\x18\x02 \x01(\bR\bdisabled\x12u\n" +
+	"\fai_inference\x18\x03 \x01(\v2R.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceR\vaiInference:\xb1\x01\xbaH\xad\x01\x1a\xaa\x01\n" +
+	"\x15exactly_one_transform\x12Eeach transform step is exactly one of: javascript_udf or ai_inference\x1aJ(has(this.javascript_udf) ? 1 : 0) + (has(this.ai_inference) ? 1 : 0) == 1\"\xd1\f\n" +
 	"\x12GcpPubSubTopicSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\xdc\x01\n" +
@@ -1230,8 +1443,15 @@ const file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fschema_settings\x18\x06 \x01(\v2E.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettingsR\x0eschemaSettings\x12\x97\x01\n" +
 	"\x1eingestion_data_source_settings\x18\a \x01(\v2R.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettingsR\x1bingestionDataSourceSettings\x12_\n" +
 	"\x06labels\x18\b \x03(\v2G.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.LabelsEntryR\x06labels\x12v\n" +
-	"\x12message_transforms\x18\t \x03(\v2G.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformR\x11messageTransforms\x1a9\n" +
+	"\x12message_transforms\x18\t \x03(\v2G.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformR\x11messageTransforms\x12\x88\x01\n" +
+	"\x15resource_manager_tags\x18\n" +
+	" \x03(\v2T.dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xd2\x02\n" +
 	"+com.dev.planton.gcp.gcppubsubtopic.v1alpha1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/catalog/gcp/gcppubsubtopic/v1alpha1;gcppubsubtopicv1alpha1\xa2\x02\x04DPGG\xaa\x02'Dev.Planton.Gcp.Gcppubsubtopic.V1alpha1\xca\x02'Dev\\Planton\\Gcp\\Gcppubsubtopic\\V1alpha1\xe2\x023Dev\\Planton\\Gcp\\Gcppubsubtopic\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Gcp::Gcppubsubtopic::V1alpha1b\x06proto3"
@@ -1248,55 +1468,67 @@ func file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpPubSubTopicMessageStoragePolicy)(nil),                  // 0: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageStoragePolicy
-	(*GcpPubSubTopicSchemaSettings)(nil),                        // 1: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings
-	(*GcpPubSubTopicIngestionAwsKinesis)(nil),                   // 2: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis
-	(*GcpPubSubTopicIngestionAwsMsk)(nil),                       // 3: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk
-	(*GcpPubSubTopicIngestionAzureEventHubs)(nil),               // 4: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs
-	(*GcpPubSubTopicIngestionCloudStorageTextFormat)(nil),       // 5: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageTextFormat
-	(*GcpPubSubTopicIngestionCloudStorageAvroFormat)(nil),       // 6: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageAvroFormat
-	(*GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat)(nil), // 7: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
-	(*GcpPubSubTopicIngestionCloudStorage)(nil),                 // 8: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage
-	(*GcpPubSubTopicIngestionConfluentCloud)(nil),               // 9: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud
-	(*GcpPubSubTopicIngestionPlatformLogsSettings)(nil),         // 10: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionPlatformLogsSettings
-	(*GcpPubSubTopicIngestionDataSourceSettings)(nil),           // 11: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings
-	(*GcpPubSubTopicMessageTransformJavascriptUdf)(nil),         // 12: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdf
-	(*GcpPubSubTopicMessageTransform)(nil),                      // 13: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform
-	(*GcpPubSubTopicSpec)(nil),                                  // 14: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec
-	nil,                                                         // 15: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil),                                 // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpPubSubTopicMessageStoragePolicy)(nil),                             // 0: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageStoragePolicy
+	(*GcpPubSubTopicSchemaSettings)(nil),                                   // 1: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings
+	(*GcpPubSubTopicIngestionAwsKinesis)(nil),                              // 2: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis
+	(*GcpPubSubTopicIngestionAwsMsk)(nil),                                  // 3: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk
+	(*GcpPubSubTopicIngestionAzureEventHubs)(nil),                          // 4: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs
+	(*GcpPubSubTopicIngestionCloudStorageTextFormat)(nil),                  // 5: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageTextFormat
+	(*GcpPubSubTopicIngestionCloudStorageAvroFormat)(nil),                  // 6: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageAvroFormat
+	(*GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat)(nil),            // 7: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
+	(*GcpPubSubTopicIngestionCloudStorage)(nil),                            // 8: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage
+	(*GcpPubSubTopicIngestionConfluentCloud)(nil),                          // 9: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud
+	(*GcpPubSubTopicIngestionPlatformLogsSettings)(nil),                    // 10: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionPlatformLogsSettings
+	(*GcpPubSubTopicIngestionDataSourceSettings)(nil),                      // 11: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings
+	(*GcpPubSubTopicMessageTransformJavascriptUdf)(nil),                    // 12: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdf
+	(*GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference)(nil), // 13: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference
+	(*GcpPubSubTopicMessageTransformAiInference)(nil),                      // 14: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInference
+	(*GcpPubSubTopicMessageTransform)(nil),                                 // 15: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform
+	(*GcpPubSubTopicSpec)(nil),                                             // 16: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec
+	nil,                                                                    // 17: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference.ParametersEntry
+	nil,                                                                    // 18: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.LabelsEntry
+	nil,                                                                    // 19: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),                                            // 20: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_depIdxs = []int32{
-	16, // 0: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings.schema:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 1: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 2: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 3: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 4: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6,  // 5: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.avro_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageAvroFormat
-	7,  // 6: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.pubsub_avro_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
-	5,  // 7: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.text_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageTextFormat
-	16, // 8: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 9: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.aws_kinesis:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis
-	3,  // 10: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.aws_msk:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk
-	4,  // 11: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.azure_event_hubs:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs
-	8,  // 12: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.cloud_storage:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage
-	9,  // 13: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.confluent_cloud:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud
-	10, // 14: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.platform_logs_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionPlatformLogsSettings
-	12, // 15: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform.javascript_udf:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdf
-	16, // 16: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 17: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	0,  // 18: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.message_storage_policy:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageStoragePolicy
-	1,  // 19: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.schema_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings
-	11, // 20: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.ingestion_data_source_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings
-	15, // 21: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.labels:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.LabelsEntry
-	13, // 22: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.message_transforms:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	20, // 0: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings.schema:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 1: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings.first_revision_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 2: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings.last_revision_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 3: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 4: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 5: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 6: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 7: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.avro_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageAvroFormat
+	7,  // 8: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.pubsub_avro_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStoragePubsubAvroFormat
+	5,  // 9: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage.text_format:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorageTextFormat
+	20, // 10: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud.gcp_service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 11: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.aws_kinesis:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsKinesis
+	3,  // 12: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.aws_msk:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAwsMsk
+	4,  // 13: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.azure_event_hubs:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionAzureEventHubs
+	8,  // 14: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.cloud_storage:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionCloudStorage
+	9,  // 15: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.confluent_cloud:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionConfluentCloud
+	10, // 16: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings.platform_logs_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionPlatformLogsSettings
+	17, // 17: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference.parameters:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference.ParametersEntry
+	20, // 18: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInference.endpoint:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 19: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInference.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 20: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInference.unstructured_inference:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInferenceUnstructuredInference
+	12, // 21: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform.javascript_udf:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformJavascriptUdf
+	14, // 22: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform.ai_inference:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransformAiInference
+	20, // 23: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 24: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	0,  // 25: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.message_storage_policy:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageStoragePolicy
+	1,  // 26: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.schema_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSchemaSettings
+	11, // 27: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.ingestion_data_source_settings:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicIngestionDataSourceSettings
+	18, // 28: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.labels:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.LabelsEntry
+	15, // 29: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.message_transforms:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicMessageTransform
+	19, // 30: dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcppubsubtopic.v1alpha1.GcpPubSubTopicSpec.ResourceManagerTagsEntry
+	31, // [31:31] is the sub-list for method output_type
+	31, // [31:31] is the sub-list for method input_type
+	31, // [31:31] is the sub-list for extension type_name
+	31, // [31:31] is the sub-list for extension extendee
+	0,  // [0:31] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_init() }
@@ -1310,7 +1542,7 @@ func file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcppubsubtopic_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,66 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIamOauthClient
+metadata:
+  name: my-sample-oauth-client
+spec:
+  # GCP project that owns the OAuth client.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # "global" is the documented home for workforce OAuth clients and the
+  # default. Immutable.
+  location: global
+
+  # The client's resource ID (the last segment of its name). Defaults to
+  # metadata.name when omitted. Immutable: changing it destroys and
+  # recreates the client — consumers must re-register.
+  oauthClientId: my-sample-oauth-client
+
+  # Shown in consoles and consent surfaces.
+  displayName: Sample workforce OAuth client
+
+  # What this client is for — the operator-facing record.
+  description: Canonical full-surface example of a workforce OAuth client
+
+  # When true, the client stops accepting new authorizations without
+  # being deleted — the reversible kill switch. Default false.
+  disabled: false
+
+  # PUBLIC_CLIENT (mobile/SPA; cannot hold secrets) or
+  # CONFIDENTIAL_CLIENT (server-side; manage secrets via credentials).
+  # Immutable.
+  clientType: CONFIDENTIAL_CLIENT
+
+  # Grant types the client may use — Google's API accepts exactly these
+  # two values (a closed enum in the IAM REST API).
+  allowedGrantTypes:
+    - AUTHORIZATION_CODE_GRANT
+    - REFRESH_TOKEN_GRANT
+
+  # OAuth scopes the client may request during flows.
+  allowedScopes:
+    - https://www.googleapis.com/auth/cloud-platform
+    - openid
+
+  # Redirect URIs allowed when authorization completes. Each entry may
+  # also be a valueFrom reference to another resource's URL output (e.g.
+  # a GcpCloudRun url) — referencing kills the drift between the deployed
+  # app's address and the client's registration.
+  allowedRedirectUris:
+    - value: https://app.example.com/callback
+
+  # Managed client secrets (CONFIDENTIAL_CLIENT only). Each entry creates
+  # one credential whose secret GCP generates server-side — the FIRST
+  # credential's secret is the client_secret output. GCP refuses to
+  # delete an ENABLED credential: to remove an entry, set disabled: true
+  # in one apply, then delete the entry in the next.
+  credentials:
+    - credentialId: primary
+      displayName: Primary application secret
+      disabled: false
+
+  # One switch governs the client AND its credentials:
+  # DELETE (default), PREVENT, or ABANDON. Deleted clients are
+  # soft-deleted ~30 days; the client ID stays reserved.
+  deletionPolicy: DELETE

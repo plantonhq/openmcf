@@ -244,4 +244,97 @@ var _ = ginkgo.Describe("GcpSubnetworkSpec", func() {
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept reserved_internal_range in place of ip_cidr_range", func() {
+		target := minimal()
+		target.Spec.IpCidrRange = ""
+		target.Spec.ReservedInternalRange = "networkconnectivity.googleapis.com/projects/p/locations/global/internalRanges/app-range"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject both ip_cidr_range and reserved_internal_range", func() {
+		target := minimal()
+		target.Spec.ReservedInternalRange = "networkconnectivity.googleapis.com/projects/p/locations/global/internalRanges/app-range"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "at most one")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject a secondary range with both CIDR sources", func() {
+		target := minimal()
+		target.Spec.SecondaryIpRanges = []*GcpSubnetworkSecondaryRange{{
+			RangeName:             "pods",
+			IpCidrRange:           "10.16.0.0/14",
+			ReservedInternalRange: "networkconnectivity.googleapis.com/projects/p/locations/global/internalRanges/pods-range",
+		}}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "exactly one CIDR source")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should accept a secondary range backed by a reserved internal range", func() {
+		target := minimal()
+		target.Spec.SecondaryIpRanges = []*GcpSubnetworkSecondaryRange{{
+			RangeName:             "pods",
+			ReservedInternalRange: "networkconnectivity.googleapis.com/projects/p/locations/global/internalRanges/pods-range",
+		}}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject a secondary range with no CIDR source", func() {
+		target := minimal()
+		target.Spec.SecondaryIpRanges = []*GcpSubnetworkSecondaryRange{{
+			RangeName: "pods",
+		}}
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject internal_ipv6_prefix without INTERNAL access", func() {
+		target := minimal()
+		target.Spec.InternalIpv6Prefix = "fd20:1:2:3::/64"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "INTERNAL")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should accept internal_ipv6_prefix on an INTERNAL dual-stack subnet", func() {
+		target := minimal()
+		st := "IPV4_IPV6"
+		target.Spec.StackType = &st
+		target.Spec.Ipv6AccessType = "INTERNAL"
+		target.Spec.InternalIpv6Prefix = "fd20:1:2:3::/64"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject ip_collection on an IPv4-only subnet", func() {
+		target := minimal()
+		target.Spec.IpCollection = "projects/p/regions/us-central1/publicDelegatedPrefixes/sub-pdp"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "BYOIP")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject an unknown resolve_subnet_mask", func() {
+		target := minimal()
+		target.Spec.ResolveSubnetMask = "ARP_EVERYTHING"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "resolve_subnet_mask")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should accept every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			target := minimal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "FORCE"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

@@ -49,3 +49,5 @@ spec:
     maxDoublings: 4
   stackdriverLoggingConfig:
     samplingRatio: 1.0
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

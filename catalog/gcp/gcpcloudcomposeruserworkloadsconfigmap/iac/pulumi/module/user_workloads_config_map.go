@@ -35,6 +35,13 @@ func userWorkloadsConfigMap(ctx *pulumi.Context, locals *Locals, gcpProvider *gc
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 
+	// Client-side destroy behavior: DELETE (default), PREVENT (destroy
+	// fails — protects configuration live pipelines depend on), or
+	// ABANDON (drop from state, keep the ConfigMap in the cluster).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdConfigMap, err := composer.NewUserWorkloadsConfigMap(ctx, "user-workloads-config-map", args,
 		pulumi.Provider(gcpProvider))
 	if err != nil {

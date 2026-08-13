@@ -1,0 +1,24 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurebastionhost
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plans green for the Standard and
+  # Developer shapes); live dual-engine proof has not yet run. ONE
+  # scenario runs: `minimal` (BASIC on the fixture AzureBastionSubnet +
+  # the lane's own fixture public IP -- Basic is GA everywhere and
+  # proves the dedicated-infrastructure mainline every paid tier
+  # shares). Creates are Bastion's ~10-minute class and the host bills
+  # ~$0.19/h while up -- the lane's cost is cents. OFFLINE-ONLY with
+  # reasons: the DEVELOPER shape (shared infrastructure in a LIMITED
+  # region set -- a live lane would pin the suite to Developer-enabled
+  # regions; unblock: a region-matrix lane class); the Standard/Premium
+  # feature knobs and zones (pure ARM property writes on the exact code
+  # path the Basic lane proves -- plan-verified with rendered-value
+  # inspection); Premium private-only (omitting the public IP flips one
+  # ARM property; same create path).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 60

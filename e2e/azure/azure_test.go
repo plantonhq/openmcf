@@ -187,6 +187,51 @@ func TestAzurePublicIpPrefix_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurepublicipprefix", "terraform")
 }
 
+// --- Azure Bastion Host (composed: fixture AzureBastionSubnet + the lane's own fixture public IP -> Basic host; ~10-minute create class, ~$0.19/h while up) ---
+
+func TestAzureBastionHost_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebastionhost", "pulumi")
+}
+func TestAzureBastionHost_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebastionhost", "terraform")
+}
+
+// --- Azure Network Watcher Flow Log (composed: fixture VNet's flows -> fixture storage account + Traffic Analytics on the fixture workspace; attaches to the AUTO-CREATED regional Network Watcher) ---
+
+func TestAzureNetworkWatcherFlowLog_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkwatcherflowlog", "pulumi")
+}
+func TestAzureNetworkWatcherFlowLog_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurenetworkwatcherflowlog", "terraform")
+}
+
+// --- Azure DNS Private Resolver (composed: fixture VNet + two delegated fixture subnets -> one inbound + one outbound endpoint; ONE resolver per network, so this family's lanes never run in parallel with each other) ---
+
+func TestAzurePrivateDnsResolver_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolver", "pulumi")
+}
+func TestAzurePrivateDnsResolver_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolver", "terraform")
+}
+
+// --- Azure DNS Forwarding Ruleset (composed: one rule -> RFC-5737 target, bound to the fixture resolver's outbound endpoint; chains the fixture resolver in the lane) ---
+
+func TestAzurePrivateDnsResolverForwardingRuleset_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolverforwardingruleset", "pulumi")
+}
+func TestAzurePrivateDnsResolverForwardingRuleset_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolverforwardingruleset", "terraform")
+}
+
+// --- Azure DNS Resolver Virtual Network Link (composed: links the fixture ruleset to the fixture network -- the hub-link pattern; chains fixture resolver -> fixture ruleset in the lane) ---
+
+func TestAzurePrivateDnsResolverVirtualNetworkLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "pulumi")
+}
+func TestAzurePrivateDnsResolverVirtualNetworkLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "terraform")
+}
+
 // --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
 
 func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {
@@ -286,6 +331,339 @@ func TestAzureVirtualNetworkGatewayConnection_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurevirtualnetworkgatewayconnection", "terraform")
 }
 
+// --- Azure Private Link Service (composed: policies-disabled subnet fixture + annotation-declared fixture load balancer -> the provider side of Private Link; ~1-2 min) ---
+
+func TestAzurePrivateLinkService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatelinkservice", "pulumi")
+}
+func TestAzurePrivateLinkService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatelinkservice", "terraform")
+}
+
+// --- Azure ExpressRoute Circuit (fixture RG -> a NotProvisioned 50 Mbps circuit + one authorization; minutes, bills from creation) ---
+
+func TestAzureExpressRouteCircuit_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuit", "pulumi")
+}
+func TestAzureExpressRouteCircuit_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuit", "terraform")
+}
+
+// --- Azure ExpressRoute Circuit Peering (composed: fixture circuit -> private peering; ARM gates peering config on provider provisioning -- see the scenario header) ---
+
+func TestAzureExpressRouteCircuitPeering_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuitpeering", "pulumi")
+}
+func TestAzureExpressRouteCircuitPeering_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutecircuitpeering", "terraform")
+}
+
+// --- Azure ExpressRoute Port (fixture RG -> a 10 Gbps Dot1Q port + one authorization; bills its full monthly rate from creation -- pro-rated cents-to-dollars for a lane-length life -- and the create may reject on subscriptions not enrolled for ExpressRoute Direct: that outcome IS the lane's proof point, never a module defect) ---
+
+func TestAzureExpressRoutePort_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressrouteport", "pulumi")
+}
+func TestAzureExpressRoutePort_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressrouteport", "terraform")
+}
+
+// --- Azure Virtual WAN (fixture RG -> a free Standard WAN policy object; minutes) ---
+
+func TestAzureVirtualWan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualwan", "pulumi")
+}
+func TestAzureVirtualWan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualwan", "terraform")
+}
+
+// --- Azure Virtual Hub (composed: fixture WAN -> a Standard hub in eastus2 + one route table + one route map; the hub router provisions in 15-30 minutes and bills from creation; the scenario region deliberately differs from the fixture hub's eastus -- ARM allows one hub per region per WAN) ---
+
+func TestAzureVirtualHub_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhub", "pulumi")
+}
+func TestAzureVirtualHub_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhub", "terraform")
+}
+
+// --- Azure Virtual Hub Connection (composed: fixture hub + fixture VNet -> the attachment with a propagation-only routing block; the chain pays a full fixture-hub cycle inside the lane) ---
+
+func TestAzureVirtualHubConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhubconnection", "pulumi")
+}
+func TestAzureVirtualHubConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevirtualhubconnection", "terraform")
+}
+
+// --- Azure ExpressRoute Gateway (composed: fixture hub -> a one-scale-unit gateway, NO connections -- ARM accepts a connection only against a provider-PROVISIONED circuit peering, the same recorded boundary as the peering's own lane; ~30-minute create billing ~$0.42/hr) ---
+
+func TestAzureExpressRouteGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutegateway", "pulumi")
+}
+func TestAzureExpressRouteGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureexpressroutegateway", "terraform")
+}
+
+// --- Azure VPN Site (fixture WAN -> a free two-link branch description; seconds -- the flagship is the name-keyed link_ids output connections pin to) ---
+
+func TestAzureVpnSite_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnsite", "pulumi")
+}
+func TestAzureVpnSite_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnsite", "terraform")
+}
+
+// --- Azure VPN Gateway (composed: fixture hub -> a one-scale-unit gateway + one NAT rule; 30-45 minute create billing ~$0.36/hr per scale unit, 10-20 minute delete -- ARM allows one VPN gateway per hub) ---
+
+func TestAzureVpnGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngateway", "pulumi")
+}
+func TestAzureVpnGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngateway", "terraform")
+}
+
+// --- Azure VPN Gateway Connection (composed: fixture gateway + fixture site -> one tunnel pinned to the site's primary link; the chain pays the whole VPN family -- hub AND gateway cycles -- and the tunnel provisions but never reaches Connected: no real branch device exists behind the fixture site's TEST-NET endpoint) ---
+
+func TestAzureVpnGatewayConnection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngatewayconnection", "pulumi")
+}
+func TestAzureVpnGatewayConnection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpngatewayconnection", "terraform")
+}
+
+// --- Azure VPN Server Configuration (fixture RG -> a free certificate-auth policy + one composed policy group; seconds -- the flagship is the name-keyed policy_group_ids output) ---
+
+func TestAzureVpnServerConfiguration_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnserverconfiguration", "pulumi")
+}
+func TestAzureVpnServerConfiguration_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurevpnserverconfiguration", "terraform")
+}
+
+// --- Azure Point-to-Site VPN Gateway (composed: fixture hub + fixture server configuration -> a one-scale-unit gateway with one client pool; 30-45 minute create billing from creation -- no client ever connects: the fixture root's private key does not exist) ---
+
+func TestAzurePointToSiteVpnGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepointtositevpngateway", "pulumi")
+}
+func TestAzurePointToSiteVpnGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurepointtositevpngateway", "terraform")
+}
+
+// --- Azure Cognitive Account (fixture RG -> an OpenAI-kind S0 account with composed responsible-AI children; 1-3 minutes, no idle cost -- deletion soft-deletes and the module purges the ghost) ---
+
+func TestAzureCognitiveAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccount", "pulumi")
+}
+func TestAzureCognitiveAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccount", "terraform")
+}
+
+// --- Azure Cognitive Deployment (composed: fixture account -> gpt-4o-mini on GlobalStandard; seconds-to-minutes, per-token billing -- the quota/model-availability boundary is the lane's proof point) ---
+
+func TestAzureCognitiveDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitivedeployment", "pulumi")
+}
+func TestAzureCognitiveDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitivedeployment", "terraform")
+}
+
+// --- Azure Cognitive Account Project (composed: fixture AIServices account -> a free system-identity AI Foundry project; seconds -- no agents or data-plane assets are ever created) ---
+
+func TestAzureCognitiveAccountProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "pulumi")
+}
+func TestAzureCognitiveAccountProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "terraform")
+}
+
+// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic workspace with the managed VNet provisioned at approved-outbound isolation and one outbound rule of each type; the workspace is minutes, the managed network several more -- soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+
+func TestAzureMachineLearningWorkspace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "pulumi")
+}
+func TestAzureMachineLearningWorkspace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "terraform")
+}
+
+// --- Azure Machine Learning Datastore (composed: fixture workspace -> a blob-variant datastore on the scenario-declared fixture container under workspace-identity auth; seconds, free -- the provider skips service-side validation on create, so the lane proves registration, not data access) ---
+
+func TestAzureMachineLearningDatastore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningdatastore", "pulumi")
+}
+func TestAzureMachineLearningDatastore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningdatastore", "terraform")
+}
+
+// --- Azure Machine Learning Compute Cluster (composed: fixture workspace -> a scale-to-zero dedicated cluster with a system identity; the compute OBJECT is the proof -- no node ever provisions, zero VM cost) ---
+
+func TestAzureMachineLearningComputeCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputecluster", "pulumi")
+}
+func TestAzureMachineLearningComputeCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputecluster", "terraform")
+}
+
+// --- Azure Machine Learning Compute Instance (composed: fixture workspace -> one small workstation VM with a system identity; the cloud-side name carries the run-id token -- instance names are reserved region-wide per subscription) ---
+
+func TestAzureMachineLearningComputeInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputeinstance", "pulumi")
+}
+func TestAzureMachineLearningComputeInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningcomputeinstance", "terraform")
+}
+
+// --- Azure AI Foundry (composed: fixture RG + key vault + HNS-off storage account -> a system-identity hub; minutes -- hubs are ML workspaces at ARM, soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+
+func TestAzureAiFoundry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundry", "pulumi")
+}
+func TestAzureAiFoundry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundry", "terraform")
+}
+
+// --- Azure AI Foundry Project (composed: fixture hub chain -> a system-identity project INSIDE the hub; the proof is the cross-kind wiring -- ARM returns kind "Project", and the project lands in the hub's resource group) ---
+
+func TestAzureAiFoundryProject_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundryproject", "pulumi")
+}
+func TestAzureAiFoundryProject_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureaifoundryproject", "terraform")
+}
+
+// --- Azure AI Search Service (composed: fixture RG + storage account -> a standard-SKU service with one shared private link to the fixture storage's blob subresource; the link sits PENDING by design -- nothing approves the target side, the verifier asserts ARM state; the service name is GLOBALLY unique endpoint DNS) ---
+
+func TestAzureSearchService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresearchservice", "pulumi")
+}
+func TestAzureSearchService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuresearchservice", "terraform")
+}
+
+// --- Azure ML Online Endpoint (composed: the fixture workspace chain -> a key-auth endpoint with a system identity; minutes, no instances -- the endpoint object is free at rest. FIRST raw-API kind: Terraform deploys through azapi, Pulumi through azure-native; scenario endpoint names carry the run-id token, endpoint names are reserved region-wide) ---
+
+func TestAzureMachineLearningOnlineEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "pulumi")
+}
+func TestAzureMachineLearningOnlineEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlineendpoint", "terraform")
+}
+
+// --- Azure ML Online Deployment (composed: workspace chain -> fixture endpoint -> one Standard_F2s_v2 managed instance; 10-20 min provisioning, bills until destroy -- no scale-to-zero. Model-less by design: whether the service accepts a bare managed deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+
+func TestAzureMachineLearningOnlineDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "pulumi")
+}
+func TestAzureMachineLearningOnlineDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningonlinedeployment", "terraform")
+}
+
+// --- Azure ML Batch Endpoint (composed: the fixture workspace chain -> an Entra-auth endpoint with a system identity; a pure routing object -- no compute, free at rest. Raw-API kind riding the online pair's machinery; scenario names carry the run-id token -- batch names are expected to reserve region-wide like the online sibling's, unproven) ---
+
+func TestAzureMachineLearningBatchEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "pulumi")
+}
+func TestAzureMachineLearningBatchEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchendpoint", "terraform")
+}
+
+// --- Azure ML Batch Deployment (composed: workspace chain -> fixture batch endpoint -> a BARE recipe; nothing provisions or bills at create -- compute materializes per job and no lane submits one. Whether the service accepts a bare batch deployment is the lane's proof point; deployment names are endpoint-scoped, so scenarios carry the run-id token because both engines attach to the SAME fixture endpoint) ---
+
+func TestAzureMachineLearningBatchDeployment_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "pulumi")
+}
+func TestAzureMachineLearningBatchDeployment_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremachinelearningbatchdeployment", "terraform")
+}
+
+// --- Azure Recovery Services Vault (composed: fixture RG -> a locally-redundant vault with the monitoring block; FREE at rest, creates in minutes. Immutability/CMK are one-way doors deliberately left to offline proof) ---
+
+func TestAzureRecoveryServicesVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerecoveryservicesvault", "pulumi")
+}
+func TestAzureRecoveryServicesVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurerecoveryservicesvault", "terraform")
+}
+
+// --- Azure Backup Policy VM (composed: fixture RG -> fixture vault -> a V2 daily policy with the full retention ladder; a FREE configuration object) ---
+
+func TestAzureBackupPolicyVm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyvm", "pulumi")
+}
+func TestAzureBackupPolicyVm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyvm", "terraform")
+}
+
+// --- Azure Backup Protected VM (composed: the trio's deepest chain -- policy -> fixture vault, plus the fixture VM's NIC/subnet/VNet/disk chain; creation only REGISTERS protection, so no backup storage accrues and the cost is the fixture VM's hour. The smoke also proves the LUN-exclusion seam against the VM's data disk) ---
+
+func TestAzureBackupProtectedVm_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedvm", "pulumi")
+}
+func TestAzureBackupProtectedVm_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedvm", "terraform")
+}
+
+// --- Azure Backup Policy File Share (composed: fixture RG -> fixture vault -> two FREE configuration objects; the minimal daily-snapshot smoke doubles as the protected-share lane's install manifest, and the hourly-vault-standard scenario proves the window dials and the vaulted tier in isolation) ---
+
+func TestAzureBackupPolicyFileShare_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyfileshare", "pulumi")
+}
+func TestAzureBackupPolicyFileShare_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackuppolicyfileshare", "terraform")
+}
+
+// --- Azure Backup Container Storage Account (composed: fixture RG -> fixture vault + fixture storage account -> a FREE registration binding; the smoke and the protected-share lane's fixture registration target the SAME ARM identity -- sequential lanes only) ---
+
+func TestAzureBackupContainerStorageAccount_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupcontainerstorageaccount", "pulumi")
+}
+func TestAzureBackupContainerStorageAccount_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupcontainerstorageaccount", "terraform")
+}
+
+// --- Azure Backup Protected File Share (composed: the group's deepest chain -- fixture RG -> vault + storage account -> fixture share + the container REGISTRATION + the policy smoke; creation only REGISTERS protection. Protect/unprotect sit in the provider's 80-minute class, and destroy leaves a soft-delete ghost that can delay the fixture registration's unregister -- the queue watch-list leads with it) ---
+
+func TestAzureBackupProtectedFileShare_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedfileshare", "pulumi")
+}
+func TestAzureBackupProtectedFileShare_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurebackupprotectedfileshare", "terraform")
+}
+
+// --- Azure Data Protection Backup Vault (composed: fixture RG -> a FREE locally-redundant vault with a system identity; the one-way doors -- Locked immutability, AlwaysOn soft delete, CMK -- stay offline-proven by design, and destroy runs past Azure's early "deleted" answer while the provider polls the name free) ---
+
+func TestAzureDataProtectionBackupVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupvault", "pulumi")
+}
+func TestAzureDataProtectionBackupVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupvault", "terraform")
+}
+
+// --- Azure Data Protection Backup Policy (composed: fixture RG -> fixture Data Protection vault -> THREE free configuration objects covering all three retention dialects; the minimal disk smoke doubles as future backup-instance lanes' install manifest, the kubernetes scenario proves the nested life-cycle dialect plus the vault name+RG addressing seam, and the blob scenario proves the dual-store dialect) ---
+
+func TestAzureDataProtectionBackupPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackuppolicy", "pulumi")
+}
+func TestAzureDataProtectionBackupPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackuppolicy", "terraform")
+}
+
+// --- Azure Data Protection Backup Instance (composed: fixture RG -> fixture Data Protection vault + disk policy + managed disk + the vault identity's TWO RBAC grants -> the disk-variant binding; the vault identity's grants are validated by Azure at instance create, and grant propagation lag is the lane's expected retry class. REQUIRES the fixture vault to carry a system-assigned identity -- the grants' principal -- and soft delete Off, so a destroyed instance cannot ghost and wedge the vault's teardown) ---
+
+func TestAzureDataProtectionBackupInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupinstance", "pulumi")
+}
+func TestAzureDataProtectionBackupInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionbackupinstance", "terraform")
+}
+
+// --- Azure Data Protection Resource Guard (composed: fixture RG -> a FREE governance object that creates in seconds; no vault references it in the lane, so create and delete are unconstrained) ---
+
+func TestAzureDataProtectionResourceGuard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionresourceguard", "pulumi")
+}
+func TestAzureDataProtectionResourceGuard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredataprotectionresourceguard", "terraform")
+}
+
 // --- Azure AKS Cluster (composed: fixture RG -> managed-networking cluster with a single-node default pool) ---
 
 func TestAzureAksCluster_Pulumi(t *testing.T) {
@@ -374,6 +752,15 @@ func TestAzureKeyVaultKey_Pulumi(t *testing.T) {
 }
 func TestAzureKeyVaultKey_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurekeyvaultkey", "terraform")
+}
+
+// --- Azure Key Vault Secret (composed: fixture RG -> vault -> one versioned secret with content type and expiry; data-plane create -- the ambient principal's subscription-scoped Key Vault Administrator grant covers it) ---
+
+func TestAzureKeyVaultSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultsecret", "pulumi")
+}
+func TestAzureKeyVaultSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurekeyvaultsecret", "terraform")
 }
 
 // --- Azure Key Vault Certificate (composed: fixture RG -> vault -> self-signed auto-renewing certificate; data-plane create + verify) ---
@@ -1143,6 +1530,8 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	if engine == "pulumi" {
+		// GenerateStackName enforces the length cap uniqueness-preservingly
+		// (blind truncation here would collide long kind names' scenarios).
 		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 		tc.BackendURL = pulumiBackendURL
 	}

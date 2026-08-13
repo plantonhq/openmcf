@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureexpressroutecircuit
+spec:
+  # The circuit's identity is its full ARM resource ID; authorizations
+  # are ARM children composed under it, keyed by the spec entry's name
+  # (the module deploys one child per authorizations entry).
+  values:
+    - name: express_route_circuit_id
+      derivations:
+        - from_stack_output: express_route_circuit_id
+      where_to_find: >-
+        Portal -> ExpressRoute circuits -> the circuit -> Properties ->
+        Resource ID, or `az network express-route show -g <rg> -n <name>
+        --query id`.
+    - name: authorization_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The authorization's name in the spec's authorizations list (the
+        module keys one ARM child per name); `az network express-route
+        auth list` shows what exists cloud-side.

@@ -75,6 +75,11 @@ func globalSslCertificate(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.
 		args.Description = pulumi.String(spec.Description)
 	}
 
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
 	// Honor the spec contract: an empty project_id falls back to the provider's
 	// default project. Leaving Project unset lets the gcp provider resolve its
 	// own project (configuration or the GOOGLE_PROJECT / GOOGLE_CLOUD_PROJECT
@@ -114,6 +119,11 @@ func regionalSslCertificate(ctx *pulumi.Context, locals *Locals, gcpProvider *gc
 
 	if spec.Description != "" {
 		args.Description = pulumi.String(spec.Description)
+	}
+
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
 	}
 
 	if spec.ProjectId.GetValue() != "" {

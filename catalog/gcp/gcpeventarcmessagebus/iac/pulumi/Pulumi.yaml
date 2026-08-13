@@ -1,0 +1,4 @@
+name: gcpeventarcmessagebus-pulumi-project
+runtime:
+  name: go
+description: Planton GcpEventarcMessageBus Pulumi module

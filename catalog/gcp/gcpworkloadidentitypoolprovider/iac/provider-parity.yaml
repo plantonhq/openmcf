@@ -1,0 +1,21 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The module consumes only the primary resource: IAM workload-identity
+# federation needs no API-enablement plumbing (iam.googleapis.com is on by
+# default), so there is no google_project_service entry here.
+
+resources:
+  google_iam_workload_identity_pool_provider:
+    mappings:
+      # The one rename: the spec says what the field IS (a project ID),
+      # where the provider inherits the terser API name. The four issuer
+      # arms (aws / oidc / saml / x509) and everything beneath them match
+      # by name.
+      - spec: spec.project_id
+        arg: project

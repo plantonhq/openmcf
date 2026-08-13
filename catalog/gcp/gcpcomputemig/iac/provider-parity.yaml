@@ -1,0 +1,603 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# ONE kind, TEN provider resources: the managed-instance-group stack is
+# five zonal/regional resource pairs (instance template, group manager,
+# autoscaler, per-instance config, resize request) selected by the spec's
+# zone-XOR-region location selector. The zonal and regional blocks below
+# mirror each other; the regional group manager adds the distribution /
+# flexibility surface, and the ZONAL instance template carries no
+# deletion_policy (an engine-visible provider asymmetry this manifest
+# records rather than papers over).
+
+resources:
+  # --------------------------------------------------------------------
+  # Instance template (zonal groups use the global template resource).
+  # The spec's template message maps subtree-for-subtree; the template's
+  # single repeated disk block IS the provider shape (role fields on the
+  # disk itself).
+  # --------------------------------------------------------------------
+  google_compute_instance_template:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.template.machine_type
+        arg: machine_type
+      - spec: spec.template.description
+        arg: description
+      - spec: spec.template.instance_description
+        arg: instance_description
+      - spec: spec.template.labels
+        arg: labels
+      - spec: spec.template.metadata
+        arg: metadata
+      # The dedicated attribute (never plain metadata) so the script
+      # re-runs on every boot exactly as GCP documents.
+      - spec: spec.template.startup_script
+        arg: metadata_startup_script
+      - spec: spec.template.tags
+        arg: tags
+      - spec: spec.template.resource_manager_tags
+        arg: resource_manager_tags
+      - spec: spec.template.min_cpu_platform
+        arg: min_cpu_platform
+      - spec: spec.template.can_ip_forward
+        arg: can_ip_forward
+      - spec: spec.template.key_revocation_action_type
+        arg: key_revocation_action_type
+      - spec: spec.template.resource_policies
+        arg: resource_policies
+      # The disk subtree: children match name-for-name below the prefix
+      # except the renames recorded here.
+      - spec: spec.template.disks
+        arg: disk
+      - spec: spec.template.disks.size_gb
+        arg: disk.disk_size_gb
+      - spec: spec.template.disks.disk_labels
+        arg: disk.labels
+      - spec: spec.template.disks.disk_encryption
+        arg: disk.disk_encryption_key
+      - spec: spec.template.disks.disk_encryption.kms_key
+        arg: disk.disk_encryption_key.kms_key_self_link
+      - spec: spec.template.disks.source_image_encryption
+        arg: disk.source_image_encryption_key
+      - spec: spec.template.disks.source_image_encryption.kms_key
+        arg: disk.source_image_encryption_key.kms_key_self_link
+      - spec: spec.template.disks.source_snapshot_encryption
+        arg: disk.source_snapshot_encryption_key
+      - spec: spec.template.disks.source_snapshot_encryption.kms_key
+        arg: disk.source_snapshot_encryption_key.kms_key_self_link
+      # The NIC subtree: plural spec names for repeated blocks.
+      - spec: spec.template.network_interfaces
+        arg: network_interface
+      - spec: spec.template.network_interfaces.access_configs
+        arg: network_interface.access_config
+      - spec: spec.template.network_interfaces.ipv6_access_configs
+        arg: network_interface.ipv6_access_config
+      - spec: spec.template.network_interfaces.alias_ip_ranges
+        arg: network_interface.alias_ip_range
+      - spec: spec.template.service_account
+        arg: service_account
+      # Scheduling: the sub-second duration wrappers flatten to *_seconds
+      # spec fields (the catalog's established duration idiom).
+      - spec: spec.template.scheduling
+        arg: scheduling
+      - spec: spec.template.scheduling.max_run_duration_seconds
+        arg: scheduling.max_run_duration.seconds
+      - spec: spec.template.scheduling.discard_local_ssds_on_stop
+        arg: scheduling.on_instance_stop_action.discard_local_ssd
+      - spec: spec.template.scheduling.local_ssd_recovery_timeout_seconds
+        arg: scheduling.local_ssd_recovery_timeout.seconds
+      - spec: spec.template.shielded_instance_config
+        arg: shielded_instance_config
+      - spec: spec.template.confidential_instance_config
+        arg: confidential_instance_config
+      - spec: spec.template.advanced_machine_features
+        arg: advanced_machine_features
+      - spec: spec.template.guest_accelerators
+        arg: guest_accelerator
+      - spec: spec.template.reservation_affinity
+        arg: reservation_affinity
+      # The provider wraps the bandwidth tier in a one-field block.
+      - spec: spec.template.total_egress_bandwidth_tier
+        arg: network_performance_config.total_egress_bandwidth_tier
+    exclusions:
+      - arg: name
+        reason: >-
+          Module-internal: templates are immutable, so the module names
+          them through name_prefix rotation (below) -- a fixed name would
+          collide on every template change.
+      - arg: name_prefix
+        reason: >-
+          Module-internal rotation mechanism: the module derives
+          "<mig-name>-" (capped at 37 characters for the provider's
+          readable timestamp naming) and pairs it with
+          create-before-destroy so every template change rotates cleanly.
+          Not spec surface -- exposing it would let manifests break the
+          rotation contract.
+      - arg: region
+        reason: >-
+          The provider's own description: "An instance template is a
+          global resource that is not bound to a zone or a region.
+          However, you can still specify some regional resources in an
+          instance template, which restricts the template to the region
+          where that resource resides ... Defaults to the region of the
+          Provider if no value is given." A zonal group's template
+          follows the provider default; the kind's location selector is
+          the scope surface.
+      - arg: disk.source_image_encryption_key.raw_key
+        reason: >-
+          Customer-supplied raw encryption key (CSEK) -- raw key material
+          does not belong in declarative manifests or state; the modeled
+          kms_key_self_link (CMEK) covers encrypted sources with the key
+          held in Cloud KMS (the catalog's established secure-by-default
+          exclusion class).
+      - arg: disk.source_image_encryption_key.rsa_encrypted_key
+        reason: >-
+          RSA-wrapped customer-supplied key (CSEK class) -- excluded with
+          raw_key; use CMEK.
+      - arg: disk.source_snapshot_encryption_key.raw_key
+        reason: >-
+          Customer-supplied raw encryption key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: disk.source_snapshot_encryption_key.rsa_encrypted_key
+        reason: >-
+          RSA-wrapped customer-supplied key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: confidential_instance_config.enable_confidential_compute
+        reason: >-
+          Legacy SEV-only enable flag the provider keeps beside the typed
+          confidential_instance_type; the spec models the typed field and
+          the modules leave the legacy flag unset (the GcpComputeInstance
+          precedent -- one lever, not two).
+      - arg: scheduling.preemptible
+        reason: >-
+          Derived, never configured: SPOT provisioning requires the API's
+          legacy preemptible flag, and both modules set it automatically
+          from scheduling.provisioning_model == "SPOT" (the
+          GcpComputeInstance precedent -- legacy preemptible-only VMs are
+          superseded by Spot with the same discount and fewer
+          restrictions).
+      - arg: scheduling.max_run_duration.nanos
+        reason: >-
+          Sub-second precision on a VM run-duration bound is meaningless;
+          the spec models max_run_duration_seconds (the catalog's
+          established seconds/nanos exclusion class).
+      - arg: scheduling.local_ssd_recovery_timeout.nanos
+        reason: >-
+          Sub-second precision excluded (the seconds/nanos class); the
+          spec models local_ssd_recovery_timeout_seconds.
+      - arg: workload_identity_config.identity
+        reason: >-
+          SDK gap at pulumi-gcp v9.29.0: the bridge does not carry
+          workload_identity_config on either instance-template resource,
+          and cross-engine parity forbids one-engine spec surface.
+          Re-evaluate when a pulumi-gcp release bridges the block.
+      - arg: workload_identity_config.identity_certificate_enabled
+        reason: >-
+          SDK gap at pulumi-gcp v9.29.0 (see workload_identity_config.identity);
+          re-evaluate when the bridge ships the block.
+
+  # --------------------------------------------------------------------
+  # Regional instance template: mirrors the zonal block; region is real
+  # surface here (the template lives in the region), and -- unlike the
+  # zonal resource -- it carries a deletion_policy, which auto-matches
+  # the spec's field by name.
+  # --------------------------------------------------------------------
+  google_compute_region_instance_template:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.template.machine_type
+        arg: machine_type
+      - spec: spec.template.description
+        arg: description
+      - spec: spec.template.instance_description
+        arg: instance_description
+      - spec: spec.template.labels
+        arg: labels
+      - spec: spec.template.metadata
+        arg: metadata
+      - spec: spec.template.startup_script
+        arg: metadata_startup_script
+      - spec: spec.template.tags
+        arg: tags
+      - spec: spec.template.resource_manager_tags
+        arg: resource_manager_tags
+      - spec: spec.template.min_cpu_platform
+        arg: min_cpu_platform
+      - spec: spec.template.can_ip_forward
+        arg: can_ip_forward
+      - spec: spec.template.key_revocation_action_type
+        arg: key_revocation_action_type
+      - spec: spec.template.resource_policies
+        arg: resource_policies
+      - spec: spec.template.disks
+        arg: disk
+      - spec: spec.template.disks.size_gb
+        arg: disk.disk_size_gb
+      - spec: spec.template.disks.disk_labels
+        arg: disk.labels
+      - spec: spec.template.disks.disk_encryption
+        arg: disk.disk_encryption_key
+      - spec: spec.template.disks.disk_encryption.kms_key
+        arg: disk.disk_encryption_key.kms_key_self_link
+      - spec: spec.template.disks.source_image_encryption
+        arg: disk.source_image_encryption_key
+      - spec: spec.template.disks.source_image_encryption.kms_key
+        arg: disk.source_image_encryption_key.kms_key_self_link
+      - spec: spec.template.disks.source_snapshot_encryption
+        arg: disk.source_snapshot_encryption_key
+      - spec: spec.template.disks.source_snapshot_encryption.kms_key
+        arg: disk.source_snapshot_encryption_key.kms_key_self_link
+      - spec: spec.template.network_interfaces
+        arg: network_interface
+      - spec: spec.template.network_interfaces.access_configs
+        arg: network_interface.access_config
+      - spec: spec.template.network_interfaces.ipv6_access_configs
+        arg: network_interface.ipv6_access_config
+      - spec: spec.template.network_interfaces.alias_ip_ranges
+        arg: network_interface.alias_ip_range
+      - spec: spec.template.service_account
+        arg: service_account
+      - spec: spec.template.scheduling
+        arg: scheduling
+      - spec: spec.template.scheduling.max_run_duration_seconds
+        arg: scheduling.max_run_duration.seconds
+      - spec: spec.template.scheduling.discard_local_ssds_on_stop
+        arg: scheduling.on_instance_stop_action.discard_local_ssd
+      - spec: spec.template.scheduling.local_ssd_recovery_timeout_seconds
+        arg: scheduling.local_ssd_recovery_timeout.seconds
+      - spec: spec.template.shielded_instance_config
+        arg: shielded_instance_config
+      - spec: spec.template.confidential_instance_config
+        arg: confidential_instance_config
+      - spec: spec.template.advanced_machine_features
+        arg: advanced_machine_features
+      - spec: spec.template.guest_accelerators
+        arg: guest_accelerator
+      - spec: spec.template.reservation_affinity
+        arg: reservation_affinity
+      - spec: spec.template.total_egress_bandwidth_tier
+        arg: network_performance_config.total_egress_bandwidth_tier
+    exclusions:
+      - arg: name
+        reason: >-
+          Module-internal: templates are immutable, so the module names
+          them through name_prefix rotation -- a fixed name would collide
+          on every template change.
+      - arg: name_prefix
+        reason: >-
+          Module-internal rotation mechanism (see the zonal template's
+          entry) -- not spec surface.
+      - arg: disk.source_image_encryption_key.raw_key
+        reason: >-
+          Customer-supplied raw encryption key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: disk.source_image_encryption_key.rsa_encrypted_key
+        reason: >-
+          RSA-wrapped customer-supplied key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: disk.source_snapshot_encryption_key.raw_key
+        reason: >-
+          Customer-supplied raw encryption key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: disk.source_snapshot_encryption_key.rsa_encrypted_key
+        reason: >-
+          RSA-wrapped customer-supplied key (CSEK class) -- excluded;
+          use CMEK.
+      - arg: confidential_instance_config.enable_confidential_compute
+        reason: >-
+          Legacy SEV-only enable flag beside the typed
+          confidential_instance_type; the spec models the typed field
+          (the GcpComputeInstance precedent).
+      - arg: scheduling.preemptible
+        reason: >-
+          Derived from scheduling.provisioning_model == "SPOT" in both
+          modules (see the zonal template's entry).
+      - arg: scheduling.max_run_duration.nanos
+        reason: >-
+          Sub-second precision excluded (the seconds/nanos class).
+      - arg: scheduling.local_ssd_recovery_timeout.nanos
+        reason: >-
+          Sub-second precision excluded (the seconds/nanos class).
+      - arg: workload_identity_config.identity
+        reason: >-
+          SDK gap at pulumi-gcp v9.29.0 (see the zonal template's entry);
+          re-evaluate when the bridge ships the block.
+      - arg: workload_identity_config.identity_certificate_enabled
+        reason: >-
+          SDK gap at pulumi-gcp v9.29.0; re-evaluate when the bridge
+          ships the block.
+
+  # --------------------------------------------------------------------
+  # Instance group manager (zonal). The version block references the
+  # kind's own template by default (the module wires the template's
+  # self_link_unique); versions[].template_self_link pins an external
+  # canary template.
+  # --------------------------------------------------------------------
+  google_compute_instance_group_manager:
+    mappings:
+      - spec: spec.mig_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.versions
+        arg: version
+      - spec: spec.versions.version_name
+        arg: version.name
+      # An empty template_self_link resolves to the kind's own template
+      # (the module renders the created template's unique link); a set
+      # value pins an external template URL.
+      - spec: spec.versions.template_self_link
+        arg: version.instance_template
+      - spec: spec.versions.target_size_fixed
+        arg: version.target_size.fixed
+      - spec: spec.versions.target_size_percent
+        arg: version.target_size.percent
+      - spec: spec.named_ports
+        arg: named_port
+      - spec: spec.auto_healing
+        arg: auto_healing_policies
+      - spec: spec.stateful_disks
+        arg: stateful_disk
+      - spec: spec.stateful_external_ips
+        arg: stateful_external_ip
+      - spec: spec.stateful_internal_ips
+        arg: stateful_internal_ip
+      # The provider nests the zone-change switch in a one-field block.
+      - spec: spec.instance_lifecycle_policy.on_repair_allow_changing_zone
+        arg: instance_lifecycle_policy.on_repair.allow_changing_zone
+      # The provider wraps the workload policy in a one-field block.
+      - spec: spec.workload_policy
+        arg: resource_policies.workload_policy
+      # The provider wraps the creation mode in a one-field block.
+      - spec: spec.target_size_policy_mode
+        arg: target_size_policy.mode
+
+  # --------------------------------------------------------------------
+  # Regional instance group manager: the zonal block plus the regional
+  # spread surface (distribution policy, instance flexibility,
+  # redistribution type -- the last auto-matches under update_policy).
+  # --------------------------------------------------------------------
+  google_compute_region_instance_group_manager:
+    mappings:
+      - spec: spec.mig_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.versions
+        arg: version
+      - spec: spec.versions.version_name
+        arg: version.name
+      - spec: spec.versions.template_self_link
+        arg: version.instance_template
+      - spec: spec.versions.target_size_fixed
+        arg: version.target_size.fixed
+      - spec: spec.versions.target_size_percent
+        arg: version.target_size.percent
+      - spec: spec.named_ports
+        arg: named_port
+      - spec: spec.auto_healing
+        arg: auto_healing_policies
+      - spec: spec.stateful_disks
+        arg: stateful_disk
+      - spec: spec.stateful_external_ips
+        arg: stateful_external_ip
+      - spec: spec.stateful_internal_ips
+        arg: stateful_internal_ip
+      - spec: spec.instance_lifecycle_policy.on_repair_allow_changing_zone
+        arg: instance_lifecycle_policy.on_repair.allow_changing_zone
+      - spec: spec.workload_policy
+        arg: resource_policies.workload_policy
+      - spec: spec.target_size_policy_mode
+        arg: target_size_policy.mode
+      # The provider flattens the distribution policy to two prefixed
+      # top-level arguments; the spec keeps the message shape.
+      - spec: spec.distribution_policy.zones
+        arg: distribution_policy_zones
+      - spec: spec.distribution_policy.target_shape
+        arg: distribution_policy_target_shape
+
+  # --------------------------------------------------------------------
+  # Autoscaler (zonal). The spec's autoscaler message maps onto the
+  # provider's autoscaling_policy block; target is module-wired to the
+  # created group manager by resource reference.
+  # --------------------------------------------------------------------
+  google_compute_autoscaler:
+    mappings:
+      - spec: spec.autoscaler.autoscaler_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.autoscaler.description
+        arg: description
+      - spec: spec.autoscaler
+        arg: autoscaling_policy
+      # The CPU and LB signals flatten to *_target spec fields (each
+      # provider block carries a single target).
+      - spec: spec.autoscaler.cpu_target
+        arg: autoscaling_policy.cpu_utilization.target
+      - spec: spec.autoscaler.cpu_predictive_method
+        arg: autoscaling_policy.cpu_utilization.predictive_method
+      - spec: spec.autoscaler.load_balancing_target
+        arg: autoscaling_policy.load_balancing_utilization.target
+      - spec: spec.autoscaler.metrics
+        arg: autoscaling_policy.metric
+      - spec: spec.autoscaler.scale_in_control.max_scaled_in_replicas_fixed
+        arg: autoscaling_policy.scale_in_control.max_scaled_in_replicas.fixed
+      - spec: spec.autoscaler.scale_in_control.max_scaled_in_replicas_percent
+        arg: autoscaling_policy.scale_in_control.max_scaled_in_replicas.percent
+      - spec: spec.autoscaler.schedules
+        arg: autoscaling_policy.scaling_schedules
+      - spec: spec.autoscaler.schedules.schedule_name
+        arg: autoscaling_policy.scaling_schedules.name
+    exclusions:
+      - arg: target
+        reason: >-
+          Module-wired by resource reference: the autoscaler always
+          targets THIS kind's group manager (the created resource's
+          self_link, byte-identical on both engines) -- an autoscaler for
+          a foreign group belongs to that group's own kind.
+
+  google_compute_region_autoscaler:
+    mappings:
+      - spec: spec.autoscaler.autoscaler_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.autoscaler.description
+        arg: description
+      - spec: spec.autoscaler
+        arg: autoscaling_policy
+      - spec: spec.autoscaler.cpu_target
+        arg: autoscaling_policy.cpu_utilization.target
+      - spec: spec.autoscaler.cpu_predictive_method
+        arg: autoscaling_policy.cpu_utilization.predictive_method
+      - spec: spec.autoscaler.load_balancing_target
+        arg: autoscaling_policy.load_balancing_utilization.target
+      - spec: spec.autoscaler.metrics
+        arg: autoscaling_policy.metric
+      - spec: spec.autoscaler.scale_in_control.max_scaled_in_replicas_fixed
+        arg: autoscaling_policy.scale_in_control.max_scaled_in_replicas.fixed
+      - spec: spec.autoscaler.scale_in_control.max_scaled_in_replicas_percent
+        arg: autoscaling_policy.scale_in_control.max_scaled_in_replicas.percent
+      - spec: spec.autoscaler.schedules
+        arg: autoscaling_policy.scaling_schedules
+      - spec: spec.autoscaler.schedules.schedule_name
+        arg: autoscaling_policy.scaling_schedules.name
+    exclusions:
+      - arg: target
+        reason: >-
+          Module-wired by resource reference to THIS kind's regional
+          group manager (see the zonal autoscaler's entry).
+
+  # --------------------------------------------------------------------
+  # Per-instance config (zonal): the stateful per-instance override.
+  # The config's name IS the managed instance's name.
+  # --------------------------------------------------------------------
+  google_compute_per_instance_config:
+    mappings:
+      - spec: spec.per_instance_configs.config_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.per_instance_configs.preserved_state
+        arg: preserved_state
+      - spec: spec.per_instance_configs.preserved_state.disks
+        arg: preserved_state.disk
+      - spec: spec.per_instance_configs.preserved_state.external_ips
+        arg: preserved_state.external_ip
+      - spec: spec.per_instance_configs.preserved_state.external_ips.address
+        arg: preserved_state.external_ip.ip_address.address
+      - spec: spec.per_instance_configs.preserved_state.internal_ips
+        arg: preserved_state.internal_ip
+      - spec: spec.per_instance_configs.preserved_state.internal_ips.address
+        arg: preserved_state.internal_ip.ip_address.address
+      - spec: spec.per_instance_configs.minimal_action
+        arg: minimal_action
+      - spec: spec.per_instance_configs.most_disruptive_allowed_action
+        arg: most_disruptive_allowed_action
+      - spec: spec.per_instance_configs.remove_instance_on_destroy
+        arg: remove_instance_on_destroy
+      - spec: spec.per_instance_configs.remove_instance_state_on_destroy
+        arg: remove_instance_state_on_destroy
+    exclusions:
+      - arg: instance_group_manager
+        reason: >-
+          Module-wired by resource reference: a per-instance config
+          always belongs to THIS kind's group manager (the created
+          resource's name, byte-identical on both engines).
+
+  google_compute_region_per_instance_config:
+    mappings:
+      - spec: spec.per_instance_configs.config_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.per_instance_configs.preserved_state
+        arg: preserved_state
+      - spec: spec.per_instance_configs.preserved_state.disks
+        arg: preserved_state.disk
+      - spec: spec.per_instance_configs.preserved_state.external_ips
+        arg: preserved_state.external_ip
+      - spec: spec.per_instance_configs.preserved_state.external_ips.address
+        arg: preserved_state.external_ip.ip_address.address
+      - spec: spec.per_instance_configs.preserved_state.internal_ips
+        arg: preserved_state.internal_ip
+      - spec: spec.per_instance_configs.preserved_state.internal_ips.address
+        arg: preserved_state.internal_ip.ip_address.address
+      - spec: spec.per_instance_configs.minimal_action
+        arg: minimal_action
+      - spec: spec.per_instance_configs.most_disruptive_allowed_action
+        arg: most_disruptive_allowed_action
+      - spec: spec.per_instance_configs.remove_instance_on_destroy
+        arg: remove_instance_on_destroy
+      - spec: spec.per_instance_configs.remove_instance_state_on_destroy
+        arg: remove_instance_state_on_destroy
+    exclusions:
+      - arg: region_instance_group_manager
+        reason: >-
+          Module-wired by resource reference to THIS kind's regional
+          group manager (see the zonal config's entry).
+
+  # --------------------------------------------------------------------
+  # Resize request (zonal): queued one-shot capacity asks.
+  # --------------------------------------------------------------------
+  google_compute_resize_request:
+    mappings:
+      - spec: spec.resize_requests.request_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.resize_requests.description
+        arg: description
+      - spec: spec.resize_requests.resize_by
+        arg: resize_by
+      # The provider models the duration's seconds as a STRING inside a
+      # wrapper block; the spec flattens to the *_seconds idiom and both
+      # modules render the string identically.
+      - spec: spec.resize_requests.requested_run_duration_seconds
+        arg: requested_run_duration.seconds
+    exclusions:
+      - arg: instance_group_manager
+        reason: >-
+          Module-wired by resource reference: a resize request always
+          asks capacity for THIS kind's group manager.
+      - arg: requested_run_duration.nanos
+        reason: >-
+          Sub-second duration precision is meaningless for a
+          capacity-run bound measured in minutes-to-days (the catalog's
+          established seconds/nanos exclusion class).
+
+  google_compute_region_resize_request:
+    mappings:
+      - spec: spec.resize_requests.request_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.resize_requests.description
+        arg: description
+      - spec: spec.resize_requests.resize_by
+        arg: resize_by
+      - spec: spec.resize_requests.requested_run_duration_seconds
+        arg: requested_run_duration.seconds
+    exclusions:
+      - arg: instance_group_manager
+        reason: >-
+          Module-wired by resource reference to THIS kind's regional
+          group manager.
+      - arg: requested_run_duration.nanos
+        reason: >-
+          Sub-second precision excluded (the seconds/nanos class).
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      group never disables Compute Engine project-wide); not spec surface.

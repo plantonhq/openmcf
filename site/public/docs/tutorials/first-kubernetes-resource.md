@@ -248,7 +248,7 @@ This removes all Kubernetes resources created by the component — the StatefulS
 
 ## What You Learned
 
-- How to configure a Kubernetes deployment component with custom databases, users, and resource limits
+- How to configure a Kubernetes component with custom databases, users, and resource limits
 - The `StringValueOrRef` pattern for fields that can reference other resources (like `namespace`)
 - How deployment outputs provide connection information including Secrets for credentials
 - Two ways to modify deployments: updating the manifest file, or using `--set` for runtime overrides

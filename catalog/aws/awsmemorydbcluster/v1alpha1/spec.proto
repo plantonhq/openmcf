@@ -261,9 +261,7 @@ message AwsMemorydbClusterSpec {
   // entry must be an S3 object ARN (AWS's CreateCluster contract; the
   // provider itself accepts any ARN shape — a recorded looseness) and must
   // not contain commas (an AWS API constraint).
-  repeated string snapshot_arns = 21 [
-    (buf.validate.field).repeated.items.string.pattern = "^arn:aws[a-zA-Z-]*:s3:::[^,]+$"
-  ];
+  repeated string snapshot_arns = 21 [(buf.validate.field).repeated.items.string.pattern = "^arn:aws[a-zA-Z-]*:s3:::[^,]+$"];
 
   // Name of a MemoryDB snapshot to restore from. ForceNew — only read at
   // cluster creation. Mutually exclusive with snapshot_arns.

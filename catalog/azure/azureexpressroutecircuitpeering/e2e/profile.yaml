@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureexpressroutecircuitpeering
+spec:
+  # Live-proven 2026-08-11 on both engines: full lifecycle plus the
+  # Terraform blind import round-trip (single-id by the type-derived
+  # peering path, zero-change plan -- the declared shared_key tolerance
+  # was not exercised: the smoke sets no key). LIVE FINDING: ARM accepts
+  # and STORES private-peering configuration on a NotProvisioned circuit
+  # (the anticipated provisioning-state rejection never happened), so no
+  # deferral exists -- the session stays dark until a carrier provisions
+  # the circuit. Microsoft peering on an unprovisioned circuit remains
+  # unexercised.
+  # TIMING (measured live): the lane pays the fixture circuit's ~17-19
+  # min create INSIDE the chain, and the peering DELETE itself runs
+  # ~7-8 min -- the lane totals ~29-30 min/engine, so the 45-minute
+  # budget below is the honest class, not the peering's own seconds.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 45

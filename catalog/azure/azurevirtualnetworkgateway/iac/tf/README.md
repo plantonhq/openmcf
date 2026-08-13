@@ -17,8 +17,9 @@ so the ForceNew surface (name, region, type, vpn_type, generation, edge
 zone, private-IP enablement, every ip configuration) is expensive --
 design changes to avoid replacement.
 
-Enum fields arrive as proto enum value names (VPN_GW_1, EXPRESS_ROUTE,
-EGRESS_SNAT); `locals.tf` maps them to azurerm's exact vocabulary. The
+Enum fields arrive as proto enum value names (VPN_GW_1_AZ,
+EXPRESS_ROUTE, EGRESS_SNAT); `locals.tf` maps them to azurerm's exact
+vocabulary. The
 type/generation/SKU pairing rules and the public-IP contract (required
 per configuration on VPN gateways, forbidden on ExpressRoute) are
 spec-validated before the module ever runs.
@@ -72,7 +73,7 @@ module "vpn_gateway" {
     region         = "eastus"
     resource_group = "network-rg"
     name           = "hub-vpn-gateway"
-    sku            = "VPN_GW_1"
+    sku            = "VPN_GW_1_AZ"
     ip_configurations = [{
       subnet_id            = "/subscriptions/xxx/.../subnets/GatewaySubnet"
       public_ip_address_id = "/subscriptions/xxx/.../publicIPAddresses/vpn-gw-pip"

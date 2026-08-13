@@ -1,7 +1,7 @@
 # AzureManagedRedisGeoReplication - Pulumi Module
 
 Pulumi implementation for the AzureManagedRedisGeoReplication
-deployment component.
+component.
 
 ## Architecture
 

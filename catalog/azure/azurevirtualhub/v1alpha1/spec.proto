@@ -1,0 +1,563 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualhub.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVirtualHubSpec** defines a Virtual Hub -- the managed regional
+// router at the center of Azure's Virtual WAN. Every network that joins
+// the WAN in a region attaches to that region's hub: spoke VNets through
+// hub connections, branches through VPN/ExpressRoute gateways created on
+// the hub, and other hubs through the WAN's automatic hub-to-hub mesh.
+// The hub runs a Microsoft-managed router (a virtual router with its own
+// ASN, always 65515) that handles all transit routing.
+//
+// **This kind models the Virtual WAN hub** -- `virtual_wan_id` is
+// required. Azure can also create a "standalone" hub (no WAN), which is
+// the legacy construction of Azure Route Server; that product has its
+// own dedicated ARM surface and is deliberately not modeled here.
+//
+// **Routing customization lives on the hub**: custom route tables (spoke
+// isolation, service-chain steering), route maps (BGP route
+// transformation on ingress/egress), BGP peerings with NVAs running in
+// connected spokes, and routing intent (send Internet/private traffic
+// through a hub firewall). Connections and gateways reference the hub's
+// route tables and route maps by ID -- this component surfaces them as
+// name-keyed output maps for exactly that wiring.
+//
+// **Cost and time**: a Standard hub bills (~$0.25/hr class) from
+// creation, and ARM takes 15-30 minutes to bring the hub's router to a
+// Provisioned routing state. Deleting a hub requires its connections and
+// gateways to be gone first.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`,
+// `virtual_wan_id`, `address_prefix`, and `sku` are fixed at creation --
+// changing any of them replaces the hub (and everything attached to it).
+message AzureVirtualHubSpec {
+  // The Azure region the hub routes traffic in, e.g. "eastus". A WAN
+  // has at most one hub per region. Changing the region replaces the
+  // hub.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the hub is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the hub.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The hub's name, unique within the resource group (1-256 characters,
+  // ARM's rule). Connections, gateways, and route tables address the hub
+  // by its ARM ID (the virtual_hub_id output). Changing the name
+  // replaces the hub.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // The Virtual WAN this hub belongs to -- references an
+  // AzureVirtualWan's ARM ID. Required: a hub is a regional router OF a
+  // WAN (standalone hubs are the legacy Route Server construction,
+  // deliberately not modeled here). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_wan_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualWan,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_wan_id"
+  ];
+
+  // The hub's private address space in CIDR notation (e.g.
+  // "10.100.0.0/23"). The hub's router, gateways, and firewall draw
+  // their addresses from this range, so it must not overlap any
+  // connected VNet or branch. Microsoft requires at least /24 and
+  // recommends /23. Fixed at creation. Required here although the
+  // provider marks it optional: the provider's schema also serves the
+  // standalone Route Server construction (not modeled by this kind),
+  // and ARM rejects a WAN hub without an address prefix.
+  string address_prefix = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"
+  ];
+
+  // The hub tier. Unspecified applies STANDARD (ARM's default and the
+  // full-mesh tier: ExpressRoute, S2S/P2S VPN, hub-to-hub transit,
+  // firewall integration). BASIC is the constrained legacy tier
+  // (site-to-site VPN only, inside a Basic WAN). Fixed at creation.
+  optional AzureVirtualHubSku sku = 6 [
+    (buf.validate.field).enum.defined_only = true,
+    (dev.planton.shared.options.default) = "STANDARD"
+  ];
+
+  // Which path the hub router prefers when the same prefix is learned
+  // over both ExpressRoute and VPN. Unspecified applies EXPRESS_ROUTE
+  // (ARM's default). AS_PATH picks the shortest BGP AS path regardless
+  // of the tunnel type.
+  optional AzureVirtualHubRoutingPreference hub_routing_preference = 7 [
+    (buf.validate.field).enum.defined_only = true,
+    (dev.planton.shared.options.default) = "EXPRESS_ROUTE"
+  ];
+
+  // Allow branches (VPN sites) connected to this hub's gateways to
+  // reach branches on other hubs through the WAN. Off by default (ARM's
+  // default); the WAN's own allow_branch_to_branch_traffic must also be
+  // enabled for branch-to-branch transit to flow.
+  bool branch_to_branch_traffic_enabled = 8;
+
+  // The minimum capacity (routing infrastructure units) the hub's
+  // virtual router auto-scales from. Unspecified applies 2 (ARM's
+  // default and floor: 2 units ≈ 3 Gbps aggregate, supporting ~2,000
+  // attached VMs); ARM scales up automatically and bills per unit.
+  optional int32 virtual_router_auto_scale_min_capacity = 9 [
+    (buf.validate.field).int32.gte = 2,
+    (dev.planton.shared.options.default) = "2"
+  ];
+
+  // Static routes on the hub's DEFAULT route table, in the hub
+  // resource's classic inline form (address prefixes forwarded to a
+  // next-hop IP). For the modern per-table form -- named routes over
+  // named next-hop RESOURCES -- use route_tables instead; this inline
+  // set exists for parity with the provider's hub-level route block.
+  repeated AzureVirtualHubRoute routes = 10;
+
+  // Custom hub route tables. Connections associate with ONE route table
+  // and propagate to MANY (that is how spoke isolation and shared-
+  // services topologies are built); each table's ARM ID surfaces in the
+  // route_table_ids output map under its name. The hub always has a
+  // built-in defaultRouteTable (its ID is the default_route_table_id
+  // output) -- these entries are ADDITIONAL tables.
+  repeated AzureVirtualHubRouteTable route_tables = 11;
+
+  // Route maps -- ordered rule lists that match BGP routes (by prefix,
+  // AS path, or community) and transform or drop them as they enter or
+  // leave hub connections. Each map's ARM ID surfaces in the
+  // route_map_ids output map under its name; connections reference maps
+  // as inbound_route_map_id / outbound_route_map_id.
+  repeated AzureVirtualHubRouteMap route_maps = 12;
+
+  // BGP peerings between the hub's router and network virtual
+  // appliances (NVAs) running in CONNECTED spoke VNets -- how an NVA
+  // exchanges dynamic routes with the hub. The peer must be reachable
+  // through a hub connection (set virtual_network_connection_id to the
+  // connection carrying the NVA's VNet).
+  repeated AzureVirtualHubBgpConnection bgp_connections = 13;
+
+  // Routing intent: steer categories of traffic (Internet-bound,
+  // private) through a next-hop security appliance -- almost always an
+  // Azure Firewall deployed in this hub. A hub has at most ONE routing
+  // intent; setting it takes over the hub's routing policy, so
+  // per-connection route-table customization and routing intent are
+  // mutually exclusive on ARM's side.
+  AzureVirtualHubRoutingIntent routing_intent = 14;
+
+  // Free-form tags applied to the hub, merged over the Planton-derived
+  // resource tags (organization, environment, resource id); a user tag
+  // with the same key wins.
+  map<string, string> tags = 15;
+
+  // Child names key their output maps -- duplicates would silently
+  // overwrite each other's IDs.
+  option (buf.validate.message).cel = {
+    id: "route_table_names_unique"
+    message: "Route table names must be unique on the hub"
+    expression: "this.route_tables.all(t, this.route_tables.filter(o, o.name == t.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "route_map_names_unique"
+    message: "Route map names must be unique on the hub"
+    expression: "this.route_maps.all(m, this.route_maps.filter(o, o.name == m.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "bgp_connection_names_unique"
+    message: "BGP connection names must be unique on the hub"
+    expression: "this.bgp_connections.all(b, this.bgp_connections.filter(o, o.name == b.name).size() == 1)"
+  };
+}
+
+// The hub tier.
+enum AzureVirtualHubSku {
+  // Not specified -- STANDARD (ARM's default) applies.
+  azure_virtual_hub_sku_unspecified = 0;
+
+  // The constrained legacy tier: site-to-site VPN only, inside a Basic
+  // WAN. ARM upgrades Basic-to-Standard in place but never downgrades.
+  BASIC = 1;
+
+  // The full-mesh tier: ExpressRoute, S2S/P2S VPN, hub-to-hub transit,
+  // firewall integration. The right choice for almost everyone.
+  STANDARD = 2;
+}
+
+// Which learned path the hub router prefers for a prefix reachable over
+// multiple tunnel types.
+enum AzureVirtualHubRoutingPreference {
+  // Not specified -- EXPRESS_ROUTE (ARM's default) applies.
+  azure_virtual_hub_routing_preference_unspecified = 0;
+
+  // Prefer routes learned over ExpressRoute (ARM's default).
+  EXPRESS_ROUTE = 1;
+
+  // Prefer routes learned over VPN tunnels.
+  VPN_GATEWAY = 2;
+
+  // Prefer the shortest BGP AS path, regardless of tunnel type.
+  AS_PATH = 3;
+}
+
+// One static route in the hub's classic inline route set (applied to
+// the hub's default route table).
+message AzureVirtualHubRoute {
+  // The destination prefixes this route matches, in CIDR notation.
+  repeated string address_prefixes = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      string: {pattern: "^([0-9]{1,3}\\.){3}[0-9]{1,3}/([0-9]|[1-2][0-9]|3[0-2])$"}
+    }
+  ];
+
+  // The IPv4 address traffic matching the prefixes is forwarded to.
+  string next_hop_ip_address = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$"
+  ];
+}
+
+// One custom hub route table.
+message AzureVirtualHubRouteTable {
+  // The table's name, unique on the hub -- the ID's lookup name in the
+  // route_table_ids output map. ARM forbids the characters <>%&:?/+ in
+  // the name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[^<>%&:?/+]+$"
+  ];
+
+  // Labels grouping this table for bulk propagation: a connection that
+  // propagates to a label propagates to every table carrying it
+  // (e.g. label all production-spoke tables "prod" and propagate once).
+  repeated string labels = 2;
+
+  // The table's static routes. Routes steer matched destinations to a
+  // next-hop RESOURCE (an Azure Firewall or a hub connection) -- this is
+  // how service chaining and spoke-egress-through-firewall are built.
+  repeated AzureVirtualHubRouteTableRoute routes = 3;
+
+  option (buf.validate.message).cel = {
+    id: "route_names_unique"
+    message: "Route names must be unique within the route table"
+    expression: "this.routes.all(r, this.routes.filter(o, o.name == r.name).size() == 1)"
+  };
+}
+
+// One static route in a custom hub route table.
+message AzureVirtualHubRouteTableRoute {
+  // The route's name, unique within its table.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How the destinations list is interpreted: CIDR prefixes, ARM
+  // resource IDs, or service names. CIDR is the common choice.
+  AzureVirtualHubRouteDestinationsType destinations_type = 2 [(buf.validate.field).enum.defined_only = true];
+
+  // The destinations this route matches, interpreted per
+  // destinations_type.
+  repeated string destinations = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      string: {min_len: 1}
+    }
+  ];
+
+  // The next-hop RESOURCE traffic is steered to -- the ARM ID of an
+  // Azure Firewall in this hub (the classic service-chaining shape) or
+  // of a hub connection. References an AzureFirewall's ARM id by
+  // default. (ARM's next_hop_type has exactly one value, "ResourceId" --
+  // the modules emit it; there is nothing to configure.)
+  dev.planton.shared.foreignkey.v1.StringValueOrRef next_hop = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFirewall,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.firewall_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "destinations_type_required"
+    message: "Choose how destinations are interpreted: CIDR (prefixes, the common choice), RESOURCE_ID, or SERVICE"
+    expression: "this.destinations_type != 0"
+  };
+}
+
+// How a route's destinations list is interpreted.
+enum AzureVirtualHubRouteDestinationsType {
+  // Not specified -- invalid: the interpretation is explicit.
+  azure_virtual_hub_route_destinations_type_unspecified = 0;
+
+  // Destinations are CIDR prefixes (the common choice).
+  CIDR = 1;
+
+  // Destinations are ARM resource IDs.
+  RESOURCE_ID = 2;
+
+  // Destinations are Azure service names.
+  SERVICE = 3;
+}
+
+// One route map: an ordered list of match/transform rules applied to
+// BGP routes entering or leaving hub connections.
+message AzureVirtualHubRouteMap {
+  // The map's name, unique on the hub -- the ID's lookup name in the
+  // route_map_ids output map. 1-80 characters, starting alphanumeric,
+  // containing only letters, numbers, underscores, periods, and
+  // hyphens, ending in a letter, number, or underscore (ARM's rule).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9]([a-zA-Z0-9_.-]{0,78}[a-zA-Z_0-9])?$"
+  ];
+
+  // The map's rules, evaluated in order.
+  repeated AzureVirtualHubRouteMapRule rules = 2;
+
+  option (buf.validate.message).cel = {
+    id: "rule_names_unique"
+    message: "Rule names must be unique within the route map"
+    expression: "this.rules.all(r, this.rules.filter(o, o.name == r.name).size() == 1)"
+  };
+}
+
+// One route-map rule: match criteria plus the actions applied to
+// matching routes.
+message AzureVirtualHubRouteMapRule {
+  // The rule's name, unique within its map.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The criteria a route must match for this rule to apply. A rule
+  // with no criteria matches every route.
+  repeated AzureVirtualHubRouteMapMatchCriterion match_criteria = 2;
+
+  // The actions applied to matching routes, in order.
+  repeated AzureVirtualHubRouteMapAction actions = 3;
+
+  // What happens after a route matches this rule. Unspecified leaves
+  // the decision to ARM (its "Unknown" value): evaluation stops.
+  // CONTINUE evaluates subsequent rules too; TERMINATE stops here
+  // explicitly.
+  optional AzureVirtualHubRouteMapNextStep next_step_if_matched = 4 [(buf.validate.field).enum.defined_only = true];
+}
+
+// What happens after a route matches a route-map rule.
+enum AzureVirtualHubRouteMapNextStep {
+  // Not specified -- ARM's "Unknown" applies: evaluation stops after
+  // the match.
+  azure_virtual_hub_route_map_next_step_unspecified = 0;
+
+  // Continue evaluating subsequent rules against the (transformed)
+  // route.
+  CONTINUE = 1;
+
+  // Stop evaluating -- this rule's outcome is final.
+  TERMINATE = 2;
+}
+
+// One match criterion inside a route-map rule.
+message AzureVirtualHubRouteMapMatchCriterion {
+  // How the criterion's lists compare against the route's attributes.
+  AzureVirtualHubRouteMapMatchCondition match_condition = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // Match against the route's BGP AS path (AS numbers as strings).
+  repeated string as_path = 2;
+
+  // Match against the route's BGP community values (e.g. "65001:100").
+  repeated string community = 3;
+
+  // Match against the route's prefix (CIDR notation).
+  repeated string route_prefix = 4;
+
+  option (buf.validate.message).cel = {
+    id: "match_condition_required"
+    message: "Choose how the criterion compares: CONTAINS, EQUALS, NOT_CONTAINS, or NOT_EQUALS"
+    expression: "this.match_condition != 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "criterion_matches_something"
+    message: "Give the criterion something to match: as_path, community, or route_prefix"
+    expression: "this.as_path.size() > 0 || this.community.size() > 0 || this.route_prefix.size() > 0"
+  };
+}
+
+// How a match criterion compares its lists against a route.
+enum AzureVirtualHubRouteMapMatchCondition {
+  // Not specified -- invalid: the comparison is explicit.
+  azure_virtual_hub_route_map_match_condition_unspecified = 0;
+
+  // The route's attribute contains the listed values.
+  CONTAINS = 1;
+
+  // The route's attribute equals the listed values exactly.
+  EQUALS = 2;
+
+  // The route's attribute does not contain the listed values.
+  NOT_CONTAINS = 3;
+
+  // The route's attribute does not equal the listed values.
+  NOT_EQUALS = 4;
+}
+
+// One action inside a route-map rule.
+message AzureVirtualHubRouteMapAction {
+  // What the action does to the matching route: ADD/REMOVE/REPLACE
+  // transform the attributes named in parameters; DROP discards the
+  // route (and takes no parameters).
+  AzureVirtualHubRouteMapActionType type = 1 [(buf.validate.field).enum.defined_only = true];
+
+  // The attribute values the action adds, removes, or replaces. ARM
+  // requires at least one parameter on every action except DROP.
+  repeated AzureVirtualHubRouteMapActionParameter parameters = 2;
+
+  option (buf.validate.message).cel = {
+    id: "action_type_required"
+    message: "Choose the action: ADD, REMOVE, or REPLACE (transform attributes), or DROP (discard the route)"
+    expression: "this.type != 0"
+  };
+  // Mirrors the provider's own create-time rule so the error lands in
+  // seconds, not at deploy.
+  option (buf.validate.message).cel = {
+    id: "non_drop_actions_need_parameters"
+    message: "ADD, REMOVE, and REPLACE actions need at least one parameter (the attribute values to transform); only DROP takes none"
+    expression: "this.type == 2 ? true : this.parameters.size() > 0"
+  };
+}
+
+// What a route-map action does.
+enum AzureVirtualHubRouteMapActionType {
+  // Not specified -- invalid: the action is explicit.
+  azure_virtual_hub_route_map_action_type_unspecified = 0;
+
+  // Add the parameter values to the route's attributes.
+  ADD = 1;
+
+  // Discard the route. Takes no parameters.
+  DROP = 2;
+
+  // Remove the parameter values from the route's attributes.
+  REMOVE = 3;
+
+  // Replace the route's attributes with the parameter values.
+  REPLACE = 4;
+}
+
+// Attribute values a route-map action operates on.
+message AzureVirtualHubRouteMapActionParameter {
+  // BGP AS path values (AS numbers as strings).
+  repeated string as_path = 1;
+
+  // BGP community values (e.g. "65001:100").
+  repeated string community = 2;
+
+  // Route prefixes (CIDR notation).
+  repeated string route_prefix = 3;
+}
+
+// One BGP peering between the hub's router and an NVA in a connected
+// spoke VNet. All fields are fixed at creation (ARM replaces the
+// peering on any change).
+message AzureVirtualHubBgpConnection {
+  // The peering's name, unique on the hub -- the ID's lookup name in
+  // the bgp_connection_ids output map.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The NVA's BGP autonomous system number. Must differ from the hub
+  // router's own ASN (always 65515).
+  int64 peer_asn = 2 [(buf.validate.field).int64.gte = 0];
+
+  // The NVA's IPv4 address inside the connected spoke VNet.
+  string peer_ip = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}$"
+  ];
+
+  // The hub connection carrying the spoke VNet the NVA lives in --
+  // references an AzureVirtualHubConnection's ARM id. ARM accepts a
+  // peering without it, but routes only flow once the peer is reachable
+  // through a connection.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_connection_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualHubConnection,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_hub_connection_id"
+  ];
+}
+
+// The hub's routing intent: categories of traffic steered through a
+// security appliance. A hub has at most one.
+message AzureVirtualHubRoutingIntent {
+  // The routing intent's name (ARM convention: "hubRoutingIntent").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The policies -- in practice one per traffic category (an Internet
+  // policy and/or a PrivateTraffic policy).
+  repeated AzureVirtualHubRoutingPolicy routing_policies = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  option (buf.validate.message).cel = {
+    id: "policy_names_unique"
+    message: "Routing policy names must be unique within the routing intent"
+    expression: "this.routing_policies.all(p, this.routing_policies.filter(o, o.name == p.name).size() == 1)"
+  };
+}
+
+// One routing-intent policy: traffic categories and the appliance they
+// are steered through.
+message AzureVirtualHubRoutingPolicy {
+  // The policy's name (e.g. "InternetTraffic", "PrivateTrafficPolicy").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The traffic categories this policy steers (ARM models a list; the
+  // common shape is exactly one category per policy).
+  repeated AzureVirtualHubRoutingPolicyDestination destinations = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items = {
+      enum: {
+        defined_only: true
+        not_in: 0
+      }
+    }
+  ];
+
+  // The next-hop security appliance -- the ARM ID of an Azure Firewall
+  // deployed in THIS hub (the supported appliance for routing intent;
+  // referencing a firewall in another hub or VNet fails at deploy).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef next_hop = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureFirewall,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.firewall_id"
+  ];
+}
+
+// The traffic category a routing-intent policy steers.
+enum AzureVirtualHubRoutingPolicyDestination {
+  // Not specified -- invalid: the category is explicit.
+  azure_virtual_hub_routing_policy_destination_unspecified = 0;
+
+  // Internet-bound traffic (0.0.0.0/0).
+  INTERNET = 1;
+
+  // Private traffic (RFC1918 ranges and connected network prefixes).
+  PRIVATE_TRAFFIC = 2;
+}

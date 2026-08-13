@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningworkspace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremachinelearningworkspace/v1alpha1/outputs.proto";
+import "catalog/azure/azuremachinelearningworkspace/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMachineLearningWorkspace is the top-level API resource
+// describing an Azure Machine Learning workspace -- the central home
+// a data-science team keeps its experiments, models, endpoints,
+// datastores and compute in.
+message AzureMachineLearningWorkspace {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureMachineLearningWorkspace".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMachineLearningWorkspace'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Machine Learning workspace specification.
+  AzureMachineLearningWorkspaceSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureMachineLearningWorkspaceStatus status = 5;
+}
+
+// AzureMachineLearningWorkspaceStatus holds the deployment outputs.
+message AzureMachineLearningWorkspaceStatus {
+  // Stack outputs from the IaC deployment.
+  AzureMachineLearningWorkspaceStackOutputs outputs = 1;
+}

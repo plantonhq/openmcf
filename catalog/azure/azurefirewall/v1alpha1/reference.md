@@ -418,6 +418,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureRouteTable | `spec.routes[].nextHopInIpAddress` | `status.outputs.private_ip_address` |
+| AzureVirtualHub | `spec.routeTables[].routes[].nextHop` | `status.outputs.firewall_id` |
+| AzureVirtualHub | `spec.routingIntent.routingPolicies[].nextHop` | `status.outputs.firewall_id` |
 
 ## See Also
 

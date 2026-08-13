@@ -1,0 +1,21 @@
+# Offline-plan test manifest. Exercises the deep seams: the four
+# resolved references (vault resource group, vault name, source VM,
+# policy), a disk-LUN exclusion list, and an explicit Protected
+# posture.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupProtectedVm
+metadata:
+  name: test-backup-protected-vm
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  recoveryVaultName:
+    value: test-backup-vault
+  sourceVmId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/vm-rg/providers/Microsoft.Compute/virtualMachines/test-app-vm
+  backupPolicyId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.RecoveryServices/vaults/test-backup-vault/backupPolicies/hourly-enhanced-policy
+  excludeDiskLuns: [2, 3]
+  protectionState: Protected

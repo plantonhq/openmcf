@@ -87,6 +87,12 @@ func function(
 	if spec.KmsKeyName.GetValue() != "" {
 		args.KmsKeyName = pulumi.String(spec.KmsKeyName.GetValue())
 	}
+	// DELETE (provider default) removes the function on destroy; PREVENT
+	// fails the destroy; ABANDON leaves it serving and consuming events.
+	// Sent only when set — mirrors the Terraform module.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 	if spec.ServiceConfig != nil {
 		args.ServiceConfig = serviceConfig(spec, effectiveProject)
 	}
@@ -322,6 +328,28 @@ func serviceConfig(spec *gcpcloudfunctionv1alpha1.GcpCloudFunctionSpec, effectiv
 		if sc.VpcConnectorEgressSettings != gcpcloudfunctionv1alpha1.GcpCloudFunctionVpcEgressSetting_PRIVATE_RANGES_ONLY {
 			serviceArgs.VpcConnectorEgressSettings = pulumi.String(sc.VpcConnectorEgressSettings.String())
 		}
+	}
+
+	// Direct VPC egress: the connectorless path (mutually exclusive with
+	// vpc_connector — the spec's CEL enforces it pre-deploy). The egress
+	// mode is sent explicitly whenever the interface is present — the
+	// field is Optional+Computed on the provider, so an ALL_TRAFFIC ->
+	// PRIVATE_RANGES_ONLY spec edit would otherwise silently keep the old
+	// live value. The API takes VPC_EGRESS_-prefixed values; the spec
+	// carries the bare enum names.
+	if sc.DirectVpcNetworkInterface != nil {
+		interfaceArgs := &cloudfunctionsv2.FunctionServiceConfigDirectVpcNetworkInterfaceArgs{}
+		if sc.DirectVpcNetworkInterface.Network.GetValue() != "" {
+			interfaceArgs.Network = pulumi.StringPtr(sc.DirectVpcNetworkInterface.Network.GetValue())
+		}
+		if sc.DirectVpcNetworkInterface.Subnetwork.GetValue() != "" {
+			interfaceArgs.Subnetwork = pulumi.StringPtr(sc.DirectVpcNetworkInterface.Subnetwork.GetValue())
+		}
+		if len(sc.DirectVpcNetworkInterface.Tags) > 0 {
+			interfaceArgs.Tags = pulumi.ToStringArray(sc.DirectVpcNetworkInterface.Tags)
+		}
+		serviceArgs.DirectVpcNetworkInterfaces = cloudfunctionsv2.FunctionServiceConfigDirectVpcNetworkInterfaceArray{interfaceArgs}
+		serviceArgs.DirectVpcEgress = pulumi.StringPtr("VPC_EGRESS_" + sc.DirectVpcEgress.String())
 	}
 	if sc.IngressSettings != gcpcloudfunctionv1alpha1.GcpCloudFunctionIngressSetting_ALLOW_ALL {
 		serviceArgs.IngressSettings = pulumi.String(sc.IngressSettings.String())

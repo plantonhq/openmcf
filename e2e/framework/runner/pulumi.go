@@ -36,6 +36,19 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
 }
 
+// PulumiPreviewExpectNoChanges re-plans the just-applied stack and fails if
+// any change is still pending — the Pulumi arm of the IDEMPOTENCY phase. No
+// --refresh here: the point is whether the program's desired state matches
+// what the apply recorded, not whether the cloud drifted in the seconds since.
+func PulumiPreviewExpectNoChanges(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+	args := []string{"preview", "--stack", stackName, "--expect-no-changes", "--non-interactive"}
+	result, err := runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
+	if err != nil {
+		return result, errors.Wrap(err, "pulumi preview reported pending changes after apply (idempotency violation)")
+	}
+	return result, nil
+}
+
 // PulumiDestroy runs `pulumi destroy` for the given module directory and stack.
 // --run-program keeps the program available so BeforeDelete/AfterDelete
 // resource hooks fire (e.g. Kyverno's webhook-GC sentinel). Without it,
@@ -54,8 +67,21 @@ func PulumiRemoveStack(moduleDir, stackName, backendURL string) error {
 }
 
 // PulumiStackOutputs retrieves stack outputs as a raw string.
+//
+// --show-secrets is load-bearing: without it Pulumi masks every secret
+// output as the literal string "[secret]", which corrupts a sensitive
+// SCALAR output silently (the sentinel populates the proto field and
+// counts as verified) and fails a sensitive MAP output's JSON parse
+// (first live hit: a name-keyed authorization_keys map). The Terraform
+// path reads real values (`terraform output -json` includes sensitive
+// outputs), so the flag keeps both engines' verification bar identical
+// -- and dependency-output capture rides this same helper, where a
+// consumer's value_from reference to a fixture's sensitive output would
+// otherwise resolve to the sentinel and deploy silently wrong. No
+// caller prints raw output values (counts and names only), so the
+// unmasked values never reach logs.
 func PulumiStackOutputs(moduleDir, stackName, backendURL string) (string, error) {
-	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive"}
+	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive", "--show-secrets"}
 	result, err := runPulumi(moduleDir, backendURL, "", "", args)
 	if err != nil {
 		return "", err
@@ -139,23 +165,24 @@ func PulumiLogin(backendURL string) error {
 	return nil
 }
 
-// maxStackNameLen caps generated stack names well inside Pulumi's own limit.
-// The cap is enforced HERE, never by truncating at a call site: a plain
-// prefix truncation discards exactly the part of the name that carries
-// uniqueness (a multi-instance install profile's instance suffix and the run
-// id live at the tail). Live-proven failure mode: the three AwsSubnet
-// install-profile instances all truncated to one identical dependency stack
-// name, so each successive `pulumi up` silently REPLACED the previous
-// instance's cloud resource, the component's resolved reference pointed at a
-// deleted subnet, and teardown destroyed one stack then failed "no stack
-// named" on the two ghosts.
+// maxStackNameLen caps generated stack names. The cap itself is a
+// conservative budget (Pulumi accepts up to 100 characters); what matters is
+// HOW the cap is enforced -- see GenerateStackName.
 const maxStackNameLen = 50
 
-// GenerateStackName creates a unique, deterministic stack name for an E2E test
-// run. Format: e2e-{label}-{shortRunID}, capped at maxStackNameLen. When the
-// composed name exceeds the cap it is truncated and its tail replaced with a
-// short digest of the FULL composed name, so two long labels can never
-// collapse into the same stack name.
+// GenerateStackName creates a unique, deterministic stack name for an E2E
+// test run. Format: e2e-{label}-{shortID}, capped at maxStackNameLen.
+//
+// The cap is enforced by replacing the tail with a short hash of the FULL
+// composed name -- never by blind truncation. Labels carry uniquifying
+// suffixes at the END (an install profile's per-document index, the scenario
+// name, the run id), so a blind prefix cut collapses distinct stacks into
+// one shared name, and every `pulumi up` after the first silently REPLACES
+// the previous document's resources in that shared stack (live-caught: a
+// four-document subnet install profile deployed as one stack, each subnet
+// deleting its predecessor -- the gateway's subnet was gone by deploy time).
+// The hash keeps distinct full names distinct, and the derivation stays
+// deterministic, so per-run stack reuse across scenarios is unaffected.
 func GenerateStackName(label string, runID string) string {
 	short := runID
 	if len(short) > 8 {
@@ -166,6 +193,19 @@ func GenerateStackName(label string, runID string) string {
 		return name
 	}
 	digest := sha256.Sum256([]byte(name))
-	tail := hex.EncodeToString(digest[:])[:8]
-	return name[:maxStackNameLen-len(tail)-1] + "-" + tail
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(digest[:4])
+}
+
+// boundStackName truncates a stack name to maxStackNameLen while preserving
+// uniqueness: the head stays readable and the tail is replaced by a short
+// stable hash of the FULL name. A plain head-truncate is a correctness bug,
+// not a cosmetic one -- it cuts off exactly the disambiguating parts (a
+// dependency's manifest-name tail, the run-id suffix), collapsing distinct
+// stacks onto one name.
+func boundStackName(name string) string {
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(sum[:4])
 }

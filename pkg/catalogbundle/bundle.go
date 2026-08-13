@@ -12,6 +12,9 @@
 //	                      (enum options ARE the kind metadata) in one artifact
 //	conversions/**        every authored ConversionSpec, provider/kind layout
 //	presets/**            every kind's preset manifests, provider/kind layout
+//	entries/**            every user-facing kind's catalog entry (title,
+//	                      description, slug, logo, contract links, official
+//	                      IaC module directories), provider/kind layout
 //
 // The manifest's checksums make the bundle self-verifying; release signing
 // wraps the whole zip (the signature travels beside the artifact, not in

@@ -11,6 +11,8 @@ metadata:
   org: planton-dev
   env: dev
 spec:
+  projectId:
+    value: hack-project
   region: us-central1
   functionName: hack-api
   description: Development function exercising the deep service surface
@@ -58,3 +60,5 @@ spec:
     allowUnauthenticated: false
   trigger:
     triggerType: HTTP
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

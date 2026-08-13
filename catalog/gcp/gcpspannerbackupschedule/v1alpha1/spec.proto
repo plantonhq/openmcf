@@ -153,4 +153,21 @@ message GcpSpannerBackupScheduleSpec {
   // How the backups are encrypted. If omitted, backups use
   // USE_DATABASE_ENCRYPTION (inherit the database's posture). Mutable.
   GcpSpannerBackupScheduleEncryptionConfig encryption_config = 8;
+
+  // Deletion policy for the schedule — what happens when this resource
+  // is destroyed. The schedule is a control-plane object: none of these
+  // values touches the BACKUPS it already created (those live until
+  // their retention expires):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the schedule is deleted; no further backups are taken
+  //   "PREVENT" -- destroy FAILS; protects the cadence a recovery
+  //                objective depends on from riding along with a
+  //                stack teardown
+  //   "ABANDON" -- the schedule is removed from management but keeps
+  //                running (and creating backups) in GCP
+  string deletion_policy = 9 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

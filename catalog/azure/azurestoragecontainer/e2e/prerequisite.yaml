@@ -1,0 +1,35 @@
+# AzureStorageContainer install profile used as a SCENARIO-DECLARED
+# fixture (via the planton.dev/e2e-prerequisites annotation -- the
+# Machine Learning datastore's blob lane today). This kind has NO
+# registry prerequisites of its own: its parent storage account is the
+# fixture account (planton-oss-e2e-azure-fixture-sa), which reaches
+# the tree through the declaring scenario's own prerequisite chain
+# (the ML workspace's registry prerequisites include
+# AzureStorageAccount).
+#
+# COST AND TIME: a container is instant and free -- the account it
+# lives on carries the (penny-scale) cost.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-azure-fixture-container
+  id: planton-oss-e2e-azure-fixture-container
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  containerName: planton-oss-e2e-fixture-container
+  # The container kind carries container METADATA (data-plane pairs),
+  # not ARM tags.
+  metadata:
+    e2e-suite: azure
+    purpose: fixture

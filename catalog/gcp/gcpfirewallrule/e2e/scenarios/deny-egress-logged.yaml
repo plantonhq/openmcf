@@ -1,0 +1,42 @@
+# DENY-egress GcpFirewallRule scenario: exercises the rule surface the
+# minimal ALLOW-ingress shape cannot — the DENY action, the EGRESS direction
+# with destination ranges (no source selector is legal on egress), the
+# all-protocols payload, a non-default priority, and firewall logging
+# (log_config presence enables it; metadata mode INCLUDE_ALL_METADATA).
+# The destination is TEST-NET-1 (192.0.2.0/24, reserved for documentation),
+# so the rule can never affect real traffic even while ACTIVE. The VPC
+# fixture and naming conventions match the minimal scenario.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpFirewallRule
+metadata:
+  name: planton-oss-e2e-gcpfwr-deny-egress
+  id: planton-oss-e2e-gcpfwr-deny-egress
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpfirewallrule
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpVpcNetwork"
+  tags:
+    - planton-e2e
+spec:
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  ruleName: planton-oss-e2e-fwr-deny-egress
+  direction: EGRESS
+  action: DENY
+  rules:
+    - protocol: all
+  priority: 900
+  description: Ephemeral deny-egress rule created by the Planton E2E harness; safe to delete
+  destinationRanges:
+    - "192.0.2.0/24"
+  logConfig:
+    metadata: INCLUDE_ALL_METADATA
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

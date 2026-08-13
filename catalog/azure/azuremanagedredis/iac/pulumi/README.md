@@ -1,6 +1,6 @@
 # AzureManagedRedis - Pulumi Module
 
-Pulumi implementation for the AzureManagedRedis deployment component.
+Pulumi implementation for the AzureManagedRedis component.
 
 ## Architecture
 

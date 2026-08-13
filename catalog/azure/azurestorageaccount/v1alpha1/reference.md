@@ -1787,14 +1787,21 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureBackupContainerStorageAccount | `spec.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureCognitiveAccount | `spec.storage[].storageAccountId` | `status.outputs.storage_account_id` |
 | AzureContainerAppEnvironmentStorage | `spec.accountName` | `status.outputs.storage_account_name` |
 | AzureContainerAppEnvironmentStorage | `spec.accessKey` | `status.outputs.primary_access_key` |
+| AzureDataProtectionBackupInstance | `spec.blobStorage.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureDataProtectionBackupInstance | `spec.dataLakeStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureFunctionApp | `spec.storageAccountName` | `status.outputs.storage_account_name` |
 | AzureFunctionApp | `spec.storageAccountAccessKey` | `status.outputs.primary_access_key` |
 | AzureFunctionApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |
 | AzureLinuxWebApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |
+| AzureMachineLearningWorkspace | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureMonitorDiagnosticSetting | `spec.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureNetworkWatcherFlowLog | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageContainer | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageDataLakeGen2Filesystem | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureStorageEncryptionScope | `spec.storageAccountId` | `status.outputs.storage_account_id` |

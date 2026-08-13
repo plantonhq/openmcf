@@ -6,7 +6,7 @@ Deploys a zonal Compute Engine persistent disk — the durable block device behi
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Engine Persistent Disk** -- a zonal block device in the specified project and zone, created empty (the common data-volume case) or initialized from exactly one source: an image (bootable), a snapshot (restore), or an existing GcpComputeDisk (clone)
+- **Compute Engine Persistent Disk** -- a zonal block device in the specified project and zone, created empty (the common data-volume case) or initialized from exactly one source: an image (bootable), a snapshot (restore), an instant snapshot (fast same-region restore), a Cloud Storage disk-image file (import), or an existing GcpComputeDisk (clone)
 - **Performance Configuration** -- the disk type (pd-standard, pd-balanced, pd-ssd, pd-extreme, or hyperdisk-*), with provisioned IOPS/throughput dials on the types that support tuning
 - **Encryption** -- Google-managed by default; customer-managed (CMEK) when a GcpKmsKey is referenced, with optional confidential-compute mode on hyperdisk SKUs
 - **Destroy-Snapshot Net** -- created only when `createSnapshotBeforeDestroy` is enabled; a timestamped final snapshot taken immediately before the disk is destroyed
@@ -84,13 +84,13 @@ These are the most important decisions when configuring a persistent disk. Explo
 
 **Zone** -- A disk attaches only to instances in the SAME zone; put it where its VM lives. Immutable — cross-zone moves go through a snapshot round-trip.
 
-**Source and size** -- At most one source: empty (declare `sizeGb`), `image` (makes the disk bootable), `sourceSnapshot` (restore), or `sourceDisk` (clone another GcpComputeDisk). Size only GROWS — in place, with a filesystem grow from the guest; shrinking is impossible.
+**Source and size** -- At most one source: empty (declare `sizeGb`), `image` (makes the disk bootable), `sourceSnapshot` (restore), `sourceInstantSnapshot` (fast same-region restore), `sourceStorageObject` (import a raw disk image straight from Cloud Storage), or `sourceDisk` (clone another GcpComputeDisk). Size only GROWS — in place, with a filesystem grow from the guest; shrinking is impossible. Encrypted image/snapshot sources decrypt via `sourceImageEncryption` / `sourceSnapshotEncryption` (CMEK only).
 
 **Type and performance** -- The pd-* family scales performance with size; the hyperdisk-* family decouples them with `provisionedIops`/`provisionedThroughput` dials that update IN PLACE (at most every 4 hours). pd-extreme and hyperdisk-extreme REQUIRE provisioned IOPS.
 
 **Access mode** -- `READ_ONLY_MANY` shares one dataset across many VMs; `READ_WRITE_MANY` needs a multi-writer-capable type (hyperdisk-ml).
 
-**Encryption and recovery** -- Reference a GcpKmsKey for CMEK (your revocation lever; immutable), and arm `createSnapshotBeforeDestroy` on precious volumes so even a mistaken destroy leaves a timestamped snapshot.
+**Encryption and recovery** -- Reference a GcpKmsKey for CMEK (your revocation lever; immutable; `kmsKeyServiceAccount` overrides the requesting identity). Raw CSEK keys are deliberately not modeled — key material never flows through manifests or state. Arm `createSnapshotBeforeDestroy` on precious volumes so even a mistaken destroy leaves a timestamped snapshot, or set `deletionPolicy: PREVENT` to fail destroys outright. For cross-region disaster recovery, `asyncPrimaryDisk` pairs this disk as an async-replication secondary of a primary in another region.
 
 ## Outputs and Dependencies
 

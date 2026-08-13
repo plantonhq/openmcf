@@ -1,12 +1,12 @@
 ---
-description: Action rule to write a catalog.md for a Planton deployment component. Produces a source-verified, developer-facing catalog page following the exact standard structure.
+description: Action rule to write a catalog.md for a Planton component. Produces a source-verified, developer-facing catalog page following the exact standard structure.
 globs: []
 alwaysApply: false
 ---
 
 # Rule: Write Catalog Page (catalog.md)
 
-**Purpose**: Guide an AI agent through writing a `catalog.md` file for a Planton deployment component. `catalog.md` lives at the component root and is THE catalog page: the user-facing component page rendered by the public site (at `/docs/catalog/{provider}/{component}`) and by the console.
+**Purpose**: Guide an AI agent through writing a `catalog.md` file for a Planton component. `catalog.md` lives at the component root and is THE catalog page: the user-facing component page rendered by the public site (at `/docs/catalog/{provider}/{component}`) and by the console.
 
 **Trigger**: User references this rule or asks to write/create a catalog page for a component.
 

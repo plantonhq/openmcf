@@ -42,6 +42,10 @@ func user(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error 
 		args.Password = pulumi.ToSecret(pulumi.String(spec.Password)).(pulumi.StringOutput)
 	}
 
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdUser, err := alloydb.NewUser(ctx, "user", args,
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdProjectService}),

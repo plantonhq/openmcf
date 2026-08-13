@@ -509,7 +509,7 @@ var File_catalog_azure_azureapplicationinsightsstandardwebtest_v1alpha1_spec_pro
 
 const file_catalog_azure_azureapplicationinsightsstandardwebtest_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Icatalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1/spec.proto\x12Bdev.planton.azure.azureapplicationinsightsstandardwebtest.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9f\r\n" +
+	"Icatalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1/spec.proto\x12Bdev.planton.azure.azureapplicationinsightsstandardwebtest.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x94\r\n" +
 	"+AzureApplicationInsightsStandardWebTestSpec\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12\x1e\n" +
 	"\x04name\x18\x02 \x01(\tB\n" +
@@ -530,8 +530,8 @@ const file_catalog_azure_azureapplicationinsightsstandardwebtest_v1alpha1_spec_p
 	"\x04tags\x18\r \x03(\v2y.dev.planton.azure.azureapplicationinsightsstandardwebtest.v1alpha1.AzureApplicationInsightsStandardWebTestSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdd\x02\xbaH\xd9\x02\x1a\xd6\x02\n" +
-	"!web_test_ssl_checks_require_https\x12Ussl_check_enabled and ssl_cert_remaining_lifetime require the request url to be https\x1a\xd9\x01!has(this.validation_rules) || (this.validation_rules.ssl_check_enabled != true && this.validation_rules.ssl_cert_remaining_lifetime == 0) || (has(this.request) && this.request.url.lowerAscii().startsWith('https://'))B\f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd2\x02\xbaH\xce\x02\x1a\xcb\x02\n" +
+	"!web_test_ssl_checks_require_https\x12Ussl_check_enabled and ssl_cert_remaining_lifetime require the request url to be https\x1a\xce\x01!has(this.validation_rules) || (this.validation_rules.ssl_check_enabled != true && this.validation_rules.ssl_cert_remaining_lifetime == 0) || (has(this.request) && this.request.url.matches('^(?i)https://'))B\f\n" +
 	"\n" +
 	"_frequencyB\n" +
 	"\n" +

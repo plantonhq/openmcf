@@ -61,6 +61,7 @@ This creates the role `projects/my-gcp-project-123/roles/logBucketWriter`, ready
 | `projectId` | `StringValueOrRef` | provider default project | GCP project that owns this role. Can reference a GcpProject resource. Immutable. |
 | `description` | `string` | `""` | What this role is for and who should hold it. Max 256 chars. Mutable. |
 | `stage` | `string` | `GA` | Launch stage label: `ALPHA`, `BETA`, `GA`, `DEPRECATED`, `DISABLED`, `EAP`. `DISABLED` keeps the role defined while rejecting all of its grants. |
+| `deletionPolicy` | `string` | `DELETE` | `DELETE` soft-deletes the role on destroy (recoverable 7 days); `PREVENT` fails the destroy; `ABANDON` leaves the role active with every binding working. |
 
 ## Why Custom Roles
 

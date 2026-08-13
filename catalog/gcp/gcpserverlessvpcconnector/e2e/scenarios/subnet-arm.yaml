@@ -28,3 +28,6 @@ spec:
   machineType: e2-micro
   minInstances: 2
   maxInstances: 3
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

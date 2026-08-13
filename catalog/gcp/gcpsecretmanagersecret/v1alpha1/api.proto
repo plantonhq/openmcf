@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpsecretmanagersecret.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpsecretmanagersecret/v1alpha1/outputs.proto";
+import "catalog/gcp/gcpsecretmanagersecret/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+//gcp-secret-manager-secret
+message GcpSecretManagerSecret {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpSecretManagerSecret'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpSecretManagerSecretSpec spec = 4 [(buf.validate.field).required = true];
+  GcpSecretManagerSecretStatus status = 5;
+}
+
+message GcpSecretManagerSecretStatus {
+  GcpSecretManagerSecretStackOutputs outputs = 1;
+}

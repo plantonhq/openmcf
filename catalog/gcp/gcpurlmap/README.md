@@ -59,14 +59,27 @@ This creates a URL map that sends all unmatched traffic to the named backend ser
 
 ### Route actions
 
-Inside `defaultRouteAction`, `pathRules[].routeAction`, and `routeRules[].routeAction`:
+Inside `defaultRouteAction`, `pathMatchers[].defaultRouteAction`, `pathRules[].routeAction`, and `routeRules[].routeAction` — the full per-route traffic-management surface:
 
 | Sub-field | Description |
 |-----------|-------------|
-| `weightedBackendServices` | Relative weights splitting traffic across backend services |
+| `weightedBackendServices` | Relative weights splitting traffic across backend services, each with an optional per-backend `headerAction` |
 | `urlRewrite` | `hostRewrite`, `pathPrefixRewrite`, or (route rules only) `pathTemplateRewrite` |
+| `timeout` | Total time budget for the request including all retries |
+| `retryPolicy` | Retry conditions, attempt count, and per-try timeout |
+| `requestMirrorPolicy` | Fire-and-forget mirroring of matched traffic to a second backend service |
+| `corsPolicy` | CORS preflights answered and headers stamped at the load balancer |
+| `faultInjectionPolicy` | Deliberate aborts and delays for resilience testing |
+| `maxStreamDuration` | Upper bound on how long a stream on this route may stay open |
+| `cachePolicy` | Route-scoped Cloud CDN cache behavior, overriding the backend's `cdnPolicy` for matching traffic |
 
-Timeout, retry, CORS, fault injection, and request mirroring inside `routeAction` are intentionally omitted — a documented coverage boundary; adding them later is purely additive.
+A route action is a valid routing *target* only through `weightedBackendServices`; the other sub-policies may accompany a plain `service` target (e.g. a path rule with `service` plus a route action carrying only `retryPolicy` and `timeout`).
+
+### Lifecycle
+
+| Field | Description |
+|-------|-------------|
+| `deletionPolicy` | What a destroy may do: `DELETE` (default), `PREVENT` (fail the destroy), or `ABANDON` (drop from state, keep serving) |
 
 ## Stack Outputs
 

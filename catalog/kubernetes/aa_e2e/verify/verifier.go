@@ -75,7 +75,7 @@ var crdInstallKinds = map[string][]string{
 }
 
 // gatewayApiCustomResource describes how to verify a Gateway API custom resource
-// created by one of the Gateway API deployment components. These components do
+// created by one of the Gateway API components. These components do
 // not run pods; verification confirms the CR itself exists after apply and is
 // gone after destroy. The CRDs are installed by the KubernetesGatewayApiCrds
 // registry prerequisite before the component applies.
@@ -104,7 +104,7 @@ var gatewayApiKinds = map[string]gatewayApiCustomResource{
 }
 
 // istioApiKinds maps manifest kind values (lowercased) to the fully-qualified
-// kubectl resource (plural.group) for the typed Istio API deployment components
+// kubectl resource (plural.group) for the typed Istio API components
 // (853-859). Like the Gateway API kinds, these components do not run pods;
 // verification confirms the CR itself exists after apply and is gone after
 // destroy. The Istio CRDs are installed by the KubernetesIstioBaseCrds registry

@@ -126,7 +126,12 @@ buf-fmt:
 protos: buf-lint buf-fmt proto-tools
 	rm -rf generated/stubs
 	mkdir -p generated/stubs
-	buf generate --disable-symlinks
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. --timeout 20m: with LOCAL plugins the full tree outruns
+	# buf's 2-minute default.
+	buf generate --disable-symlinks --timeout 20m
 	cp -R generated/stubs/go/github.com/plantonhq/planton/. .
 	rm -rf generated/stubs/go
 	# Generate a BUILD.bazel for the Java stubs so Bazel can compile them.
@@ -136,6 +141,15 @@ protos: buf-lint buf-fmt proto-tools
 	@printf '# gazelle:ignore\njava_library(\n    name = "java",\n    srcs = glob(["**/*.java"]),\n    visibility = ["//visibility:public"],\n    deps = [\n        "@maven//:build_buf_protovalidate",\n        "@maven//:com_google_guava_guava",\n        "@maven//:com_google_protobuf_protobuf_java",\n        "@maven//:io_grpc_grpc_api",\n        "@maven//:io_grpc_grpc_protobuf",\n        "@maven//:io_grpc_grpc_stub",\n        "@maven//:javax_annotation_javax_annotation_api",\n    ],\n)\n' > generated/stubs/java/BUILD.bazel
 	@echo "Verifying generated Java stubs compile..."
 	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //generated/stubs/java:java
+	# Rule-engine conformance gate: every CEL validation rule must COMPILE on
+	# protovalidate-java (the platform control plane's engine, and the
+	# strictest of the consumer engines). Walks every message descriptor --
+	# rules compile lazily per validated type, so anything narrower silently
+	# skips nested types (a rule the Java engine could not evaluate once
+	# shipped in a release and emptied every fresh local instance's chart
+	# catalog). See hack/javagate/ProtovalidateConformanceGate.java.
+	@echo "Verifying every CEL rule compiles on protovalidate-java..."
+	${BAZEL} test ${BAZEL_REMOTE_FLAGS} //hack/javagate:protovalidate_conformance_gate
 	${BAZEL} run //:gazelle
 
 .PHONY: build-optional-linter-plugin
@@ -220,6 +234,29 @@ build-catalog-bundle:
 verify-catalog-bundle:
 	go run ./pkg/catalogbundle/cli verify --bundle build/catalog-bundle.zip
 
+.PHONY: build-catalog-schema-plugin
+build-catalog-schema-plugin:
+	go build -o $(shell go env GOPATH)/bin/protoc-gen-catalog-schema ./pkg/catalogschema/protoc-gen-catalog-schema
+
+# Builds the catalog-schemas artifact -- one JSON schema document per catalog
+# .proto (the pkg/catalogschema published contract, authored source included),
+# for consoles and tools that render API contracts without compiling protos.
+# The tree is regenerated wholesale into build/ (never committed) and zipped
+# deterministically. See pkg/catalogschema/types.go for the contract.
+.PHONY: build-catalog-schemas
+build-catalog-schemas: build-catalog-schema-plugin
+	rm -rf build/catalog-schemas
+	buf generate --template buf.gen.catalog-schema.yaml
+	go run ./pkg/catalogschema/cli package --dir build/catalog-schemas --out build/catalog-schemas.zip
+
+# Verifies the built schema artifact: every user-facing registry kind's four
+# contract documents are present at its declared version, nothing from the
+# _test provider ships, and every document reads back under the published
+# contract. An artifact that fails must never ship.
+.PHONY: verify-catalog-schemas
+verify-catalog-schemas:
+	go run ./pkg/catalogschema/cli verify --zip build/catalog-schemas.zip
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go
@@ -239,7 +276,11 @@ generate-kubernetes-types:
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build
-	buf build -o build/proto-docs-image.binpb
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. The module has no legitimate protos behind symlinks.
+	buf build --disable-symlinks -o build/proto-docs-image.binpb
 	go run ./pkg/protodocs/distiller \
 		--image build/proto-docs-image.binpb \
 		--out pkg/protodocs/index.json.gz
@@ -256,8 +297,9 @@ generate-proto-docs:
 generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
-		--provider 'google=hashicorp/google@~> 7.0' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.0' \
+		--provider 'google=hashicorp/google@~> 7.43' \
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
+		--provider 'azurerm=hashicorp/azurerm@5.0.0' \
 		--provider 'aws=hashicorp/aws@~> 6.58'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
@@ -275,8 +317,14 @@ generate-provider-parity-report:
 # on every other kind's schema, so there is deliberately no way to scope a
 # run. Deterministic: unchanged schemas regenerate byte-identical files
 # (enforced by the drift test in pkg/explain/refgen).
+#
+# Depends on generate-proto-docs: the pages' comment PROSE renders from the
+# embedded pkg/protodocs index (the protobuf runtime strips comments), so
+# regenerating references against a stale index silently reprints old field
+# documentation even though the schema tables update. Chaining the two is
+# cheap and idempotent — both regens are byte-deterministic.
 .PHONY: generate-reference
-generate-reference:
+generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 .PHONY: build-go

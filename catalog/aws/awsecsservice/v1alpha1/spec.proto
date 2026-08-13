@@ -907,9 +907,7 @@ message AwsEcsServiceEbsTagSpecification {
   // The resource type being tagged; "volume" is the only type EBS task
   // volumes support.
   string resource_type = 1 [(buf.validate.field).string = {
-    in: [
-      "volume"
-    ]
+    in: ["volume"]
   }];
 
   // The tags applied to each created volume.

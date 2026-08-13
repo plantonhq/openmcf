@@ -1,0 +1,45 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_vertex_ai_index:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.location
+        arg: region
+      # The spec flattens the provider's single-child encryption_spec
+      # wrapper: the KMS key IS the CMEK configuration.
+      - spec: spec.kms_key_name
+        arg: encryption_spec.kms_key_name
+      # The provider models the API's Index.metadata blob as a nested
+      # block mixing data location and geometry; the spec separates the
+      # two concerns: data-loading fields at the top level, geometry as
+      # one config block. Matching resumes exactly below each subtree.
+      - spec: spec.contents_delta_uri
+        arg: metadata.contents_delta_uri
+      - spec: spec.is_complete_overwrite
+        arg: metadata.is_complete_overwrite
+      - spec: spec.config
+        arg: metadata.config
+      # The spec additionally flattens the provider's single-child
+      # algorithm_config wrapper: the algorithm arms are already
+      # mutually exclusive in the spec (CEL), so the extra nesting
+      # level records nothing. Longest-mapping-wins places the tree-AH
+      # children here, not under the config mapping above.
+      - spec: spec.config.tree_ah_config
+        arg: metadata.config.algorithm_config.tree_ah_config
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      aiplatform.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one index never disables the API
+      project-wide); not spec surface.

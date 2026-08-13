@@ -237,9 +237,7 @@ message AwsHttpApiDomainRoutingRule {
   // referencing an AwsHttpApiGateway would always fail the apply (the
   // catalog does not yet model REST APIs; this becomes referenceable when a
   // REST API kind ships).
-  dev.planton.shared.foreignkey.v1.StringValueOrRef api_id = 3 [
-    (buf.validate.field).required = true
-  ];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef api_id = 3 [(buf.validate.field).required = true];
 
   // The stage of the target REST API to invoke (a REST stage name such as
   // "prod").

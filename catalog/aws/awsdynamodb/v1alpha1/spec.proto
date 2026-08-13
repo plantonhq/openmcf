@@ -505,7 +505,11 @@ message AwsDynamodbGlobalSecondaryIndex {
   option (buf.validate.message).cel = {
     id: "gsi_key_schema_shape"
     message: "GSI key_schema must carry 1-4 HASH elements first, then at most 4 RANGE elements -- no HASH may follow a RANGE"
-    expression: "this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4 && (this.key_schema.size() < 3 || !(this.key_schema[1].key_type == 'RANGE' && this.key_schema[2].key_type == 'HASH')) && (this.key_schema.size() < 4 || !(this.key_schema[2].key_type == 'RANGE' && this.key_schema[3].key_type == 'HASH')) && (this.key_schema.size() < 5 || !(this.key_schema[3].key_type == 'RANGE' && this.key_schema[4].key_type == 'HASH')) && (this.key_schema.size() < 6 || !(this.key_schema[4].key_type == 'RANGE' && this.key_schema[5].key_type == 'HASH')) && (this.key_schema.size() < 7 || !(this.key_schema[5].key_type == 'RANGE' && this.key_schema[6].key_type == 'HASH')) && (this.key_schema.size() < 8 || !(this.key_schema[6].key_type == 'RANGE' && this.key_schema[7].key_type == 'HASH'))"
+    // size() guard first: indexing [0] on an empty list is an EVALUATION
+    // error on every engine, which aborts the whole document's validation
+    // instead of reporting this rule. Emptiness itself is the sibling
+    // min_items rule's job.
+    expression: "this.key_schema.size() == 0 || (this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4 && (this.key_schema.size() < 3 || !(this.key_schema[1].key_type == 'RANGE' && this.key_schema[2].key_type == 'HASH')) && (this.key_schema.size() < 4 || !(this.key_schema[2].key_type == 'RANGE' && this.key_schema[3].key_type == 'HASH')) && (this.key_schema.size() < 5 || !(this.key_schema[3].key_type == 'RANGE' && this.key_schema[4].key_type == 'HASH')) && (this.key_schema.size() < 6 || !(this.key_schema[4].key_type == 'RANGE' && this.key_schema[5].key_type == 'HASH')) && (this.key_schema.size() < 7 || !(this.key_schema[5].key_type == 'RANGE' && this.key_schema[6].key_type == 'HASH')) && (this.key_schema.size() < 8 || !(this.key_schema[6].key_type == 'RANGE' && this.key_schema[7].key_type == 'HASH')))"
   };
 }
 

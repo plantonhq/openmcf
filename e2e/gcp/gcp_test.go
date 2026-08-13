@@ -24,6 +24,7 @@ import (
 	"github.com/plantonhq/planton/e2e/framework/discovery"
 	"github.com/plantonhq/planton/e2e/framework/provider"
 	"github.com/plantonhq/planton/e2e/framework/runner"
+	"github.com/plantonhq/planton/pkg/e2e/profile"
 	gcpstorage "google.golang.org/api/storage/v1"
 )
 
@@ -32,6 +33,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -56,6 +61,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profile.LoadProviderProfile(repoRoot, "gcp")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load GCP provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = gcpe2e.NewHarness()
 	ctx := context.Background()
@@ -161,6 +173,15 @@ func TestGcpSubnetwork_Pulumi(t *testing.T) {
 }
 func TestGcpSubnetwork_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpsubnetwork", "terraform")
+}
+
+// --- GCP Firewall Rule (composed traffic policy: deploys a GcpVpcNetwork fixture via the scenario annotation) ---
+
+func TestGcpFirewallRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirewallrule", "pulumi")
+}
+func TestGcpFirewallRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpfirewallrule", "terraform")
 }
 
 // --- GCP Region Network Endpoint Group (serverless NEG bridge) ---
@@ -758,6 +779,172 @@ func TestGcpProject_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "gcpproject", "terraform")
 }
 
+// --- GCP Monitoring Notification Channel (alerting delivery endpoint; free, second-scale) ---
+
+func TestGcpMonitoringNotificationChannel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringnotificationchannel", "pulumi")
+}
+func TestGcpMonitoringNotificationChannel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringnotificationchannel", "terraform")
+}
+
+// --- GCP Monitoring Alert Policy (composes the channel prerequisite fixture) ---
+
+func TestGcpMonitoringAlertPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringalertpolicy", "pulumi")
+}
+func TestGcpMonitoringAlertPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringalertpolicy", "terraform")
+}
+
+// --- GCP Monitoring Uptime Check (probes example.com; free, second-scale) ---
+
+func TestGcpMonitoringUptimeCheck_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringuptimecheck", "pulumi")
+}
+func TestGcpMonitoringUptimeCheck_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringuptimecheck", "terraform")
+}
+
+// --- GCP Logging Sink (composes the GCS bucket prerequisite; pubsub arm composes a topic) ---
+
+func TestGcpLoggingSink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcploggingsink", "pulumi")
+}
+func TestGcpLoggingSink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcploggingsink", "terraform")
+}
+
+// --- GCP Secret Manager Secret (composes the service-account prerequisite for the scoped grant) ---
+
+func TestGcpSecretManagerSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsecretmanagersecret", "pulumi")
+}
+func TestGcpSecretManagerSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpsecretmanagersecret", "terraform")
+}
+
+func TestGcpIdentityPlatformConfig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformconfig", "pulumi")
+}
+
+func TestGcpIdentityPlatformConfig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformconfig", "terraform")
+}
+
+func TestGcpIdentityPlatformTenant_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformtenant", "pulumi")
+}
+
+func TestGcpIdentityPlatformTenant_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpidentityplatformtenant", "terraform")
+}
+
+func TestGcpIamOauthClient_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamoauthclient", "pulumi")
+}
+
+func TestGcpIamOauthClient_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamoauthclient", "terraform")
+}
+
+func TestGcpIamDenyPolicy_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamdenypolicy", "pulumi")
+}
+
+func TestGcpIamDenyPolicy_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpiamdenypolicy", "terraform")
+}
+
+func TestGcpCloudRunDomainMapping_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrundomainmapping", "pulumi")
+}
+
+func TestGcpCloudRunDomainMapping_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcloudrundomainmapping", "terraform")
+}
+
+func TestGcpMonitoringDashboard_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringdashboard", "pulumi")
+}
+
+func TestGcpMonitoringDashboard_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringdashboard", "terraform")
+}
+
+func TestGcpMonitoringSlo_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringslo", "pulumi")
+}
+
+func TestGcpMonitoringSlo_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpmonitoringslo", "terraform")
+}
+
+// --- GCP Log Bucket (the views-analytics arm links a BigQuery dataset) ---
+
+func TestGcpLogBucket_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogbucket", "pulumi")
+}
+
+func TestGcpLogBucket_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogbucket", "terraform")
+}
+
+// --- GCP Log Metric (the bucket-scoped arm composes the log-bucket prerequisite) ---
+
+func TestGcpLogMetric_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogmetric", "pulumi")
+}
+
+func TestGcpLogMetric_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcplogmetric", "terraform")
+}
+
+// --- GCP Workflow (serverless orchestrator; the Eventarc destination target) ---
+
+func TestGcpWorkflow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkflow", "pulumi")
+}
+func TestGcpWorkflow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpworkflow", "terraform")
+}
+
+// --- GCP Compute MIG (managed instance group: deploys the GcpVpcNetwork prerequisite; the regional scenario adds the GcpHealthCheck fixture) ---
+
+func TestGcpComputeMig_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputemig", "pulumi")
+}
+func TestGcpComputeMig_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcomputemig", "terraform")
+}
+
+// --- GCP Eventarc Trigger (event routing: deploys the GcpCloudRun prerequisite) ---
+
+func TestGcpEventarcTrigger_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarctrigger", "pulumi")
+}
+func TestGcpEventarcTrigger_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarctrigger", "terraform")
+}
+
+// --- GCP Eventarc Message Bus (Eventarc Advanced: bus + sources + pipelines + enrollments) ---
+
+func TestGcpEventarcMessageBus_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarcmessagebus", "pulumi")
+}
+func TestGcpEventarcMessageBus_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpeventarcmessagebus", "terraform")
+}
+
+// --- GCP Certificate Map (SNI routing table: deploys the GcpCertManagerCert prerequisite chain) ---
+
+func TestGcpCertificateMap_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertificatemap", "pulumi")
+}
+func TestGcpCertificateMap_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "gcpcertificatemap", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a GCP component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -807,10 +994,13 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 		// Leaving it empty makes the dependency stacks fall back to the
 		// machine's ambient `pulumi login` backend, coupling the run to
 		// stale developer state.
-		BackendURL: pulumiBackendURL,
+		BackendURL:             pulumiBackendURL,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {
+		// GenerateStackName enforces the length cap uniqueness-preservingly
+		// (blind truncation here would collide long kind names' scenarios).
 		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 	}
 

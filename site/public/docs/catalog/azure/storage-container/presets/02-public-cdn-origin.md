@@ -29,9 +29,9 @@ disabled: a client must know an object's URL to fetch it.
 - **`containerAccessType: BLOB`** -- anonymous object reads, no
   enumeration (CONTAINER would add listing; rarely appropriate)
 - **The account gate**: the parent account's
-  `allowNestedItemsToBePublic` must be true (Azure's default) --
-  accounts hardened with `false` make this preset undeployable by
-  design
+  `allowNestedItemsToBePublic` must be true (the account spec's
+  default; Azure's own default is false) -- accounts hardened with
+  `false` make this preset undeployable by design
 
 ## Placeholders to Replace
 

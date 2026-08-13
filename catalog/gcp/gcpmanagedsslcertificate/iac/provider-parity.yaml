@@ -1,0 +1,35 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_compute_managed_ssl_certificate:
+    mappings:
+      # Renames: the spec says what each field IS where the provider
+      # inherits terser API names.
+      - spec: spec.certificate_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider nests the domain list in a single-block `managed`
+      # container; the spec carries it at the top level because this kind
+      # models exactly the managed shape.
+      - spec: spec.domains
+        arg: managed.domains
+    exclusions:
+      - arg: type
+        reason: >-
+          the provider accepts literally one value -- its ValidateEnum
+          list is ["MANAGED", ""] with default MANAGED -- so the selector
+          carries no decision; the self-managed shape is a separate
+          resource, modeled by GcpSslCertificate
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      certificate never disables the API project-wide); not spec surface.

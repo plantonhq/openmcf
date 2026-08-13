@@ -22,10 +22,12 @@ import (
 // self_link. Routing tables, header actions, and tests update in place.
 //
 // Cross-field exclusivity (exactly one default target, path_rules XOR
-// route_rules, redirect vs service vs route_action) is enforced by the spec's
-// CEL rules before deploy — no defensive logic lives here. route_action maps
-// only weighted_backend_services and url_rewrite; mesh-advanced sub-policies
-// (timeout, retry, cors, fault, mirror) are a deliberate coverage boundary.
+// route_rules, redirect vs route_action, path_template_rewrite only in route
+// rules) is enforced by the spec's CEL rules before deploy — no defensive
+// logic lives here. route_action carries the full traffic-management surface
+// at every site: weighted splits, rewrites, timeout/retry/mirror/CORS/
+// fault-injection/stream-duration policies, and the route-scoped CDN
+// cache_policy.
 func urlMap(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error {
 	spec := locals.GcpUrlMap.Spec
 
@@ -51,6 +53,12 @@ func urlMap(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) erro
 	}
 	if spec.Description != "" {
 		args.Description = pulumi.String(spec.Description)
+	}
+	// Client-side destroy stance (DELETE/PREVENT/ABANDON) — provider-level,
+	// never sent to the GCP API. Empty falls back to the provider default
+	// (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
 	}
 
 	if spec.DefaultService.GetValue() != "" {
@@ -116,16 +124,179 @@ func topLevelRouteAction(a *gcpurlmapv1alpha1.GcpUrlMapRouteAction) *compute.URL
 	if a.UrlRewrite != nil {
 		out.UrlRewrite = defaultUrlRewrite(a.UrlRewrite)
 	}
+	if a.Timeout != nil {
+		out.Timeout = &compute.URLMapDefaultRouteActionTimeoutArgs{
+			Seconds: durationSeconds(a.Timeout),
+			Nanos:   durationNanos(a.Timeout),
+		}
+	}
+	if a.RetryPolicy != nil {
+		retry := &compute.URLMapDefaultRouteActionRetryPolicyArgs{
+			RetryConditions: stringArrayOrNil(a.RetryPolicy.RetryConditions),
+		}
+		if a.RetryPolicy.NumRetries != 0 {
+			retry.NumRetries = pulumi.Int(int(a.RetryPolicy.NumRetries))
+		}
+		if a.RetryPolicy.PerTryTimeout != nil {
+			retry.PerTryTimeout = &compute.URLMapDefaultRouteActionRetryPolicyPerTryTimeoutArgs{
+				Seconds: durationSeconds(a.RetryPolicy.PerTryTimeout),
+				Nanos:   durationNanos(a.RetryPolicy.PerTryTimeout),
+			}
+		}
+		out.RetryPolicy = retry
+	}
+	if a.RequestMirrorPolicy != nil {
+		out.RequestMirrorPolicy = &compute.URLMapDefaultRouteActionRequestMirrorPolicyArgs{
+			BackendService: pulumi.String(a.RequestMirrorPolicy.BackendService.GetValue()),
+		}
+	}
+	if a.CorsPolicy != nil {
+		cors := &compute.URLMapDefaultRouteActionCorsPolicyArgs{
+			AllowCredentials:   pulumi.Bool(a.CorsPolicy.AllowCredentials),
+			AllowHeaders:       stringArrayOrNil(a.CorsPolicy.AllowHeaders),
+			AllowMethods:       stringArrayOrNil(a.CorsPolicy.AllowMethods),
+			AllowOriginRegexes: stringArrayOrNil(a.CorsPolicy.AllowOriginRegexes),
+			AllowOrigins:       stringArrayOrNil(a.CorsPolicy.AllowOrigins),
+			Disabled:           pulumi.Bool(a.CorsPolicy.Disabled),
+			ExposeHeaders:      stringArrayOrNil(a.CorsPolicy.ExposeHeaders),
+		}
+		if a.CorsPolicy.MaxAge != 0 {
+			cors.MaxAge = pulumi.Int(int(a.CorsPolicy.MaxAge))
+		}
+		out.CorsPolicy = cors
+	}
+	if a.FaultInjectionPolicy != nil {
+		fault := &compute.URLMapDefaultRouteActionFaultInjectionPolicyArgs{}
+		if a.FaultInjectionPolicy.Abort != nil {
+			abort := &compute.URLMapDefaultRouteActionFaultInjectionPolicyAbortArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Abort.Percentage),
+			}
+			if a.FaultInjectionPolicy.Abort.HttpStatus != 0 {
+				abort.HttpStatus = pulumi.Int(int(a.FaultInjectionPolicy.Abort.HttpStatus))
+			}
+			fault.Abort = abort
+		}
+		if a.FaultInjectionPolicy.Delay != nil {
+			delay := &compute.URLMapDefaultRouteActionFaultInjectionPolicyDelayArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Delay.Percentage),
+			}
+			if a.FaultInjectionPolicy.Delay.FixedDelay != nil {
+				delay.FixedDelay = &compute.URLMapDefaultRouteActionFaultInjectionPolicyDelayFixedDelayArgs{
+					Seconds: durationSeconds(a.FaultInjectionPolicy.Delay.FixedDelay),
+					Nanos:   durationNanos(a.FaultInjectionPolicy.Delay.FixedDelay),
+				}
+			}
+			fault.Delay = delay
+		}
+		out.FaultInjectionPolicy = fault
+	}
+	if a.MaxStreamDuration != nil {
+		out.MaxStreamDuration = &compute.URLMapDefaultRouteActionMaxStreamDurationArgs{
+			Seconds: durationSeconds(a.MaxStreamDuration),
+			Nanos:   durationNanos(a.MaxStreamDuration),
+		}
+	}
+	if a.CachePolicy != nil {
+		cache := &compute.URLMapDefaultRouteActionCachePolicyArgs{
+			CacheMode:                     emptyAsNilString(a.CachePolicy.CacheMode),
+			CacheBypassRequestHeaderNames: stringArrayOrNil(a.CachePolicy.CacheBypassRequestHeaderNames),
+			NegativeCaching:               pulumi.Bool(a.CachePolicy.NegativeCaching),
+			RequestCoalescing:             pulumi.Bool(a.CachePolicy.RequestCoalescing),
+		}
+		if a.CachePolicy.CacheKeyPolicy != nil {
+			cache.CacheKeyPolicy = &compute.URLMapDefaultRouteActionCachePolicyCacheKeyPolicyArgs{
+				ExcludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters),
+				IncludeHost:             pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeHost),
+				IncludeProtocol:         pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeProtocol),
+				IncludeQueryString:      pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeQueryString),
+				IncludedCookieNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedCookieNames),
+				IncludedHeaderNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedHeaderNames),
+				IncludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedQueryParameters),
+			}
+		}
+		if a.CachePolicy.ClientTtl != nil {
+			cache.ClientTtl = &compute.URLMapDefaultRouteActionCachePolicyClientTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.ClientTtl),
+				Nanos:   durationNanos(a.CachePolicy.ClientTtl),
+			}
+		}
+		if a.CachePolicy.DefaultTtl != nil {
+			cache.DefaultTtl = &compute.URLMapDefaultRouteActionCachePolicyDefaultTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.DefaultTtl),
+				Nanos:   durationNanos(a.CachePolicy.DefaultTtl),
+			}
+		}
+		if a.CachePolicy.MaxTtl != nil {
+			cache.MaxTtl = &compute.URLMapDefaultRouteActionCachePolicyMaxTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.MaxTtl),
+				Nanos:   durationNanos(a.CachePolicy.MaxTtl),
+			}
+		}
+		if a.CachePolicy.ServeWhileStale != nil {
+			cache.ServeWhileStale = &compute.URLMapDefaultRouteActionCachePolicyServeWhileStaleArgs{
+				Seconds: durationSeconds(a.CachePolicy.ServeWhileStale),
+				Nanos:   durationNanos(a.CachePolicy.ServeWhileStale),
+			}
+		}
+		if len(a.CachePolicy.NegativeCachingPolicy) > 0 {
+			policies := compute.URLMapDefaultRouteActionCachePolicyNegativeCachingPolicyArray{}
+			for _, p := range a.CachePolicy.NegativeCachingPolicy {
+				policy := &compute.URLMapDefaultRouteActionCachePolicyNegativeCachingPolicyArgs{}
+				if p.Code != 0 {
+					policy.Code = pulumi.Int(int(p.Code))
+				}
+				if p.Ttl != nil {
+					policy.Ttl = &compute.URLMapDefaultRouteActionCachePolicyNegativeCachingPolicyTtlArgs{
+						Seconds: durationSeconds(p.Ttl),
+						Nanos:   durationNanos(p.Ttl),
+					}
+				}
+				policies = append(policies, policy)
+			}
+			cache.NegativeCachingPolicies = policies
+		}
+		out.CachePolicy = cache
+	}
 	return out
 }
 
 func defaultWeightedBackends(backends []*gcpurlmapv1alpha1.GcpUrlMapWeightedBackendService) compute.URLMapDefaultRouteActionWeightedBackendServiceArray {
 	result := compute.URLMapDefaultRouteActionWeightedBackendServiceArray{}
 	for _, backend := range backends {
-		result = append(result, &compute.URLMapDefaultRouteActionWeightedBackendServiceArgs{
+		args := &compute.URLMapDefaultRouteActionWeightedBackendServiceArgs{
 			BackendService: pulumi.String(backend.BackendService.GetValue()),
 			Weight:         pulumi.Int(int(backend.Weight)),
-		})
+		}
+		if backend.HeaderAction != nil {
+			headerAction := &compute.URLMapDefaultRouteActionWeightedBackendServiceHeaderActionArgs{
+				RequestHeadersToRemoves:  stringArrayOrNil(backend.HeaderAction.RequestHeadersToRemove),
+				ResponseHeadersToRemoves: stringArrayOrNil(backend.HeaderAction.ResponseHeadersToRemove),
+			}
+			if len(backend.HeaderAction.RequestHeadersToAdd) > 0 {
+				adds := compute.URLMapDefaultRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.RequestHeadersToAdd {
+					adds = append(adds, &compute.URLMapDefaultRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.RequestHeadersToAdds = adds
+			}
+			if len(backend.HeaderAction.ResponseHeadersToAdd) > 0 {
+				adds := compute.URLMapDefaultRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.ResponseHeadersToAdd {
+					adds = append(adds, &compute.URLMapDefaultRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.ResponseHeadersToAdds = adds
+			}
+			args.HeaderAction = headerAction
+		}
+		result = append(result, args)
 	}
 	return result
 }
@@ -269,16 +440,179 @@ func pathMatcherRouteAction(a *gcpurlmapv1alpha1.GcpUrlMapRouteAction) *compute.
 	if a.UrlRewrite != nil {
 		out.UrlRewrite = pathMatcherDefaultUrlRewrite(a.UrlRewrite)
 	}
+	if a.Timeout != nil {
+		out.Timeout = &compute.URLMapPathMatcherDefaultRouteActionTimeoutArgs{
+			Seconds: durationSeconds(a.Timeout),
+			Nanos:   durationNanos(a.Timeout),
+		}
+	}
+	if a.RetryPolicy != nil {
+		retry := &compute.URLMapPathMatcherDefaultRouteActionRetryPolicyArgs{
+			RetryConditions: stringArrayOrNil(a.RetryPolicy.RetryConditions),
+		}
+		if a.RetryPolicy.NumRetries != 0 {
+			retry.NumRetries = pulumi.Int(int(a.RetryPolicy.NumRetries))
+		}
+		if a.RetryPolicy.PerTryTimeout != nil {
+			retry.PerTryTimeout = &compute.URLMapPathMatcherDefaultRouteActionRetryPolicyPerTryTimeoutArgs{
+				Seconds: durationSeconds(a.RetryPolicy.PerTryTimeout),
+				Nanos:   durationNanos(a.RetryPolicy.PerTryTimeout),
+			}
+		}
+		out.RetryPolicy = retry
+	}
+	if a.RequestMirrorPolicy != nil {
+		out.RequestMirrorPolicy = &compute.URLMapPathMatcherDefaultRouteActionRequestMirrorPolicyArgs{
+			BackendService: pulumi.String(a.RequestMirrorPolicy.BackendService.GetValue()),
+		}
+	}
+	if a.CorsPolicy != nil {
+		cors := &compute.URLMapPathMatcherDefaultRouteActionCorsPolicyArgs{
+			AllowCredentials:   pulumi.Bool(a.CorsPolicy.AllowCredentials),
+			AllowHeaders:       stringArrayOrNil(a.CorsPolicy.AllowHeaders),
+			AllowMethods:       stringArrayOrNil(a.CorsPolicy.AllowMethods),
+			AllowOriginRegexes: stringArrayOrNil(a.CorsPolicy.AllowOriginRegexes),
+			AllowOrigins:       stringArrayOrNil(a.CorsPolicy.AllowOrigins),
+			Disabled:           pulumi.Bool(a.CorsPolicy.Disabled),
+			ExposeHeaders:      stringArrayOrNil(a.CorsPolicy.ExposeHeaders),
+		}
+		if a.CorsPolicy.MaxAge != 0 {
+			cors.MaxAge = pulumi.Int(int(a.CorsPolicy.MaxAge))
+		}
+		out.CorsPolicy = cors
+	}
+	if a.FaultInjectionPolicy != nil {
+		fault := &compute.URLMapPathMatcherDefaultRouteActionFaultInjectionPolicyArgs{}
+		if a.FaultInjectionPolicy.Abort != nil {
+			abort := &compute.URLMapPathMatcherDefaultRouteActionFaultInjectionPolicyAbortArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Abort.Percentage),
+			}
+			if a.FaultInjectionPolicy.Abort.HttpStatus != 0 {
+				abort.HttpStatus = pulumi.Int(int(a.FaultInjectionPolicy.Abort.HttpStatus))
+			}
+			fault.Abort = abort
+		}
+		if a.FaultInjectionPolicy.Delay != nil {
+			delay := &compute.URLMapPathMatcherDefaultRouteActionFaultInjectionPolicyDelayArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Delay.Percentage),
+			}
+			if a.FaultInjectionPolicy.Delay.FixedDelay != nil {
+				delay.FixedDelay = &compute.URLMapPathMatcherDefaultRouteActionFaultInjectionPolicyDelayFixedDelayArgs{
+					Seconds: durationSeconds(a.FaultInjectionPolicy.Delay.FixedDelay),
+					Nanos:   durationNanos(a.FaultInjectionPolicy.Delay.FixedDelay),
+				}
+			}
+			fault.Delay = delay
+		}
+		out.FaultInjectionPolicy = fault
+	}
+	if a.MaxStreamDuration != nil {
+		out.MaxStreamDuration = &compute.URLMapPathMatcherDefaultRouteActionMaxStreamDurationArgs{
+			Seconds: durationSeconds(a.MaxStreamDuration),
+			Nanos:   durationNanos(a.MaxStreamDuration),
+		}
+	}
+	if a.CachePolicy != nil {
+		cache := &compute.URLMapPathMatcherDefaultRouteActionCachePolicyArgs{
+			CacheMode:                     emptyAsNilString(a.CachePolicy.CacheMode),
+			CacheBypassRequestHeaderNames: stringArrayOrNil(a.CachePolicy.CacheBypassRequestHeaderNames),
+			NegativeCaching:               pulumi.Bool(a.CachePolicy.NegativeCaching),
+			RequestCoalescing:             pulumi.Bool(a.CachePolicy.RequestCoalescing),
+		}
+		if a.CachePolicy.CacheKeyPolicy != nil {
+			cache.CacheKeyPolicy = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyCacheKeyPolicyArgs{
+				ExcludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters),
+				IncludeHost:             pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeHost),
+				IncludeProtocol:         pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeProtocol),
+				IncludeQueryString:      pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeQueryString),
+				IncludedCookieNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedCookieNames),
+				IncludedHeaderNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedHeaderNames),
+				IncludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedQueryParameters),
+			}
+		}
+		if a.CachePolicy.ClientTtl != nil {
+			cache.ClientTtl = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyClientTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.ClientTtl),
+				Nanos:   durationNanos(a.CachePolicy.ClientTtl),
+			}
+		}
+		if a.CachePolicy.DefaultTtl != nil {
+			cache.DefaultTtl = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyDefaultTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.DefaultTtl),
+				Nanos:   durationNanos(a.CachePolicy.DefaultTtl),
+			}
+		}
+		if a.CachePolicy.MaxTtl != nil {
+			cache.MaxTtl = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyMaxTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.MaxTtl),
+				Nanos:   durationNanos(a.CachePolicy.MaxTtl),
+			}
+		}
+		if a.CachePolicy.ServeWhileStale != nil {
+			cache.ServeWhileStale = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyServeWhileStaleArgs{
+				Seconds: durationSeconds(a.CachePolicy.ServeWhileStale),
+				Nanos:   durationNanos(a.CachePolicy.ServeWhileStale),
+			}
+		}
+		if len(a.CachePolicy.NegativeCachingPolicy) > 0 {
+			policies := compute.URLMapPathMatcherDefaultRouteActionCachePolicyNegativeCachingPolicyArray{}
+			for _, p := range a.CachePolicy.NegativeCachingPolicy {
+				policy := &compute.URLMapPathMatcherDefaultRouteActionCachePolicyNegativeCachingPolicyArgs{}
+				if p.Code != 0 {
+					policy.Code = pulumi.Int(int(p.Code))
+				}
+				if p.Ttl != nil {
+					policy.Ttl = &compute.URLMapPathMatcherDefaultRouteActionCachePolicyNegativeCachingPolicyTtlArgs{
+						Seconds: durationSeconds(p.Ttl),
+						Nanos:   durationNanos(p.Ttl),
+					}
+				}
+				policies = append(policies, policy)
+			}
+			cache.NegativeCachingPolicies = policies
+		}
+		out.CachePolicy = cache
+	}
 	return out
 }
 
 func pathMatcherDefaultWeightedBackends(backends []*gcpurlmapv1alpha1.GcpUrlMapWeightedBackendService) compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceArray {
 	result := compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceArray{}
 	for _, backend := range backends {
-		result = append(result, &compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceArgs{
+		args := &compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceArgs{
 			BackendService: pulumi.String(backend.BackendService.GetValue()),
 			Weight:         pulumi.Int(int(backend.Weight)),
-		})
+		}
+		if backend.HeaderAction != nil {
+			headerAction := &compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceHeaderActionArgs{
+				RequestHeadersToRemoves:  stringArrayOrNil(backend.HeaderAction.RequestHeadersToRemove),
+				ResponseHeadersToRemoves: stringArrayOrNil(backend.HeaderAction.ResponseHeadersToRemove),
+			}
+			if len(backend.HeaderAction.RequestHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.RequestHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.RequestHeadersToAdds = adds
+			}
+			if len(backend.HeaderAction.ResponseHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.ResponseHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherDefaultRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.ResponseHeadersToAdds = adds
+			}
+			args.HeaderAction = headerAction
+		}
+		result = append(result, args)
 	}
 	return result
 }
@@ -395,16 +729,179 @@ func pathRuleRouteAction(a *gcpurlmapv1alpha1.GcpUrlMapRouteAction) *compute.URL
 	if a.UrlRewrite != nil {
 		out.UrlRewrite = pathRuleUrlRewrite(a.UrlRewrite)
 	}
+	if a.Timeout != nil {
+		out.Timeout = &compute.URLMapPathMatcherPathRuleRouteActionTimeoutArgs{
+			Seconds: durationSeconds(a.Timeout),
+			Nanos:   durationNanos(a.Timeout),
+		}
+	}
+	if a.RetryPolicy != nil {
+		retry := &compute.URLMapPathMatcherPathRuleRouteActionRetryPolicyArgs{
+			RetryConditions: stringArrayOrNil(a.RetryPolicy.RetryConditions),
+		}
+		if a.RetryPolicy.NumRetries != 0 {
+			retry.NumRetries = pulumi.Int(int(a.RetryPolicy.NumRetries))
+		}
+		if a.RetryPolicy.PerTryTimeout != nil {
+			retry.PerTryTimeout = &compute.URLMapPathMatcherPathRuleRouteActionRetryPolicyPerTryTimeoutArgs{
+				Seconds: durationSeconds(a.RetryPolicy.PerTryTimeout),
+				Nanos:   durationNanos(a.RetryPolicy.PerTryTimeout),
+			}
+		}
+		out.RetryPolicy = retry
+	}
+	if a.RequestMirrorPolicy != nil {
+		out.RequestMirrorPolicy = &compute.URLMapPathMatcherPathRuleRouteActionRequestMirrorPolicyArgs{
+			BackendService: pulumi.String(a.RequestMirrorPolicy.BackendService.GetValue()),
+		}
+	}
+	if a.CorsPolicy != nil {
+		cors := &compute.URLMapPathMatcherPathRuleRouteActionCorsPolicyArgs{
+			AllowCredentials:   pulumi.Bool(a.CorsPolicy.AllowCredentials),
+			AllowHeaders:       stringArrayOrNil(a.CorsPolicy.AllowHeaders),
+			AllowMethods:       stringArrayOrNil(a.CorsPolicy.AllowMethods),
+			AllowOriginRegexes: stringArrayOrNil(a.CorsPolicy.AllowOriginRegexes),
+			AllowOrigins:       stringArrayOrNil(a.CorsPolicy.AllowOrigins),
+			Disabled:           pulumi.Bool(a.CorsPolicy.Disabled),
+			ExposeHeaders:      stringArrayOrNil(a.CorsPolicy.ExposeHeaders),
+		}
+		if a.CorsPolicy.MaxAge != 0 {
+			cors.MaxAge = pulumi.Int(int(a.CorsPolicy.MaxAge))
+		}
+		out.CorsPolicy = cors
+	}
+	if a.FaultInjectionPolicy != nil {
+		fault := &compute.URLMapPathMatcherPathRuleRouteActionFaultInjectionPolicyArgs{}
+		if a.FaultInjectionPolicy.Abort != nil {
+			abort := &compute.URLMapPathMatcherPathRuleRouteActionFaultInjectionPolicyAbortArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Abort.Percentage),
+			}
+			if a.FaultInjectionPolicy.Abort.HttpStatus != 0 {
+				abort.HttpStatus = pulumi.Int(int(a.FaultInjectionPolicy.Abort.HttpStatus))
+			}
+			fault.Abort = abort
+		}
+		if a.FaultInjectionPolicy.Delay != nil {
+			delay := &compute.URLMapPathMatcherPathRuleRouteActionFaultInjectionPolicyDelayArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Delay.Percentage),
+			}
+			if a.FaultInjectionPolicy.Delay.FixedDelay != nil {
+				delay.FixedDelay = &compute.URLMapPathMatcherPathRuleRouteActionFaultInjectionPolicyDelayFixedDelayArgs{
+					Seconds: durationSeconds(a.FaultInjectionPolicy.Delay.FixedDelay),
+					Nanos:   durationNanos(a.FaultInjectionPolicy.Delay.FixedDelay),
+				}
+			}
+			fault.Delay = delay
+		}
+		out.FaultInjectionPolicy = fault
+	}
+	if a.MaxStreamDuration != nil {
+		out.MaxStreamDuration = &compute.URLMapPathMatcherPathRuleRouteActionMaxStreamDurationArgs{
+			Seconds: durationSeconds(a.MaxStreamDuration),
+			Nanos:   durationNanos(a.MaxStreamDuration),
+		}
+	}
+	if a.CachePolicy != nil {
+		cache := &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyArgs{
+			CacheMode:                     emptyAsNilString(a.CachePolicy.CacheMode),
+			CacheBypassRequestHeaderNames: stringArrayOrNil(a.CachePolicy.CacheBypassRequestHeaderNames),
+			NegativeCaching:               pulumi.Bool(a.CachePolicy.NegativeCaching),
+			RequestCoalescing:             pulumi.Bool(a.CachePolicy.RequestCoalescing),
+		}
+		if a.CachePolicy.CacheKeyPolicy != nil {
+			cache.CacheKeyPolicy = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyCacheKeyPolicyArgs{
+				ExcludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters),
+				IncludeHost:             pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeHost),
+				IncludeProtocol:         pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeProtocol),
+				IncludeQueryString:      pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeQueryString),
+				IncludedCookieNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedCookieNames),
+				IncludedHeaderNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedHeaderNames),
+				IncludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedQueryParameters),
+			}
+		}
+		if a.CachePolicy.ClientTtl != nil {
+			cache.ClientTtl = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyClientTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.ClientTtl),
+				Nanos:   durationNanos(a.CachePolicy.ClientTtl),
+			}
+		}
+		if a.CachePolicy.DefaultTtl != nil {
+			cache.DefaultTtl = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyDefaultTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.DefaultTtl),
+				Nanos:   durationNanos(a.CachePolicy.DefaultTtl),
+			}
+		}
+		if a.CachePolicy.MaxTtl != nil {
+			cache.MaxTtl = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyMaxTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.MaxTtl),
+				Nanos:   durationNanos(a.CachePolicy.MaxTtl),
+			}
+		}
+		if a.CachePolicy.ServeWhileStale != nil {
+			cache.ServeWhileStale = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyServeWhileStaleArgs{
+				Seconds: durationSeconds(a.CachePolicy.ServeWhileStale),
+				Nanos:   durationNanos(a.CachePolicy.ServeWhileStale),
+			}
+		}
+		if len(a.CachePolicy.NegativeCachingPolicy) > 0 {
+			policies := compute.URLMapPathMatcherPathRuleRouteActionCachePolicyNegativeCachingPolicyArray{}
+			for _, p := range a.CachePolicy.NegativeCachingPolicy {
+				policy := &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyNegativeCachingPolicyArgs{}
+				if p.Code != 0 {
+					policy.Code = pulumi.Int(int(p.Code))
+				}
+				if p.Ttl != nil {
+					policy.Ttl = &compute.URLMapPathMatcherPathRuleRouteActionCachePolicyNegativeCachingPolicyTtlArgs{
+						Seconds: durationSeconds(p.Ttl),
+						Nanos:   durationNanos(p.Ttl),
+					}
+				}
+				policies = append(policies, policy)
+			}
+			cache.NegativeCachingPolicies = policies
+		}
+		out.CachePolicy = cache
+	}
 	return out
 }
 
 func pathRuleWeightedBackends(backends []*gcpurlmapv1alpha1.GcpUrlMapWeightedBackendService) compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceArray {
 	result := compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceArray{}
 	for _, backend := range backends {
-		result = append(result, &compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceArgs{
+		args := &compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceArgs{
 			BackendService: pulumi.String(backend.BackendService.GetValue()),
 			Weight:         pulumi.Int(int(backend.Weight)),
-		})
+		}
+		if backend.HeaderAction != nil {
+			headerAction := &compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceHeaderActionArgs{
+				RequestHeadersToRemoves:  stringArrayOrNil(backend.HeaderAction.RequestHeadersToRemove),
+				ResponseHeadersToRemoves: stringArrayOrNil(backend.HeaderAction.ResponseHeadersToRemove),
+			}
+			if len(backend.HeaderAction.RequestHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.RequestHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.RequestHeadersToAdds = adds
+			}
+			if len(backend.HeaderAction.ResponseHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.ResponseHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherPathRuleRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.ResponseHeadersToAdds = adds
+			}
+			args.HeaderAction = headerAction
+		}
+		result = append(result, args)
 	}
 	return result
 }
@@ -488,16 +985,179 @@ func routeRuleRouteAction(a *gcpurlmapv1alpha1.GcpUrlMapRouteAction) *compute.UR
 	if a.UrlRewrite != nil {
 		out.UrlRewrite = routeRuleUrlRewrite(a.UrlRewrite)
 	}
+	if a.Timeout != nil {
+		out.Timeout = &compute.URLMapPathMatcherRouteRuleRouteActionTimeoutArgs{
+			Seconds: durationSeconds(a.Timeout),
+			Nanos:   durationNanos(a.Timeout),
+		}
+	}
+	if a.RetryPolicy != nil {
+		retry := &compute.URLMapPathMatcherRouteRuleRouteActionRetryPolicyArgs{
+			RetryConditions: stringArrayOrNil(a.RetryPolicy.RetryConditions),
+		}
+		if a.RetryPolicy.NumRetries != 0 {
+			retry.NumRetries = pulumi.Int(int(a.RetryPolicy.NumRetries))
+		}
+		if a.RetryPolicy.PerTryTimeout != nil {
+			retry.PerTryTimeout = &compute.URLMapPathMatcherRouteRuleRouteActionRetryPolicyPerTryTimeoutArgs{
+				Seconds: durationSeconds(a.RetryPolicy.PerTryTimeout),
+				Nanos:   durationNanos(a.RetryPolicy.PerTryTimeout),
+			}
+		}
+		out.RetryPolicy = retry
+	}
+	if a.RequestMirrorPolicy != nil {
+		out.RequestMirrorPolicy = &compute.URLMapPathMatcherRouteRuleRouteActionRequestMirrorPolicyArgs{
+			BackendService: pulumi.String(a.RequestMirrorPolicy.BackendService.GetValue()),
+		}
+	}
+	if a.CorsPolicy != nil {
+		cors := &compute.URLMapPathMatcherRouteRuleRouteActionCorsPolicyArgs{
+			AllowCredentials:   pulumi.Bool(a.CorsPolicy.AllowCredentials),
+			AllowHeaders:       stringArrayOrNil(a.CorsPolicy.AllowHeaders),
+			AllowMethods:       stringArrayOrNil(a.CorsPolicy.AllowMethods),
+			AllowOriginRegexes: stringArrayOrNil(a.CorsPolicy.AllowOriginRegexes),
+			AllowOrigins:       stringArrayOrNil(a.CorsPolicy.AllowOrigins),
+			Disabled:           pulumi.Bool(a.CorsPolicy.Disabled),
+			ExposeHeaders:      stringArrayOrNil(a.CorsPolicy.ExposeHeaders),
+		}
+		if a.CorsPolicy.MaxAge != 0 {
+			cors.MaxAge = pulumi.Int(int(a.CorsPolicy.MaxAge))
+		}
+		out.CorsPolicy = cors
+	}
+	if a.FaultInjectionPolicy != nil {
+		fault := &compute.URLMapPathMatcherRouteRuleRouteActionFaultInjectionPolicyArgs{}
+		if a.FaultInjectionPolicy.Abort != nil {
+			abort := &compute.URLMapPathMatcherRouteRuleRouteActionFaultInjectionPolicyAbortArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Abort.Percentage),
+			}
+			if a.FaultInjectionPolicy.Abort.HttpStatus != 0 {
+				abort.HttpStatus = pulumi.Int(int(a.FaultInjectionPolicy.Abort.HttpStatus))
+			}
+			fault.Abort = abort
+		}
+		if a.FaultInjectionPolicy.Delay != nil {
+			delay := &compute.URLMapPathMatcherRouteRuleRouteActionFaultInjectionPolicyDelayArgs{
+				Percentage: pulumi.Float64(a.FaultInjectionPolicy.Delay.Percentage),
+			}
+			if a.FaultInjectionPolicy.Delay.FixedDelay != nil {
+				delay.FixedDelay = &compute.URLMapPathMatcherRouteRuleRouteActionFaultInjectionPolicyDelayFixedDelayArgs{
+					Seconds: durationSeconds(a.FaultInjectionPolicy.Delay.FixedDelay),
+					Nanos:   durationNanos(a.FaultInjectionPolicy.Delay.FixedDelay),
+				}
+			}
+			fault.Delay = delay
+		}
+		out.FaultInjectionPolicy = fault
+	}
+	if a.MaxStreamDuration != nil {
+		out.MaxStreamDuration = &compute.URLMapPathMatcherRouteRuleRouteActionMaxStreamDurationArgs{
+			Seconds: durationSeconds(a.MaxStreamDuration),
+			Nanos:   durationNanos(a.MaxStreamDuration),
+		}
+	}
+	if a.CachePolicy != nil {
+		cache := &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyArgs{
+			CacheMode:                     emptyAsNilString(a.CachePolicy.CacheMode),
+			CacheBypassRequestHeaderNames: stringArrayOrNil(a.CachePolicy.CacheBypassRequestHeaderNames),
+			NegativeCaching:               pulumi.Bool(a.CachePolicy.NegativeCaching),
+			RequestCoalescing:             pulumi.Bool(a.CachePolicy.RequestCoalescing),
+		}
+		if a.CachePolicy.CacheKeyPolicy != nil {
+			cache.CacheKeyPolicy = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyCacheKeyPolicyArgs{
+				ExcludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.ExcludedQueryParameters),
+				IncludeHost:             pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeHost),
+				IncludeProtocol:         pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeProtocol),
+				IncludeQueryString:      pulumi.Bool(a.CachePolicy.CacheKeyPolicy.IncludeQueryString),
+				IncludedCookieNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedCookieNames),
+				IncludedHeaderNames:     stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedHeaderNames),
+				IncludedQueryParameters: stringArrayOrNil(a.CachePolicy.CacheKeyPolicy.IncludedQueryParameters),
+			}
+		}
+		if a.CachePolicy.ClientTtl != nil {
+			cache.ClientTtl = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyClientTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.ClientTtl),
+				Nanos:   durationNanos(a.CachePolicy.ClientTtl),
+			}
+		}
+		if a.CachePolicy.DefaultTtl != nil {
+			cache.DefaultTtl = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyDefaultTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.DefaultTtl),
+				Nanos:   durationNanos(a.CachePolicy.DefaultTtl),
+			}
+		}
+		if a.CachePolicy.MaxTtl != nil {
+			cache.MaxTtl = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyMaxTtlArgs{
+				Seconds: durationSeconds(a.CachePolicy.MaxTtl),
+				Nanos:   durationNanos(a.CachePolicy.MaxTtl),
+			}
+		}
+		if a.CachePolicy.ServeWhileStale != nil {
+			cache.ServeWhileStale = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyServeWhileStaleArgs{
+				Seconds: durationSeconds(a.CachePolicy.ServeWhileStale),
+				Nanos:   durationNanos(a.CachePolicy.ServeWhileStale),
+			}
+		}
+		if len(a.CachePolicy.NegativeCachingPolicy) > 0 {
+			policies := compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyNegativeCachingPolicyArray{}
+			for _, p := range a.CachePolicy.NegativeCachingPolicy {
+				policy := &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyNegativeCachingPolicyArgs{}
+				if p.Code != 0 {
+					policy.Code = pulumi.Int(int(p.Code))
+				}
+				if p.Ttl != nil {
+					policy.Ttl = &compute.URLMapPathMatcherRouteRuleRouteActionCachePolicyNegativeCachingPolicyTtlArgs{
+						Seconds: durationSeconds(p.Ttl),
+						Nanos:   durationNanos(p.Ttl),
+					}
+				}
+				policies = append(policies, policy)
+			}
+			cache.NegativeCachingPolicies = policies
+		}
+		out.CachePolicy = cache
+	}
 	return out
 }
 
 func routeRuleWeightedBackends(backends []*gcpurlmapv1alpha1.GcpUrlMapWeightedBackendService) compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceArray {
 	result := compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceArray{}
 	for _, backend := range backends {
-		result = append(result, &compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceArgs{
+		args := &compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceArgs{
 			BackendService: pulumi.String(backend.BackendService.GetValue()),
 			Weight:         pulumi.Int(int(backend.Weight)),
-		})
+		}
+		if backend.HeaderAction != nil {
+			headerAction := &compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceHeaderActionArgs{
+				RequestHeadersToRemoves:  stringArrayOrNil(backend.HeaderAction.RequestHeadersToRemove),
+				ResponseHeadersToRemoves: stringArrayOrNil(backend.HeaderAction.ResponseHeadersToRemove),
+			}
+			if len(backend.HeaderAction.RequestHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.RequestHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceHeaderActionRequestHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.RequestHeadersToAdds = adds
+			}
+			if len(backend.HeaderAction.ResponseHeadersToAdd) > 0 {
+				adds := compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArray{}
+				for _, h := range backend.HeaderAction.ResponseHeadersToAdd {
+					adds = append(adds, &compute.URLMapPathMatcherRouteRuleRouteActionWeightedBackendServiceHeaderActionResponseHeadersToAddArgs{
+						HeaderName:  pulumi.String(h.HeaderName),
+						HeaderValue: pulumi.String(h.HeaderValue),
+						Replace:     pulumi.Bool(h.Replace),
+					})
+				}
+				headerAction.ResponseHeadersToAdds = adds
+			}
+			args.HeaderAction = headerAction
+		}
+		result = append(result, args)
 	}
 	return result
 }
@@ -680,6 +1340,23 @@ func emptyAsNilString(value string) pulumi.StringPtrInput {
 		return nil
 	}
 	return pulumi.String(value)
+}
+
+// durationSeconds renders a Duration's seconds for the provider, which
+// models GCP Duration seconds as a string (int64 range exceeds JSON's safe
+// integer range). Returns the concrete pulumi.String so it satisfies both
+// the required (StringInput) and optional (StringPtrInput) SDK positions.
+func durationSeconds(d *gcpurlmapv1alpha1.GcpUrlMapDuration) pulumi.String {
+	return pulumi.String(strconv.FormatInt(d.Seconds, 10))
+}
+
+// durationNanos renders a Duration's sub-second component, omitted when
+// zero (whole-second durations).
+func durationNanos(d *gcpurlmapv1alpha1.GcpUrlMapDuration) pulumi.IntPtrInput {
+	if d.Nanos == 0 {
+		return nil
+	}
+	return pulumi.Int(int(d.Nanos))
 }
 
 func stringArrayOrNil(values []string) pulumi.StringArrayInput {

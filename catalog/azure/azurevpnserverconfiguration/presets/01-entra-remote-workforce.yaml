@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnServerConfiguration
+metadata:
+  name: remote-workforce
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: remote-workforce
+  vpnAuthenticationTypes:
+    - AAD
+  aadAuthentication:
+    # The Microsoft-managed Azure VPN Client's well-known application ID.
+    audience: 41b23e61-6c1e-4545-b367-cd054e0ed4b4
+    issuer: https://sts.windows.net/<your-tenant-id>/
+    tenant: https://login.microsoftonline.com/<your-tenant-id>
+  vpnProtocols:
+    - OpenVPN

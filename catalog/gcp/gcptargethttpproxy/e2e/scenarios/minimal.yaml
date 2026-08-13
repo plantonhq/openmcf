@@ -25,3 +25,6 @@ spec:
       kind: GcpUrlMap
       name: planton-oss-e2e-gcpum-prereq
       fieldPath: status.outputs.self_link
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

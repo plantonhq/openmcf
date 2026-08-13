@@ -52,8 +52,29 @@ resource "google_vertex_ai_endpoint" "this" {
     content {
       enable_private_service_connect = true
       project_allowlist              = length(private_service_connect_config.value.project_allowlist) > 0 ? private_service_connect_config.value.project_allowlist : null
+
+      # PSC endpoints Vertex AI provisions automatically in consumer
+      # projects. The API wants the relative network form; references
+      # arrive as self-links and are normalized here (mirrors the Pulumi
+      # module).
+      dynamic "psc_automation_configs" {
+        for_each = private_service_connect_config.value.psc_automation_configs
+        content {
+          network    = replace(psc_automation_configs.value.network, "/^https://www\\.googleapis\\.com/compute/v1//", "")
+          project_id = psc_automation_configs.value.project_id
+        }
+      }
     }
   }
+
+  # Traffic routing across deployed models: the provider takes the split as
+  # a JSON string; jsonencode renders map keys in sorted order, so the same
+  # spec always produces the same string (matching the Pulumi module).
+  # Empty means "no traffic accepted" and is deliberately omitted — GCP
+  # rejects IDs that are not currently deployed.
+  traffic_split = length(var.spec.traffic_split) > 0 ? jsonencode(var.spec.traffic_split) : null
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   # Request/response logging: samples online predictions into BigQuery —
   # the raw material for drift monitoring and audit. sampling_rate 0 means

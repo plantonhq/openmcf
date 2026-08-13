@@ -1,0 +1,38 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_spanner_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The spec flattens the provider's single-field replica_selection
+      # wrapper: an asymmetric option selects one replica location.
+      - spec: spec.autoscaling_config.asymmetric_autoscaling_options.replica_location
+        arg: autoscaling_config.asymmetric_autoscaling_options.replica_selection.location
+      # The spec also flattens the overrides' autoscaling_limits wrapper:
+      # capacity bounds sit directly on the overrides message beside the
+      # per-replica targets and disable switches (which match by name).
+      - spec: spec.autoscaling_config.asymmetric_autoscaling_options.overrides.min_nodes
+        arg: autoscaling_config.asymmetric_autoscaling_options.overrides.autoscaling_limits.min_nodes
+      - spec: spec.autoscaling_config.asymmetric_autoscaling_options.overrides.max_nodes
+        arg: autoscaling_config.asymmetric_autoscaling_options.overrides.autoscaling_limits.max_nodes
+      - spec: spec.autoscaling_config.asymmetric_autoscaling_options.overrides.min_processing_units
+        arg: autoscaling_config.asymmetric_autoscaling_options.overrides.autoscaling_limits.min_processing_units
+      - spec: spec.autoscaling_config.asymmetric_autoscaling_options.overrides.max_processing_units
+        arg: autoscaling_config.asymmetric_autoscaling_options.overrides.autoscaling_limits.max_processing_units
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables spanner.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the API project-wide); not spec surface.

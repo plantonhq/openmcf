@@ -1,0 +1,27 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateLinkService
+metadata:
+  name: test-private-link-service
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: orders-api
+  # NAT addresses consumer traffic is source-NATed through. The subnet
+  # must have privateLinkServiceNetworkPoliciesEnabled: false. Exactly
+  # one configuration is primary.
+  natIpConfigurations:
+    - name: nat-1
+      subnetId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/test-vnet/subnets/pls-nat
+      primary: true
+  # The classic shape: the service fronts a STANDARD internal load
+  # balancer's frontend (exactly one of this or destinationIpAddress).
+  loadBalancerFrontendIpConfigurationIds:
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/loadBalancers/orders-lb/frontendIPConfigurations/internal
+  # Discoverable by one partner subscription; their connections still
+  # wait for manual approval (no autoApprovalSubscriptionIds).
+  visibilitySubscriptionIds:
+    - "8158df85-3d6b-4d9f-8a3c-247b63cab0a8"
+  tags:
+    purpose: hack-test

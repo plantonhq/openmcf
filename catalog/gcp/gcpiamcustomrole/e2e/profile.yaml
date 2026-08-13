@@ -9,8 +9,6 @@ spec:
   # reserved for up to 14 days); re-running the scenario within that window
   # converges because create-on-a-soft-deleted-id undeletes and patches.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 10

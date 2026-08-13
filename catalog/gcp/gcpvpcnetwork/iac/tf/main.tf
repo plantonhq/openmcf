@@ -32,9 +32,22 @@ resource "google_compute_network" "vpc" {
 
   delete_default_routes_on_create = var.spec.delete_default_routes_on_create ? true : null
 
-  bgp_best_path_selection_mode = var.spec.bgp_best_path_selection.mode != "" ? var.spec.bgp_best_path_selection.mode : null
-  bgp_always_compare_med       = var.spec.bgp_best_path_selection.always_compare_med ? true : null
-  bgp_inter_region_cost        = var.spec.bgp_best_path_selection.inter_region_cost != "" ? var.spec.bgp_best_path_selection.inter_region_cost : null
+  bgp_best_path_selection_mode = var.spec.bgp_best_path_selection != null && try(var.spec.bgp_best_path_selection.mode, "") != "" ? var.spec.bgp_best_path_selection.mode : null
+  # Sent explicitly (true or false) whenever the block is present: the
+  # provider attribute is Optional+Computed, so omitting it on a true→false
+  # transition would silently keep the old value on the live network.
+  bgp_always_compare_med = var.spec.bgp_best_path_selection != null ? var.spec.bgp_best_path_selection.always_compare_med : null
+  bgp_inter_region_cost  = var.spec.bgp_best_path_selection != null && try(var.spec.bgp_best_path_selection.inter_region_cost, "") != "" ? var.spec.bgp_best_path_selection.inter_region_cost : null
+
+  # Create-time resource-manager tags (org policy / IAM conditions).
+  dynamic "params" {
+    for_each = length(var.spec.resource_manager_tags) > 0 ? [1] : []
+    content {
+      resource_manager_tags = var.spec.resource_manager_tags
+    }
+  }
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [google_project_service.compute_api]
 }

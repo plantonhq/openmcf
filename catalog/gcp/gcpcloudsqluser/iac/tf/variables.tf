@@ -46,5 +46,13 @@ variable "spec" {
       enable_failed_attempts_check = optional(bool, false)
       enable_password_verification = optional(bool, false)
     }), null)
+
+    # MySQL 8+ / PostgreSQL: database roles granted at creation.
+    database_roles = optional(list(string), [])
+
+    # Engine-side teardown behavior: DELETE, PREVENT, or ABANDON. ABANDON
+    # is the documented answer for PostgreSQL users that still own
+    # database objects.
+    deletion_policy = optional(string, "")
   })
 }

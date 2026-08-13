@@ -1,29 +1,42 @@
 # =============================================================================
 # Content Distribution Release (Reusable Workflow)
 # =============================================================================
-# Packages Planton content into six zips and uploads them to Cloudflare R2
+# Packages Planton content into eight zips and uploads them to Cloudflare R2
 # (downloads.planton.dev). These zips decouple downstream consumers (e.g. the
 # Planton upgrade-planton script) from needing a local Planton checkout.
 #
 # Every artifact is built by its OWN job so the Actions UI shows exactly what
-# a release ships -- the job list IS the artifact inventory. The five
+# a release ships -- the job list IS the artifact inventory. The six
 # source-file zips share one matrix job (each entry displayed by artifact
-# name); the catalog bundle has a dedicated job because it is a compiled,
-# verified artifact with its own toolchain (Go + buf), not a file collection.
+# name); the catalog bundle and the catalog schemas have dedicated jobs
+# because they are compiled, verified artifacts with their own toolchain
+# (Go + buf), not file collections.
 #
 # Artifacts created:
-#   presets.zip         -- Preset YAML + MD, kind enum proto
-#   iac-source.zip      -- IaC module source (.go, .tf, .md, .yaml)
-#   catalog-pages.zip   -- Per-component kind-root catalog.md
-#   proto-source.zip    -- Raw proto source (spec, api, input, outputs)
-#   reference-pack.zip  -- Component reference pack (generated reference pages,
-#                          indexes, cross-reference graph, commons, GUIDE.md /
-#                          patterns wisdom layer)
-#   catalog-bundle.zip  -- The catalog as DATA: buf-built descriptor set
-#                          (schemas + validation rules + kind registry),
-#                          conversion specs, presets, checksummed manifest.
-#                          Verified against the compiled registry BEFORE
-#                          upload; a non-conformant bundle fails the release.
+#   presets.zip           -- Preset YAML + MD, kind enum proto
+#   iac-source.zip        -- IaC module source (.go, .tf, .md, .yaml) plus the
+#                            provider import catalogs (aa_import/catalog.yaml)
+#   catalog-pages.zip     -- Per-component kind-root catalog.md
+#   proto-source.zip      -- Raw proto source (spec, api, input, outputs)
+#   reference-pack.zip    -- Component reference pack (generated reference pages,
+#                            indexes, cross-reference graph, commons, GUIDE.md /
+#                            patterns wisdom layer)
+#   conversion-corpus.zip -- The golden conversion corpus: authored
+#                            ConversionSpecs + testdata fixtures. Engine
+#                            certification data (every conversion engine,
+#                            in-repo or external, gates on this one corpus).
+#   catalog-bundle.zip    -- The catalog as DATA: buf-built descriptor set
+#                            (schemas + validation rules + kind registry),
+#                            conversion specs, presets, catalog entries,
+#                            checksummed manifest. Verified against the
+#                            compiled registry BEFORE upload; a non-conformant
+#                            bundle fails the release.
+#   catalog-schemas.zip   -- One JSON schema document per catalog .proto (the
+#                            pkg/catalogschema published contract, authored
+#                            source included) for consoles and tools that
+#                            render API contracts without compiling protos.
+#                            Verified against the compiled registry BEFORE
+#                            upload; an incomplete artifact fails the release.
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/content/{name}.zip
 # Public URL:  https://downloads.planton.dev/releases/{tag}/content/{name}.zip
@@ -74,6 +87,7 @@ jobs:
           - catalog-pages
           - proto-source
           - reference-pack
+          - conversion-corpus
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -166,5 +180,39 @@ jobs:
         run: |
           R2_KEY="releases/${GITHUB_REF_NAME}/content/catalog-bundle.zip"
           aws s3 cp "build/catalog-bundle.zip" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
+  catalog-schemas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Build and verify the catalog schemas
+        run: |
+          make build-catalog-schemas
+          make verify-catalog-schemas
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/content/catalog-schemas.zip"
+          aws s3 cp "build/catalog-schemas.zip" "s3://${R2_BUCKET}/${R2_KEY}" \
             --endpoint-url "${AWS_ENDPOINT_URL}"
           echo "uploaded: https://downloads.planton.dev/${R2_KEY}"

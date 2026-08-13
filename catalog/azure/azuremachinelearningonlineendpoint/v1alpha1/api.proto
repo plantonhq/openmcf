@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningonlineendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremachinelearningonlineendpoint/v1alpha1/outputs.proto";
+import "catalog/azure/azuremachinelearningonlineendpoint/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMachineLearningOnlineEndpoint is the top-level API resource
+// describing a managed online endpoint on an Azure Machine Learning
+// workspace -- the stable HTTPS address applications call to score
+// against deployed models, with a traffic dial that splits requests
+// across the endpoint's deployments.
+message AzureMachineLearningOnlineEndpoint {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureMachineLearningOnlineEndpoint".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMachineLearningOnlineEndpoint'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Online endpoint specification.
+  AzureMachineLearningOnlineEndpointSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureMachineLearningOnlineEndpointStatus status = 5;
+}
+
+// AzureMachineLearningOnlineEndpointStatus holds the deployment outputs.
+message AzureMachineLearningOnlineEndpointStatus {
+  // Stack outputs from the IaC deployment.
+  AzureMachineLearningOnlineEndpointStackOutputs outputs = 1;
+}

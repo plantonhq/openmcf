@@ -34,3 +34,6 @@ spec:
   labels:
     env: production
     team: platform
+
+  # Ephemeral test fixture: delete the frontend on destroy.
+  deletionPolicy: DELETE

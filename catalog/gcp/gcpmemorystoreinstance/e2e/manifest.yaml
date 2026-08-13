@@ -24,5 +24,15 @@ spec:
       projectId:
         value: my-gcp-project-123
 
-  # Allow hack-manifest teardown without a two-step disable.
+  # Weekly maintenance window pinned to the minute (UTC) — stagger it
+  # against the systems this cache fronts.
+  maintenancePolicy:
+    weeklyMaintenanceWindow:
+      day: SUNDAY
+      hour: 3
+      minute: 30
+
+  # Allow hack-manifest teardown without a two-step disable; the policy
+  # then deletes the instance.
   deletionProtectionEnabled: false
+  deletionPolicy: DELETE

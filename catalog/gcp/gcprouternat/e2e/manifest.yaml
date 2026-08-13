@@ -1,7 +1,8 @@
 # Exercises the deep NAT surface offline: explicit subnetwork scoping with a
-# secondary-range selection, dynamic port allocation with power-of-two
-# bounds, tuned timeouts, a NAT rule with a dedicated egress IP, and full
-# translation logging.
+# secondary-range selection, the router's custom BGP advertisement, dynamic
+# port allocation with power-of-two bounds, tuned timeouts, a NAT rule with
+# a dedicated egress IP, full translation logging, and an explicit deletion
+# policy.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpRouterNat
 metadata:
@@ -13,6 +14,18 @@ spec:
   region: us-central1
   vpcSelfLink:
     value: projects/hack-project/global/networks/hack-vpc
+  routerDescription: egress router for the hack fleet
+  # BGP posture for a router that also serves VPN/Interconnect sessions:
+  # a private ASN and a curated custom advertisement.
+  routerBgp:
+    asn: 64514
+    advertiseMode: CUSTOM
+    advertisedGroups:
+      - ALL_SUBNETS
+    advertisedIpRanges:
+      - range: 10.10.0.0/16
+        description: on-prem reachable services
+    keepaliveInterval: 30
   sourceSubnetworkIpRangesToNat: LIST_OF_SUBNETWORKS
   subnetworks:
     - subnetwork:
@@ -40,3 +53,5 @@ spec:
         sourceNatActiveIps:
           - value: projects/hack-project/regions/us-central1/addresses/hack-nat-ip-b
   logFilter: ALL
+  # DELETE keeps destroys real; PREVENT belongs on production egress paths.
+  deletionPolicy: DELETE

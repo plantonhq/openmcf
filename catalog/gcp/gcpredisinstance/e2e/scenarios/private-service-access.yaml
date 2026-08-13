@@ -31,3 +31,7 @@ spec:
       kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_self_link
+  # Explicitly disabled (the spec defaults it TRUE) so the ephemeral
+  # create -> verify -> destroy cycle can tear down without a two-step.
+  deletionProtection: false
+  deletionPolicy: DELETE

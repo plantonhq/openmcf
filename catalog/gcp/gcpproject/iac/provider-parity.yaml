@@ -1,0 +1,61 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_project:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.display_name
+        arg: name
+      - spec: spec.billing_account_id
+        arg: billing_account
+
+      # The parent: the provider takes two mutually exclusive arguments
+      # (org_id / folder_id); the spec models the parent as one identity
+      # (parent_id) plus a type selector -- the module routes the id onto
+      # the argument the selector names.
+      - spec: spec.parent_id
+        arg: org_id
+      - spec: spec.parent_id
+        arg: folder_id
+
+  google_project_service:
+    # Spec-driven fan-out: one resource per entry in spec.enabled_apis --
+    # the API list IS the service argument (never `internal` here, unlike
+    # kinds that enable a fixed API for themselves).
+    mappings:
+      - spec: spec.enabled_apis
+        arg: service
+    exclusions:
+      - arg: project
+        reason: wired by the module to the project it creates -- never user surface
+      - arg: disable_dependent_services
+        reason: >-
+          module-fixed to true -- removing an API from enabled_apis also
+          disables the services depending on it, keeping the list
+          authoritative for what the project offers
+      - arg: disable_on_destroy
+        reason: >-
+          module-fixed to false -- removing an entry (or the project
+          resource) must never disable a service other tooling in the
+          project depends on
+      - arg: deletion_policy
+        reason: >-
+          per-enablement destroy behavior is meaningless here -- the
+          module's fixed disable_on_destroy=false already makes removal a
+          no-op on the live service, and the project's own
+          deletion_policy governs the project
+
+specExclusions:
+  - field: spec.parent_type
+    reason: >-
+      the parent-argument selector -- ORGANIZATION routes parent_id onto
+      org_id, FOLDER onto folder_id (the provider declares the two
+      ConflictsWith each other); no provider argument carries the type
+      itself

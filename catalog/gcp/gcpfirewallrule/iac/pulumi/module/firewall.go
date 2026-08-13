@@ -81,6 +81,18 @@ func firewall(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 		}
 	}
 
+	// Create-time Resource Manager tag bindings; the params block is
+	// create-only, so tag changes replace the firewall rule.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Params = &compute.FirewallParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdFirewall, err := compute.NewFirewall(ctx, "firewall-rule", args, pulumi.Provider(gcpProvider))
 	if err != nil {
 		return errors.Wrap(err, "failed to create firewall rule")

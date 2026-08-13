@@ -9,3 +9,6 @@ spec:
     value: my-gcp-project-123
   visibility: public
   description: Public authoritative zone for example.com
+
+  # Ephemeral test fixture: delete the zone shell on destroy.
+  deletionPolicy: DELETE

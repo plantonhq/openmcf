@@ -1,0 +1,33 @@
+# Bucket-scoped GcpLogMetric scenario: the GcpLogBucket chart edge live —
+# the bucket fixture deploys first (scenario-level prerequisites
+# annotation; a bucket is NOT a registry prerequisite of this kind) and
+# the metric's bucket_name resolves from its bucket_name output, so the
+# run-scoped bucket ID flows through the reference.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogMetric
+metadata:
+  name: planton-oss-e2e-gcplogmt-bucket
+  id: planton-oss-e2e-gcplogmt-bucket
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogmetric
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "GcpLogBucket"
+  tags:
+    - planton-e2e
+spec:
+  filter: severity>=WARNING
+  bucketName:
+    valueFrom:
+      kind: GcpLogBucket
+      name: planton-oss-e2e-gcplogbk-prereq
+      fieldPath: status.outputs.bucket_name
+  metricDescriptor:
+    metricKind: DELTA
+    valueType: INT64
+    unit: "1"
+  description: E2E bucket-scoped metric — counts warnings landing in the fixture bucket.
+  deletionPolicy: DELETE

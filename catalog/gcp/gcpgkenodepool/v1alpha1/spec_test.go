@@ -684,4 +684,233 @@ var _ = ginkgo.Describe("GcpGkeNodePoolSpec Custom Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
 		})
 	})
+
+	ginkgo.Describe("pool lifecycle additions", func() {
+
+		ginkgo.It("rejects node_pool_name combined with name_prefix", func() {
+			spec := minimalSpec()
+			spec.NodePoolName = "general-pool"
+			spec.NamePrefix = "general-"
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a name_prefix alone", func() {
+			spec := minimalSpec()
+			spec.NamePrefix = "general-"
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts every deletion_policy value and rejects others", func() {
+			spec := minimalSpec()
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				spec.DeletionPolicy = v
+				gomega.Expect(protovalidate.Validate(newNodePool(spec))).To(gomega.BeNil())
+			}
+			spec.DeletionPolicy = "KEEP"
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a malformed node drain grace duration", func() {
+			spec := minimalSpec()
+			spec.NodeDrainConfig = &GcpGkeNodePoolNodeDrainConfig{GraceTerminationDuration: "5m"}
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("networking additions", func() {
+
+		ginkgo.It("rejects an additional node network without a subnetwork", func() {
+			spec := minimalSpec()
+			spec.NetworkConfig = &GcpGkeNodePoolNetworkConfig{
+				AdditionalNodeNetworks: []*GcpGkeNodePoolAdditionalNodeNetwork{
+					{Network: literal("projects/p/global/networks/n")},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an additional pod network without a secondary range", func() {
+			spec := minimalSpec()
+			spec.NetworkConfig = &GcpGkeNodePoolNetworkConfig{
+				AdditionalPodNetworks: []*GcpGkeNodePoolAdditionalPodNetwork{
+					{Subnetwork: literal("projects/p/regions/r/subnetworks/s")},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("node_config additions", func() {
+
+		nodeCfg := func(mutate func(*GcpGkeNodePoolNodeConfig)) *GcpGkeNodePoolSpec {
+			spec := minimalSpec()
+			nc := &GcpGkeNodePoolNodeConfig{}
+			mutate(nc)
+			spec.NodeConfig = nc
+			return spec
+		}
+
+		ginkgo.It("accepts ANY_RESERVATION_THEN_FAIL reservation consumption", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) {
+				nc.ReservationAffinity = &GcpGkeNodePoolReservationAffinity{
+					ConsumeReservationType: "ANY_RESERVATION_THEN_FAIL",
+				}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid local SSD encryption mode", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) { nc.LocalSsdEncryptionMode = "CMEK" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid sandbox type", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) { nc.SandboxType = "KATA" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid windows OS version", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) { nc.WindowsOsVersion = "OS_VERSION_LTSC2016" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid host maintenance interval", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) { nc.HostMaintenanceInterval = "NEVER" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid architecture taint behavior", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) { nc.ArchitectureTaintBehavior = "X86" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects three threads per core", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) {
+				nc.AdvancedMachineFeatures = &GcpGkeNodePoolAdvancedMachineFeatures{ThreadsPerCore: 3}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a boot disk under 10 GB", func() {
+			five := int64(5)
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) {
+				nc.BootDisk = &GcpGkeNodePoolBootDisk{SizeGb: &five}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a sole-tenant affinity with an invalid operator", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) {
+				nc.SoleTenantConfig = &GcpGkeNodePoolSoleTenantConfig{
+					NodeAffinities: []*GcpGkeNodePoolSoleTenantAffinity{
+						{Key: "compute.googleapis.com/node-group-name", Operator: "EQUALS", Values: []string{"g"}},
+					},
+				}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a registry CA domain without a secret URI", func() {
+			spec := nodeCfg(func(nc *GcpGkeNodePoolNodeConfig) {
+				nc.ContainerdConfig = &GcpGkeNodePoolContainerdConfig{
+					PrivateRegistryAccess: &GcpGkeNodePoolPrivateRegistryAccess{
+						Enabled: true,
+						CertificateAuthorityDomains: []*GcpGkeNodePoolRegistryCaDomain{
+							{Fqdns: []string{"registry.internal:5000"}},
+						},
+					},
+				}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("kubelet and linux tuning additions", func() {
+
+		kubelet := func(mutate func(*GcpGkeNodePoolKubeletConfig)) *GcpGkeNodePoolSpec {
+			spec := minimalSpec()
+			kc := &GcpGkeNodePoolKubeletConfig{}
+			mutate(kc)
+			spec.NodeConfig = &GcpGkeNodePoolNodeConfig{KubeletConfig: kc}
+			return spec
+		}
+		linux := func(mutate func(*GcpGkeNodePoolLinuxNodeConfig)) *GcpGkeNodePoolSpec {
+			spec := minimalSpec()
+			lc := &GcpGkeNodePoolLinuxNodeConfig{}
+			mutate(lc)
+			spec.NodeConfig = &GcpGkeNodePoolNodeConfig{LinuxNodeConfig: lc}
+			return spec
+		}
+
+		ginkgo.It("accepts a full eviction tuning set", func() {
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.EvictionSoft = &GcpGkeNodePoolEvictionSignals{MemoryAvailable: "200Mi", PidAvailable: "10%"}
+				kc.EvictionSoftGracePeriod = &GcpGkeNodePoolEvictionGracePeriods{MemoryAvailable: "90s"}
+				kc.EvictionMinimumReclaim = &GcpGkeNodePoolEvictionMinimumReclaim{MemoryAvailable: "100Mi"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a malformed image GC age", func() {
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) { kc.ImageMinimumGcAge = "2m" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a malformed crash-loop backoff cap", func() {
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.CrashLoopBackOff = &GcpGkeNodePoolCrashLoopBackOff{MaxContainerRestartPeriod: "5m"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a lowercase memory manager policy", func() {
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.MemoryManager = &GcpGkeNodePoolMemoryManager{Policy: "static"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid topology manager policy and scope", func() {
+			spec := kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.TopologyManager = &GcpGkeNodePoolTopologyManager{Policy: "numa-strict"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+			spec = kubelet(func(kc *GcpGkeNodePoolKubeletConfig) {
+				kc.TopologyManager = &GcpGkeNodePoolTopologyManager{Scope: "node"}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid transparent hugepage mode", func() {
+			spec := linux(func(lc *GcpGkeNodePoolLinuxNodeConfig) { lc.TransparentHugepageEnabled = "SOMETIMES" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid kernel module loading policy", func() {
+			spec := linux(func(lc *GcpGkeNodePoolLinuxNodeConfig) { lc.NodeKernelModuleLoadingPolicy = "ALLOW_ALL" })
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects swap sized by two profiles at once", func() {
+			gib := int64(16)
+			spec := linux(func(lc *GcpGkeNodePoolLinuxNodeConfig) {
+				lc.SwapConfig = &GcpGkeNodePoolSwapConfig{
+					BootDiskProfile:          &GcpGkeNodePoolSwapSizing{SwapSizeGib: &gib},
+					DedicatedLocalSsdProfile: &GcpGkeNodePoolSwapDedicatedSsd{},
+				}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects swap sizing by both GiB and percent", func() {
+			gib := int64(16)
+			pct := int32(50)
+			spec := linux(func(lc *GcpGkeNodePoolLinuxNodeConfig) {
+				lc.SwapConfig = &GcpGkeNodePoolSwapConfig{
+					BootDiskProfile: &GcpGkeNodePoolSwapSizing{SwapSizeGib: &gib, SwapSizePercent: &pct},
+				}
+			})
+			gomega.Expect(protovalidate.Validate(newNodePool(spec))).ToNot(gomega.BeNil())
+		})
+	})
 })

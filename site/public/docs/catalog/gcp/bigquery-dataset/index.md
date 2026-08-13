@@ -43,7 +43,7 @@ Open the deployment store, find **GCP BigQuery Dataset**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryDataset
 metadata:
   name: analytics-events

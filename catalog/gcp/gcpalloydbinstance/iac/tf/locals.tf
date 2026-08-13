@@ -3,7 +3,7 @@ locals {
 
   instance_type     = var.spec.instance_type != "" ? var.spec.instance_type : "READ_POOL"
   availability_type = var.spec.availability_type != "" ? var.spec.availability_type : null
-  display_name        = var.spec.display_name != "" ? var.spec.display_name : null
+  display_name      = var.spec.display_name != "" ? var.spec.display_name : null
 
   read_pool_config = (
     var.spec.read_pool_config != null && var.spec.read_pool_config.node_count > 0
@@ -27,5 +27,7 @@ locals {
     var.metadata.id != null && var.metadata.id != ""
   ) ? { "planton-ai_id" = var.metadata.id } : {}
 
-  labels = merge(local.base_labels, local.org_label, local.env_label, local.id_label)
+  # User labels first so the platform's attribution labels win on key
+  # conflicts — the catalog-wide merge order.
+  labels = merge(var.spec.labels, local.base_labels, local.org_label, local.env_label, local.id_label)
 }

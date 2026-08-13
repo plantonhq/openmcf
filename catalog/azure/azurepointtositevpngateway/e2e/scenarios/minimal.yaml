@@ -1,0 +1,57 @@
+# Minimal AzurePointToSiteVpnGateway scenario: a one-scale-unit
+# gateway in the fixture hub, attached to the fixture VPN server
+# configuration, with one client address pool -- the flagship proof of
+# the pair's cross-kind wiring (hub + server configuration references
+# resolving through the chain) and of the P2S slot being separate from
+# the hub's site-to-site VPN gateway slot.
+#
+# NO CLIENT EVER CONNECTS: the fixture configuration's root
+# certificate has no private key (discarded at generation), so the
+# gateway provisions and listens but no tunnel can establish --
+# verifiers assert ARM state, never connected clients.
+#
+# ONE P2S GATEWAY PER HUB: the scenario gateway deploys into the
+# fixture hub, which the prerequisite chain creates fresh for this
+# lane and tears down after it. A wedged teardown blocks the next
+# lane needing the hub's P2S slot until swept (the hub also refuses
+# deletion while the gateway exists -- reverse teardown handles the
+# order).
+#
+# TIME: ARM takes 30-45 minutes to create the gateway (the provider's
+# timeout class is 90), on top of the fixture hub's own 15-30 minute
+# cycle. The client pool 172.16.201.0/24 is disjoint from every
+# fixture address space (VNet 10.240.0.0/16, hub 10.250.0.0/23, site
+# 192.168.77.0/24).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePointToSiteVpnGateway
+metadata:
+  name: planton-oss-e2e-azurepointtositevpngateway-smoke
+  id: planton-oss-e2e-azurepointtositevpngateway-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurepointtositevpngateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-p2sgw-smoke
+  virtualHubId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vhub
+  vpnServerConfigurationId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vpnsc
+  connectionConfigurations:
+    - name: default-clients
+      addressPrefixes:
+        - "172.16.201.0/24"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

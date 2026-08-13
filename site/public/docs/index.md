@@ -61,11 +61,11 @@ Run the full Planton platform on your own Kubernetes cluster:
 Join the Planton community:
 
 - **[How to Contribute](/docs/contributing)** - Development setup, building, testing, and PR workflow
-- **[Adding Components](/docs/contributing/adding-components)** - Create new deployment components
+- **[Adding Components](/docs/contributing/adding-components)** - Create new components
 
-## Deployment Components
+## Components
 
-Browse deployment components by cloud provider in the [Catalog](/docs/catalog):
+Browse components by cloud provider in the [Catalog](/docs/catalog):
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-6">
   <a href="/docs/catalog/aws" class="flex items-center gap-3 p-4 rounded-lg border border-purple-900/30 bg-slate-900/30 hover:bg-slate-800/50 transition-colors">

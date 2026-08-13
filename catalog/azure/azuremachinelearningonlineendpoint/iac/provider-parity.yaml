@@ -1,0 +1,12 @@
+resources:
+  azapi_resource:
+    external: >-
+      Machine Learning online endpoints have no azurerm resource at the
+      pinned v5 line (azurerm's draft is
+      hashicorp/terraform-provider-azurerm#32011); the module writes the
+      raw ARM shape at the pinned
+      Microsoft.MachineLearningServices/workspaces/onlineEndpoints@2025-06-01
+      through Azure/azapi 2.11.0, admitted per kind by recorded decision
+      with a mandatory move to azurerm's native resources when they ship.
+      The spec's validation rules carry the full contract burden; the
+      spec-to-ARM property accounting lives with the admission record.

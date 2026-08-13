@@ -124,6 +124,20 @@ var _ = ginkgo.Describe("GcpAlloydbUserSpec", func() {
 		expectValid(r)
 	})
 
+	ginkgo.It("accepts every deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			r := minimalBuiltIn()
+			r.Spec.DeletionPolicy = v
+			expectValid(r)
+		}
+	})
+
+	ginkgo.It("rejects an unknown deletion_policy", func() {
+		r := minimalBuiltIn()
+		r.Spec.DeletionPolicy = "FORCE"
+		expectInvalid(r, "deletion_policy")
+	})
+
 	ginkgo.It("rejects a wrong kind constant", func() {
 		r := minimalBuiltIn()
 		r.Kind = "GcpAlloydbCluster"

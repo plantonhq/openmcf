@@ -20,12 +20,14 @@ message GcpDataprocClusterDiskConfig {
     message: "boot_disk_size_gb must be at least 10"
   }];
 
-  // Boot disk type. Valid values: "pd-standard", "pd-ssd", "pd-balanced".
-  // If not specified, GCP defaults to "pd-standard".
+  // Boot disk type: "pd-standard" (GCP default), "pd-ssd", "pd-balanced",
+  // or "hyperdisk-balanced" (the class whose provisioned IOPS/throughput
+  // dials apply). The API validates availability per image version and
+  // machine family at deploy time.
   string boot_disk_type = 2 [(buf.validate.field).cel = {
     id: "boot_disk_type_valid_value"
-    expression: "this == '' || this in ['pd-standard', 'pd-ssd', 'pd-balanced']"
-    message: "boot_disk_type must be pd-standard, pd-ssd, or pd-balanced"
+    expression: "this == '' || this in ['pd-standard', 'pd-ssd', 'pd-balanced', 'hyperdisk-balanced']"
+    message: "boot_disk_type must be pd-standard, pd-ssd, pd-balanced, or hyperdisk-balanced"
   }];
 
   // Number of local SSDs to attach. Each local SSD is 375 GB.
@@ -41,6 +43,16 @@ message GcpDataprocClusterDiskConfig {
     expression: "this == '' || this in ['scsi', 'nvme']"
     message: "local_ssd_interface must be scsi or nvme"
   }];
+
+  // Provisioned I/O operations per second for the boot disk — the IOPS
+  // dial decoupled from disk size, honored by disk types that support
+  // provisioned performance (hyperdisks).
+  optional int64 boot_disk_provisioned_iops = 5 [(buf.validate.field).int64.gte = 1];
+
+  // Provisioned throughput in MB/s for the boot disk — the bandwidth
+  // dial decoupled from disk size, honored by disk types that support
+  // provisioned performance (hyperdisks).
+  optional int64 boot_disk_provisioned_throughput = 6 [(buf.validate.field).int64.gte = 1];
 }
 
 // GcpDataprocClusterAccelerator configures GPU accelerators attached to
@@ -186,6 +198,12 @@ message GcpDataprocClusterGceConfig {
   // Requires an N2D machine type.
   GcpDataprocClusterConfidentialInstanceConfig confidential_instance_config = 12;
 
+  // Resource manager (secure) tags applied to all cluster instances,
+  // keyed "tagKeys/{tag_key_id}" with values "tagValues/{tag_value_id}".
+  // Unlike network tags, these are IAM-governed and usable in org
+  // policies and firewall rules.
+  map<string, string> resource_manager_tags = 13;
+
   // network and subnetwork are mutually exclusive.
   option (buf.validate.message).cel = {
     id: "network_subnetwork_mutual_exclusion"
@@ -222,6 +240,20 @@ message GcpDataprocClusterMasterConfig {
   // Custom Dataproc image URI. If not specified, GCP uses the image
   // determined by software_config.image_version.
   string image_uri = 6;
+
+  // Ranked machine-type preferences for master provisioning — keeps the
+  // cluster creatable when the preferred type's zonal capacity dries up.
+  // Masters are on-demand capacity: provisioning_model_mix does not
+  // apply here (secondary workers only).
+  GcpDataprocClusterInstanceFlexibilityPolicy instance_flexibility_policy = 7;
+
+  // Masters have no standard/spot capacity mix — they are always
+  // on-demand.
+  option (buf.validate.message).cel = {
+    id: "master_flexibility_no_provisioning_mix"
+    expression: "!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)"
+    message: "provisioning_model_mix applies to secondary workers only"
+  };
 }
 
 // GcpDataprocClusterWorkerConfig defines the configuration for the
@@ -256,6 +288,20 @@ message GcpDataprocClusterWorkerConfig {
   // Minimum number of primary worker instances when autoscaling is active.
   // The autoscaler will not scale below this threshold. Updatable in place.
   int32 min_num_instances = 7;
+
+  // Ranked machine-type preferences for primary-worker provisioning —
+  // keeps scale-ups schedulable when the preferred type's zonal capacity
+  // dries up. Primary workers are on-demand capacity:
+  // provisioning_model_mix does not apply here (secondary workers only).
+  GcpDataprocClusterInstanceFlexibilityPolicy instance_flexibility_policy = 8;
+
+  // Primary workers have no standard/spot capacity mix — they are always
+  // on-demand.
+  option (buf.validate.message).cel = {
+    id: "worker_flexibility_no_provisioning_mix"
+    expression: "!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)"
+    message: "provisioning_model_mix applies to secondary workers only"
+  };
 }
 
 // GcpDataprocClusterInstanceSelection names a ranked machine-type
@@ -501,6 +547,20 @@ message GcpDataprocClusterLifecycleConfig {
   // regardless of activity (e.g., "2026-03-01T00:00:00Z").
   // Useful for time-boxed clusters with a known end date.
   string auto_delete_time = 2;
+
+  // Duration of inactivity after which the cluster is automatically
+  // STOPPED (not deleted) — VMs shut down, storage and configuration
+  // retained, restartable later. Same format and range as
+  // idle_delete_ttl (e.g., "1800s"; 10 minutes to 14 days).
+  string idle_stop_ttl = 3 [(buf.validate.field).cel = {
+    id: "idle_stop_ttl_format"
+    expression: "this == '' || this.matches('^[0-9]+s$')"
+    message: "idle_stop_ttl must be a duration in seconds (e.g., '1800s')"
+  }];
+
+  // RFC3339 timestamp at which the cluster is automatically STOPPED
+  // (not deleted), regardless of activity.
+  string auto_stop_time = 4;
 }
 
 // GcpDataprocClusterMetastoreConfig attaches the cluster to an existing
@@ -690,6 +750,26 @@ message GcpDataprocClusterConfig {
   // Dedicated DRIVER node groups, separating Spark driver capacity
   // from the master's control-plane duties.
   repeated GcpDataprocClusterAuxiliaryNodeGroup auxiliary_node_groups = 17;
+
+  // The cluster's structural type. STANDARD (default) has masters and
+  // workers; SINGLE_NODE runs everything on one VM (the modern
+  // alternative to the "dataproc:dataproc.allow.zero.workers" property);
+  // ZERO_SCALE keeps only the control plane warm and provisions workers
+  // on demand. Immutable after creation.
+  string cluster_type = 18 [(buf.validate.field).cel = {
+    id: "cluster_type_valid_value"
+    expression: "this == '' || this in ['STANDARD', 'SINGLE_NODE', 'ZERO_SCALE']"
+    message: "cluster_type must be STANDARD, SINGLE_NODE, or ZERO_SCALE"
+  }];
+
+  // The execution engine. DEFAULT runs open-source Spark as-is;
+  // LIGHTNING enables the Lightning Engine (Google's accelerated Spark
+  // runtime, premium tier). Immutable after creation.
+  string engine = 19 [(buf.validate.field).cel = {
+    id: "engine_valid_value"
+    expression: "this == '' || this in ['DEFAULT', 'LIGHTNING']"
+    message: "engine must be DEFAULT or LIGHTNING"
+  }];
 }
 
 // GcpDataprocClusterKubernetesSoftwareConfig pins the Dataproc-on-GKE
@@ -954,6 +1034,15 @@ message GcpDataprocClusterSpec {
   // (platform keys win on conflict). Not supported by the API for the
   // virtual (GKE-based) arm.
   map<string, string> labels = 7;
+
+  // Engine-side teardown behavior. "DELETE" (default) destroys the
+  // cluster; "PREVENT" fails any plan that would destroy it; "ABANDON"
+  // removes it from IaC management while leaving it running in GCP.
+  string deletion_policy = 8 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 
   // The two deployment arms mirror the API's exactly-one contract;
   // omitting both is also accepted (GCP creates a default GCE cluster).

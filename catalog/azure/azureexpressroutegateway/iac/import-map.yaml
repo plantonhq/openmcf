@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureexpressroutegateway
+spec:
+  # The gateway's identity is its full ARM resource ID; connections are
+  # ARM children composed under it, keyed by the spec entry's name (the
+  # module deploys one child per connections entry).
+  values:
+    - name: express_route_gateway_id
+      derivations:
+        - from_stack_output: express_route_gateway_id
+      where_to_find: >-
+        Portal -> Virtual WAN -> Hubs -> the hub -> ExpressRoute -> the
+        gateway -> JSON View -> Resource ID, or `az network express-route
+        gateway show -g <rg> -n <name> --query id`.
+    - name: connection_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The connection's name in the spec's connections list (the module
+        keys one ARM child per name); `az network express-route gateway
+        connection list -g <rg> --gateway-name <name>` shows what exists
+        cloud-side.

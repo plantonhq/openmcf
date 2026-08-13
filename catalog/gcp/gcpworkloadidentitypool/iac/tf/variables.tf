@@ -43,8 +43,12 @@ variable "spec" {
     # (TRUST_DOMAIN pools).
     inline_certificate_issuance_config = optional(object({
       # Region -> CA Service pool resource path used for issuance in that
-      # region; at least one entry.
-      ca_pools = map(string)
+      # region. Exactly one of ca_pools or use_default_shared_ca supplies
+      # the signing authority (spec-enforced).
+      ca_pools = optional(map(string), {})
+      # Issue from the GCP-provisioned default shared CA instead of your
+      # own CA pools.
+      use_default_shared_ca = optional(bool, false)
       # Certificate key algorithm; server-defaults to ECDSA_P256.
       key_algorithm = optional(string)
       # Certificate lifetime like "86400s" (24h) .. "2592000s" (30d);
@@ -63,8 +67,20 @@ variable "spec" {
         trust_anchors = list(object({
           pem_certificate = string
         }))
+        # Additionally trust the GCP-managed regional root certificates.
+        trust_default_shared_ca = optional(bool, false)
       }))
     }))
+
+    # Which workloads may receive a managed identity from this pool
+    # (max 50 rules; applied by GCP in a second API call after create).
+    attestation_rules = optional(list(object({
+      google_cloud_resource = string
+    })), [])
+
+    # What happens to the pool in GCP on destroy:
+    # DELETE (provider default; ~30-day soft delete), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -86,7 +102,7 @@ variable "spec" {
     # try() guards the null case: HCL's || evaluates BOTH operands (it does
     # not short-circuit), so dereferencing the object on the right-hand side
     # would fail whenever the block is omitted.
-    condition     = var.spec.inline_certificate_issuance_config == null || length(try(var.spec.inline_certificate_issuance_config.ca_pools, {})) > 0
-    error_message = "inline_certificate_issuance_config.ca_pools needs at least one region -> CA pool entry."
+    condition     = var.spec.inline_certificate_issuance_config == null || (length(try(var.spec.inline_certificate_issuance_config.ca_pools, {})) > 0) != try(var.spec.inline_certificate_issuance_config.use_default_shared_ca, false)
+    error_message = "choose exactly one certificate authority source: ca_pools or use_default_shared_ca."
   }
 }

@@ -24,7 +24,7 @@ This preset creates an Azure Container Registry with Standard SKU and admin user
 
 ## Key Configuration Choices
 
-- **Standard SKU** (`sku: STANDARD`) -- 100 GB storage, higher throughput than Basic. Upgrade to Premium for geo-replication, private endpoints, and content trust
+- **Standard SKU** (`sku: STANDARD`) -- 100 GB storage, higher throughput than Basic. Upgrade to Premium for geo-replication and private endpoints
 - **Admin user disabled** (`adminUserEnabled: false`) -- Recommended for production. Use Azure AD service principals or managed identities for authentication. Enable only for quick prototyping with `docker login`
 - **No geo-replication** -- Standard SKU does not support geo-replication. Use the Premium preset for multi-region image distribution
 - **No network restrictions** -- The registry is publicly accessible. Upgrade to Premium to add private endpoint access or IP-based firewall rules
@@ -39,4 +39,4 @@ This preset creates an Azure Container Registry with Standard SKU and admin user
 
 ## Related Presets
 
-- **02-premium-geo-replicated** -- Use instead for multi-region image distribution, private endpoints, or content trust
+- **02-premium-geo-replicated** -- Use instead for multi-region image distribution or private endpoints

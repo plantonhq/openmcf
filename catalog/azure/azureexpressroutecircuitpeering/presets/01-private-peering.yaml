@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuitPeering
+metadata:
+  name: my-private-peering
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  expressRouteCircuitName:
+    value: "<your-circuit-name>"
+  peeringType: AZURE_PRIVATE_PEERING
+  vlanId: 100 # provider-assigned; unique on the circuit
+  primaryPeerAddressPrefix: "<your-primary-slash-30>" # e.g. 192.168.16.0/30
+  secondaryPeerAddressPrefix: "<your-secondary-slash-30>" # e.g. 192.168.16.4/30

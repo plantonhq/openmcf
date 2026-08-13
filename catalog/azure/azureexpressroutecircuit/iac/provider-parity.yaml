@@ -1,0 +1,36 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_express_route_circuit:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+      # The provider's one-block SKU pair flattened to two explicit
+      # fields -- tier and family are independent decisions (reach and
+      # billing) and the flat shape reads better in manifests.
+      - spec: spec.sku_tier
+        arg: sku.tier
+      - spec: spec.sku_family
+        arg: sku.family
+
+  azurerm_express_route_circuit_authorization:
+    # Instantiated per spec.authorizations entry (the keys this circuit
+    # ISSUES; ARM generates each key into the name-keyed
+    # authorization_keys output).
+    specRoot: spec.authorizations
+    exclusions:
+      - arg: express_route_circuit_name
+        reason: wired by the module to the circuit it creates -- never user surface
+      - arg: resource_group_name
+        reason: wired by the module to the circuit's resource group -- never user surface

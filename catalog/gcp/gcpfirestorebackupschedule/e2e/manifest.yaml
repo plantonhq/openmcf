@@ -16,3 +16,7 @@ spec:
 
   # Daily recurrence — exactly one of daily or weeklyRecurrence.
   daily: true
+
+  # PREVENT protects a compliance-mandated cadence from accidental
+  # teardown; DELETE (the default) keeps destroys real.
+  deletionPolicy: DELETE

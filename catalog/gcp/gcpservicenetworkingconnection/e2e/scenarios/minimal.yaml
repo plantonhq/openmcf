@@ -30,3 +30,6 @@ spec:
         kind: GcpGlobalAddress
         name: planton-oss-e2e-gcpgip-psa-prereq
         fieldPath: status.outputs.name
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

@@ -41,5 +41,6 @@ locals {
     var.metadata.id != null && var.metadata.id != ""
   ) ? { "planton-ai_id" = var.metadata.id } : {}
 
-  final_labels = merge(local.base_labels, local.org_label, local.env_label, local.id_label)
+  # User labels first: the platform labels win on key conflicts.
+  final_labels = merge(var.spec.labels, local.base_labels, local.org_label, local.env_label, local.id_label)
 }

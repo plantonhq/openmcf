@@ -74,6 +74,7 @@ This creates a port-443 frontend with a Google-assigned ephemeral IP; add `ipAdd
 |-------|-------------|
 | `labels` | Organize/bill the rule. Mutable |
 | `externalManagedBackendBucketMigrationState` / `...TestingPercentage` | The EXTERNAL → EXTERNAL_MANAGED backend-bucket canary migration, without recreating the VIP |
+| `deletionPolicy` | What destroy does: `DELETE` (default), `PREVENT` (refuse), or `ABANDON` (keep serving, drop from management) |
 
 ## Stack Outputs
 

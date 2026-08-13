@@ -6,8 +6,9 @@ spec:
   # Leaf scenario: the schema is a pure control-plane object — create,
   # posture-verify (type + definition), destroy in seconds.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The prior green predates the current spec shape (deletion_policy,
+  # the revision_id output the topic's revision pinning consumes) —
+  # awaits live re-proof.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

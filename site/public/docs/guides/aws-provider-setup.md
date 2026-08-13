@@ -7,7 +7,7 @@ order: 70
 
 # AWS Provider Setup
 
-This guide covers everything you need to authenticate Planton with AWS. It applies to all AWS deployment components: `AwsRdsInstance`, `AwsS3Bucket`, `AwsEksCluster`, `AwsVpc`, and others.
+This guide covers everything you need to authenticate Planton with AWS. It applies to all AWS components: `AwsRdsInstance`, `AwsS3Bucket`, `AwsEksCluster`, `AwsVpc`, and others.
 
 For a quick reference of all provider credentials, see [Credentials](./credentials).
 

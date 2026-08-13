@@ -22,3 +22,6 @@ spec:
   messageRetentionDuration: "3600s"
   labels:
     team: platform-e2e
+  # Explicit DELETE so the ephemeral run's destroy is a live no-op-diff
+  # proof of the new deletion_policy wiring.
+  deletionPolicy: DELETE

@@ -1,0 +1,49 @@
+# GcpGcsBucket scenario: the structural-companion arms on a
+# hierarchical-namespace bucket — real folders (nested three deep, proving
+# the parents-before-children ordering both engines implement), managed
+# folders as prefix-scoped IAM anchors (coexisting with HNS on the same
+# bucket), per-folder force_destroy on both semantics (client-side sweep
+# for folders, server-side allowNonEmpty for managed folders), and the
+# kind-level deletion_policy fanning to every companion.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGcsBucket
+metadata:
+  name: planton-oss-e2e-gcsb-folders
+  id: planton-oss-e2e-gcsb-folders
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgcsbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-oss-e2e-fldr-${E2E_RUN_ID}
+  location: us-central1
+  # HNS requires UBLA and excludes versioning — both create-time truths.
+  uniformBucketLevelAccessEnabled: true
+  hierarchicalNamespaceEnabled: true
+  publicAccessPrevention: enforced
+  forceDestroy: true
+  folders:
+    # Every ancestor listed explicitly — the API never auto-creates
+    # parents; the modules order creation parents-first.
+    - name: logs/
+      forceDestroy: true
+    - name: logs/2026/
+      forceDestroy: true
+    - name: logs/2026/08/
+      forceDestroy: true
+    - name: staging/
+  managedFolders:
+    # Prefix-scoped IAM anchors; independent of the folder tree.
+    - name: reports/
+      forceDestroy: true
+    - name: exports/
+  # Explicit provider-default deletion policy: proves the one-field
+  # fan-out renders on the bucket, every folder, and every managed folder.
+  deletionPolicy: DELETE
+  labels:
+    e2e-suite: gcp

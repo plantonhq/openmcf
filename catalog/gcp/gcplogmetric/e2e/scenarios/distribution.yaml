@@ -1,0 +1,32 @@
+# Distribution GcpLogMetric scenario: value extraction + exponential
+# histogram buckets — proves the DISTRIBUTION descriptor, the
+# value_extractor, and the bucket_options rendering live (the API
+# enforces the three-part pairing server-side).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogMetric
+metadata:
+  name: planton-oss-e2e-gcplogmt-dist
+  id: planton-oss-e2e-gcplogmt-dist
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogmetric
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  filter: resource.type="cloud_run_revision" AND jsonPayload.latency_ms>0
+  metricDescriptor:
+    metricKind: DELTA
+    valueType: DISTRIBUTION
+    unit: ms
+  valueExtractor: EXTRACT(jsonPayload.latency_ms)
+  bucketOptions:
+    exponentialBuckets:
+      numFiniteBuckets: 64
+      growthFactor: 1.4142135
+      scale: 1
+  description: E2E distribution metric — latency histogram; delete freely.
+  deletionPolicy: DELETE

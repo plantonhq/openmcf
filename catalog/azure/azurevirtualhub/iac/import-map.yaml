@@ -1,0 +1,45 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevirtualhub
+spec:
+  # The hub's identity is its full ARM resource ID; route tables, route
+  # maps, BGP connections, and the routing intent are ARM children
+  # composed under it, each keyed by the spec entry's name (the module
+  # deploys one child per entry, addressed by that name).
+  values:
+    - name: virtual_hub_id
+      derivations:
+        - from_stack_output: virtual_hub_id
+      where_to_find: >-
+        Portal -> Virtual WAN -> Hubs -> the hub -> Properties ->
+        Resource ID, or `az network vhub show -g <rg> -n <name> --query
+        id`.
+    - name: route_table_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The route table's name in the spec's route_tables list (the
+        module keys one ARM child per name); `az network vhub route-table
+        list --vhub-name <hub> -g <rg>` shows what exists cloud-side.
+    - name: route_map_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The route map's name in the spec's route_maps list; `az network
+        vhub route-map list --vhub-name <hub> -g <rg>` shows what exists
+        cloud-side.
+    - name: bgp_connection_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The peering's name in the spec's bgp_connections list; `az
+        network vhub bgpconnection list --vhub-name <hub> -g <rg>` shows
+        what exists cloud-side.
+    - name: routing_intent_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The routing intent's name in the spec (ARM convention:
+        "hubRoutingIntent"); `az network vhub routing-intent list
+        --vhub <hub> -g <rg>` shows what exists cloud-side.

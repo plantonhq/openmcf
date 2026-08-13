@@ -47,7 +47,7 @@ yourself.
      (count non-test `(kind_meta)` annotations and distinct providers). The chart
      count MUST be verified against `charts/*/*/Chart.yaml`. Never re-type a stale number. -->
 
-- **[`catalog/`](catalog)** — **400+ deployment components**
+- **[`catalog/`](catalog)** — **400+ components**
   across **17 cloud providers** (AWS, GCP, Azure, Kubernetes, OCI, Alibaba
   Cloud, Hetzner Cloud, DigitalOcean, Cloudflare, Civo, Scaleway, OpenStack,
   Confluent, Snowflake, Auth0, MongoDB Atlas, and OpenFGA). Each component is a

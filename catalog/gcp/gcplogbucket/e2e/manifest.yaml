@@ -1,0 +1,46 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogBucket
+metadata:
+  name: my-sample-log-bucket
+spec:
+  # Where the bucket lives. Omit entirely for a project bucket in the
+  # provider's default project — the common case. (Folder, organization,
+  # and billing-account scopes take folderId / organizationId /
+  # billingAccount instead — those scopes ADOPT existing buckets; the
+  # Logging API creates new custom buckets only under projects.)
+
+  # The bucket ID — or "_Default" to adopt the project's built-in bucket
+  # and manage its retention. Renaming REPLACES the bucket.
+  bucketId: my-sample-log-bucket
+
+  # Immutable; "global" (the default) unless data residency demands a
+  # region.
+  location: global
+
+  # 1–3650 days; GCP's default is 30. On a LOCKED bucket this can never
+  # change again. Lowering it deletes entries older than the new window.
+  retentionDays: 45
+
+  # Why this bucket exists and what lands in it.
+  description: Sample bucket — error archive with a status-code index
+
+  # Indexed LogEntry fields for faster targeted queries (at most 20).
+  indexConfigs:
+    - fieldPath: jsonPayload.request.status
+      type: INDEX_TYPE_INTEGER
+
+  # Named, filtered slices grantable independently
+  # (roles/logging.viewAccessor on a view shows a reader only these
+  # entries). viewId is permanent — renames replace the view. View
+  # filters speak a RESTRICTED grammar: only log source, resource type,
+  # apphub fields, user-defined labels, or LOG_ID() restrictions —
+  # severity is NOT a legal view dimension.
+  logViews:
+    - viewId: run-stderr
+      filter: resource.type="cloud_run_revision" AND LOG_ID("run.googleapis.com/stderr")
+      description: The on-call slice — Cloud Run stderr without the noise
+
+  # What a destroy does: DELETE (default — stored entries are deleted,
+  # no recycle bin), PREVENT (the compliance posture), or ABANDON. Also
+  # covers the bucket's views and linked dataset.
+  deletionPolicy: DELETE

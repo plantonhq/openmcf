@@ -6,8 +6,9 @@ spec:
   # Composed chain: zone -> auth -> validation record -> managed cert.
   # Verifier asserts creation posture, not ACTIVE (~2–5 minutes).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # The 6.x-era proof predates this spec surface (deletion_policy, the
+  # Pulumi state-secret handling of the self-managed key) — the kind
+  # awaits live re-proof at the current shape.
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

@@ -1,6 +1,6 @@
 # AzureLoadBalancer Pulumi Module
 
-Pulumi implementation for the AzureLoadBalancer deployment component.
+Pulumi implementation for the AzureLoadBalancer component.
 
 ## Architecture
 

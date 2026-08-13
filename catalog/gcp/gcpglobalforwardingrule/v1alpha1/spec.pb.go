@@ -153,8 +153,20 @@ type GcpGlobalForwardingRuleSpec struct {
 	// meaningful with external_managed_backend_bucket_migration_state
 	// TEST_BY_PERCENTAGE. Mutable.
 	ExternalManagedBackendBucketMigrationTestingPercentage float64 `protobuf:"fixed64,18,opt,name=external_managed_backend_bucket_migration_testing_percentage,json=externalManagedBackendBucketMigrationTestingPercentage,proto3" json:"external_managed_backend_bucket_migration_testing_percentage,omitempty"`
-	unknownFields                                          protoimpl.UnknownFields
-	sizeCache                                              protoimpl.SizeCache
+	// Deletion policy for the global forwarding rule — what happens on
+	// destroy:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the frontend is deleted; the reserved IP it served stays
+	//	             reserved (its own kind's policy governs it), but traffic
+	//	             to that IP stops routing the moment the rule is gone
+	//	"PREVENT" -- destroy FAILS; protects the entry point of a live load
+	//	             balancer chain
+	//	"ABANDON" -- the rule is removed from management but keeps serving
+	//	             traffic in GCP
+	DeletionPolicy string `protobuf:"bytes,19,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpGlobalForwardingRuleSpec) Reset() {
@@ -311,6 +323,13 @@ func (x *GcpGlobalForwardingRuleSpec) GetExternalManagedBackendBucketMigrationTe
 		return x.ExternalManagedBackendBucketMigrationTestingPercentage
 	}
 	return 0
+}
+
+func (x *GcpGlobalForwardingRuleSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // A Traffic Director metadata filter: which xDS clients receive this
@@ -487,7 +506,7 @@ var File_catalog_gcp_gcpglobalforwardingrule_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_gcp_gcpglobalforwardingrule_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/gcp/gcpglobalforwardingrule/v1alpha1/spec.proto\x120dev.planton.gcp.gcpglobalforwardingrule.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9e%\n" +
+	"7catalog/gcp/gcpglobalforwardingrule/v1alpha1/spec.proto\x120dev.planton.gcp.gcpglobalforwardingrule.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdc&\n" +
 	"\x1bGcpGlobalForwardingRuleSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x94\x03\n" +
@@ -521,7 +540,9 @@ const file_catalog_gcp_gcpglobalforwardingrule_v1alpha1_spec_proto_rawDesc = "" 
 	"\x06labels\x18\x10 \x03(\v2Y.dev.planton.gcp.gcpglobalforwardingrule.v1alpha1.GcpGlobalForwardingRuleSpec.LabelsEntryR\x06labels\x12\xd2\x02\n" +
 	"/external_managed_backend_bucket_migration_state\x18\x11 \x01(\tB\xec\x01\xbaH\xe8\x01\xba\x01\xe4\x01\n" +
 	"$valid_backend_bucket_migration_state\x12oexternal_managed_backend_bucket_migration_state must be one of PREPARE, TEST_BY_PERCENTAGE, or TEST_ALL_TRAFFIC\x1aKthis == '' || this in ['PREPARE', 'TEST_BY_PERCENTAGE', 'TEST_ALL_TRAFFIC']R*externalManagedBackendBucketMigrationState\x12\x95\x01\n" +
-	"<external_managed_backend_bucket_migration_testing_percentage\x18\x12 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00R6externalManagedBackendBucketMigrationTestingPercentage\x1a9\n" +
+	"<external_managed_backend_bucket_migration_testing_percentage\x18\x12 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@)\x00\x00\x00\x00\x00\x00\x00\x00R6externalManagedBackendBucketMigrationTestingPercentage\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x13 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc1\v\xbaH\xbd\v\x1a\xf0\x02\n" +

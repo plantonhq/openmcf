@@ -10,8 +10,6 @@ spec:
   # IAM member FK resolution proof); the remote scenario proves the
   # pull-through arm against Docker Hub (no credentials needed).
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 20

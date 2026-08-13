@@ -76,6 +76,12 @@ func managedZone(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider)
 		args.Project = pulumi.StringPtr(projectId)
 	}
 
+	// What destroy does to the zone shell: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep answering queries).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	if spec.DnssecConfig != nil {
 		dc := spec.DnssecConfig
 		dnssecArgs := &dns.ManagedZoneDnssecConfigArgs{}
@@ -135,6 +141,10 @@ func managedZone(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider)
 			server := dns.ManagedZoneForwardingConfigTargetNameServerArgs{}
 			if s.Ipv4Address != "" {
 				server.Ipv4Address = pulumi.StringPtr(s.Ipv4Address)
+			}
+			// One address family per target (spec CEL enforces pre-deploy).
+			if s.Ipv6Address != "" {
+				server.Ipv6Address = pulumi.StringPtr(s.Ipv6Address)
 			}
 			if s.DomainName != "" {
 				server.DomainName = pulumi.StringPtr(s.DomainName)

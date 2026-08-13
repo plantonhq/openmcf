@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureNetworkWatcherFlowLog
+metadata:
+  name: platform-vnet-flow-log
+spec:
+  # Must be the TARGET's region -- flow logging is regional.
+  region: eastus
+  name: platform-vnet-flow-log
+  # Record every flow in the network. Narrow to an AzureSubnet or
+  # AzureNetworkInterface output for scoped recording.
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "<your-virtual-network>"
+      fieldPath: status.outputs.virtual_network_id
+  # An account WITHOUT hand-managed lifecycle rules -- creating a flow
+  # log overwrites them.
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "<your-storage-account>"
+      fieldPath: status.outputs.storage_account_id
+  # Version 2 adds flow state and byte/packet counters -- prefer it
+  # for anything new.
+  version: 2
+  retentionPolicy:
+    enabled: true
+    days: 30
+  # The watcher fields stay unset: the region's auto-created
+  # Network Watcher is resolved automatically.

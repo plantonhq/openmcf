@@ -46,6 +46,19 @@ func user(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error 
 		args.Host = pulumi.StringPtr(spec.Host)
 	}
 
+	// MySQL 8+ / PostgreSQL: roles granted at creation (custom roles must
+	// already exist in the database).
+	if len(spec.DatabaseRoles) > 0 {
+		args.DatabaseRoles = pulumi.ToStringArray(spec.DatabaseRoles)
+	}
+
+	// DELETE (default) drops the user; ABANDON removes it from IaC
+	// management — the documented workaround when owned objects block a
+	// PostgreSQL drop; PREVENT fails destroying previews.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	if pp := spec.PasswordPolicy; pp != nil {
 		ppArgs := &sql.UserPasswordPolicyArgs{
 			EnableFailedAttemptsCheck:  pulumi.BoolPtr(pp.EnableFailedAttemptsCheck),

@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringAlertPolicy
+metadata:
+  name: panic-logged
+spec:
+  combiner: OR
+  severity: ERROR
+  conditions:
+    - displayName: panic in application logs
+      conditionMatchedLog:
+        filter: severity>=ERROR AND textPayload:"panic"
+        labelExtractors:
+          vm: EXTRACT(resource.labels.instance_id)
+  alertStrategy:
+    notificationRateLimit:
+      period: 300s
+    autoClose: 1800s

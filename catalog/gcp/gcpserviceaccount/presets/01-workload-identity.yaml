@@ -8,7 +8,7 @@ spec:
     value: "<gcp-project-id>"
   displayName: <Your Workload> (Workload Identity)
   description: Runtime identity for <your workload>; pods authenticate via KSA-to-GSA binding
-  createKey: false  # default from spec; Workload Identity eliminates the need for keys
+  # No userManagedKey block: keyless — Workload Identity eliminates the need for keys
   projectIamRoles:
     - roles/logging.logWriter
     - roles/monitoring.metricWriter

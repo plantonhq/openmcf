@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpworkflow
+spec:
+  # Two scenarios: minimal (a two-step hello workflow, protection off so
+  # destroy runs) and revisions (env vars + logging levels + a dedicated
+  # description — proves the revision-minting surface; the revision_id
+  # output must differ across re-applies with changed source). Workflows
+  # deploy in seconds and are free. WATCH: the live destroy-guard
+  # round-trip (deletion_protection true -> destroy fails -> false ->
+  # destroy passes) is proof-lane judgment — scenarios ship protection
+  # OFF so lanes tear down.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

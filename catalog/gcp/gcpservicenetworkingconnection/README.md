@@ -54,6 +54,7 @@ Once the connection exists, managed services in this network can use private IP 
 | `service` | `string` | `servicenetworking.googleapis.com` | The service producer to peer with. Immutable. |
 | `reservedPeeringRanges` | `StringValueOrRef[]` | — (min 1) | Names of INTERNAL `VPC_PEERING` global address ranges. Mutable — append to grow capacity. |
 | `updateOnCreationFail` | `bool` | `false` | Adopt a pre-existing connection for the same pair instead of failing. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE` removes the peering (destroy producer instances first), `PREVENT` fails the destroy, `ABANDON` leaves the peering serving unmanaged. |
 
 ## Stack Outputs
 
@@ -78,11 +79,11 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - **Ranges by NAME**: `reservedPeeringRanges` carries global address names, not self-links or CIDRs — the API's own addressing for peering ranges.
 - **Additive growth is safe**: changing the range list never disturbs service subnets the producer already provisioned.
 - **Teardown ordering**: GCP refuses to delete the connection while the producer still holds subnets — destroy private-IP service instances (Cloud SQL, AlloyDB, Memorystore, ...) before this resource.
+- **Deletion policy**: `deletionPolicy` controls what destroy does — `DELETE` (default) removes the peering, `PREVENT` fails the destroy to protect producer connectivity, and `ABANDON` leaves the peering serving unmanaged (the historical workaround for stuck teardowns).
 - **No cloud-side name**: the connection is addressed by (network, service); `metadata.name` names only the Planton resource.
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`deletion_policy`** — a client-side Terraform lever (ABANDON removes the connection from state without deleting it) that conflicts with Planton-managed destroy (catalog-wide decision). The teardown-ordering requirement it usually papers over is documented above instead.
 - **`google_service_networking_peered_dns_domain`** — a separate provider resource that forwards a private DNS suffix over this peering; a real but second-order need (Tier-2 candidate on concrete pull).
 - **`google_service_networking_vpc_service_controls`** — the VPC-SC enablement toggle for this connection; enterprise perimeter tooling that belongs with a broader VPC Service Controls story (Tier-2).
 

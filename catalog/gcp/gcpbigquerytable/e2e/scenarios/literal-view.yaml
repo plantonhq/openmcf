@@ -26,3 +26,5 @@ spec:
     query: SELECT 1 AS n
     useLegacySql: false
   deletionProtection: false
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

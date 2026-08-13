@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringdashboard.v1alpha1;
+
+// Outputs produced after provisioning a Cloud Monitoring dashboard.
+message GcpMonitoringDashboardStackOutputs {
+  // The server-assigned resource name of the dashboard.
+  // Format: projects/{project}/dashboards/{dashboard_id}
+  // The handle for linking to the dashboard from alert documentation and
+  // for addressing it through the Monitoring dashboards API.
+  string dashboard_name = 1;
+}

@@ -1,5 +1,5 @@
 ---
-description: Generate a GitHub issue title and detailed Markdown issue body as exactly two copyable code blocks (ask-only). Follows Planton issue conventions with deployment-component-aware labeling.
+description: Generate a GitHub issue title and detailed Markdown issue body as exactly two copyable code blocks (ask-only). Follows Planton issue conventions with component-aware labeling.
 globs:
 alwaysApply: false
 ---
@@ -41,7 +41,7 @@ Usage: In Ask mode, invoke explicitly as `@generate-planton-issue-info`.
 ## Title format (examples)
 
 ```text
-Postgres deployment component spec validation broken for port conflicts
+Postgres component spec validation broken for port conflicts
 ```
 
 ```text
@@ -55,7 +55,7 @@ Forge system generates incorrect Pulumi import paths for nested packages
 ## Title guidelines
 - **For Bugs**: Start with the symptom or component: "Postgres component validation broken...", "CLI fails when..."
 - **For Features**: Start with action verb: "Add manifest validation command...", "Enable users to..."
-- **For Improvements**: Start with area: "Improve Pulumi code generation...", "Enhance deployment component validation..."
+- **For Improvements**: Start with area: "Improve Pulumi code generation...", "Enhance component validation..."
 - **For Tasks**: Be specific: "Migrate to Pulumi 4.x", "Update protobuf dependencies"
 
 ## Description structure
@@ -131,7 +131,7 @@ Use this template:
 **Reporter**: <Name/Team>  
 **Priority**: P0-P3  
 **Severity**: Critical/High/Medium/Low  
-**Labels**: `bug`, `area/deployment-component`, `priority/high`
+**Labels**: `bug`, `area/component`, `priority/high`
 ```
 
 ### For Feature Requests
@@ -244,13 +244,13 @@ Use this template:
 Infer appropriate labels based on affected files:
 
 ### Area Labels
-- `catalog/**` → `area/deployment-component`, `area/<provider>`
+- `catalog/**` → `area/component`, `area/<provider>`
 - `cmd/planton/**` → `area/cli`
 - `pkg/**` → `area/pkg`, `area/<package-name>`
 - `internal/**` → `area/cli`, `area/internal`
 - `shared/**`, `qa/**`, `iac/**` (proto surfaces) → `area/apis`
 - `tools/**` → `area/tooling`
-- `_rules/deployment-component/forge/**` → `area/forge`
+- `_rules/component/forge/**` → `area/forge`
 - `site/**` → `area/site`
 - `docs/**` → `area/docs`
 

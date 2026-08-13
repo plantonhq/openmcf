@@ -21,3 +21,5 @@ spec:
     - customer_id
   requirePartitionFilter: true
   deletionProtection: false
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

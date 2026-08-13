@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurenetworkwatcherflowlog
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plans green with and without
+  # Traffic Analytics); live dual-engine proof has not yet run. ONE
+  # scenario runs: `minimal` (the fixture virtual network's flows into
+  # the fixture storage account with Traffic Analytics on the fixture
+  # Log Analytics workspace -- proving the auto-created-watcher
+  # addressing, the deepest seam this kind has). Flow logs are
+  # near-free; the lane's spend is storage/ingestion pennies. The lane
+  # depends on Azure's REGIONAL WATCHER auto-creation (the orphan sweep
+  # deletes NetworkWatcherRG at session end; Azure recreates it when
+  # the fixture network deploys -- watch the timing on first run).
+  # OFFLINE-ONLY with reasons: subnet and NIC targets (the same flowLogs
+  # PUT with a different target ID -- plan-verified; unblock: none
+  # needed unless a live seam appears); the self-managed-watcher
+  # addressing (needs a second watcher, and Azure allows ONE per region
+  # per subscription -- structurally unprovable beside the singleton);
+  # retention-disabled and paused shapes (property writes on the proven
+  # path).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

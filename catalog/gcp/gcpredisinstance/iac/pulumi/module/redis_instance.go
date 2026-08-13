@@ -44,12 +44,22 @@ func redisInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		return errors.Wrap(err, "failed to enable redis.googleapis.com api")
 	}
 
+	// Destroy guard, sent explicitly from the spec (default true) so
+	// destroy behavior is identical on both engines — omitting it would
+	// leave the decision to whatever happens to be in Terraform state.
+	deletionProtection := true
+	if spec.DeletionProtection != nil {
+		deletionProtection = spec.GetDeletionProtection()
+	}
+
 	args := &redis.InstanceArgs{
 		Name:         pulumi.String(spec.InstanceName),
 		Region:       pulumi.StringPtr(spec.Region),
 		Tier:         pulumi.StringPtr(spec.Tier),
 		MemorySizeGb: pulumi.Int(int(spec.MemorySizeGb)),
 		Labels:       pulumi.ToStringMap(locals.GcpLabels),
+
+		DeletionProtection: pulumi.BoolPtr(deletionProtection),
 	}
 
 	// An empty project falls back to the provider's default project — the
@@ -112,7 +122,7 @@ func redisInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 
 	// Weekly maintenance window (UTC, fixed 1-hour duration).
 	if spec.MaintenanceWindow != nil {
-		args.MaintenancePolicy = &redis.InstanceMaintenancePolicyArgs{
+		policyArgs := &redis.InstanceMaintenancePolicyArgs{
 			WeeklyMaintenanceWindows: redis.InstanceMaintenancePolicyWeeklyMaintenanceWindowArray{
 				&redis.InstanceMaintenancePolicyWeeklyMaintenanceWindowArgs{
 					Day: pulumi.String(spec.MaintenanceWindow.Day),
@@ -123,6 +133,10 @@ func redisInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 				},
 			},
 		}
+		if spec.MaintenanceWindow.Description != "" {
+			policyArgs.Description = pulumi.StringPtr(spec.MaintenanceWindow.Description)
+		}
+		args.MaintenancePolicy = policyArgs
 	}
 
 	// Self-service maintenance: setting a newer available version applies
@@ -156,6 +170,13 @@ func redisInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 	// CMEK: the key must live in the instance's region. Immutable.
 	if spec.CustomerManagedKey.GetValue() != "" {
 		args.CustomerManagedKey = pulumi.StringPtr(spec.CustomerManagedKey.GetValue())
+	}
+
+	// Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+	// Sent only when set so the provider default stays in charge otherwise.
+	// Evaluated only after deletion_protection allows the destroy at all.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdInstance, err := redis.NewInstance(ctx, "redis-instance", args,

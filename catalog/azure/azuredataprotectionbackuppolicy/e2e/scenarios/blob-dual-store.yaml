@@ -1,0 +1,40 @@
+# The dual-store scenario: the blob_storage variant with BOTH
+# retention tiers -- operational (continuous, in-account) and vault
+# (scheduled) -- plus a named vault-tier rule. Free on the fixture
+# vault; only blob storage carries this dual-duration dialect, so this
+# lane is where it proves live. No storage account is needed: policies
+# are pure configuration objects; the account binding rides the
+# backup-instance kind.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupPolicy
+metadata:
+  name: planton-oss-e2e-azuredataprotectionbackuppolicy-blob
+  id: planton-oss-e2e-azuredataprotectionbackuppolicy-blob
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredataprotectionbackuppolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  vaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dpbv
+  name: planton-oss-e2e-dpbp-blob
+  blobStorage:
+    operationalDefaultRetentionDuration: P30D
+    vaultDefaultRetentionDuration: P90D
+    backupRepeatingTimeIntervals:
+      - R/2024-01-01T00:00:00+00:00/P1D
+    timeZone: UTC
+    retentionRules:
+      - name: monthly
+        criteria:
+          absoluteCriteria: FirstOfMonth
+        lifeCycle:
+          dataStoreType: VaultStore
+          duration: P12M
+        priority: 20

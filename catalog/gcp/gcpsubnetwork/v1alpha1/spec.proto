@@ -61,8 +61,9 @@ message GcpSubnetworkSpec {
   // Primary IPv4 CIDR range (e.g. "10.10.0.0/20"). Must not overlap any
   // other range in the VPC. Mutable in ONE direction: the range can be
   // expanded in place (e.g. /20 → /18), but shrinking it forces destroy and
-  // recreate — plan for growth up front. Leave empty only for IPV6_ONLY
-  // subnets, which carry no IPv4 range.
+  // recreate — plan for growth up front. Leave empty for IPV6_ONLY subnets
+  // (which carry no IPv4 range) or when reserved_internal_range supplies
+  // the CIDR from a Network Connectivity internal range.
   string ip_cidr_range = 5 [(buf.validate.field).cel = {
     id: "valid_ip_cidr_range"
     message: "ip_cidr_range must be an IPv4 CIDR like 10.10.0.0/20"
@@ -172,10 +173,84 @@ message GcpSubnetworkSpec {
   // busy subnet is expensive — tune flow_sampling and filter_expr.
   GcpSubnetworkLogConfig log_config = 17;
 
+  // Source the primary CIDR from a pre-planned Network Connectivity
+  // internal range instead of typing a literal ip_cidr_range: the value is
+  // the range's resource path prefixed with the API host, e.g.
+  // "networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+  // The range's CIDR becomes the subnet's primary range — the enterprise
+  // path for centrally allocated IP plans. Immutable: changing it destroys
+  // and recreates the subnetwork.
+  string reserved_internal_range = 18;
+
+  // For INTERNAL IPv6 subnets: pin a specific internal IPv6 prefix (ULA)
+  // instead of letting Google allocate one from the VPC's internal IPv6
+  // range. Immutable: the prefix cannot change after creation.
+  string internal_ipv6_prefix = 19;
+
+  // BYOIP for IPv6: resource path of a PublicDelegatedPrefix (a sub-PDP in
+  // EXTERNAL_IPV6_SUBNETWORK_CREATION or INTERNAL_IPV6_SUBNETWORK_CREATION
+  // mode) the subnet's IPv6 space is drawn from, e.g.
+  // "projects/{project}/regions/{region}/publicDelegatedPrefixes/{name}".
+  // Only meaningful on dual-stack or IPv6-only subnets. Mutable.
+  string ip_collection = 20;
+
+  // Resource Manager tags bound to the subnetwork at create time, for
+  // org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+  // and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+  // tags REPLACES the subnetwork (the provider sends them through a
+  // create-only params block) -- plan tag changes deliberately.
+  map<string, string> resource_manager_tags = 21;
+
+  // How VMs in this subnet resolve the subnet mask in ARP responses —
+  // relevant for appliance/NFV subnets whose workloads inspect ARP.
+  // ARP_ALL_RANGES answers for every range in the subnet;
+  // ARP_PRIMARY_RANGE answers only for the primary range;
+  // the ARP_BROADCAST_* modes answer with the broadcast-domain mask
+  // (WITH_LEARNING additionally learns from observed traffic). Leave unset
+  // for GCP's default behavior. Immutable: changing it recreates the
+  // subnetwork.
+  string resolve_subnet_mask = 22 [(buf.validate.field).cel = {
+    id: "valid_resolve_subnet_mask"
+    message: "resolve_subnet_mask must be one of ARP_ALL_RANGES, ARP_PRIMARY_RANGE, ARP_BROADCAST_PRIMARY_RANGE, or ARP_BROADCAST_PRIMARY_RANGE_WITH_LEARNING"
+    expression: "this == '' || this in ['ARP_ALL_RANGES', 'ARP_PRIMARY_RANGE', 'ARP_BROADCAST_PRIMARY_RANGE', 'ARP_BROADCAST_PRIMARY_RANGE_WITH_LEARNING']"
+  }];
+
+  // What happens to the subnetwork in GCP when this resource is destroyed.
+  //   "DELETE"  -- (GCP's default when unset) the subnet is deleted; GCP
+  //                rejects the delete while any VM, connector, or proxy
+  //                still holds an address in it
+  //   "PREVENT" -- destroy FAILS; protects the address space workloads
+  //                and peers may still route to
+  //   "ABANDON" -- the subnet is removed from management but stays in GCP
+  //                (free at rest; its CIDR stays claimed in the VPC)
+  string deletion_policy = 23 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   option (buf.validate.message).cel = {
     id: "ipv4_range_required_unless_ipv6_only"
-    message: "ip_cidr_range is required (only IPV6_ONLY subnets omit it)"
-    expression: "(has(this.stack_type) && this.stack_type == 'IPV6_ONLY') ? this.ip_cidr_range == '' : this.ip_cidr_range != ''"
+    message: "set ip_cidr_range or reserved_internal_range (only IPV6_ONLY subnets omit both)"
+    expression: "(has(this.stack_type) && this.stack_type == 'IPV6_ONLY') ? this.ip_cidr_range == '' : (this.ip_cidr_range != '' || this.reserved_internal_range != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "primary_range_single_source"
+    message: "ip_cidr_range and reserved_internal_range are alternative sources for the primary range — set at most one"
+    expression: "this.ip_cidr_range == '' || this.reserved_internal_range == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "internal_ipv6_prefix_requires_internal_access"
+    message: "internal_ipv6_prefix only applies to subnets with ipv6_access_type INTERNAL"
+    expression: "this.internal_ipv6_prefix == '' || this.ipv6_access_type == 'INTERNAL'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ip_collection_requires_ipv6_stack"
+    message: "ip_collection (BYOIP) only applies to IPV4_IPV6 or IPV6_ONLY subnets"
+    expression: "this.ip_collection == '' || (has(this.stack_type) && this.stack_type != 'IPV4_ONLY')"
   };
 
   option (buf.validate.message).cel = {
@@ -199,6 +274,12 @@ message GcpSubnetworkSpec {
 
 // One secondary (alias) IPv4 range.
 message GcpSubnetworkSecondaryRange {
+  option (buf.validate.message).cel = {
+    id: "secondary_range_cidr_source"
+    message: "each secondary range needs exactly one CIDR source — ip_cidr_range or reserved_internal_range"
+    expression: "(this.ip_cidr_range != '') != (this.reserved_internal_range != '')"
+  };
+
   // Name of this secondary range, unique within the subnet — the handle
   // consumers use to select it (e.g. a GKE cluster's pods range). 1-63
   // characters, RFC1035. Renaming a range in place is not supported by GCP.
@@ -211,11 +292,19 @@ message GcpSubnetworkSecondaryRange {
 
   // IPv4 CIDR of this secondary range. Must not overlap any other range in
   // the VPC. Size for the consumer: GKE pod ranges are commonly /14-/18,
-  // service ranges /20.
-  string ip_cidr_range = 2 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$"
-  ];
+  // service ranges /20. Alternative to reserved_internal_range.
+  string ip_cidr_range = 2 [(buf.validate.field).cel = {
+    id: "valid_secondary_ip_cidr_range"
+    message: "ip_cidr_range must be an IPv4 CIDR like 10.16.0.0/14"
+    expression: "this == '' || this.matches('^\\\\d+\\\\.\\\\d+\\\\.\\\\d+\\\\.\\\\d+/\\\\d+$')"
+  }];
+
+  // Source this secondary range's CIDR from a pre-planned Network
+  // Connectivity internal range instead of a literal ip_cidr_range, e.g.
+  // "networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+  // Alternative to ip_cidr_range; unlike the subnet's primary range this
+  // is mutable in place.
+  string reserved_internal_range = 3;
 }
 
 // VPC Flow Logs configuration. Presence of this message enables flow logs;

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatelinkservice.v1alpha1;
+
+// **AzurePrivateLinkServiceStackOutputs** captures the outputs of
+// provisioning a Private Link Service.
+message AzurePrivateLinkServiceStackOutputs {
+  // The Azure Resource Manager ID of the Private Link Service.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/privateLinkServices/{name}
+  string private_link_service_id = 1;
+
+  // The name of the Private Link Service resource.
+  string private_link_service_name = 2;
+
+  // The service's globally unique ALIAS -- what consumers use to request
+  // a private-endpoint connection without needing your resource ID or
+  // any RBAC on your subscription. Share this string with consumers.
+  string alias = 3;
+}

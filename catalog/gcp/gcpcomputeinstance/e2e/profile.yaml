@@ -6,11 +6,10 @@ spec:
   # VM creates are fast (~1 min). The minimal scenario proves the
   # subnetwork chain with an ephemeral external IP; the features scenario
   # proves the composed graph live — Spot scheduling, shielded VM, a
-  # dedicated GcpServiceAccount identity, and a pre-created GcpComputeDisk
-  # attached by self-link reference.
+  # dedicated GcpServiceAccount identity, a pre-created GcpComputeDisk
+  # attached by self-link reference, explicit boot-disk guest OS
+  # features, and an explicit DELETE deletion policy.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

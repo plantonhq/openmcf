@@ -47,17 +47,15 @@ locals {
   }
   vpn_type = lookup(local.vpn_type_wire, coalesce(var.spec.vpn_type, "ROUTE_BASED"), "RouteBased")
 
-  # The SKU is spec-required (never empty for a valid manifest).
+  # The SKU is spec-required (never empty for a valid manifest). The
+  # non-AZ VpnGw1-5 rows are gone with their retired spec values: ARM
+  # rejects new non-AZ VPN gateway creates
+  # (NonAzSkusNotAllowedForVPNGateway, live-confirmed).
   sku_wire = {
     "BASIC"             = "Basic"
     "STANDARD"          = "Standard"
     "HIGH_PERFORMANCE"  = "HighPerformance"
     "ULTRA_PERFORMANCE" = "UltraPerformance"
-    "VPN_GW_1"          = "VpnGw1"
-    "VPN_GW_2"          = "VpnGw2"
-    "VPN_GW_3"          = "VpnGw3"
-    "VPN_GW_4"          = "VpnGw4"
-    "VPN_GW_5"          = "VpnGw5"
     "VPN_GW_1_AZ"       = "VpnGw1AZ"
     "VPN_GW_2_AZ"       = "VpnGw2AZ"
     "VPN_GW_3_AZ"       = "VpnGw3AZ"

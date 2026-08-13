@@ -10,3 +10,6 @@ spec:
     value: orders
   cron: "0 2 * * *" # daily at 02:00 UTC
   retentionDuration: 2678400s # 31 days
+  # Explicit DELETE (the provider default) proves the round-trip; the
+  # backups already taken outlive the schedule either way.
+  deletionPolicy: DELETE

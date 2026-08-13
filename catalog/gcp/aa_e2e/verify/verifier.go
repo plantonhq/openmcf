@@ -30,16 +30,24 @@ import (
 	"google.golang.org/api/container/v1"
 	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
+	eventarc "google.golang.org/api/eventarc/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	iamv2 "google.golang.org/api/iam/v2"
+	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
+	logging "google.golang.org/api/logging/v2"
+	monitoringv1 "google.golang.org/api/monitoring/v1"
+	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
+	secretmanager "google.golang.org/api/secretmanager/v1"
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 	"google.golang.org/api/vpcaccess/v1"
+	workflows "google.golang.org/api/workflows/v1"
 )
 
 // Services carries the resolved test project and the shared API clients every
@@ -73,6 +81,17 @@ type Services struct {
 	CloudScheduler      *cloudscheduler.Service
 	ArtifactRegistry    *artifactregistry.Service
 	CertificateManager  *certificatemanager.Service
+	Monitoring          *monitoring.Service
+	// MonitoringDashboards is the Monitoring API's v1 surface — a
+	// DIFFERENT API version from the v3 client above; dashboards are only
+	// served there.
+	MonitoringDashboards *monitoringv1.Service
+	SecretManager        *secretmanager.Service
+	Logging              *logging.Service
+	IdentityToolkit      *identitytoolkit.Service
+	IamV2                *iamv2.Service
+	Workflows            *workflows.Service
+	Eventarc             *eventarc.Service
 
 	// RestClient is an ADC-authenticated HTTP client for GCP services whose
 	// typed Go client is not yet in the pinned google.golang.org/api line
@@ -100,6 +119,7 @@ var verifiers = map[string]Verifier{
 	"gcpprojectiammember":                    &projectIamMemberVerifier{},
 	"gcpworkloadidentitypool":                &workloadIdentityPoolVerifier{},
 	"gcpworkloadidentitypoolprovider":        &workloadIdentityPoolProviderVerifier{},
+	"gcpcomputemig":                          &computeMigVerifier{},
 	"gcphealthcheck":                         &healthCheckVerifier{},
 	"gcpbackendbucket":                       &backendBucketVerifier{},
 	"gcpbackendservice":                      &backendServiceVerifier{},
@@ -126,6 +146,7 @@ var verifiers = map[string]Verifier{
 	"gcpgkecluster":                          &gkeClusterVerifier{},
 	"gcpgkenodepool":                         &gkeNodePoolVerifier{},
 	"gcpcloudrun":                            &cloudRunVerifier{},
+	"gcpcloudrundomainmapping":               &cloudRunDomainMappingVerifier{},
 	"gcpalloydbcluster":                      &alloydbClusterVerifier{},
 	"gcpalloydbinstance":                     &alloydbInstanceVerifier{},
 	"gcpalloydbuser":                         &alloydbUserVerifier{},
@@ -174,6 +195,23 @@ var verifiers = map[string]Verifier{
 	"gcpcertmanagerdnsauthorization":         &certManagerDnsAuthorizationVerifier{},
 	"gcpcertmanagercert":                     &certManagerCertVerifier{},
 	"gcpproject":                             &projectVerifier{},
+	"gcpmonitoringnotificationchannel":       &monitoringNotificationChannelVerifier{},
+	"gcpmonitoringalertpolicy":               &monitoringAlertPolicyVerifier{},
+	"gcpmonitoringuptimecheck":               &monitoringUptimeCheckVerifier{},
+	"gcpmonitoringdashboard":                 &monitoringDashboardVerifier{},
+	"gcpmonitoringslo":                       &monitoringSloVerifier{},
+	"gcploggingsink":                         &loggingSinkVerifier{},
+	"gcplogbucket":                           &logBucketVerifier{},
+	"gcplogmetric":                           &logMetricVerifier{},
+	"gcpsecretmanagersecret":                 &secretManagerSecretVerifier{},
+	"gcpidentityplatformconfig":              &identityPlatformConfigVerifier{},
+	"gcpidentityplatformtenant":              &identityPlatformTenantVerifier{},
+	"gcpiamoauthclient":                      &iamOauthClientVerifier{},
+	"gcpiamdenypolicy":                       &iamDenyPolicyVerifier{},
+	"gcpworkflow":                            &workflowVerifier{},
+	"gcpeventarctrigger":                     &eventarcTriggerVerifier{},
+	"gcpeventarcmessagebus":                  &eventarcMessageBusVerifier{},
+	"gcpcertificatemap":                      &certificateMapVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

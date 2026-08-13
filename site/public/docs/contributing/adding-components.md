@@ -1,19 +1,19 @@
 ---
 title: "Adding Components"
-description: "Step-by-step guide for creating a new deployment component in Planton — from Protocol Buffer definitions to dual IaC modules"
+description: "Step-by-step guide for creating a new component in Planton — from Protocol Buffer definitions to dual IaC modules"
 icon: "integration"
 order: 20
 ---
 
-# Adding Deployment Components
+# Adding Components
 
-This guide walks through creating a new deployment component for Planton. A deployment component is a self-contained package that enables declarative deployment of a specific cloud resource — from an S3 bucket to a Kubernetes cluster to a Cloudflare Worker.
+This guide walks through creating a new component for Planton. A component is a self-contained package that enables declarative deployment of a specific cloud resource — from an S3 bucket to a Kubernetes cluster to a Cloudflare Worker.
 
 Every component follows the same structure: Protocol Buffer API definitions, dual IaC modules (Pulumi + Terraform), and documentation. This consistency across 360+ components and 17 providers is what makes Planton predictable for users.
 
 ## Anatomy of a Component
 
-A complete deployment component lives at `catalog/<provider>/<component>/` and contains:
+A complete component lives at `catalog/<provider>/<component>/` and contains:
 
 ```text
 catalog/aws/awss3bucket/
@@ -496,6 +496,6 @@ Both the Pulumi module and the Terraform module should produce the same cloud re
 ## What's Next
 
 - **[Contributing Guide](/docs/contributing)** — Development environment setup, building, and testing
-- **[Deployment Components](/docs/concepts/deployment-components)** — Conceptual overview of the component model
+- **[Components](/docs/concepts/components)** — Conceptual overview of the component model
 - **[Validation](/docs/concepts/validation)** — How the three-layer validation system works
 - **[Cloud Resource Kinds](/docs/concepts/cloud-resource-kinds)** — Full taxonomy of component kinds and providers

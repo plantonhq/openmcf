@@ -1,0 +1,24 @@
+# The producer-side protovalidate-java conformance gate. Lives OUTSIDE the
+# generated stubs package deliberately: generated/stubs/java/BUILD.bazel is
+# rewritten by every `make protos` run, so a target declared there would be
+# erased on the next regeneration.
+#
+# use_testrunner=False: the gate is a plain main() that exits non-zero on a
+# failure -- no JUnit dependency for a walk-and-assert binary.
+java_test(
+    name = "protovalidate_conformance_gate",
+    size = "medium",
+    srcs = ["ProtovalidateConformanceGate.java"],
+    main_class = "hack.javagate.ProtovalidateConformanceGate",
+    tags = [
+        "cel",
+        "conformance",
+    ],
+    use_testrunner = False,
+    deps = [
+        "//generated/stubs/java",
+        "@maven//:build_buf_protovalidate",
+        "@maven//:com_google_guava_guava",
+        "@maven//:com_google_protobuf_protobuf_java",
+    ],
+)

@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuresearchservice.v1alpha1;
+
+// **AzureSearchServiceStackOutputs** captures the outputs of
+// provisioning an Azure AI Search service.
+message AzureSearchServiceStackOutputs {
+  // The Azure Resource Manager ID of the service -- what shared
+  // private links and diagnostic settings reference.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Search/searchServices/{name}
+  string search_service_id = 1;
+
+  // The name of the service. ARM addresses shared private links as
+  // children of this name, and the data-plane endpoint embeds it.
+  string search_service_name = 2;
+
+  // The service's data-plane endpoint
+  // (https://{name}.search.windows.net) -- what applications and
+  // SDKs call.
+  string endpoint = 3;
+
+  // The primary admin API key -- full read-write control of the
+  // service's data plane. Sensitive: treat as a credential (the
+  // service mints it; there is no vault indirection). Empty when
+  // local authentication is disabled.
+  string primary_key = 4;
+
+  // The secondary admin API key -- the rotation partner of
+  // primary_key. Sensitive: treat as a credential. Empty when local
+  // authentication is disabled.
+  string secondary_key = 5;
+
+  // The service's built-in query API key -- read-only data-plane
+  // access for client applications (the service creates exactly one
+  // unnamed query key at provisioning; create more at the data
+  // plane). Sensitive: treat as a credential. Empty when local
+  // authentication is disabled.
+  string default_query_key = 6;
+
+  // Whether the service's objects comply with the customer-managed-
+  // key enforcement posture ("Compliant" / "NonCompliant") -- ARM's
+  // own assessment, read back at deploy time.
+  string customer_managed_key_encryption_compliance_status = 7;
+
+  // The principal (object) ID of the service's system-assigned
+  // identity, when one is enabled -- what data-source grants for
+  // indexers bind to.
+  string system_assigned_identity_principal_id = 8;
+
+  // The ARM ID of each shared private link on the service, keyed by
+  // the link's name from the spec.
+  // Example valueFrom fieldPath: status.outputs.shared_private_link_service_ids.to-blob
+  map<string, string> shared_private_link_service_ids = 9;
+}

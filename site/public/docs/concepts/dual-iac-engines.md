@@ -7,7 +7,7 @@ order: 40
 
 # Dual IaC Engines
 
-Every deployment component in Planton ships with two IaC module implementations: a Pulumi module written in Go and an OpenTofu/Terraform module written in HCL. Both implementations receive the same input (the manifest's metadata, spec, and provider credentials), create the same cloud resources, and produce the same outputs.
+Every component in Planton ships with two IaC module implementations: a Pulumi module written in Go and an OpenTofu/Terraform module written in HCL. Both implementations receive the same input (the manifest's metadata, spec, and provider credentials), create the same cloud resources, and produce the same outputs.
 
 This is not an abstraction layer that wraps one engine with another. These are independent, native implementations for each engine. The Pulumi module uses the Pulumi Go SDK directly. The Terraform module uses standard HCL configuration. You choose which engine to use, and Planton handles the rest.
 
@@ -192,4 +192,4 @@ This is equivalent to running `planton pulumi up`, `planton pulumi preview`, or 
 
 - **[Module System](module-system)** -- How IaC modules are resolved, cached, and versioned
 - **[State Management](state-management)** -- How each engine manages deployment state
-- **[Deployment Components](deployment-components)** -- The anatomy of a component including both IaC implementations
+- **[Components](components)** -- The anatomy of a component including both IaC implementations

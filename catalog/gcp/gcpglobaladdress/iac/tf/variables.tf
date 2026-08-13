@@ -45,5 +45,13 @@ variable "spec" {
 
     # VPC_PEERING or PRIVATE_SERVICE_CONNECT (INTERNAL only). Immutable.
     purpose = optional(string, "")
+
+    # User labels merged with the platform labels (platform wins on key
+    # conflicts). The one mutable surface on this resource.
+    labels = optional(map(string), {})
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the
+    # reservation.
+    deletion_policy = optional(string, "")
   })
 }

@@ -119,6 +119,13 @@ type KindAccounting struct {
 	// InternalResources are consumed resources dispositioned as module
 	// plumbing by the manifest.
 	InternalResources []string `json:"internalResources,omitempty"`
+	// ExternalResources are consumed resources dispositioned as externally
+	// specified by the manifest: the kind's primary surface whose contract
+	// lives outside every loaded provider schema by recorded admission
+	// (e.g. a raw-ARM azapi resource at a pinned type@api-version). They
+	// carry no argument walk, and a kind consuming ONLY external/internal
+	// resources runs no reverse spec walk either.
+	ExternalResources []string `json:"externalResources,omitempty"`
 	// UnaccountedArgs ("resource: arg") have no match, mapping, or
 	// exclusion -- each is a Finding.
 	UnaccountedArgs []string `json:"unaccountedArgs,omitempty"`
@@ -326,17 +333,19 @@ func buildAccounting(cloudProvider string, spec []KindCensus, modules []ModuleCe
 	return acc
 }
 
-// argMatcher applies one resource's recorded judgment: exclusions by exact
-// path, then the longest recorded mapping prefix, then the default spec
-// root. No name heuristics, by design.
+// argMatcher applies one resource's recorded judgment: exclusions first
+// (exact path or subtree prefix — one judgment covers an excluded block and
+// everything under it, mirroring mappings and specExclusions), then the
+// longest recorded mapping prefix, then the default spec root. No name
+// heuristics, by design.
 type argMatcher struct {
 	specRoot   string
 	mappings   []Mapping // sorted by arg length, longest first
-	exclusions map[string]string
+	exclusions []string  // arg paths; each excludes itself and its subtree
 }
 
 func newArgMatcher(rm *ResourceManifest) argMatcher {
-	m := argMatcher{specRoot: specPathRoot, exclusions: map[string]string{}}
+	m := argMatcher{specRoot: specPathRoot}
 	if rm == nil {
 		return m
 	}
@@ -346,28 +355,55 @@ func newArgMatcher(rm *ResourceManifest) argMatcher {
 	m.mappings = append(m.mappings, rm.Mappings...)
 	sort.Slice(m.mappings, func(i, j int) bool { return len(m.mappings[i].Arg) > len(m.mappings[j].Arg) })
 	for _, ex := range rm.Exclusions {
-		m.exclusions[ex.Arg] = ex.Reason
+		m.exclusions = append(m.exclusions, ex.Arg)
 	}
 	return m
 }
 
-// derive returns the spec path an argument must match, and whether a
-// recorded mapping produced it.
-func (m argMatcher) derive(argPath string) (string, bool) {
-	for _, mp := range m.mappings {
-		if argPath == mp.Arg {
-			return mp.Spec, true
+// excluded reports whether an argument is covered by a recorded exclusion,
+// either exactly or as a descendant of an excluded subtree. Blocks never
+// appear as arguments themselves (the census walks leaves), so a
+// block-naming exclusion is meaningful ONLY through this prefix form.
+func (m argMatcher) excluded(argPath string) bool {
+	for _, ex := range m.exclusions {
+		if argPath == ex || strings.HasPrefix(argPath, ex+".") {
+			return true
 		}
-		if strings.HasPrefix(argPath, mp.Arg+".") {
+	}
+	return false
+}
+
+// derive returns the spec path(s) an argument must match, and whether a
+// recorded mapping produced them. An argument normally derives to exactly
+// one path; a FAN-IN argument (several mappings recording the same arg —
+// e.g. a map-typed limits argument realizing several honest spec fields)
+// derives to every mapped path. Only the longest matching arg prefix
+// contributes, preserving the longest-mapping-wins contract.
+func (m argMatcher) derive(argPath string) ([]string, bool) {
+	var specs []string
+	matchLen := -1
+	for _, mp := range m.mappings { // sorted by arg length, longest first
+		if matchLen >= 0 && len(mp.Arg) < matchLen {
+			break
+		}
+		if argPath == mp.Arg {
+			specs = append(specs, mp.Spec)
+			matchLen = len(mp.Arg)
+		} else if strings.HasPrefix(argPath, mp.Arg+".") {
 			if mp.Collapse {
 				// Subtree-to-leaf judgment: everything under the arg
 				// subtree is the one spec leaf (recursive grammars).
-				return mp.Spec, true
+				specs = append(specs, mp.Spec)
+			} else {
+				specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
 			}
-			return mp.Spec + argPath[len(mp.Arg):], true
+			matchLen = len(mp.Arg)
 		}
 	}
-	return m.specRoot + "." + argPath, false
+	if len(specs) > 0 {
+		return specs, true
+	}
+	return []string{m.specRoot + "." + argPath}, false
 }
 
 // accountKind runs both accounting directions for one kind.
@@ -388,6 +424,10 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 
 	coveredSpec := map[string]bool{}
 	consumed := map[string]bool{}
+	// schemaWalked flips when at least one consumed resource is argument-
+	// walked against a loaded schema; it decides whether the reverse spec
+	// walk below has any surface to check against.
+	schemaWalked := false
 	for _, res := range m.Resources {
 		consumed[res] = true
 
@@ -409,11 +449,25 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 				break
 			}
 		}
+		if rm != nil && rm.External != "" {
+			if block != nil {
+				// The judgment claims the resource lives outside the loaded
+				// schemas, but a schema serves it at the pin -- the external
+				// disposition is stale (the provider shipped native support);
+				// account the resource against the schema instead.
+				ka.ManifestStale = append(ka.ManifestStale,
+					fmt.Sprintf("%s: external judgment is stale -- the resource is served by a loaded schema at the pin; account it there", res))
+				continue
+			}
+			ka.ExternalResources = append(ka.ExternalResources, res)
+			continue
+		}
 		if block == nil {
 			ka.ManifestStale = append(ka.ManifestStale,
 				fmt.Sprintf("consumed resource %s is unknown to every loaded schema -- the module outruns its pin or the artifacts are stale", res))
 			continue
 		}
+		schemaWalked = true
 		matcher := newArgMatcher(rm)
 
 		argPaths := map[string]bool{}
@@ -423,13 +477,22 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 			argPaths[arg.Path] = true
 			ka.TotalArgs++
-			if _, excluded := matcher.exclusions[arg.Path]; excluded {
+			if matcher.excluded(arg.Path) {
 				ka.ExcludedArgs++
 				continue
 			}
 			derived, mapped := matcher.derive(arg.Path)
-			if specSet[derived] {
-				coveredSpec[derived] = true
+			// A fan-in argument covers every mapped spec field that
+			// exists; per-entry manifest hygiene below still flags any
+			// mapping whose spec side has gone stale.
+			matchedAny := false
+			for _, d := range derived {
+				if specSet[d] {
+					coveredSpec[d] = true
+					matchedAny = true
+				}
+			}
+			if matchedAny {
 				if mapped {
 					ka.MappedArgs++
 				} else {
@@ -473,7 +536,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			}
 		}
 		for _, ex := range rm.Exclusions {
-			if !argPaths[ex.Arg] {
+			if !underPath(sortedArgs, ex.Arg) {
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: exclusion %s matches no configurable argument at the pin -- remove it", res, ex.Arg))
 			}
@@ -488,7 +551,14 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	}
 
 	// Reverse direction: every spec leaf reaches provider surface or
-	// carries a recorded exclusion.
+	// carries a recorded exclusion. When the kind's ENTIRE consumed surface
+	// is externally specified (plus any internal plumbing), no loaded
+	// schema serves its spec fields and the walk is suspended -- the spec's
+	// depth is accounted against the external contract the manifest's
+	// external judgment names. A kind that mixes schema-served and external
+	// resources keeps the walk: its schema-side fields still must reach
+	// provider surface, and external-fed fields need specExclusions naming
+	// the external resource.
 	specExcluded := func(path string) bool {
 		for _, ex := range manifest.SpecExclusions {
 			if path == ex.Field || strings.HasPrefix(path, ex.Field+".") {
@@ -497,9 +567,11 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 		}
 		return false
 	}
-	for _, p := range kindSpecPaths {
-		if !coveredSpec[p] && !specExcluded(p) {
-			ka.UncoveredSpecFields = append(ka.UncoveredSpecFields, p)
+	if schemaWalked || len(ka.ExternalResources) == 0 {
+		for _, p := range kindSpecPaths {
+			if !coveredSpec[p] && !specExcluded(p) {
+				ka.UncoveredSpecFields = append(ka.UncoveredSpecFields, p)
+			}
 		}
 	}
 	for _, ex := range manifest.SpecExclusions {
@@ -510,6 +582,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	}
 
 	sort.Strings(ka.InternalResources)
+	sort.Strings(ka.ExternalResources)
 	sort.Strings(ka.UnaccountedArgs)
 	sort.Strings(ka.UncoveredSpecFields)
 	sort.Strings(ka.ManifestStale)

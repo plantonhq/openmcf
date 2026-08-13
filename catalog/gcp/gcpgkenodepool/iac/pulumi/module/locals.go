@@ -18,17 +18,28 @@ type Locals struct {
 	// labels so attribution can never be clobbered.
 	GcpLabels map[string]string
 	// NodePoolName is the cloud-side pool name: spec.node_pool_name when
-	// set, otherwise metadata.name (the spec-level contract).
+	// set, otherwise metadata.name (the spec-level contract). Empty when
+	// name_prefix drives naming — GKE then generates the full name.
 	NodePoolName string
+	// AttributionName keys the name label: the explicit pool name, or the
+	// prefix for prefixed pools whose final name is only known after
+	// create.
+	AttributionName string
 }
 
 func initializeLocals(_ *pulumi.Context, stackInput *gcpgkenodepoolv1alpha1.GcpGkeNodePoolStackInput) *Locals {
 	locals := &Locals{}
 	locals.GcpGkeNodePool = stackInput.Target
 
-	locals.NodePoolName = locals.GcpGkeNodePool.Spec.NodePoolName
-	if locals.NodePoolName == "" {
-		locals.NodePoolName = locals.GcpGkeNodePool.Metadata.Name
+	if locals.GcpGkeNodePool.Spec.NamePrefix != "" {
+		locals.NodePoolName = ""
+		locals.AttributionName = locals.GcpGkeNodePool.Spec.NamePrefix
+	} else {
+		locals.NodePoolName = locals.GcpGkeNodePool.Spec.NodePoolName
+		if locals.NodePoolName == "" {
+			locals.NodePoolName = locals.GcpGkeNodePool.Metadata.Name
+		}
+		locals.AttributionName = locals.NodePoolName
 	}
 
 	// User resource labels merge in first so the platform attribution labels
@@ -42,7 +53,7 @@ func initializeLocals(_ *pulumi.Context, stackInput *gcpgkenodepoolv1alpha1.GcpG
 		}
 	}
 	locals.GcpLabels[gcplabelkeys.Resource] = "true"
-	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.NodePoolName
+	locals.GcpLabels[gcplabelkeys.ResourceName] = locals.AttributionName
 	locals.GcpLabels[gcplabelkeys.ResourceKind] = strings.ToLower(cloudresourcekind.CloudResourceKind_GcpGkeNodePool.String())
 
 	if locals.GcpGkeNodePool.Metadata.Org != "" {

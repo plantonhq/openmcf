@@ -21,6 +21,10 @@ resource "google_dns_managed_zone" "managed_zone" {
 
   force_destroy = var.spec.force_destroy
 
+  # What destroy does to the zone shell: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep answering queries).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.dns_api]
 
   dynamic "dnssec_config" {
@@ -68,7 +72,9 @@ resource "google_dns_managed_zone" "managed_zone" {
       dynamic "target_name_servers" {
         for_each = forwarding_config.value.target_name_servers
         content {
-          ipv4_address    = target_name_servers.value.ipv4_address != "" ? target_name_servers.value.ipv4_address : null
+          ipv4_address = target_name_servers.value.ipv4_address != "" ? target_name_servers.value.ipv4_address : null
+          # One address family per target (spec CEL enforces pre-deploy).
+          ipv6_address    = target_name_servers.value.ipv6_address != "" ? target_name_servers.value.ipv6_address : null
           domain_name     = target_name_servers.value.domain_name != "" ? target_name_servers.value.domain_name : null
           forwarding_path = target_name_servers.value.forwarding_path != "" ? target_name_servers.value.forwarding_path : null
         }

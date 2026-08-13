@@ -1,0 +1,81 @@
+# Multi-widget GcpMonitoringDashboard scenario: a mosaic layout with
+# positioned chart tiles and a text widget — proves the richer layout
+# family and non-chart widgets live (the golden-signals page shape).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringDashboard
+metadata:
+  name: planton-oss-e2e-gcpdash-mosaic
+  id: planton-oss-e2e-gcpdash-mosaic
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpmonitoringdashboard
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dashboardJson: |
+    {
+      "displayName": "E2E mosaic dashboard",
+      "mosaicLayout": {
+        "columns": 12,
+        "tiles": [
+          {
+            "width": 6, "height": 4,
+            "widget": {
+              "title": "Request rate",
+              "xyChart": {
+                "dataSets": [
+                  {
+                    "timeSeriesQuery": {
+                      "timeSeriesFilter": {
+                        "filter": "metric.type=\"loadbalancing.googleapis.com/https/request_count\" resource.type=\"https_lb_rule\"",
+                        "aggregation": {
+                          "alignmentPeriod": "60s",
+                          "perSeriesAligner": "ALIGN_RATE",
+                          "crossSeriesReducer": "REDUCE_SUM"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "xPos": 6, "width": 6, "height": 4,
+            "widget": {
+              "title": "p95 latency",
+              "xyChart": {
+                "dataSets": [
+                  {
+                    "timeSeriesQuery": {
+                      "timeSeriesFilter": {
+                        "filter": "metric.type=\"loadbalancing.googleapis.com/https/total_latencies\" resource.type=\"https_lb_rule\"",
+                        "aggregation": {
+                          "alignmentPeriod": "60s",
+                          "perSeriesAligner": "ALIGN_PERCENTILE_95"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "yPos": 4, "width": 12, "height": 2,
+            "widget": {
+              "title": "Notes",
+              "text": {
+                "content": "E2E mosaic smoke — managed by Planton; delete freely.",
+                "format": "MARKDOWN"
+              }
+            }
+          }
+        ]
+      }
+    }
+  deletionPolicy: DELETE

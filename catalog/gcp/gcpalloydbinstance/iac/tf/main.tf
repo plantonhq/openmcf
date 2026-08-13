@@ -63,15 +63,34 @@ resource "google_alloydb_instance" "this" {
     }
   }
 
-  # Managed connection pooling is not modeled: the released google provider
-  # does not expose it for AlloyDB instances.
   activation_policy = var.spec.activation_policy != "" ? var.spec.activation_policy : null
 
-  dynamic "network_config" {
-    for_each = var.spec.enable_public_ip || var.spec.enable_outbound_public_ip || length(var.spec.authorized_external_networks) > 0 ? [1] : []
+  # Client tool metadata, paired with the computed effective_annotations.
+  annotations = length(var.spec.annotations) > 0 ? var.spec.annotations : null
+
+  # ZONAL instances only — GCP rejects it on REGIONAL instances
+  # (spec-enforced pairing). Changing it live-migrates the instance.
+  gce_zone = var.spec.gce_zone != "" ? var.spec.gce_zone : null
+
+  # AlloyDB managed connection pooling (built-in pooler). Flags only apply
+  # while enabled is true (the provider sends them regardless; GCP ignores
+  # them when the pooler is off).
+  dynamic "connection_pool_config" {
+    for_each = var.spec.connection_pool_config != null ? [var.spec.connection_pool_config] : []
     content {
-      enable_public_ip           = var.spec.enable_public_ip
-      enable_outbound_public_ip  = var.spec.enable_outbound_public_ip
+      enabled = connection_pool_config.value.enabled
+      flags   = length(connection_pool_config.value.flags) > 0 ? connection_pool_config.value.flags : null
+    }
+  }
+
+  dynamic "network_config" {
+    for_each = var.spec.enable_public_ip || var.spec.enable_outbound_public_ip || length(var.spec.authorized_external_networks) > 0 || var.spec.allocated_ip_range_override != "" ? [1] : []
+    content {
+      enable_public_ip          = var.spec.enable_public_ip
+      enable_outbound_public_ip = var.spec.enable_outbound_public_ip
+
+      # Immutable: a different PSA range recreates the instance.
+      allocated_ip_range_override = var.spec.allocated_ip_range_override != "" ? var.spec.allocated_ip_range_override : null
 
       dynamic "authorized_external_networks" {
         for_each = var.spec.authorized_external_networks
@@ -103,4 +122,6 @@ resource "google_alloydb_instance" "this" {
       }
     }
   }
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

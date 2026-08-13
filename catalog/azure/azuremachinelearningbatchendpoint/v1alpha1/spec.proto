@@ -1,0 +1,144 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningbatchendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMachineLearningBatchEndpointSpec** defines a batch endpoint
+// on an Azure Machine Learning workspace (ARM:
+// Microsoft.MachineLearningServices/workspaces/{ws}/batchEndpoints/{name})
+// -- the stable address batch scoring jobs are submitted to. Invoking
+// the endpoint creates a JOB that runs a deployment's recipe over a
+// large input (files or tabular data) on pooled compute; nothing runs
+// or bills while no job is active.
+//
+// **The contract here is the ARM specification itself** (pinned
+// api-version 2025-06-01): azurerm carries no resource for ML
+// endpoints, so both engines write the raw ARM shape and this spec's
+// validation rules carry the full contract burden -- there is no
+// provider-side schema behind them.
+//
+// **The endpoint is an ARM child of its workspace** -- it has no
+// resource group of its own, and its name becomes part of the batch
+// scoring DNS (expect the same region-wide-per-subscription
+// reservation the online endpoint documents).
+message AzureMachineLearningBatchEndpointSpec {
+  // The Machine Learning workspace the endpoint belongs to, by ARM ID.
+  // Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_workspace_id"
+  ];
+
+  // The endpoint's name (ARM's own rule, mirrored from the pinned
+  // specification: starts with a letter or digit, then letters,
+  // digits, hyphens and underscores). The name is part of the batch
+  // scoring URI's DNS -- pick something unique to the application.
+  // Changing the name replaces the endpoint.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,254}$"
+  ];
+
+  // The Azure region the endpoint lives in, e.g. "eastus". Must be
+  // the workspace's own region (the service provisions endpoints
+  // beside their workspace). Fixed at creation.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How callers authenticate job submissions (the data-plane
+  // operation). Unspecified applies "AADToken" -- Microsoft Entra
+  // tokens, the ONLY mode the batch service accepts: the shared ARM
+  // enum also advertises "Key" and "AMLToken", but the service
+  // rejects both with "AuthMode must be 'AADToken'" (unlike online
+  // endpoints, where all three work). The vocabulary here encodes
+  // the service's real contract and extends additively if the
+  // service ever honors the wider enum.
+  string auth_mode = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["AADToken"]
+    }
+  ];
+
+  // The endpoint's managed identity. OPTIONAL here where the online
+  // endpoint sibling requires one -- deliberately, because the
+  // rationale does not transfer: batch deployments provision nothing
+  // at create, and jobs run under the INVOKER's Entra token plus the
+  // COMPUTE cluster's managed identity, so the endpoint's identity
+  // sits outside the batch data path. Set one when organizational
+  // convention grants roles to the endpoint object itself.
+  AzureMachineLearningBatchEndpointIdentity identity = 5;
+
+  // The deployment that answers job submissions which do not name
+  // one -- batch's analog of the online endpoint's traffic dial
+  // (the named deployment receives 100% of unrouted submissions).
+  // Names a deployment that usually does not exist yet when the
+  // endpoint is first created: create the endpoint, add deployments,
+  // then update this pointer (updatable in place via full PUT).
+  string default_deployment_name = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,254}$"
+  ];
+
+  // The endpoint's ARM property dictionary -- free-form key/value
+  // pairs some tooling reads. ARM allows ADDING entries but never
+  // removing or altering existing ones (the service's own contract;
+  // removals are ignored on update).
+  //
+  // NOTE: unlike the online endpoint, the batch surface carries NO
+  // publicNetworkAccess property -- network reachability of batch
+  // scoring is governed by the WORKSPACE's own network settings.
+  map<string, string> properties = 7;
+
+  // What the endpoint serves. Updatable in place.
+  string description = 8;
+
+  // Free-form tags applied to the endpoint, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Updatable in
+  // place.
+  map<string, string> tags = 9;
+}
+
+// The endpoint's managed identity.
+message AzureMachineLearningBatchEndpointIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the endpoint; USER_ASSIGNED brings identities you manage;
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureMachineLearningBatchEndpointIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the endpoint, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so role grants can be
+  // composed before the endpoint is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The endpoint's managed-identity flavor.
+enum AzureMachineLearningBatchEndpointIdentityType {
+  // Not specified: rejected -- the identity block requires a flavor.
+  azure_machine_learning_batch_endpoint_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the endpoint.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}

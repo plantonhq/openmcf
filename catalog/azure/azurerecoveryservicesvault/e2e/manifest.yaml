@@ -1,0 +1,37 @@
+# Offline-plan test manifest. Exercises the deep seams: the geo-redundant
+# default with cross-region restore, an Unlocked immutability posture,
+# customer-managed-key encryption with the versionless key URI and
+# infrastructure encryption, a system-assigned identity, the two
+# engine-portable monitoring switches, the composed Resource Guard
+# association, and user tags merged over the derived ones. The three
+# v5-only monitoring switches stay unset by design (canonical manifests
+# never exercise PARITY-EXCEPTION fields).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureRecoveryServicesVault
+metadata:
+  name: test-recovery-services-vault
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-backup-vault
+  sku: Standard
+  storageModeType: GeoRedundant
+  crossRegionRestoreEnabled: true
+  publicNetworkAccessEnabled: false
+  immutability: Unlocked
+  identity:
+    type: SYSTEM_ASSIGNED
+  encryption:
+    keyId:
+      value: https://test-kv.vault.azure.net/keys/vault-cmk
+    infrastructureEncryptionEnabled: true
+  monitoring:
+    alertsForAllJobFailuresEnabled: true
+    alertsForCriticalOperationFailuresEnabled: false
+  resourceGuardId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataProtection/resourceGuards/test-guard
+  tags:
+    cost-center: platform

@@ -30,6 +30,11 @@ resource "google_kms_crypto_key" "this" {
   key_ring = local.key_ring_id
   labels   = local.final_labels
 
+  # DELETE (provider default) destroys every key version on destroy;
+  # PREVENT fails the destroy; ABANDON leaves versions intact and the
+  # key decryptable.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   purpose = local.purpose
 
   # Rotation mints a new primary version on the cadence; old versions stay

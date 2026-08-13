@@ -98,7 +98,12 @@ message AzureDnsZoneSoaRecord {
     (buf.validate.field).cel = {
       id: "azure_dns_zone_soa_email_format"
       message: "SOA email must use dots instead of @ (e.g. dnsadmin.example.com for dnsadmin@example.com), contain only letters, digits, dots, underscores, and hyphens, and have 2-34 dot-separated segments of at most 63 characters each"
-      expression: "this.matches('^[a-zA-Z0-9._-]+$') && !this.contains('..') && size(this.split('.')) >= 2 && size(this.split('.')) <= 34 && this.split('.').all(s, size(s) <= 63)"
+      // Decomposed into small portable regexes: RE2 rejects LARGE nested
+      // bounded repeats (a {1,63} group repeated {1,33} exceeds its repeat
+      // budget), so structure, segment count, and segment length are each
+      // asserted separately -- every clause compiles on RE2 (Go/browser)
+      // and java.util.regex alike.
+      expression: "this.matches('^[a-zA-Z0-9_-]+([.][a-zA-Z0-9_-]+)*$') && this.contains('.') && !this.matches('([.][^.]*){34}') && !this.matches('[a-zA-Z0-9_-]{64}')"
     }
   ];
 

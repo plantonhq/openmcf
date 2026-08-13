@@ -1,4 +1,4 @@
-apiVersion: infra-hub.planton.ai/v1
+apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: Kubernetes Software Supply Chain

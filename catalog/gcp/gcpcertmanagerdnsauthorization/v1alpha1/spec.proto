@@ -76,4 +76,19 @@ message GcpCertManagerDnsAuthorizationSpec {
   // attribution labels (platform keys win on conflicts).
   // Keys/values: lowercase letters, digits, underscores, hyphens.
   map<string, string> labels = 7;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the authorization is deleted (certificates already
+  //                issued against it keep serving; renewal for domains
+  //                not yet serving through the LB stops validating)
+  //   "PREVENT" -- destroy FAILS; protects the validation chain a
+  //                certificate migration depends on
+  //   "ABANDON" -- the authorization is removed from management but
+  //                left in GCP, still validating its domain
+  string deletion_policy = 8 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

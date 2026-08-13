@@ -59,12 +59,19 @@ func workloadIdentityPool(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.
 	// The mTLS trust-domain surface: certificate issuance and foreign trust
 	// bundles. Both optional; FEDERATION_ONLY pools normally set neither.
 	if cert := spec.InlineCertificateIssuanceConfig; cert != nil {
-		caPools := pulumi.StringMap{}
-		for region, caPool := range cert.CaPools {
-			caPools[region] = pulumi.String(caPool)
+		certArgs := &iam.WorkloadIdentityPoolInlineCertificateIssuanceConfigArgs{}
+		// The provider declares ca_pools and use_default_shared_ca as a
+		// two-sided ExactlyOneOf, and a bool set to FALSE still counts as
+		// "set" — so each is sent only when it is the chosen source.
+		if len(cert.CaPools) > 0 {
+			caPools := pulumi.StringMap{}
+			for region, caPool := range cert.CaPools {
+				caPools[region] = pulumi.String(caPool)
+			}
+			certArgs.CaPools = caPools
 		}
-		certArgs := &iam.WorkloadIdentityPoolInlineCertificateIssuanceConfigArgs{
-			CaPools: caPools,
+		if cert.UseDefaultSharedCa {
+			certArgs.UseDefaultSharedCa = pulumi.BoolPtr(true)
 		}
 		if cert.GetKeyAlgorithm() != "" {
 			certArgs.KeyAlgorithm = pulumi.String(cert.GetKeyAlgorithm())
@@ -89,14 +96,39 @@ func workloadIdentityPool(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.
 					PemCertificate: pulumi.String(anchor.PemCertificate),
 				})
 			}
-			bundles = append(bundles, &iam.WorkloadIdentityPoolInlineTrustConfigAdditionalTrustBundleArgs{
+			bundleArgs := &iam.WorkloadIdentityPoolInlineTrustConfigAdditionalTrustBundleArgs{
 				TrustDomain:  pulumi.String(bundle.TrustDomain),
 				TrustAnchors: anchors,
-			})
+			}
+			// Additionally trust the GCP-managed regional roots (managed
+			// identity trust domains only). Sent only when true so plain
+			// PEM-anchor bundles stay byte-identical to their pre-flag
+			// shape — matching the Terraform module.
+			if bundle.TrustDefaultSharedCa {
+				bundleArgs.TrustDefaultSharedCa = pulumi.BoolPtr(true)
+			}
+			bundles = append(bundles, bundleArgs)
 		}
 		args.InlineTrustConfig = &iam.WorkloadIdentityPoolInlineTrustConfigArgs{
 			AdditionalTrustBundles: bundles,
 		}
+	}
+
+	// Which workloads may receive a managed identity. GCP applies these
+	// through a second API call after the pool create; a failed apply can
+	// leave a pool without its rules — re-apply converges.
+	if len(spec.AttestationRules) > 0 {
+		rules := iam.WorkloadIdentityPoolAttestationRuleArray{}
+		for _, rule := range spec.AttestationRules {
+			rules = append(rules, &iam.WorkloadIdentityPoolAttestationRuleArgs{
+				GoogleCloudResource: pulumi.String(rule.GoogleCloudResource),
+			})
+		}
+		args.AttestationRules = rules
+	}
+
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdPool, err := iam.NewWorkloadIdentityPool(ctx, "workload-identity-pool", args, pulumi.Provider(gcpProvider))

@@ -54,6 +54,8 @@ resource "google_network_connectivity_service_connection_policy" "this" {
     }
   }
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [
     google_project_service.networkconnectivity_api,
     google_project_service.compute_api,

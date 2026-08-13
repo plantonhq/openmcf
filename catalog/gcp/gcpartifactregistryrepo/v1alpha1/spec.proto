@@ -207,6 +207,21 @@ message GcpArtifactRegistryRepoSpec {
   // Public access: grant roles/artifactregistry.reader to the special
   // member "allUsers" (requires the project to allow public access).
   repeated GcpArtifactRegistryRepoIamMember iam_members = 16;
+
+  // What destroying this resource does to the repository (IAM grants are
+  // plain bindings — they are always removed with the destroy):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the repository and every artifact stored in it are
+  //                deleted; images/packages become unpullable immediately
+  //   "PREVENT" -- destroy FAILS; protects a registry that running
+  //                workloads still pull from
+  //   "ABANDON" -- the repository is removed from management but keeps
+  //                serving artifacts in GCP
+  string deletion_policy = 17 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }
 
 // Docker-format-specific repository configuration.
@@ -225,12 +240,14 @@ message GcpArtifactRegistryRepoMavenConfig {
   //   ""         -- accept both release and snapshot versions (default)
   //   "RELEASE"  -- accept only release versions
   //   "SNAPSHOT" -- accept only snapshot versions
+  //   "VERSION_POLICY_UNSPECIFIED" -- the API's explicit mixed-versions
+  //                sentinel (equivalent to leaving this unset)
   // The conventional Maven setup is a RELEASE repository and a SNAPSHOT
   // repository, with builds publishing to each as appropriate.
   string version_policy = 1 [(buf.validate.field).cel = {
     id: "valid_version_policy"
-    expression: "this == '' || this in ['RELEASE', 'SNAPSHOT']"
-    message: "version_policy must be one of: RELEASE, SNAPSHOT"
+    expression: "this == '' || this in ['VERSION_POLICY_UNSPECIFIED', 'RELEASE', 'SNAPSHOT']"
+    message: "version_policy must be one of: VERSION_POLICY_UNSPECIFIED, RELEASE, SNAPSHOT"
   }];
 
   // If true, re-publishing a non-snapshot artifact at an existing version
@@ -414,14 +431,16 @@ message GcpArtifactRegistryRepoRemoteConfig {
 // A public Apt mirror upstream.
 message GcpArtifactRegistryRepoRemoteAptRepository {
   // The mirror tree to cache from:
-  //   "DEBIAN" -- deb.debian.org
-  //   "UBUNTU" -- archive.ubuntu.com
+  //   "DEBIAN"          -- deb.debian.org
+  //   "UBUNTU"          -- archive.ubuntu.com
+  //   "DEBIAN_SNAPSHOT" -- snapshot.debian.org (point-in-time Debian
+  //                        archives, for reproducible builds)
   string repository_base = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).cel = {
       id: "valid_apt_repository_base"
-      expression: "this in ['DEBIAN', 'UBUNTU']"
-      message: "repository_base must be one of: DEBIAN, UBUNTU"
+      expression: "this in ['DEBIAN', 'UBUNTU', 'DEBIAN_SNAPSHOT']"
+      message: "repository_base must be one of: DEBIAN, UBUNTU, DEBIAN_SNAPSHOT"
     }
   ];
 

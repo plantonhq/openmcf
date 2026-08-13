@@ -44,7 +44,7 @@ Open the deployment store, find **GCP Artifact Registry Repo**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpArtifactRegistryRepo
 metadata:
   name: team-images

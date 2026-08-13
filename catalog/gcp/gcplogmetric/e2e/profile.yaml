@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcplogmetric
+spec:
+  # Three scenarios: minimal (DELTA/INT64 counter with a labeled
+  # descriptor), distribution (value_extractor + exponential buckets),
+  # and bucket-scoped (the GcpLogBucket chart edge via the scenario-level
+  # prerequisites annotation — the bucket fixture deploys first and the
+  # metric's bucket_name resolves from its output). PROVEN live 6/6
+  # lanes (all three scenarios x both engines), IDEMPOTENCY clean — the
+  # bucket-scoped chain was the gcplogbucket install profile's first
+  # live consumption. Metric names may contain slashes; the verifier
+  # URL-encodes the name in the GET path (committed scenarios are
+  # slash-free).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 15

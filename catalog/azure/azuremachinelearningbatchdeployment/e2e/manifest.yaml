@@ -1,0 +1,46 @@
+# Offline-plan test manifest. Exercises the deep seams: the id arm of
+# the model reference union (the discriminator built from the block),
+# a compute-cluster reference, scoring code, per-job resources, every
+# batching dial including the -1-legal error threshold, retry settings
+# on an ISO-8601 duration, and the ARM property dictionary. The
+# pipeline-component arm is deliberately absent here (it is an
+# either/or shape with the model recipe -- the presets carry it).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchDeployment
+metadata:
+  name: test-ml-batch-deployment
+  org: test-org
+  env: dev
+spec:
+  endpointId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/batchEndpoints/test-nightly-scoring
+  name: production
+  region: eastus
+  computeId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/computes/test-cpu-pool
+  model:
+    id:
+      assetId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/models/churn/versions/3
+  codeConfiguration:
+    codeId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/codes/scoring/versions/1
+    scoringScript: score.py
+  environmentId: azureml://registries/azureml/environments/sklearn-1.5/versions/12
+  environmentVariables:
+    LOG_LEVEL: info
+  resources:
+    instanceCount: 4
+    instanceType: Standard_DS3_v2
+  miniBatchSize: 50
+  maxConcurrencyPerInstance: 2
+  errorThreshold: 100
+  retrySettings:
+    maxRetries: 5
+    timeout: PT1M
+  outputAction: AppendRow
+  outputFileName: scores.csv
+  loggingLevel: Debug
+  properties:
+    team: ml-platform
+  description: Offline-plan batch deployment exercising the full surface
+  tags:
+    cost-center: ml-platform

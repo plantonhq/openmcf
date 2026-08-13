@@ -38,3 +38,7 @@ spec:
   automaticResources:
     minReplicaCount: 1
     maxReplicaCount: 1
+  # Explicit DELETE proves the client-side lever round-trips — on this
+  # resource DELETE means undeploy (the provider defaults it
+  # server-side; every scenario arms it).
+  deletionPolicy: DELETE

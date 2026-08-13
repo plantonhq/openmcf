@@ -1,0 +1,615 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningworkspace.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningWorkspaceSpec** defines an Azure Machine
+// Learning workspace (ARM:
+// Microsoft.MachineLearningServices/workspaces) -- the central home a
+// data-science team works in: experiments, models, endpoints,
+// datastores, and compute all live on a workspace. The workspace
+// itself is a thin coordination object; it REQUIRES three companion
+// services at creation -- a storage account (artifacts and the
+// default datastores), a key vault (workspace secrets), and an
+// application-insights component (telemetry) -- and optionally a
+// container registry (environment images).
+//
+// **The companion services are fixed at creation** (ForceNew):
+// `application_insights_id`, `key_vault_id`, `storage_account_id`,
+// and `container_registry_id` cannot be re-pointed later -- neither
+// can `name`, `region`, `resource_group`, `encryption`,
+// `high_business_impact`, `service_side_encryption_enabled`, or the
+// managed network's `provision_on_creation_enabled`. The default
+// storage account must be a general-purpose account WITHOUT
+// hierarchical namespace (Data Lake Gen2) -- ARM rejects HNS-enabled
+// accounts as workspace default storage.
+//
+// **Deletion is a soft delete.** A deleted workspace becomes a
+// purgeable ghost that keeps holding the workspace name (the Key
+// Vault recycle-bin pattern); recreating under the same name fails
+// until the ghost is purged.
+message AzureMachineLearningWorkspaceSpec {
+  // The Azure region the workspace lives in, e.g. "eastus". Serverless
+  // compute quota and some VM families differ per region. Changing the
+  // region replaces the workspace.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the workspace is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The workspace's name, unique within the resource group: 3-33
+  // characters, starting with an alphanumeric character, then
+  // alphanumerics, hyphens or underscores (the provider's own rule).
+  // Changing the name replaces the workspace -- and the OLD name stays
+  // held by the soft-deleted ghost until purged.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_-]{2,32}$"
+  ];
+
+  // The Application Insights component the workspace sends telemetry
+  // to, by ARM ID. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationInsights,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_insights_id"
+  ];
+
+  // The Key Vault the workspace stores its secrets in (connection
+  // credentials, compute SSH keys), by ARM ID. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The storage account backing the workspace's artifacts and its two
+  // built-in datastores, by ARM ID. Must be a general-purpose account
+  // WITHOUT hierarchical namespace (ARM rejects Data Lake Gen2
+  // accounts as default workspace storage). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 6 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The workspace's managed identity. REQUIRED -- the workspace
+  // accesses its companion services (storage, key vault, insights)
+  // through this identity.
+  AzureMachineLearningWorkspaceIdentity identity = 7 [(buf.validate.field).required = true];
+
+  // What flavor of workspace this is. Unspecified applies the
+  // provider default, DEFAULT (a regular ML workspace).
+  // FEATURE_STORE creates a feature-store workspace and requires the
+  // feature_store block. (AI Foundry hubs and projects are separate
+  // kinds, not workspace flavors.)
+  AzureMachineLearningWorkspaceKind kind = 8;
+
+  // Feature-store settings. Only legal -- and REQUIRED -- when kind
+  // is FEATURE_STORE (the provider's own contract).
+  AzureMachineLearningWorkspaceFeatureStore feature_store = 9;
+
+  // For workspaces with a user-assigned identity: which of the
+  // attached identities the workspace uses as its primary, by ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_user_assigned_identity = 10 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // The container registry the workspace stores its environment
+  // images in, by ARM ID. The registry's admin account must be
+  // enabled for ML image builds. Fixed at creation -- attaching a
+  // registry later replaces the workspace.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_registry_id = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerRegistry,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_registry_id"
+  ];
+
+  // Whether the workspace's endpoint answers the public internet.
+  // Unspecified applies true (ARM's default). Set false to make the
+  // workspace reachable only through private endpoints.
+  optional bool public_network_access_enabled = 12 [(dev.planton.shared.options.default) = "true"];
+
+  // The name of the workspace compute cluster used to build Docker
+  // environment images -- needed when the container registry sits
+  // behind a VNet (image builds cannot run serverless there).
+  string image_build_compute_name = 13;
+
+  // What the workspace is for.
+  string description = 14;
+
+  // The display name shown in Azure ML studio.
+  string friendly_name = 15;
+
+  // Encrypt the workspace's data with your own Key Vault key instead
+  // of Microsoft-managed keys. The whole block is fixed at creation.
+  // The workspace's identity needs wrap/unwrap access on the key
+  // BEFORE this is configured.
+  AzureMachineLearningWorkspaceEncryption encryption = 16;
+
+  // The workspace's managed virtual network -- Azure-managed network
+  // isolation for the workspace's compute and endpoints. Unspecified
+  // leaves the mode to ARM (isolation disabled); the isolation mode
+  // is then read back rather than defaulted here. Outbound rules
+  // (the *_outbound_rules lists) only take effect under the
+  // ALLOW_ONLY_APPROVED_OUTBOUND mode.
+  AzureMachineLearningWorkspaceManagedNetwork managed_network = 17;
+
+  // Marks the workspace as handling sensitive business data ("high
+  // business impact") -- Azure reduces the diagnostic data it
+  // collects. Fixed at creation.
+  bool high_business_impact = 18;
+
+  // The workspace SKU (the wire value). "Basic" is the only value the
+  // provider accepts at azurerm v5 -- unspecified applies it.
+  string sku_name = 19 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["Basic"]
+    }
+  ];
+
+  // Encrypt the workspace's service-side data with the
+  // customer-managed key as well (service-side CMK). Requires the
+  // encryption block. Fixed at creation.
+  bool service_side_encryption_enabled = 20;
+
+  // Run the workspace in v1 legacy API mode (blocks the v2 API
+  // surface). Only for estates pinned to the legacy v1 CLI/SDK.
+  bool v1_legacy_mode_enabled = 21;
+
+  // How the workspace's built-in datastores authenticate to the
+  // default storage account. Unspecified applies the provider
+  // default, ACCESS_KEY. IDENTITY uses the workspace identity instead
+  // of account keys (the hardened posture; the identity needs Blob
+  // Data Contributor on the storage account).
+  //
+  // PARITY-EXCEPTION: the Pulumi engine's classic SDK does not expose
+  // this argument, so workspaces that set it deploy via the Terraform
+  // engine only -- the Pulumi module fails loudly when it is set.
+  AzureMachineLearningWorkspaceStorageAccountAccessType storage_account_access_type = 22;
+
+  // Settings for the workspace's serverless compute (the managed
+  // on-demand compute for jobs without a named cluster).
+  AzureMachineLearningWorkspaceServerlessCompute serverless_compute = 23;
+
+  // Free-form tags applied to the workspace, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 24;
+
+  // FQDN outbound rules on the workspace's managed network: named
+  // allowlist entries for outbound destinations by domain name
+  // (e.g. "pypi.org"). Each deploys as its own ARM child; ids surface
+  // name-keyed in the fqdn_outbound_rule_ids output. Only effective
+  // under ALLOW_ONLY_APPROVED_OUTBOUND isolation.
+  repeated AzureMachineLearningWorkspaceFqdnOutboundRule fqdn_outbound_rules = 25;
+
+  // Private-endpoint outbound rules on the workspace's managed
+  // network: the managed VNet creates a private endpoint to the named
+  // Azure resource. Each deploys as its own ARM child; ids surface
+  // name-keyed in the private_endpoint_outbound_rule_ids output.
+  repeated AzureMachineLearningWorkspacePrivateEndpointOutboundRule private_endpoint_outbound_rules = 26;
+
+  // Service-tag outbound rules on the workspace's managed network:
+  // allow outbound traffic to an Azure service tag on given protocol
+  // and ports. Each deploys as its own ARM child; ids surface
+  // name-keyed in the service_tag_outbound_rule_ids output. Only
+  // effective under ALLOW_ONLY_APPROVED_OUTBOUND isolation.
+  repeated AzureMachineLearningWorkspaceServiceTagOutboundRule service_tag_outbound_rules = 27;
+
+  // The provider enforces every contract below in its own code at
+  // apply time; front-loaded here so the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "feature_store_block_only_for_feature_store_kind"
+    message: "feature_store can only be set when kind is FEATURE_STORE"
+    expression: "!has(this.feature_store) || this.kind == 2"
+  };
+  option (buf.validate.message).cel = {
+    id: "feature_store_kind_requires_block"
+    message: "kind FEATURE_STORE requires the feature_store block"
+    expression: "this.kind != 2 || has(this.feature_store)"
+  };
+  option (buf.validate.message).cel = {
+    id: "service_side_encryption_requires_encryption"
+    message: "service_side_encryption_enabled requires the encryption block"
+    expression: "!this.service_side_encryption_enabled || has(this.encryption)"
+  };
+  option (buf.validate.message).cel = {
+    id: "serverless_no_public_ip_needs_subnet_or_public_workspace"
+    message: "serverless_compute with public_ip_enabled false requires a subnet_id when public_network_access_enabled is false"
+    expression: "!(has(this.serverless_compute) && !this.serverless_compute.public_ip_enabled && !has(this.serverless_compute.subnet_id) && has(this.public_network_access_enabled) && !this.public_network_access_enabled)"
+  };
+  // The three rule lists share ONE ARM collection
+  // (.../outboundRules/{name}) -- names must be unique across ALL of
+  // them, not merely within each list.
+  option (buf.validate.message).cel = {
+    id: "outbound_rule_names_unique_across_types"
+    message: "outbound rule names must be unique across the fqdn, private-endpoint and service-tag lists together -- they share one ARM collection"
+    expression: "(this.fqdn_outbound_rules.map(r, r.name) + this.private_endpoint_outbound_rules.map(r, r.name) + this.service_tag_outbound_rules.map(r, r.name)).unique()"
+  };
+}
+
+// The workspace's managed identity.
+message AzureMachineLearningWorkspaceIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the workspace; USER_ASSIGNED brings identities you manage
+  // (grantable storage / Key Vault access BEFORE the workspace
+  // exists -- pair with primary_user_assigned_identity);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureMachineLearningWorkspaceIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the workspace, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so storage / Key Vault grants
+  // can be composed before the workspace is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The workspace's managed-identity flavor.
+enum AzureMachineLearningWorkspaceIdentityType {
+  // Not specified: rejected -- the workspace requires an identity.
+  azure_machine_learning_workspace_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the workspace.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// The workspace flavor.
+enum AzureMachineLearningWorkspaceKind {
+  // Not specified: the provider applies "Default".
+  azure_machine_learning_workspace_kind_unspecified = 0;
+
+  // A regular ML workspace (wire value "Default").
+  DEFAULT = 1;
+
+  // A feature-store workspace (wire value "FeatureStore") --
+  // requires the feature_store block.
+  FEATURE_STORE = 2;
+}
+
+// Feature-store settings (kind FEATURE_STORE only).
+message AzureMachineLearningWorkspaceFeatureStore {
+  // The Spark runtime version of the feature store's materialization
+  // compute. Leave unset for the service default.
+  string computer_spark_runtime_version = 1;
+
+  // The name of the workspace connection pointing at the OFFLINE
+  // store (the historical feature data).
+  string offline_connection_name = 2;
+
+  // The name of the workspace connection pointing at the ONLINE
+  // store (the low-latency serving data).
+  string online_connection_name = 3;
+}
+
+// Customer-managed-key encryption for the workspace's data at rest.
+// The whole block is fixed at creation.
+message AzureMachineLearningWorkspaceEncryption {
+  // The Key Vault holding the encryption key, by ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The Key Vault key (data-plane URL, e.g.
+  // "https://{vault}.vault.azure.net/keys/{name}"). Reference an
+  // AzureKeyVaultKey's versionless_id so rotation propagates without
+  // intervention; pin a versioned URL only under a compliance regime
+  // that demands a frozen version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The USER-ASSIGNED identity that unwraps the key, by ARM ID.
+  // Leave unset to use the workspace's system-assigned identity.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// The workspace's managed virtual network.
+message AzureMachineLearningWorkspaceManagedNetwork {
+  // The isolation mode. Unspecified omits the property (ARM leaves
+  // isolation disabled and the value is read back).
+  // ALLOW_ONLY_APPROVED_OUTBOUND is the mode the outbound-rule lists
+  // exist for.
+  AzureMachineLearningWorkspaceIsolationMode isolation_mode = 1;
+
+  // Provision the managed network WITH the workspace instead of
+  // lazily on first compute (spares the first job the provisioning
+  // wait). Fixed at creation.
+  bool provision_on_creation_enabled = 2;
+}
+
+// A managed-network isolation mode.
+enum AzureMachineLearningWorkspaceIsolationMode {
+  // Not specified: the property is omitted and ARM applies its
+  // default (isolation disabled).
+  azure_machine_learning_workspace_isolation_mode_unspecified = 0;
+
+  // No network isolation (wire value "Disabled").
+  DISABLED = 1;
+
+  // The managed network allows all outbound traffic (wire value
+  // "AllowInternetOutbound").
+  ALLOW_INTERNET_OUTBOUND = 2;
+
+  // The managed network allows only approved outbound traffic --
+  // the outbound-rule lists define what is approved (wire value
+  // "AllowOnlyApprovedOutbound").
+  ALLOW_ONLY_APPROVED_OUTBOUND = 3;
+}
+
+// How the workspace's built-in datastores authenticate to the
+// default storage account.
+enum AzureMachineLearningWorkspaceStorageAccountAccessType {
+  // Not specified: the provider applies "AccessKey".
+  azure_machine_learning_workspace_storage_account_access_type_unspecified = 0;
+
+  // Storage account keys (wire value "AccessKey") -- the provider's
+  // default.
+  ACCESS_KEY = 1;
+
+  // The workspace's managed identity (wire value "Identity") -- the
+  // hardened posture; the identity needs Storage Blob Data
+  // Contributor on the account.
+  IDENTITY = 2;
+}
+
+// Settings for the workspace's serverless compute.
+message AzureMachineLearningWorkspaceServerlessCompute {
+  // The subnet serverless compute nodes are placed in, by ARM ID.
+  // Required when public_ip_enabled is false and the workspace's
+  // public network access is disabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Whether serverless compute nodes get public IPs. The provider's
+  // default is false (no public IPs). NOTE (update behavior): the
+  // provider rejects flipping this from true back to false while no
+  // subnet_id is set.
+  bool public_ip_enabled = 2;
+}
+
+// One FQDN outbound rule (ARM child:
+// .../workspaces/{ws}/outboundRules/{name}, rule type "FQDN").
+message AzureMachineLearningWorkspaceFqdnOutboundRule {
+  // The rule's name, unique across ALL outbound rules on the
+  // workspace (the three rule lists share one ARM collection). The
+  // rule's ARM id surfaces in the fqdn_outbound_rule_ids output under
+  // this name. Changing the name replaces the rule.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The allowed outbound destination, by domain name (e.g.
+  // "pypi.org", "*.anaconda.com"). Updates in place.
+  string destination_fqdn = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One private-endpoint outbound rule (ARM child:
+// .../workspaces/{ws}/outboundRules/{name}, rule type
+// "PrivateEndpoint"). Every field is fixed at creation -- the
+// provider ships no update for this rule type.
+message AzureMachineLearningWorkspacePrivateEndpointOutboundRule {
+  // The rule's name, unique across ALL outbound rules on the
+  // workspace (the three rule lists share one ARM collection). The
+  // rule's ARM id surfaces in the private_endpoint_outbound_rule_ids
+  // output under this name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource the managed VNet creates a private endpoint
+  // to, by ARM ID. Supported targets: Key Vault, Storage, Redis
+  // Cache, and other ML workspaces. No default reference kind -- name
+  // the kind explicitly in valueFrom when referencing (the target can
+  // be any of several kinds).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_resource_id = 2 [(buf.validate.field).required = true];
+
+  // Which sub-resource of the target the private endpoint binds
+  // (the wire values). Must match the target's service: Key Vault ->
+  // "vault"; Redis -> "redisCache"; ML workspace -> "amlworkspace";
+  // Storage -> "blob", "table", "queue", "file", "web" or "dfs".
+  string sub_resource_target = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "amlworkspace",
+        "blob",
+        "dfs",
+        "file",
+        "queue",
+        "redisCache",
+        "table",
+        "vault",
+        "web"
+      ]
+    }
+  ];
+
+  // Also wire the private endpoint into the workspace's managed Spark
+  // compute network.
+  bool spark_enabled = 4;
+
+  // The provider validates the target/sub-resource pairing in its own
+  // code at apply time; front-loaded here for literal target IDs
+  // (references resolve later and are checked by the provider).
+  option (buf.validate.message).cel = {
+    id: "key_vault_target_requires_vault"
+    message: "a Microsoft.KeyVault target requires sub_resource_target 'vault'"
+    expression: "!this.service_resource_id.value.contains('/providers/Microsoft.KeyVault/') || this.sub_resource_target == 'vault'"
+  };
+  option (buf.validate.message).cel = {
+    id: "redis_target_requires_redis_cache"
+    message: "a Microsoft.Cache target requires sub_resource_target 'redisCache'"
+    expression: "!this.service_resource_id.value.contains('/providers/Microsoft.Cache/') || this.sub_resource_target == 'redisCache'"
+  };
+  option (buf.validate.message).cel = {
+    id: "ml_target_requires_amlworkspace"
+    message: "a Microsoft.MachineLearningServices target requires sub_resource_target 'amlworkspace'"
+    expression: "!this.service_resource_id.value.contains('/providers/Microsoft.MachineLearningServices/') || this.sub_resource_target == 'amlworkspace'"
+  };
+  option (buf.validate.message).cel = {
+    id: "storage_target_requires_storage_sub_resource"
+    message: "a Microsoft.Storage target requires sub_resource_target 'blob', 'table', 'queue', 'file', 'web' or 'dfs'"
+    expression: "!this.service_resource_id.value.contains('/providers/Microsoft.Storage/') || this.sub_resource_target in ['blob', 'table', 'queue', 'file', 'web', 'dfs']"
+  };
+}
+
+// One service-tag outbound rule (ARM child:
+// .../workspaces/{ws}/outboundRules/{name}, rule type "ServiceTag").
+message AzureMachineLearningWorkspaceServiceTagOutboundRule {
+  // The rule's name, unique across ALL outbound rules on the
+  // workspace (the three rule lists share one ARM collection). The
+  // rule's ARM id surfaces in the service_tag_outbound_rule_ids
+  // output under this name. Changing the name replaces the rule.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure service tag traffic is allowed to (the wire values --
+  // the provider's own allowlist).
+  string service_tag = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "AppConfiguration",
+        "AppService",
+        "AppServiceManagement",
+        "AutonomousDevelopmentPlatform",
+        "AzureActiveDirectory",
+        "AzureActiveDirectoryDomainServices",
+        "AzureAdvancedThreatProtection",
+        "AzureArcInfrastructure",
+        "AzureAttestation",
+        "AzureBackup",
+        "AzureBotService",
+        "AzureCloud",
+        "AzureConnectors",
+        "AzureContainerAppsService",
+        "AzureContainerRegistry",
+        "AzureCosmosDB",
+        "AzureDataLake",
+        "AzureDatabricks",
+        "AzureDevSpaces",
+        "AzureDeviceUpdate",
+        "AzureEventGrid",
+        "AzureFrontDoor.Backend",
+        "AzureFrontDoor.FirstParty",
+        "AzureFrontDoor.Frontend",
+        "AzureHealthcareAPIs",
+        "AzureInformationProtection",
+        "AzureIoTHub",
+        "AzureKeyVault",
+        "AzureLoadBalancer",
+        "AzureMachineLearning",
+        "AzureManagedGrafana",
+        "AzureMonitor",
+        "AzureOpenDatasets",
+        "AzurePlatformDNS",
+        "AzurePlatformIMDS",
+        "AzurePlatformLKM",
+        "AzureResourceManager",
+        "AzureSignalR",
+        "AzureSiteRecovery",
+        "AzureSphere",
+        "AzureSpringCloud",
+        "AzureStack",
+        "AzureUpdateDelivery",
+        "AzureWebPubSub",
+        "BatchNodeManagement",
+        "ChaosStudio",
+        "CognitiveServicesFrontend",
+        "CognitiveServicesManagement",
+        "DataFactory",
+        "DataFactoryManagement",
+        "Dynamics365BusinessCentral",
+        "Dynamics365ForMarketingEmail",
+        "EOPExternalPublishedIPs",
+        "EventHub",
+        "GuestAndHybridManagement",
+        "Internet",
+        "LogicApps",
+        "M365ManagementActivityApi",
+        "Marketplace",
+        "MicrosoftAzureFluidRelay",
+        "MicrosoftCloudAppSecurity",
+        "MicrosoftContainerRegistry",
+        "MicrosoftDefenderForEndpoint",
+        "PowerBI",
+        "PowerPlatformInfra",
+        "PowerQueryOnline",
+        "ServiceBus",
+        "ServiceFabric",
+        "Sql",
+        "SqlManagement",
+        "Storage",
+        "StorageSyncService",
+        "VirtualNetwork",
+        "WindowsAdminCenter",
+        "WindowsVirtualDesktop"
+      ]
+    }
+  ];
+
+  // The protocol the rule allows (the wire values). "*" allows all.
+  string protocol = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "*",
+        "ICMP",
+        "TCP",
+        "UDP"
+      ]
+    }
+  ];
+
+  // The allowed destination ports: a port ("443"), a range
+  // ("1024-65535"), or a comma-separated mix.
+  string port_ranges = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

@@ -22,6 +22,12 @@ resource "google_spanner_backup_schedule" "this" {
   # retention they were created with.
   retention_duration = var.spec.retention_duration
 
+  # Client-side destroy behavior for the SCHEDULE only — backups already
+  # taken live until their retention expires regardless: DELETE (default),
+  # PREVENT (destroy fails), or ABANDON (drop from state, keep the
+  # schedule running in GCP).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   spec {
     cron_spec {
       # Evaluated in UTC. Spanner accepts a bounded set of frequencies:

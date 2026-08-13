@@ -1,0 +1,63 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeMig
+metadata:
+  name: ha-service
+spec:
+  region: us-central1
+
+  # Shape the spread explicitly: EVEN across three named zones — the
+  # highest-availability posture for a fixed-size tier.
+  distributionPolicy:
+    zones:
+      - us-central1-a
+      - us-central1-b
+      - us-central1-f
+    targetShape: EVEN
+
+  template:
+    machineType: e2-medium
+    disks:
+      - boot: true
+        sourceImage: debian-cloud/debian-12
+    networkInterfaces:
+      - subnetwork:
+          valueFrom:
+            kind: GcpSubnetwork
+            name: prod-subnet
+            fieldPath: status.outputs.subnetwork_self_link
+    startupScript: |
+      #!/bin/bash
+      systemctl enable --now my-app
+    # Hardened boot chain — all three shielded-VM switches on.
+    shieldedInstanceConfig:
+      enableSecureBoot: true
+      enableVtpm: true
+      enableIntegrityMonitoring: true
+
+  # Fixed size (no autoscaler): one instance per zone times two.
+  targetSize: 6
+
+  # Application-level repairs: a DEDICATED conservative health check
+  # (never the LB's aggressive one) with cold-start headroom.
+  autoHealing:
+    healthCheck:
+      valueFrom:
+        kind: GcpHealthCheck
+        name: ha-service-autoheal
+        fieldPath: status.outputs.self_link
+    initialDelaySec: 300
+
+  # Repair failed instances, keep repairs in-zone, never apply new
+  # templates during repair (rollouts stay deliberate).
+  instanceLifecyclePolicy:
+    defaultActionOnFailure: REPAIR
+    forceUpdateOnRepair: "NO"
+    onRepairAllowChangingZone: "NO"
+
+  updatePolicy:
+    minimalAction: REPLACE
+    type: PROACTIVE
+    maxSurgeFixed: 3
+
+  # Production posture: a destroy of this tier must be deliberate.
+  deletionPolicy: PREVENT

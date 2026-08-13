@@ -97,5 +97,9 @@ variable "spec" {
     # fraction for TEST_BY_PERCENTAGE. Mutable.
     external_managed_backend_bucket_migration_state              = optional(string, "")
     external_managed_backend_bucket_migration_testing_percentage = optional(number, 0)
+
+    # DELETE (default), PREVENT, or ABANDON — what destroy does to the
+    # forwarding rule.
+    deletion_policy = optional(string, "")
   })
 }

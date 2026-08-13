@@ -109,13 +109,33 @@ variable "spec" {
     }), null)
 
     # Ordered transform pipeline applied to every message before delivery.
+    # Each step carries exactly one transform arm (spec-enforced):
+    # javascript_udf or ai_inference.
     message_transforms = optional(list(object({
-      javascript_udf = object({
+      javascript_udf = optional(object({
         function_name = string
         code          = string
-      })
+      }), null)
+      ai_inference = optional(object({
+        # Vertex AI endpoint path (resolved from a GcpVertexAiEndpoint
+        # reference or given as a literal dedicated-endpoint or
+        # publisher-model path).
+        endpoint              = string
+        service_account_email = optional(string, "")
+        unstructured_inference = optional(object({
+          parameters = optional(map(string), {})
+        }), null)
+      }), null)
       disabled = optional(bool, false)
     })), [])
+
+    # Resource Manager tags bound at create time (tagKeys/{id} =>
+    # tagValues/{id}). Changing them later replaces the subscription.
+    resource_manager_tags = optional(map(string), {})
+
+    # Deletion policy: "", "DELETE" (default), "PREVENT" (destroy fails),
+    # or "ABANDON" (remove from management, leave serving in GCP).
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -126,5 +146,10 @@ variable "spec" {
   validation {
     condition     = var.spec.topic != ""
     error_message = "topic is required."
+  }
+
+  validation {
+    condition     = contains(["", "DELETE", "PREVENT", "ABANDON"], var.spec.deletion_policy)
+    error_message = "deletion_policy must be one of: DELETE, PREVENT, ABANDON."
   }
 }

@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRoutePort
+metadata:
+  name: my-shared-port
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-shared-port
+  peeringLocation: "<your-peering-location>" # ExpressRoute Direct vocabulary, e.g. "Equinix-Ashburn-DC2"
+  bandwidthInGbps: 100
+  encapsulation: QINQ
+  billingType: UNLIMITED_DATA
+  link1:
+    adminEnabled: true
+  link2:
+    adminEnabled: true
+  authorizations:
+    - name: platform-team
+    - name: data-team

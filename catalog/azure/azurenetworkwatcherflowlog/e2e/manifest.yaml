@@ -1,0 +1,32 @@
+# Offline-plan test manifest. Exercises the full surface: a
+# virtual-network target, schema version 2, bounded retention, the
+# complete Traffic Analytics block at the 10-minute interval, and user
+# tags merged over the derived ones. The watcher fields stay UNSET so
+# the plan renders the module-derived defaults (NetworkWatcher_eastus
+# in NetworkWatcherRG -- the auto-created singleton addressing).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureNetworkWatcherFlowLog
+metadata:
+  name: test-network-watcher-flow-log
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  name: test-vnet-flow-log
+  targetResourceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/virtualNetworks/platform-vnet
+  storageAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Storage/storageAccounts/platformflowlogs
+  version: 2
+  retentionPolicy:
+    enabled: true
+    days: 30
+  trafficAnalytics:
+    workspaceId:
+      value: 11111111-2222-3333-4444-555555555555
+    workspaceRegion: eastus
+    workspaceResourceId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.OperationalInsights/workspaces/platform-law
+    intervalInMinutes: 10
+  tags:
+    cost-center: platform

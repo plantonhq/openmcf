@@ -1,0 +1,23 @@
+# Pub/Sub topic fixture the bus kind's routed scenario delivers to.
+# Owned by THIS kind's folder (consumer-side prerequisite override) so
+# the fixture rides the bus's lanes without touching the GcpPubSubTopic
+# folder. The cloud-side topic name is run-scoped; metadata.name stays
+# fixed for FK resolution.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpPubSubTopic
+metadata:
+  name: planton-oss-e2e-gcptopic-prereq
+  id: planton-oss-e2e-gcptopic-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpeventarcmessagebus
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  topicName: e2e-evbus-${E2E_RUN_ID}
+  messageRetentionDuration: "3600s"
+  deletionPolicy: DELETE

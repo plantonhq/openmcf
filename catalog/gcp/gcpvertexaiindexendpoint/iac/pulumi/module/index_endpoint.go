@@ -1,6 +1,8 @@
 package module
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
@@ -42,17 +44,29 @@ func indexEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		DisplayName: pulumi.String(spec.DisplayName),
 		Region:      pulumi.StringPtr(spec.Location),
 		Labels:      pulumi.ToStringMap(locals.GcpLabels),
-
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really deletes the endpoint on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
 	}
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.StringPtr(spec.ProjectId.GetValue())
 	}
 	if spec.Description != "" {
 		args.Description = pulumi.StringPtr(spec.Description)
+	}
+
+	// Client-side destroy behavior (DELETE deletes the endpoint and
+	// stops every deployment on it; PREVENT refuses; ABANDON drops from
+	// state but keeps serving). Empty follows the provider default
+	// (DELETE) — mirrored zero-vs-omit with Terraform.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
+	// CMEK: the key must be in the endpoint's region and the Vertex AI
+	// service agent needs cryptoKeyEncrypterDecrypter on it. Omitted
+	// means Google-managed encryption. Immutable.
+	if spec.KmsKeyName.GetValue() != "" {
+		args.EncryptionSpec = &vertex.AiIndexEndpointEncryptionSpecArgs{
+			KmsKeyName: pulumi.String(spec.KmsKeyName.GetValue()),
+		}
 	}
 
 	// Public querying arm: deployed indexes become reachable through
@@ -79,6 +93,23 @@ func indexEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		}
 		if len(spec.PrivateServiceConnectConfig.ProjectAllowlist) > 0 {
 			pscArgs.ProjectAllowlists = pulumi.ToStringArray(spec.PrivateServiceConnectConfig.ProjectAllowlist)
+		}
+		// PSC endpoints Vertex AI provisions automatically in consumer
+		// projects. The API wants the relative network form; references
+		// arrive as self-links and are normalized exactly like the
+		// endpoint's own network — identical to the Terraform module.
+		if len(spec.PrivateServiceConnectConfig.PscAutomationConfigs) > 0 {
+			automationArgs := make(vertex.AiIndexEndpointPrivateServiceConnectConfigPscAutomationConfigArray,
+				0, len(spec.PrivateServiceConnectConfig.PscAutomationConfigs))
+			for _, automationConfig := range spec.PrivateServiceConnectConfig.PscAutomationConfigs {
+				automationArgs = append(automationArgs,
+					&vertex.AiIndexEndpointPrivateServiceConnectConfigPscAutomationConfigArgs{
+						Network: pulumi.String(strings.TrimPrefix(
+							automationConfig.Network.GetValue(), computeSelfLinkPrefix)),
+						ProjectId: pulumi.String(automationConfig.ProjectId.GetValue()),
+					})
+			}
+			pscArgs.PscAutomationConfigs = automationArgs
 		}
 		args.PrivateServiceConnectConfig = pscArgs
 	}

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatelinkservice.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureprivatelinkservice/v1alpha1/outputs.proto";
+import "catalog/azure/azureprivatelinkservice/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzurePrivateLinkService is the top-level API resource describing the
+// PROVIDER side of Azure Private Link: a service you run (behind a
+// Standard internal load balancer or a fixed destination IP) exposed to
+// consumers in other virtual networks through private endpoints --
+// traffic stays on the Microsoft backbone, with no peering and no
+// public exposure.
+message AzurePrivateLinkService {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzurePrivateLinkService".
+  string kind = 2 [(buf.validate.field).string.const = 'AzurePrivateLinkService'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Private Link Service specification.
+  AzurePrivateLinkServiceSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzurePrivateLinkServiceStatus status = 5;
+}
+
+// AzurePrivateLinkServiceStatus holds the deployment outputs.
+message AzurePrivateLinkServiceStatus {
+  // Stack outputs from the IaC deployment.
+  AzurePrivateLinkServiceStackOutputs outputs = 1;
+}

@@ -1,0 +1,33 @@
+# Minimal AzureKeyVaultSecret scenario: one secret with a content-type
+# hint and an expiry attribute on the fixture Key Vault. The value is
+# a throwaway TEST literal (the established scenario treatment for
+# sensitive fields -- production manifests reference managed secrets);
+# nothing real is committed. The fixture vault is RBAC-mode and the
+# ambient test principal holds the subscription-scoped "Key Vault
+# Administrator" bootstrap grant, so the data-plane write needs no
+# per-run grants. Fixed name: secret names are vault-scoped, the
+# fixture vault is per-lane, and its teardown purges (no soft-delete
+# name hold).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: planton-oss-e2e-azurekeyvaultsecret-smoke
+  id: planton-oss-e2e-azurekeyvaultsecret-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurekeyvaultsecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-kvs-smoke
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  value:
+    value: planton-e2e-test-value
+  contentType: text/plain
+  expirationDate: "2030-01-01T00:00:00Z"

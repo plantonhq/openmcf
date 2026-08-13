@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpidentityplatformtenant.v1alpha1;
+
+// Outputs produced after provisioning an Identity Platform tenant.
+message GcpIdentityPlatformTenantStackOutputs {
+  // The server-generated tenant ID (the last segment of tenant_name) —
+  // what client SDKs set as the tenantId to scope sign-in to this
+  // tenant, and what tenant-scoped API calls reference.
+  string tenant_id = 1;
+
+  // The tenant's full resource name:
+  // projects/{project}/tenants/{tenant_id}.
+  string tenant_name = 2;
+}

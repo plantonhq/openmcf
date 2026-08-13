@@ -1,7 +1,7 @@
 # AzureContainerAppEnvironmentStorage - Pulumi Module
 
 Pulumi implementation for the AzureContainerAppEnvironmentStorage
-deployment component.
+component.
 
 ## Architecture
 

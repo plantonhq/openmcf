@@ -1,0 +1,37 @@
+# Revisions GcpWorkflow scenario: the revision-minting surface — env
+# vars visible via sys.get_env(), explicit logging levels, and a source
+# that reads the env var. deletion_protection false so DESTROY runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkflow
+metadata:
+  name: planton-oss-e2e-gcpwflow-revisions
+  id: planton-oss-e2e-gcpwflow-revisions
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpworkflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  sourceContents: |
+    main:
+      steps:
+        - readEnv:
+            assign:
+              - greeting: ${sys.get_env("GREETING")}
+        - done:
+            return: ${greeting}
+  description: E2E revisions workflow — env vars + logging levels.
+  userEnvVars:
+    GREETING: hello-from-e2e
+    TIER: e2e
+  callLogLevel: LOG_ERRORS_ONLY
+  executionHistoryLevel: EXECUTION_HISTORY_BASIC
+  labels:
+    e2e-suite: gcp
+  deletionProtection: false
+  deletionPolicy: DELETE

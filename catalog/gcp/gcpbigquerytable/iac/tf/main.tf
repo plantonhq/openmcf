@@ -34,6 +34,20 @@ resource "google_bigquery_table" "this" {
   # fails until the spec explicitly sets it false.
   deletion_protection = var.spec.deletion_protection
 
+  # Checked BEFORE deletion_protection: PREVENT fails the destroy
+  # outright, ABANDON drops the table from state (bypassing the guard),
+  # DELETE (provider default) proceeds to the guard above.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  # Hide diffs from columns BigQuery adds on its own.
+  ignore_auto_generated_schema = var.spec.ignore_auto_generated_schema
+
+  # Schema sub-fields the provider stops reconciling ("dataPolicies").
+  ignore_schema_changes = length(var.spec.ignore_schema_changes) > 0 ? var.spec.ignore_schema_changes : null
+
+  # Read-tuning: how much table metadata the provider requests back.
+  table_metadata_view = var.spec.table_metadata_view != "" ? var.spec.table_metadata_view : null
+
   dynamic "time_partitioning" {
     for_each = var.spec.time_partitioning != null ? [var.spec.time_partitioning] : []
     content {
@@ -102,6 +116,7 @@ resource "google_bigquery_table" "this" {
       metadata_cache_mode       = external_data_configuration.value.metadata_cache_mode != "" ? external_data_configuration.value.metadata_cache_mode : null
       file_set_spec_type        = external_data_configuration.value.file_set_spec_type != "" ? external_data_configuration.value.file_set_spec_type : null
       json_extension            = external_data_configuration.value.json_extension != "" ? external_data_configuration.value.json_extension : null
+      decimal_target_types      = length(external_data_configuration.value.decimal_target_types) > 0 ? external_data_configuration.value.decimal_target_types : null
 
       dynamic "csv_options" {
         for_each = external_data_configuration.value.csv_options != null ? [external_data_configuration.value.csv_options] : []
@@ -115,6 +130,7 @@ resource "google_bigquery_table" "this" {
           encoding              = csv_options.value.encoding != "" ? csv_options.value.encoding : null
           field_delimiter       = csv_options.value.field_delimiter != "" ? csv_options.value.field_delimiter : null
           skip_leading_rows     = csv_options.value.skip_leading_rows > 0 ? csv_options.value.skip_leading_rows : null
+          source_column_match   = csv_options.value.source_column_match != "" ? csv_options.value.source_column_match : null
         }
       }
 

@@ -1,7 +1,7 @@
 # =============================================================================
 # Pulumi Modules Auto-Release
 # =============================================================================
-# Builds pre-compiled binaries for Pulumi deployment components, uploads them
+# Builds pre-compiled binaries for Pulumi components, uploads them
 # to Cloudflare R2 (downloads.planton.dev), and creates a GitHub release with
 # download links.
 #
@@ -81,7 +81,7 @@ jobs:
             cat > release-notes.md << EOF
           ## Pulumi Module Auto-Release
 
-          This is an auto-release of the **${COMPONENT}** Pulumi deployment component binaries.
+          This is an auto-release of the **${COMPONENT}** Pulumi component binaries.
 
           ---
 

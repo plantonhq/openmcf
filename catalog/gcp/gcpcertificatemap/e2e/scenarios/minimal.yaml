@@ -1,0 +1,19 @@
+# Minimal GcpCertificateMap scenario: an entry-less map — the primary
+# resource alone (attach entries later is a legal, common posture).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertificateMap
+metadata:
+  name: planton-oss-e2e-gcpcmap-minimal
+  id: planton-oss-e2e-gcpcmap-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertificatemap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: E2E minimal map — entry-less; delete freely.
+  deletionPolicy: DELETE

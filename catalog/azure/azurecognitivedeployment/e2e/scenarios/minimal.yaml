@@ -1,0 +1,39 @@
+# Minimal AzureCognitiveDeployment scenario: gpt-4o-mini on
+# GlobalStandard at capacity 10 (thousands of tokens-per-minute) on the
+# fixture account -- the flagship proof of the typed account reference
+# resolving and a real model provisioning. GlobalStandard is the
+# deliberate SKU: the widest regional model availability and the most
+# quota headroom on a fresh subscription; the deployment bills per
+# token (no idle cost) and provisions in seconds to minutes.
+#
+# THE QUOTA BOUNDARY IS THE LANE'S PROOF POINT: model availability and
+# tokens-per-minute quota are per-subscription, per-region facts. If
+# ARM rejects the create with an insufficient-quota or
+# model-not-available error, record the deferral with its unblock
+# condition (a quota request / a region change) -- never debug it as a
+# module defect.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveDeployment
+metadata:
+  name: planton-oss-e2e-azurecognitivedeployment-smoke
+  id: planton-oss-e2e-azurecognitivedeployment-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecognitivedeployment
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cognitiveAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cogacc
+  name: planton-oss-e2e-chat
+  model:
+    format: OpenAI
+    name: gpt-4o-mini
+  sku:
+    name: GlobalStandard
+    capacity: 10

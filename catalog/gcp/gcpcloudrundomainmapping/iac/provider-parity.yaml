@@ -1,0 +1,47 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, one resource: the Cloud Run domain mapping (plus API-enablement
+# plumbing). Every provider argument is create-only — the whole resource is
+# immutable — which the spec's field comments carry as the replace-on-change
+# contract.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_cloud_run_domain_mapping:
+    mappings:
+      # Renames: the spec says what the field IS, where the provider
+      # inherits terser API names. The mapping's name IS the domain; the
+      # Cloud Run family's region field maps onto the provider's location.
+      - spec: spec.domain
+        arg: name
+      - spec: spec.region
+        arg: location
+      - spec: spec.project_id
+        arg: project
+      # The spec flattens the provider's single-entry spec {} wrapper; the
+      # route field names the relationship (the Cloud Run service this
+      # domain routes to) where the API says route_name.
+      - spec: spec.route
+        arg: spec.route_name
+      - spec: spec.certificate_mode
+        arg: spec.certificate_mode
+      - spec: spec.force_override
+        arg: spec.force_override
+      # The spec flattens the provider's Knative metadata {} wrapper.
+      - spec: spec.namespace
+        arg: metadata.namespace
+      - spec: spec.labels
+        arg: metadata.labels
+      - spec: spec.annotations
+        arg: metadata.annotations
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables run.googleapis.com with
+      fixed arguments (disable_on_destroy false so destroying one mapping
+      never disables Cloud Run project-wide); not spec surface.

@@ -91,6 +91,20 @@ message GcpCertManagerCertSpec {
   // attribution labels (platform keys win on conflicts).
   // Keys/values: lowercase letters, digits, underscores, hyphens.
   map<string, string> labels = 8;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the certificate is deleted (GCP refuses while a proxy
+  //                or certificate map still references it)
+  //   "PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+  //                replacement is not yet serving
+  //   "ABANDON" -- the certificate is removed from management but left
+  //                in GCP (useful mid-rotation handoff)
+  string deletion_policy = 9 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }
 
 // Configuration for a Google-managed certificate.

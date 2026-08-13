@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpServiceNetworkingConnectionSpec defines a private services access
 connection — the VPC peering between one of your networks and a service
 producer's network (for Google managed services, the
@@ -52,6 +54,10 @@ spec:
   # producer. At least one is required; append more to grow capacity.
   reservedPeeringRanges:
     - value: my-vpc-psa-range
+
+  # DELETE keeps destroys real (destroy producer instances first);
+  # PREVENT belongs under production database fleets.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -63,6 +69,7 @@ spec:
 | `spec.service` | `string` |  | `servicenetworking.googleapis.com` |  |
 | `spec.reservedPeeringRanges` | `[]string \| valueFrom` | yes |  | GcpGlobalAddress (`status.outputs.name`) |
 | `spec.updateOnCreationFail` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -134,6 +141,25 @@ Recovery lever for a known API wrinkle: when a connection for this
 failure into an in-place update of the existing connection's reserved
 ranges, adopting it instead of erroring. Leave false unless you are
 deliberately taking over a pre-existing connection.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the connection — what happens when this resource
+is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the peering is deleted (GCP refuses while any service
+               producer still holds subnets in the reserved ranges —
+               destroy the Cloud SQL / AlloyDB / Memorystore instances
+               first; see the teardown note above)
+  "PREVENT" -- destroy FAILS; protects the private connectivity every
+               producer instance on this network depends on
+  "ABANDON" -- the connection is removed from management but keeps
+               serving private IPs in GCP — the historical workaround
+               for stuck teardowns, at the cost of an unmanaged peering
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

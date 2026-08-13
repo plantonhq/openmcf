@@ -6,7 +6,7 @@ This Terraform module provisions a GCP Compute Engine global URL map. It is the 
 
 The module creates `google_compute_url_map` — the L7 routing brain of a global external Application Load Balancer. Host rules map Host headers to path matchers; path matchers evaluate route rules (priority-ordered) then path rules (longest prefix), then their default; unmatched traffic falls through to the URL map's top-level default.
 
-`name` and `project` are immutable (ForceNew); routing tables, header actions, and tests update in place. `route_action` maps only `weighted_backend_services` and `url_rewrite` — mesh-advanced sub-policies are a deliberate coverage boundary documented in the spec.
+`name` and `project` are immutable (ForceNew); routing tables, header actions, and tests update in place. `route_action` carries the full traffic-management surface at every routing level: weighted splits (with per-backend header actions), URL rewrites, timeout and retry policies, request mirroring, CORS, fault injection, stream-duration limits, and route-scoped CDN cache policies. A client-side `deletion_policy` (DELETE/PREVENT/ABANDON) controls what a destroy may do.
 
 ## Usage with Planton CLI
 

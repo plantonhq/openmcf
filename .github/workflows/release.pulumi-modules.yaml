@@ -1,7 +1,7 @@
 # =============================================================================
 # Pulumi Modules Release (Reusable Workflow)
 # =============================================================================
-# Builds pre-compiled binaries for all Pulumi deployment components across
+# Builds pre-compiled binaries for all Pulumi components across
 # all providers and uploads them to Cloudflare R2 (downloads.planton.dev).
 #
 # Features:

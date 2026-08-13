@@ -46,6 +46,10 @@ variable "spec" {
     # Google's default prober set.
     source_regions = optional(list(string), [])
 
+    # What happens to the health check in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
+
     # The probe protocol — exactly one of these objects is set (enforced by
     # the proto oneof upstream; main.tf trusts that contract). Ports left
     # null fall through to the GCP API defaults (http/tcp 80, https/http2/ssl

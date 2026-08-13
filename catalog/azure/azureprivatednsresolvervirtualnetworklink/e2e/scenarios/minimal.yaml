@@ -1,0 +1,31 @@
+# Minimal AzurePrivateDnsResolverVirtualNetworkLink scenario: links
+# the fixture ruleset to the fixture network -- the hub-link pattern
+# (a ruleset's own network is never linked implicitly). The chain
+# deploys fixture resolver -> fixture ruleset in the lane; both
+# references are deploy-order edges. Links are free at rest; the
+# fixture resolver's outbound endpoint hours are the lane's only
+# billing meter (cents).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverVirtualNetworkLink
+metadata:
+  name: planton-oss-e2e-azureprivatednsresolvervirtualnetworklink-smoke
+  id: planton-oss-e2e-azureprivatednsresolvervirtualnetworklink-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureprivatednsresolvervirtualnetworklink
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  name: planton-oss-e2e-pdnsrvnl-smoke
+  dnsForwardingRulesetId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-pdnsfrs
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  metadata:
+    owner: planton-e2e

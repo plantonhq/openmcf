@@ -1,0 +1,124 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, two API surfaces: the global trio (secret / version /
+# iam_member) when spec.region is empty, the regional trio when it is set.
+# Each trio's entry records the same judgment set; the regional secret
+# additionally maps spec.region -> location and takes CMEK directly
+# (replication is a global-only concept -- the spec mirrors the API split).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_secret_manager_secret:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+
+      # The spec's CMEK message carries a StringValueOrRef named for what
+      # it references (a GcpKmsKey); the provider names the argument
+      # kms_key_name.
+      - spec: spec.replication.auto.customer_managed_encryption.kms_key
+        arg: replication.auto.customer_managed_encryption.kms_key_name
+      - spec: spec.replication.user_managed.replicas.customer_managed_encryption.kms_key
+        arg: replication.user_managed.replicas.customer_managed_encryption.kms_key_name
+
+      # The provider wraps each notification topic in a block whose only
+      # argument is the name; the spec carries the references directly (a
+      # repeated StringValueOrRef to GcpPubSubTopic's topic_id output).
+      - spec: spec.topics
+        arg: topics.name
+
+  google_secret_manager_regional_secret:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+      # The regional API names the scope argument location; the spec's
+      # region field selects the regional trio AND supplies the value.
+      - spec: spec.region
+        arg: location
+      - spec: spec.customer_managed_encryption.kms_key
+        arg: customer_managed_encryption.kms_key_name
+      - spec: spec.topics
+        arg: topics.name
+
+  google_secret_manager_secret_version:
+    mappings:
+      # The version resource is driven entirely by the spec's
+      # initial_version message -- it seeds version 1 at create time.
+      - spec: spec.initial_version.data
+        arg: secret_data
+      - spec: spec.initial_version.enabled
+        arg: enabled
+      - spec: spec.initial_version.is_base64
+        arg: is_secret_data_base64
+      # The version-level lever (DELETE/DISABLE/ABANDON) is distinct from
+      # the secret-level deletion_policy -- the explicit mapping keeps the
+      # two from shadowing each other.
+      - spec: spec.initial_version.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: secret
+        reason: wired by the module to the secret it creates -- never user surface
+      - arg: project
+        reason: wired by the module to the secret's project -- never user surface
+      # Write-only twin of the modeled secret_data: same payload material,
+      # Terraform-state-only plumbing (the spec's sensitive field already
+      # never persists plaintext -- the platform stores managed-secret
+      # references). Re-evaluate trigger: the catalog declaring a >= 1.11
+      # toolchain floor.
+      - arg: secret_data_wo
+        reason: >-
+          write-only twin of the modeled secret_data -- same payload
+          material, Terraform-state-only plumbing
+      - arg: secret_data_wo_version
+        reason: version selector for the write-only twin; see secret_data_wo
+
+  google_secret_manager_regional_secret_version:
+    mappings:
+      - spec: spec.initial_version.data
+        arg: secret_data
+      - spec: spec.initial_version.enabled
+        arg: enabled
+      - spec: spec.initial_version.is_base64
+        arg: is_secret_data_base64
+      - spec: spec.initial_version.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      # Unlike the global version resource, the regional one at 7.43
+      # carries no project/location arguments (the secret path carries
+      # them) and no write-only secret_data twin -- only the wired parent
+      # reference needs recording here.
+      - arg: secret
+        reason: wired by the module to the regional secret it creates -- never user surface
+
+  google_secret_manager_secret_iam_member:
+    # Instantiated per spec.iam_members entry (additive grants; the
+    # authoritative iam_binding/iam_policy forms are deliberately not
+    # modeled -- they clobber grants made elsewhere).
+    specRoot: spec.iam_members
+    exclusions:
+      - arg: secret_id
+        reason: wired by the module to the secret it creates -- never user surface
+      - arg: project
+        reason: wired by the module to the secret's project -- never user surface
+
+  google_secret_manager_regional_secret_iam_member:
+    specRoot: spec.iam_members
+    exclusions:
+      - arg: secret_id
+        reason: wired by the module to the regional secret it creates -- never user surface
+      - arg: project
+        reason: wired by the module to the secret's project -- never user surface
+      - arg: location
+        reason: wired by the module to the secret's region -- never user surface
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      secretmanager.googleapis.com with fixed arguments (disable_on_destroy
+      false so destroying one secret never disables the API project-wide);
+      not spec surface.

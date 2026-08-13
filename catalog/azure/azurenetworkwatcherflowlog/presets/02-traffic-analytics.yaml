@@ -1,0 +1,40 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureNetworkWatcherFlowLog
+metadata:
+  name: platform-vnet-flow-log
+spec:
+  region: eastus
+  name: platform-vnet-flow-log
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "<your-virtual-network>"
+      fieldPath: status.outputs.virtual_network_id
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: "<your-storage-account>"
+      fieldPath: status.outputs.storage_account_id
+  version: 2
+  retentionPolicy:
+    enabled: true
+    days: 30
+  # Pipe the records into Log Analytics for query, topology, and
+  # threat views.
+  trafficAnalytics:
+    # The workspace GUID (customer id) and its ARM id -- two outputs
+    # of the same workspace.
+    workspaceId:
+      valueFrom:
+        kind: AzureLogAnalyticsWorkspace
+        name: "<your-workspace>"
+        fieldPath: status.outputs.workspace_customer_id
+    workspaceRegion: eastus
+    workspaceResourceId:
+      valueFrom:
+        kind: AzureLogAnalyticsWorkspace
+        name: "<your-workspace>"
+        fieldPath: status.outputs.workspace_id
+    # 60 (the default) suits audit; 10 buys near-real-time views at
+    # ~6x the processing cadence.
+    intervalInMinutes: 60

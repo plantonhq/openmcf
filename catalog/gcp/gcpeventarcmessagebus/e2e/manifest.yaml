@@ -1,0 +1,16 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcMessageBus
+metadata:
+  name: my-sample-message-bus
+spec:
+  # Eventarc Advanced serves a subset of regions — the API decides at
+  # create time.
+  location: us-central1
+
+  # Platform-log verbosity: INFO is the onboarding posture.
+  logSeverity: INFO
+
+  # What a destroy does: DELETE (undelivered messages are lost),
+  # PREVENT (the posture once production consumers depend on the hub),
+  # or ABANDON (keep the family running unmanaged).
+  deletionPolicy: DELETE

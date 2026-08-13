@@ -1,0 +1,37 @@
+# Fixture-integrity baseline: pre-existing reference-resolution defects found
+# when the offline gate (TestCatalogFixtureIntegrity) was introduced. Each
+# entry records one committed scenario whose value_from reference graph cannot
+# resolve against the prerequisite chain the E2E runner would deploy for it.
+#
+# THE RULE: this file only ever BURNS DOWN. A new finding is a defect to fix
+# in the manifests (or the kind's registry prerequisites) -- never a new entry
+# here. When an owner fixes an entry's defect, the gate fails on the entry as
+# stale until it is deleted.
+#
+# Key shape: <scenario>|<manifest carrying the reference>|<field>|<kind>/<name>
+# (empty field/ref segments mean the prerequisite chain itself failed to
+# resolve -- typically a prerequisite kind with no install manifest).
+
+# ── Azure: the Front Door origin install profile no longer fits its own
+#    kind's current schema (the spec moved under the fixture), so the route
+#    scenarios' chains break at the origin fixture.
+- key: catalog/azure/azurefrontdoorroute/e2e/scenarios/minimal.yaml|catalog/azure/azurefrontdoororigin/e2e/prerequisite.yaml||/
+  owner: azure-provider catalog maintainers
+  note: origin install profile does not fit the current AzureFrontDoorOrigin schema
+- key: catalog/azure/azurefrontdoorroute/e2e/scenarios/minimal.yaml|catalog/azure/azurefrontdoorroute/e2e/scenarios/minimal.yaml|origin_ids|AzureFrontDoorOrigin/planton-oss-e2e-fd-origin-prereq
+  owner: azure-provider catalog maintainers
+  note: consequence of the unloadable origin install profile above
+- key: catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|catalog/azure/azurefrontdoororigin/e2e/prerequisite.yaml||/
+  owner: azure-provider catalog maintainers
+  note: origin install profile does not fit the current AzureFrontDoorOrigin schema
+- key: catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|origin_ids|AzureFrontDoorOrigin/planton-oss-e2e-fd-origin-prereq
+  owner: azure-provider catalog maintainers
+  note: consequence of the unloadable origin install profile above
+
+# ── GCP: GcpCertManagerCert sits in GcpTargetHttpsProxy's registry
+#    prerequisites but ships no install manifest (no e2e/prerequisite.yaml
+#    and no scenarios/minimal.yaml -- its only scenario is
+#    managed-dns-auth.yaml), so every chain through the https proxy fails to
+#    resolve. Owned by the proxy kinds' next proof pass: either publish an
+#    install profile for the cert or move the optional cert edge out of the
+#    registry prerequisites.

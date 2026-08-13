@@ -117,17 +117,47 @@ resource "google_pubsub_subscription" "this" {
   # Ordered transform pipeline: transforms run in list order on every
   # message before delivery to THIS subscription only; a disabled
   # transform keeps its position (the staging lever) without being
-  # applied.
+  # applied. Each step carries exactly one arm — a JavaScript UDF or an
+  # AI inference call (spec-enforced).
   dynamic "message_transforms" {
     for_each = var.spec.message_transforms
     content {
       disabled = message_transforms.value.disabled
-      javascript_udf {
-        function_name = message_transforms.value.javascript_udf.function_name
-        code          = message_transforms.value.javascript_udf.code
+
+      dynamic "javascript_udf" {
+        for_each = message_transforms.value.javascript_udf != null ? [message_transforms.value.javascript_udf] : []
+        content {
+          function_name = javascript_udf.value.function_name
+          code          = javascript_udf.value.code
+        }
+      }
+
+      dynamic "ai_inference" {
+        for_each = message_transforms.value.ai_inference != null ? [message_transforms.value.ai_inference] : []
+        content {
+          # Resolved from a GcpVertexAiEndpoint reference or a literal
+          # dedicated-endpoint / publisher-model path.
+          endpoint              = ai_inference.value.endpoint
+          service_account_email = ai_inference.value.service_account_email != "" ? ai_inference.value.service_account_email : null
+
+          dynamic "unstructured_inference" {
+            for_each = ai_inference.value.unstructured_inference != null ? [ai_inference.value.unstructured_inference] : []
+            content {
+              parameters = length(unstructured_inference.value.parameters) > 0 ? unstructured_inference.value.parameters : null
+            }
+          }
+        }
       }
     }
   }
+
+  # Resource Manager tags bind at create time only (ForceNew): a later
+  # tag change replaces the subscription and drops its backlog.
+  tags = length(var.spec.resource_manager_tags) > 0 ? var.spec.resource_manager_tags : null
+
+  # Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+  # Sent only when set so the provider default stays in charge otherwise.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [
     google_project_service.pubsub_api,

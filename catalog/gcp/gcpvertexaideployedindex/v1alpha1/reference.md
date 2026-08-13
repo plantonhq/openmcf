@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVertexAiDeployedIndexSpec places a GcpVertexAiIndex onto a
 GcpVertexAiIndexEndpoint and gives the placement its serving compute —
 the final resource of the vector-search trio, after which queries can
@@ -51,6 +53,7 @@ spec:
       - value: query-sa@my-gcp-project.iam.gserviceaccount.com
     audiences:
       - vector-search-clients
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -75,6 +78,7 @@ spec:
 | `spec.authConfig` | `GcpVertexAiDeployedIndexAuthConfig` |  |  |  |
 | `spec.authConfig.allowedIssuers` | `[]string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
 | `spec.authConfig.audiences` | `[]string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -261,6 +265,22 @@ service-account-name@project-id.iam.gserviceaccount.com. Immutable.
 
 JWT audiences accepted on the query endpoint; a JWT carrying any of
 them is accepted. Immutable.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the deployment — what happens when this
+resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the index is undeployed from the endpoint; queries
+               against this deployment stop being served
+  "PREVENT" -- destroy FAILS; a guard for a serving path whose
+               disappearance would break live query traffic
+  "ABANDON" -- the deployment is removed from management but keeps
+               serving (and billing for its replicas) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

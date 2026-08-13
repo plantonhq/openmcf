@@ -32,7 +32,7 @@ Open the deployment store, find **GCP Cert Manager DNS Authorization**, and clic
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCertManagerDnsAuthorization
 metadata:
   name: orders-example-auth

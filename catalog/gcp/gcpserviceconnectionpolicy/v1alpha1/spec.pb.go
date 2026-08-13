@@ -190,9 +190,21 @@ type GcpServiceConnectionPolicySpec struct {
 	// allowlist. Required in practice — the policy authorizes nothing
 	// usable without address space — but optional in the API, so presets
 	// always set it.
-	PscConfig     *GcpServiceConnectionPolicyPscConfig `protobuf:"bytes,8,opt,name=psc_config,json=pscConfig,proto3" json:"psc_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	PscConfig *GcpServiceConnectionPolicyPscConfig `protobuf:"bytes,8,opt,name=psc_config,json=pscConfig,proto3" json:"psc_config,omitempty"`
+	// Deletion policy for the policy — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the policy is deleted (existing PSC endpoints are
+	//	             stranded and new instances of the service class can no
+	//	             longer connect in this region)
+	//	"PREVENT" -- destroy FAILS; protects the connectivity every managed
+	//	             instance under this policy depends on
+	//	"ABANDON" -- the policy is removed from management but keeps
+	//	             authorizing connections in GCP
+	DeletionPolicy string `protobuf:"bytes,9,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpServiceConnectionPolicySpec) Reset() {
@@ -281,6 +293,13 @@ func (x *GcpServiceConnectionPolicySpec) GetPscConfig() *GcpServiceConnectionPol
 	return nil
 }
 
+func (x *GcpServiceConnectionPolicySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpserviceconnectionpolicy_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpserviceconnectionpolicy_v1alpha1_spec_proto_rawDesc = "" +
@@ -294,7 +313,7 @@ const file_catalog_gcp_gcpserviceconnectionpolicy_v1alpha1_spec_proto_rawDesc = 
 	"2allowed_google_producers_resource_hierarchy_levels\x18\x04 \x03(\tB\xdd\x01\xbaH\xd9\x01\x92\x01\xd5\x01\"\xd2\x01\xba\x01\xce\x01\n" +
 	"\x16hierarchy_level_format\x12Weach entry must be projects/{id-or-number}, folders/{number}, or organizations/{number}\x1a[this.matches('^(projects/[a-z0-9-]+|projects/[0-9]+|folders/[0-9]+|organizations/[0-9]+)$')R-allowedGoogleProducersResourceHierarchyLevels:\x83\x05\xbaH\xff\x04\x1a\xbe\x02\n" +
 	"\x1fcustom_levels_require_allowlist\x12\x8d\x01producer_instance_location CUSTOM_RESOURCE_HIERARCHY_LEVELS requires at least one entry in allowed_google_producers_resource_hierarchy_levels\x1a\x8a\x01this.producer_instance_location != 'CUSTOM_RESOURCE_HIERARCHY_LEVELS' || size(this.allowed_google_producers_resource_hierarchy_levels) > 0\x1a\xbb\x02\n" +
-	" allowlist_requires_custom_levels\x12\x88\x01allowed_google_producers_resource_hierarchy_levels only takes effect when producer_instance_location is CUSTOM_RESOURCE_HIERARCHY_LEVELS\x1a\x8b\x01size(this.allowed_google_producers_resource_hierarchy_levels) == 0 || this.producer_instance_location == 'CUSTOM_RESOURCE_HIERARCHY_LEVELS'\"\x84\b\n" +
+	" allowlist_requires_custom_levels\x12\x88\x01allowed_google_producers_resource_hierarchy_levels only takes effect when producer_instance_location is CUSTOM_RESOURCE_HIERARCHY_LEVELS\x1a\x8b\x01size(this.allowed_google_producers_resource_hierarchy_levels) == 0 || this.producer_instance_location == 'CUSTOM_RESOURCE_HIERARCHY_LEVELS'\"\xc2\t\n" +
 	"\x1eGcpServiceConnectionPolicySpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x97\x02\n" +
@@ -307,7 +326,9 @@ const file_catalog_gcp_gcpserviceconnectionpolicy_v1alpha1_spec_proto_rawDesc = 
 	"\vdescription\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12w\n" +
 	"\x06labels\x18\a \x03(\v2_.dev.planton.gcp.gcpserviceconnectionpolicy.v1alpha1.GcpServiceConnectionPolicySpec.LabelsEntryR\x06labels\x12w\n" +
 	"\n" +
-	"psc_config\x18\b \x01(\v2X.dev.planton.gcp.gcpserviceconnectionpolicy.v1alpha1.GcpServiceConnectionPolicyPscConfigR\tpscConfig\x1a9\n" +
+	"psc_config\x18\b \x01(\v2X.dev.planton.gcp.gcpserviceconnectionpolicy.v1alpha1.GcpServiceConnectionPolicyPscConfigR\tpscConfig\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\t \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xa6\x03\n" +

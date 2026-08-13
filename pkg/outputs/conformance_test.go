@@ -1872,6 +1872,25 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 		},
 		{
+			// GcpComputeMig: branch-independent outputs from both engines and
+			// both location arms (one(concat()) collapsed in Terraform) — the
+			// instance-group URL a backend service's group edge consumes, the
+			// manager self link, the rotating template link, the group name,
+			// and the location.
+			name: "GcpComputeMig",
+			kind: cloudresourcekind.CloudResourceKind_GcpComputeMig,
+			rawOutputs: map[string]interface{}{
+				"instance_group":             "https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroups/web-tier",
+				"self_link":                  "https://www.googleapis.com/compute/v1/projects/my-project/zones/us-central1-a/instanceGroupManagers/web-tier",
+				"current_template_self_link": "https://www.googleapis.com/compute/v1/projects/my-project/global/instanceTemplates/web-tier-20260811100000000?uniqueId=1234567890",
+				"mig_name":                   "web-tier",
+				"location":                   "us-central1-a",
+			},
+			mustPopulate: []string{
+				"instance_group", "self_link", "current_template_self_link", "mig_name", "location",
+			},
+		},
+		{
 			// GcpArtifactRegistryRepo: the short name, the fully qualified
 			// repository path composing resources consume (function
 			// docker_repository, virtual/remote upstreams), the registry
@@ -2109,6 +2128,277 @@ func TestStackOutputsConformance(t *testing.T) {
 			},
 			mustPopulate: []string{
 				"self_link", "ssl_policy_name", "enabled_features",
+			},
+		},
+		{
+			// GcpMonitoringNotificationChannel: the server-assigned channel
+			// resource name (the alert-policy composition handle) and the
+			// verification state both engines emit must land on StackOutputs.
+			name: "GcpMonitoringNotificationChannel",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringNotificationChannel,
+			rawOutputs: map[string]interface{}{
+				"channel_name":        "projects/my-project/notificationChannels/1234567890",
+				"verification_status": "VERIFICATION_STATUS_UNSPECIFIED",
+			},
+			mustPopulate: []string{
+				"channel_name", "verification_status",
+			},
+		},
+		{
+			// GcpMonitoringAlertPolicy: the policy resource name is the single
+			// output both engines emit.
+			name: "GcpMonitoringAlertPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringAlertPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "projects/my-project/alertPolicies/1234567890",
+			},
+			mustPopulate: []string{
+				"policy_name",
+			},
+		},
+		{
+			// GcpMonitoringUptimeCheck: the full resource name plus the bare
+			// check id (the value alert policies filter on) must land on
+			// StackOutputs.
+			name: "GcpMonitoringUptimeCheck",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringUptimeCheck,
+			rawOutputs: map[string]interface{}{
+				"uptime_check_name": "projects/my-project/uptimeCheckConfigs/my-check-id",
+				"uptime_check_id":   "my-check-id",
+			},
+			mustPopulate: []string{
+				"uptime_check_name", "uptime_check_id",
+			},
+		},
+		{
+			// GcpLoggingSink: the sink name and the writer identity (the
+			// grant-me-on-the-destination handle) both engines emit must land
+			// on StackOutputs.
+			name: "GcpLoggingSink",
+			kind: cloudresourcekind.CloudResourceKind_GcpLoggingSink,
+			rawOutputs: map[string]interface{}{
+				"sink_name":       "error-archive",
+				"writer_identity": "serviceAccount:service-1234@gcp-sa-logging.iam.gserviceaccount.com",
+			},
+			mustPopulate: []string{
+				"sink_name", "writer_identity",
+			},
+		},
+		{
+			// GcpSecretManagerSecret: the full secret name, the short id, and
+			// the seeded version handle both engines emit must land on
+			// StackOutputs.
+			name: "GcpSecretManagerSecret",
+			kind: cloudresourcekind.CloudResourceKind_GcpSecretManagerSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_name":         "projects/my-project/secrets/db-password",
+				"secret_id":           "db-password",
+				"latest_version_name": "projects/my-project/secrets/db-password/versions/1",
+			},
+			mustPopulate: []string{
+				"secret_name", "secret_id", "latest_version_name",
+			},
+		},
+		{
+			// GcpIdentityPlatformConfig: the config's resource name plus the
+			// client-SDK bootstrap pair (API key, Firebase subdomain) both
+			// engines emit must land on StackOutputs. The api_key is a live
+			// credential and rides like any other scalar here (the
+			// GcpServiceAccount key grain).
+			name: "GcpIdentityPlatformConfig",
+			kind: cloudresourcekind.CloudResourceKind_GcpIdentityPlatformConfig,
+			rawOutputs: map[string]interface{}{
+				"config_name":        "projects/my-project/config",
+				"api_key":            "AIzaSyExampleKey123",
+				"firebase_subdomain": "my-project",
+			},
+			mustPopulate: []string{
+				"config_name", "api_key", "firebase_subdomain",
+			},
+		},
+		{
+			// GcpIdentityPlatformTenant: the server-generated tenant ID (the
+			// value client SDKs scope sign-in with) and the full resource
+			// name both engines emit must land on StackOutputs.
+			name: "GcpIdentityPlatformTenant",
+			kind: cloudresourcekind.CloudResourceKind_GcpIdentityPlatformTenant,
+			rawOutputs: map[string]interface{}{
+				"tenant_id":   "acme-corp-x7k2p",
+				"tenant_name": "projects/my-project/tenants/acme-corp-x7k2p",
+			},
+			mustPopulate: []string{
+				"tenant_id", "tenant_name",
+			},
+		},
+		{
+			// GcpIamOauthClient: the system-generated client ID, the full
+			// resource name, the lifecycle state, and the first credential's
+			// secret both engines emit must land on StackOutputs. The secret
+			// rides like any other scalar here (the GcpServiceAccount key
+			// grain).
+			name: "GcpIamOauthClient",
+			kind: cloudresourcekind.CloudResourceKind_GcpIamOauthClient,
+			rawOutputs: map[string]interface{}{
+				"client_id":     "example-client-id",
+				"client_name":   "projects/my-project/locations/global/oauthClients/example-client-id",
+				"state":         "ACTIVE",
+				"client_secret": "generated-secret-value",
+			},
+			mustPopulate: []string{
+				"client_id", "client_name", "state", "client_secret",
+			},
+		},
+		{
+			// GcpIamDenyPolicy: the policy identifier (URL-encoded parent +
+			// name) and the etag both engines emit must land on StackOutputs.
+			name: "GcpIamDenyPolicy",
+			kind: cloudresourcekind.CloudResourceKind_GcpIamDenyPolicy,
+			rawOutputs: map[string]interface{}{
+				"policy_name": "cloudresourcemanager.googleapis.com%2Fprojects%2Fmy-project/guard-secrets",
+				"etag":        "BwXhCq4YlSo=",
+			},
+			mustPopulate: []string{
+				"policy_name", "etag",
+			},
+		},
+		{
+			// GcpCloudRunDomainMapping: scalars plus the server-decided DNS
+			// record list. Both engines export resource_records as ONE
+			// structured list (the record count is unknowable at program
+			// time — a root domain gets A/AAAA sets, a subdomain one CNAME),
+			// which the flattener decomposes onto the repeated proto message
+			// by dot-indexed keys.
+			name: "GcpCloudRunDomainMapping",
+			kind: cloudresourcekind.CloudResourceKind_GcpCloudRunDomainMapping,
+			rawOutputs: map[string]interface{}{
+				"domain":            "app.example.com",
+				"region":            "us-central1",
+				"mapped_route_name": "my-service",
+				"resource_records": []interface{}{
+					map[string]interface{}{
+						"record_type": "CNAME",
+						"record_name": "app",
+						"rrdata":      "ghs.googlehosted.com.",
+					},
+				},
+			},
+			mustPopulate: []string{
+				"domain", "region", "mapped_route_name",
+			},
+		},
+		{
+			// GcpMonitoringDashboard: the server-assigned dashboard resource
+			// name both engines emit must land on StackOutputs.
+			name: "GcpMonitoringDashboard",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringDashboard,
+			rawOutputs: map[string]interface{}{
+				"dashboard_name": "projects/my-project/dashboards/12345678-abcd-4321-9876-fedcba098765",
+			},
+			mustPopulate: []string{
+				"dashboard_name",
+			},
+		},
+		{
+			// GcpMonitoringSlo: the SLO's resource name (the burn-rate alert
+			// handle) plus the measured service's name — both derived from
+			// the SLO's server-assigned name in both engines — must land on
+			// StackOutputs.
+			name: "GcpMonitoringSlo",
+			kind: cloudresourcekind.CloudResourceKind_GcpMonitoringSlo,
+			rawOutputs: map[string]interface{}{
+				"slo_name":     "projects/my-project/services/checkout/serviceLevelObjectives/availability-slo",
+				"service_name": "projects/my-project/services/checkout",
+			},
+			mustPopulate: []string{
+				"slo_name", "service_name",
+			},
+		},
+		{
+			// GcpLogBucket: the bucket's full resource name (the sink/metric
+			// composition handle) plus the linked BigQuery dataset id (empty
+			// when the link is not armed — both engines emit the empty
+			// string then).
+			name: "GcpLogBucket",
+			kind: cloudresourcekind.CloudResourceKind_GcpLogBucket,
+			rawOutputs: map[string]interface{}{
+				"bucket_name":       "projects/my-project/locations/global/buckets/audit-logs",
+				"linked_dataset_id": "audit_logs",
+			},
+			mustPopulate: []string{
+				"bucket_name", "linked_dataset_id",
+			},
+		},
+		{
+			// GcpLogMetric: the metric name (addressed from Monitoring as
+			// logging.googleapis.com/user/{name}) must land on StackOutputs.
+			name: "GcpLogMetric",
+			kind: cloudresourcekind.CloudResourceKind_GcpLogMetric,
+			rawOutputs: map[string]interface{}{
+				"metric_name": "checkout/error-count",
+			},
+			mustPopulate: []string{
+				"metric_name",
+			},
+		},
+		{
+			// GcpWorkflow: the full resource name (what Eventarc
+			// destinations consume), the short name, the deployed revision,
+			// and the state must land on StackOutputs.
+			name: "GcpWorkflow",
+			kind: cloudresourcekind.CloudResourceKind_GcpWorkflow,
+			rawOutputs: map[string]interface{}{
+				"workflow_id":   "projects/my-project/locations/us-central1/workflows/order-orchestrator",
+				"workflow_name": "order-orchestrator",
+				"revision_id":   "000001-a4d",
+				"state":         "ACTIVE",
+			},
+			mustPopulate: []string{
+				"workflow_id", "workflow_name", "revision_id", "state",
+			},
+		},
+		{
+			// GcpEventarcTrigger: the trigger name and the partner-channel
+			// activation token (empty for non-partner triggers — both
+			// engines emit the empty string then) must land on
+			// StackOutputs.
+			name: "GcpEventarcTrigger",
+			kind: cloudresourcekind.CloudResourceKind_GcpEventarcTrigger,
+			rawOutputs: map[string]interface{}{
+				"trigger_name":                     "order-events",
+				"trigger_id":                       "projects/my-project/locations/us-central1/triggers/order-events",
+				"partner_channel_activation_token": "tok-abc123",
+			},
+			mustPopulate: []string{
+				"trigger_name", "trigger_id", "partner_channel_activation_token",
+			},
+		},
+		{
+			// GcpEventarcMessageBus: the full bus resource name (the
+			// cross-bus / external-publisher handle) must land on
+			// StackOutputs.
+			name: "GcpEventarcMessageBus",
+			kind: cloudresourcekind.CloudResourceKind_GcpEventarcMessageBus,
+			rawOutputs: map[string]interface{}{
+				"message_bus_name": "projects/my-project/locations/us-central1/messageBuses/central-bus",
+			},
+			mustPopulate: []string{
+				"message_bus_name",
+			},
+		},
+		{
+			// GcpCertificateMap: the full resource name, the
+			// //certificatemanager.googleapis.com/ URI (what a
+			// GcpTargetHttpsProxy's certificate_map consumes), and the
+			// short name must land on StackOutputs.
+			name: "GcpCertificateMap",
+			kind: cloudresourcekind.CloudResourceKind_GcpCertificateMap,
+			rawOutputs: map[string]interface{}{
+				"map_id":   "projects/my-project/locations/global/certificateMaps/prod-map",
+				"map_uri":  "//certificatemanager.googleapis.com/projects/my-project/locations/global/certificateMaps/prod-map",
+				"map_name": "prod-map",
+			},
+			mustPopulate: []string{
+				"map_id", "map_uri", "map_name",
 			},
 		},
 		{

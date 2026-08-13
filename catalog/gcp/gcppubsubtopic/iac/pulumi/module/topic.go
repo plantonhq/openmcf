@@ -68,12 +68,20 @@ func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 
 	// Schema validation: the schema reference is resolved to the fully
 	// qualified projects/{p}/schemas/{name} path before the module runs.
+	// The revision bounds pin validation to a revision range (both
+	// bounds equal freezes the contract exactly).
 	if spec.SchemaSettings != nil && spec.SchemaSettings.Schema.GetValue() != "" {
 		schemaArgs := &pubsub.TopicSchemaSettingsArgs{
 			Schema: pulumi.String(spec.SchemaSettings.Schema.GetValue()),
 		}
 		if spec.SchemaSettings.Encoding != "" {
 			schemaArgs.Encoding = pulumi.StringPtr(spec.SchemaSettings.Encoding)
+		}
+		if spec.SchemaSettings.FirstRevisionId.GetValue() != "" {
+			schemaArgs.FirstRevisionId = pulumi.StringPtr(spec.SchemaSettings.FirstRevisionId.GetValue())
+		}
+		if spec.SchemaSettings.LastRevisionId.GetValue() != "" {
+			schemaArgs.LastRevisionId = pulumi.StringPtr(spec.SchemaSettings.LastRevisionId.GetValue())
 		}
 		args.SchemaSettings = schemaArgs
 	}
@@ -91,15 +99,34 @@ func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 
 	// Ordered transform pipeline: transforms run in list order on every
 	// published message; a disabled transform keeps its position (the
-	// staging lever) without being applied.
+	// staging lever) without being applied. Each step carries exactly
+	// one arm — a JavaScript UDF or an AI inference call (spec-enforced).
 	if len(spec.MessageTransforms) > 0 {
 		transforms := pubsub.TopicMessageTransformArray{}
 		for _, transform := range spec.MessageTransforms {
-			transformArgs := &pubsub.TopicMessageTransformArgs{
-				JavascriptUdf: &pubsub.TopicMessageTransformJavascriptUdfArgs{
+			transformArgs := &pubsub.TopicMessageTransformArgs{}
+			if transform.JavascriptUdf != nil {
+				transformArgs.JavascriptUdf = &pubsub.TopicMessageTransformJavascriptUdfArgs{
 					FunctionName: pulumi.String(transform.JavascriptUdf.FunctionName),
 					Code:         pulumi.String(transform.JavascriptUdf.Code),
-				},
+				}
+			}
+			if transform.AiInference != nil {
+				// The endpoint reference is resolved to a literal
+				// dedicated-endpoint / publisher-model path before the
+				// module runs.
+				aiArgs := &pubsub.TopicMessageTransformAiInferenceArgs{
+					Endpoint: pulumi.String(transform.AiInference.Endpoint.GetValue()),
+				}
+				if transform.AiInference.ServiceAccountEmail.GetValue() != "" {
+					aiArgs.ServiceAccountEmail = pulumi.StringPtr(transform.AiInference.ServiceAccountEmail.GetValue())
+				}
+				if transform.AiInference.UnstructuredInference != nil && len(transform.AiInference.UnstructuredInference.Parameters) > 0 {
+					aiArgs.UnstructuredInference = &pubsub.TopicMessageTransformAiInferenceUnstructuredInferenceArgs{
+						Parameters: pulumi.ToStringMap(transform.AiInference.UnstructuredInference.Parameters),
+					}
+				}
+				transformArgs.AiInference = aiArgs
 			}
 			if transform.Disabled {
 				transformArgs.Disabled = pulumi.BoolPtr(true)
@@ -107,6 +134,18 @@ func topic(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) error
 			transforms = append(transforms, transformArgs)
 		}
 		args.MessageTransforms = transforms
+	}
+
+	// Resource Manager tags bind at create time only (ForceNew): a later
+	// tag change replaces the topic and detaches every subscription.
+	if len(spec.ResourceManagerTags) > 0 {
+		args.Tags = pulumi.ToStringMap(spec.ResourceManagerTags)
+	}
+
+	// Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+	// Sent only when set so the provider default stays in charge otherwise.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdTopic, err := pubsub.NewTopic(ctx, "pubsub-topic", args,

@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveDeployment
+metadata:
+  name: test-cognitive-deployment
+spec:
+  cognitiveAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.CognitiveServices/accounts/acme-openai-test
+  name: chat
+  model:
+    format: OpenAI
+    name: gpt-4o-mini
+  sku:
+    name: GlobalStandard
+    capacity: 10

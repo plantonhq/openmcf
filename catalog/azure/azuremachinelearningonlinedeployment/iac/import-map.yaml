@@ -1,0 +1,26 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremachinelearningonlinedeployment
+spec:
+  # The deployment's identity is its full ARM resource ID
+  # (.../onlineEndpoints/{endpoint}/deployments/{name}); the module
+  # deploys through azapi, whose import ID is that ARM ID plus the
+  # module's pinned api-version as a query suffix (the shared
+  # azapi_resource catalog entry).
+  values:
+    - name: arm_resource_id
+      derivations:
+        - from_stack_output: online_deployment_id
+      where_to_find: >-
+        Compose {endpoint-id}/deployments/{deployment-name}, or
+        `az ml online-deployment show -g <rg> --workspace-name <ws>
+        --endpoint-name <endpoint> -n <name> --query id`.
+    - name: azapi_api_version
+      derivations:
+        # The api-version is a property of the module (its pinned ARM
+        # contract), not of any one resource.
+        - literal: "2025-06-01"
+      where_to_find: >-
+        The module's pinned ARM api-version, declared in the
+        azapi_resource type in iac/tf/main.tf.

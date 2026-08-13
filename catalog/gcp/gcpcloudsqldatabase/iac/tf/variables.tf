@@ -32,5 +32,10 @@ variable "spec" {
 
     # Collation (engine-specific; empty uses the engine default).
     collation = optional(string, "")
+
+    # Engine-side teardown behavior: DELETE, PREVENT, or ABANDON. ABANDON
+    # is the documented answer for PostgreSQL databases with live
+    # connections.
+    deletion_policy = optional(string, "")
   })
 }

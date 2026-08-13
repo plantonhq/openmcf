@@ -1,0 +1,20 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuresearchservice
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plan green); live dual-engine
+  # proof has not yet run. The standard service creates in minutes and
+  # bills ~$0.34/hour pro-rated (minutes-long lane lives -- cents);
+  # the composed shared private link targets the scenario-declared
+  # fixture storage account and sits "Pending" by design (nothing
+  # approves the target side; the verifier asserts ARM state). The
+  # service name is GLOBALLY unique endpoint DNS -- a name conflict is
+  # a genuine global collision (no soft-delete class). The RBAC-only,
+  # high-density (standard3 + quota request), and CMK-enforcement arms
+  # are offline-proven only.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 40

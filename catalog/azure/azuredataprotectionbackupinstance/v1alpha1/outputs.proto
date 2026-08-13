@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackupinstance.v1alpha1;
+
+// **AzureDataProtectionBackupInstanceStackOutputs** captures the
+// outputs of provisioning a Data Protection backup instance.
+message AzureDataProtectionBackupInstanceStackOutputs {
+  // The Azure Resource Manager ID of the backup instance.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DataProtection/backupVaults/{vault}/backupInstances/{name}
+  string backup_instance_id = 1;
+
+  // The instance's name, unique on its vault.
+  string backup_instance_name = 2;
+}

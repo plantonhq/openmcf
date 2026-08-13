@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutecircuit.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureexpressroutecircuit/v1alpha1/outputs.proto";
+import "catalog/azure/azureexpressroutecircuit/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureExpressRouteCircuit is the top-level API resource describing an
+// ExpressRoute circuit -- the dedicated private connection between your
+// infrastructure and Microsoft, bought through a connectivity provider
+// or carved from your own ExpressRoute Direct port. Routing starts once
+// peerings (AzureExpressRouteCircuitPeering) are configured on it.
+message AzureExpressRouteCircuit {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureExpressRouteCircuit".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureExpressRouteCircuit'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // ExpressRoute circuit specification.
+  AzureExpressRouteCircuitSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureExpressRouteCircuitStatus status = 5;
+}
+
+// AzureExpressRouteCircuitStatus holds the deployment outputs.
+message AzureExpressRouteCircuitStatus {
+  // Stack outputs from the IaC deployment.
+  AzureExpressRouteCircuitStackOutputs outputs = 1;
+}

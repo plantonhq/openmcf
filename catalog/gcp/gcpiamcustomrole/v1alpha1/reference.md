@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpIamCustomRoleSpec defines a project-scoped IAM custom role — a named,
 reusable bundle of permissions tailored to exactly what a workload or team
 needs, instead of granting one of Google's broad predefined roles.
@@ -50,6 +52,8 @@ spec:
 
   # Launch stage label (default GA)
   stage: GA
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -62,6 +66,7 @@ spec:
 | `spec.description` | `string` |  |  |  |
 | `spec.permissions` | `[]string` | yes |  |  |
 | `spec.stage` | `string` |  | `GA` |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -135,6 +140,24 @@ role defined while rejecting all of its grants (an IAM kill switch).
 
 - default: `GA`
 - rule: stage must be one of ALPHA, BETA, GA, DEPRECATED, DISABLED, or EAP
+
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the role. Custom-role deletion
+is a SOFT delete in GCP — the role enters a deleted state (recoverable
+by undelete for 7 days, purged after 37), so DELETE and ABANDON differ
+less here than on hard-delete resources:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the role is soft-deleted; existing bindings to it stop
+               granting access
+  "PREVENT" -- destroy FAILS; protects a role that live bindings
+               depend on
+  "ABANDON" -- the role is removed from management but stays active,
+               and every binding to it keeps working
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

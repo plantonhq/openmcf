@@ -431,6 +431,6 @@ spec:
 ## What's Next
 
 - **[Tutorials](/docs/tutorials)** — Guided walkthroughs for deploying resources step-by-step
-- **[Catalog](/docs/catalog)** — Full field reference for all 360+ deployment components
+- **[Catalog](/docs/catalog)** — Full field reference for all 360+ components
 - **[CLI Reference](/docs/cli/cli-reference)** — Complete command and flag reference
 - **[Guides](/docs/guides)** — How-to guides for credentials, state backends, Kustomize, and more

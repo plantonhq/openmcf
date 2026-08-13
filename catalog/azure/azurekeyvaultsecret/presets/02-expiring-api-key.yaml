@@ -1,0 +1,27 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: partner-api-key
+spec:
+  name: partner-api-key
+  keyVaultId:
+    valueFrom:
+      kind: AzureKeyVault
+      name: "<your-key-vault>"
+      fieldPath: status.outputs.key_vault_id
+  # Reference another resource's sensitive output (here an AI Search
+  # service's admin key) -- never a literal in a manifest. Swap
+  # kind/name/fieldPath for whatever emits your value.
+  value:
+    valueFrom:
+      kind: AzureSearchService
+      name: "<your-search-service>"
+      fieldPath: status.outputs.primary_key
+  contentType: text/plain
+  # The key's contractual validity window. Expiry is ADVISORY -- Key
+  # Vault returns it and Azure Policy can audit it, but enforcement is
+  # the consumer's job. Update the instant when the key rotates.
+  notBeforeDate: "2026-09-01T00:00:00Z"
+  expirationDate: "2027-09-01T00:00:00Z"
+  tags:
+    rotation: yearly

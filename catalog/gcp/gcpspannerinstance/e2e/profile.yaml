@@ -11,8 +11,6 @@ spec:
   # with any existing free instance and with its own reruns — the arm is
   # proven by spec tests and the offline plan instead.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 30

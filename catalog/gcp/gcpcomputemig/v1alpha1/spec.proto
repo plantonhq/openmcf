@@ -1,0 +1,1788 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpcomputemig.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpComputeMigSpec defines a Google Compute Engine Managed Instance
+// Group (MIG) — a self-healing, optionally auto-scaling fleet of
+// identical VMs behind one declarative surface. One resource manages the
+// whole stack: the instance TEMPLATE (what each VM looks like), the
+// GROUP MANAGER (how many run, how they roll out changes, how failed
+// VMs are repaired), an optional AUTOSCALER (when the fleet grows and
+// shrinks), PER-INSTANCE CONFIGS (stateful name/disk/IP overrides for
+// individual instances), and RESIZE REQUESTS (queued one-shot capacity
+// asks).
+//
+// Scope: exactly one of zone (a ZONAL group — all VMs in one zone) or
+// region (a REGIONAL group — VMs spread across the region's zones for
+// higher availability) must be set. The scope is immutable: moving a
+// group between zones/regions replaces every resource in the kind.
+//
+// Template immutability: instance templates cannot be modified in place
+// (only their labels can change). Every change to the template block
+// ROTATES the template — a new template is created, the group manager
+// is pointed at it, and the old one is deleted after the switch. How
+// running VMs pick up the new template is governed by update_policy:
+// PROACTIVE rolls the fleet automatically within the surge/unavailable
+// budget; OPPORTUNISTIC waits for manual or lifecycle-driven refreshes.
+//
+// The group's instance_group stack output is the load-balancer backend
+// handle: a GcpBackendService backend's group takes exactly that value.
+message GcpComputeMigSpec {
+  option (buf.validate.message).cel = {
+    id: "location_exactly_one"
+    expression: "(this.zone != '' ? 1 : 0) + (this.region != '' ? 1 : 0) == 1"
+    message: "exactly one of zone (zonal group) or region (regional group) must be set"
+  };
+  option (buf.validate.message).cel = {
+    id: "distribution_policy_is_regional_only"
+    expression: "!has(this.distribution_policy) || this.region != ''"
+    message: "distribution_policy applies only to REGIONAL groups — set region instead of zone"
+  };
+  option (buf.validate.message).cel = {
+    id: "instance_flexibility_is_regional_only"
+    expression: "!has(this.instance_flexibility_policy) || this.region != ''"
+    message: "instance_flexibility_policy applies only to REGIONAL groups — set region instead of zone"
+  };
+  option (buf.validate.message).cel = {
+    id: "redistribution_type_is_regional_only"
+    expression: "!has(this.update_policy) || this.update_policy.instance_redistribution_type == '' || this.region != ''"
+    message: "update_policy.instance_redistribution_type applies only to REGIONAL groups — remove it or set region"
+  };
+  option (buf.validate.message).cel = {
+    id: "autoscaler_owns_sizing"
+    expression: "!(has(this.autoscaler) && has(this.target_size))"
+    message: "target_size and autoscaler fight over the group size on every apply — set autoscaler min/max replicas OR a fixed target_size, never both"
+  };
+
+  // The GCP project that owns every resource in the group.
+  // Can be a literal project ID or a reference to a GcpProject resource.
+  // If omitted, the provider's default project is used.
+  // Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Name of the managed instance group. 1-63 characters, lowercase
+  // letters, numbers, and hyphens; must start with a letter and cannot
+  // end with a hyphen. When omitted, metadata.name is used. The name
+  // also seeds the managed resources around the group (template name
+  // prefix, autoscaler name). Immutable after creation.
+  string mig_name = 2 [(buf.validate.field).cel = {
+    id: "mig_name_format"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+    message: "mig_name must be 1-63 characters of lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen"
+  }];
+
+  // Zone for a ZONAL group (e.g. "us-central1-a") — every VM runs in
+  // this one zone. Exactly one of zone or region must be set.
+  // Immutable: a group cannot move between scopes or locations.
+  string zone = 3 [(buf.validate.field).cel = {
+    id: "zone_format"
+    expression: "this == '' || this.matches('^[a-z]+-[a-z]+[0-9]+-[a-z]$')"
+    message: "zone must look like us-central1-a"
+  }];
+
+  // Region for a REGIONAL group (e.g. "us-central1") — VMs are spread
+  // across the region's zones (see distribution_policy) so a zone
+  // outage takes down only part of the fleet. Exactly one of zone or
+  // region must be set. Immutable: a group cannot move between scopes
+  // or locations.
+  string region = 4 [(buf.validate.field).cel = {
+    id: "region_format"
+    expression: "this == '' || this.matches('^[a-z]+-[a-z]+[0-9]+$')"
+    message: "region must look like us-central1"
+  }];
+
+  // Human-readable description of the group shown in the console.
+  // Immutable after creation.
+  string description = 5;
+
+  // Base name for VMs created by the group — instances are named
+  // "<base_instance_name>-<random suffix>" (e.g. "web-x7kq"). RFC-1035
+  // format, 1-58 characters. When omitted, the group name (mig_name or
+  // metadata.name) is used.
+  string base_instance_name = 6 [(buf.validate.field).cel = {
+    id: "base_instance_name_format"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+    message: "base_instance_name must be lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen"
+  }];
+
+  // The instance template — what every VM in the group looks like:
+  // machine type, disks, networking, identity, and scheduling. The
+  // template is IMMUTABLE in GCP (only labels can change in place):
+  // every other change here creates a NEW template and rolls the group
+  // to it per update_policy. See GcpComputeMigTemplate for the
+  // replace-on-change semantics of each field.
+  GcpComputeMigTemplate template = 7 [(buf.validate.field).required = true];
+
+  // Named application versions for CANARY rollouts. When empty (the
+  // normal case), the group runs one version on this kind's own
+  // template. Add entries to split the fleet across templates — e.g.
+  // the kind's template as the stable version plus an external
+  // template URL pinned as a canary with a small target_size.
+  repeated GcpComputeMigVersion versions = 8;
+
+  // Fixed number of running VMs in the group. Set this for manually
+  // sized groups; leave it unset when the autoscaler manages the size
+  // (the two are mutually exclusive — the autoscaler would fight a
+  // fixed size on every apply). When neither target_size nor autoscaler
+  // is set, the group is created with 0 instances.
+  optional int32 target_size = 9 [(buf.validate.field).int32.gte = 0];
+
+  // Named ports published by the group — the mechanism backend services
+  // use to map a logical service name ("http") to a port number (8080)
+  // on every VM. The same name must be used by the backend service's
+  // port_name.
+  repeated GcpComputeMigNamedPort named_ports = 10;
+
+  // How the group rolls out template and configuration changes to
+  // running VMs: automatically (PROACTIVE) or on-demand
+  // (OPPORTUNISTIC), and within what surge/unavailability budget.
+  // When omitted, the group manager applies changes opportunistically
+  // with GCP's default budget.
+  GcpComputeMigUpdatePolicy update_policy = 11;
+
+  // Auto-healing: recreate VMs that fail an application-level health
+  // check (not just VM liveness). Requires a GcpHealthCheck; the
+  // initial delay gives freshly booted VMs time to become healthy
+  // before repairs kick in.
+  GcpComputeMigAutoHealing auto_healing = 12;
+
+  // Standby pool configuration: keep pre-created VMs SUSPENDED or
+  // STOPPED so scale-outs resume them (seconds) instead of booting
+  // from scratch (minutes).
+  GcpComputeMigStandbyPolicy standby_policy = 13;
+
+  // Target number of SUSPENDED VMs held in the standby pool
+  // (suspended VMs keep memory state; fastest resume, disks and memory
+  // keep billing).
+  optional int32 target_suspended_size = 14 [(buf.validate.field).int32.gte = 0];
+
+  // Target number of STOPPED VMs held in the standby pool (stopped VMs
+  // keep only disks; cheaper than suspended, slower to start).
+  optional int32 target_stopped_size = 15 [(buf.validate.field).int32.gte = 0];
+
+  // Stateful persistent disks preserved across instance recreation and
+  // updates — for VMs whose disks carry irreplaceable data (databases,
+  // brokers). The device names must match disks defined in the
+  // template.
+  repeated GcpComputeMigStatefulDisk stateful_disks = 16;
+
+  // Stateful EXTERNAL IPs preserved across instance recreation — each
+  // VM keeps its public IP identity through repairs and updates.
+  repeated GcpComputeMigStatefulIp stateful_external_ips = 17;
+
+  // Stateful INTERNAL IPs preserved across instance recreation — each
+  // VM keeps its private IP identity through repairs and updates.
+  repeated GcpComputeMigStatefulIp stateful_internal_ips = 18;
+
+  // What the group does when instances fail or need repair — the
+  // repair-vs-do-nothing switches and the health-check failure action.
+  GcpComputeMigInstanceLifecyclePolicy instance_lifecycle_policy = 19;
+
+  // Labels and metadata stamped onto ALL instances IN ADDITION to what
+  // the template defines — changing these does NOT rotate the template;
+  // the group patches running instances per update_policy instead. Use
+  // for fleet-wide toggles that should not force template rotation.
+  GcpComputeMigAllInstancesConfig all_instances_config = 20;
+
+  // Pagination behavior of the group's listManagedInstances API:
+  //   ""          -- same as "PAGELESS" (GCP default)
+  //   "PAGELESS"  -- ignores pagination parameters (legacy behavior)
+  //   "PAGINATED" -- respects maxResults/pageToken (use for very large
+  //                  groups)
+  string list_managed_instances_results = 21 [(buf.validate.field).cel = {
+    id: "valid_list_managed_instances_results"
+    expression: "this == '' || this in ['PAGELESS', 'PAGINATED']"
+    message: "list_managed_instances_results must be PAGELESS or PAGINATED"
+  }];
+
+  // Self link of a WORKLOAD resource policy applied to the group (e.g.
+  // a high-throughput or placement workload policy). GCP accepts at
+  // most one workload policy per group.
+  string workload_policy = 22;
+
+  // Self links of legacy target pools (network load balancer) whose
+  // member list the group manages. Modern L7/L4 load balancing uses
+  // backend services pointed at the group's instance_group output
+  // instead — target pools remain for the legacy NLB path.
+  repeated string target_pools = 23;
+
+  // Wait for all managed instances to reach the wait_for_instances_status
+  // before the apply completes (and before dependent resources deploy).
+  // Turns "the group exists" into "the fleet is actually up" — useful
+  // when a chart deploys consumers right behind the group. Failed VMs
+  // make the apply fail at timeout.
+  optional bool wait_for_instances = 24;
+
+  // Which state wait_for_instances waits for:
+  //   ""         -- same as "STABLE" (GCP default)
+  //   "STABLE"   -- instances are running or repaired to running
+  //   "UPDATED"  -- additionally, all instances are on the target
+  //                 template version (rollouts fully converged)
+  string wait_for_instances_status = 25 [(buf.validate.field).cel = {
+    id: "valid_wait_for_instances_status"
+    expression: "this == '' || this in ['STABLE', 'UPDATED']"
+    message: "wait_for_instances_status must be STABLE or UPDATED"
+  }];
+
+  // REGIONAL groups only: which zones VMs spread across and the target
+  // distribution shape. When omitted, GCP spreads evenly across the
+  // region's zones.
+  GcpComputeMigDistributionPolicy distribution_policy = 26;
+
+  // REGIONAL groups only: ranked machine-type alternatives the group
+  // may fall back to when the primary shape is out of capacity —
+  // useful for large fleets on capacity-constrained shapes.
+  GcpComputeMigInstanceFlexibilityPolicy instance_flexibility_policy = 27;
+
+  // How the group creates VMs to reach its target size:
+  //   ""           -- GCP default (individual creation)
+  //   "INDIVIDUAL" -- create VMs one by one; partial success possible
+  //   "BULK"       -- all-or-nothing atomic creation of the whole
+  //                   target size
+  // Immutable: changing it replaces the group.
+  string target_size_policy_mode = 28 [(buf.validate.field).cel = {
+    id: "valid_target_size_policy_mode"
+    expression: "this == '' || this in ['BULK', 'INDIVIDUAL']"
+    message: "target_size_policy_mode must be BULK or INDIVIDUAL"
+  }];
+
+  // Autoscaler for the group — grows and shrinks the fleet between
+  // min/max replicas from CPU, load-balancer serving capacity, custom
+  // Cloud Monitoring metrics, or calendar schedules. Mutually
+  // exclusive with target_size.
+  GcpComputeMigAutoscaler autoscaler = 29;
+
+  // Stateful per-instance overrides: pin a specific instance NAME to
+  // preserved disks, IPs, and metadata. The group treats configured
+  // instances as stateful — their identity and preserved state survive
+  // recreation. The config name IS the instance name it applies to.
+  repeated GcpComputeMigPerInstanceConfig per_instance_configs = 30;
+
+  // Queued one-shot capacity requests (Dynamic Workload Scheduler):
+  // ask GCP to add N instances for a bounded duration when capacity
+  // becomes available — the batch/HPC path for scarce shapes. Each
+  // request is immutable once created; deleting an ACCEPTED request
+  // cancels it.
+  repeated GcpComputeMigResizeRequest resize_requests = 31;
+
+  // Deletion policy — what happens to the group's resources when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- every resource is deleted (VMs are terminated; disks
+  //                follow their template auto_delete / stateful rules)
+  //   "PREVENT" -- destroy FAILS before touching anything
+  //   "ABANDON" -- resources are removed from management but keep
+  //                running in GCP
+  // Applies to every resource in the kind that supports it (group
+  // manager, autoscaler, regional template, per-instance configs,
+  // resize requests). The ZONAL instance template carries no deletion
+  // policy in the provider — it is always deleted on destroy.
+  string deletion_policy = 32 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+}
+
+// GcpComputeMigTemplate defines the instance template every VM in the
+// group is created from. Templates are IMMUTABLE in GCP: only labels
+// can change in place; changing ANY other field creates a NEW template
+// and rolls the group to it (per the spec's update_policy). The module
+// manages the rotation natively (create the new template, repoint the
+// group, delete the old one) — a template change never orphans the
+// group.
+message GcpComputeMigTemplate {
+  option (buf.validate.message).cel = {
+    id: "reclaimable_models_require_no_automatic_restart"
+    expression: "!has(this.scheduling) || !(this.scheduling.provisioning_model in ['SPOT', 'FLEX_START']) || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false"
+    message: "SPOT and FLEX_START VMs cannot automatically restart after reclamation — leave scheduling.automatic_restart unset or set it to false"
+  };
+  option (buf.validate.message).cel = {
+    id: "termination_action_requires_reclaimable_or_timed_vm"
+    expression: "!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model in ['SPOT', 'FLEX_START'] || has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time != ''"
+    message: "scheduling.instance_termination_action applies to SPOT/FLEX_START VMs and to timed-run VMs (max_run_duration_seconds or termination_time) — configure one of those or remove the termination action"
+  };
+  option (buf.validate.message).cel = {
+    id: "confidential_requires_terminate_maintenance"
+    expression: "!has(this.confidential_instance_config) || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')"
+    message: "confidential VMs cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when confidential_instance_config is configured"
+  };
+  option (buf.validate.message).cel = {
+    id: "accelerators_require_terminate_maintenance"
+    expression: "size(this.guest_accelerators) == 0 || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')"
+    message: "VMs with guest accelerators (GPUs) cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when guest_accelerators are attached"
+  };
+  option (buf.validate.message).cel = {
+    id: "reservation_bound_requires_specific_reservation"
+    expression: "!has(this.scheduling) || this.scheduling.provisioning_model != 'RESERVATION_BOUND' || (has(this.reservation_affinity) && this.reservation_affinity.type == 'SPECIFIC_RESERVATION')"
+    message: "RESERVATION_BOUND VMs consume one named reservation — set reservation_affinity.type to SPECIFIC_RESERVATION and name the reservation"
+  };
+  option (buf.validate.message).cel = {
+    id: "max_run_duration_conflicts_with_termination_time"
+    expression: "!has(this.scheduling) || !has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time == ''"
+    message: "max_run_duration_seconds and termination_time both bound the VM's lifetime — set at most one"
+  };
+  option (buf.validate.message).cel = {
+    id: "template_exactly_one_boot_disk"
+    expression: "this.disks.filter(d, d.boot).size() == 1"
+    message: "exactly one disk must have boot set to true — the disk the VMs boot from"
+  };
+
+  // Machine type for every VM, e.g. "e2-micro", "e2-medium",
+  // "n2-standard-4", or a custom shape like "custom-6-20480".
+  // Changing it rotates the template.
+  string machine_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Human-readable description of the TEMPLATE resource itself.
+  // Changing it rotates the template.
+  string description = 2;
+
+  // Description stamped onto each INSTANCE created from the template
+  // (visible on the VMs, distinct from the template's own
+  // description). Changing it rotates the template.
+  string instance_description = 3;
+
+  // Disks attached to every VM created from the template. Exactly one
+  // disk must be the boot disk. Each entry either creates a new disk
+  // per instance (from an image, a snapshot, or blank) or attaches one
+  // existing disk (source) — see GcpComputeMigTemplateDisk.
+  // Changing disks rotates the template.
+  repeated GcpComputeMigTemplateDisk disks = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+
+  // Network interfaces for every VM. At least one is required; multiple
+  // NICs must each attach to a different VPC network. Changing
+  // interfaces rotates the template.
+  repeated GcpComputeMigTemplateNetworkInterface network_interfaces = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {min_items: 1}
+  ];
+
+  // Service account the VMs' workloads authenticate as. When omitted,
+  // the Compute Engine default service account is used with its default
+  // scopes — prefer a dedicated least-privilege account for production.
+  // Changing it rotates the template.
+  GcpComputeMigServiceAccount service_account = 6;
+
+  // Scheduling policy: Spot vs standard provisioning, maintenance
+  // behavior, run-duration limits, and sole-tenant node placement.
+  // Changing it rotates the template.
+  GcpComputeMigScheduling scheduling = 7;
+
+  // Shielded VM configuration (secure boot, vTPM, integrity
+  // monitoring). Requires an image with Shielded VM support (all recent
+  // Google-provided images qualify). Changing it rotates the template.
+  GcpComputeMigShieldedConfig shielded_instance_config = 8;
+
+  // Confidential VM configuration — hardware memory encryption (AMD
+  // SEV / SEV-SNP or Intel TDX). Requires a supported machine family
+  // (e.g. N2D, C2D, C3) and scheduling.on_host_maintenance =
+  // "TERMINATE". Changing it rotates the template.
+  GcpComputeMigConfidentialConfig confidential_instance_config = 9;
+
+  // Advanced machine features: nested virtualization, SMT control,
+  // visible core count, UEFI networking, performance monitoring unit,
+  // and turbo mode. Changing it rotates the template.
+  GcpComputeMigAdvancedMachineFeatures advanced_machine_features = 10;
+
+  // GPU accelerator cards attached to every VM. Requires a GPU-capable
+  // location and scheduling.on_host_maintenance = "TERMINATE".
+  // Changing it rotates the template.
+  repeated GcpComputeMigGuestAccelerator guest_accelerators = 11;
+
+  // Reservation affinity — whether VMs consume capacity from any
+  // matching reservation, a specific reservation, or none. Changing it
+  // rotates the template.
+  GcpComputeMigReservationAffinity reservation_affinity = 12;
+
+  // Per-VM egress bandwidth tier. "TIER_1" raises the bandwidth cap on
+  // supported machine shapes (N2/N2D/C2/C3 with >= 30 vCPUs and gVNIC);
+  // "DEFAULT" is the standard cap. Changing it rotates the template.
+  string total_egress_bandwidth_tier = 13 [(buf.validate.field).cel = {
+    id: "valid_egress_bandwidth_tier"
+    expression: "this == '' || this in ['DEFAULT', 'TIER_1']"
+    message: "total_egress_bandwidth_tier must be DEFAULT or TIER_1"
+  }];
+
+  // Custom metadata key/value pairs made available to the guest OS via
+  // the metadata server. Well-known keys configure agents and features
+  // (e.g. "enable-oslogin"). Changing metadata rotates the template.
+  map<string, string> metadata = 14;
+
+  // Startup script executed by the guest agent on every boot of every
+  // VM. Maps to the metadata_startup_script surface, which keeps it
+  // distinct from user metadata. Changing it rotates the template.
+  string startup_script = 15;
+
+  // Network tags used by firewall rules and network routes to select
+  // the group's VMs. Changing tags rotates the template.
+  repeated string tags = 16;
+
+  // User labels stamped onto every VM (merged with Planton attribution
+  // labels, which win on key conflicts). The ONLY template surface GCP
+  // allows to change in place — label edits do not rotate the template.
+  map<string, string> labels = 17;
+
+  // Resource Manager tags bound to the TEMPLATE for org-policy and IAM
+  // conditions. Keys in the form "tagKeys/{id}", values
+  // "tagValues/{id}". Changing them rotates the template.
+  map<string, string> resource_manager_tags = 18;
+
+  // Minimum CPU platform for the VMs, e.g. "Intel Ice Lake" or
+  // "AMD Milan". Constrains scheduling to hosts with at least this
+  // platform. Changing it rotates the template.
+  string min_cpu_platform = 19;
+
+  // Allow sending/receiving packets with source or destination IPs
+  // that do not match the VM's own addresses — required for VMs acting
+  // as routers, NAT gateways, or VPN endpoints. Changing it rotates the
+  // template.
+  bool can_ip_forward = 20;
+
+  // Action GCP takes on the VMs when a Cloud KMS key protecting them is
+  // revoked: "NONE" (default) or "STOP". Changing it rotates the
+  // template.
+  string key_revocation_action_type = 21 [(buf.validate.field).cel = {
+    id: "valid_key_revocation_action"
+    expression: "this == '' || this in ['NONE', 'STOP']"
+    message: "key_revocation_action_type must be NONE or STOP"
+  }];
+
+  // Self links of compute resource policies attached to every VM (e.g.
+  // an instance schedule). GCP currently allows at most one policy per
+  // instance. Changing it rotates the template.
+  repeated string resource_policies = 22 [(buf.validate.field).repeated.max_items = 1];
+}
+
+// GcpComputeMigTemplateDisk defines one disk in the template. Each VM
+// created from the template gets its own copy of "create" disks (from
+// an image, a snapshot, or blank), while a "source" disk attaches one
+// existing disk (READ_ONLY for sharing across the fleet). Customer-
+// supplied raw encryption keys (CSEK) are deliberately not modeled: raw
+// key material does not belong in declarative manifests or state — use
+// CMEK, where the key stays in Cloud KMS.
+message GcpComputeMigTemplateDisk {
+  option (buf.validate.message).cel = {
+    id: "disk_at_most_one_source"
+    expression: "(this.source_image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source) && (has(this.source.value) || has(this.source.value_from))) ? 1 : 0) <= 1"
+    message: "a disk takes at most one source: source_image (fresh install), source_snapshot (restore), or source (attach an existing disk); leave all unset for a blank disk"
+  };
+  option (buf.validate.message).cel = {
+    id: "boot_disk_requires_image_or_snapshot_or_source"
+    expression: "!this.boot || this.source_image != '' || this.source_snapshot != '' || (has(this.source) && (has(this.source.value) || has(this.source.value_from)))"
+    message: "the boot disk needs an OS to boot from — set source_image (e.g. debian-cloud/debian-12), source_snapshot, or source"
+  };
+  option (buf.validate.message).cel = {
+    id: "source_image_encryption_requires_image"
+    expression: "!has(this.source_image_encryption) || this.source_image != ''"
+    message: "source_image_encryption is only valid together with source_image"
+  };
+  option (buf.validate.message).cel = {
+    id: "source_snapshot_encryption_requires_snapshot"
+    expression: "!has(this.source_snapshot_encryption) || this.source_snapshot != ''"
+    message: "source_snapshot_encryption is only valid together with source_snapshot"
+  };
+
+  // Whether this is the boot disk — the disk the VMs boot from.
+  // Exactly one disk in the template must set this.
+  bool boot = 1;
+
+  // Source image for a fresh disk on each VM. Accepts an image family
+  // ("debian-cloud/debian-12", "ubuntu-os-cloud/ubuntu-2404-lts-amd64")
+  // or a specific image self link. Families resolve to the newest image
+  // at template creation.
+  string source_image = 2;
+
+  // Source snapshot each VM's disk is restored from (name or self
+  // link).
+  string source_snapshot = 3;
+
+  // Existing disk to attach (all VMs share it), referenced as a
+  // GcpComputeDisk or a literal disk name/self link. Shared attachment
+  // requires mode READ_ONLY.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpComputeDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Size of the disk in GB. When omitted, the image or snapshot size is
+  // used (blank disks require a size).
+  int32 size_gb = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65536
+    }
+  ];
+
+  // Disk type: "pd-standard" (HDD), "pd-balanced" (default in GCP and
+  // the sensible choice), "pd-ssd" (high IOPS), local "local-ssd"
+  // (ephemeral scratch), or a hyperdisk type on supported machine
+  // families ("hyperdisk-balanced").
+  string disk_type = 6;
+
+  // Disk role: "PERSISTENT" (default) or "SCRATCH" (ephemeral local
+  // SSD; contents lost when the VM stops — pair with disk_type
+  // "local-ssd" and 375 GB units).
+  string type = 7 [(buf.validate.field).cel = {
+    id: "valid_disk_role"
+    expression: "this == '' || this in ['PERSISTENT', 'SCRATCH']"
+    message: "type must be PERSISTENT or SCRATCH"
+  }];
+
+  // Delete each VM's disk automatically when the VM is deleted.
+  // Defaults to true (matching GCP). Stateful disks (see the spec's
+  // stateful_disks) override this per device.
+  optional bool auto_delete = 8 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Device name exposed under /dev/disk/by-id/google-*. When omitted
+  // GCP assigns one. Stateful disk rules match on this name.
+  string device_name = 9;
+
+  // Name for disks created per VM. When omitted GCP derives one from
+  // the instance name. Rarely needed.
+  string disk_name = 10;
+
+  // Attachment mode: "READ_WRITE" (default) or "READ_ONLY" (required
+  // when attaching one existing source disk across the fleet).
+  string mode = 11 [(buf.validate.field).cel = {
+    id: "valid_disk_mode"
+    expression: "this == '' || this in ['READ_WRITE', 'READ_ONLY']"
+    message: "mode must be READ_WRITE or READ_ONLY"
+  }];
+
+  // Disk attachment interface: "SCSI" or "NVME". GCP normally selects
+  // the right interface from the machine type and disk type — the
+  // provider's own guidance is to leave it unset without advice from
+  // Google.
+  string interface = 12 [(buf.validate.field).cel = {
+    id: "valid_disk_interface"
+    expression: "this == '' || this in ['SCSI', 'NVME']"
+    message: "interface must be SCSI or NVME"
+  }];
+
+  // Labels applied to the per-VM disks (distinct from VM labels) —
+  // disk-level cost attribution and snapshot policies.
+  map<string, string> disk_labels = 13;
+
+  // Provisioned IOPS for hyperdisk types that support tuning
+  // (e.g. hyperdisk-extreme, hyperdisk-balanced). Leave unset for pd-*
+  // types.
+  optional int64 provisioned_iops = 14 [(buf.validate.field).int64.gt = 0];
+
+  // Provisioned throughput in MB/s for hyperdisk types that support
+  // tuning (e.g. hyperdisk-throughput, hyperdisk-balanced). Leave unset
+  // for pd-* types.
+  optional int64 provisioned_throughput = 15 [(buf.validate.field).int64.gt = 0];
+
+  // CPU architecture of the disk/image: "X86_64" or "ARM64" (e.g. for
+  // Tau T2A/Axion machine types). Normally inferred from the image.
+  string architecture = 16 [(buf.validate.field).cel = {
+    id: "valid_disk_architecture"
+    expression: "this == '' || this in ['X86_64', 'ARM64']"
+    message: "architecture must be X86_64 or ARM64"
+  }];
+
+  // Guest OS features to enable on the disk, e.g. ["UEFI_COMPATIBLE",
+  // "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET", "WINDOWS"]. The accepted
+  // set evolves with GCP — see "Enabling guest operating system
+  // features" in the Compute Engine docs.
+  repeated string guest_os_features = 17;
+
+  // Self links of resource policies attached to each per-VM disk (e.g.
+  // a snapshot schedule). GCP currently allows at most one per disk.
+  repeated string resource_policies = 18 [(buf.validate.field).repeated.max_items = 1];
+
+  // Resource Manager tags bound to the per-VM disks. Keys in the form
+  // "tagKeys/{id}", values "tagValues/{id}".
+  map<string, string> resource_manager_tags = 19;
+
+  // URL of the storage pool to create per-VM disks in (hyperdisk
+  // storage pools).
+  string storage_pool = 20;
+
+  // Customer-managed encryption key (CMEK) for the per-VM disks,
+  // referenced as a GcpKmsKey. The Compute Engine service agent
+  // (service-<project-number>@compute-system.iam.gserviceaccount.com)
+  // must hold roles/cloudkms.cryptoKeyEncrypterDecrypter on the key.
+  GcpComputeMigEncryptionKey disk_encryption = 21;
+
+  // Decrypts the source image when it is itself CMEK-encrypted. Only
+  // valid together with source_image.
+  GcpComputeMigEncryptionKey source_image_encryption = 22;
+
+  // Decrypts the source snapshot when it is itself CMEK-encrypted.
+  // Only valid together with source_snapshot.
+  GcpComputeMigEncryptionKey source_snapshot_encryption = 23;
+}
+
+// GcpComputeMigEncryptionKey names a Cloud KMS key for CMEK encryption
+// or decryption of a disk surface. Customer-supplied raw keys (CSEK)
+// are deliberately not modeled: raw key material does not belong in
+// declarative manifests or state.
+message GcpComputeMigEncryptionKey {
+  // The KMS key, referenced as a GcpKmsKey or a literal self link. The
+  // service agent performing the operation needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Service account used for the encryption/decryption request. When
+  // omitted, the Compute Engine default service agent is used.
+  string kms_key_service_account = 2;
+}
+
+// GcpComputeMigTemplateNetworkInterface defines one vNIC on every VM.
+message GcpComputeMigTemplateNetworkInterface {
+  option (buf.validate.message).cel = {
+    id: "network_interface_attachment_point_required"
+    expression: "(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from))) || this.network_attachment != ''"
+    message: "each network interface needs an attachment point: a network (auto-mode VPC), a subnetwork (custom-mode VPC), or a network_attachment (Private Service Connect) — set at least one"
+  };
+
+  // VPC network for this interface, referenced as a GcpVpcNetwork.
+  // Sufficient alone only for auto-mode VPCs; custom-mode VPCs need
+  // subnetwork.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // Subnetwork for this interface, referenced as a GcpSubnetwork. The
+  // subnetwork's region must contain the group's location.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Project owning the subnetwork — set when attaching to a Shared VPC
+  // host project's subnetwork from a service project.
+  string subnetwork_project = 3;
+
+  // Static internal IP shared configuration is not meaningful for a
+  // fleet (every VM needs its own address) — this field pins the
+  // PRIMARY internal IP only for single-instance groups or specialized
+  // setups. When omitted (the norm), GCP assigns each VM an ephemeral
+  // internal IP from the subnetwork range.
+  string network_ip = 4;
+
+  // External IPv4 access configs. Empty means no external IP (private
+  // fleet — pair with Cloud NAT for egress; the secure default). GCP
+  // supports at most one access config per interface.
+  repeated GcpComputeMigAccessConfig access_configs = 5 [(buf.validate.field).repeated.max_items = 1];
+
+  // External IPv6 access configs. Requires stack_type "IPV4_IPV6" and a
+  // subnetwork with an external IPv6 range. At most one per interface.
+  repeated GcpComputeMigIpv6AccessConfig ipv6_access_configs = 6 [(buf.validate.field).repeated.max_items = 1];
+
+  // IP stack of the interface:
+  //   ""            -- same as "IPV4_ONLY" (GCP default)
+  //   "IPV4_ONLY"   -- IPv4 addresses only
+  //   "IPV4_IPV6"   -- dual stack (subnetwork must have an IPv6 range)
+  //   "IPV6_ONLY"   -- IPv6 only (supported on IPv6-enabled
+  //                    subnetworks)
+  string stack_type = 7 [(buf.validate.field).cel = {
+    id: "valid_stack_type"
+    expression: "this == '' || this in ['IPV4_ONLY', 'IPV4_IPV6', 'IPV6_ONLY']"
+    message: "stack_type must be IPV4_ONLY, IPV4_IPV6, or IPV6_ONLY"
+  }];
+
+  // vNIC type: "" (GCP picks), "GVNIC" (recommended on modern machine
+  // families; required for TIER_1 bandwidth), "VIRTIO_NET" (legacy), or
+  // the RDMA types "IDPF", "MRDMA", "IRDMA" on specialized shapes.
+  string nic_type = 8 [(buf.validate.field).cel = {
+    id: "valid_nic_type"
+    expression: "this == '' || this in ['GVNIC', 'VIRTIO_NET', 'IDPF', 'MRDMA', 'IRDMA']"
+    message: "nic_type must be one of GVNIC, VIRTIO_NET, IDPF, MRDMA, IRDMA"
+  }];
+
+  // Networking queue count for Rx and Tx (1-32). When omitted GCP sizes
+  // queues from vCPU count.
+  optional int32 queue_count = 9 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 32
+  }];
+
+  // Alias IP ranges served by this interface on every VM — per-VM
+  // secondary ranges for multi-IP workloads.
+  repeated GcpComputeMigAliasIpRange alias_ip_ranges = 10;
+
+  // URL of a Private Service Connect NETWORK ATTACHMENT this interface
+  // connects to, in the form
+  // "projects/{projectNumber}/regions/{region}/networkAttachments/{name}"
+  // — connects the fleet into a producer's VPC. An attachment-only
+  // interface is legal (no network or subnetwork).
+  string network_attachment = 11;
+
+  // VLAN tag (2-255) making this a DYNAMIC network interface — a
+  // sub-interface multiplexed onto a parent NIC.
+  optional int32 vlan = 12 [(buf.validate.field).int32 = {
+    gte: 2
+    lte: 255
+  }];
+
+  // IGMP multicast query support on this interface:
+  //   ""                    -- GCP default (disabled)
+  //   "IGMP_QUERY_V2"       -- IGMPv2 queries enabled (multicast)
+  //   "IGMP_QUERY_DISABLED" -- explicitly disabled
+  string igmp_query = 13 [(buf.validate.field).cel = {
+    id: "valid_igmp_query"
+    expression: "this == '' || this in ['IGMP_QUERY_V2', 'IGMP_QUERY_DISABLED']"
+    message: "igmp_query must be IGMP_QUERY_V2 or IGMP_QUERY_DISABLED"
+  }];
+
+  // Static INTERNAL IPv6 address for the interface — meaningful only
+  // for single-instance groups (a fleet cannot share one address).
+  // When omitted, GCP assigns per-VM addresses from the subnetwork's
+  // internal IPv6 range.
+  string ipv6_address = 14;
+
+  // Prefix length of the primary internal IPv6 range assigned to this
+  // interface. When omitted, GCP assigns its default.
+  optional int32 internal_ipv6_prefix_length = 15 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 128
+  }];
+}
+
+// GcpComputeMigAccessConfig grants the interface an external IPv4 on
+// every VM.
+message GcpComputeMigAccessConfig {
+  // Static external IP to pin — meaningful only for single-instance
+  // groups (a fleet cannot share one IP; use stateful_external_ips for
+  // per-instance identity). When omitted (the norm), each VM gets an
+  // ephemeral external IP.
+  string nat_ip = 1;
+
+  // Network service tier for the external IPs: "PREMIUM" (default;
+  // Google's global backbone) or "STANDARD" (regional, cheaper).
+  string network_tier = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "PREMIUM",
+        "STANDARD"
+      ]
+    }
+  ];
+}
+
+// GcpComputeMigIpv6AccessConfig grants the interface external IPv6
+// connectivity on every VM.
+message GcpComputeMigIpv6AccessConfig {
+  // Network service tier for IPv6 traffic. Only "PREMIUM" is valid.
+  string network_tier = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["PREMIUM"]
+    }
+  ];
+}
+
+// GcpComputeMigAliasIpRange defines an alias IP range on an interface.
+message GcpComputeMigAliasIpRange {
+  // The alias range: a CIDR ("10.1.2.0/24"), a single IP ("10.1.2.3"),
+  // or a netmask ("/24") to auto-allocate per VM from the range.
+  string ip_cidr_range = 1 [(buf.validate.field).required = true];
+
+  // Secondary range name on the subnetwork to allocate from. When
+  // omitted the primary range is used.
+  string subnetwork_range_name = 2;
+}
+
+// GcpComputeMigServiceAccount configures the VMs' identity.
+message GcpComputeMigServiceAccount {
+  // Service account email, referenced as a GcpServiceAccount or a
+  // literal email.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef email = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
+  ];
+
+  // OAuth scopes for the attached account. The modern practice is a
+  // single "https://www.googleapis.com/auth/cloud-platform" scope with
+  // access controlled entirely by IAM roles; narrower legacy scopes
+  // remain supported. Required when this block is set.
+  repeated string scopes = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeMigScheduling defines provisioning model, maintenance
+// behavior, lifetime limits, and sole-tenant placement for every VM.
+//
+// Spot semantics: setting provisioning_model = "SPOT" is the single
+// switch — both engines automatically set the API's legacy preemptible
+// flag that Spot requires. Legacy preemptible-only VMs are deliberately
+// not modeled; Spot supersedes them.
+message GcpComputeMigScheduling {
+  // Provisioning model:
+  //   ""                  -- same as "STANDARD"
+  //   "STANDARD"          -- on-demand capacity
+  //   "SPOT"              -- deeply discounted preemptible capacity;
+  //                          GCP may reclaim VMs at any time (the group
+  //                          recreates them per its repair policy)
+  //   "FLEX_START"        -- discounted capacity with a flexible start
+  //                          time (Dynamic Workload Scheduler); pairs
+  //                          with resize_requests
+  //   "RESERVATION_BOUND" -- runs only on capacity from one specific
+  //                          reservation (pair with reservation_affinity
+  //                          type SPECIFIC_RESERVATION)
+  string provisioning_model = 1 [(buf.validate.field).cel = {
+    id: "valid_provisioning_model"
+    expression: "this == '' || this in ['STANDARD', 'SPOT', 'FLEX_START', 'RESERVATION_BOUND']"
+    message: "provisioning_model must be STANDARD, SPOT, FLEX_START, or RESERVATION_BOUND"
+  }];
+
+  // Restart a VM automatically when Compute Engine (not a user) stops
+  // it. Defaults to true for standard VMs; must be false (or unset) for
+  // Spot/FLEX_START.
+  optional bool automatic_restart = 2 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Host maintenance behavior: "" (GCP default "MIGRATE"), "MIGRATE"
+  // (live-migrate; zero downtime), or "TERMINATE" (stop during
+  // maintenance — required for GPUs and confidential VMs).
+  string on_host_maintenance = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "MIGRATE",
+        "TERMINATE"
+      ]
+    }
+  ];
+
+  // What GCP does when a VM is reclaimed (Spot preemption, FLEX_START
+  // expiry) or a run-duration limit fires: "STOP" (keep the stopped VM
+  // and disks) or "DELETE" (remove the VM — the usual choice in a
+  // managed group, which recreates capacity itself).
+  string instance_termination_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "STOP",
+        "DELETE"
+      ]
+    }
+  ];
+
+  // Maximum run duration in seconds, after which
+  // instance_termination_action is executed. The duration clock starts
+  // at every VM start. Mutually exclusive with termination_time.
+  optional int64 max_run_duration_seconds = 5 [(buf.validate.field).int64 = {
+    gte: 1
+    lte: 315576000000
+  }];
+
+  // Absolute timestamp (RFC 3339) at which VMs are terminated.
+  // Mutually exclusive with max_run_duration_seconds.
+  string termination_time = 6;
+
+  // Discard local-SSD contents when a VM is stopped by a lifetime limit
+  // (max_run_duration/termination_time) instead of preserving them.
+  optional bool discard_local_ssds_on_stop = 7;
+
+  // Availability domain for spread-placement within the zone (used with
+  // spread placement policies).
+  optional int32 availability_domain = 8 [(buf.validate.field).int32.gte = 1];
+
+  // Minimum vCPUs on the sole-tenant node the VMs can be scheduled
+  // onto. Sole-tenancy only.
+  optional int32 min_node_cpus = 9 [(buf.validate.field).int32.gte = 1];
+
+  // Sole-tenant node affinities selecting which node groups the VMs may
+  // run on. Setting any affinity places the fleet on sole-tenant
+  // hardware.
+  repeated GcpComputeMigNodeAffinity node_affinities = 10;
+
+  // How long Compute Engine waits for a local-SSD-preserving recovery
+  // when a host fails, in seconds, before falling back to default
+  // recovery.
+  optional int64 local_ssd_recovery_timeout_seconds = 11 [(buf.validate.field).int64 = {
+    gte: 0
+    lte: 604800
+  }];
+}
+
+// GcpComputeMigNodeAffinity selects sole-tenant node groups.
+message GcpComputeMigNodeAffinity {
+  // Node-group label key to match (e.g.
+  // "compute.googleapis.com/node-group-name").
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Match operator: "IN" or "NOT_IN".
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "IN",
+        "NOT_IN"
+      ]
+    }
+  ];
+
+  // Label values to match.
+  repeated string values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeMigShieldedConfig hardens the boot chain of every VM.
+message GcpComputeMigShieldedConfig {
+  // Verify the boot loader's signature chain; blocks boot on tampering.
+  // GCP default is false because some third-party images are unsigned.
+  optional bool enable_secure_boot = 1;
+
+  // Virtual Trusted Platform Module. GCP default is true.
+  optional bool enable_vtpm = 2 [(dev.planton.shared.options.recommended_default) = "true"];
+
+  // Boot-integrity measurement and monitoring via the vTPM. GCP default
+  // is true.
+  optional bool enable_integrity_monitoring = 3 [(dev.planton.shared.options.recommended_default) = "true"];
+}
+
+// GcpComputeMigConfidentialConfig enables hardware memory encryption on
+// every VM.
+message GcpComputeMigConfidentialConfig {
+  // Confidential computing technology:
+  //   "SEV"     -- AMD Secure Encrypted Virtualization (N2D/C2D/C3D)
+  //   "SEV_SNP" -- AMD SEV Secure Nested Paging (requires an AMD Milan+
+  //                min_cpu_platform)
+  //   "TDX"     -- Intel Trust Domain Extensions (C3)
+  string confidential_instance_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "SEV",
+        "SEV_SNP",
+        "TDX"
+      ]
+    }
+  ];
+}
+
+// GcpComputeMigAdvancedMachineFeatures tunes the virtual hardware of
+// every VM.
+message GcpComputeMigAdvancedMachineFeatures {
+  // Expose nested virtualization support (VMX) to the guest — run VMs
+  // inside the VMs.
+  optional bool enable_nested_virtualization = 1;
+
+  // Threads per physical core: 1 disables simultaneous multithreading
+  // (SMT) — common for licensing and security isolation; 2 is the
+  // hardware default.
+  optional int32 threads_per_core = 2 [(buf.validate.field).int32 = {
+    in: [
+      1,
+      2
+    ]
+  }];
+
+  // Number of physical cores exposed to the guest (core visibility for
+  // per-core licensing). When unset all cores are visible.
+  optional int32 visible_core_count = 3 [(buf.validate.field).int32.gte = 1];
+
+  // Enable UEFI networking in the guest firmware.
+  optional bool enable_uefi_networking = 4;
+
+  // Performance monitoring unit exposure level: "STANDARD", "ENHANCED",
+  // or "ARCHITECTURAL".
+  string performance_monitoring_unit = 5 [(buf.validate.field).cel = {
+    id: "valid_pmu"
+    expression: "this == '' || this in ['STANDARD', 'ENHANCED', 'ARCHITECTURAL']"
+    message: "performance_monitoring_unit must be STANDARD, ENHANCED, or ARCHITECTURAL"
+  }];
+
+  // Turbo frequency mode. "ALL_CORE_MAX" runs all cores at maximum
+  // turbo frequency (supported machine families only).
+  string turbo_mode = 6 [(buf.validate.field).cel = {
+    id: "valid_turbo_mode"
+    expression: "this == '' || this == 'ALL_CORE_MAX'"
+    message: "turbo_mode must be ALL_CORE_MAX"
+  }];
+}
+
+// GcpComputeMigGuestAccelerator attaches GPU cards to every VM.
+message GcpComputeMigGuestAccelerator {
+  // Accelerator type available in the group's location, e.g.
+  // "nvidia-tesla-t4", "nvidia-l4", "nvidia-a100-80gb".
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Number of cards of this type per VM.
+  int32 count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// GcpComputeMigReservationAffinity controls reserved-capacity
+// consumption for every VM.
+message GcpComputeMigReservationAffinity {
+  option (buf.validate.message).cel = {
+    id: "specific_reservation_coherence"
+    expression: "(this.type == 'SPECIFIC_RESERVATION') == has(this.specific_reservation)"
+    message: "specific_reservation must be set when (and only when) type is SPECIFIC_RESERVATION"
+  };
+
+  // Reservation consumption mode:
+  //   "ANY_RESERVATION"      -- consume any matching reservation (GCP
+  //                             default)
+  //   "SPECIFIC_RESERVATION" -- consume only the named reservation
+  //   "NO_RESERVATION"       -- never consume reserved capacity
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ANY_RESERVATION",
+        "SPECIFIC_RESERVATION",
+        "NO_RESERVATION"
+      ]
+    }
+  ];
+
+  // The specific reservation to consume (type SPECIFIC_RESERVATION).
+  GcpComputeMigSpecificReservation specific_reservation = 2;
+}
+
+// GcpComputeMigSpecificReservation names one reservation.
+message GcpComputeMigSpecificReservation {
+  // Reservation label key — use
+  // "compute.googleapis.com/reservation-name" to target by name.
+  string key = 1 [(buf.validate.field).required = true];
+
+  // Reservation label values (the reservation name when using the
+  // reservation-name key).
+  repeated string values = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeMigVersion defines one application version for canary
+// rollouts. Instances not covered by any per-version target size run
+// the version without one (the "stable" version — leave its target
+// size unset).
+message GcpComputeMigVersion {
+  option (buf.validate.message).cel = {
+    id: "version_target_size_at_most_one"
+    expression: "!(has(this.target_size_fixed) && has(this.target_size_percent))"
+    message: "a version's target size is either fixed or percent — set at most one"
+  };
+
+  // Name of the version (e.g. "stable", "canary") — appears in the
+  // instance metadata of VMs created from it.
+  string version_name = 1;
+
+  // Instance template for this version. Leave EMPTY to run this
+  // kind's own template (the default and the normal case). Set a full
+  // template self link URL to pin an EXTERNAL template — the canary
+  // escape hatch for splitting the fleet across templates this kind
+  // does not manage.
+  string template_self_link = 2;
+
+  // Fixed number of instances running this version. Unset on the
+  // stable version (it absorbs the remainder of the fleet).
+  optional int32 target_size_fixed = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Percent of the fleet (0-100) running this version, rounded up.
+  // Unset on the stable version (it absorbs the remainder).
+  optional int32 target_size_percent = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+}
+
+// GcpComputeMigNamedPort maps a logical service name to a port number
+// on every VM in the group.
+message GcpComputeMigNamedPort {
+  // The port name backend services reference via port_name (e.g.
+  // "http").
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The port number the service listens on (e.g. 8080).
+  int32 port = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 65535
+    }
+  ];
+}
+
+// GcpComputeMigUpdatePolicy controls how the group rolls out template
+// and configuration changes to running VMs.
+message GcpComputeMigUpdatePolicy {
+  option (buf.validate.message).cel = {
+    id: "surge_fixed_xor_percent"
+    expression: "!(has(this.max_surge_fixed) && has(this.max_surge_percent))"
+    message: "the surge budget is either fixed or percent — set at most one of max_surge_fixed / max_surge_percent"
+  };
+  option (buf.validate.message).cel = {
+    id: "unavailable_fixed_xor_percent"
+    expression: "!(has(this.max_unavailable_fixed) && has(this.max_unavailable_percent))"
+    message: "the unavailability budget is either fixed or percent — set at most one of max_unavailable_fixed / max_unavailable_percent"
+  };
+  option (buf.validate.message).cel = {
+    id: "recreate_needs_unavailable_budget"
+    expression: "this.replacement_method != 'RECREATE' || (has(this.max_unavailable_fixed) && this.max_unavailable_fixed > 0) || (has(this.max_unavailable_percent) && this.max_unavailable_percent > 0)"
+    message: "RECREATE preserves instance names by replacing in place, so it needs room to take instances down — set max_unavailable_fixed or max_unavailable_percent above 0 (the provider's own requirement)"
+  };
+
+  // The most disruptive action the rollout may take on its own:
+  //   "NONE"    -- no automatic action (changes wait for manual
+  //                refresh)
+  //   "REFRESH" -- apply updates that need no restart
+  //   "RESTART" -- stop/start instances to apply updates
+  //   "REPLACE" -- recreate instances from the new template (the usual
+  //                choice for template rotations)
+  string minimal_action = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "REFRESH",
+        "RESTART",
+        "REPLACE"
+      ]
+    }
+  ];
+
+  // Rollout mode:
+  //   "PROACTIVE"     -- the group rolls changes out automatically
+  //                      within the surge/unavailability budget
+  //   "OPPORTUNISTIC" -- changes apply only when instances are
+  //                      recreated anyway (manual refresh, autoscaler
+  //                      churn, repairs)
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "OPPORTUNISTIC",
+        "PROACTIVE"
+      ]
+    }
+  ];
+
+  // Cap on how disruptive an individual update is allowed to be —
+  // updates needing more disruption than this wait instead. Same value
+  // set as minimal_action; defaults to "REPLACE" (no cap).
+  string most_disruptive_allowed_action = 3 [(buf.validate.field).cel = {
+    id: "valid_most_disruptive_allowed_action"
+    expression: "this == '' || this in ['NONE', 'REFRESH', 'RESTART', 'REPLACE']"
+    message: "most_disruptive_allowed_action must be NONE, REFRESH, RESTART, or REPLACE"
+  }];
+
+  // How replaced instances are recreated:
+  //   ""           -- same as "SUBSTITUTE"
+  //   "SUBSTITUTE" -- new instances get fresh random names (allows
+  //                   surge; zero-unavailability rollouts possible)
+  //   "RECREATE"   -- instance NAMES are preserved (stateful-friendly);
+  //                   requires an unavailability budget above 0
+  string replacement_method = 4 [(buf.validate.field).cel = {
+    id: "valid_replacement_method"
+    expression: "this == '' || this in ['RECREATE', 'SUBSTITUTE']"
+    message: "replacement_method must be RECREATE or SUBSTITUTE"
+  }];
+
+  // Extra instances the rollout may create above target_size (fixed
+  // count). Higher surge = faster rollout, more temporary cost.
+  // Regional groups require fixed values >= the number of zones (or
+  // use percent).
+  optional int32 max_surge_fixed = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Extra instances the rollout may create above target_size, as a
+  // percent of the group (0-100).
+  optional int32 max_surge_percent = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // Instances the rollout may take below target_size (fixed count).
+  optional int32 max_unavailable_fixed = 7 [(buf.validate.field).int32.gte = 0];
+
+  // Instances the rollout may take below target_size, as a percent of
+  // the group (0-100).
+  optional int32 max_unavailable_percent = 8 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // REGIONAL groups only: whether the group proactively redistributes
+  // instances to keep the zone balance ("PROACTIVE", the GCP default)
+  // or leaves them where they are ("NONE" — required for stateful
+  // regional groups).
+  string instance_redistribution_type = 9 [(buf.validate.field).cel = {
+    id: "valid_instance_redistribution_type"
+    expression: "this == '' || this in ['PROACTIVE', 'NONE']"
+    message: "instance_redistribution_type must be PROACTIVE or NONE"
+  }];
+}
+
+// GcpComputeMigAutoHealing recreates VMs that fail an application-level
+// health check.
+message GcpComputeMigAutoHealing {
+  // The health check that decides instance health, referenced as a
+  // GcpHealthCheck or a literal self link. Use a health check tuned for
+  // auto-healing (conservative thresholds) — aggressive LB health
+  // checks cause repair storms.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef health_check = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpHealthCheck,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Seconds a freshly created VM gets to boot and become healthy before
+  // auto-healing counts failures against it (0-3600). Size it to your
+  // application's cold-start time — too short and the group repair-loops
+  // healthy-but-slow instances.
+  int32 initial_delay_sec = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 3600
+    }
+  ];
+}
+
+// GcpComputeMigStandbyPolicy configures the group's standby pool of
+// pre-created suspended/stopped VMs (pair with the spec's
+// target_suspended_size / target_stopped_size).
+message GcpComputeMigStandbyPolicy {
+  // Seconds a newly created standby VM runs before being suspended or
+  // stopped (0-3600) — time for boot and warmup so resume is instant.
+  optional int32 initial_delay_sec = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // How standby VMs are consumed:
+  //   ""               -- same as "MANUAL" (GCP default)
+  //   "MANUAL"         -- standby VMs activate only by explicit API
+  //                       action
+  //   "SCALE_OUT_POOL" -- scale-outs resume standby VMs first (the
+  //                       fast-scale-out mode)
+  string mode = 2 [(buf.validate.field).cel = {
+    id: "valid_standby_mode"
+    expression: "this == '' || this in ['MANUAL', 'SCALE_OUT_POOL']"
+    message: "mode must be MANUAL or SCALE_OUT_POOL"
+  }];
+}
+
+// GcpComputeMigStatefulDisk preserves one template disk across instance
+// recreation and updates.
+message GcpComputeMigStatefulDisk {
+  // Device name of the template disk to make stateful — must match a
+  // device_name in the template's disks.
+  string device_name = 1 [(buf.validate.field).required = true];
+
+  // What happens to the preserved disk when its instance is PERMANENTLY
+  // deleted (group deletion, explicit instance delete — not repairs):
+  //   ""                               -- same as "NEVER" (GCP default)
+  //   "NEVER"                          -- the disk is kept
+  //   "ON_PERMANENT_INSTANCE_DELETION" -- the disk is deleted with the
+  //                                       instance
+  string delete_rule = 2 [(buf.validate.field).cel = {
+    id: "valid_stateful_disk_delete_rule"
+    expression: "this == '' || this in ['NEVER', 'ON_PERMANENT_INSTANCE_DELETION']"
+    message: "delete_rule must be NEVER or ON_PERMANENT_INSTANCE_DELETION"
+  }];
+}
+
+// GcpComputeMigStatefulIp preserves an interface's IP across instance
+// recreation — each VM keeps its address identity through repairs and
+// updates.
+message GcpComputeMigStatefulIp {
+  // Network interface name whose IP to preserve. When omitted, "nic0"
+  // (the first interface) is used.
+  string interface_name = 1;
+
+  // What happens to the preserved IP when its instance is PERMANENTLY
+  // deleted:
+  //   ""                               -- same as "NEVER" (GCP default)
+  //   "NEVER"                          -- the address is kept
+  //   "ON_PERMANENT_INSTANCE_DELETION" -- the address is released with
+  //                                       the instance
+  string delete_rule = 2 [(buf.validate.field).cel = {
+    id: "valid_stateful_ip_delete_rule"
+    expression: "this == '' || this in ['NEVER', 'ON_PERMANENT_INSTANCE_DELETION']"
+    message: "delete_rule must be NEVER or ON_PERMANENT_INSTANCE_DELETION"
+  }];
+}
+
+// GcpComputeMigInstanceLifecyclePolicy controls the group's repair
+// behavior.
+message GcpComputeMigInstanceLifecyclePolicy {
+  // What the group does with failed instances (crashed, preempted,
+  // failed to start):
+  //   ""           -- same as "REPAIR" (GCP default)
+  //   "REPAIR"     -- recreate/restart failed instances automatically
+  //   "DO_NOTHING" -- leave failed instances alone (manual operations
+  //                   mode)
+  string default_action_on_failure = 1 [(buf.validate.field).cel = {
+    id: "valid_default_action_on_failure"
+    expression: "this == '' || this in ['REPAIR', 'DO_NOTHING']"
+    message: "default_action_on_failure must be REPAIR or DO_NOTHING"
+  }];
+
+  // Whether a repair may apply the LATEST template version instead of
+  // the instance's current one: "YES" or "NO" (GCP default NO —
+  // repairs preserve the running version; YES turns repairs into
+  // opportunistic update vectors).
+  string force_update_on_repair = 2 [(buf.validate.field).cel = {
+    id: "valid_force_update_on_repair"
+    expression: "this == '' || this in ['YES', 'NO']"
+    message: "force_update_on_repair must be YES or NO"
+  }];
+
+  // What the group does when the auto-healing health check fails (only
+  // meaningful with auto_healing configured):
+  //   ""               -- same as "DEFAULT_ACTION" (GCP default)
+  //   "DEFAULT_ACTION" -- follow default_action_on_failure
+  //   "REPAIR"         -- repair on health-check failure even when
+  //                       default_action_on_failure is DO_NOTHING
+  //   "DO_NOTHING"     -- never repair on health-check failure
+  string on_failed_health_check = 3 [(buf.validate.field).cel = {
+    id: "valid_on_failed_health_check"
+    expression: "this == '' || this in ['DEFAULT_ACTION', 'REPAIR', 'DO_NOTHING']"
+    message: "on_failed_health_check must be DEFAULT_ACTION, REPAIR, or DO_NOTHING"
+  }];
+
+  // Whether a repair may recreate the instance in a DIFFERENT zone of a
+  // regional group: "YES" or "NO" (GCP default NO — repairs stay
+  // in-zone).
+  string on_repair_allow_changing_zone = 4 [(buf.validate.field).cel = {
+    id: "valid_on_repair_allow_changing_zone"
+    expression: "this == '' || this in ['YES', 'NO']"
+    message: "on_repair_allow_changing_zone must be YES or NO"
+  }];
+}
+
+// GcpComputeMigAllInstancesConfig stamps labels and metadata onto ALL
+// instances in addition to the template's — fleet-wide toggles that
+// apply per update_policy without rotating the template.
+message GcpComputeMigAllInstancesConfig {
+  // Labels added to every instance (on top of template labels).
+  map<string, string> labels = 1;
+
+  // Metadata added to every instance (on top of template metadata).
+  map<string, string> metadata = 2;
+}
+
+// GcpComputeMigDistributionPolicy shapes a REGIONAL group's spread
+// across zones.
+message GcpComputeMigDistributionPolicy {
+  // The zones instances may run in (e.g. ["us-central1-a",
+  // "us-central1-f"]). When omitted, GCP uses the region's zones.
+  // Immutable: changing zones replaces the group.
+  repeated string zones = 1;
+
+  // The distribution shape the group converges to (per the API's
+  // documented set):
+  //   ""                -- same as "EVEN" (GCP default)
+  //   "EVEN"            -- equal instance counts across zones (highest
+  //                        availability)
+  //   "BALANCED"        -- spread across zones subject to capacity
+  //   "ANY"             -- any zone with capacity (best for scarce
+  //                        shapes)
+  //   "ANY_SINGLE_ZONE" -- all instances in one zone GCP picks
+  // The provider does not pre-validate this list — it is the API's
+  // documented vocabulary, enforced here so typos fail at validate
+  // time.
+  string target_shape = 2 [(buf.validate.field).cel = {
+    id: "valid_target_shape"
+    expression: "this == '' || this in ['EVEN', 'BALANCED', 'ANY', 'ANY_SINGLE_ZONE']"
+    message: "target_shape must be EVEN, BALANCED, ANY, or ANY_SINGLE_ZONE"
+  }];
+}
+
+// GcpComputeMigInstanceFlexibilityPolicy lets a REGIONAL group fall
+// back across ranked machine-type alternatives when the primary shape
+// is out of capacity.
+message GcpComputeMigInstanceFlexibilityPolicy {
+  // Named, ranked machine-type selections. Lower rank is preferred.
+  repeated GcpComputeMigInstanceSelection instance_selections = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpComputeMigInstanceSelection names one ranked machine-type
+// alternative set.
+message GcpComputeMigInstanceSelection {
+  // Name of this selection (e.g. "primary", "fallback").
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Machine types in this selection (e.g. ["e2-standard-4",
+  // "n2-standard-4"]).
+  repeated string machine_types = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Preference rank — selections with lower rank are consumed first.
+  optional int32 rank = 3 [(buf.validate.field).int32.gte = 0];
+}
+
+// GcpComputeMigAutoscaler scales the group between min and max replicas
+// from CPU, load-balancer capacity, custom metrics, or schedules.
+message GcpComputeMigAutoscaler {
+  option (buf.validate.message).cel = {
+    id: "max_gte_min_replicas"
+    expression: "this.max_replicas >= this.min_replicas"
+    message: "max_replicas must be greater than or equal to min_replicas"
+  };
+
+  // Name of the autoscaler resource. When omitted, the group name is
+  // used.
+  string autoscaler_name = 1 [(buf.validate.field).cel = {
+    id: "autoscaler_name_format"
+    expression: "this == '' || this.matches('^[a-z]([-a-z0-9]*[a-z0-9])?$')"
+    message: "autoscaler_name must be lowercase letters, numbers, and hyphens, starting with a letter and not ending with a hyphen"
+  }];
+
+  // Human-readable description of the autoscaler.
+  string description = 2;
+
+  // Minimum number of replicas the autoscaler maintains (>= 0).
+  int32 min_replicas = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Maximum number of replicas the autoscaler may create.
+  int32 max_replicas = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Seconds the autoscaler waits before collecting usage from a NEW
+  // instance — covers boot and warmup so unreliable early samples do
+  // not drive scaling. GCP default: 60.
+  optional int32 cooldown_period = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Operating mode (the API's documented vocabulary; the provider
+  // defaults it to "ON" and does not pre-validate the value):
+  //   ""               -- same as "ON"
+  //   "ON"             -- scale out and in
+  //   "OFF"            -- autoscaler holds everything (group keeps its
+  //                       current size)
+  //   "ONLY_SCALE_OUT" -- grow but never shrink
+  string mode = 6 [(buf.validate.field).cel = {
+    id: "valid_autoscaler_mode"
+    expression: "this == '' || this in ['ON', 'OFF', 'ONLY_SCALE_OUT']"
+    message: "mode must be ON, OFF, or ONLY_SCALE_OUT"
+  }];
+
+  // Target CPU utilization as a fraction in (0, 1] — e.g. 0.6 keeps
+  // average fleet CPU at 60%. The default signal when no other target
+  // is set (GCP applies 0.6 when the policy has no targets at all).
+  optional double cpu_target = 7 [(buf.validate.field).double = {
+    gt: 0
+    lte: 1
+  }];
+
+  // Predictive autoscaling for the CPU signal (the provider's own
+  // documented values):
+  //   ""                      -- same as "NONE"
+  //   "NONE"                  -- react to real-time metrics only
+  //   "OPTIMIZE_AVAILABILITY" -- learn daily/weekly patterns and scale
+  //                              out AHEAD of anticipated demand
+  string cpu_predictive_method = 8 [(buf.validate.field).cel = {
+    id: "valid_cpu_predictive_method"
+    expression: "this == '' || this in ['NONE', 'OPTIMIZE_AVAILABILITY']"
+    message: "cpu_predictive_method must be NONE or OPTIMIZE_AVAILABILITY"
+  }];
+
+  // Target backend utilization fraction (0, 1] of the load balancer's
+  // configured serving capacity — scales the fleet to hold the
+  // balancer's per-backend utilization at this level. Only meaningful
+  // when the group serves an EXTERNAL HTTP(S) load balancer with
+  // UTILIZATION balancing mode.
+  optional double load_balancing_target = 9 [(buf.validate.field).double = {
+    gt: 0
+    lte: 1
+  }];
+
+  // Custom Cloud Monitoring metric signals.
+  repeated GcpComputeMigAutoscalerMetric metrics = 10;
+
+  // Limits how fast the autoscaler SHRINKS the fleet after load drops —
+  // the guard against cascading scale-in on temporary dips.
+  GcpComputeMigScaleInControl scale_in_control = 11;
+
+  // Calendar-based capacity schedules (cron) that set a minimum replica
+  // count for recurring time windows — e.g. business-hours capacity
+  // floors. Metric-based scaling still adds capacity above the
+  // schedule's floor.
+  repeated GcpComputeMigScalingSchedule schedules = 12;
+
+  // Seconds of load stabilization the autoscaler considers before
+  // scale-in decisions — effectively how long it "remembers" peak load.
+  optional int32 stabilization_period = 13 [(buf.validate.field).int32.gte = 0];
+}
+
+// GcpComputeMigAutoscalerMetric scales on a Cloud Monitoring metric.
+message GcpComputeMigAutoscalerMetric {
+  option (buf.validate.message).cel = {
+    id: "metric_target_or_single_instance_assignment"
+    expression: "!(has(this.target) && has(this.single_instance_assignment))"
+    message: "a metric is either utilization-targeted (target + type) or workload-proportional (single_instance_assignment) — set at most one"
+  };
+
+  // The metric identifier, e.g.
+  // "pubsub.googleapis.com/subscription/num_undelivered_messages" or
+  // "custom.googleapis.com/myapp/queue_depth". The metric must export
+  // values for the fleet's instances (or be a per-group metric used
+  // with filter + single_instance_assignment).
+  string name = 1 [(buf.validate.field).required = true];
+
+  // Target value of the metric the autoscaler maintains per instance.
+  // Pair with type to say how the metric is interpreted.
+  optional double target = 2 [(buf.validate.field).double.gt = 0];
+
+  // How the metric's values are interpreted against target (the
+  // provider validates this list):
+  //   "GAUGE"             -- instantaneous value
+  //   "DELTA_PER_SECOND"  -- rate per second
+  //   "DELTA_PER_MINUTE"  -- rate per minute
+  string type = 3 [(buf.validate.field).cel = {
+    id: "valid_metric_type"
+    expression: "this == '' || this in ['GAUGE', 'DELTA_PER_SECOND', 'DELTA_PER_MINUTE']"
+    message: "type must be GAUGE, DELTA_PER_SECOND, or DELTA_PER_MINUTE"
+  }];
+
+  // Monitoring filter expression selecting the metric's time series
+  // (e.g. a per-group Pub/Sub subscription metric). GCP default:
+  // "resource.type = gce_instance".
+  string filter = 4;
+
+  // For per-GROUP workload metrics (queue depth, pending jobs): the
+  // amount of work one instance handles. The autoscaler keeps
+  // instances proportional to metric_value / single_instance_assignment.
+  // Mutually exclusive with target/type.
+  optional double single_instance_assignment = 5 [(buf.validate.field).double.gt = 0];
+}
+
+// GcpComputeMigScaleInControl bounds how fast the fleet shrinks.
+message GcpComputeMigScaleInControl {
+  option (buf.validate.message).cel = {
+    id: "scale_in_control_needs_a_bound"
+    expression: "has(this.max_scaled_in_replicas_fixed) || has(this.max_scaled_in_replicas_percent) || has(this.time_window_sec)"
+    message: "scale_in_control needs at least one bound: max_scaled_in_replicas_fixed, max_scaled_in_replicas_percent, or time_window_sec"
+  };
+  option (buf.validate.message).cel = {
+    id: "scaled_in_replicas_fixed_xor_percent"
+    expression: "!(has(this.max_scaled_in_replicas_fixed) && has(this.max_scaled_in_replicas_percent))"
+    message: "the scale-in cap is either fixed or percent — set at most one"
+  };
+
+  // Max instances that may be removed within the trailing time window
+  // (fixed count).
+  optional int32 max_scaled_in_replicas_fixed = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Max instances that may be removed within the trailing time window,
+  // as a percent of the group (0-100).
+  optional int32 max_scaled_in_replicas_percent = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 100
+  }];
+
+  // The trailing time window (seconds) the scale-in cap applies over.
+  optional int32 time_window_sec = 3 [(buf.validate.field).int32.gte = 0];
+}
+
+// GcpComputeMigScalingSchedule sets a recurring minimum-capacity window.
+message GcpComputeMigScalingSchedule {
+  // Name of the schedule (unique within the autoscaler).
+  string schedule_name = 1 [(buf.validate.field).required = true];
+
+  // Cron expression for when the window STARTS (e.g. "0 8 * * MON-FRI"
+  // for weekday mornings), interpreted in time_zone.
+  string schedule = 2 [(buf.validate.field).required = true];
+
+  // How long the window lasts, in seconds. The provider documents a
+  // minimum of 300.
+  int32 duration_sec = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 300
+  ];
+
+  // Minimum replicas the group holds during the window.
+  int32 min_required_replicas = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // Keep the schedule defined but inactive. GCP default: false.
+  optional bool disabled = 5;
+
+  // IANA time zone the cron expression is evaluated in (e.g.
+  // "America/New_York"). GCP default: "UTC".
+  string time_zone = 6;
+
+  // Human-readable description of the schedule.
+  string description = 7;
+}
+
+// GcpComputeMigPerInstanceConfig pins one instance NAME to preserved
+// state — the stateful-workload surface. The group treats configured
+// instances as stateful: their name and preserved disks/IPs/metadata
+// survive recreation, repairs, and updates.
+message GcpComputeMigPerInstanceConfig {
+  // The per-instance config's name — which IS the name of the managed
+  // instance it applies to (for RECREATE-method groups the instance
+  // names are "<base_instance_name>-<suffix>"; a config for a
+  // not-yet-existing name creates an instance with that name).
+  string config_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Preserved state pinned to the instance: disks, IPs, and metadata
+  // that survive recreation.
+  GcpComputeMigPreservedState preserved_state = 2;
+
+  // The LEAST disruptive action the group may take to apply this
+  // config to the instance (the update escalates to what the change
+  // actually needs, but never below this): "NONE" (GCP default),
+  // "REFRESH", "RESTART", or "REPLACE".
+  string minimal_action = 3 [(buf.validate.field).cel = {
+    id: "valid_pic_minimal_action"
+    expression: "this == '' || this in ['NONE', 'REFRESH', 'RESTART', 'REPLACE']"
+    message: "minimal_action must be NONE, REFRESH, RESTART, or REPLACE"
+  }];
+
+  // The MOST disruptive action the group may take to apply this config
+  // — updates needing more wait instead. "NONE", "REFRESH", "RESTART",
+  // or "REPLACE" (GCP default).
+  string most_disruptive_allowed_action = 4 [(buf.validate.field).cel = {
+    id: "valid_pic_most_disruptive_allowed_action"
+    expression: "this == '' || this in ['NONE', 'REFRESH', 'RESTART', 'REPLACE']"
+    message: "most_disruptive_allowed_action must be NONE, REFRESH, RESTART, or REPLACE"
+  }];
+
+  // When true, removing this config from the spec DELETES the managed
+  // instance itself. Default false: the instance keeps running and
+  // only its stateful config is removed (state application follows
+  // remove_instance_state_on_destroy).
+  optional bool remove_instance_on_destroy = 5;
+
+  // When true, removing this config also removes its preserved state
+  // (disks per their delete rules, IPs, metadata) from the running
+  // instance immediately. Default false: the instance keeps the state
+  // until it is recreated. Irrelevant when remove_instance_on_destroy
+  // deletes the instance altogether.
+  optional bool remove_instance_state_on_destroy = 6;
+}
+
+// GcpComputeMigPreservedState is the stateful payload of a per-instance
+// config.
+message GcpComputeMigPreservedState {
+  // Preserved metadata key/value pairs pinned to the instance (merged
+  // over template/all-instances metadata).
+  map<string, string> metadata = 1;
+
+  // Preserved disks pinned to the instance.
+  repeated GcpComputeMigPreservedDisk disks = 2;
+
+  // Preserved EXTERNAL IPs pinned to the instance's interfaces.
+  repeated GcpComputeMigPreservedIp external_ips = 3;
+
+  // Preserved INTERNAL IPs pinned to the instance's interfaces.
+  repeated GcpComputeMigPreservedIp internal_ips = 4;
+}
+
+// GcpComputeMigPreservedDisk pins one existing disk to the instance.
+message GcpComputeMigPreservedDisk {
+  // Device name the disk is exposed under on the instance — matches
+  // the template's disk device_name when overriding a template disk.
+  string device_name = 1 [(buf.validate.field).required = true];
+
+  // The disk to attach, referenced as a GcpComputeDisk or a literal
+  // self link. The disk must live in the instance's zone.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpComputeDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+
+  // Attachment mode: "READ_WRITE" (GCP default) or "READ_ONLY".
+  string mode = 3 [(buf.validate.field).cel = {
+    id: "valid_preserved_disk_mode"
+    expression: "this == '' || this in ['READ_WRITE', 'READ_ONLY']"
+    message: "mode must be READ_WRITE or READ_ONLY"
+  }];
+
+  // What happens to the disk when the instance is PERMANENTLY deleted:
+  //   ""                               -- same as "NEVER" (GCP default)
+  //   "NEVER"                          -- the disk is kept
+  //   "ON_PERMANENT_INSTANCE_DELETION" -- the disk is deleted with the
+  //                                       instance
+  string delete_rule = 4 [(buf.validate.field).cel = {
+    id: "valid_preserved_disk_delete_rule"
+    expression: "this == '' || this in ['NEVER', 'ON_PERMANENT_INSTANCE_DELETION']"
+    message: "delete_rule must be NEVER or ON_PERMANENT_INSTANCE_DELETION"
+  }];
+}
+
+// GcpComputeMigPreservedIp pins one IP address to an instance
+// interface.
+message GcpComputeMigPreservedIp {
+  // Interface name the address is pinned to (e.g. "nic0").
+  string interface_name = 1 [(buf.validate.field).required = true];
+
+  // The literal IP address to preserve, or a reference to a reserved
+  // GcpAddress. When omitted, the instance's current address is
+  // adopted as preserved state.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef address = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpAddress,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.address"
+  ];
+
+  // What happens to the address when the instance is PERMANENTLY
+  // deleted:
+  //   ""                               -- same as "NEVER" (GCP default)
+  //   "NEVER"                          -- the address is kept
+  //   "ON_PERMANENT_INSTANCE_DELETION" -- the address is released with
+  //                                       the instance
+  string auto_delete = 3 [(buf.validate.field).cel = {
+    id: "valid_preserved_ip_auto_delete"
+    expression: "this == '' || this in ['NEVER', 'ON_PERMANENT_INSTANCE_DELETION']"
+    message: "auto_delete must be NEVER or ON_PERMANENT_INSTANCE_DELETION"
+  }];
+}
+
+// GcpComputeMigResizeRequest asks GCP to add capacity for a bounded
+// duration when it becomes available (Dynamic Workload Scheduler) —
+// the batch/HPC path for scarce machine shapes. Requests are IMMUTABLE:
+// change any field and the request is replaced (a new ask is queued).
+// Destroying a request cancels it if still ACTIVE; the deletion_policy
+// of the spec applies.
+message GcpComputeMigResizeRequest {
+  // Name of the resize request (unique within the group).
+  string request_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Human-readable description of the request.
+  string description = 2;
+
+  // Number of instances to ADD to the group when capacity is granted.
+  int32 resize_by = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How long the granted instances run before GCP reclaims them, in
+  // seconds (10 minutes to 7 days: 600-604800 — the provider's own
+  // documented bounds). Requires the template's
+  // scheduling.provisioning_model to support bounded runs (FLEX_START).
+  // When omitted, the request asks for unbounded capacity.
+  optional int64 requested_run_duration_seconds = 4 [(buf.validate.field).int64 = {
+    gte: 600
+    lte: 604800
+  }];
+}

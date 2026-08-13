@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionresourceguard.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredataprotectionresourceguard/v1alpha1/outputs.proto";
+import "catalog/azure/azuredataprotectionresourceguard/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataProtectionResourceGuard is the top-level API resource
+// describing a Data Protection Resource Guard -- the approval gate
+// behind Multi-User Authorization for backup vaults.
+message AzureDataProtectionResourceGuard {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureDataProtectionResourceGuard".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataProtectionResourceGuard'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Data Protection Resource Guard specification.
+  AzureDataProtectionResourceGuardSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureDataProtectionResourceGuardStatus status = 5;
+}
+
+// AzureDataProtectionResourceGuardStatus holds the deployment outputs.
+message AzureDataProtectionResourceGuardStatus {
+  // Stack outputs from the IaC deployment.
+  AzureDataProtectionResourceGuardStackOutputs outputs = 1;
+}

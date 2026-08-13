@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVertexAiIndexSpec defines a Vertex AI Vector Search index — the
 data structure that holds embedding vectors and answers
 nearest-neighbor queries. An index by itself stores and organizes
@@ -55,6 +57,7 @@ spec:
     treeAhConfig:
       leafNodeEmbeddingCount: 1000
       leafNodesToSearchPercent: 10
+  deletionPolicy: DELETE
   labels:
     team: ml-platform
     cost-center: research
@@ -82,6 +85,8 @@ spec:
 | `spec.config.treeAhConfig.leafNodesToSearchPercent` | `int32` |  | `10` |  |
 | `spec.config.bruteForceConfig` | `GcpVertexAiIndexBruteForceConfig` |  |  |  |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.kmsKeyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -286,6 +291,37 @@ label rules: lowercase letters, digits, underscores, and dashes,
 at most 63 characters. Merged with the platform's attribution
 labels; on key conflicts the platform labels win. Mutable in place.
 
+### spec.kmsKeyName
+
+`string | valueFrom`
+
+Cloud KMS key for customer-managed encryption at rest (CMEK) of the
+index data, as the full key resource path
+projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+— a GcpKmsKey reference resolves to it. The key must live in the
+same region as the index, and the Vertex AI service agent needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it. If omitted, data
+is encrypted with Google-managed keys. Immutable after creation.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the index — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the index and every vector in it are deleted
+  "PREVENT" -- destroy FAILS; a guard for a corpus that took hours
+               of batch builds (or months of streaming upserts) to
+               load
+  "ABANDON" -- the index is removed from management but left
+               standing (and billing for its stored vectors) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: GcpVertexAiIndex, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -305,6 +341,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
+| `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 
 ## Referenced By
 

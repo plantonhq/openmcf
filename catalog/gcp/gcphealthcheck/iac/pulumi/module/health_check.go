@@ -92,6 +92,10 @@ func globalHealthCheck(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		args.SourceRegions = sourceRegions
 	}
 
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Exactly one protocol arm is set (enforced by the proto oneof).
 	switch protocol := spec.Protocol.(type) {
 	case *gcphealthcheckv1alpha1.GcpHealthCheckSpec_Http:
@@ -193,6 +197,10 @@ func regionalHealthCheck(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 
 	if spec.ProjectId.GetValue() != "" {
 		args.Project = pulumi.String(spec.ProjectId.GetValue())
+	}
+
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	switch protocol := spec.Protocol.(type) {

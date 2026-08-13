@@ -6,12 +6,15 @@ go_library(
         "builder.go",
         "bundle.go",
         "conformance.go",
+        "entries.go",
         "loader.go",
     ],
     importpath = "github.com/plantonhq/planton/pkg/catalogbundle",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/conversion",
         "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
         "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protodesc",
@@ -23,9 +26,17 @@ go_library(
 
 go_test(
     name = "catalogbundle_test",
-    srcs = ["bundle_test.go"],
+    srcs = [
+        "bundle_test.go",
+        "conformance_deprecations_test.go",
+        "entries_test.go",
+    ],
     embed = [":catalogbundle"],
     deps = [
+        "//catalog/_test/testcloudresourcegeneric/v1alpha1",
+        "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
+        "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protodesc",
         "@org_golang_google_protobuf//reflect/protoreflect",

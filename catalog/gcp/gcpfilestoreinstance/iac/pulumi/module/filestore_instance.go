@@ -65,6 +65,11 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		if opt.AnonGid != nil {
 			exportOpt.AnonGid = pulumi.IntPtr(int(*opt.AnonGid))
 		}
+		// Source VPC network (name) for ip_ranges — GCP requires it on
+		// PSC instances where client IPs aren't otherwise attributable.
+		if opt.Network.GetValue() != "" {
+			exportOpt.Network = pulumi.StringPtr(opt.Network.GetValue())
+		}
 
 		nfsExportOptions = append(nfsExportOptions, exportOpt)
 	}
@@ -77,10 +82,14 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	if len(nfsExportOptions) > 0 {
 		fileShareArgs.NfsExportOptions = nfsExportOptions
 	}
-	// Restore-from-backup is create-time only; the share's capacity must
+	// Restore is create-time only and single-source (Filestore backup OR
+	// Backup and DR backup — CEL-enforced); the share's capacity must
 	// cover the backup's source capacity.
 	if spec.FileShare.SourceBackup != "" {
 		fileShareArgs.SourceBackup = pulumi.StringPtr(spec.FileShare.SourceBackup)
+	}
+	if spec.FileShare.SourceBackupdrBackup != "" {
+		fileShareArgs.SourceBackupdrBackup = pulumi.StringPtr(spec.FileShare.SourceBackupdrBackup)
 	}
 
 	// Build the network configuration (singular — one per instance).
@@ -101,6 +110,13 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 	if spec.NetworkConfig.ReservedIpRange != "" {
 		networkArgs.ReservedIpRange = pulumi.StringPtr(spec.NetworkConfig.ReservedIpRange)
 	}
+	// Consumer project hosting the PSC endpoint; PSC connect mode only
+	// (CEL-enforced). Omitted means the instance's own project.
+	if spec.NetworkConfig.PscEndpointProject.GetValue() != "" {
+		networkArgs.PscConfig = &filestore.InstanceNetworkPscConfigArgs{
+			EndpointProject: pulumi.StringPtr(spec.NetworkConfig.PscEndpointProject.GetValue()),
+		}
+	}
 
 	args := &filestore.InstanceArgs{
 		Name:       pulumi.String(locals.InstanceName),
@@ -109,11 +125,15 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		FileShares: fileShareArgs,
 		Networks:   filestore.InstanceNetworkArray{networkArgs},
 		Labels:     pulumi.ToStringMap(locals.GcpLabels),
-		// PARITY: the bridged provider ships a client-side deletion_policy
-		// flag that the released Terraform line does not have. Pinning it
-		// to DELETE keeps destroy semantics identical on both engines
-		// (deletion_protection_enabled remains the real guard).
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
+	}
+
+	// Client-side destroy behavior (DELETE deletes the share's data;
+	// PREVENT refuses; ABANDON drops from state but keeps the instance
+	// running), evaluated only after deletion_protection_enabled allows
+	// the destroy. Empty follows the provider default (DELETE) —
+	// mirrored zero-vs-omit with Terraform.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	if spec.ProjectId.GetValue() != "" {
@@ -151,6 +171,34 @@ func filestoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Pro
 		}
 		args.PerformanceConfig = perfArgs
 	}
+
+	// LDAP directory integration for NFSv4.1 identity mapping (protocol
+	// NFS_V4_1 required — CEL-enforced pre-deploy).
+	if spec.Ldap != nil {
+		ldapArgs := &filestore.InstanceDirectoryServicesLdapArgs{
+			Domain:  pulumi.String(spec.Ldap.Domain),
+			Servers: pulumi.ToStringArray(spec.Ldap.Servers),
+		}
+		if spec.Ldap.GroupsOu != "" {
+			ldapArgs.GroupsOu = pulumi.StringPtr(spec.Ldap.GroupsOu)
+		}
+		if spec.Ldap.UsersOu != "" {
+			ldapArgs.UsersOu = pulumi.StringPtr(spec.Ldap.UsersOu)
+		}
+		args.DirectoryServices = &filestore.InstanceDirectoryServicesArgs{
+			Ldap: ldapArgs,
+		}
+	}
+
+	// Replica-relationship state: the provider pauses/resumes replication
+	// to match. Sent explicitly from the spec (default READY) so both
+	// engines and the provider agree on who chose the value — the Redis
+	// deletion_protection posture.
+	desiredReplicaState := "READY"
+	if spec.DesiredReplicaState != nil && spec.GetDesiredReplicaState() != "" {
+		desiredReplicaState = spec.GetDesiredReplicaState()
+	}
+	args.DesiredReplicaState = pulumi.StringPtr(desiredReplicaState)
 
 	// Create-time replication: this instance joins as ACTIVE source or
 	// STANDBY replica of the referenced peers. Backups cannot be taken

@@ -23,7 +23,15 @@ spec:
       kind: GcpVpcNetwork
       name: planton-oss-e2e-gcpvpc-prereq
       fieldPath: status.outputs.network_id
+  # The destroy guard defaults TRUE; e2e fixtures disarm it so the lane's
+  # destroy phase completes (the live proof of the explicit-send wiring).
+  deletionProtection: false
+  # Explicit provider default: proves the DEFAULT round-trip on re-plan.
+  deletionPolicy: DEFAULT
+  labels:
+    e2e-arm: depth-wave
   primaryInstance:
     instanceId: primary
     cpuCount: 2
     availabilityType: ZONAL
+    deletionPolicy: DELETE

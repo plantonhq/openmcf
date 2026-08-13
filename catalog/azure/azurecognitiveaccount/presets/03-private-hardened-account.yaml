@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccount
+metadata:
+  name: openai-locked
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: acme-openai-locked
+  kind: OpenAI
+  skuName: S0
+  # Network ACLs require the custom subdomain.
+  customSubdomainName: acme-openai-locked
+  # Keys off: Entra ID tokens only (the key outputs stay empty).
+  localAuthEnabled: false
+  # Deny by default; allow the office range and one app subnet, and let
+  # trusted Azure services through.
+  networkAcls:
+    defaultAction: Deny
+    ipRules:
+      # Example documentation range -- replace with your office CIDR.
+      - 203.0.113.0/24
+    virtualNetworkRules:
+      - subnetId:
+          value: "<your-app-subnet-id>"
+    bypass: AZURE_SERVICES
+  # No calls out except the allowlist (data-loss prevention).
+  outboundNetworkAccessRestricted: true
+  fqdns:
+    - "<your-allowed-outbound-fqdn>"

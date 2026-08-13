@@ -8,7 +8,7 @@ locals {
   # Job name defaults to metadata.name when job_name is omitted.
   job_name = var.spec.job_name != "" ? var.spec.job_name : var.metadata.name
 
-  launch_stage   = var.spec.launch_stage != "" ? var.spec.launch_stage : null
+  launch_stage    = var.spec.launch_stage != "" ? var.spec.launch_stage : null
   service_account = var.spec.template.service_account != "" ? var.spec.template.service_account : null
   encryption_key  = var.spec.template.encryption_key != "" ? var.spec.template.encryption_key : null
 
@@ -46,8 +46,8 @@ locals {
     local.id_label,
   )
 
-  vpc_connector = try(var.spec.template.vpc_access.connector, "") != "" ? var.spec.template.vpc_access.connector : null
-  vpc_egress    = try(var.spec.template.vpc_access.egress, "") != "" ? var.spec.template.vpc_access.egress : null
+  vpc_connector  = try(var.spec.template.vpc_access.connector, "") != "" ? var.spec.template.vpc_access.connector : null
+  vpc_egress     = try(var.spec.template.vpc_access.egress, "") != "" ? var.spec.template.vpc_access.egress : null
   vpc_interfaces = try(var.spec.template.vpc_access.network_interfaces, [])
   has_vpc_access = var.spec.template.vpc_access != null
 }

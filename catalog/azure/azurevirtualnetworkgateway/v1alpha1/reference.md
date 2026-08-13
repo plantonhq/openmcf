@@ -49,12 +49,15 @@ spec:
     value: test-rg
   name: hub-vpn-gateway
   # VPN (site-to-site/point-to-site) is the default type; RouteBased the
-  # default routing model. VPN_GW_1 is the production entry point.
-  sku: VPN_GW_1
+  # default routing model. VPN_GW_1_AZ is the production entry point --
+  # Azure retired new non-AZ VpnGw creates, and the AZ SKUs deploy in
+  # every region (regional where zones are absent).
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     # The subnet's ARM name must be EXACTLY "GatewaySubnet" (/27 or
     # larger recommended); VPN gateways require a Standard static public
-    # IP on every configuration.
+    # IP on every configuration, and the AZ SKUs require that address to
+    # carry zones (give the AzurePublicIp zones ["1","2","3"]).
     - subnetId:
         value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/subnets/GatewaySubnet
       publicIpAddressId:
@@ -239,32 +242,32 @@ Allowed values (use exactly as shown):
 `enum`
 
 The gateway SKU -- sizes throughput, tunnel/connection counts, and
-hourly cost, and decides zone redundancy (the *_AZ variants). VPN
-gateways use BASIC through VPN_GW_5[_AZ]; ExpressRoute gateways use
-STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ; ER_GW_SCALE
-autoscales between minimum_scale_unit and maximum_scale_unit. BASIC is
-dev/test only (no zone redundancy, no IKEv2 P2S) and cannot resize to
-other SKUs in place. Generation2 VPN SKUs start at VPN_GW_2.
+hourly cost. VPN gateways use BASIC or VPN_GW_1_AZ..5_AZ: Azure
+stopped accepting NEW non-AZ VpnGw1-5 creates on 2025-11-01 (ARM
+rejects them with NonAzSkusNotAllowedForVPNGateway; the legacy
+Standard/HighPerformance VPN tiers retired 2025-09-30), and the AZ
+SKUs deploy in EVERY region -- where the region has no availability
+zones the gateway is simply regional. ExpressRoute gateways use
+STANDARD/HIGH_PERFORMANCE/ULTRA_PERFORMANCE or ER_GW_*_AZ;
+ER_GW_SCALE autoscales between minimum_scale_unit and
+maximum_scale_unit. BASIC is dev/test only (no zone redundancy, no
+IKEv2 P2S, requires a Standard public IP) and cannot resize to other
+SKUs in place. Generation2 VPN SKUs start at VPN_GW_2_AZ.
 
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
 - `azure_virtual_network_gateway_sku_unspecified` -- Not specified -- invalid: the SKU choice is explicit (see the sku_required contract).
-- `BASIC` -- Dev/test VPN tier: no zone redundancy, no IKEv2 point-to-site, no in-place resize to other SKUs.
-- `STANDARD` -- Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
-- `HIGH_PERFORMANCE` -- Legacy VPN/ExpressRoute tier (predates the VpnGw/ErGw families).
+- `BASIC` -- Dev/test VPN tier: no zone redundancy, no IKEv2 point-to-site, no in-place resize to other SKUs. Not retiring, but new BASIC gateways must use a Standard public IP.
+- `STANDARD` -- Legacy tier (predates the VpnGw/ErGw families). ExpressRoute gateways only: Azure retired its VPN use on 2025-09-30 (the vpn_sku_vocabulary contract rejects it).
+- `HIGH_PERFORMANCE` -- Legacy tier (predates the VpnGw/ErGw families). ExpressRoute gateways only: Azure retired its VPN use on 2025-09-30 (the vpn_sku_vocabulary contract rejects it).
 - `ULTRA_PERFORMANCE` -- ExpressRoute-only legacy top tier.
-- `VPN_GW_1` -- Generation1 VPN production entry point (~650 Mbps aggregate).
-- `VPN_GW_2` -- VPN tier 2 (Generation1 or Generation2).
-- `VPN_GW_3` -- VPN tier 3 (Generation1 or Generation2).
-- `VPN_GW_4` -- VPN tier 4 (Generation2 only).
-- `VPN_GW_5` -- VPN tier 5 (Generation2 only).
-- `VPN_GW_1_AZ` -- Zone-redundant VPN_GW_1 (Generation1 only).
-- `VPN_GW_2_AZ` -- Zone-redundant VPN_GW_2.
-- `VPN_GW_3_AZ` -- Zone-redundant VPN_GW_3.
-- `VPN_GW_4_AZ` -- Zone-redundant VPN_GW_4 (Generation2 only).
-- `VPN_GW_5_AZ` -- Zone-redundant VPN_GW_5 (Generation2 only).
+- `VPN_GW_1_AZ` -- VPN tier 1 (Generation1 only, ~650 Mbps aggregate) -- the production entry point. Zone-redundant where the region has availability zones, regional elsewhere.
+- `VPN_GW_2_AZ` -- VPN tier 2 (Generation1 or Generation2). Zone-redundant where the region has availability zones.
+- `VPN_GW_3_AZ` -- VPN tier 3 (Generation1 or Generation2). Zone-redundant where the region has availability zones.
+- `VPN_GW_4_AZ` -- VPN tier 4 (Generation2 only). Zone-redundant where the region has availability zones.
+- `VPN_GW_5_AZ` -- VPN tier 5 (Generation2 only). Zone-redundant where the region has availability zones.
 - `ER_GW_1_AZ` -- Zone-redundant ExpressRoute gateway, size 1.
 - `ER_GW_2_AZ` -- Zone-redundant ExpressRoute gateway, size 2.
 - `ER_GW_3_AZ` -- Zone-redundant ExpressRoute gateway, size 3.
@@ -275,17 +278,17 @@ Allowed values (use exactly as shown):
 `enum`
 
 The VPN gateway generation. GENERATION2 doubles throughput ceilings
-and requires VPN_GW_2 or higher. Fixed at creation. Unspecified lets
-Azure pick the default generation for the SKU. Not applicable to
-ExpressRoute gateways (leave unset or NONE).
+and requires VPN_GW_2_AZ or higher. Fixed at creation. Unspecified
+lets Azure pick the default generation for the SKU. Not applicable
+to ExpressRoute gateways (leave unset or NONE).
 
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
 - `azure_virtual_network_gateway_generation_unspecified` -- Not specified -- Azure picks the default generation for the SKU.
-- `GENERATION1` -- First generation: supports BASIC through VPN_GW_3[_AZ].
-- `GENERATION2` -- Second generation: doubled throughput ceilings; requires VPN_GW_2 or higher.
+- `GENERATION1` -- First generation: supports BASIC and VPN_GW_1_AZ..3_AZ.
+- `GENERATION2` -- Second generation: doubled throughput ceilings; requires VPN_GW_2_AZ or higher.
 - `NONE` -- No generation -- ExpressRoute gateways.
 
 ### spec.ipConfigurations
@@ -329,7 +332,13 @@ at creation.
 The public IP tunnels terminate on -- references an AzurePublicIp's
 ARM id (Standard SKU, static). REQUIRED on VPN gateways (every
 configuration); FORBIDDEN on ExpressRoute gateways (Azure manages
-their addressing).
+their addressing). The AZ VPN SKUs (the only creatable VpnGw tiers)
+require the address to carry ZONES -- ARM rejects a no-zone
+Standard IP with VmssVpnGatewayPublicIpsMustHaveZonesConfigured, so
+give the AzurePublicIp zones ["1","2","3"] (zone-redundant) unless
+you are deliberately pinning a zone. A cross-resource apply-time
+contract: the zones live on the referenced address, so it cannot be
+validated here.
 
 - references: AzurePublicIp (`status.outputs.public_ip_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzurePublicIp, name: <that resource's name>, fieldPath: status.outputs.public_ip_id}} -- a bare string does not parse
@@ -466,7 +475,7 @@ id. Leave unset for normal split routing.
 POINT-TO-SITE: the client VPN configuration -- address pool,
 authentication (Entra ID, certificate, or RADIUS), tunnel protocols,
 and per-group routing. VPN gateways only; requires a route-based
-gateway on VPN_GW_1/aZ or higher for IKEv2/OpenVPN.
+gateway on VPN_GW_1_AZ or higher for IKEv2/OpenVPN.
 
 - rule: Entra ID authentication needs all three of aad_tenant, aad_audience, and aad_issuer
 - rule: radius_server_address and radius_server_secret are set together
@@ -967,12 +976,12 @@ id); a user tag with the same key wins.
 
 ## Validation Rules
 
-- `sku_required`: Choose the gateway SKU explicitly -- it sizes throughput, cost, and zone redundancy (VPN_GW_1 is the common production entry point for VPN gateways)
-- `vpn_sku_vocabulary`: VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, or the VPN_GW_1..5[_AZ] SKUs -- the ER_GW/ULTRA_PERFORMANCE SKUs are ExpressRoute-only
+- `sku_required`: Choose the gateway SKU explicitly -- it sizes throughput, cost, and zone redundancy (VPN_GW_1_AZ is the common production entry point for VPN gateways)
+- `vpn_sku_vocabulary`: VPN gateways use BASIC or the VPN_GW_1_AZ..5_AZ SKUs (Azure retired new non-AZ VpnGw and legacy Standard/HighPerformance VPN creates; AZ SKUs deploy in every region) -- the ER_GW/ULTRA_PERFORMANCE SKUs are ExpressRoute-only
 - `express_route_sku_vocabulary`: ExpressRoute gateways use STANDARD, HIGH_PERFORMANCE, ULTRA_PERFORMANCE, ER_GW_1_AZ..3_AZ, or ER_GW_SCALE
 - `policy_based_requires_basic_sku`: Policy-based VPN gateways support only the BASIC SKU (legacy IKEv1 -- prefer route-based for anything new)
-- `generation1_sku_vocabulary`: Generation1 VPN gateways use BASIC, STANDARD, HIGH_PERFORMANCE, VPN_GW_1..3, or VPN_GW_1_AZ..3_AZ
-- `generation2_sku_vocabulary`: Generation2 VPN gateways start at VPN_GW_2: use VPN_GW_2..5 or VPN_GW_2_AZ..5_AZ
+- `generation1_sku_vocabulary`: Generation1 VPN gateways use BASIC or VPN_GW_1_AZ..3_AZ
+- `generation2_sku_vocabulary`: Generation2 VPN gateways start at VPN_GW_2_AZ: use VPN_GW_2_AZ..5_AZ
 - `generation_is_vpn_only`: The generation knob applies to VPN gateways only -- leave it unset (or NONE) on ExpressRoute gateways
 - `express_route_gateway_has_no_public_ips`: ExpressRoute gateways get Azure-managed addressing -- remove public_ip_address_id from every ip_configuration
 - `vpn_gateway_requires_public_ips`: VPN gateways require a public IP on every ip_configuration (tunnels terminate on it)

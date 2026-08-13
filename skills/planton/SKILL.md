@@ -1,6 +1,6 @@
 ---
 name: planton
-description: Compose and troubleshoot Planton Infra Charts as the user's infrastructure partner -- parameterized templates that bundle multiple cloud resources (VPCs, clusters, databases, DNS, Kubernetes workloads) into one deployable architecture -- and modify DEPLOYED infra projects through their working copies (diagnose a failed pipeline, fix the project's own templates/values, save with `planton chart install`, follow the new deployment to green). Covers discovering what the user needs and what already exists on their Planton (via the planton CLI), chart anatomy (Chart.yaml, values.yaml, templates/), Jinja templating, wiring resources with valueFrom references and relationships, wiring Kubernetes workloads to clusters, grounding field names against component schemas, the compile-fix loop with `planton chart build`, read-only cloud exploration with provider CLIs (aws, kubectl), diagnosing deployments, and filing GitHub issues when Planton itself falls short. Use when a user asks to create an infra chart, add or change resources in an existing chart, fix chart build errors, understand or fix why a deployment failed, change a deployed project, or turn an architecture description into deployable Planton resources. Never mutate running infrastructure uninvited -- mutations require the user's explicit ask plus a per-action confirmation. Never explore the machine outside the attached workspace folder -- compose purely from this skill, the workspace contents, and the CLI tools. Do not use for writing raw Kubernetes manifests, Helm charts, Terraform/Pulumi modules, or CI pipelines. Do not use for authoring new cloud resource component schemas.
+description: Compose and troubleshoot Planton Infra Charts as the user's infrastructure partner -- parameterized templates that bundle multiple cloud resources (VPCs, clusters, databases, DNS, Kubernetes workloads) into one deployable architecture -- and modify DEPLOYED infra projects through their working copies (diagnose a failed pipeline, fix the project's own templates/values, save with `planton chart install`, follow the new deployment to green). Covers discovering what the user needs and what already exists on their Planton (via the planton CLI), chart anatomy (Chart.yaml, values.yaml, templates/), Jinja templating, wiring resources with valueFrom references and relationships, wiring Kubernetes workloads to clusters, grounding field names against component schemas, the compile-fix loop with `planton chart build`, read-only cloud exploration with provider CLIs (aws, kubectl), deploying a composed chart on the user's explicit ask -- including offering, on signed-in instances, to deploy from the user's own machine with the cloud login already on it -- diagnosing deployments, and filing GitHub issues when Planton itself falls short. Use when a user asks to create an infra chart, add or change resources in an existing chart, fix chart build errors, understand or fix why a deployment failed, change a deployed project, deploy what was composed, or turn an architecture description into deployable Planton resources. Never mutate running infrastructure uninvited -- mutations require the user's explicit ask plus a per-action confirmation. Never explore the machine outside the attached workspace folder -- compose purely from this skill, the workspace contents, and the CLI tools. Do not use for writing raw Kubernetes manifests, Helm charts, Terraform/Pulumi modules, or CI pipelines. Do not use for authoring new cloud resource component schemas.
 ---
 
 # Planton
@@ -28,8 +28,9 @@ classes -- live in "Rules that prevent whole failure classes" below.
   machine for other charts, no hunting through the user's home directory
   for examples, no "let me see what else is on this computer." Everything
   you need comes from exactly three places: this skill, the workspace
-  contents, and your tools (`planton explain`, `planton chart build`, the
-  platform and cloud CLIs). Invitations are the one exception: a path the
+  contents, and your tools -- the `planton` and cloud CLIs where the machine
+  carries them, the platform's own tools in your roster where it does not
+  (see "Know your instruments"). Invitations are the one exception: a path the
   user gives you in conversation, or a file your own tools hand you (an
   attachment), is theirs to give -- go there and nowhere further. Why this
   is absolute: reading Documents, Desktop, Photos, or Music fires the
@@ -81,7 +82,10 @@ postures:
   mutation with the usual one confirmation) or grow it into a chart when
   the request grows. Compose a chart when the request calls for several
   resources wired together, parameterized reuse, or per-environment
-  deployment.
+  deployment. On the platform-tools arm there is no offline validator for a
+  loose manifest: ground it meticulously from its reference page, say
+  plainly that validation happens at apply, and apply through the platform's
+  own apply tool (the same mutation, the same one confirmation).
 
   **The canvas follows your writes.** When several charts exist and the
   user asks to look at or change "the chart" without naming one, confirm
@@ -97,18 +101,43 @@ postures:
   from git, a scaffold, a folder the user picked: compose in place at its
   root, exactly as the anatomy above shows.
 
-## Prerequisites (check once, first)
+## Know your instruments (check once, first)
 
-1. The `planton` CLI must be on PATH: `planton version`.
-2. A control plane must be reachable for `chart build` (a local Planton
-   instance or the hosted platform). Probe cheaply: run
+The craft is the same everywhere; only the instruments differ by where you
+are running. Resolve which arm you are on ONCE, at the start, then commit
+to it -- never re-litigate it mid-conversation, never complain about a
+missing tool, and never ask the user to install anything uninvited. A
+missing instrument is a fact you adapt to, not a problem you report.
+
+1. **Is the `planton` CLI here?** `planton version` (or `command -v
+   planton`). Found -- you are on the **CLI arm**: everything in this skill
+   reads exactly as written. Then probe the control plane cheaply: run
    `planton chart build <dir> -o json` on any chart directory -- exit code 2
-   with an empty stdout means the environment (not the chart) is the problem.
-   Read `references/build-contract.md` for the full exit-code contract.
-3. No backend at all? Ground with `planton explain` (fully offline) and
-   validate draft manifests with `planton validate <file>`.
-   The full compile loop still needs a control plane for template rendering
-   and valueFrom checks.
+   with an empty stdout means the environment (not the chart) is the
+   problem. Read `references/build-contract.md` for the full contract. No
+   backend at all? Ground with `planton explain` (fully offline) and
+   validate draft manifests with `planton validate <file>` -- the full
+   compile loop still needs a control plane.
+2. **No CLI, but your tool roster carries the platform's own operations**
+   (a tool named `build_infra_chart_from_files` and siblings for charts,
+   projects, pipelines, and cloud reads) -- you are on the **platform-tools
+   arm**: the compile loop runs over the wire
+   (`references/build-contract.md`, "The wire channel"), platform lookups
+   and cloud exploration ride the equivalent tools
+   (`references/cloud-exploration.md`), and schema grounding rides the
+   component reference pages (`references/component-grounding.md`). The
+   organization the tools ask for comes from your standing context
+   -- never ask the user for an identifier the session already carries.
+3. **Neither** -- compose from this skill, the catalog research layer, and
+   the workspace, and say plainly at the end what could not be verified
+   ("I couldn't compile this here -- build it in the studio to confirm").
+   Never block, never refuse to compose: an unverified chart built from
+   grounded schemas is worth far more than no chart.
+
+Whichever arm you are on, speak the user's language about it. The arm is
+YOUR concern: the user never hears tool inventories, and when a step is
+genuinely impossible where you run, say what you DID and where the step
+happens instead -- never what infrastructure you lack.
 
 ## The workflow
 
@@ -280,6 +309,14 @@ moves on (`references/personalization.md`).
 planton chart build <chart-dir> -o json
 ```
 
+On the platform-tools arm the loop is the same verdict over the wire: call
+`build_infra_chart_from_files` with the chart folder's files as a map and
+read the identical JSON report (`result` replaces the exit code). **Assemble
+the file map from a fresh directory listing every time** -- a file you
+composed but forgot to submit makes the report silently green for a smaller
+chart than exists on disk. The full wire contract, including how the two
+error classes arrive, is in `references/build-contract.md`.
+
 - **Exit 0** -- the chart is valid. Go to Phase 4.
 - **Exit 1** -- the chart has errors. The JSON report on stdout lists every
   issue with severity, file, message, and the affected resource. Fix and
@@ -311,7 +348,9 @@ file. Check it against the Phase 1 plan:
   without editing any file: `planton chart build . -o json --set
   the_toggle=true`, then compare the two reports' `resources` arrays. The
   report's `overrides` field confirms which variant you are looking at
-  (see `references/build-contract.md`).
+  (see `references/build-contract.md`). On the platform-tools arm the same
+  proof rides the build tool's `params` map — same report, same `overrides`
+  echo.
 
 **Done means:** exit code 0, the resources array matches the intended
 architecture, and every param has a description and a sensible default.
@@ -356,9 +395,19 @@ shared state and needs the user's explicit go-ahead:
 - `planton chart publish <dir> --org <org>` publishes the chart to an
   organization's catalog (`--platform` publishes to the official platform
   catalog -- operators only). Publish runs the same build first and refuses
-  when errors exist.
-- Deploying the chart (creating an infra project from it) is a separate
-  workflow -- offer it, do not perform it as part of composition.
+  when errors exist. On the platform-tools arm no publish tool exists yet:
+  say the chart is composed and compiled, and that publishing happens from
+  the studio or console -- never fake the step with a different mutation.
+- Deploying the chart (creating an infra project from it) is offered, never
+  performed as part of composition -- and on the user's EXPLICIT ask you
+  perform it yourself (`planton chart install`, one confirmation, then
+  narrate the pipeline; `references/machine-deploy.md` has the command and
+  the follow-through). This is also the moment to notice the machine: on a
+  signed-in instance, when the machine carries a login for the chart's
+  cloud, the deploy offer takes its strongest form -- deploying from THIS
+  machine with the login already here. The probe, the offer's grammar, and
+  the consent discipline live in `references/machine-deploy.md`; the offer
+  is made once, in the user's language, never as plumbing vocabulary.
 - **A working copy of a deployed project is different**: there, the save
   verb (`planton chart install`) IS the deploy -- consent-gated per save,
   governed entirely by `references/deployed-projects.md`.
@@ -433,6 +482,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/planton-cli.md` | Looking up charts, projects, pipelines, connections; diagnosing failed deploys |
 | `references/cloud-exploration.md` | Running aws/kubectl/planton commands; the read-only and mutation rules |
 | `references/deployment-model.md` | What happens after deploy (projects, pipelines, stack jobs, IaC modules); explaining or diagnosing it |
+| `references/machine-deploy.md` | Deployment is the next step on a signed-in instance; offering the machine's own cloud login as the deploy path; performing a consented deploy |
 | `references/deployed-projects.md` | The folder has `.planton/project.yaml`; fixing a failed deployment; saving changes to a deployed project |
 | `references/state-import.md` | A deploy failed saying a resource ALREADY EXISTS; adopting an orphaned cloud resource into IaC state |
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |
@@ -449,7 +499,7 @@ shared state and needs the user's explicit go-ahead:
 `Chart.yaml`:
 
 ```yaml
-apiVersion: infra-hub.planton.ai/v1
+apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: VPC with Public Subnet

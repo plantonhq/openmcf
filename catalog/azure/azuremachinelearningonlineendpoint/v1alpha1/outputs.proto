@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningonlineendpoint.v1alpha1;
+
+// **AzureMachineLearningOnlineEndpointStackOutputs** captures the
+// outputs of provisioning a Machine Learning online endpoint.
+//
+// Scoring keys are deliberately NOT outputs: ARM never returns key
+// values on any read (retrieval is the separate listKeys action, an
+// extra live ARM call on every refresh), and the spec's
+// initial_auth_keys block already lets a deployment bring its own
+// keys from a secret store. Read service-minted keys with
+// `az ml online-endpoint get-credentials`.
+message AzureMachineLearningOnlineEndpointStackOutputs {
+  // The Azure Resource Manager ID of the online endpoint.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{ws}/onlineEndpoints/{name}
+  string online_endpoint_id = 1;
+
+  // The endpoint's name -- what deployments attach to and what the
+  // traffic map's keys route across.
+  string online_endpoint_name = 2;
+
+  // The HTTPS address applications POST scoring requests to.
+  string scoring_uri = 3;
+
+  // The endpoint's OpenAPI (Swagger) document address -- the scoring
+  // request/response schema.
+  string swagger_uri = 4;
+
+  // The principal (object) ID of the endpoint's system-assigned
+  // identity, when one is enabled -- what registry / storage grants
+  // bind to so deployments can pull images and models.
+  string system_assigned_identity_principal_id = 5;
+}

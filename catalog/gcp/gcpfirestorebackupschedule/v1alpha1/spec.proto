@@ -79,6 +79,20 @@ message GcpFirestoreBackupScheduleSpec {
   // weekly_recurrence must be set. Immutable after creation.
   GcpFirestoreBackupScheduleWeeklyRecurrence weekly_recurrence = 5;
 
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the schedule is deleted (backups already taken
+  //                outlive it either way, aging out per retention)
+  //   "PREVENT" -- destroy FAILS; protects a compliance-mandated backup
+  //                cadence from accidental teardown
+  //   "ABANDON" -- the schedule is removed from management but keeps
+  //                taking backups in GCP
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+
   // The API accepts exactly one recurrence shape per schedule — a
   // database gets the daily-plus-weekly pattern by composing two
   // schedule resources.

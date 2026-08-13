@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGatewayConnection
+metadata:
+  name: my-branch-connection
+spec:
+  name: my-branch-connection
+  vpnGatewayId:
+    value: "<your-vpn-gateway-arm-id>"
+  remoteVpnSiteId:
+    value: "<your-vpn-site-arm-id>"
+  vpnLinks:
+    - name: primary-isp
+      vpnSiteLinkId:
+        value: "<your-vpn-site-link-arm-id>"

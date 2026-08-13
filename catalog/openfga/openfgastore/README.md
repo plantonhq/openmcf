@@ -125,7 +125,7 @@ After creating a store, you typically need to:
 2. **Write relationship tuples**: Add the actual authorization data
 3. **Check permissions**: Query the system to check if a user has access
 
-These will be available as separate deployment components:
+These will be available as separate components:
 - `OpenFgaAuthorizationModel` (coming soon)
 - `OpenFgaTuple` (coming soon)
 

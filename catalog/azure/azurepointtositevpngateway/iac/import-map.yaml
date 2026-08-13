@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurepointtositevpngateway
+spec:
+  # The gateway's identity is its full ARM resource ID. Connection
+  # configurations (client pools and their routing) are inline
+  # properties of the gateway, so the single ID imports the whole
+  # object.
+  values:
+    - name: point_to_site_vpn_gateway_id
+      derivations:
+        - from_stack_output: point_to_site_vpn_gateway_id
+      where_to_find: >-
+        Portal -> Virtual WAN -> Hubs -> the hub -> VPN (Point to
+        site) -> Gateway configuration -> Properties -> Resource ID,
+        or `az network p2s-vpn-gateway show -g <rg> -n <name> --query
+        id`.

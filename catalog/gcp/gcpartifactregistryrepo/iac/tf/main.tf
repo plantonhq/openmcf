@@ -33,6 +33,11 @@ resource "google_artifact_registry_repository" "this" {
   description   = local.description
   labels        = local.final_labels
 
+  # DELETE (provider default) removes the repository and every artifact
+  # in it on destroy; PREVENT fails the destroy; ABANDON leaves it
+  # serving artifacts.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # CMEK: the Artifact Registry service agent must hold
   # roles/cloudkms.cryptoKeyEncrypterDecrypter on this key before create.
   kms_key_name = local.kms_key_name

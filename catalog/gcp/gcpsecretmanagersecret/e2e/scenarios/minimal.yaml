@@ -1,0 +1,34 @@
+# Minimal GcpSecretManagerSecret scenario: the canonical one-manifest-to-
+# readable-secret shape — automatic replication (replication omitted),
+# version 1 seeded, and a secretAccessor grant to the service-account
+# prerequisite fixture (the registry prerequisite). project_id is
+# deliberately omitted (the harness-exported test project applies).
+# Secret IDs are project-scoped and hard-deleted (no soft-delete
+# reservation window), so a fixed name is safe across runs and engines.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSecretManagerSecret
+metadata:
+  name: planton-oss-e2e-gcpsecret-smoke
+  id: planton-oss-e2e-gcpsecret-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpsecretmanagersecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  initialVersion:
+    data:
+      value: planton-e2e-smoke-payload
+  iamMembers:
+    - role: roles/secretmanager.secretAccessor
+      member:
+        valueFrom:
+          kind: GcpServiceAccount
+          name: planton-oss-e2e-gsa-prereq
+          fieldPath: status.outputs.member
+  labels:
+    e2e-arm: minimal

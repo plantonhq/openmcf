@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccountProject
+metadata:
+  name: test-cognitive-account-project
+spec:
+  cognitiveAccountId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.CognitiveServices/accounts/acme-foundry-test
+  name: customer-support
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  displayName: Customer Support
+  description: Agents and evaluations for the customer-support team.

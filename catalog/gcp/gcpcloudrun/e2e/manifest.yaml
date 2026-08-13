@@ -1,6 +1,8 @@
 # Development manifest for GcpCloudRun — exercises a broad slice of the spec
-# (sidecar with startup ordering, secret env, Cloud SQL volume, probes,
-# scaling, traffic split, direct VPC egress) for offline plan verification.
+# (sidecar with startup ordering, secret env, Cloud SQL volume, all three
+# probe types, scaling with the service-wide max, traffic split, direct VPC
+# egress, annotations at both object levels, sub_path mounts, and the
+# teardown policy) for offline plan verification.
 #
 # Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrun/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
@@ -17,6 +19,12 @@ spec:
   description: Development service exercising the full template surface
   labels:
     team: platform
+  annotations:
+    external-tool/owner: platform-team
+  revisionLabels:
+    cost-center: "1234"
+  revisionAnnotations:
+    external-tool/trace: enabled
   containers:
     - name: app
       image: us-docker.pkg.dev/cloudrun/container/hello:latest
@@ -36,11 +44,19 @@ spec:
       volumeMounts:
         - name: cloudsql
           mountPath: /cloudsql
+        - name: assets
+          mountPath: /media
+          subPath: static
       startupProbe:
         periodSeconds: 5
         httpGet:
           path: /
       livenessProbe:
+        httpGet:
+          path: /
+      readinessProbe:
+        periodSeconds: 10
+        successThreshold: 2
         httpGet:
           path: /
       dependsOn:
@@ -52,9 +68,19 @@ spec:
       cloudSqlInstance:
         instances:
           - value: my-project:us-central1:hack-db
+    - name: assets
+      gcs:
+        bucket:
+          value: hack-assets-bucket
+        readOnly: true
+        mountOptions:
+          - implicit-dirs
+          - only-dir=media
   scaling:
     minInstanceCount: 0
     maxInstanceCount: 10
+  serviceScaling:
+    maxInstanceCount: 20
   maxInstanceRequestConcurrency: 80
   timeoutSeconds: 300
   executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
@@ -74,3 +100,4 @@ spec:
     - type: TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST
       percent: 100
   deletionProtection: false
+  deletionPolicy: DELETE

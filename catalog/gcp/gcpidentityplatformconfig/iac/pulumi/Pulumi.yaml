@@ -1,0 +1,4 @@
+name: gcpidentityplatformconfig-pulumi-project
+runtime:
+  name: go
+description: Planton GcpIdentityPlatformConfig Pulumi module

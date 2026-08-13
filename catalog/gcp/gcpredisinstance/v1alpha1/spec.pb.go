@@ -9,6 +9,7 @@ package gcpredisinstancev1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -37,7 +38,11 @@ type GcpRedisInstanceMaintenanceWindow struct {
 	// Combined with hour, this pins the window start to the exact minute —
 	// useful for coordinating with maintenance windows of dependent systems
 	// (e.g. start Redis maintenance 30 minutes after the database's window).
-	Minute        int32 `protobuf:"varint,3,opt,name=minute,proto3" json:"minute,omitempty"`
+	Minute int32 `protobuf:"varint,3,opt,name=minute,proto3" json:"minute,omitempty"`
+	// Human-readable description of what this maintenance policy is for
+	// (e.g. "post-midnight window, after the nightly batch completes").
+	// Maximum 512 characters — the API rejects longer descriptions.
+	Description   string `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -91,6 +96,13 @@ func (x *GcpRedisInstanceMaintenanceWindow) GetMinute() int32 {
 		return x.Minute
 	}
 	return 0
+}
+
+func (x *GcpRedisInstanceMaintenanceWindow) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 // GcpRedisInstancePersistenceConfig controls RDB snapshot persistence for
@@ -298,8 +310,29 @@ type GcpRedisInstanceSpec struct {
 	// If not specified, data is encrypted with Google-managed keys.
 	// Immutable after creation.
 	CustomerManagedKey *v1.StringValueOrRef `protobuf:"bytes,22,opt,name=customer_managed_key,json=customerManagedKey,proto3" json:"customer_managed_key,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// User-defined labels to organize and track the instance, for cost
+	// attribution and fleet queries. Merged beneath Planton's platform
+	// attribution labels (platform keys win on conflict).
+	Labels map[string]string `protobuf:"bytes,23,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Whether deletion protection is enabled. When true (the default —
+	// matching GCP's safety posture for stateful stores), destroying the
+	// instance fails until this is explicitly set to false. Both IaC
+	// engines send the value explicitly so destroy behavior is identical
+	// regardless of engine.
+	DeletionProtection *bool `protobuf:"varint,24,opt,name=deletion_protection,json=deletionProtection,proto3,oneof" json:"deletion_protection,omitempty"`
+	// Deletion policy for the instance — what happens when this resource
+	// is destroyed (evaluated only after deletion_protection allows the
+	// destroy at all):
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the instance is deleted; all in-memory data is lost
+	//	"PREVENT" -- destroy FAILS; a second, independent guard for a
+	//	             cache whose loss would stampede the backing store
+	//	"ABANDON" -- the instance is removed from management but left
+	//	             running (and billing) in GCP with its data intact
+	DeletionPolicy string `protobuf:"bytes,25,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpRedisInstanceSpec) Reset() {
@@ -486,15 +519,37 @@ func (x *GcpRedisInstanceSpec) GetCustomerManagedKey() *v1.StringValueOrRef {
 	return nil
 }
 
+func (x *GcpRedisInstanceSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpRedisInstanceSpec) GetDeletionProtection() bool {
+	if x != nil && x.DeletionProtection != nil {
+		return *x.DeletionProtection
+	}
+	return false
+}
+
+func (x *GcpRedisInstanceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpredisinstance/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpredisinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc1\x01\n" +
+	"0catalog/gcp/gcpredisinstance/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpredisinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xed\x01\n" +
 	"!GcpRedisInstanceMaintenanceWindow\x12Z\n" +
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\x12\x1d\n" +
 	"\x04hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\x04hour\x12!\n" +
-	"\x06minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\x06minute\"\xfd\a\n" +
+	"\x06minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\x06minute\x12*\n" +
+	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\"\xfd\a\n" +
 	"!GcpRedisInstancePersistenceConfig\x12B\n" +
 	"\x10persistence_mode\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0fR\bDISABLEDR\x03RDBR\x0fpersistenceMode\x12\x85\x02\n" +
 	"\x13rdb_snapshot_period\x18\x02 \x01(\tB\xd4\x01\xbaH\xd0\x01\xba\x01\xcc\x01\n" +
@@ -502,7 +557,7 @@ const file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17rdb_snapshot_start_time\x18\x03 \x01(\tB\xe1\x01\xbaH\xdd\x01\xba\x01\xd9\x01\n" +
 	"\x1frdb_snapshot_start_time_rfc3339\x12Rrdb_snapshot_start_time must be an RFC3339 UTC timestamp like 2014-10-02T15:01:23Z\x1abthis == '' || this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?Z$')R\x14rdbSnapshotStartTime:\xef\x02\xbaH\xeb\x02\x1a\xab\x01\n" +
 	"%rdb_snapshot_period_requires_rdb_mode\x12<rdb_snapshot_period is required when persistence_mode is RDB\x1aDthis.persistence_mode != 'RDB' || size(this.rdb_snapshot_period) > 0\x1a\xba\x01\n" +
-	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xaa\x17\n" +
+	")rdb_snapshot_start_time_requires_rdb_mode\x12Grdb_snapshot_start_time is only meaningful when persistence_mode is RDB\x1aDthis.rdb_snapshot_start_time == '' || this.persistence_mode == 'RDB'\"\xe0\x1a\n" +
 	"\x14GcpRedisInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12Q\n" +
@@ -532,14 +587,22 @@ const file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1eread_replicas_mode_valid_value\x12Jread_replicas_mode must be READ_REPLICAS_DISABLED or READ_REPLICAS_ENABLED\x1aIthis == '' || this in ['READ_REPLICAS_DISABLED', 'READ_REPLICAS_ENABLED']R\x10readReplicasMode\x12#\n" +
 	"\rreplica_count\x18\x14 \x01(\x05R\freplicaCount\x12{\n" +
 	"\x12persistence_config\x18\x15 \x01(\v2L.dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstancePersistenceConfigR\x11persistenceConfig\x12\x84\x01\n" +
-	"\x14customer_managed_key\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x1a?\n" +
+	"\x14customer_managed_key\x18\x16 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x12customerManagedKey\x12c\n" +
+	"\x06labels\x18\x17 \x03(\v2K.dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.LabelsEntryR\x06labels\x12>\n" +
+	"\x13deletion_protection\x18\x18 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x19 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a?\n" +
 	"\x11RedisConfigsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdc\x06\xbaH\xd8\x06\x1a\xb5\x01\n" +
 	"\x1dread_replicas_require_ha_tier\x12Bread_replicas_mode READ_REPLICAS_ENABLED requires tier STANDARD_HA\x1aPthis.read_replicas_mode != 'READ_REPLICAS_ENABLED' || this.tier == 'STANDARD_HA'\x1a\xb1\x02\n" +
 	",replica_count_requires_ha_with_read_replicas\x12[replica_count (1-5) requires tier STANDARD_HA with read_replicas_mode READ_REPLICAS_ENABLED\x1a\xa3\x01this.replica_count == 0 || (this.tier == 'STANDARD_HA' && this.read_replicas_mode == 'READ_REPLICAS_ENABLED' && this.replica_count >= 1 && this.replica_count <= 5)\x1a\xa9\x01\n" +
 	"%alternative_location_requires_ha_tier\x12>alternative_location_id is only applicable to STANDARD_HA tier\x1a@this.alternative_location_id == '' || this.tier == 'STANDARD_HA'\x1a\xbd\x01\n" +
-	" alternative_location_must_differ\x12Aalternative_location_id must be a different zone from location_id\x1aVthis.alternative_location_id == '' || this.alternative_location_id != this.location_idB\xe0\x02\n" +
+	" alternative_location_must_differ\x12Aalternative_location_id must be a different zone from location_id\x1aVthis.alternative_location_id == '' || this.alternative_location_id != this.location_idB\x16\n" +
+	"\x14_deletion_protectionB\xe0\x02\n" +
 	"-com.dev.planton.gcp.gcpredisinstance.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/gcp/gcpredisinstance/v1alpha1;gcpredisinstancev1alpha1\xa2\x02\x04DPGG\xaa\x02)Dev.Planton.Gcp.Gcpredisinstance.V1alpha1\xca\x02)Dev\\Planton\\Gcp\\Gcpredisinstance\\V1alpha1\xe2\x025Dev\\Planton\\Gcp\\Gcpredisinstance\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Gcp::Gcpredisinstance::V1alpha1b\x06proto3"
 
 var (
@@ -554,26 +617,28 @@ func file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDescGZIP() []byte 
 	return file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpRedisInstanceMaintenanceWindow)(nil), // 0: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceMaintenanceWindow
 	(*GcpRedisInstancePersistenceConfig)(nil), // 1: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstancePersistenceConfig
 	(*GcpRedisInstanceSpec)(nil),              // 2: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec
 	nil,                                       // 3: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.RedisConfigsEntry
-	(*v1.StringValueOrRef)(nil),               // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                       // 4: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),               // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.authorized_network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 0: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 1: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.authorized_network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 2: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.redis_configs:type_name -> dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.RedisConfigsEntry
 	0, // 3: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.maintenance_window:type_name -> dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceMaintenanceWindow
 	1, // 4: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.persistence_config:type_name -> dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstancePersistenceConfig
-	4, // 5: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.customer_managed_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 5: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.customer_managed_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.labels:type_name -> dev.planton.gcp.gcpredisinstance.v1alpha1.GcpRedisInstanceSpec.LabelsEntry
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_init() }
@@ -581,13 +646,14 @@ func file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_init() {
 	if File_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpredisinstance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

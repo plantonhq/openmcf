@@ -70,6 +70,14 @@ var _ = ginkgo.Describe("GcpCertManagerDnsAuthorizationSpec Validation Tests", f
 			input.Spec.Labels = map[string]string{"team": "platform"}
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
+
+		ginkgo.It("should accept each deletion_policy value", func() {
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				input := baseAuthorization()
+				input.Spec.DeletionPolicy = v
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
 	})
 
 	ginkgo.Describe("Invalid configurations", func() {
@@ -101,6 +109,12 @@ var _ = ginkgo.Describe("GcpCertManagerDnsAuthorizationSpec Validation Tests", f
 		ginkgo.It("should reject an invalid type", func() {
 			input := baseAuthorization()
 			input.Spec.Type = "SHARED_RECORD"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid deletion_policy", func() {
+			input := baseAuthorization()
+			input.Spec.DeletionPolicy = "KEEP"
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
 	})

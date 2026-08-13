@@ -11,12 +11,15 @@ import (
 func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider, projectService pulumi.Resource) error {
 	spec := locals.GcpCloudArmorPolicy.Spec
 
-	// PARITY: no Labels are sent — google_compute_security_policy has no
-	// labels attribute on the released `google ~> 6.0` line the Terraform
-	// module pins, so setting them here would be intent only one engine
-	// honors. Same for advanced_options_config.request_body_inspection_size.
 	args := &compute.SecurityPolicyArgs{
-		Name: pulumi.String(locals.PolicyName),
+		Name:   pulumi.String(locals.PolicyName),
+		Labels: pulumi.ToStringMap(locals.GcpLabels),
+	}
+
+	// What destroy does to the WAF shield: DELETE (default), PREVENT
+	// (refuse), or ABANDON (drop from state, keep enforcing).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Empty project falls back to the provider's default project — the same
@@ -63,6 +66,10 @@ func securityPolicy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		}
 		if len(aoc.UserIpRequestHeaders) > 0 {
 			advArgs.UserIpRequestHeaders = toPulumiStringArray(aoc.UserIpRequestHeaders)
+		}
+		// How much of each request body the WAF inspects (8KB default).
+		if aoc.RequestBodyInspectionSize != "" {
+			advArgs.RequestBodyInspectionSize = pulumi.StringPtr(aoc.RequestBodyInspectionSize)
 		}
 		if aoc.JsonCustomConfig != nil {
 			advArgs.JsonCustomConfig = &compute.SecurityPolicyAdvancedOptionsConfigJsonCustomConfigArgs{

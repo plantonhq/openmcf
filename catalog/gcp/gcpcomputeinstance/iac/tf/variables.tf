@@ -44,7 +44,9 @@ variable "spec" {
       auto_delete     = optional(bool)
       device_name     = optional(string, "")
       kms_key         = optional(string, "")
-      disk_labels     = optional(map(string), {})
+      # CMEK request identity; only meaningful with kms_key.
+      kms_key_service_account = optional(string, "")
+      disk_labels             = optional(map(string), {})
       # Hyperdisk tuning; null for pd-* types.
       provisioned_iops       = optional(number)
       provisioned_throughput = optional(number)
@@ -53,6 +55,24 @@ variable "spec" {
       enable_confidential_compute = optional(bool, false)
       resource_policies           = optional(list(string), [])
       storage_pool                = optional(string, "")
+      mode                        = optional(string, "")
+      # Google-advice-only attachment interface; leave unset normally.
+      interface = optional(string, "")
+      # Regional-disk takeover; ForceNew.
+      force_attach      = optional(bool, false)
+      guest_os_features = optional(list(string), [])
+      # Exactly two zones converts the boot disk to a regional disk.
+      replica_zones         = optional(list(string), [])
+      resource_manager_tags = optional(map(string), {})
+      # CMEK decryption of an encrypted source image/snapshot.
+      source_image_encryption = optional(object({
+        kms_key                 = string
+        kms_key_service_account = optional(string, "")
+      }), null)
+      source_snapshot_encryption = optional(object({
+        kms_key                 = string
+        kms_key_service_account = optional(string, "")
+      }), null)
     })
 
     # Existing GcpComputeDisk attachments (source is the resolved disk
@@ -62,6 +82,10 @@ variable "spec" {
       device_name = optional(string, "")
       mode        = optional(string, "")
       kms_key     = optional(string, "")
+      # CMEK request identity; only meaningful with kms_key.
+      kms_key_service_account = optional(string, "")
+      # Regional-disk takeover; ForceNew.
+      force_attach = optional(bool, false)
     })), [])
 
     # Ephemeral local SSDs. Create-time only.
@@ -76,6 +100,9 @@ variable "spec" {
       network            = optional(string, "")
       subnetwork         = optional(string, "")
       subnetwork_project = optional(string, "")
+      # Private Service Connect network attachment URL — an
+      # attachment-only interface is legal (no network/subnetwork).
+      network_attachment = optional(string, "")
       # Static internal IP (resolved GcpAddress or literal IP).
       network_ip = optional(string, "")
       # At most one; presence grants an external IPv4.
@@ -88,10 +115,21 @@ variable "spec" {
       ipv6_access_configs = optional(list(object({
         network_tier           = string
         public_ptr_domain_name = optional(string, "")
+        # Pin a static external IPv6 (first address of the range).
+        external_ipv6               = optional(string, "")
+        external_ipv6_prefix_length = optional(string, "")
+        name                        = optional(string, "")
       })), [])
       stack_type  = optional(string, "")
       nic_type    = optional(string, "")
       queue_count = optional(number)
+      # VLAN tag (2-255) marking a dynamic sub-interface.
+      vlan = optional(number)
+      # IGMP multicast query mode.
+      igmp_query = optional(string, "")
+      # Static internal IPv6 + its range prefix length.
+      ipv6_address                = optional(string, "")
+      internal_ipv6_prefix_length = optional(number)
       alias_ip_ranges = optional(list(object({
         ip_cidr_range         = string
         subnetwork_range_name = optional(string, "")
@@ -173,5 +211,14 @@ variable "spec" {
     desired_status             = optional(string, "")
     allow_stopping_for_update  = optional(bool)
     key_revocation_action_type = optional(string, "")
+
+    # Instance-level CMEK (memory and other instance state).
+    instance_encryption_key = optional(object({
+      kms_key                 = string
+      kms_key_service_account = optional(string, "")
+    }), null)
+
+    # Destroy behavior: "" (DELETE) / DELETE / PREVENT / ABANDON.
+    deletion_policy = optional(string, "")
   })
 }

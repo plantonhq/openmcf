@@ -1,6 +1,6 @@
 # AzureMssqlElasticPool - Pulumi Module
 
-Pulumi implementation for the AzureMssqlElasticPool deployment component.
+Pulumi implementation for the AzureMssqlElasticPool component.
 
 ## Architecture
 

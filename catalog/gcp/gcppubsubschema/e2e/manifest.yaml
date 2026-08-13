@@ -19,3 +19,6 @@ spec:
         {"name": "currency", "type": "string"}
       ]
     }
+  # Explicit destroy behavior: DELETE removes the schema with the stack
+  # (PREVENT would refuse; ABANDON would leave it serving unmanaged).
+  deletionPolicy: DELETE

@@ -12,4 +12,11 @@ message GcpPubSubSchemaStackOutputs {
   // The short name of the schema (same as the spec's schema_name input).
   // Useful for display, logging, and human-readable references.
   string schema_name = 2;
+
+  // The current revision ID of the schema (a new one is committed every
+  // time the definition changes). This is the exact value a topic's
+  // schema_settings.first_revision_id / last_revision_id consume —
+  // reference it from GcpPubSubTopic to pin validation to the revision
+  // this deploy produced.
+  string revision_id = 3;
 }

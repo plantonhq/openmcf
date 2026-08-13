@@ -56,6 +56,15 @@ variable "spec" {
     # User labels merged beneath Planton platform labels (platform keys
     # win on conflict).
     labels = optional(map(string), {})
+
+    # ENTERPRISE (GCP default) or ENTERPRISE_PLUS; upgrade in place only.
+    edition = optional(string, "")
+
+    # Resource Manager tags (tagKeys/{id} -> tagValues/{id}); ForceNew.
+    resource_manager_tags = optional(map(string), {})
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

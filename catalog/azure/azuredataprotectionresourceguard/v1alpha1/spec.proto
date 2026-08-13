@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionresourceguard.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDataProtectionResourceGuardSpec** defines a Data Protection
+// Resource Guard (ARM: Microsoft.DataProtection/resourceGuards) --
+// the approval gate behind Multi-User Authorization (MUA): once a
+// backup vault references a guard, privileged vault operations
+// (disabling soft delete, deleting protection, reducing retention)
+// require an approval THROUGH the guard before they execute.
+//
+// **The guard's protection comes from separation of scope**: place it
+// in a resource group (or subscription) a DIFFERENT administrator
+// controls than the vaults it guards. An attacker who compromises the
+// vault's scope then still cannot approve their own destructive
+// operations. A guard in the same scope as its vaults is a speed
+// bump, not a control.
+//
+// **One guard serves many vaults** -- vaults reference the guard by
+// its ARM ID (the classic Recovery Services vault's resource_guard_id
+// field). The guard itself is a free configuration object.
+message AzureDataProtectionResourceGuardSpec {
+  // The Azure region the guard lives in, e.g. "eastus". Changing the
+  // region replaces the guard.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the guard is created in -- ideally one a
+  // DIFFERENT administrator controls than the vaults it guards (that
+  // separation IS the security model). Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The guard's name, unique within its resource group: 1-260
+  // characters (the provider's own rule). Changing the name replaces
+  // the guard.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 260
+    }
+  ];
+
+  // Critical vault operations EXCLUDED from the guard's approval
+  // requirement, as ARM operation names (e.g.
+  // "Microsoft.RecoveryServices/vaults/backupconfig/write"). An
+  // excluded operation executes without an approval. Leave empty to
+  // guard every critical operation (the strongest posture). Updates
+  // in place.
+  repeated string vault_critical_operation_exclusion_list = 4 [(buf.validate.field).repeated.items = {
+    string: {min_len: 1}
+  }];
+
+  // Free-form tags applied to the guard, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 5;
+}

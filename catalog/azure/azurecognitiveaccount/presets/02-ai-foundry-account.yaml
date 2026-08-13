@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccount
+metadata:
+  name: foundry-prod
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: acme-foundry-prod
+  # The multi-service account -- the only kind that supports AI Foundry
+  # projects and agents.
+  kind: AIServices
+  skuName: S0
+  customSubdomainName: acme-foundry-prod
+  # Projects require both of these: management enabled, identity present.
+  projectManagementEnabled: true
+  identity:
+    type: SYSTEM_ASSIGNED

@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpGcsBucketSpec defines the configuration for a Google Cloud Storage
 bucket — the durable object store behind static sites, data lakes, build
 artifacts, backups, and every GCP service that stages data (Dataproc,
@@ -87,6 +89,8 @@ spec:
 | `spec.lifecycleRules[].condition.noncurrentTimeBefore` | `string` |  |  |  |
 | `spec.lifecycleRules[].condition.daysSinceCustomTime` | `int32` |  |  |  |
 | `spec.lifecycleRules[].condition.customTimeBefore` | `string` |  |  |  |
+| `spec.lifecycleRules[].condition.sizeAboveBytes` | `int64` |  |  |  |
+| `spec.lifecycleRules[].condition.sizeBelowBytes` | `int64` |  |  |  |
 | `spec.retentionPolicy` | `GcpGcsBucketRetentionPolicy` |  |  |  |
 | `spec.retentionPolicy.retentionPeriodSeconds` | `int64` | yes |  |  |
 | `spec.retentionPolicy.isLocked` | `bool` |  |  |  |
@@ -128,6 +132,23 @@ spec:
 | `spec.ipFilter.vpcNetworkSources[].allowedIpCidrRanges` | `[]string` | yes |  |  |
 | `spec.ipFilter.allowCrossOrgVpcs` | `bool` |  |  |  |
 | `spec.ipFilter.allowAllServiceAgentAccess` | `bool` |  |  |  |
+| `spec.encryptionEnforcement` | `GcpGcsBucketEncryptionEnforcement` |  |  |  |
+| `spec.encryptionEnforcement.googleManagedRestrictionMode` | `string` |  |  |  |
+| `spec.encryptionEnforcement.customerManagedRestrictionMode` | `string` |  |  |  |
+| `spec.encryptionEnforcement.customerSuppliedRestrictionMode` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
+| `spec.folders` | `[]GcpGcsBucketFolder` |  |  |  |
+| `spec.folders[].name` | `string` | yes |  |  |
+| `spec.folders[].forceDestroy` | `bool` |  |  |  |
+| `spec.managedFolders` | `[]GcpGcsBucketManagedFolder` |  |  |  |
+| `spec.managedFolders[].name` | `string` | yes |  |  |
+| `spec.managedFolders[].forceDestroy` | `bool` |  |  |  |
+| `spec.notifications` | `[]GcpGcsBucketNotification` |  |  |  |
+| `spec.notifications[].topic` | `string \| valueFrom` | yes |  | GcpPubSubTopic (`status.outputs.topic_id`) |
+| `spec.notifications[].payloadFormat` | `string` | yes |  |  |
+| `spec.notifications[].eventTypes` | `[]string` |  |  |  |
+| `spec.notifications[].objectNamePrefix` | `string` |  |  |  |
+| `spec.notifications[].customAttributes` | `map<string, string>` |  |  |  |
 
 ## Field Details
 
@@ -393,6 +414,24 @@ old. A set 0 matches any object with Custom-Time set.
 
 Match objects whose Custom-Time metadata is before this date
 (RFC 3339 date).
+
+### spec.lifecycleRules[].condition.sizeAboveBytes
+
+`int64` · optional (explicit presence)
+
+Match objects LARGER than this many bytes. Combine with
+size_below_bytes for a size band (e.g. transition only large
+artifacts to cold storage).
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.lifecycleRules[].condition.sizeBelowBytes
+
+`int64` · optional (explicit presence)
+
+Match objects SMALLER than this many bytes.
+
+- rule: {"int64":{"gte":"0"}}
 
 ### spec.retentionPolicy
 
@@ -772,9 +811,215 @@ Exempt Google service agents (the identities GCP services act as —
 e.g. the Storage transfer agent) from the IP filter, so managed
 integrations keep working when the filter is Enabled.
 
+### spec.encryptionEnforcement
+
+`GcpGcsBucketEncryptionEnforcement`
+
+Encryption-type enforcement for NEW objects: restrict which encryption
+mechanisms (Google-managed, customer-managed KMS, customer-supplied)
+may be used when writing objects into this bucket. Applies to new
+objects only — existing objects keep their encryption. Mutable in
+place.
+
+### spec.encryptionEnforcement.googleManagedRestrictionMode
+
+`string`
+
+Restriction for Google-managed encryption keys (GMEK) — the default
+encryption objects get when no KMS key applies.
+
+- rule: google_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.encryptionEnforcement.customerManagedRestrictionMode
+
+`string`
+
+Restriction for customer-managed encryption keys (CMEK, Cloud KMS).
+
+- rule: customer_managed_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.encryptionEnforcement.customerSuppliedRestrictionMode
+
+`string`
+
+Restriction for customer-supplied encryption keys (CSEK — raw keys
+provided per request).
+
+- rule: customer_supplied_restriction_mode must be one of: NotRestricted, FullyRestricted
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the bucket is deleted (subject to force_destroy)
+  "PREVENT" -- destroy FAILS; a guard rail for buckets that must
+               never be removed by automation
+  "ABANDON" -- the bucket is removed from management but left
+               running in GCP (an orphan by design — reserve for
+               deliberate hand-offs)
+Mutable in place.
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+### spec.folders
+
+`[]GcpGcsBucketFolder`
+
+Folders to create inside the bucket — REAL directories with atomic
+rename semantics, available only on hierarchical-namespace buckets
+(hierarchical_namespace_enabled, which itself requires uniform
+bucket-level access and is create-time only). Parent folders must be
+listed explicitly: creating "logs/2026/" requires a "logs/" entry too
+— the Storage API does not auto-create missing parents.
+The kind-level deletion_policy applies to each folder resource as
+well as the bucket (PREVENT guards them; ABANDON leaves them behind).
+
+### spec.folders[].name
+
+`string` · required
+
+The folder path, WITH the trailing slash the Storage API requires:
+"logs/", "logs/2026/", "a-b/d-f/". Renaming is atomic on HNS buckets,
+but through this spec a name change is destroy-and-recreate (the
+path is the resource's identity).
+
+The API does NOT auto-create missing parents, so nested paths need
+every ancestor listed as its own entry ("logs/2026/" needs "logs/"
+too) — the modules then create parents before children and delete
+children before parents. Nesting is capped at 5 levels.
+
+- rule: {"required":true,"string":{"pattern":"^([^/]+/){1,5}$"}}
+
+### spec.folders[].forceDestroy
+
+`bool`
+
+If true, destroying this folder first deletes every object under it
+(the provider sweeps the prefix client-side, in parallel), then any
+sub-folders. Defaults to false: destroying a non-empty folder fails
+instead of silently erasing data — same safe posture as the bucket's
+own force_destroy, decided per folder.
+
+### spec.managedFolders
+
+`[]GcpGcsBucketManagedFolder`
+
+Managed folders — permission anchor points inside the bucket. Unlike
+plain folders they exist on ANY bucket with uniform bucket-level
+access (hierarchical namespace not required) and their purpose is
+prefix-scoped IAM: grant a role on "reports/" without granting it on
+the whole bucket. Grants on a managed folder are made through the
+managed-folder IAM surface (composition), not through this kind's
+bucket-level iam_members. The kind-level deletion_policy applies to
+each managed folder as well as the bucket.
+
+### spec.managedFolders[].name
+
+`string` · required
+
+The managed-folder path, WITH the trailing slash the Storage API
+requires: "reports/", "reports/2026/". The path is the resource's
+identity — changing it is destroy-and-recreate. Managed folders are
+independent prefix anchors, not a hierarchy — "reports/2026/" does
+not need a "reports/" managed folder to exist.
+
+- rule: {"required":true,"string":{"pattern":"^([^/]+/)+$"}}
+
+### spec.managedFolders[].forceDestroy
+
+`bool`
+
+If true, the managed folder can be destroyed even while objects live
+under its prefix. Unlike a plain folder's force_destroy this is
+SERVER-side and non-destructive to data: the objects survive and
+simply stop being covered by the managed folder's IAM. Defaults to
+false (destroy fails while the prefix is non-empty).
+
+### spec.notifications
+
+`[]GcpGcsBucketNotification`
+
+Pub/Sub notification configurations: GCS publishes an event to the
+named topic whenever objects change in this bucket — the standard
+trigger surface for event-driven pipelines (Cloud Run, Cloud
+Functions, Eventarc all consume the topic downstream).
+
+HARD PREREQUISITE the API enforces at create time: the project's GCS
+service agent — service-{project_number}@gs-project-accounts.iam.gserviceaccount.com,
+where {project_number} is this kind's project_number output — must
+hold roles/pubsub.publisher on the topic (or project-wide). The agent
+is NOT granted automatically; compose the grant alongside this
+resource (GcpProjectIamMember for project scope, or the topic's own
+IAM surface) exactly like the CMEK key grant for kms_key_name.
+
+### spec.notifications[].topic
+
+`string | valueFrom` · required
+
+The Pub/Sub topic that receives the events, as the FULLY-QUALIFIED
+resource path "projects/{project}/topics/{name}" — the API accepts
+only this form (a bare topic name is rejected). Reference a
+GcpPubSubTopic — its topic_id output is exactly this value. The
+topic may live in a different project than the bucket.
+
+Before creation the project's GCS service agent must hold
+roles/pubsub.publisher on this topic — see the notifications field
+comment on the spec for the composition pattern.
+
+- references: GcpPubSubTopic (`status.outputs.topic_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpPubSubTopic, name: <that resource's name>, fieldPath: status.outputs.topic_id}} -- a bare string does not parse
+
+### spec.notifications[].payloadFormat
+
+`string` · required
+
+The payload attached to each event message:
+  "JSON_API_V1" -- the object's full JSON representation (the common
+                   choice; consumers read metadata without a GET)
+  "NONE"        -- no payload; event attributes only (cheapest)
+
+- rule: payload_format must be one of: JSON_API_V1, NONE
+- rule: {"required":true}
+
+### spec.notifications[].eventTypes
+
+`[]string`
+
+Which object events publish to the topic. Empty means ALL event
+types. Values:
+  "OBJECT_FINALIZE"        -- a new object (or new version) is written
+  "OBJECT_METADATA_UPDATE" -- an object's metadata changed
+  "OBJECT_DELETE"          -- an object (or version) was deleted or
+                              overwritten
+  "OBJECT_ARCHIVE"         -- a live version became noncurrent
+                              (versioned buckets only)
+
+- rule: {"repeated":{"items":{"cel":[{"id":"valid_event_type","message":"event_types entries must be one of: OBJECT_FINALIZE, OBJECT_METADATA_UPDATE, OBJECT_DELETE, OBJECT_ARCHIVE","expression":"this in ['OBJECT_FINALIZE', 'OBJECT_METADATA_UPDATE', 'OBJECT_DELETE', 'OBJECT_ARCHIVE']"}]}}}
+
+### spec.notifications[].objectNamePrefix
+
+`string`
+
+Only objects whose names start with this prefix generate events —
+scope a busy bucket's feed to one subtree (e.g. "uploads/").
+
+### spec.notifications[].customAttributes
+
+`map<string, string>`
+
+Custom key:value attributes stamped onto every event message the
+topic receives — routing hints for subscribers (e.g. env: prod).
+
 ## Validation Rules
 
 - `autoclass_conflicts_with_lifecycle_storage_class`: autoclass and SetStorageClass lifecycle rules both manage storage classes — enable only one transition mechanism
+- `folders_require_hierarchical_namespace`: folders exist only on hierarchical-namespace buckets — enable hierarchical_namespace_enabled (create-time only, and it requires uniform bucket-level access)
+- `managed_folders_require_uniform_access`: managed folders require uniform bucket-level access — enable uniform_bucket_level_access_enabled
+- `folder_names_unique`: folders must not repeat the same path
+- `managed_folder_names_unique`: managed_folders must not repeat the same path
 
 ## Outputs
 
@@ -800,6 +1045,7 @@ Fields that can point at another resource's outputs:
 | `spec.logging.logBucket` | GcpGcsBucket | `status.outputs.bucket_id` |
 | `spec.iamMembers[].member` | GcpServiceAccount | `status.outputs.member` |
 | `spec.ipFilter.vpcNetworkSources[].network` | GcpVpcNetwork | `status.outputs.network_id` |
+| `spec.notifications[].topic` | GcpPubSubTopic | `status.outputs.topic_id` |
 
 ## Referenced By
 
@@ -816,6 +1062,7 @@ Fields on other kinds that can point at this resource:
 | GcpDataprocCluster | `spec.clusterConfig.tempBucket` | `status.outputs.bucket_id` |
 | GcpDataprocCluster | `spec.virtualClusterConfig.stagingBucket` | `status.outputs.bucket_id` |
 | GcpGcsBucket | `spec.logging.logBucket` | `status.outputs.bucket_id` |
+| GcpLoggingSink | `spec.destination.gcsBucket` | `status.outputs.bucket_id` |
 | GcpPubSubSubscription | `spec.cloudStorageConfig.bucket` | `status.outputs.bucket_id` |
 | GcpPubSubTopic | `spec.ingestionDataSourceSettings.cloudStorage.bucket` | `status.outputs.bucket_id` |
 

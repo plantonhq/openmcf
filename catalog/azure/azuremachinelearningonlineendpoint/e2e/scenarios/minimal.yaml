@@ -1,0 +1,37 @@
+# Minimal AzureMachineLearningOnlineEndpoint scenario: a key-auth
+# endpoint with a system identity on the fixture workspace. The
+# endpoint OBJECT is what the lane proves (create, scoring/swagger URI
+# read-back, identity, destroy) -- no deployment attaches in this
+# lane, so the traffic map stays empty and no instance ever bills.
+# The workspace fixture rides the registry prerequisite chain.
+#
+# The cloud-side NAME carries ${E2E_RUN_ID} (metadata names stay
+# stable -- prerequisite FK resolution keys off them): endpoint names
+# are reserved REGION-WIDE per subscription, so a fixed name would
+# collide with the run's other engine and with recent runs.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineEndpoint
+metadata:
+  name: planton-oss-e2e-azuremachinelearningonlineendpoint-smoke
+  id: planton-oss-e2e-azuremachinelearningonlineendpoint-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningonlineendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: oe-${E2E_RUN_ID}
+  region: eastus
+  authMode: Key
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: smoke

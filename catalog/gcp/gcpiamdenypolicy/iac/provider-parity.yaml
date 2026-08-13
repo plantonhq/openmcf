@@ -1,0 +1,31 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One resource. The provider's parent argument takes a URL-ENCODED full
+# resource name; the spec models it as a typed scope message (project /
+# folder / organization, empty = the provider's default project) whose
+# three arms FAN IN to the one rendered parent -- the module assembles the
+# encoded string so manifests never hand-assemble it.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_iam_deny_policy:
+    mappings:
+      # The policy's resource ID -- named policy_name in the spec (the
+      # LoggingSink sink_name grain; `name` alone would shadow
+      # metadata.name), defaulting to metadata.name in the module.
+      - spec: spec.policy_name
+        arg: name
+
+      # Parent fan-in: each scope arm renders into the one URL-encoded
+      # full-resource-name parent.
+      - spec: spec.parent.project_id
+        arg: parent
+      - spec: spec.parent.folder_id
+        arg: parent
+      - spec: spec.parent.organization_id
+        arg: parent

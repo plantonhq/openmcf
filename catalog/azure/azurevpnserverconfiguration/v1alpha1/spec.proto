@@ -1,0 +1,442 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpnserverconfiguration.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureVpnServerConfigurationSpec** defines a VPN server
+// configuration -- the reusable "who may connect and how" policy for
+// point-to-site VPN: which authentication methods remote users sign in
+// with (Entra ID, certificate, RADIUS), which certificates are trusted
+// or revoked, the tunnel protocols offered, and optional per-user-group
+// policy groups. It deploys no gateway and costs nothing to keep; an
+// AzurePointToSiteVpnGateway is born pointing at ONE configuration
+// (fixed on the gateway at its creation) and many gateways may share
+// the same configuration.
+//
+// **Authentication types drive the required blocks** (ARM's create
+// contract, enforced here so the error lands in seconds): "AAD" needs
+// the aad_authentication block, "Certificate" needs at least one
+// client_root_certificates entry, and "Radius" needs the radius block.
+// Multiple types may be enabled at once -- each brings its block.
+//
+// **ForceNew fields**: `name`, `region`, and `resource_group` --
+// everything else updates in place (gateways using the configuration
+// pick the change up; users reconnect under the new policy).
+message AzureVpnServerConfigurationSpec {
+  // The Azure region the configuration object lives in, e.g.
+  // "eastus". By convention the region of the hub whose point-to-site
+  // gateway uses it. Changing the region replaces the object.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the configuration is created in. Can be
+  // a literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The configuration's name, unique within the resource group. Name
+  // it after the policy it expresses ("remote-workforce-entra",
+  // "contractor-certs"). Changing the name replaces the object.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The authentication methods remote users may sign in with -- at
+  // least one of "AAD" (Entra ID), "Certificate", or "Radius" (the
+  // wire values). Each enabled type requires its configuration block
+  // (aad_authentication / client_root_certificates / radius).
+  repeated string vpn_authentication_types = 4 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "AAD",
+        "Certificate",
+        "Radius"
+      ]
+    }
+  ];
+
+  // Entra ID (Azure AD) authentication parameters. Required when
+  // vpn_authentication_types includes "AAD".
+  AzureVpnServerConfigurationAadAuthentication aad_authentication = 5;
+
+  // Trusted root certificates for certificate authentication -- a
+  // connecting client's certificate must chain to one of them. At
+  // least one is required when vpn_authentication_types includes
+  // "Certificate".
+  repeated AzureVpnServerConfigurationClientRootCertificate client_root_certificates = 6;
+
+  // Individually revoked client certificates (by thumbprint) --
+  // blocks a lost or compromised client without rotating the root.
+  repeated AzureVpnServerConfigurationClientRevokedCertificate client_revoked_certificates = 7;
+
+  // A pinned IPsec/IKE proposal for connecting clients. Leave unset
+  // to offer Azure's default proposal set; pin it only when client
+  // policy demands specific algorithms (every field of a configured
+  // proposal is required -- no partial pinning).
+  AzureVpnServerConfigurationIpsecPolicy ipsec_policy = 8;
+
+  // RADIUS authentication parameters (servers and their trust
+  // anchors). Required when vpn_authentication_types includes
+  // "Radius".
+  AzureVpnServerConfigurationRadius radius = 9;
+
+  // The tunnel protocols offered to clients: "IkeV2" and/or "OpenVPN"
+  // (the wire values). Leave empty for Azure's default selection.
+  // Note: policy groups and multiple point-to-site connection
+  // configurations require OpenVPN.
+  repeated string vpn_protocols = 10 [
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "IkeV2",
+        "OpenVPN"
+      ]
+    }
+  ];
+
+  // Policy groups: named member-matching rules (Entra ID group ID,
+  // certificate common name, or RADIUS Azure group ID) a
+  // point-to-site gateway can map to different address pools. Each
+  // group deploys as its own ARM child of the configuration; the
+  // configuration publishes each group's ARM id in the
+  // policy_group_ids output.
+  repeated AzureVpnServerConfigurationPolicyGroup policy_groups = 11;
+
+  // Free-form tags applied to the object, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 12;
+
+  // ARM's create contracts, front-loaded where the error is
+  // actionable (the provider enforces all three at apply time).
+  option (buf.validate.message).cel = {
+    id: "aad_block_required_for_aad_type"
+    message: "vpn_authentication_types includes 'AAD' -- set the aad_authentication block (audience, issuer, tenant)"
+    expression: "!('AAD' in this.vpn_authentication_types) || has(this.aad_authentication)"
+  };
+  option (buf.validate.message).cel = {
+    id: "root_cert_required_for_certificate_type"
+    message: "vpn_authentication_types includes 'Certificate' -- add at least one client_root_certificates entry"
+    expression: "!('Certificate' in this.vpn_authentication_types) || this.client_root_certificates.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "radius_block_required_for_radius_type"
+    message: "vpn_authentication_types includes 'Radius' -- set the radius block"
+    expression: "!('Radius' in this.vpn_authentication_types) || has(this.radius)"
+  };
+  option (buf.validate.message).cel = {
+    id: "client_root_certificate_names_unique"
+    message: "client_root_certificates names must be unique on the configuration"
+    expression: "this.client_root_certificates.all(c, this.client_root_certificates.filter(o, o.name == c.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "client_revoked_certificate_names_unique"
+    message: "client_revoked_certificates names must be unique on the configuration"
+    expression: "this.client_revoked_certificates.all(c, this.client_revoked_certificates.filter(o, o.name == c.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "policy_group_names_unique"
+    message: "policy_groups names must be unique on the configuration -- each is the key the policy_group_ids output uses"
+    expression: "this.policy_groups.all(g, this.policy_groups.filter(o, o.name == g.name).size() == 1)"
+  };
+}
+
+// Entra ID (Azure AD) authentication parameters. The three values
+// travel together; for the Microsoft-managed Azure VPN Client app the
+// audience is a fixed well-known application ID and the tenant/issuer
+// URLs embed your directory (tenant) ID.
+message AzureVpnServerConfigurationAadAuthentication {
+  // The Entra ID application (client) ID VPN clients authenticate
+  // against -- for the Microsoft Azure VPN Client this is the
+  // published well-known application ID.
+  string audience = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The STS issuer URL, e.g. "https://sts.windows.net/{tenant-id}/".
+  string issuer = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The tenant URL, e.g.
+  // "https://login.microsoftonline.com/{tenant-id}".
+  string tenant = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One trusted root certificate for certificate authentication.
+message AzureVpnServerConfigurationClientRootCertificate {
+  // The certificate's name on the configuration (unique), e.g.
+  // "corp-root-2026".
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The root certificate's public data: the base64-encoded X.509
+  // certificate body (the PEM payload WITHOUT the BEGIN/END
+  // CERTIFICATE lines and without line breaks). Public material only
+  // -- the private key never leaves your certificate authority.
+  string public_cert_data = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One revoked client certificate.
+message AzureVpnServerConfigurationClientRevokedCertificate {
+  // The revocation entry's name on the configuration (unique).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The revoked client certificate's SHA-1 thumbprint.
+  string thumbprint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A pinned IPsec/IKE proposal for connecting clients. Field names and
+// vocabularies mirror the provider's arguments exactly.
+message AzureVpnServerConfigurationIpsecPolicy {
+  // The IKE Phase 1 Diffie-Hellman group.
+  string dh_group = 1 [(buf.validate.field).string = {
+    in: [
+      "DHGroup1",
+      "DHGroup14",
+      "DHGroup2",
+      "DHGroup2048",
+      "DHGroup24",
+      "ECP256",
+      "ECP384",
+      "None"
+    ]
+  }];
+
+  // The IKE (Phase 1) encryption algorithm.
+  string ike_encryption = 2 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES256"
+    ]
+  }];
+
+  // The IKE (Phase 1) integrity algorithm. With GCM IKE encryption,
+  // Azure requires the MATCHING GCM integrity value.
+  string ike_integrity = 3 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256",
+      "SHA384"
+    ]
+  }];
+
+  // The IPsec (Phase 2) encryption algorithm.
+  string ipsec_encryption = 4 [(buf.validate.field).string = {
+    in: [
+      "AES128",
+      "AES192",
+      "AES256",
+      "DES",
+      "DES3",
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "None"
+    ]
+  }];
+
+  // The IPsec (Phase 2) integrity algorithm.
+  string ipsec_integrity = 5 [(buf.validate.field).string = {
+    in: [
+      "GCMAES128",
+      "GCMAES192",
+      "GCMAES256",
+      "MD5",
+      "SHA1",
+      "SHA256"
+    ]
+  }];
+
+  // The Perfect Forward Secrecy group.
+  string pfs_group = 6 [(buf.validate.field).string = {
+    in: [
+      "ECP256",
+      "ECP384",
+      "None",
+      "PFS1",
+      "PFS14",
+      "PFS2",
+      "PFS2048",
+      "PFS24",
+      "PFSMM"
+    ]
+  }];
+
+  // The security association lifetime in seconds. The provider puts
+  // no bounds on this resource (unlike the tunnel-level proposals of
+  // a VPN gateway connection, whose provider enforces 300-172799) --
+  // ARM validates the value at deploy time.
+  int32 sa_lifetime_seconds = 7 [(buf.validate.field).int32.gte = 0];
+
+  // The security association size limit in kilobytes. Unbounded by
+  // the provider on this resource; ARM validates at deploy time.
+  int32 sa_data_size_kilobytes = 8 [(buf.validate.field).int32.gte = 0];
+}
+
+// RADIUS authentication parameters: the servers Azure forwards
+// authentication to, and the certificates that establish trust in
+// both directions.
+message AzureVpnServerConfigurationRadius {
+  // The RADIUS servers authentication is forwarded to. ARM expects at
+  // least one server for RADIUS authentication to function (the
+  // provider leaves the list optional; the deploy fails without one).
+  repeated AzureVpnServerConfigurationRadiusServer servers = 1;
+
+  // Root certificates the RADIUS server uses to verify CLIENT
+  // certificates (by thumbprint).
+  repeated AzureVpnServerConfigurationRadiusClientRootCertificate client_root_certificates = 2;
+
+  // Root certificates clients use to verify the RADIUS SERVER (full
+  // public certificate data).
+  repeated AzureVpnServerConfigurationRadiusServerRootCertificate server_root_certificates = 3;
+}
+
+// One RADIUS server.
+message AzureVpnServerConfigurationRadiusServer {
+  // The RADIUS server's address, reachable from the gateway.
+  string address = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The shared secret the gateway authenticates to the RADIUS server
+  // with. Reference a secret rather than embedding the literal in
+  // manifests. ARM never returns this value on reads.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secret = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The server's priority score, 1-30 (higher is preferred).
+  int32 score = 3 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 30
+  ];
+}
+
+// One RADIUS client-side trust anchor (thumbprint form).
+message AzureVpnServerConfigurationRadiusClientRootCertificate {
+  // The certificate's name on the configuration.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The root certificate's SHA-1 thumbprint.
+  string thumbprint = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// One RADIUS server-side trust anchor (full public certificate form).
+message AzureVpnServerConfigurationRadiusServerRootCertificate {
+  // The certificate's name on the configuration.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The root certificate's public data: base64-encoded X.509 body
+  // (no BEGIN/END lines, no line breaks).
+  string public_cert_data = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A policy group: a named set of member-matching rules a
+// point-to-site gateway can map to different address pools. Deploys
+// as its own ARM child of the configuration
+// (.../configurationPolicyGroups/{name}).
+message AzureVpnServerConfigurationPolicyGroup {
+  // The group's name, unique on the configuration. The group's ARM id
+  // surfaces in the configuration's policy_group_ids output under
+  // this name. Changing the name replaces the group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Mark this group as the default -- members matching no other group
+  // land here. Fixed at creation (changing it replaces the group).
+  bool is_default = 2;
+
+  // The group's evaluation priority (lower evaluates first). 0 is the
+  // provider's default.
+  int32 priority = 3 [(buf.validate.field).int32.gte = 0];
+
+  // The member-matching rules of this group. At least one.
+  repeated AzureVpnServerConfigurationPolicyGroupPolicy policies = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  option (buf.validate.message).cel = {
+    id: "policy_names_unique"
+    message: "policy names must be unique within the policy group"
+    expression: "this.policies.all(p, this.policies.filter(o, o.name == p.name).size() == 1)"
+  };
+}
+
+// One member-matching rule of a policy group.
+message AzureVpnServerConfigurationPolicyGroupPolicy {
+  // The rule's name, unique within the group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // What the rule matches on: "AADGroupId" (an Entra ID group's
+  // object ID), "CertificateGroupId" (the client certificate's common
+  // name), or "RadiusAzureGroupId" (the RADIUS-returned group ID) --
+  // the wire values.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "AADGroupId",
+      "CertificateGroupId",
+      "RadiusAzureGroupId"
+    ]
+  }];
+
+  // The value to match (the group object ID, certificate common
+  // name, or RADIUS group ID -- per type).
+  string value = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

@@ -23,7 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesStatefulSet is a deployment component for running stateful applications on Kubernetes.
+// KubernetesStatefulSet is a component for running stateful applications on Kubernetes.
 // StatefulSets are used for applications that require stable, unique network identifiers,
 // stable persistent storage, ordered graceful deployment and scaling, and ordered automated rolling updates.
 type KubernetesStatefulSet struct {

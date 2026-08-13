@@ -37,6 +37,10 @@ The replica bounds are the **only fields that update in place** after deployment
 
 `authConfig` enables JWT auth on the private query endpoint: `allowedIssuers` are service-account emails (references `GcpServiceAccount`), `audiences` the accepted JWT audiences.
 
+### Destroy behavior
+
+`deletionPolicy` is the client-side lever: empty/`DELETE` undeploys the index from the endpoint, `PREVENT` makes destroy fail (a guard for a live query path), `ABANDON` removes the deployment from management but keeps it serving (and billing for its replicas).
+
 ### No Labels, No Project
 
 The GCP API gives a DeployedIndex no labels and no project field (it lives inside the endpoint resource) -- platform label attribution is impossible on this resource class, so none is faked.

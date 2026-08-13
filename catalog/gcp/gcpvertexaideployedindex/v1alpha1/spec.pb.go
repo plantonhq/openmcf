@@ -290,9 +290,20 @@ type GcpVertexAiDeployedIndexSpec struct {
 	// JWT authentication for the private query endpoint. If omitted, the
 	// endpoint relies on network reachability alone. Immutable after
 	// creation.
-	AuthConfig    *GcpVertexAiDeployedIndexAuthConfig `protobuf:"bytes,11,opt,name=auth_config,json=authConfig,proto3" json:"auth_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	AuthConfig *GcpVertexAiDeployedIndexAuthConfig `protobuf:"bytes,11,opt,name=auth_config,json=authConfig,proto3" json:"auth_config,omitempty"`
+	// Deletion policy for the deployment — what happens when this
+	// resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the index is undeployed from the endpoint; queries
+	//	             against this deployment stop being served
+	//	"PREVENT" -- destroy FAILS; a guard for a serving path whose
+	//	             disappearance would break live query traffic
+	//	"ABANDON" -- the deployment is removed from management but keeps
+	//	             serving (and billing for its replicas) in GCP
+	DeletionPolicy string `protobuf:"bytes,12,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpVertexAiDeployedIndexSpec) Reset() {
@@ -402,6 +413,13 @@ func (x *GcpVertexAiDeployedIndexSpec) GetAuthConfig() *GcpVertexAiDeployedIndex
 	return nil
 }
 
+func (x *GcpVertexAiDeployedIndexSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpvertexaideployedindex_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpvertexaideployedindex_v1alpha1_spec_proto_rawDesc = "" +
@@ -420,7 +438,7 @@ const file_catalog_gcp_gcpvertexaideployedindex_v1alpha1_spec_proto_rawDesc = ""
 	"\xbaH\a\x1a\x05\x18\xe8\a(\x00R\x0fmaxReplicaCount\"\xbe\x01\n" +
 	"\"GcpVertexAiDeployedIndexAuthConfig\x12z\n" +
 	"\x0fallowed_issuers\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x0eallowedIssuers\x12\x1c\n" +
-	"\taudiences\x18\x02 \x03(\tR\taudiences\"\xfe\v\n" +
+	"\taudiences\x18\x02 \x03(\tR\taudiences\"\xbc\r\n" +
 	"\x1cGcpVertexAiDeployedIndexSpec\x12&\n" +
 	"\blocation\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\blocation\x12\xf6\x01\n" +
@@ -436,7 +454,9 @@ const file_catalog_gcp_gcpvertexaideployedindex_v1alpha1_spec_proto_rawDesc = ""
 	"\x12reserved_ip_ranges\x18\n" +
 	" \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1c\x88\xd4a\xcd\x17\x92\xd4a\x13status.outputs.nameR\x10reservedIpRanges\x12v\n" +
 	"\vauth_config\x18\v \x01(\v2U.dev.planton.gcp.gcpvertexaideployedindex.v1alpha1.GcpVertexAiDeployedIndexAuthConfigR\n" +
-	"authConfig:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
+	"authConfig\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\f \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\xe9\x01\xbaH\xe5\x01\x1a\xe2\x01\n" +
 	"\x16at_most_one_sizing_arm\x12\x84\x01automatic_resources and dedicated_resources are mutually exclusive; let Vertex AI manage the compute or pin a machine type, not both\x1aA!(has(this.automatic_resources) && has(this.dedicated_resources))B\x13\n" +
 	"\x11_deployment_groupB\x98\x03\n" +
 	"5com.dev.planton.gcp.gcpvertexaideployedindex.v1alpha1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/catalog/gcp/gcpvertexaideployedindex/v1alpha1;gcpvertexaideployedindexv1alpha1\xa2\x02\x04DPGG\xaa\x021Dev.Planton.Gcp.Gcpvertexaideployedindex.V1alpha1\xca\x021Dev\\Planton\\Gcp\\Gcpvertexaideployedindex\\V1alpha1\xe2\x02=Dev\\Planton\\Gcp\\Gcpvertexaideployedindex\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Gcp::Gcpvertexaideployedindex::V1alpha1b\x06proto3"

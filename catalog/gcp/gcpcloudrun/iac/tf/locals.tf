@@ -65,8 +65,8 @@ locals {
 
   # vpc_access is optional end to end; these locals let the resource block
   # stay null-safe without repeating try() guards.
-  vpc_connector = try(var.spec.vpc_access.connector, "") != "" ? var.spec.vpc_access.connector : null
-  vpc_egress    = try(var.spec.vpc_access.egress, "") != "" ? var.spec.vpc_access.egress : null
+  vpc_connector  = try(var.spec.vpc_access.connector, "") != "" ? var.spec.vpc_access.connector : null
+  vpc_egress     = try(var.spec.vpc_access.egress, "") != "" ? var.spec.vpc_access.egress : null
   vpc_interfaces = try(var.spec.vpc_access.network_interfaces, [])
   has_vpc_access = var.spec.vpc_access != null
 }

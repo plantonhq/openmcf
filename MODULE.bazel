@@ -159,7 +159,12 @@ maven.install(
         "io.grpc:grpc-api:1.66.0",
         "io.grpc:grpc-stub:1.66.0",
         "io.grpc:grpc-protobuf:1.66.0",
-        "build.buf:protovalidate:1.0.0",
+        # Pinned to the version the platform's control plane resolves (its
+        # api-state pin test holds 1.1.1): the Java conformance gate below
+        # hack/javagate proves every catalog CEL rule compiles on the exact
+        # engine that validates these documents in production. A different
+        # version here would gate against an engine nobody runs.
+        "build.buf:protovalidate:1.1.1",
         "com.google.guava:guava:33.4.0-jre",
     ],
     repositories = ["https://repo.maven.apache.org/maven2"],

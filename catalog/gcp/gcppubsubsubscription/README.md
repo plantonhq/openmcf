@@ -52,7 +52,9 @@ Use GcpPubSubSubscription when you need to:
 | `enable_exactly_once_delivery` | Guarantee exactly-once within ack deadline |
 | `filter` | Attribute-based message filtering (immutable) |
 | `labels` | User labels, merged beneath the platform attribution labels |
-| `message_transforms` | Ordered JavaScript UDF pipeline applied before delivery to this subscription |
+| `message_transforms` | Ordered transform pipeline applied before delivery to this subscription; each step is exactly one of `javascript_udf` (a JS function) or `ai_inference` (a Vertex AI model call — `endpoint` references `GcpVertexAiEndpoint`) |
+| `resource_manager_tags` | Resource Manager tags (`tagKeys/{id}` → `tagValues/{id}`) bound at create time; changing them later replaces the subscription |
+| `deletion_policy` | `DELETE` (default), `PREVENT` (destroy fails; protects a backlog), or `ABANDON` (remove from management, keep serving) |
 
 ### Reliability
 
@@ -82,17 +84,14 @@ Use GcpPubSubSubscription when you need to:
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`tags` (resource-manager tags)** — absent from the released `google ~> 6.x`
-  line (present only on the provider's unreleased line); revisit when the
-  catalog's provider line carries it.
-- **`message_transforms.ai_inference` (Vertex AI transform arm)** — absent from
-  the released `google ~> 6.x` line; only the JavaScript UDF arm is released.
-- **`deletion_policy`** — a client-side lever that conflicts with
-  Planton-managed destroy (catalog-wide skip; also absent from the released
-  6.x line).
 - **Per-subscription IAM (`google_pubsub_subscription_iam_*`)** —
   resource-scoped IAM stays out of the catalog pending concrete pull (the
   additive project-level grant, `GcpProjectIamMember`, covers the real cases).
+
+Every configurable argument of `google_pubsub_subscription` at the pinned
+provider version is representable through this spec; the recorded judgment
+lives in `iac/provider-parity.yaml`, checked by
+`planton provider-parity --check`.
 
 ## Dependencies
 

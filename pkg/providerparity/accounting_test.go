@@ -45,6 +45,16 @@ func accountingFixture() (spec []KindCensus, modules []ModuleCensus, schemas map
 							}},
 						},
 					}},
+					// A whole embedded surface the module deliberately fixes:
+					// covered by ONE subtree exclusion, never per-leaf lines.
+					"inline_gadget": {NestingMode: "list", Block: &Block{
+						Attributes: map[string]*Attribute{"size": {Optional: true}},
+						Blocks: map[string]*NestedBlock{
+							"tuning": {NestingMode: "single", Block: &Block{
+								Attributes: map[string]*Attribute{"level": {Optional: true}},
+							}},
+						},
+					}},
 					"timeouts": {NestingMode: "single", Block: &Block{ // machinery
 						Attributes: map[string]*Attribute{"create": {Optional: true}},
 					}},
@@ -123,6 +133,9 @@ func accountingFixture() (spec []KindCensus, modules []ModuleCensus, schemas map
 					},
 					Exclusions: []ArgExclusion{
 						{Arg: "rules.condition.send_age_if_zero", Reason: "proto3 optional presence covers zero-vs-unset"},
+						// Subtree exclusion: one judgment covers the block
+						// and every leaf under it.
+						{Arg: "inline_gadget", Reason: "the module fixes the inline gadget; gadgets are the sibling kind's surface"},
 					},
 				},
 				"google_widget_iam_member": {
@@ -167,15 +180,16 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	widget := kindByName(t, acc, "TestWidget")
 	// google_widget: name(mapped) location(matched) settings.enabled(matched)
 	// rules.mode(mapped via subtree) rules.condition.age(mapped via leaf)
-	// send_age_if_zero(excluded); id/timeouts.create machinery and old_knob
-	// deprecated -- all outside accounting.
+	// send_age_if_zero(excluded) inline_gadget.size + inline_gadget.tuning.level
+	// (both excluded by the ONE subtree exclusion); id/timeouts.create
+	// machinery and old_knob deprecated -- all outside accounting.
 	// google_widget_iam_member: role/member/condition.title matched under
 	// specRoot, widget excluded. google_project_service: internal.
-	if widget.TotalArgs != 10 {
-		t.Errorf("TotalArgs = %d, want 10 (machinery and deprecated args must not count)", widget.TotalArgs)
+	if widget.TotalArgs != 12 {
+		t.Errorf("TotalArgs = %d, want 12 (machinery and deprecated args must not count)", widget.TotalArgs)
 	}
-	if widget.MatchedArgs != 5 || widget.MappedArgs != 3 || widget.ExcludedArgs != 2 {
-		t.Errorf("matched/mapped/excluded = %d/%d/%d, want 5/3/2",
+	if widget.MatchedArgs != 5 || widget.MappedArgs != 3 || widget.ExcludedArgs != 4 {
+		t.Errorf("matched/mapped/excluded = %d/%d/%d, want 5/3/4 (the subtree exclusion covers both inline_gadget leaves)",
 			widget.MatchedArgs, widget.MappedArgs, widget.ExcludedArgs)
 	}
 	if !reflect.DeepEqual(widget.InternalResources, []string{"google_project_service"}) {
@@ -248,6 +262,62 @@ func TestBuildAccounting_Hermetic(t *testing.T) {
 	}
 	if !reflect.DeepEqual(keys, want) {
 		t.Errorf("finding keys = %v, want %v", keys, want)
+	}
+}
+
+// TestBuildAccounting_FanInMappings proves the dual of the name/value
+// idiom: several mappings recording ONE map-typed argument each cover
+// their own spec field — the argument counts as mapped once, and BOTH
+// spec fields are covered in the reverse direction. The shape: a
+// provider packing several honest dials (cpu, memory) into one limits
+// map.
+func TestBuildAccounting_FanInMappings(t *testing.T) {
+	schemas := map[string]*Schema{"google": {
+		Provider: "google",
+		Source:   "hashicorp/google",
+		Version:  "7.43.0",
+		Resources: map[string]*Block{
+			"google_box": {
+				Attributes: map[string]*Attribute{
+					"name":   {Required: true},
+					"limits": {Optional: true},
+				},
+			},
+		},
+	}}
+	spec := []KindCensus{{Kind: "TestBox", SpecFieldPaths: []string{
+		"spec.box_name",
+		"spec.resources.cpu",
+		"spec.resources.memory",
+	}}}
+	modules := []ModuleCensus{{Kind: "TestBox", Resources: []string{"google_box"},
+		Pins: map[string]string{"google": "~> 7.43"}}}
+	manifests := map[string]*Manifest{"TestBox": {
+		Resources: map[string]*ResourceManifest{
+			"google_box": {
+				Mappings: []Mapping{
+					{Spec: "spec.box_name", Arg: "name"},
+					{Spec: "spec.resources.cpu", Arg: "limits"},
+					{Spec: "spec.resources.memory", Arg: "limits"},
+				},
+			},
+		},
+	}}
+
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	box := kindByName(t, acc, "TestBox")
+	if box.TotalArgs != 2 || box.MappedArgs != 2 || box.MatchedArgs != 0 {
+		t.Errorf("total/mapped/matched = %d/%d/%d, want 2/2/0 (the fan-in arg counts once)",
+			box.TotalArgs, box.MappedArgs, box.MatchedArgs)
+	}
+	if len(box.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", box.UnaccountedArgs)
+	}
+	if len(box.UncoveredSpecFields) != 0 {
+		t.Errorf("UncoveredSpecFields = %v, want none (both map-realized fields are covered)", box.UncoveredSpecFields)
+	}
+	if !box.Accounted() {
+		t.Error("TestBox must be at total accounting")
 	}
 }
 
@@ -433,8 +503,93 @@ func TestBuildAccounting_MissingModule(t *testing.T) {
 		t.Errorf("ghost findings = %v, want exactly the missing-module finding", ghostFindings)
 	}
 	// The other kinds' accounting is unaffected by the ghost.
-	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 10 {
+	if widget := kindByName(t, acc, "TestWidget"); widget.TotalArgs != 12 {
 		t.Errorf("TestWidget accounting disturbed by the missing-module kind: TotalArgs=%d", widget.TotalArgs)
+	}
+}
+
+// TestBuildAccounting_ExternalResources proves the externally-specified
+// judgment end to end: an external-dispositioned resource carries no
+// argument walk and no unknown-resource finding, a kind consuming ONLY
+// external resources runs no reverse spec walk (its depth is accounted
+// against the external contract the admission records), a MIXED kind keeps
+// the reverse walk for its schema-served side, an external judgment on a
+// schema-served resource is a staleness finding (the provider shipped
+// native support -- the exit-to-native ratchet), and an external resource
+// WITHOUT the judgment keeps the unknown-resource finding.
+func TestBuildAccounting_ExternalResources(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec,
+		KindCensus{Kind: "TestArm", SpecFieldPaths: []string{"spec.auth_mode", "spec.traffic"}},
+		KindCensus{Kind: "TestMixed", SpecFieldPaths: []string{"spec.plain_name", "spec.arm_only_field"}},
+		KindCensus{Kind: "TestArmUnjudged", SpecFieldPaths: []string{"spec.x"}},
+	)
+	modules = append(modules,
+		ModuleCensus{Kind: "TestArm", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestMixed", Resources: []string{"google_plain", "azapi_resource"}, Pins: map[string]string{"google": "~> 6.0", "azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestArmUnjudged", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+	)
+	external := &ResourceManifest{External: "raw-ARM surface at a pinned type@api-version by recorded admission"}
+	manifests["TestArm"] = &Manifest{Resources: map[string]*ResourceManifest{"azapi_resource": external}}
+	manifests["TestMixed"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"azapi_resource": external,
+		"google_plain":   {Mappings: []Mapping{{Spec: "spec.plain_name", Arg: "name"}}},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	arm := kindByName(t, acc, "TestArm")
+	if !arm.Accounted() {
+		t.Errorf("external-only kind must be at total accounting, got %+v", arm)
+	}
+	if !reflect.DeepEqual(arm.ExternalResources, []string{"azapi_resource"}) {
+		t.Errorf("ExternalResources = %v, want [azapi_resource]", arm.ExternalResources)
+	}
+	if len(arm.UncoveredSpecFields) != 0 {
+		t.Errorf("external-only kind must suspend the reverse walk, got uncovered %v", arm.UncoveredSpecFields)
+	}
+
+	// The mixed kind keeps the reverse walk: its schema-served field is
+	// covered by the mapping; the external-fed field is flagged until a
+	// specExclusion names the external resource.
+	mixed := kindByName(t, acc, "TestMixed")
+	if !reflect.DeepEqual(mixed.UncoveredSpecFields, []string{"spec.arm_only_field"}) {
+		t.Errorf("mixed kind uncovered = %v, want [spec.arm_only_field]", mixed.UncoveredSpecFields)
+	}
+
+	// Without the judgment, the unknown-resource finding stands unchanged.
+	unjudged := kindByName(t, acc, "TestArmUnjudged")
+	if unjudged.Accounted() || len(unjudged.ManifestStale) != 1 ||
+		!strings.Contains(unjudged.ManifestStale[0], "unknown to every loaded schema") {
+		t.Errorf("unjudged external consumption must keep the unknown-resource finding, got %+v", unjudged)
+	}
+}
+
+// TestBuildAccounting_ExternalJudgmentGoesStale proves the exit-to-native
+// ratchet: when a loaded schema starts serving a resource the manifest
+// still calls external, the judgment is a staleness finding, never a
+// silent double-accounting.
+func TestBuildAccounting_ExternalJudgmentGoesStale(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec, KindCensus{Kind: "TestNative", SpecFieldPaths: []string{"spec.plain_name"}})
+	modules = append(modules, ModuleCensus{Kind: "TestNative", Resources: []string{"google_plain"}})
+	manifests["TestNative"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"google_plain": {External: "stale: the schema serves this resource now"},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	native := kindByName(t, acc, "TestNative")
+	if native.Accounted() {
+		t.Error("stale external judgment must fail accounting")
+	}
+	found := false
+	for _, s := range native.ManifestStale {
+		if strings.Contains(s, "external judgment is stale") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("ManifestStale = %v, want the stale-external finding", native.ManifestStale)
 	}
 }
 

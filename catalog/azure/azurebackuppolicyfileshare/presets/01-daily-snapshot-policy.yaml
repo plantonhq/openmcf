@@ -1,0 +1,41 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyFileShare
+metadata:
+  name: daily-snapshot-policy
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  recoveryVaultName:
+    valueFrom:
+      kind: AzureRecoveryServicesVault
+      name: "<your-recovery-services-vault>"
+      fieldPath: status.outputs.recovery_services_vault_name
+  name: daily-snapshot-policy
+  # One nightly backup in a low-traffic window; times land on the hour
+  # or half past.
+  backup:
+    frequency: Daily
+    time: "23:00"
+  timezone: UTC
+  # The default snapshot tier: backups live as share snapshots in the
+  # storage account -- fast restores; the vault-standard preset is the
+  # durable alternative.
+  # The ladder spends the share's 200-snapshot budget: 30 + 12 + 12
+  # + 5 = 59 kept points.
+  retentionDaily:
+    count: 30
+  retentionWeekly:
+    count: 12
+    weekdays: [Sunday]
+  retentionMonthly:
+    count: 12
+    weeks: [First]
+    weekdays: [Sunday]
+  retentionYearly:
+    count: 5
+    months: [January]
+    weeks: [First]
+    weekdays: [Sunday]

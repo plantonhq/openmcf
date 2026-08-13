@@ -1,0 +1,21 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurebackupprotectedvm
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plan green); live dual-engine
+  # proof has not yet run. The lane's chain is the deepest of the
+  # backup trio: policy (-> fixture vault -> resource group) plus the
+  # fixture VM (-> NIC -> subnet -> VNet chain + its managed disk).
+  # Creation only REGISTERS protection -- no backup job runs, no
+  # backup storage accrues; cost is the fixture VM's hour
+  # (Standard_B2s, cents). Protection registration itself takes 5-15
+  # minutes each way. The smoke also proves the disk-exclusion seam
+  # (the fixture VM's LUN-0 data disk is excluded). protection_state
+  # dials and retain-on-destroy are offline-proven only (the suspend
+  # state needs an immutable vault the fixture deliberately is not).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 90

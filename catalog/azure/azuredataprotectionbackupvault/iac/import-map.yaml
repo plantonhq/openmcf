@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredataprotectionbackupvault
+spec:
+  # The vault's identity is its full ARM resource ID
+  # (.../providers/Microsoft.DataProtection/backupVaults/{name}); the
+  # composed customer-managed-key arm shares that same ID (the
+  # provider's CMK resource IS the vault, re-addressed).
+  values:
+    - name: backup_vault_id
+      derivations:
+        - from_stack_output: backup_vault_id
+      where_to_find: >-
+        `az dataprotection backup-vault show -g <rg> --vault-name <name>
+        --query id`, or compose /subscriptions/{sub}/resourceGroups/{rg}/
+        providers/Microsoft.DataProtection/backupVaults/{name}.

@@ -2690,12 +2690,12 @@ const file_catalog_kubernetes_kubernetespostgres_v1alpha1_spec_proto_rawDesc = "
 	"\x10retention_policy\x18\x02 \x01(\tB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
 	"\x1cspec.backup.retention_format\x12bretention_policy must be a positive number of days, weeks, or months — e.g. '30d', '8w', or '6m'\x1a0this == '' || this.matches('^[1-9][0-9]*[dwm]$')R\x0fretentionPolicy\x12\x84\x02\n" +
 	"\tschedules\x18\x03 \x03(\v2T.dev.planton.kubernetes.kubernetespostgres.v1alpha1.KubernetesPostgresBackupScheduleB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
-	"\"spec.backup.schedules.unique_names\x12*each backup schedule needs a distinct name\x1a5this.all(s1, this.exists_one(s2, s1.name == s2.name))R\tschedules\"\x89\x06\n" +
+	"\"spec.backup.schedules.unique_names\x12*each backup schedule needs a distinct name\x1a5this.all(s1, this.exists_one(s2, s1.name == s2.name))R\tschedules\"\x82\x06\n" +
 	" KubernetesPostgresBackupSchedule\x12\xbd\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xa8\x01\xbaH\xa4\x01\xba\x01\x9d\x01\n" +
-	"!spec.backup.schedules.name_format\x12Gschedule name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\xa0\x02\n" +
-	"\bschedule\x18\x02 \x01(\tB\x83\x02\xbaH\xff\x01\xba\x01\xf8\x01\n" +
-	"%spec.backup.schedules.cron_six_fields\x12\x9e\x01schedule is a SIX-field cron expression (seconds first) — e.g. '0 0 2 * * *' for daily at 02:00; the five-field Kubernetes form is missing the seconds field\x1a.this.split(' ').filter(f, f != '').size() == 6\xc8\x01\x01R\bschedule\x12\x1c\n" +
+	"!spec.backup.schedules.name_format\x12Gschedule name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\x99\x02\n" +
+	"\bschedule\x18\x02 \x01(\tB\xfc\x01\xbaH\xf8\x01\xba\x01\xf1\x01\n" +
+	"%spec.backup.schedules.cron_six_fields\x12\x9e\x01schedule is a SIX-field cron expression (seconds first) — e.g. '0 0 2 * * *' for daily at 02:00; the five-field Kubernetes form is missing the seconds field\x1a'this.matches('^ *[^ ]+( +[^ ]+){5} *$')\xc8\x01\x01R\bschedule\x12\x1c\n" +
 	"\timmediate\x18\x03 \x01(\bR\timmediate\x12\x18\n" +
 	"\asuspend\x18\x04 \x01(\bR\asuspend\x12\xbe\x01\n" +
 	"\x06target\x18\x05 \x01(\tB\xa0\x01\xbaH\x8a\x01\xba\x01\x86\x01\n" +
