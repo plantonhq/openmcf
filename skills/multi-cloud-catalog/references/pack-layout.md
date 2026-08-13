@@ -1,9 +1,10 @@
 # Pack Layout and Where to Find It
 
-The reference pack is one directory tree. This skill ships self-contained:
-the pack travels inside the skill itself, so wherever this file is mounted,
-the pack sits beside it in `components/`. You never need a repo checkout,
-a network fetch, or a marker hunt to start researching.
+The reference pack is one directory tree. When this skill ships
+self-contained, the pack travels inside it and sits beside this file in
+`components/` -- no repo checkout, network fetch, or marker hunt needed.
+Probe for that directory first; when it is absent, the ladder below
+resolves the pack from where you are working.
 
 ## The shape
 
@@ -38,11 +39,12 @@ you. Never search the wider machine for pack files (home directories --
 to exist on the host): a pack that is not reachable inside that boundary
 is simply not reachable -- take the fallback below.
 
-1. **Your own skill mount** -- the pack root is `components/` in the same
-   directory as this skill's `SKILL.md`. This is the common case: the
-   skill and its pack are one artifact, published and versioned together,
-   so the pack is always exactly as fresh as the skill teaching you to
-   read it.
+1. **Your own skill mount** -- probe for `components/` in the same
+   directory as this skill's `SKILL.md`. On a hit it is the pack root:
+   the skill and its pack are one artifact, published and versioned
+   together, so it is always exactly as fresh as the skill teaching you
+   to read it. On a miss, continue down this ladder -- never search the
+   host for it.
 2. **A Planton open-source repo checkout** -- the pack root is `catalog/`
    under the repo root. Prefer it over the mount only when you are working
    IN the repo (contributing, or reviewing unreleased changes): a checkout
@@ -91,6 +93,6 @@ instead of approximating.
 The pack is regenerated from the schemas and shipped whole: within one
 skill mount, one checkout, or one release zip, every page, index, and the
 graph are mutually consistent. Never combine files from two different pack
-versions in one answer -- resolve one pack root and stay in it. Your mount's
-pack matches your skill's version by construction; only a repo checkout can
-legitimately be newer.
+versions in one answer -- resolve one pack root and stay in it. A pack
+mounted inside the skill matches the skill's version by construction; only
+a repo checkout can legitimately be newer.

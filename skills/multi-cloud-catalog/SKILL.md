@@ -26,14 +26,14 @@ deployment; a ten-second file read costs nothing.
 
 ## Locate the pack first
 
-The pack travels inside this skill: its root is the `components/` directory
-beside this file, published and versioned with the skill itself, so it is
-always present and always exactly as fresh as these instructions. Only when
-you are working inside a Planton repo checkout does a different root apply
-(`catalog/` -- it may carry unreleased pages). `references/pack-layout.md`
-has the tree shape, the root precedence, and the honest fallback for the
-rare context with no pack at all. Everything below writes `<pack-root>` for
-the resolved root -- the directory whose `_docs/` holds
+Probe for a `components/` directory beside this file first: when this skill
+ships self-contained, the pack travels inside it, published and versioned
+with the skill, so a hit is always exactly as fresh as these instructions.
+On a miss, resolve the pack through the ladder in
+`references/pack-layout.md` -- a Planton repo checkout's `catalog/` (it may
+carry unreleased pages), the release artifact, and the honest per-component
+fallbacks when no pack is reachable at all. Everything below writes
+`<pack-root>` for the resolved root -- the directory whose `_docs/` holds
 `reference-commons.md`.
 
 ## Which file answers which question
