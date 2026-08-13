@@ -1,12 +1,11 @@
-# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# Estimate model: the authored half of this component's per-preset cost
+# estimates. This component is cluster-capacity based -- it creates no
+# cloud SKU, so each preset states the capacity it reserves from the
+# target cluster instead of quantity lines; the estimate generator copies
+# the footprint into ../estimates/ verbatim. Schema:
+# finops/componentcostestimatemodel/v1.
 apiVersion: finops.planton.dev/v1
-kind: ComponentCostEstimate
+kind: ComponentCostEstimateModel
 metadata:
   name: kubernetespostgres
 spec:

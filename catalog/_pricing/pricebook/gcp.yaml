@@ -1,0 +1,20 @@
+# The GCP price book: every Google Cloud unit price the catalog's cost
+# estimates cite, pinned with source URL and retrieval date. Entries are
+# referenced by slug from the estimate models under ../models/; the
+# estimate generator joins the two. Entries here are refreshed by hand
+# from the published pricing pages until a GCP fetcher (Cloud Billing
+# Catalog API) lands. Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: gcp
+spec:
+  entries:
+    - name: gke-cluster-management-fee
+      service_name: Google Kubernetes Engine
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.10"
+      price_source: https://cloud.google.com/kubernetes-engine/pricing
+      retrieved_on: "2026-08-14"

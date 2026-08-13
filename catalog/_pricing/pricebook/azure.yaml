@@ -1,0 +1,53 @@
+# The Azure price book: every Azure unit price the catalog's cost
+# estimates cite, pinned with source URL and retrieval date. Entries are
+# referenced by slug from the estimate models under ../models/; the
+# estimate generator joins the two. Sources are Microsoft Retail Prices
+# API filter URLs (machine-refetchable) where the API carries the meter,
+# and the published pricing page otherwise; entries here are refreshed by
+# hand until an Azure fetcher lands. Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: azure
+spec:
+  entries:
+    - name: vm-standard-d4s-v5-eastus
+      service_name: Virtual Machines
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.192"
+      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and priceType eq 'Consumption' and serviceName eq 'Virtual Machines'"
+      retrieved_on: "2026-08-14"
+    - name: aks-standard-management-fee
+      service_name: Azure Kubernetes Service
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.10"
+      price_source: https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/
+      retrieved_on: "2026-08-14"
+    - name: managed-disk-p10-eastus
+      service_name: Storage
+      pricing_unit: disk-months
+      region: eastus
+      currency: USD
+      list_unit_price: "19.71"
+      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+    - name: standard-lb-included-rules
+      service_name: Load Balancer
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.025"
+      price_source: "https://prices.azure.com/api/retail/prices?$filter=serviceName eq 'Load Balancer' and contains(meterName, 'Standard Included')"
+      retrieved_on: "2026-08-14"
+    - name: standard-static-public-ip
+      service_name: Virtual Network
+      pricing_unit: IP-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'Global' and contains(meterName, 'Static Public IP') and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"

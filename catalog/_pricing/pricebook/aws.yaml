@@ -1,0 +1,79 @@
+# The AWS price book: every AWS unit price the catalog's cost estimates
+# cite, pinned with source URL and retrieval date. Entries are referenced
+# by slug from the estimate models under ../models/; the estimate
+# generator joins the two. Entries carrying an aws_selector are refreshed
+# by `make generate-price-book` from the public AWS Price List bulk API
+# (the price_source pins the exact versioned offer document the price was
+# read from). Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: aws
+spec:
+  entries:
+    - name: alb-hours-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.0225"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: LoadBalancerUsage
+        operation: LoadBalancing:Application
+    - name: alb-reserved-lcu-us-east-1
+      service_name: Elastic Load Balancing
+      pricing_unit: LCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.008"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSELB
+        region_code: us-east-1
+        usage_type: ReservedLCUUsage
+        operation: LoadBalancing:Application
+    - name: public-ipv4-in-use-us-east-1
+      service_name: Amazon Virtual Private Cloud
+      pricing_unit: IP-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonVPC
+        region_code: us-east-1
+        usage_type: USE1-PublicIPv4:InUseAddress
+    - name: dynamodb-provisioned-wcu-us-east-1
+      service_name: Amazon DynamoDB
+      pricing_unit: WCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00065"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/20260804204051/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonDynamoDB
+        region_code: us-east-1
+        usage_type: WriteCapacityUnit-Hrs
+        operation: CommittedThroughput
+        description_contains: beyond the free tier
+    - name: dynamodb-provisioned-rcu-us-east-1
+      service_name: Amazon DynamoDB
+      pricing_unit: RCU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.00013"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/20260804204051/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AmazonDynamoDB
+        region_code: us-east-1
+        usage_type: ReadCapacityUnit-Hrs
+        operation: CommittedThroughput
+        description_contains: beyond the free tier

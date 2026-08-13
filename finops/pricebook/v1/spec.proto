@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package dev.planton.finops.pricebook.v1;
+
+// PriceBookSpec holds one provider's pinned unit prices. Authoring
+// contract: every monetary value is a decimal STRING (never a YAML float --
+// floats corrupt cents), every price names its source URL and retrieval
+// date, and entry slugs are unique within the book -- estimate models
+// reference them by name.
+message PriceBookSpec {
+  // The pinned prices, one per provider SKU/meter the catalog estimates
+  // from. Keep the book minimal: an entry no estimate model references is
+  // dead weight, and the estimate generator's coherence checks reject it.
+  repeated PriceBookEntry entries = 1;
+}
+
+// PriceBookEntry pins one unit price: what one provider meter costs today
+// at published list prices, where that figure was read, and (when a
+// machine selector is present) exactly how to read it again.
+message PriceBookEntry {
+  // The entry's slug identity, unique within this book, referenced by
+  // estimate model quantity lines (e.g. "alb-hours-us-east-1"). Name the
+  // provider SKU and its pricing scope, not any component: many components
+  // may cite one entry.
+  string name = 1;
+
+  // The provider offering that bills (FOCUS ServiceName), exactly as
+  // component cost profiles declare it, e.g. "Elastic Load Balancing".
+  string service_name = 2;
+
+  // The unit the price is quoted in (FOCUS PricingUnit), e.g. "hours",
+  // "WCU-hours", "disk-months". Must agree with the pricing_unit that
+  // component cost profiles declare for meters priced by this entry; the
+  // estimate generator enforces the agreement.
+  string pricing_unit = 3;
+
+  // The pricing scope the price was verified for: a provider region code
+  // ("us-east-1", "eastus") for regionally priced SKUs, or "global" when
+  // the provider prices the SKU identically everywhere. List prices vary
+  // by region; an unpinned price is not reproducible.
+  string region = 4;
+
+  // ISO 4217 currency of list_unit_price ("USD").
+  string currency = 5;
+
+  // The provider's published list price per pricing_unit, as a decimal
+  // string (FOCUS ListUnitPrice), e.g. "0.0225".
+  string list_unit_price = 6;
+
+  // URL the unit price was read from. Prefer a URL that can be fetched
+  // again and still show this price: a versioned price-API document beats
+  // a live API query, which beats a human pricing page.
+  string price_source = 7;
+
+  // The date the unit price was read from price_source (YYYY-MM-DD).
+  // Prices drift; a dated price is a fact, an undated price is a rumor.
+  string retrieved_on = 8;
+
+  // How the price-book fetcher re-reads this price from the AWS Price
+  // List bulk API. Present only on AWS entries; entries without a
+  // selector are refreshed by hand (or by a future provider fetcher) and
+  // the fetcher leaves them untouched.
+  AwsPriceSelector aws_selector = 9;
+}
+
+// AwsPriceSelector locates one price dimension in the AWS Price List bulk
+// API (the public, unauthenticated offer files at
+// pricing.us-east-1.amazonaws.com). The fetcher resolves the offer's
+// current version, downloads the small regional offer file, and matches
+// products by attribute -- a selector that matches zero or several price
+// dimensions is a hard error, never a guess.
+message AwsPriceSelector {
+  // The offer code naming the service's price file, e.g. "AWSELB",
+  // "AmazonDynamoDB", "AmazonVPC" (the offer index at
+  // /offers/v1.0/aws/index.json lists them all).
+  string offer_code = 1;
+
+  // The region whose offer file is read, e.g. "us-east-1". Regional files
+  // are small (tens of KB); the all-region file can be enormous.
+  string region_code = 2;
+
+  // The product's exact "usagetype" attribute in the regional offer file,
+  // including any region prefix the file carries (e.g. "LoadBalancerUsage",
+  // "USE1-PublicIPv4:InUseAddress"). Recorded verbatim -- exactness beats
+  // normalization.
+  string usage_type = 3;
+
+  // The product's "operation" attribute (e.g. "LoadBalancing:Application",
+  // "CommittedThroughput"). Empty when the product carries none.
+  string operation = 4;
+
+  // Disambiguates tiered on-demand price dimensions within the matched
+  // product: the dimension whose description contains this substring is
+  // the one priced (e.g. "beyond the free tier" skips the $0.00 free-tier
+  // tier -- list-price semantics never net free tiers out). Empty when the
+  // product has exactly one dimension.
+  string description_contains = 5;
+}

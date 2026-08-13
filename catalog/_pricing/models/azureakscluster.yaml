@@ -1,0 +1,102 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: azureakscluster
+spec:
+  presets:
+    - preset: 01-standard
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: node pool VM hours
+          price: vm-standard-d4s-v5-eastus
+          pricing_quantity: "2190"
+          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+        - sku_meter: cluster management fee
+          price: aks-standard-management-fee
+          pricing_quantity: "730"
+          quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
+        - sku_meter: node OS disk storage
+          price: managed-disk-p10-eastus
+          pricing_quantity: "3"
+          quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
+        - sku_meter: included load balancer rules
+          price: standard-lb-included-rules
+          pricing_quantity: "730"
+          quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
+        - sku_meter: standard static public IP
+          price: standard-static-public-ip
+          pricing_quantity: "730"
+          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+      exclusions:
+        - Log Analytics ingestion for Container Insights (oms_agent) depends on workload log volume
+        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - load balancer data processed and network egress are traffic-dependent
+      notes: Estimated at the autoscaling floor -- the committed always-on spend.
+    - preset: 02-private
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: node pool VM hours
+          price: vm-standard-d4s-v5-eastus
+          pricing_quantity: "2190"
+          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+        - sku_meter: cluster management fee
+          price: aks-standard-management-fee
+          pricing_quantity: "730"
+          quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
+        - sku_meter: node OS disk storage
+          price: managed-disk-p10-eastus
+          pricing_quantity: "3"
+          quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
+        - sku_meter: included load balancer rules
+          price: standard-lb-included-rules
+          pricing_quantity: "730"
+          quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
+        - sku_meter: standard static public IP
+          price: standard-static-public-ip
+          pricing_quantity: "730"
+          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+      exclusions:
+        - private endpoint and private DNS zone charges for the private API server
+        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - load balancer data processed and network egress are traffic-dependent
+      notes: Estimated at the autoscaling floor -- the committed always-on spend.
+    - preset: 03-hardened-enterprise
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: node pool VM hours
+          price: vm-standard-d4s-v5-eastus
+          pricing_quantity: "2190"
+          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+        - sku_meter: cluster management fee
+          price: aks-standard-management-fee
+          pricing_quantity: "730"
+          quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
+        - sku_meter: node OS disk storage
+          price: managed-disk-p10-eastus
+          pricing_quantity: "3"
+          quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
+        - sku_meter: included load balancer rules
+          price: standard-lb-included-rules
+          pricing_quantity: "730"
+          quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
+        - sku_meter: standard static public IP
+          price: standard-static-public-ip
+          pricing_quantity: "730"
+          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+      exclusions:
+        - Microsoft Defender for Containers plan charges (billed per protected vCPU per month)
+        - Log Analytics ingestion for Container Insights and Defender depends on workload volume
+        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - load balancer data processed and network egress are traffic-dependent
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. Host encryption on the default pool adds no charge of its own.

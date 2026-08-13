@@ -1,12 +1,10 @@
-# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
 apiVersion: finops.planton.dev/v1
-kind: ComponentCostEstimate
+kind: ComponentCostEstimateModel
 metadata:
   name: gcpgkecluster
 spec:
@@ -15,17 +13,11 @@ spec:
       region_assumption: us-central1
       currency: USD
       hours_per_month: 730
-      line_items:
-        - service_name: Google Kubernetes Engine
-          sku_meter: cluster management fee
-          pricing_unit: hours
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate (identical for zonal and regional clusters)
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
-          retrieved_on: "2026-08-14"
-          list_cost: "73.0000"
-      total_list_cost: "73.0000"
       exclusions:
         - node compute -- this Standard-mode cluster runs its workloads on separate GcpGkeNodePool resources with their own estimates
         - Cloud Logging ingestion for the enabled system and workload log components
@@ -35,17 +27,11 @@ spec:
       region_assumption: us-central1
       currency: USD
       hours_per_month: 730
-      line_items:
-        - service_name: Google Kubernetes Engine
-          sku_meter: cluster management fee
-          pricing_unit: hours
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
-          retrieved_on: "2026-08-14"
-          list_cost: "73.0000"
-      total_list_cost: "73.0000"
       exclusions:
         - Autopilot pod charges -- running pods bill per second for the vCPU, memory, and ephemeral storage they request, entirely workload-dependent
         - Cloud Logging ingestion and network egress
@@ -54,17 +40,11 @@ spec:
       region_assumption: us-central1
       currency: USD
       hours_per_month: 730
-      line_items:
-        - service_name: Google Kubernetes Engine
-          sku_meter: cluster management fee
-          pricing_unit: hours
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
-          retrieved_on: "2026-08-14"
-          list_cost: "73.0000"
-      total_list_cost: "73.0000"
       exclusions:
         - node compute -- separate GcpGkeNodePool resources
         - Cloud Logging ingestion and network egress

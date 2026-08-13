@@ -1,8 +1,10 @@
-# Per-preset monthly cost estimates at published list prices. Every line
-# cites the provider pricing page and retrieval date of its unit price; the
-# catalog-data conformance gate re-computes all arithmetic and binds every
-# priced meter to the component's cost.yaml. Schema:
-# finops/componentcostestimate/v1.
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -20,7 +22,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one load balancer, billed every hour of the month
           list_unit_price: "0.0225"
-          price_source: https://aws.amazon.com/elasticloadbalancing/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "16.4250"
         - service_name: Amazon Virtual Private Cloud
@@ -29,7 +31,7 @@ spec:
           pricing_quantity: "1460"
           quantity_basis: internet-facing with two subnets -- one public IPv4 node per Availability Zone, 2 addresses x 730 hours
           list_unit_price: "0.005"
-          price_source: https://aws.amazon.com/vpc/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "7.3000"
       total_list_cost: "23.7250"
@@ -47,7 +49,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one load balancer, billed every hour of the month
           list_unit_price: "0.0225"
-          price_source: https://aws.amazon.com/elasticloadbalancing/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "16.4250"
       total_list_cost: "16.4250"
@@ -66,7 +68,7 @@ spec:
           pricing_quantity: "365000"
           quantity_basis: minimum_load_balancer_capacity_units reserves 500 LCUs every hour, 500 x 730 hours
           list_unit_price: "0.008"
-          price_source: https://aws.amazon.com/elasticloadbalancing/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "2920.0000"
         - service_name: Elastic Load Balancing
@@ -75,7 +77,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one load balancer, billed every hour of the month
           list_unit_price: "0.0225"
-          price_source: https://aws.amazon.com/elasticloadbalancing/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "16.4250"
         - service_name: Amazon Virtual Private Cloud
@@ -84,7 +86,7 @@ spec:
           pricing_quantity: "1460"
           quantity_basis: internet-facing with two subnets -- one public IPv4 node per Availability Zone, 2 addresses x 730 hours
           list_unit_price: "0.005"
-          price_source: https://aws.amazon.com/vpc/pricing/
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260724154225/us-east-1/index.json
           retrieved_on: "2026-08-14"
           list_cost: "7.3000"
       total_list_cost: "2943.7250"
