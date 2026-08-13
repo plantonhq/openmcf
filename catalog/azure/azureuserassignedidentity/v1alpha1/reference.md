@@ -158,6 +158,9 @@ Fields on other kinds that can point at this resource:
 | AzureContainerAppEnvironmentCertificate | `spec.certificateKeyVault.identity` | `status.outputs.identity_id` |
 | AzureContainerAppJob | `spec.eventTrigger.scale.rules[].identityId` | `status.outputs.identity_id` |
 | AzureContainerAppJob | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
+| AzureContainerInstance | `spec.imageRegistryCredentials[].userAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureContainerInstance | `spec.identity.identityIds` | `status.outputs.identity_id` |
+| AzureContainerInstance | `spec.keyVaultUserAssignedIdentityId` | `status.outputs.identity_id` |
 | AzureContainerRegistry | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureContainerRegistry | `spec.encryption.identityClientId` | `status.outputs.client_id` |
 | AzureCosmosdbAccount | `spec.identity.identityIds` | `status.outputs.identity_id` |

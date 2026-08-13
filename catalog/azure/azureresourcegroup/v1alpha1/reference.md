@@ -99,6 +99,7 @@ Fields on other kinds that can point at this resource:
 | AzureContainerApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppEnvironment | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppJob | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureContainerInstance | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerRegistry | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCosmosdbAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDataFactory | `spec.resourceGroup` | `status.outputs.resource_group_name` |

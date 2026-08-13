@@ -31,6 +31,7 @@ go_library(
         "container_app_environment_managed_certificate.go",
         "container_app_environment_storage.go",
         "container_app_job.go",
+        "container_group.go",
         "container_registry.go",
         "cosmosdb_account.go",
         "cosmosdb_mongo_collection.go",

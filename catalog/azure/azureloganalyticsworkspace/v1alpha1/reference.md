@@ -355,6 +355,8 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.microsoftDefender.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureApplicationInsights | `spec.workspaceId` | `status.outputs.workspace_id` |
 | AzureContainerAppEnvironment | `spec.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
+| AzureContainerInstance | `spec.diagnosticsLogAnalytics.workspaceId` | `status.outputs.workspace_customer_id` |
+| AzureContainerInstance | `spec.diagnosticsLogAnalytics.workspaceKey` | `status.outputs.primary_shared_key` |
 | AzureFirewallPolicy | `spec.insights.defaultLogAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureFirewallPolicy | `spec.insights.logAnalyticsWorkspaces[].workspaceId` | `status.outputs.workspace_id` |
 | AzureMonitorDataCollectionRule | `spec.destinations.logAnalytics[].workspaceResourceId` | `status.outputs.workspace_id` |

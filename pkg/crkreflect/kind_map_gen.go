@@ -188,6 +188,7 @@ import (
 	azurecontainerappenvironmentmanagedcertificatev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironmentmanagedcertificate/v1alpha1"
 	azurecontainerappenvironmentstoragev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironmentstorage/v1alpha1"
 	azurecontainerappjobv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappjob/v1alpha1"
+	azurecontainerinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerinstance/v1alpha1"
 	azurecontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerregistry/v1alpha1"
 	azurecosmosdbaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbaccount/v1alpha1"
 	azurecosmosdbmongocollectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbmongocollection/v1alpha1"
@@ -923,6 +924,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentManagedCertificate: &azurecontainerappenvironmentmanagedcertificatev1alpha1.AzureContainerAppEnvironmentManagedCertificate{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentStorage:            &azurecontainerappenvironmentstoragev1alpha1.AzureContainerAppEnvironmentStorage{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppJob:                           &azurecontainerappjobv1alpha1.AzureContainerAppJob{},
+	cloudresourcekind.CloudResourceKind_AzureContainerInstance:                         &azurecontainerinstancev1alpha1.AzureContainerInstance{},
 	cloudresourcekind.CloudResourceKind_AzureContainerRegistry:                         &azurecontainerregistryv1alpha1.AzureContainerRegistry{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbAccount:                           &azurecosmosdbaccountv1alpha1.AzureCosmosdbAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbMongoCollection:                   &azurecosmosdbmongocollectionv1alpha1.AzureCosmosdbMongoCollection{},

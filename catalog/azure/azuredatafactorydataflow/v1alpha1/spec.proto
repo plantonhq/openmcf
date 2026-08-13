@@ -196,8 +196,12 @@ message AzureDataFactoryDataFlowTransformation {
 // factory.
 message AzureDataFactoryDataFlowDatasetReference {
   // The dataset's name inside the factory. A literal string or a
-  // reference to a dataset kind's name output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [(buf.validate.field).required = true];
+  // reference to an AzureDataFactoryDataset's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryDataset,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.dataset_name"
+  ];
 
   // Values for the dataset's parameters, if it declares any.
   map<string, string> parameters = 2;
@@ -208,8 +212,12 @@ message AzureDataFactoryDataFlowDatasetReference {
 // flow's own factory.
 message AzureDataFactoryDataFlowLinkedServiceReference {
   // The linked service's name inside the factory. A literal string or
-  // a reference to a linked-service kind's name output.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [(buf.validate.field).required = true];
+  // a reference to an AzureDataFactoryLinkedService's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_name"
+  ];
 
   // Values for the linked service's parameters, if it declares any.
   map<string, string> parameters = 2;

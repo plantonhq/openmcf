@@ -304,6 +304,7 @@ Fields on other kinds that can point at this resource:
 | AzureAiFoundry | `spec.encryption.keyId` | `status.outputs.key_id` |
 | AzureAksCluster | `spec.keyManagementService.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureContainerInstance | `spec.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureDataFactory | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |

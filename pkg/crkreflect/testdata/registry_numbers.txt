@@ -302,6 +302,7 @@ AzureComputeGallery=2205
 AzureComputeGalleryImage=2206
 AzureAvailabilitySet=2207
 AzureDiskSnapshot=2208
+AzureContainerInstance=2209
 AzureMongoCluster=2211
 AzureFabricCapacity=2212
 AzureBackupContainerStorageAccount=2213

@@ -1563,6 +1563,16 @@ Fields that can point at another resource's outputs:
 | `spec.azureSqlTable.linkedServiceId` | AzureDataFactoryLinkedService | `status.outputs.linked_service_id` |
 | `spec.custom.linkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureDataFactoryDataFlow | `spec.sources[].dataset.name` | `status.outputs.dataset_name` |
+| AzureDataFactoryDataFlow | `spec.sinks[].dataset.name` | `status.outputs.dataset_name` |
+| AzureDataFactoryDataFlow | `spec.transformations[].dataset.name` | `status.outputs.dataset_name` |
+
 ## See Also
 
 - [Overview](../README.md)

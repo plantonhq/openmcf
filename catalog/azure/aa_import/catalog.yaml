@@ -728,3 +728,11 @@ spec:
     - terraform_type: azurerm_snapshot
       pulumi_type: azure:compute/snapshot:Snapshot
       id_format: "{snapshot_id}"
+
+    # --- Container Instances --------------------------------------------------------
+    - terraform_type: azurerm_container_group
+      pulumi_type: azure:containerservice/group:Group
+      id_format: "{container_group_id}"
+      # Import cannot recover the group's secrets (secure environment
+      # variables, volume storage keys/secret files, registry passwords,
+      # the Log Analytics workspace key) -- Azure never returns them.

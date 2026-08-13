@@ -1695,6 +1695,13 @@ func TestAzureDiskSnapshot_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuredisksnapshot", "terraform")
 }
 
+func TestAzureContainerInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerinstance", "pulumi")
+}
+func TestAzureContainerInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerinstance", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

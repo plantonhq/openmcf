@@ -87,7 +87,7 @@ spec:
 | `spec.annotations` | `[]string` |  |  |  |
 | `spec.parameters` | `map<string, string>` |  |  |  |
 | `spec.additionalProperties` | `map<string, string>` |  |  |  |
-| `spec.integrationRuntimeName` | `string \| valueFrom` |  |  |  |
+| `spec.integrationRuntimeName` | `string \| valueFrom` |  |  | AzureDataFactoryIntegrationRuntime (`status.outputs.integration_runtime_name`) |
 | `spec.azureBlobStorage` | `AzureDataFactoryLinkedServiceAzureBlobStorage` |  |  |  |
 | `spec.azureBlobStorage.connectionString` | `string` (sensitive) |  |  |  |
 | `spec.azureBlobStorage.connectionStringInsecure` | `string` |  |  |  |
@@ -330,9 +330,12 @@ argument).
 
 The integration runtime the connection runs through, by name --
 omit for the factory's default Azure runtime. Set this to a
-self-hosted runtime's name to reach private networks.
+self-hosted runtime's name to reach private networks. A literal
+string or a reference to an AzureDataFactoryIntegrationRuntime's
+name output.
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AzureDataFactoryIntegrationRuntime (`status.outputs.integration_runtime_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryIntegrationRuntime, name: <that resource's name>, fieldPath: status.outputs.integration_runtime_name}} -- a bare string does not parse
 
 ### spec.azureBlobStorage
 
@@ -1825,6 +1828,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.dataFactoryId` | AzureDataFactory | `status.outputs.data_factory_id` |
+| `spec.integrationRuntimeName` | AzureDataFactoryIntegrationRuntime | `status.outputs.integration_runtime_name` |
 | `spec.azureBlobStorage.serviceEndpoint` | AzureStorageAccount | `status.outputs.primary_blob_endpoint` |
 | `spec.azureBlobStorage.sasTokenLinkedKeyVaultKey.linkedServiceName` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
 | `spec.azureBlobStorage.servicePrincipalLinkedKeyVaultKey.linkedServiceName` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
@@ -1852,6 +1856,12 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureDataFactoryDataFlow | `spec.sources[].linkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryDataFlow | `spec.sources[].schemaLinkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryDataFlow | `spec.sinks[].linkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryDataFlow | `spec.sinks[].schemaLinkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryDataFlow | `spec.sinks[].rejectedLinkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryDataFlow | `spec.transformations[].linkedService.name` | `status.outputs.linked_service_name` |
 | AzureDataFactoryDataset | `spec.linkedServiceName` | `status.outputs.linked_service_name` |
 | AzureDataFactoryDataset | `spec.azureSqlTable.linkedServiceId` | `status.outputs.linked_service_id` |
 | AzureDataFactoryDataset | `spec.custom.linkedService.name` | `status.outputs.linked_service_name` |

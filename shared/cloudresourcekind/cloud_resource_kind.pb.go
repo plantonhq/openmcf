@@ -1059,6 +1059,12 @@ const (
 	// Incremental snapshots store only the delta since the previous
 	// snapshot of the same disk.
 	CloudResourceKind_AzureDiskSnapshot CloudResourceKind = 2208
+	// The Azure Container Instance container group -- serverless
+	// containers billed per second: one or more containers sharing a
+	// lifecycle, network, and volumes (plus one-shot init containers),
+	// with no cluster or VM to manage. Public, subnet-private, or
+	// IP-less postures.
+	CloudResourceKind_AzureContainerInstance CloudResourceKind = 2209
 	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
 	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
 	// with sharding, zone-redundant HA, and point-in-time restore.
@@ -1987,6 +1993,7 @@ var (
 		2206:  "AzureComputeGalleryImage",
 		2207:  "AzureAvailabilitySet",
 		2208:  "AzureDiskSnapshot",
+		2209:  "AzureContainerInstance",
 		2211:  "AzureMongoCluster",
 		2212:  "AzureFabricCapacity",
 		2213:  "AzureBackupContainerStorageAccount",
@@ -2695,6 +2702,7 @@ var (
 		"AzureComputeGalleryImage":                       2206,
 		"AzureAvailabilitySet":                           2207,
 		"AzureDiskSnapshot":                              2208,
+		"AzureContainerInstance":                         2209,
 		"AzureMongoCluster":                              2211,
 		"AzureFabricCapacity":                            2212,
 		"AzureBackupContainerStorageAccount":             2213,
@@ -3490,7 +3498,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8f\xbd\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ɽ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3795,7 +3803,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x13AzureComputeGallery\x10\x9d\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcgal:\x02\xd0\x0f\x12<\n" +
 	"\x18AzureComputeGalleryImage\x10\x9e\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazcgimg:\x02\x9d\x11\x128\n" +
 	"\x14AzureAvailabilitySet\x10\x9f\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazavset:\x02\xd0\x0f\x125\n" +
-	"\x11AzureDiskSnapshot\x10\xa0\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazdsnap:\x02\xe7\x0f\x125\n" +
+	"\x11AzureDiskSnapshot\x10\xa0\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazdsnap:\x02\xe7\x0f\x128\n" +
+	"\x16AzureContainerInstance\x10\xa1\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azaci:\x02\xd0\x0f\x125\n" +
 	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
 	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +

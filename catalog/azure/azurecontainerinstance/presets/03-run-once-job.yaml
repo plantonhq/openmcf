@@ -1,0 +1,47 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: data-migration
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: data-migration
+  region: eastus
+  osType: Linux
+  # Never: the container runs to completion once; the group shows
+  # Terminated when done. Per-second billing -- a ten-minute job
+  # costs ten minutes.
+  restartPolicy: Never
+  # A job needs no group IP -- and "None" is the only posture Spot
+  # accepts.
+  ipAddressType: None
+  # Spot runs on spare capacity at steep discount and can be evicted;
+  # jobs that can rerun are where it shines. Delete this line if your
+  # job cannot tolerate eviction.
+  priority: Spot
+  # The init container seeds the shared scratch volume; the job reads
+  # it. The SAME empty_dir name across containers IS the sharing
+  # mechanism.
+  initContainers:
+    - name: fetch-config
+      image: busybox:1.36
+      commands: ["sh", "-c", "wget -q -O /work/config.json $CONFIG_URL"]
+      environmentVariables:
+        CONFIG_URL: https://config.internal.acme.com/migration.json
+      volumes:
+        - name: work
+          mountPath: /work
+          emptyDir: true
+  containers:
+    - name: migrate
+      image: <your-registry>.azurecr.io/data-migration:1.4.2
+      cpu: 2
+      memory: 4
+      commands: ["python", "migrate.py", "--config", "/work/config.json"]
+      secureEnvironmentVariables:
+        DATABASE_PASSWORD: <your-database-password>
+      volumes:
+        - name: work
+          mountPath: /work
+          emptyDir: true

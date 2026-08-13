@@ -1,0 +1,35 @@
+# Minimal AzureContainerInstance scenario: one public Linux container
+# with a run-id-tokened DNS label (labels are region-wide names -- the
+# token prevents recreate-window collisions). Proves the common path,
+# the FQDN and IP outputs, and the omit-exposed-ports derivation (the
+# group exposes the container's port 80). Bills per second for the
+# lane's minutes -- effectively free.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: planton-oss-e2e-azurecontainerinstance-smoke
+  id: planton-oss-e2e-azurecontainerinstance-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerinstance
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-aci-${E2E_RUN_ID}
+  region: eastus
+  osType: Linux
+  dnsNameLabel: planton-oss-e2e-aci-${E2E_RUN_ID}
+  containers:
+    - name: web
+      image: mcr.microsoft.com/azuredocs/aci-helloworld:latest
+      cpu: 0.5
+      memory: 1
+      ports:
+        - port: 80

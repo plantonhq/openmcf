@@ -219,3 +219,39 @@ spec:
       serviceName: Microsoft.Network/dnsResolvers
       actions:
         - Microsoft.Network/virtualNetworks/subnets/join/action
+---
+# An eighth, container-instance-shaped subnet instance: a PRIVATE
+# container group only deploys into a subnet delegated to
+# "Microsoft.ContainerInstance/containerGroups" (which then admits
+# nothing but container groups), so no fixture above can serve one.
+# Consumers address this instance by its metadata name
+# (planton-oss-e2e-azure-fixture-aci-subnet). Azure serializes
+# container-group operations per subnet, so lanes sharing this fixture
+# deploy one group at a time. The /28 is carved adjacent to the DNS
+# resolver fixtures'.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureSubnet
+metadata:
+  name: planton-oss-e2e-azure-fixture-aci-subnet
+  id: planton-oss-e2e-azure-fixture-aci-subnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuresubnet
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  virtualNetworkId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vnet
+  name: planton-oss-e2e-azure-fixture-aci-subnet
+  addressPrefixes:
+    - "10.240.246.96/28"
+  delegations:
+    - name: containergroups
+      serviceName: Microsoft.ContainerInstance/containerGroups
+      actions:
+        - Microsoft.Network/virtualNetworks/subnets/join/action

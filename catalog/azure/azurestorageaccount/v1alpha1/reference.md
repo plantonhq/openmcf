@@ -1793,6 +1793,10 @@ Fields on other kinds that can point at this resource:
 | AzureComputeGalleryImage | `spec.versions[].storageAccountId` | `status.outputs.storage_account_id` |
 | AzureContainerAppEnvironmentStorage | `spec.accountName` | `status.outputs.storage_account_name` |
 | AzureContainerAppEnvironmentStorage | `spec.accessKey` | `status.outputs.primary_access_key` |
+| AzureContainerInstance | `spec.containers[].volumes[].azureFile.storageAccountName` | `status.outputs.storage_account_name` |
+| AzureContainerInstance | `spec.containers[].volumes[].azureFile.storageAccountKey` | `status.outputs.primary_access_key` |
+| AzureContainerInstance | `spec.initContainers[].volumes[].azureFile.storageAccountName` | `status.outputs.storage_account_name` |
+| AzureContainerInstance | `spec.initContainers[].volumes[].azureFile.storageAccountKey` | `status.outputs.primary_access_key` |
 | AzureDataFactoryLinkedService | `spec.azureBlobStorage.serviceEndpoint` | `status.outputs.primary_blob_endpoint` |
 | AzureDataFactoryLinkedService | `spec.dataLakeStorageGen2.url` | `status.outputs.primary_dfs_endpoint` |
 | AzureDataFactoryTrigger | `spec.blobEvent.storageAccountId` | `status.outputs.storage_account_id` |

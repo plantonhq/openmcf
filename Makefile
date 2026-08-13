@@ -221,7 +221,7 @@ generate-conversion-registry:
 .PHONY: build-catalog-bundle
 build-catalog-bundle:
 	mkdir -p build
-	buf build -o build/catalog-descriptors.binpb
+	buf build --disable-symlinks -o build/catalog-descriptors.binpb
 	go run ./pkg/catalogbundle/cli build \
 		--descriptors build/catalog-descriptors.binpb \
 		--catalog-dir catalog \

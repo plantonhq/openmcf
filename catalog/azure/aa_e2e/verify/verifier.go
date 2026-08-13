@@ -57,6 +57,7 @@ var verifiers = map[string]Verifier{
 	"azurecontainerappenvironmentmanagedcertificate": &containerAppEnvironmentManagedCertificateVerifier{},
 	"azurecontainerappenvironmentstorage":            &containerAppEnvironmentStorageVerifier{},
 	"azurecontainerappjob":                           &containerAppJobVerifier{},
+	"azurecontainerinstance":                         &containerGroupVerifier{},
 	"azurecontainerregistry":                         &containerRegistryVerifier{},
 	"azurecosmosdbaccount":                           &cosmosdbAccountVerifier{},
 	"azurecosmosdbmongocollection":                   &cosmosdbMongoCollectionVerifier{},

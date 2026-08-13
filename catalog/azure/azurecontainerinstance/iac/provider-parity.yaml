@@ -1,0 +1,81 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The deprecated `network_profile_id` (dead at v5 -- never expanded, never
+# read back; its own deprecation text still says "removed from 4.0") sits
+# outside accounting by the standing schema-deprecated rule.
+
+resources:
+  azurerm_container_group:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # Plural list names over the provider's singular block names.
+      - spec: spec.containers
+        arg: container
+      - spec: spec.init_containers
+        arg: init_container
+      - spec: spec.image_registry_credentials
+        arg: image_registry_credential
+      # exposed_port is an ATTRIBUTE in the provider (config-mode attr):
+      # one schema argument carrying {port, protocol} entries. The spec's
+      # port leaf maps onto it; the protocol sibling is recorded under
+      # specExclusions (one judgment per argument -- the G11 fan-in
+      # precedent, pending the upstream fan-in grammar).
+      - spec: spec.exposed_ports.port
+        arg: exposed_port
+      - spec: spec.containers.volumes
+        arg: container.volume
+      - spec: spec.init_containers.volumes
+        arg: init_container.volume
+      # The one-element set flattened to the honest singular (MaxItems=1
+      # in the provider; the classic Pulumi SDK flattens it the same way).
+      - spec: spec.subnet_id
+        arg: subnet_ids
+      # The provider's diagnostics block has exactly one member -- the
+      # spec collapses the wrapper level.
+      - spec: spec.diagnostics_log_analytics.workspace_id
+        arg: diagnostics.log_analytics.workspace_id
+      - spec: spec.diagnostics_log_analytics.workspace_key
+        arg: diagnostics.log_analytics.workspace_key
+      - spec: spec.diagnostics_log_analytics.log_type
+        arg: diagnostics.log_analytics.log_type
+      - spec: spec.diagnostics_log_analytics.metadata
+        arg: diagnostics.log_analytics.metadata
+      # The volume UNION: the spec's azure_file variant carries the
+      # provider's flat share/account/key triple (exactly-one-form CEL
+      # replaces the provider's apply-time exclusivity errors).
+      - spec: spec.containers.volumes.azure_file.share_name
+        arg: container.volume.share_name
+      - spec: spec.containers.volumes.azure_file.storage_account_name
+        arg: container.volume.storage_account_name
+      - spec: spec.containers.volumes.azure_file.storage_account_key
+        arg: container.volume.storage_account_key
+      - spec: spec.init_containers.volumes.azure_file.share_name
+        arg: init_container.volume.share_name
+      - spec: spec.init_containers.volumes.azure_file.storage_account_name
+        arg: init_container.volume.storage_account_name
+      - spec: spec.init_containers.volumes.azure_file.storage_account_key
+        arg: init_container.volume.storage_account_key
+
+# Spec leaves whose provider surface is already judged through a sibling
+# leaf: each exposed-port entry renders into the ONE attribute-mode
+# exposed_port argument -- the mapping above names the .port leaf, and
+# the .protocol leaf is recorded here because the manifest grammar
+# carries one judgment per argument.
+specExclusions:
+  - field: spec.exposed_ports.protocol
+    reason: >-
+      Renders into the attribute-mode exposed_port argument alongside its
+      .port sibling -- the {port, protocol} pair IS the provider's entry;
+      the argument is judged once, on the .port mapping.

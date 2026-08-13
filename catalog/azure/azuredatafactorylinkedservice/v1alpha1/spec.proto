@@ -75,8 +75,13 @@ message AzureDataFactoryLinkedServiceSpec {
 
   // The integration runtime the connection runs through, by name --
   // omit for the factory's default Azure runtime. Set this to a
-  // self-hosted runtime's name to reach private networks.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef integration_runtime_name = 7;
+  // self-hosted runtime's name to reach private networks. A literal
+  // string or a reference to an AzureDataFactoryIntegrationRuntime's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef integration_runtime_name = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryIntegrationRuntime,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.integration_runtime_name"
+  ];
 
   // Azure Blob Storage. Set exactly one variant block on this spec.
   AzureDataFactoryLinkedServiceAzureBlobStorage azure_blob_storage = 8;

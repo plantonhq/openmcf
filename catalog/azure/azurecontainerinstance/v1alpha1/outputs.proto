@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerinstance.v1alpha1;
+
+// **AzureContainerInstanceStackOutputs** captures the outputs from
+// provisioning a container group.
+message AzureContainerInstanceStackOutputs {
+  // The container group's Azure Resource Manager ID.
+  string container_group_id = 1;
+
+  // The container group's name.
+  string container_group_name = 2;
+
+  // The group's IP address -- public or private depending on
+  // ip_address_type. Empty for the "None" posture.
+  string ip_address = 3;
+
+  // The group's FQDN ({dns_name_label}.{region}.azurecontainer.io).
+  // Empty unless dns_name_label is set on a public group.
+  string fqdn = 4;
+
+  // The principal ID of the group's system-assigned managed identity.
+  // Empty unless the identity block enables SYSTEM_ASSIGNED. Grant
+  // this principal access on other resources (Key Vault, storage) so
+  // the group's containers can reach them without embedded secrets.
+  string identity_principal_id = 5;
+
+  // The tenant ID of the group's system-assigned managed identity.
+  // Empty unless the identity block enables SYSTEM_ASSIGNED.
+  string identity_tenant_id = 6;
+}

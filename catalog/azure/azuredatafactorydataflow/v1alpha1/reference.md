@@ -109,49 +109,49 @@ spec:
 | `spec.sources[].name` | `string` | yes |  |  |
 | `spec.sources[].description` | `string` |  |  |  |
 | `spec.sources[].dataset` | `AzureDataFactoryDataFlowDatasetReference` |  |  |  |
-| `spec.sources[].dataset.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sources[].dataset.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataset (`status.outputs.dataset_name`) |
 | `spec.sources[].dataset.parameters` | `map<string, string>` |  |  |  |
 | `spec.sources[].flowlet` | `AzureDataFactoryDataFlowFlowletReference` |  |  |  |
 | `spec.sources[].flowlet.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataFlow (`status.outputs.data_flow_name`) |
 | `spec.sources[].flowlet.parameters` | `map<string, string>` |  |  |  |
 | `spec.sources[].flowlet.datasetParameters` | `string` |  |  |  |
 | `spec.sources[].linkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.sources[].linkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sources[].linkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.sources[].linkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.sources[].schemaLinkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.sources[].schemaLinkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sources[].schemaLinkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.sources[].schemaLinkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.sinks` | `[]AzureDataFactoryDataFlowSink` |  |  |  |
 | `spec.sinks[].name` | `string` | yes |  |  |
 | `spec.sinks[].description` | `string` |  |  |  |
 | `spec.sinks[].dataset` | `AzureDataFactoryDataFlowDatasetReference` |  |  |  |
-| `spec.sinks[].dataset.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sinks[].dataset.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataset (`status.outputs.dataset_name`) |
 | `spec.sinks[].dataset.parameters` | `map<string, string>` |  |  |  |
 | `spec.sinks[].flowlet` | `AzureDataFactoryDataFlowFlowletReference` |  |  |  |
 | `spec.sinks[].flowlet.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataFlow (`status.outputs.data_flow_name`) |
 | `spec.sinks[].flowlet.parameters` | `map<string, string>` |  |  |  |
 | `spec.sinks[].flowlet.datasetParameters` | `string` |  |  |  |
 | `spec.sinks[].linkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.sinks[].linkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sinks[].linkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.sinks[].linkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.sinks[].schemaLinkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.sinks[].schemaLinkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sinks[].schemaLinkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.sinks[].schemaLinkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.sinks[].rejectedLinkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.sinks[].rejectedLinkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.sinks[].rejectedLinkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.sinks[].rejectedLinkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.transformations` | `[]AzureDataFactoryDataFlowTransformation` |  |  |  |
 | `spec.transformations[].name` | `string` | yes |  |  |
 | `spec.transformations[].description` | `string` |  |  |  |
 | `spec.transformations[].dataset` | `AzureDataFactoryDataFlowDatasetReference` |  |  |  |
-| `spec.transformations[].dataset.name` | `string \| valueFrom` | yes |  |  |
+| `spec.transformations[].dataset.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataset (`status.outputs.dataset_name`) |
 | `spec.transformations[].dataset.parameters` | `map<string, string>` |  |  |  |
 | `spec.transformations[].flowlet` | `AzureDataFactoryDataFlowFlowletReference` |  |  |  |
 | `spec.transformations[].flowlet.name` | `string \| valueFrom` | yes |  | AzureDataFactoryDataFlow (`status.outputs.data_flow_name`) |
 | `spec.transformations[].flowlet.parameters` | `map<string, string>` |  |  |  |
 | `spec.transformations[].flowlet.datasetParameters` | `string` |  |  |  |
 | `spec.transformations[].linkedService` | `AzureDataFactoryDataFlowLinkedServiceReference` |  |  |  |
-| `spec.transformations[].linkedService.name` | `string \| valueFrom` | yes |  |  |
+| `spec.transformations[].linkedService.name` | `string \| valueFrom` | yes |  | AzureDataFactoryLinkedService (`status.outputs.linked_service_name`) |
 | `spec.transformations[].linkedService.parameters` | `map<string, string>` |  |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.annotations` | `[]string` |  |  |  |
@@ -249,10 +249,11 @@ The dataset this source reads, by name.
 `string | valueFrom` · required
 
 The dataset's name inside the factory. A literal string or a
-reference to a dataset kind's name output.
+reference to an AzureDataFactoryDataset's name output.
 
+- references: AzureDataFactoryDataset (`status.outputs.dataset_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryDataset, name: <that resource's name>, fieldPath: status.outputs.dataset_name}} -- a bare string does not parse
 
 ### spec.sources[].dataset.parameters
 
@@ -303,10 +304,11 @@ dataset-less, inline sources).
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.sources[].linkedService.parameters
 
@@ -326,10 +328,11 @@ The linked service the source's schema is read from, by name
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.sources[].schemaLinkedService.parameters
 
@@ -370,10 +373,11 @@ The dataset this sink writes, by name.
 `string | valueFrom` · required
 
 The dataset's name inside the factory. A literal string or a
-reference to a dataset kind's name output.
+reference to an AzureDataFactoryDataset's name output.
 
+- references: AzureDataFactoryDataset (`status.outputs.dataset_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryDataset, name: <that resource's name>, fieldPath: status.outputs.dataset_name}} -- a bare string does not parse
 
 ### spec.sinks[].dataset.parameters
 
@@ -424,10 +428,11 @@ dataset-less, inline sinks).
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.sinks[].linkedService.parameters
 
@@ -447,10 +452,11 @@ The linked service the sink's schema is read from, by name
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.sinks[].schemaLinkedService.parameters
 
@@ -472,10 +478,11 @@ spec does not offer it there).
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.sinks[].rejectedLinkedService.parameters
 
@@ -515,10 +522,11 @@ The dataset this transformation uses, by name.
 `string | valueFrom` · required
 
 The dataset's name inside the factory. A literal string or a
-reference to a dataset kind's name output.
+reference to an AzureDataFactoryDataset's name output.
 
+- references: AzureDataFactoryDataset (`status.outputs.dataset_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryDataset, name: <that resource's name>, fieldPath: status.outputs.dataset_name}} -- a bare string does not parse
 
 ### spec.transformations[].dataset.parameters
 
@@ -568,10 +576,11 @@ The linked service this transformation uses, by name.
 `string | valueFrom` · required
 
 The linked service's name inside the factory. A literal string or
-a reference to a linked-service kind's name output.
+a reference to an AzureDataFactoryLinkedService's name output.
 
+- references: AzureDataFactoryLinkedService (`status.outputs.linked_service_name`)
 - rule: {"required":true}
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureDataFactoryLinkedService, name: <that resource's name>, fieldPath: status.outputs.linked_service_name}} -- a bare string does not parse
 
 ### spec.transformations[].linkedService.parameters
 
@@ -619,9 +628,18 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.dataFactoryId` | AzureDataFactory | `status.outputs.data_factory_id` |
+| `spec.sources[].dataset.name` | AzureDataFactoryDataset | `status.outputs.dataset_name` |
 | `spec.sources[].flowlet.name` | AzureDataFactoryDataFlow | `status.outputs.data_flow_name` |
+| `spec.sources[].linkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
+| `spec.sources[].schemaLinkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
+| `spec.sinks[].dataset.name` | AzureDataFactoryDataset | `status.outputs.dataset_name` |
 | `spec.sinks[].flowlet.name` | AzureDataFactoryDataFlow | `status.outputs.data_flow_name` |
+| `spec.sinks[].linkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
+| `spec.sinks[].schemaLinkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
+| `spec.sinks[].rejectedLinkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
+| `spec.transformations[].dataset.name` | AzureDataFactoryDataset | `status.outputs.dataset_name` |
 | `spec.transformations[].flowlet.name` | AzureDataFactoryDataFlow | `status.outputs.data_flow_name` |
+| `spec.transformations[].linkedService.name` | AzureDataFactoryLinkedService | `status.outputs.linked_service_name` |
 
 ## Referenced By
 

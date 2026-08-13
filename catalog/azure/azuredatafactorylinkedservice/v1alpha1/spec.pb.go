@@ -77,7 +77,9 @@ type AzureDataFactoryLinkedServiceSpec struct {
 	AdditionalProperties map[string]string `protobuf:"bytes,6,rep,name=additional_properties,json=additionalProperties,proto3" json:"additional_properties,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// The integration runtime the connection runs through, by name --
 	// omit for the factory's default Azure runtime. Set this to a
-	// self-hosted runtime's name to reach private networks.
+	// self-hosted runtime's name to reach private networks. A literal
+	// string or a reference to an AzureDataFactoryIntegrationRuntime's
+	// name output.
 	IntegrationRuntimeName *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=integration_runtime_name,json=integrationRuntimeName,proto3" json:"integration_runtime_name,omitempty"`
 	// Azure Blob Storage. Set exactly one variant block on this spec.
 	AzureBlobStorage *AzureDataFactoryLinkedServiceAzureBlobStorage `protobuf:"bytes,8,opt,name=azure_blob_storage,json=azureBlobStorage,proto3" json:"azure_blob_storage,omitempty"`
@@ -2631,7 +2633,7 @@ var File_catalog_azure_azuredatafactorylinkedservice_v1alpha1_spec_proto protore
 
 const file_catalog_azure_azuredatafactorylinkedservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?catalog/azure/azuredatafactorylinkedservice/v1alpha1/spec.proto\x128dev.planton.azure.azuredatafactorylinkedservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb6'\n" +
+	"?catalog/azure/azuredatafactorylinkedservice/v1alpha1/spec.proto\x128dev.planton.azure.azuredatafactorylinkedservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9'\n" +
 	"!AzureDataFactoryLinkedServiceSpec\x12\x89\x01\n" +
 	"\x0fdata_factory_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x96\x11\x92\xd4a\x1estatus.outputs.data_factory_idR\rdataFactoryId\x12\xca\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xb5\x01\xbaH\xb1\x01\xba\x01\xaa\x01\n" +
@@ -2641,8 +2643,8 @@ const file_catalog_azure_azuredatafactorylinkedservice_v1alpha1_spec_proto_rawDe
 	"\n" +
 	"parameters\x18\x05 \x03(\v2k.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceSpec.ParametersEntryR\n" +
 	"parameters\x12\xaa\x01\n" +
-	"\x15additional_properties\x18\x06 \x03(\v2u.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceSpec.AdditionalPropertiesEntryR\x14additionalProperties\x12l\n" +
-	"\x18integration_runtime_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x16integrationRuntimeName\x12\x95\x01\n" +
+	"\x15additional_properties\x18\x06 \x03(\v2u.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceSpec.AdditionalPropertiesEntryR\x14additionalProperties\x12\x9e\x01\n" +
+	"\x18integration_runtime_name\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\x9c\x11\x92\xd4a'status.outputs.integration_runtime_nameR\x16integrationRuntimeName\x12\x95\x01\n" +
 	"\x12azure_blob_storage\x18\b \x01(\v2g.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceAzureBlobStorageR\x10azureBlobStorage\x12\x91\x01\n" +
 	"\x10azure_databricks\x18\t \x01(\v2f.dev.planton.azure.azuredatafactorylinkedservice.v1alpha1.AzureDataFactoryLinkedServiceAzureDatabricksR\x0fazureDatabricks\x12\x95\x01\n" +
 	"\x12azure_file_storage\x18\n" +

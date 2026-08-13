@@ -867,6 +867,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AzureDataFactoryIntegrationRuntime | `spec.azureSsis.proxy.selfHostedIntegrationRuntimeName` | `status.outputs.integration_runtime_name` |
 | AzureDataFactoryIntegrationRuntime | `spec.selfHosted.rbacAuthorization.resourceId` | `status.outputs.integration_runtime_id` |
+| AzureDataFactoryLinkedService | `spec.integrationRuntimeName` | `status.outputs.integration_runtime_name` |
 
 ## See Also
 

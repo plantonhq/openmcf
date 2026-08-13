@@ -2852,6 +2852,17 @@ enum CloudResourceKind {
     id_prefix: "azdsnap"
     prerequisites: [AzureManagedDisk]
   }];
+  // The Azure Container Instance container group -- serverless
+  // containers billed per second: one or more containers sharing a
+  // lifecycle, network, and volumes (plus one-shot init containers),
+  // with no cluster or VM to manage. Public, subnet-private, or
+  // IP-less postures.
+  AzureContainerInstance = 2209 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaci"
+    prerequisites: [AzureResourceGroup]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.

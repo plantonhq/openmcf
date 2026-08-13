@@ -1,0 +1,135 @@
+# Deep-shape example for docs and offline validation: a maximal PUBLIC
+# container group exercising every arm -- two containers (one with all
+# four volume forms across the pair, probes in both forms, limits,
+# secure environment variables), an init container seeding a shared
+# scratch volume, both registry-credential forms, combined identity,
+# Log Analytics diagnostics with typed metadata, custom DNS, zones,
+# narrowed exposed ports, and customer-managed-key encryption.
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: test-container-instance
+  id: test-container-instance
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: app-aci
+  region: eastus
+  osType: Linux
+  restartPolicy: Always
+  sku: Standard
+  ipAddressType: Public
+  dnsNameLabel: app-aci-acme
+  dnsNameLabelReusePolicy: TenantReuse
+  zones:
+    - "1"
+  # Narrow the group's surface to the web port -- the sidecar's metrics
+  # port stays group-internal.
+  exposedPorts:
+    - port: 80
+  initContainers:
+    - name: seed
+      image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      commands: ["sh", "-c", "echo ready > /work/ready"]
+      environmentVariables:
+        SEED_MODE: static
+      volumes:
+        - name: work
+          mountPath: /work
+          emptyDir: true
+  containers:
+    - name: web
+      image: mcr.microsoft.com/azuredocs/aci-helloworld:latest
+      cpu: 0.5
+      memory: 1
+      cpuLimit: 1
+      memoryLimit: 1.5
+      ports:
+        - port: 80
+      environmentVariables:
+        APP_MODE: production
+      secureEnvironmentVariables:
+        API_TOKEN: test-token-value
+      volumes:
+        - name: work
+          mountPath: /work
+          emptyDir: true
+        - name: content
+          mountPath: /content
+          readOnly: true
+          azureFile:
+            shareName:
+              value: app-content
+            storageAccountName:
+              value: appcontentsa
+            storageAccountKey:
+              value: dGVzdC1zdG9yYWdlLWtleQ==
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+          scheme: http
+        periodSeconds: 30
+        failureThreshold: 3
+      readinessProbe:
+        exec: ["ls", "/work/ready"]
+        initialDelaySeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 2
+    - name: sidecar
+      image: registry.example.com/acme/metrics-sidecar:2.1.0
+      cpu: 0.25
+      memory: 0.5
+      ports:
+        - port: 9090
+      commands: ["/bin/sidecar", "--listen", ":9090"]
+      security:
+        privilegeEnabled: false
+      volumes:
+        - name: rules
+          mountPath: /etc/rules
+          gitRepo:
+            url: https://github.com/acme/metric-rules
+            directory: rules
+            revision: v1.4.0
+        - name: creds
+          mountPath: /etc/creds
+          secret:
+            client.pem: dGVzdC1jbGllbnQtcGVt
+  imageRegistryCredentials:
+    - server:
+        value: acme.azurecr.io
+      userAssignedIdentityId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app-mi
+    - server:
+        value: registry.example.com
+      username: puller
+      password: test-registry-password
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app-mi
+  diagnosticsLogAnalytics:
+    workspaceId:
+      value: 00000000-0000-0000-0000-000000000000
+    workspaceKey:
+      value: dGVzdC13b3Jrc3BhY2Uta2V5
+    logType: ContainerInsights
+    metadata:
+      team: platform
+  dnsConfig:
+    nameservers:
+      - 10.0.0.10
+    searchDomains:
+      - internal.acme.com
+    options:
+      - ndots:2
+  keyVaultKeyId:
+    value: https://app-vault.vault.azure.net/keys/aci-cmk/0123456789abcdef0123456789abcdef
+  keyVaultUserAssignedIdentityId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app-mi
+  tags:
+    workload: web

@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: hello-web
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: hello-web
+  region: eastus
+  osType: Linux
+  # Public is the default posture; the DNS label makes the group
+  # reachable at hello-web-acme.eastus.azurecontainer.io.
+  dnsNameLabel: hello-web-acme
+  # Anyone can claim a released label under the default "Unsecure" --
+  # scope reuse when anything long-lived points at the name.
+  dnsNameLabelReusePolicy: TenantReuse
+  containers:
+    - name: web
+      image: mcr.microsoft.com/azuredocs/aci-helloworld:latest
+      cpu: 0.5
+      memory: 1
+      ports:
+        - port: 80
+      # Restart the container when it stops responding.
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        periodSeconds: 30
+        failureThreshold: 3

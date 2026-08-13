@@ -205,6 +205,7 @@ go_library(
         "//catalog/azure/azurecontainerappenvironmentmanagedcertificate/v1alpha1",
         "//catalog/azure/azurecontainerappenvironmentstorage/v1alpha1",
         "//catalog/azure/azurecontainerappjob/v1alpha1",
+        "//catalog/azure/azurecontainerinstance/v1alpha1",
         "//catalog/azure/azurecontainerregistry/v1alpha1",
         "//catalog/azure/azurecosmosdbaccount/v1alpha1",
         "//catalog/azure/azurecosmosdbmongocollection/v1alpha1",

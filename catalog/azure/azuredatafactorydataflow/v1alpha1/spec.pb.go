@@ -492,7 +492,7 @@ func (x *AzureDataFactoryDataFlowTransformation) GetLinkedService() *AzureDataFa
 type AzureDataFactoryDataFlowDatasetReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The dataset's name inside the factory. A literal string or a
-	// reference to a dataset kind's name output.
+	// reference to an AzureDataFactoryDataset's name output.
 	Name *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Values for the dataset's parameters, if it declares any.
 	Parameters    map[string]string `protobuf:"bytes,2,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -550,7 +550,7 @@ func (x *AzureDataFactoryDataFlowDatasetReference) GetParameters() map[string]st
 type AzureDataFactoryDataFlowLinkedServiceReference struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The linked service's name inside the factory. A literal string or
-	// a reference to a linked-service kind's name output.
+	// a reference to an AzureDataFactoryLinkedService's name output.
 	Name *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Values for the linked service's parameters, if it declares any.
 	Parameters    map[string]string `protobuf:"bytes,2,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -715,17 +715,17 @@ const file_catalog_azure_azuredatafactorydataflow_v1alpha1_spec_proto_rawDesc = 
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12w\n" +
 	"\adataset\x18\x03 \x01(\v2].dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowDatasetReferenceR\adataset\x12w\n" +
 	"\aflowlet\x18\x04 \x01(\v2].dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowFlowletReferenceR\aflowlet\x12\x8a\x01\n" +
-	"\x0elinked_service\x18\x05 \x01(\v2c.dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowLinkedServiceReferenceR\rlinkedService\"\xc9\x02\n" +
-	"(AzureDataFactoryDataFlowDatasetReference\x12N\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x8d\x01\n" +
+	"\x0elinked_service\x18\x05 \x01(\v2c.dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowLinkedServiceReferenceR\rlinkedService\"\xed\x02\n" +
+	"(AzureDataFactoryDataFlowDatasetReference\x12r\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x9a\x11\x92\xd4a\x1bstatus.outputs.dataset_nameR\x04name\x12\x8d\x01\n" +
 	"\n" +
 	"parameters\x18\x02 \x03(\v2m.dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowDatasetReference.ParametersEntryR\n" +
 	"parameters\x1a=\n" +
 	"\x0fParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xd5\x02\n" +
-	".AzureDataFactoryDataFlowLinkedServiceReference\x12N\n" +
-	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x93\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x80\x03\n" +
+	".AzureDataFactoryDataFlowLinkedServiceReference\x12y\n" +
+	"\x04name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x99\x11\x92\xd4a\"status.outputs.linked_service_nameR\x04name\x12\x93\x01\n" +
 	"\n" +
 	"parameters\x18\x02 \x03(\v2s.dev.planton.azure.azuredatafactorydataflow.v1alpha1.AzureDataFactoryDataFlowLinkedServiceReference.ParametersEntryR\n" +
 	"parameters\x1a=\n" +

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecontainerinstance/v1alpha1/outputs.proto";
+import "catalog/azure/azurecontainerinstance/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureContainerInstance represents an Azure Container Instance
+// container group -- serverless containers billed per second: one or
+// more containers sharing a lifecycle, network, and volumes, with no
+// cluster or VM to manage.
+message AzureContainerInstance {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureContainerInstance'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureContainerInstanceSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureContainerInstanceStatus status = 5;
+}
+
+// AzureContainerInstanceStatus represents the status of a container
+// group deployment.
+message AzureContainerInstanceStatus {
+  //stack-outputs
+  //  azure-container-instance stack-outputs
+  AzureContainerInstanceStackOutputs outputs = 1;
+}
