@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "digitalocean",
     srcs = [
+        "app_spec.pb.go",
         "cli_help.go",
         "provider.pb.go",
         "region.pb.go",
@@ -10,6 +11,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/catalog/digitalocean",
     visibility = ["//visibility:public"],
     deps = [
+        "//shared/foreignkey/v1:foreignkey",
         "//shared/options",
         "@build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go//buf/validate",
         "@org_golang_google_protobuf//reflect/protoreflect",

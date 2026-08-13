@@ -30,8 +30,8 @@ that has progressed.
 | Provider schema (parity baseline) | `digitalocean@2.99.1` |
 | Kinds in the catalog | 15 |
 | Distinct provider resources consumed | 15 |
-| Spec fields authored across all kinds | 161 |
-| Module pins on `digitalocean` | `~> 2.99` × 14 |
+| Spec fields authored across all kinds | 457 |
+| Module pins on `digitalocean` | `~> 2.99` × 15 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
@@ -45,11 +45,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**2 of 15 kinds are at total accounting; 0 proven live.**
+**4 of 15 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| DigitalOceanAppPlatformService | 292 | 0 | 38 | 0 | 254 | ❌ | — |
+| DigitalOceanApp | 292 | 0 | 282 | 10 | 0 | ✅ | — |
 | DigitalOceanBucket | 13 | 1 | 3 | 0 | 10 | ❌ | — |
 | DigitalOceanCertificate | 6 | 1 | 5 | 0 | 3 | ❌ | — |
 | DigitalOceanContainerRegistry | 6 | 2 | 1 | 1 | 3 | ❌ | — |
@@ -58,7 +58,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | DigitalOceanDnsZone | 12 | 7 | 3 | 1 | 1 | ❌ | — |
 | DigitalOceanDroplet | 21 | 6 | 5 | 0 | 11 | ❌ | — |
 | DigitalOceanFirewall | 17 | 3 | 14 | 0 | 0 | ✅ | — |
-| DigitalOceanFunction | 0 | 0 | 0 | 0 | 14 | ❌ | — |
+| DigitalOceanFunction | 292 | 0 | 36 | 256 | 0 | ✅ | — |
 | DigitalOceanKubernetesCluster | 47 | 4 | 11 | 1 | 32 | ❌ | — |
 | DigitalOceanKubernetesNodePool | 13 | 7 | 5 | 0 | 1 | ❌ | — |
 | DigitalOceanLoadBalancer | 46 | 3 | 12 | 0 | 31 | ❌ | — |
@@ -88,7 +88,7 @@ rather than trusted.
 
 | Resource | Consuming kinds |
 |---|---|
-| `digitalocean_app` | consumed by DigitalOceanAppPlatformService |
+| `digitalocean_app` | consumed by DigitalOceanApp, DigitalOceanFunction |
 | `digitalocean_certificate` | consumed by DigitalOceanCertificate |
 | `digitalocean_container_registry` | consumed by DigitalOceanContainerRegistry |
 | `digitalocean_container_registry_docker_credentials` | consumed by DigitalOceanContainerRegistry |

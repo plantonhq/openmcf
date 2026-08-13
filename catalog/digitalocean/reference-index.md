@@ -8,7 +8,7 @@
 
 | Kind | Purpose | Example | Guide |
 |---|---|---|---|
-| [DigitalOceanAppPlatformService](digitaloceanappplatformservice/v1alpha1/reference.md) | DigitalOceanAppPlatformServiceSpec defines the specification required to deploy a containerized service or application on DigitalOcean App Platform. | yes |  |
+| [DigitalOceanApp](digitaloceanapp/v1alpha1/reference.md) | DigitalOceanAppSpec is the full App Platform application: any mix of services, workers, jobs, static sites, functions, and in-app databases, plus domains, ingress, alerts, and VPC placement. | yes | yes |
 | [DigitalOceanBucket](digitaloceanbucket/v1alpha1/reference.md) | DigitalOceanBucketSpec defines the user configuration for a DigitalOcean Spaces bucket. | yes |  |
 | [DigitalOceanCertificate](digitaloceancertificate/v1alpha1/reference.md) | DigitalOceanCertificateSpec defines the fields required to create an SSL certificate in DigitalOcean. |  |  |
 | [DigitalOceanContainerRegistry](digitaloceancontainerregistry/v1alpha1/reference.md) | **DigitalOceanContainerRegistrySpec** defines the configuration for creating a DigitalOcean Container Registry (DOCR). | yes |  |
@@ -17,7 +17,7 @@
 | [DigitalOceanDnsZone](digitaloceandnszone/v1alpha1/reference.md) | DigitalOceanDnsZoneSpec defines the specification required to create a DNS zone (domain) on DigitalOcean. | yes |  |
 | [DigitalOceanDroplet](digitaloceandroplet/v1alpha1/reference.md) | DigitalOceanDropletSpec defines the user configuration for a DigitalOcean Droplet (VM). | yes |  |
 | [DigitalOceanFirewall](digitaloceanfirewall/v1alpha1/reference.md) | DigitalOceanFirewallSpec defines the user configuration for a DigitalOcean Cloud Firewall. | yes |  |
-| [DigitalOceanFunction](digitaloceanfunction/v1alpha1/reference.md) | DigitalOceanFunctionSpec defines the configuration for deploying a serverless function on DigitalOcean. | yes |  |
+| [DigitalOceanFunction](digitaloceanfunction/v1alpha1/reference.md) | DigitalOceanFunctionSpec deploys serverless functions as an App Platform app with a single functions component. | yes | yes |
 | [DigitalOceanKubernetesCluster](digitaloceankubernetescluster/v1alpha1/reference.md) | DigitalOceanKubernetesClusterSpec defines the specification for creating a managed Kubernetes cluster on DigitalOcean. | yes |  |
 | [DigitalOceanKubernetesNodePool](digitaloceankubernetesnodepool/v1alpha1/reference.md) | DigitalOceanKubernetesNodePoolSpec defines the specification for creating a node pool in an existing DigitalOcean Kubernetes cluster (DOKS). | yes |  |
 | [DigitalOceanLoadBalancer](digitaloceanloadbalancer/v1alpha1/reference.md) | DigitalOceanLoadBalancerSpec defines the specification for creating a DigitalOcean Load Balancer. | yes |  |

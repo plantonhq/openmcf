@@ -51,7 +51,7 @@ type OutputsVerifier interface {
 // verifiers. Every kind that appears in another kind's registry prerequisites
 // MUST have an entry here, or composed scenarios fail at DEPENDENCIES-UP.
 var verifiers = map[string]Verifier{
-	"digitaloceanappplatformservice": &appVerifier{component: "digitaloceanappplatformservice", idOutputKey: "app_id"},
+	"digitaloceanapp":                &appVerifier{component: "digitaloceanapp", idOutputKey: "app_id"},
 	"digitaloceanbucket":             &bucketVerifier{},
 	"digitaloceancertificate":        &certificateVerifier{},
 	"digitaloceancontainerregistry":  &containerRegistryVerifier{},

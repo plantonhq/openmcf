@@ -205,7 +205,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| DigitalOceanAppPlatformService | `spec.customDomain` | `spec.domain_name` |
+| DigitalOceanApp | `spec.domains[].zone` | `status.outputs.zone_name` |
 | DigitalOceanDnsRecord | `spec.domain` | `status.outputs.zone_name` |
 
 ## See Also

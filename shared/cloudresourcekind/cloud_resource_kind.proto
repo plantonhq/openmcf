@@ -4558,7 +4558,7 @@ enum CloudResourceKind {
   }];
 
   // 5000–5999: DigitalOcean resources
-  DigitalOceanAppPlatformService = 5000 [(kind_meta) = {
+  DigitalOceanApp = 5000 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "doapp"

@@ -1,0 +1,31 @@
+# Minimal DigitalOceanApp: one HTTP service from a public Docker Hub
+# image. No GitHub connection, no private registry, no custom domain.
+# Proves the image-source service path, region placement, and the
+# app_id / default_hostname / live_url outputs.
+apiVersion: digital-ocean.planton.dev/v1alpha1
+kind: DigitalOceanApp
+metadata:
+  name: planton-oss-e2e-digitaloceanapp-min
+  id: planton-oss-e2e-digitaloceanapp-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: digitaloceanapp
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  appName: pltn-e2e-doapp-min
+  region: nyc3
+  services:
+    - name: web
+      image:
+        registryType: docker_hub
+        registry: library
+        repository: nginx
+        tag: latest
+      instanceSizeSlug: basic-xxs
+      instanceCount: 1
+      httpPort: 80

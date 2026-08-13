@@ -97,14 +97,6 @@ Reference an output from another manifest as `valueFrom: {kind: DigitalOceanCont
 | `status.outputs.server_url` | `string` | Full server URL, e.g. "registry.digitalocean.com/<registry_name>". |
 | `status.outputs.region` | `string` | Region slug where the registry is hosted. |
 
-## Referenced By
-
-Fields on other kinds that can point at this resource:
-
-| Kind | Field | Reads |
-|---|---|---|
-| DigitalOceanAppPlatformService | `spec.imageSource.registry` | `status.outputs.server_url` |
-
 ## See Also
 
 - [Overview](../README.md)

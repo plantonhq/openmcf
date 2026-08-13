@@ -387,7 +387,7 @@ import (
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
 	confluentkafkav1alpha1 "github.com/plantonhq/planton/catalog/confluent/confluentkafka/v1alpha1"
-	digitaloceanappplatformservicev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanappplatformservice/v1alpha1"
+	digitaloceanappv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanapp/v1alpha1"
 	digitaloceanbucketv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1"
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
 	digitaloceancontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancontainerregistry/v1alpha1"
@@ -1136,7 +1136,7 @@ var ProviderConfluentMap = map[cloudresourcekind.CloudResourceKind]proto.Message
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_DigitalOceanAppPlatformService: &digitaloceanappplatformservicev1alpha1.DigitalOceanAppPlatformService{},
+	cloudresourcekind.CloudResourceKind_DigitalOceanApp:                &digitaloceanappv1alpha1.DigitalOceanApp{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanBucket:             &digitaloceanbucketv1alpha1.DigitalOceanBucket{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanCertificate:        &digitaloceancertificatev1alpha1.DigitalOceanCertificate{},
 	cloudresourcekind.CloudResourceKind_DigitalOceanContainerRegistry:  &digitaloceancontainerregistryv1alpha1.DigitalOceanContainerRegistry{},

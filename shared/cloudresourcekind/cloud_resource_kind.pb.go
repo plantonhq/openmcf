@@ -1513,11 +1513,11 @@ const (
 	CloudResourceKind_KubernetesNats     CloudResourceKind = 4171
 	CloudResourceKind_KubernetesLocust   CloudResourceKind = 4172
 	// 5000–5999: DigitalOcean resources
-	CloudResourceKind_DigitalOceanAppPlatformService CloudResourceKind = 5000
-	CloudResourceKind_DigitalOceanBucket             CloudResourceKind = 5001
-	CloudResourceKind_DigitalOceanContainerRegistry  CloudResourceKind = 5002
-	CloudResourceKind_DigitalOceanDatabaseCluster    CloudResourceKind = 5003
-	CloudResourceKind_DigitalOceanDnsZone            CloudResourceKind = 5004
+	CloudResourceKind_DigitalOceanApp               CloudResourceKind = 5000
+	CloudResourceKind_DigitalOceanBucket            CloudResourceKind = 5001
+	CloudResourceKind_DigitalOceanContainerRegistry CloudResourceKind = 5002
+	CloudResourceKind_DigitalOceanDatabaseCluster   CloudResourceKind = 5003
+	CloudResourceKind_DigitalOceanDnsZone           CloudResourceKind = 5004
 	// DigitalOceanVpc is a prerequisite because the droplet spec's vpc
 	// reference is required: every droplet attaches its private network
 	// interface into one VPC, resolved to the DigitalOceanVpc's exported
@@ -2250,7 +2250,7 @@ var (
 		4170:  "KubernetesTemporal",
 		4171:  "KubernetesNats",
 		4172:  "KubernetesLocust",
-		5000:  "DigitalOceanAppPlatformService",
+		5000:  "DigitalOceanApp",
 		5001:  "DigitalOceanBucket",
 		5002:  "DigitalOceanContainerRegistry",
 		5003:  "DigitalOceanDatabaseCluster",
@@ -2960,7 +2960,7 @@ var (
 		"KubernetesTemporal":                             4170,
 		"KubernetesNats":                                 4171,
 		"KubernetesLocust":                               4172,
-		"DigitalOceanAppPlatformService":                 5000,
+		"DigitalOceanApp":                                5000,
 		"DigitalOceanBucket":                             5001,
 		"DigitalOceanContainerRegistry":                  5002,
 		"DigitalOceanDatabaseCluster":                    5003,
@@ -3528,7 +3528,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa3\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x94\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4088,8 +4088,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11KubernetesJenkins\x10\xbd \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sjkn\x126\n" +
 	"\x12KubernetesTemporal\x10\xca \x1a\x1d\xa2\xf7\x04\x19\b\x13\x12\bv1alpha1\"\ak8stprl:\x02\x85 \x12.\n" +
 	"\x0eKubernetesNats\x10\xcb \x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\ak8snats\x12/\n" +
-	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x12<\n" +
-	"\x1eDigitalOceanAppPlatformService\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
+	"\x10KubernetesLocust\x10\xcc \x1a\x18\xa2\xf7\x04\x14\b\x13\x12\bv1alpha1\"\x06k8sloc\x12-\n" +
+	"\x0fDigitalOceanApp\x10\x88'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doapp\x120\n" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +
 	"\x1bDigitalOceanDatabaseCluster\x10\x8b'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dodb\x123\n" +

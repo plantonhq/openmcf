@@ -165,6 +165,14 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.vpc` | DigitalOceanVpc | `status.outputs.vpc_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| DigitalOceanApp | `spec.databases[].clusterName` | `spec.cluster_name` |
+
 ## See Also
 
 - [Overview](../README.md)

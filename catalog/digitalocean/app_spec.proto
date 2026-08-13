@@ -1,0 +1,516 @@
+syntax = "proto3";
+
+package dev.planton.digitalocean;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// Shared App Platform building blocks used by DigitalOceanApp (the full app)
+// and DigitalOceanFunction (a single functions component deployed as an app).
+// Field names follow the Terraform digitalocean_app spec at provider v2.99.1.
+// Modules map lowercase enum values to the provider's uppercase strings.
+
+// -----------------------------------------------------------------------------
+// Environment variables
+// -----------------------------------------------------------------------------
+
+// When the variable is injected: build, run, or both.
+enum DigitalOceanAppEnvScope {
+  digital_ocean_app_env_scope_unspecified = 0;
+  // Injected during the build and at runtime (provider default).
+  run_and_build_time = 1;
+  // Injected only at runtime.
+  run_time = 2;
+  // Injected only during the build.
+  build_time = 3;
+  // Provider UNSET - treated as run_and_build_time by the API.
+  unset = 4;
+}
+
+// One environment variable on an app or a component.
+// The provider models this as env { key, value, scope, type } where type is
+// GENERAL or SECRET. The oneof below is that type discriminator: pick
+// plaintext for GENERAL, secret for SECRET (the secret branch is stored in
+// App Platform's secret store and never logged).
+message DigitalOceanAppEnvVar {
+  option (buf.validate.message).cel = {
+    id: "env_value_present"
+    message: "set either plaintext or secret for this environment variable - App Platform needs a value"
+    expression: "has(this.plaintext) || has(this.secret)"
+  };
+
+  // Variable name, for example DATABASE_URL or NODE_ENV.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  oneof value {
+    // Non-secret value. Visible in the App Platform UI and in build logs.
+    string plaintext = 2;
+    // Secret value (API keys, database URLs, tokens). Stored in App Platform's
+    // secret store; the IaC modules send type=SECRET.
+    string secret = 3 [(dev.planton.shared.options.sensitive) = true];
+  }
+
+  // When the variable is injected. Omit to use run_and_build_time.
+  DigitalOceanAppEnvScope scope = 4;
+}
+
+// -----------------------------------------------------------------------------
+// Source: git clone URL, GitHub / GitLab / Bitbucket, or container image
+// -----------------------------------------------------------------------------
+
+// Generic git remote. Use this when the repo is public or when App Platform
+// should clone via HTTPS without a linked GitHub/GitLab/Bitbucket account.
+message DigitalOceanAppGitSource {
+  // HTTPS or git clone URL, for example https://github.com/example/app.git
+  string repo_clone_url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  // Branch to deploy. Example: main
+  string branch = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Linked GitHub repository. deploy_on_push requires the DigitalOcean account
+// to have GitHub connected in the control panel.
+message DigitalOceanAppGithubSource {
+  // Repository in owner/repo form, for example plantonhq/demo
+  string repo = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  ];
+  // Branch to deploy. Example: main
+  string branch = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  // Redeploy automatically when this branch is pushed.
+  bool deploy_on_push = 3;
+}
+
+// Linked GitLab repository. Same shape as GitHub.
+message DigitalOceanAppGitlabSource {
+  string repo = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  ];
+  string branch = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  bool deploy_on_push = 3;
+}
+
+// Linked Bitbucket repository. Same shape as GitHub.
+message DigitalOceanAppBitbucketSource {
+  string repo = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+  ];
+  string branch = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  bool deploy_on_push = 3;
+}
+
+// Container registry the image is pulled from.
+enum DigitalOceanAppRegistryType {
+  digital_ocean_app_registry_type_unspecified = 0;
+  docker_hub = 1;
+  docr = 2;
+  ghcr = 3;
+}
+
+// Pre-built container image. Used by services, workers, and jobs - not by
+// functions or static sites.
+message DigitalOceanAppImageSource {
+  option (buf.validate.message).cel = {
+    id: "image_tag_xor_digest"
+    message: "set tag or digest, not both - App Platform treats them as mutually exclusive image pins"
+    expression: "!(this.tag != '' && this.digest != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "docr_registry_empty"
+    message: "leave registry empty when registry_type is docr - DigitalOcean Container Registry does not take a registry hostname here"
+    expression: "this.registry_type != 2 || this.registry == ''"
+  };
+
+  // Which registry hosts the image. Required.
+  DigitalOceanAppRegistryType registry_type = 1 [(buf.validate.field).required = true];
+
+  // Registry hostname. Required for docker_hub and ghcr (for example ghcr.io
+  // or a Docker Hub namespace). Must be empty for docr.
+  string registry = 2;
+
+  // Repository name inside the registry, for example myapp/api
+  string repository = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Image tag. Defaults to latest on the server when both tag and digest are
+  // omitted. Mutually exclusive with digest.
+  string tag = 4;
+
+  // Image digest (sha256:...). Mutually exclusive with tag.
+  string digest = 5;
+
+  // Credentials for a private docker_hub or ghcr registry. Not used for docr
+  // (App Platform uses the account's DigitalOcean Container Registry access).
+  string registry_credentials = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // Redeploy when a new image matching this repository is pushed. Only
+  // honored for docr and ghcr.
+  bool deploy_on_push = 7;
+}
+
+// -----------------------------------------------------------------------------
+// Health checks, autoscaling, termination
+// -----------------------------------------------------------------------------
+
+// HTTP/TCP health check. The same shape is used for readiness (health_check)
+// and liveness (liveness_health_check) on services; workers only have the
+// liveness variant. The Pulumi SDK at v4.49.0 cannot set liveness_health_check
+// - Terraform wires it; Pulumi fails loudly if it is set.
+message DigitalOceanAppHealthCheck {
+  // Port to probe. Range 1-65535. When omitted, App Platform uses the
+  // component's HTTP port.
+  optional uint32 port = 1 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 65535
+  }];
+  // HTTP path, for example /healthz. When omitted the probe is TCP.
+  string http_path = 2;
+  optional uint32 initial_delay_seconds = 3;
+  optional uint32 period_seconds = 4;
+  optional uint32 timeout_seconds = 5;
+  optional uint32 success_threshold = 6;
+  optional uint32 failure_threshold = 7;
+}
+
+// Horizontal autoscaling on CPU. Available on services and workers only.
+message DigitalOceanAppAutoscaling {
+  option (buf.validate.message).cel = {
+    id: "autoscale_min_lt_max"
+    message: "min_instance_count must be less than max_instance_count"
+    expression: "this.min_instance_count < this.max_instance_count"
+  };
+
+  // Smallest number of instances while autoscaling. At least 1.
+  uint32 min_instance_count = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  // Largest number of instances while autoscaling. At least 1, and greater
+  // than min_instance_count.
+  uint32 max_instance_count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32.gte = 1
+  ];
+  // Target average CPU percent (1-100) that autoscaling aims for. The
+  // provider requires this leaf inside metrics.cpu.
+  uint32 cpu_percent = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).uint32 = {
+      gte: 1
+      lte: 100
+    },
+    (dev.planton.shared.options.recommended_default) = "80"
+  ];
+}
+
+// Shutdown behavior. drain_seconds is valid on services only (HTTP connection
+// draining); workers and jobs accept only grace_period_seconds.
+message DigitalOceanAppTermination {
+  // Seconds to wait for in-flight work after SIGTERM. Range 1-600. Server
+  // default is 120 when omitted.
+  optional uint32 grace_period_seconds = 1 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 600
+  }];
+  // Seconds to drain HTTP connections on a service before SIGTERM. Range
+  // 1-110. Server default is 15. Ignored (and rejected by CEL on workers/jobs)
+  // unless the component is a service.
+  optional uint32 drain_seconds = 2 [(buf.validate.field).uint32 = {
+    gte: 1
+    lte: 110
+  }];
+}
+
+// -----------------------------------------------------------------------------
+// Alerts
+// -----------------------------------------------------------------------------
+
+enum DigitalOceanAppAlertRule {
+  digital_ocean_app_alert_rule_unspecified = 0;
+  deployment_failed = 1;
+  deployment_live = 2;
+  deployment_started = 3;
+  deployment_canceled = 4;
+  domain_failed = 5;
+  domain_live = 6;
+  autoscale_failed = 7;
+  autoscale_succeeded = 8;
+}
+
+enum DigitalOceanAppComponentAlertRule {
+  digital_ocean_app_component_alert_rule_unspecified = 0;
+  cpu_utilization = 1;
+  mem_utilization = 2;
+  restart_count = 3;
+}
+
+enum DigitalOceanAppAlertOperator {
+  digital_ocean_app_alert_operator_unspecified = 0;
+  greater_than = 1;
+  less_than = 2;
+}
+
+enum DigitalOceanAppAlertWindow {
+  digital_ocean_app_alert_window_unspecified = 0;
+  five_minutes = 1;
+  ten_minutes = 2;
+  thirty_minutes = 3;
+  one_hour = 4;
+}
+
+message DigitalOceanAppSlackWebhook {
+  string channel = 1 [(buf.validate.field).required = true];
+  string url = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Email and Slack destinations for an alert. Applied via a side-channel API
+// call after the app spec is saved; they are never read back into Terraform
+// state, so an import round-trip will not restore them.
+message DigitalOceanAppAlertDestinations {
+  repeated string emails = 1;
+  repeated DigitalOceanAppSlackWebhook slack_webhooks = 2;
+}
+
+// App-level alert (deployments, domains, autoscale events).
+message DigitalOceanAppAlert {
+  DigitalOceanAppAlertRule rule = 1 [(buf.validate.field).required = true];
+  bool disabled = 2;
+  DigitalOceanAppAlertDestinations destinations = 3;
+}
+
+// Component-level alert (CPU, memory, restart count). Function-specific
+// FUNCTIONS_* rules exist on the API but the Terraform provider rejects them
+// at this pin - do not set them.
+message DigitalOceanAppComponentAlert {
+  DigitalOceanAppComponentAlertRule rule = 1 [(buf.validate.field).required = true];
+  DigitalOceanAppAlertOperator operator = 2 [(buf.validate.field).required = true];
+  DigitalOceanAppAlertWindow window = 3 [(buf.validate.field).required = true];
+  // Threshold. For cpu_utilization / mem_utilization this is a percent; for
+  // restart_count it is a count.
+  double value = 4 [(buf.validate.field).double.gte = 0];
+  bool disabled = 5;
+  DigitalOceanAppAlertDestinations destinations = 6;
+}
+
+// -----------------------------------------------------------------------------
+// Log destinations
+// -----------------------------------------------------------------------------
+
+message DigitalOceanAppPapertrailLog {
+  // Syslog endpoint, for example logs.papertrailapp.com:12345
+  string endpoint = 1 [(buf.validate.field).required = true];
+}
+
+message DigitalOceanAppDatadogLog {
+  string api_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+  // Defaults to https://http-intake.logs.datadoghq.com when omitted.
+  string endpoint = 2;
+}
+
+message DigitalOceanAppLogtailLog {
+  string token = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+message DigitalOceanAppOpenSearchBasicAuth {
+  string user = 1;
+  string password = 2 [(dev.planton.shared.options.sensitive) = true];
+}
+
+message DigitalOceanAppOpenSearchLog {
+  string endpoint = 1;
+  string index_name = 2;
+  string cluster_name = 3;
+  // The provider requires this block even when user and password are empty
+  // (App Platform's OpenSearch integration uses it as a placeholder).
+  DigitalOceanAppOpenSearchBasicAuth basic_auth = 4;
+}
+
+// One log drain on a service, worker, job, or function. Set exactly one sink.
+message DigitalOceanAppLogDestination {
+  option (buf.validate.message).cel = {
+    id: "log_destination_one_sink"
+    message: "set exactly one sink: papertrail, datadog, logtail, or open_search"
+    expression: "(has(this.papertrail) ? 1 : 0) + (has(this.datadog) ? 1 : 0) + (has(this.logtail) ? 1 : 0) + (has(this.open_search) ? 1 : 0) == 1"
+  };
+
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  DigitalOceanAppPapertrailLog papertrail = 2;
+  DigitalOceanAppDatadogLog datadog = 3;
+  DigitalOceanAppLogtailLog logtail = 4;
+  DigitalOceanAppOpenSearchLog open_search = 5;
+}
+
+// -----------------------------------------------------------------------------
+// Ingress (replaces the deprecated per-component routes and cors blocks)
+// -----------------------------------------------------------------------------
+
+message DigitalOceanAppCorsAllowOrigins {
+  string exact = 1;
+  // regex is an RE2 pattern. prefix-based matching is deprecated in the
+  // provider and is not modeled.
+  string regex = 2;
+}
+
+message DigitalOceanAppCors {
+  DigitalOceanAppCorsAllowOrigins allow_origins = 1;
+  repeated string allow_methods = 2;
+  repeated string allow_headers = 3;
+  repeated string expose_headers = 4;
+  // Duration string, for example 5h30m
+  string max_age = 5;
+  bool allow_credentials = 6;
+}
+
+message DigitalOceanAppIngressMatch {
+  // Path prefix, for example /api
+  string path_prefix = 1;
+  // Exact Host header to match. The Pulumi SDK at v4.49.0 cannot set this;
+  // Terraform wires it and Pulumi fails loudly if it is set.
+  string authority_exact = 2;
+}
+
+message DigitalOceanAppIngressComponent {
+  // Component name to send matching traffic to.
+  string name = 1 [(buf.validate.field).required = true];
+  bool preserve_path_prefix = 2;
+  // Rewrite the matched path before forwarding.
+  string rewrite = 3;
+}
+
+message DigitalOceanAppIngressRedirect {
+  string uri = 1;
+  string authority = 2;
+  optional uint32 port = 3;
+  string scheme = 4;
+  // HTTP status. Provider default is 302.
+  optional uint32 redirect_code = 5 [(dev.planton.shared.options.recommended_default) = "302"];
+}
+
+message DigitalOceanAppIngressRule {
+  DigitalOceanAppIngressMatch match = 1;
+  DigitalOceanAppIngressComponent component = 2;
+  DigitalOceanAppIngressRedirect redirect = 3;
+  DigitalOceanAppCors cors = 4;
+}
+
+message DigitalOceanAppSecureHeader {
+  string key = 1 [(buf.validate.field).required = true];
+  string value = 2 [(buf.validate.field).required = true];
+}
+
+message DigitalOceanAppIngress {
+  repeated DigitalOceanAppIngressRule rules = 1;
+  // The provider schema caps this at one header. The Pulumi SDK at v4.49.0
+  // cannot set it; Terraform wires it and Pulumi fails loudly if it is set.
+  DigitalOceanAppSecureHeader secure_header = 2;
+}
+
+// -----------------------------------------------------------------------------
+// Domains and in-app databases
+// -----------------------------------------------------------------------------
+
+enum DigitalOceanAppDomainType {
+  digital_ocean_app_domain_type_unspecified = 0;
+  default = 1;
+  primary = 2;
+  alias = 3;
+}
+
+message DigitalOceanAppDomain {
+  // Hostname, for example www.example.com
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+  DigitalOceanAppDomainType type = 2;
+  bool wildcard = 3;
+  // DigitalOcean-managed DNS zone that should receive the records. Omit when
+  // the domain is managed elsewhere and you will create records yourself.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDnsZone,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_name",
+    (dev.planton.shared.options.diagram_label) = "dns zone"
+  ];
+}
+
+enum DigitalOceanAppDatabaseEngine {
+  digital_ocean_app_database_engine_unspecified = 0;
+  mysql = 1;
+  pg = 2;
+  redis = 3;
+  mongodb = 4;
+  kafka = 5;
+  opensearch = 6;
+  valkey = 7;
+}
+
+// In-app database attachment. A non-production database is created and
+// managed by App Platform; a production database references an existing
+// DigitalOceanDatabaseCluster via cluster_name.
+message DigitalOceanAppDatabase {
+  string name = 1;
+  DigitalOceanAppDatabaseEngine engine = 2;
+  string version = 3;
+  // When true, this attachment points at an existing managed cluster
+  // (cluster_name required by the API). When false, App Platform creates a
+  // dev database.
+  bool production = 4;
+  // Existing cluster name. Required by the API when production is true.
+  // Literal cluster name, or a reference to a DigitalOceanDatabaseCluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_name = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = DigitalOceanDatabaseCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "spec.cluster_name",
+    (dev.planton.shared.options.diagram_label) = "database cluster"
+  ];
+  string db_name = 6;
+  string db_user = 7;
+}
+
+enum DigitalOceanAppEgressType {
+  digital_ocean_app_egress_type_unspecified = 0;
+  autoassign = 1;
+  dedicated_ip = 2;
+}
+
+message DigitalOceanAppMaintenance {
+  bool enabled = 1;
+  // When true, the app is archived (and enabled is implied by the API).
+  bool archive = 2;
+  string offline_page_url = 3;
+}

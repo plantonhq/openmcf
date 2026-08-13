@@ -188,13 +188,13 @@ func TestDigitalOceanBucket_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "digitaloceanbucket", "terraform")
 }
 
-// --- DigitalOcean App Platform Service (git-source deploys run a real build -- slow lane) ---
+// --- DigitalOcean App (git-source deploys run a real build -- slow lane) ---
 
-func TestDigitalOceanAppPlatformService_Pulumi(t *testing.T) {
-	runAllScenariosForComponent(t, "digitaloceanappplatformservice", "pulumi")
+func TestDigitalOceanApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanapp", "pulumi")
 }
-func TestDigitalOceanAppPlatformService_Terraform(t *testing.T) {
-	runAllScenariosForComponent(t, "digitaloceanappplatformservice", "terraform")
+func TestDigitalOceanApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "digitaloceanapp", "terraform")
 }
 
 // --- DigitalOcean Function (deploys an App Platform app carrying a functions section) ---

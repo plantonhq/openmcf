@@ -1727,21 +1727,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -2600,21 +2600,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -4621,21 +4621,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -5494,21 +5494,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -7556,21 +7556,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`
@@ -8429,21 +8429,21 @@ Allowed values (use exactly as shown):
 - `KubernetesTemporal` -- 4170–4189: Kubernetes app platforms KubernetesPostgres is a prerequisite because the recommended (and E2E-proven) database composition backs Temporal's default and visibility stores with a CloudNativePG cluster.
 - `KubernetesNats`
 - `KubernetesLocust`
-- `DigitalOceanAppPlatformService` -- 5000–5999: DigitalOcean resources
+- `DigitalOceanApp` -- 5000–5999: DigitalOcean resources
 - `DigitalOceanBucket`
 - `DigitalOceanContainerRegistry`
 - `DigitalOceanDatabaseCluster`
 - `DigitalOceanDnsZone`
-- `DigitalOceanDroplet`
+- `DigitalOceanDroplet` -- DigitalOceanVpc is a prerequisite because the droplet spec's vpc reference is required: every droplet attaches its private network interface into one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanFirewall`
 - `DigitalOceanFunction`
-- `DigitalOceanKubernetesCluster`
-- `DigitalOceanKubernetesNodePool`
-- `DigitalOceanLoadBalancer`
+- `DigitalOceanKubernetesCluster` -- DigitalOceanVpc is a prerequisite because the cluster spec's vpc reference is required: the control plane and every node pool live inside one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+- `DigitalOceanKubernetesNodePool` -- DigitalOceanKubernetesCluster is a prerequisite because a node pool is API-addressed under its owning cluster: the spec's cluster reference is required and the pool cannot exist first.
+- `DigitalOceanLoadBalancer` -- DigitalOceanVpc is a prerequisite because the load balancer spec's vpc reference is required: the balancer fronts backends over one VPC's private network, resolved to the DigitalOceanVpc's exported vpc_id output.
 - `DigitalOceanVolume`
 - `DigitalOceanVpc`
 - `DigitalOceanCertificate`
-- `DigitalOceanDnsRecord`
+- `DigitalOceanDnsRecord` -- DigitalOceanDnsZone is a prerequisite because a record is API-addressed under its domain: the spec's domain reference is required, resolved to the DigitalOceanDnsZone's exported zone_name output.
 - `CivoBucket` -- 6000–6999: Civo resources
 - `CivoCertificate`
 - `CivoComputeInstance`

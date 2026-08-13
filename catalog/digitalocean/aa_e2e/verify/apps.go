@@ -8,10 +8,10 @@ import (
 )
 
 // appVerifier verifies components backed by an App Platform app via
-// GET /v2/apps/{id}. Two kinds share it: DigitalOceanAppPlatformService (the
-// app is the component) and DigitalOceanFunction (the provider has no
-// standalone Functions resource, so the component deploys an app carrying a
-// functions section and its function_id output IS the app id). The struct is
+// GET /v2/apps/{id}. Two kinds share it: DigitalOceanApp (the app is the
+// component) and DigitalOceanFunction (the provider has no standalone
+// Functions resource, so the component deploys an app carrying a functions
+// section and its function_id output IS the app id). The struct is
 // parameterized the same way the AWS harness reuses one verifier across
 // load-balancer kinds.
 type appVerifier struct {
