@@ -36,4 +36,13 @@ resource "aws_bedrock_foundation_model_agreement" "this" {
   # Anthropic agreements activate only once the account's use-case form is
   # on file -- order the agreement after the form whenever one is managed.
   depends_on = [aws_bedrock_use_case_for_model_access.this]
+
+  # Offer tokens are short-lived: the data source mints a FRESH token on
+  # every plan, and offer_token is ForceNew -- without this guard every
+  # re-apply would REPLACE the agreement (destroy = access revocation).
+  # The provider's own docs prescribe exactly this lifecycle. The token
+  # only matters at create; the accepted agreement is keyed by model_id.
+  lifecycle {
+    ignore_changes = [offer_token]
+  }
 }

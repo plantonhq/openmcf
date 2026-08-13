@@ -57,10 +57,18 @@ func modelAccess(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) er
 	// ConflictException window. Anthropic agreements activate only once
 	// the account's use-case form is on file -- ordered after the form
 	// whenever one is managed.
+	//
+	// IgnoreChanges on the token mirrors the Terraform module's lifecycle
+	// guard: offer tokens are short-lived and minted FRESH on every
+	// preview, and the argument is ForceNew -- without the guard every
+	// re-apply would REPLACE the agreement (destroy = access revocation).
+	// The token only matters at create; the accepted agreement is keyed
+	// by model_id.
 	createdAgreement, err := bedrockfoundation.NewModelAgreement(ctx, "agreement", &bedrockfoundation.ModelAgreementArgs{
 		ModelId:    pulumi.String(spec.ModelId),
 		OfferToken: pulumi.String(offers.Offers[0].OfferToken),
-	}, pulumi.Provider(provider), pulumi.DependsOn(agreementDeps))
+	}, pulumi.Provider(provider), pulumi.DependsOn(agreementDeps),
+		pulumi.IgnoreChanges([]string{"offerToken"}))
 	if err != nil {
 		return errors.Wrap(err, "create foundation model agreement")
 	}
