@@ -16,7 +16,15 @@ resource performs it. Two operational corollaries:
 
 - **Verify as the identity that deploys.** A domain verified by your
   user account does not cover the service account a runner deploys with —
-  add robot accounts as additional verified owners in Search Console.
+  add robot accounts as additional verified owners in Search Console
+  (Settings → Users and permissions → add the deploying identity with the
+  **Owner** permission; "Full" is not enough — only owners count as
+  verified). Confirm before the first apply with the Cloud Run
+  authorized-domains check: `GET
+  https://run.googleapis.com/v1/projects/{project}/locations/global/authorizeddomains`
+  as the deploying identity (or `gcloud run domain-mappings describe` /
+  `gcloud domains list-user-verified`) — the domain must appear there or
+  the create fails.
 - **Verify the apex once**: subdomains inherit verification, so
   `example.com` verified covers `app.example.com`, `api.example.com`,
   and every future subdomain.
@@ -30,6 +38,12 @@ managed certificate re-issues after the replacement, so expect a brief
 TLS gap on a live domain. Batch spec changes rather than trickling them,
 and use `deletionPolicy: PREVENT` on production mappings so a casual
 destroy cannot un-map a serving domain.
+
+Deletion settles asynchronously: after a successful destroy, the Cloud
+Run API can keep reporting the mapping for tens of seconds (measured
+~40s) before it reads as gone. Automation that deletes a mapping and
+immediately re-creates or re-checks the same domain should poll for the
+NOT_FOUND read rather than trusting the first response.
 
 ## Created ≠ serving: DNS closes the loop
 

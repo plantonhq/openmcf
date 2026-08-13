@@ -749,13 +749,20 @@ API call with it (e.g. GET the test project via Cloud Resource Manager). The
 harness `Setup` itself fail-fasts correctly — this trap only bites pre-session
 checks that trust the exit code.
 
-**IAM service-account read-after-delete is eventually consistent:** a GET
-issued within seconds of a successful `serviceAccounts.delete` can still
-answer 200 from a stale replica (live-caught on the Terraform SA minimal
-scenario: destroy succeeded, VERIFY-CLN 1.5s later still saw the account;
-an identical cycle minutes earlier read 404 immediately). The SA verifier
-polls for up to 90s and treats 403 as a recently-deleted signal alongside
-404 — do not tighten VERIFY-CLN to a single GET for this kind.
+**Read-after-delete is eventually consistent on several GCP APIs — poll,
+never single-GET, in VERIFY-CLN.** Two live-caught members so far: IAM
+service accounts (a GET within seconds of a successful
+`serviceAccounts.delete` can still answer 200 from a stale replica —
+destroy succeeded, VERIFY-CLN 1.5s later still saw the account, while an
+identical cycle minutes earlier read 404 immediately) and Cloud Run
+domain mappings (the regional Knative API kept answering 200 for ~40s
+after the provider's destroy returned clean — the poll passed at 43.5s).
+Both verifiers poll for up to 90s at 10s intervals; the SA verifier
+additionally treats 403 as a recently-deleted signal alongside 404. When
+a new kind's VERIFY-CLN fails with "still exists" seconds after a clean
+destroy, probe the object manually before touching module code — if it
+is gone minutes later, the kind is a new member of this class and its
+verifier needs the poll posture, not the modules a fix.
 
 **Backend contract:** every scenario's test context must carry the run-scoped
 Pulumi file backend URL — even Terraform scenarios, because dependency

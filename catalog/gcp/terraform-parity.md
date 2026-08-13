@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 95 proven live.**
+**98 of 98 kinds are at total accounting; 96 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -69,7 +69,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudRun | 129 | 27 | 89 | 13 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | — |
+| GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | ✅ pulumi, terraform |

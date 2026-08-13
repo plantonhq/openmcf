@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -104,17 +105,34 @@ func (v *cloudRunDomainMappingVerifier) VerifyAbsent(ctx context.Context, svc *S
 		return nil
 	}
 
-	status, _, err := v.get(ctx, svc, url)
-	if err != nil {
-		return err
+	// Domain-mapping deletion is asynchronous behind the Knative API: a GET
+	// issued seconds after a successful destroy can still answer 200 while
+	// the delete settles (live-caught: the provider's destroy returned
+	// clean and the probe 1.6s later still read the mapping; a later probe
+	// read 404). Poll briefly before declaring the mapping still present --
+	// the read-after-delete posture the service-account and peering
+	// verifiers established.
+	deadline := time.Now().Add(90 * time.Second)
+	for {
+		status, _, err := v.get(ctx, svc, url)
+		if err != nil {
+			return err
+		}
+		if status == http.StatusNotFound {
+			return nil
+		}
+		if status != http.StatusOK {
+			return errors.Errorf("unexpected status %d probing domain mapping %s after destroy", status, url)
+		}
+		if time.Now().After(deadline) {
+			return errors.Errorf("domain mapping %s still exists after destroy", url)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
 	}
-	if status == http.StatusNotFound {
-		return nil
-	}
-	if status == http.StatusOK {
-		return errors.Errorf("domain mapping %s still exists after destroy", url)
-	}
-	return errors.Errorf("unexpected status %d probing domain mapping %s after destroy", status, url)
 }
 
 // get issues an authenticated GET and returns the status code and body.

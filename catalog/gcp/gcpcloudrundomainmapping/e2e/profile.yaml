@@ -9,9 +9,24 @@ spec:
   # gone on both provisioners WITHOUT publishing DNS — the provider's
   # create poll accepts the CertificatePending resting state. Mappings
   # are free and create in seconds; they hard-delete (no soft-delete
-  # reservation). Requires PLANTON_E2E_VERIFIED_DOMAIN (the scenario's
-  # e2e-required-env annotation): a one-time `gcloud domains verify` by
-  # the E2E identity — lanes skip with the reason where it is absent.
+  # reservation) but the delete READS as present for ~40s after a clean
+  # destroy (the read-after-delete class — the verifier polls).
+  # Requires PLANTON_E2E_VERIFIED_DOMAIN (the scenario's
+  # e2e-required-env annotation): a one-time domain verification with
+  # the deploying identity as a verified OWNER — proven live via Search
+  # Console delegated ownership (Users and permissions -> Owner; "Full"
+  # permission does NOT count), no `gcloud domains verify` needed; the
+  # Cloud Run global authorizeddomains endpoint is the mechanical
+  # pre-check. Lanes skip with the reason where the env var is absent.
+  # The E2E domain is leftbin.ai (verified 2026-08-13).
+  #
+  # Live proof 2026-08-13: minimal scenario green on BOTH engines under
+  # the apply-idempotency gate (TF 172s, Pulumi 156s end to end); the
+  # single-CNAME resource_records shape (ghs.googlehosted.com.) verified
+  # on the structured-list output both engines; second engine's create
+  # of the fixed subdomain clean after the first's destroy; the ambient
+  # namespace fallback (no project_id, no namespace in the scenario)
+  # exercised live on both engines.
   #
   # Offline-proven-only arms (deferred, with unblock conditions):
   #   - certificate issuance to Ready=True: needs the emitted DNS
@@ -21,6 +36,8 @@ spec:
   #     override — a two-mapping choreography. Unblock: a dedicated
   #     scenario if adopter demand appears.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30
