@@ -1,0 +1,47 @@
+# =============================================================================
+# Stigmer Skills Auto-Release
+# =============================================================================
+# Publishes ONE skill to the hosted Stigmer engine when its content changes
+# on main -- merged skill edits reach hosted conversations within minutes,
+# no full release required. The heavy lifting is the reusable publish
+# workflow; this wrapper exists so per-skill auto-releases and full releases
+# are the same lane with the same guarantees (deterministic bytes, checksum
+# parity asserted, unchanged content a no-op).
+#
+# Tag Format: v{next}-skill.{slug}.{YYYYMMDD}.{N}
+# Example: v0.3.39-skill.planton.20260813.0
+#
+# The tag is the git-side record and the rollback anchor: dispatching this
+# workflow at an older tag publishes THAT content, which becomes the
+# engine's latest (agents resolve latest per message). No GitHub Release
+# object is created -- the artifact lives on the engine, not the CDN.
+#
+# Triggered by: auto-tag.yaml via workflow_dispatch (one call per skill)
+# =============================================================================
+
+name: auto-release.stigmer-skills
+run-name: "Stigmer skill: ${{ inputs.skill }} (${{ inputs.tag }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.3.39-skill.planton.20260813.0)'
+        required: true
+        type: string
+      skill:
+        description: 'Skill slug to publish (e.g., planton)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    uses: ./.github/workflows/release.stigmer-skills.yaml
+    with:
+      skill: ${{ inputs.skill }}
+      version: ${{ inputs.tag }}
+    secrets:
+      STIGMER_API_KEY: ${{ secrets.STIGMER_API_KEY }}

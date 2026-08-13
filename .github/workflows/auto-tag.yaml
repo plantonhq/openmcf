@@ -11,6 +11,7 @@
 # Tag Formats (pre-release of NEXT version):
 #   - Pulumi: v{next}-pulumi.{component}.{YYYYMMDD}.{N}
 #   - Terraform: v{next}-terraform.{component}.{YYYYMMDD}.{N}
+#   - Stigmer skills: v{next}-skill.{slug}.{YYYYMMDD}.{N}
 #
 # Example: If latest release is v0.3.4, auto-releases become
 # v0.3.5-pulumi.awsvpc.20260108.0. This ensures auto-release tags sort ABOVE
@@ -18,7 +19,10 @@
 #
 # Mass-change guard: pushes that change MODULE_AUTO_TAG_THRESHOLD or more
 # unique components skip Pulumi/Terraform module tags - a mass change means a
-# proper full release will follow. See docs/auto-tags.md.
+# proper full release will follow. See docs/auto-tags.md. The guard does NOT
+# apply to skill lanes: there are at most two skill tags per push regardless
+# of how many files changed (a catalog-wide reference regeneration is ONE
+# catalog-skill tag), so there is nothing to throttle.
 #
 # Trigger: Push to main with changes in monitored paths
 # =============================================================================
@@ -32,6 +36,16 @@ on:
     paths:
       - 'catalog/**/iac/pulumi/**'
       - 'catalog/**/iac/tf/**'
+      # Stigmer skill lanes: the authored skill trees, plus (for the
+      # catalog skill, whose archive embeds the reference pack) every file
+      # the pack assembler selects -- see pkg/skills/defspack/catalogpack.go.
+      - 'skills/**'
+      - 'catalog/**/reference.md'
+      - 'catalog/**/GUIDE.md'
+      - 'catalog/**/reference-index.md'
+      - 'catalog/**/reference-graph.yaml'
+      - 'catalog/**/reference-commons.md'
+      - 'catalog/_patterns/**'
 
   workflow_dispatch:
     inputs:
@@ -65,6 +79,7 @@ jobs:
     outputs:
       pulumi_modules: ${{ steps.detect.outputs.pulumi_modules }}
       terraform_modules: ${{ steps.detect.outputs.terraform_modules }}
+      stigmer_skills: ${{ steps.detect.outputs.stigmer_skills }}
       any_tags_created: ${{ steps.detect.outputs.any_tags_created }}
       modules_skipped: ${{ steps.detect.outputs.modules_skipped }}
       skipped_module_count: ${{ steps.detect.outputs.skipped_module_count }}
@@ -250,6 +265,50 @@ jobs:
           done
 
           echo "terraform_modules=${TERRAFORM_JSON}" >> $GITHUB_OUTPUT
+
+          # =================================================================
+          # Stigmer Skill Tags
+          # =================================================================
+          # One tag per skill whose PUBLISHED ARTIFACT changed. A skill's
+          # trigger set is its own skills/<slug>/ tree; the catalog skill's
+          # archive additionally embeds the component reference pack, so its
+          # set extends to every file the pack assembler selects (mirrors
+          # pkg/skills/defspack/catalogpack.go -- name-based, _test excluded).
+          # The mass-change guard deliberately does not apply: a catalog-wide
+          # regeneration sweep is still exactly one catalog-skill tag, and
+          # publishing unchanged content downstream is a no-op by
+          # construction (content-addressed engine).
+          SKILLS_JSON="[]"
+
+          PLANTON_SKILL_CHANGED=$(echo "$CHANGED_FILES" | grep -cE '^skills/planton/' || true)
+          CATALOG_SKILL_CHANGED=$(echo "$CHANGED_FILES" \
+            | grep -vE '^catalog/_test/|/_test/' \
+            | grep -cE '^skills/multi-cloud-catalog/|^catalog/(.+/)?(reference\.md|GUIDE\.md|reference-index\.md|reference-graph\.yaml|reference-commons\.md)$|^catalog/_patterns/.+\.md$' || true)
+
+          CHANGED_SKILLS=""
+          [ "$PLANTON_SKILL_CHANGED" -gt 0 ] && CHANGED_SKILLS="planton"
+          [ "$CATALOG_SKILL_CHANGED" -gt 0 ] && CHANGED_SKILLS="$CHANGED_SKILLS multi-cloud-catalog"
+
+          for SLUG in $CHANGED_SKILLS; do
+            TAG_PREFIX="${NEXT_SEMVER}-skill.${SLUG}.${TODAY}"
+            LATEST_TAG=$(git tag -l "${TAG_PREFIX}.*" 2>/dev/null | sort -t. -k2 -n | tail -1)
+            if [ -z "$LATEST_TAG" ]; then
+              NEXT_SEQ=0
+            else
+              CURRENT_SEQ=$(echo "$LATEST_TAG" | sed "s/${TAG_PREFIX}\.//")
+              NEXT_SEQ=$((CURRENT_SEQ + 1))
+            fi
+
+            NEXT_TAG="${TAG_PREFIX}.${NEXT_SEQ}"
+            echo "Creating Stigmer skill tag: ${NEXT_TAG} (${SLUG})"
+            git tag -a "${NEXT_TAG}" -m "Auto-tag Stigmer skill ${SLUG} - ${NEXT_TAG}"
+            git push origin "${NEXT_TAG}"
+
+            SKILLS_JSON=$(echo "$SKILLS_JSON" | jq -c --arg tag "$NEXT_TAG" --arg skill "$SLUG" '. + [{"tag": $tag, "skill": $skill}]')
+            ANY_TAGS_CREATED="true"
+          done
+
+          echo "stigmer_skills=${SKILLS_JSON}" >> $GITHUB_OUTPUT
           echo "any_tags_created=${ANY_TAGS_CREATED}" >> $GITHUB_OUTPUT
           echo "modules_skipped=${MODULES_SKIPPED}" >> $GITHUB_OUTPUT
           echo "skipped_module_count=${SKIPPED_MODULE_COUNT}" >> $GITHUB_OUTPUT
@@ -321,6 +380,26 @@ jobs:
               console.log('Triggered auto-release.terraform-modules for: ' + mod.component + ' (' + mod.tag + ')');
             }
 
+      - name: Trigger Stigmer skill releases
+        if: needs.create-tags.outputs.stigmer_skills != '[]'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const skills = JSON.parse('${{ needs.create-tags.outputs.stigmer_skills }}');
+            for (const entry of skills) {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'auto-release.stigmer-skills.yaml',
+                ref: 'main',
+                inputs: {
+                  tag: entry.tag,
+                  skill: entry.skill
+                }
+              });
+              console.log('Triggered auto-release.stigmer-skills for: ' + entry.skill + ' (' + entry.tag + ')');
+            }
+
   # ===========================================================================
   # Summary
   # ===========================================================================
@@ -350,6 +429,11 @@ jobs:
           TERRAFORM_MODULES='${{ needs.create-tags.outputs.terraform_modules }}'
           if [ "$TERRAFORM_MODULES" != "[]" ] && [ -n "$TERRAFORM_MODULES" ]; then
             echo "$TERRAFORM_MODULES" | jq -r '.[] | "| Terraform: \(.component) | `\(.tag)` |"' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          STIGMER_SKILLS='${{ needs.create-tags.outputs.stigmer_skills }}'
+          if [ "$STIGMER_SKILLS" != "[]" ] && [ -n "$STIGMER_SKILLS" ]; then
+            echo "$STIGMER_SKILLS" | jq -r '.[] | "| Stigmer skill: \(.skill) | `\(.tag)` |"' >> $GITHUB_STEP_SUMMARY
           fi
 
           if [ "${{ needs.create-tags.outputs.modules_skipped }}" = "true" ]; then

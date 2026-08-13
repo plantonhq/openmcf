@@ -49,12 +49,18 @@ var zipEpoch = time.Date(1980, 1, 1, 0, 0, 0, 0, time.UTC)
 // ordered entries, the fixed timestamp, stored (uncompressed) content, and
 // CreateRaw with pre-computed sizes -- descriptor-free entries are the
 // maximally compatible ZIP shape, and storing keeps the bytes immune even
-// to compressor changes across Go releases. Cost is nothing at this scale
-// (tens of kilobytes per skill).
+// to compressor changes across Go releases. Storing (not deflating) also
+// keeps the archive bytes a pure function of file content, which is what
+// lets every consumer -- the release manifest, the daemon's re-pack
+// verifier, and the serving engine's content-addressed storage -- agree on
+// one checksum for one content state.
 func BuildSkillArchive(skill Skill) ([]byte, error) {
 	entries := map[string][]byte{"SKILL.md": skill.SkillMD}
 	for name, content := range skill.ReferenceFiles {
 		entries["references/"+name] = content
+	}
+	for path, content := range skill.PackFiles {
+		entries[path] = content
 	}
 	var paths []string
 	for path := range entries {
