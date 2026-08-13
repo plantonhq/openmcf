@@ -70,6 +70,7 @@ func TestImportMapConformance(t *testing.T) {
 		}
 
 		formatsByTerraformType := map[string]string{}
+		notImportableTypes := map[string]bool{}
 		for _, rt := range catalog.GetSpec().GetResourceTypes() {
 			if rt.GetTerraformType() == "" {
 				t.Errorf("%s catalog: entry with empty terraform_type", provider)
@@ -79,8 +80,18 @@ func TestImportMapConformance(t *testing.T) {
 				t.Errorf("%s catalog: duplicate entry for %s", provider, rt.GetTerraformType())
 			}
 			formatsByTerraformType[rt.GetTerraformType()] = rt.GetIdFormat()
-			if rt.GetIdFormat() == "" {
-				t.Errorf("%s catalog: %s has an empty id_format", provider, rt.GetTerraformType())
+			// Exactly one of id_format / not_importable_upstream_reason: a
+			// format on an importer-less type would fail at import time, and
+			// an entry with neither declares nothing.
+			switch {
+			case rt.GetNotImportableUpstreamReason() != "" && rt.GetIdFormat() != "":
+				t.Errorf("%s catalog: %s declares BOTH id_format and not_importable_upstream_reason -- they are mutually exclusive",
+					provider, rt.GetTerraformType())
+			case rt.GetNotImportableUpstreamReason() != "":
+				notImportableTypes[rt.GetTerraformType()] = true
+			case rt.GetIdFormat() == "":
+				t.Errorf("%s catalog: %s has an empty id_format (declare not_importable_upstream_reason instead if the upstream resource ships no importer)",
+					provider, rt.GetTerraformType())
 			}
 			// The tolerance lists feed the round-trip proof's plan oracle; an
 			// empty entry would tolerate nothing meaningful and signals a
@@ -191,11 +202,17 @@ func TestImportMapConformance(t *testing.T) {
 					}
 				}
 				for _, resourceType := range moduleTypes {
+					// Types the upstream provider ships no importer for are
+					// accounted by their recorded reason -- the round-trip
+					// skips their import and proves the re-create path instead.
+					if notImportableTypes[resourceType] {
+						continue
+					}
 					idFormat, mapped := formatsByTerraformType[resourceType]
 					if !mapped {
 						t.Errorf("module resource %s has no id_format in the %s catalog -- "+
 							"the module gained a resource type its import recipes don't cover; add a %s entry "+
-							"(with its provider import-ID format) to %s, then re-run the live round-trip lane for %s",
+							"(with its provider import-ID format, or not_importable_upstream_reason if the upstream resource ships no importer) to %s, then re-run the live round-trip lane for %s",
 							resourceType, provider, resourceType,
 							ProviderCatalogPath("", provider), component)
 						continue

@@ -23,9 +23,10 @@ spec:
   #
   # pending_proof: the depth closure healed the endpoint weight zero-drain
   # defect (both modules now materialize AWS's documented 128 default; an
-  # omitted weight previously transmitted 0 = route-no-traffic) and stripped
-  # the legacy pulumi annotations from the canonical manifest; the previous
-  # green run predates the heal.
+  # omitted weight previously transmitted 0 = route-no-traffic). The
+  # composed scenario now OMITS the endpoint weight so the lane proves the
+  # heal's path directly (DescribeEndpointGroup must echo Weight=128); the
+  # explicit-weight path is proven by spec tests and the offline plan gate.
   tier: 1
   status: pending_proof
   timeout_minutes: 40

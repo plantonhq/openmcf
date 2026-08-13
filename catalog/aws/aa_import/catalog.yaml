@@ -240,6 +240,34 @@ spec:
         ("name:tbl/index:/123456789012") -- the optional marker renders it
         as such.
 
+    # --- Application Auto Scaling (the DynamoDB capacity fold's scalers) ------
+    - terraform_type: aws_appautoscaling_target
+      pulumi_type: aws:appautoscaling/target:Target
+      id_format: "{service_namespace}/{scaling_resource_id}/{scalable_dimension}"
+      notes: >-
+        The provider's documented format is
+        service-namespace/resource-id/scalable-dimension. The resource-id may
+        itself contain slashes (DynamoDB's "table/<table_name>") -- the
+        provider's parser re-joins the middle segments, so the composed ID
+        stays unambiguous.
+    - terraform_type: aws_appautoscaling_policy
+      pulumi_type: aws:appautoscaling/policy:Policy
+      id_format: "{service_namespace}/{scaling_resource_id}/{scalable_dimension}/{policy_name}"
+      notes: >-
+        The target's composed identity plus the policy name. For DynamoDB the
+        parser special-cases the resource-id's known "table/<name>" (and
+        "table/<name>/index/<name>") shapes, so the slash inside
+        {scaling_resource_id} is safe here too.
+    - terraform_type: aws_appautoscaling_scheduled_action
+      pulumi_type: aws:appautoscaling/scheduledAction:ScheduledAction
+      not_importable_upstream_reason: >-
+        The upstream resource ships no importer at v6.58.0 (its target and
+        policy siblings both carry one; the scheduled action does not).
+        PutScheduledAction is an idempotent upsert keyed by
+        service-namespace/resource-id/scalable-dimension/name, so an
+        adopter's first apply takes ownership by re-putting the same action
+        -- the round-trip lane proves exactly that path.
+
     # --- SQS -------------------------------------------------------------------
     - terraform_type: aws_sqs_queue
       pulumi_type: aws:sqs/queue:Queue

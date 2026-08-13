@@ -1035,6 +1035,25 @@ alive until its window is CLOSED" rule at process granularity — and a
 killed-mid-teardown lane means a manual dependency-ordered sweep
 (attachment before gateway, subnets before VPC) before any relaunch.
 
+**The ps check is a HARD PRE-LAUNCH GATE, not just a diagnosis aid — and
+it must gate, not merely print.** Second and third live hits of the class
+(2026-08-13): an agent-tooling launcher reported a lane invocation
+complete-with-failure after 23 seconds while the invocation's `go test`
+kept running for TEN MORE MINUTES (deploying and destroying the full
+13-role IAM fixture set), and a relaunch issued on the strength of that
+false completion collided 409 with the invisible sibling's live fixtures;
+later the same day one launched command produced TWO complete trailer
+sets in one log file — two full executions, which stayed green only
+because they shared run-scoped dependency stacks. Binding rules: (1)
+before ANY lane launch or relaunch, run `ps` for the exact `-run` pattern
+and let a non-empty result BLOCK the launch (a chained command that
+prints the count and proceeds anyway is not a check — the same
+gate-vs-print failure the lock protocol records); (2) after every
+launch, verify exactly ONE `go test` driver + ONE `*.test` binary exist
+for the pattern; (3) count `^ok |^FAIL` package trailers in the lane log
+before citing it as evidence — two trailer sets means two executions and
+the log's phases interleave.
+
 **A stale AWS CLI silently DROPS new API surface from its output — verify
 the CLI's model before diagnosing a missing field.** The CLI parses
 responses against its bundled service model and discards members it does
@@ -1073,6 +1092,25 @@ calls the moment it exists, and let it idle through both engines' windows
 so each lane's instance is sampled independently. The poller doubles as
 per-engine attribution: two capture blocks with different resource IDs
 prove BOTH engines' instances carried the arm.
+
+Three watcher-authoring traps, all live-caught 2026-08-13: (1) **watch
+the name the MODULE derives, not metadata.name** — some kinds name their
+cloud resource from a spec field (ECR's `spec.repository_name`), and a
+watcher armed on metadata.name polls a resource that never exists,
+producing an all-NotFound log that looks like a timing miss (28 clean
+iterations, zero captures — beyond plausible bad luck is the signature;
+read the module's locals before arming). (2) **In zsh, BRACE every
+variable expansion that a colon follows inside a composed ARN** —
+`"$ACCT:stateMachine:x"` silently applies the history-style `:s`
+substitution modifier and `"$ARN:live"` the `:l` lowercase modifier,
+mangling the ARN into a shape the service rejects (or worse, a DIFFERENT
+valid ARN); write `"${ACCT}:stateMachine:x"` / `"${ARN}:live"`. (3)
+**Size the poll interval to the resource's ALIVE window, and keep the
+loop single-purpose** — a multi-service loop whose per-iteration API
+latency exceeds a seconds-scale resource's lifetime misses every window;
+give sub-minute kinds a dedicated 1-2s watcher and re-run their
+minutes-cheap lanes when a window was missed (the re-run doubles as a
+repeatability proof).
 
 **Destroy-ORDER claims need the engine's own log, never a poller.** A
 polling watcher cannot order two deletions that land inside one poll

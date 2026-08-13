@@ -7,8 +7,11 @@
 #   - spec.autoscaling unset: pinned targets (min = max = the declared
 #     provisioned_throughput values). A declared capacity change updates
 #     the target, and AWS moves out-of-range capacity into the new bounds
-#     by contract -- so capacity stays fully declarative even though the
-#     table resource ignores it (table.tf).
+#     by contract (live-verified 2026-08-13: re-registering a pinned
+#     write target 5/5 -> 8/8 moved DescribeTable's WriteCapacityUnits to
+#     8 within ~15 seconds, no table operation involved) -- so capacity
+#     stays fully declarative even though the table resource ignores it
+#     (table.tf).
 #
 # One target per dimension either way, which is what makes adding or
 # removing the autoscaling block an in-place update -- the table resource
