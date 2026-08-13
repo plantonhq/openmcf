@@ -1,0 +1,30 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBastionHost
+metadata:
+  name: platform-bastion
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  name: platform-bastion
+  # BASIC is the default: dedicated infrastructure at fixed capacity
+  # (2 scale units), browser sessions with copy/paste.
+  sku: BASIC
+  ipConfiguration:
+    name: bastion-ip-config
+    # The subnet's ARM name must be EXACTLY "AzureBastionSubnet",
+    # /26 or larger -- ARM validates it at deploy time.
+    subnetId:
+      valueFrom:
+        kind: AzureSubnet
+        name: "<your-bastion-subnet>"
+        fieldPath: status.outputs.subnet_id
+    # A Standard static public IP the host binds EXCLUSIVELY.
+    publicIpAddressId:
+      valueFrom:
+        kind: AzurePublicIp
+        name: "<your-bastion-pip>"
+        fieldPath: status.outputs.public_ip_id

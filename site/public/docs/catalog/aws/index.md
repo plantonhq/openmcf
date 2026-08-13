@@ -95,6 +95,7 @@ The following AWS resources can be deployed using Planton:
 - [Neptune Cluster](/docs/catalog/aws/neptune-cluster)
 - [NLB](/docs/catalog/aws/nlb)
 - [OpenSearch Domain](/docs/catalog/aws/opensearch-domain)
+- [OpenSearch Serverless Collection](/docs/catalog/aws/opensearch-serverless-collection)
 - [Planton Runner](/docs/catalog/aws/planton-runner)
 - [RDS Cluster](/docs/catalog/aws/rds-cluster)
 - [RDS Instance](/docs/catalog/aws/rds-instance)
@@ -105,6 +106,7 @@ The following AWS resources can be deployed using Planton:
 - [S3 Bucket](/docs/catalog/aws/s3-bucket)
 - [S3 Object Set](/docs/catalog/aws/s3-object-set)
 - [SageMaker Domain](/docs/catalog/aws/sagemaker-domain)
+- [Secrets Manager Secret](/docs/catalog/aws/secrets-manager-secret)
 - [Security Group](/docs/catalog/aws/security-group)
 - [SES Configuration Set](/docs/catalog/aws/ses-configuration-set)
 - [SES Email Identity](/docs/catalog/aws/ses-email-identity)
@@ -121,3 +123,5 @@ The following AWS resources can be deployed using Planton:
 - [WAF IP Set](/docs/catalog/aws/waf-ip-set)
 - [WAF Regex Pattern Set](/docs/catalog/aws/waf-regex-pattern-set)
 - [WAF Web ACL](/docs/catalog/aws/waf-web-acl)
+
+Coverage is measured, not asserted: see the [Terraform Parity Report](/docs/catalog/aws/terraform-parity) for the generated accounting against the pinned provider.

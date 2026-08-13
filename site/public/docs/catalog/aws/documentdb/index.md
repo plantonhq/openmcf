@@ -15,7 +15,7 @@ Deploys an Amazon DocumentDB cluster (MongoDB-compatible) — the shared-storage
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **DocumentDB Cluster** -- the shared-storage cluster in the specified AWS region, created fresh, restored from a snapshot, or restored from another cluster's continuous backup (point-in-time, optionally as a copy-on-write fast clone)
-- **DocumentDB Instances** -- one instance per `instances` entry; the lowest promotion tier that is available becomes the writer. Each entry is managed as its own provider resource keyed by name, so scaling readers never touches the cluster
+- **DocumentDB Instances** -- one instance per `instances` entry; the lowest promotion tier that is available becomes the writer. Each entry is managed as its own provider resource keyed by name, so scaling readers never touches the cluster. Per-instance knobs cover the maintenance window, CA bundle, the CA-rotation restart deferral (`certificateRotationRestart`), snapshot tag copy, Performance Insights, and `applyImmediately`
 - **DB Subnet Group** -- built from `subnetIds` (pure glue: a named list of subnets); skipped when an existing `dbSubnetGroupName` is provided instead
 - **Serverless Capacity** -- configured only when `serverlessV2Scaling` is set; every instance then runs class `db.serverless` and scales independently within the DCU bounds
 - **Managed Master Password** -- created only when `manageMasterUserPassword` is true (the recommended posture); AWS generates, stores, and rotates the password in Secrets Manager

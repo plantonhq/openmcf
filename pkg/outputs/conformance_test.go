@@ -7606,6 +7606,44 @@ func TestStackOutputsConformance(t *testing.T) {
 				"web_ui_password_secret", "port_forward_command",
 			},
 		},
+		{
+			// AwsSecretsManagerSecret: secret_arn keys the E2E verifier and
+			// is the canonical join key (AWS appends a random suffix, so the
+			// ARN is never derivable from the name); version_id is exported
+			// in EVERY arm (empty for a shell secret) so the output shape is
+			// engine- and configuration-invariant.
+			name: "AwsSecretsManagerSecret",
+			kind: cloudresourcekind.CloudResourceKind_AwsSecretsManagerSecret,
+			rawOutputs: map[string]interface{}{
+				"secret_arn":  "arn:aws:secretsmanager:us-west-2:123456789012:secret:prod/payments/db-AbCdEf",
+				"secret_name": "prod/payments/db",
+				"version_id":  "12345678-90ab-cdef-1234-567890abcdef",
+			},
+			mustPopulate: []string{
+				"secret_arn", "secret_name", "version_id",
+			},
+		},
+		{
+			// AwsOpenSearchServerlessCollection: collection_name keys the
+			// E2E verifier; collection_arn is the vector-store join key for
+			// Bedrock knowledge bases; the endpoints are what applications
+			// and Dashboards users connect to; kms_key_arn echoes the
+			// effective key (AWS-owned or customer-managed).
+			name: "AwsOpenSearchServerlessCollection",
+			kind: cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection,
+			rawOutputs: map[string]interface{}{
+				"collection_id":       "a1b2c3d4e5f6g7",
+				"collection_arn":      "arn:aws:aoss:us-west-2:123456789012:collection/a1b2c3d4e5f6g7",
+				"collection_name":     "app-search",
+				"collection_endpoint": "https://a1b2c3d4e5f6g7.us-west-2.aoss.amazonaws.com",
+				"dashboard_endpoint":  "https://a1b2c3d4e5f6g7.us-west-2.aoss.amazonaws.com/_dashboards",
+				"kms_key_arn":         "arn:aws:kms:us-west-2:123456789012:key/aws-owned",
+			},
+			mustPopulate: []string{
+				"collection_id", "collection_arn", "collection_name",
+				"collection_endpoint", "dashboard_endpoint", "kms_key_arn",
+			},
+		},
 	}
 
 	for _, tc := range cases {

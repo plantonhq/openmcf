@@ -98,7 +98,7 @@ These are the most important decisions when configuring a WAF Web ACL. Explore t
 
 **Custom response bodies** — declare named bodies before the rules that reference them. Block actions pick a body key from the declared namespace so a dangling key cannot be typed.
 
-**Logging** — destination may be CloudWatch Logs, S3, or Firehose; the name must start with `aws-waf-logs-`. Redact Authorization and Cookie headers in production.
+**Logging** — destination may be CloudWatch Logs, S3, or Firehose; the name must start with `aws-waf-logs-`, and AWS allows exactly one destination per web ACL. Redact Authorization and Cookie headers in production (URI path, query string, and method can be redacted too). A logging filter keeps or drops records by the action WAF applied or by request labels — keeping only BLOCK/COUNT records is the standard cost control for high-traffic ACLs.
 
 ## Outputs and Dependencies
 

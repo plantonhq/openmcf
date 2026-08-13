@@ -2645,27 +2645,15 @@ resources:
   - resource: aws_opensearch_vpc_endpoint
     disposition: model-planned
     reason: "judged as a planned AwsOpenSearchVpcEndpoint kind -- a consumer-side endpoint created in the consumer's VPC (cross-account capable) with its own lifecycle"
-  - resource: aws_opensearchserverless_access_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_collection
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
   - resource: aws_opensearchserverless_collection_group
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_lifecycle_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "a shared OCU-capacity container many collections join -- its own lifecycle and capacity limits fail a fold into the per-collection kind (the standalone-vs-satellite test); judged as a future AwsOpenSearchServerlessCollectionGroup kind (AwsOpenSearchServerlessCollection models the membership side via collection_group_name)"
   - resource: aws_opensearchserverless_security_config
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_security_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "account-level Dashboards identity-provider configuration (SAML / IAM Identity Center / IAM federation) shared by every collection -- never per-collection surface; judged as a future AwsOpenSearchServerlessSecurityConfig kind (the session's collection close split the founding blanket)"
   - resource: aws_opensearchserverless_vpc_endpoint
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids)"
   - resource: aws_organizations_account
     disposition: model-planned
     reason: "judged as a planned AwsOrganizationAccount kind"
@@ -3350,15 +3338,9 @@ resources:
   - resource: aws_schemas_schema
     disposition: deferred
     reason: "EventBridge schema registry content; deferred pending demand"
-  - resource: aws_secretsmanager_secret_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
-  - resource: aws_secretsmanager_secret_rotation
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
   - resource: aws_secretsmanager_tag
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
+    disposition: composed
+    reason: "the per-tag granular twin of the secret's own tags argument -- AwsSecretsManagerSecret's module-wired identity tag map owns the surface (the ecs_tag/ec2_tag imperative-helper class)"
   - resource: aws_security_group_rule
     disposition: composed
     reason: "covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set"

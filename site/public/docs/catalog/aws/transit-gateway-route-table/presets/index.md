@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Inspection Domain"
     excerpt: "The hair-pin pattern's spoke side: every flow leaving a spoke is default-routed through the inspection VPC's attachment, where stateful appliances decide what continues."
+  - slug: "03-managed-default-domain"
+    rank: "03"
+    title: "Managed Default Domain"
+    excerpt: "Adopt a flat hub into a managed routing domain without a two-step migration: this table becomes the gateway's default association and propagation table, and attachments still parked on the old..."
 ---
 
 # Transit Gateway Route Table Presets

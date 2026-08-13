@@ -1231,6 +1231,7 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsLambdaEventSourceMapping | `spec.functionArn` | `status.outputs.function_arn` |
 | AwsS3Bucket | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
+| AwsSecretsManagerSecret | `spec.rotation.rotationLambdaArn` | `status.outputs.function_arn` |
 
 ## See Also
 

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Redis Clustered Production"
     excerpt: "This preset creates a Cluster Mode Enabled Redis 7.1 deployment with 3 shards, 2 replicas per shard (9 total nodes), customer-managed KMS encryption, slow-log delivery to CloudWatch, SNS event..."
+  - slug: "04-global-datastore-secondary"
+    rank: "04"
+    title: "Global Datastore Secondary (Cross-Region DR)"
+    excerpt: "This preset joins an EXISTING ElastiCache global datastore as a read-only secondary in another region — the disaster-recovery and read-locality pattern. The secondary inherits its engine, engine..."
 ---
 
 # ElastiCache Redis Presets

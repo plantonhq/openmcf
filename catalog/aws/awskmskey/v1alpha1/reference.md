@@ -446,6 +446,7 @@ Fields on other kinds that can point at this resource:
 | AwsMwaaEnvironment | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsNeptuneCluster | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsOpenSearchDomain | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsOpenSearchServerlessCollection | `spec.encryption.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsRdsCluster | `spec.instances[].performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
 | AwsRdsCluster | `spec.masterUserSecretKmsKeyId` | `status.outputs.key_arn` |
 | AwsRdsCluster | `spec.kmsKeyId` | `status.outputs.key_arn` |
@@ -471,6 +472,8 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultUserSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsSecretsManagerSecret | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSecretsManagerSecret | `spec.replicaRegions[].kmsKeyId` | `status.outputs.key_arn` |
 | AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSnsTopic | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSqsQueue | `spec.kmsKeyId` | `status.outputs.key_arn` |

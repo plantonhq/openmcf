@@ -98,6 +98,8 @@ These are the most important decisions when configuring an ALB. Explore the full
 
 **Deletion protection is recommended** -- deleting an ALB silently orphans every listener and rule attached to it. The wizard preselects protection ON.
 
+**Capacity can be reserved for events** -- `minimumLoadBalancerCapacityUnits` pre-provisions LCUs for a dated traffic surge (the declarative replacement for pre-warming tickets). The reservation bills while set: size it from the event estimate, then remove the field to release it. `ipv4IpamPoolId` pairs with it for BYOIP addressing, keeping the ALB's public addresses inside ranges your clients have allowlisted.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

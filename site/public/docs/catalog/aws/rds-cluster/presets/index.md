@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Aurora Serverless v2 (Scale-to-Zero)"
     excerpt: "This preset creates an Aurora PostgreSQL Serverless v2 cluster: one `db.serverless` instance that scales between 0 and 16 ACUs with demand, automatic pause after five idle minutes (compute cost drops..."
+  - slug: "04-mysql-s3-migration"
+    rank: "04"
+    title: "MySQL to Aurora via S3 Import"
+    excerpt: "This preset migrates a self-managed MySQL database into a new Aurora MySQL cluster by restoring a Percona XtraBackup stored in S3 -- no logical dump, no replication bootstrap. The new cluster lands..."
 ---
 
 # RDS Cluster Presets

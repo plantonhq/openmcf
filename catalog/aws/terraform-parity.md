@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 112 |
-| Distinct provider resources consumed | 270 |
-| Spec fields authored across all kinds | 4701 |
-| Module pins on `aws` | `~> 6.58` × 112 |
+| Kinds in the catalog | 114 |
+| Distinct provider resources consumed | 276 |
+| Spec fields authored across all kinds | 4739 |
+| Module pins on `aws` | `~> 6.58` × 114 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**112 of 112 kinds are at total accounting; 87 proven live.**
+**114 of 114 kinds are at total accounting; 94 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -55,7 +55,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | partial: pulumi, terraform |
+| AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | ✅ pulumi, terraform |
@@ -74,9 +74,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | partial: pulumi, terraform |
+| AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | — |
+| AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsTaskDefinition | 56 | 13 | 22 | 21 | 0 | ✅ | ✅ pulumi, terraform |
@@ -101,7 +101,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxOpenzfsFileSystem | 35 | 31 | 2 | 2 | 0 | ✅ | — |
 | AwsFsxWindowsFileSystem | 34 | 28 | 2 | 4 | 0 | ✅ | — |
 | AwsGlobalAccelerator | 28 | 12 | 11 | 5 | 0 | ✅ | — |
-| AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | partial: pulumi, terraform |
+| AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -129,9 +129,10 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsMskServerlessCluster | 7 | 1 | 2 | 4 | 0 | ✅ | partial: pulumi, terraform |
 | AwsMwaaEnvironment | 38 | 32 | 3 | 3 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | partial: pulumi, terraform |
+| AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | partial: pulumi, terraform |
+| AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsOpenSearchServerlessCollection | 24 | 8 | 4 | 12 | 0 | ✅ | — |
 | AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
@@ -145,6 +146,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 74 | 36 | 16 | 22 | 0 | ✅ | — |
 | AwsSagemakerDomain | 299 | 184 | 104 | 11 | 0 | ✅ | — |
+| AwsSecretsManagerSecret | 34 | 14 | 11 | 9 | 0 | ✅ | — |
 | AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 6 | 16 | 5 | 0 | ✅ | ✅ pulumi, terraform |
@@ -152,7 +154,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | — |
-| AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | partial: pulumi, terraform |
+| AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGatewayRouteTable | 27 | 11 | 6 | 10 | 0 | ✅ | ✅ pulumi, terraform |
@@ -169,10 +171,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 269 | consumed by a kind's Terraform module today |
+| Modeled | 275 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
-| Composed | 26 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 726 | judged to be covered by a planned kind or planned composition, not built yet |
+| Composed | 27 | capability covered through an existing kind's surface rather than a kind of its own |
+| Planned | 719 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -182,7 +184,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (269)
+### Modeled (275)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -372,6 +374,10 @@ rather than trusted.
 | `aws_opensearch_authorize_vpc_endpoint_access` | consumed by AwsOpenSearchDomain |
 | `aws_opensearch_domain` | consumed by AwsOpenSearchDomain |
 | `aws_opensearch_domain_saml_options` | consumed by AwsOpenSearchDomain |
+| `aws_opensearchserverless_access_policy` | consumed by AwsOpenSearchServerlessCollection |
+| `aws_opensearchserverless_collection` | consumed by AwsOpenSearchServerlessCollection |
+| `aws_opensearchserverless_lifecycle_policy` | consumed by AwsOpenSearchServerlessCollection |
+| `aws_opensearchserverless_security_policy` | consumed by AwsOpenSearchServerlessCollection |
 | `aws_rds_cluster` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_activity_stream` | consumed by AwsRdsCluster |
 | `aws_rds_cluster_endpoint` | consumed by AwsRdsCluster |
@@ -428,8 +434,10 @@ rather than trusted.
 | `aws_sagemaker_domain` | consumed by AwsSagemakerDomain |
 | `aws_sagemaker_space` | consumed by AwsSagemakerDomain |
 | `aws_sagemaker_user_profile` | consumed by AwsSagemakerDomain |
-| `aws_secretsmanager_secret` | consumed by AwsPlantonRunner |
-| `aws_secretsmanager_secret_version` | consumed by AwsPlantonRunner |
+| `aws_secretsmanager_secret` | consumed by AwsPlantonRunner, AwsSecretsManagerSecret |
+| `aws_secretsmanager_secret_policy` | consumed by AwsSecretsManagerSecret |
+| `aws_secretsmanager_secret_rotation` | consumed by AwsSecretsManagerSecret |
+| `aws_secretsmanager_secret_version` | consumed by AwsPlantonRunner, AwsSecretsManagerSecret |
 | `aws_security_group` | consumed by AwsPlantonRunner, AwsSecurityGroup |
 | `aws_sesv2_configuration_set` | consumed by AwsSesConfigurationSet |
 | `aws_sesv2_configuration_set_event_destination` | consumed by AwsSesConfigurationSet |
@@ -456,7 +464,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_association` | consumed by AwsAlb, AwsAppRunnerService |
 | `aws_wafv2_web_acl_logging_configuration` | consumed by AwsWafWebAcl |
 
-### Composed (26)
+### Composed (27)
 
 | Resource | Recorded reason |
 |---|---|
@@ -472,6 +480,7 @@ rather than trusted.
 | `aws_nat_gateway_eip_association` | covered by AwsNatGateway's existing EIP fields -- secondary_allocation_ids (zonal public gateways) and availability_zone_addresses[].allocation_ids (regional gateways) declare the same associations declaratively; the standalone association resource exists for imperatively attaching EIPs to gateways not owned by the same configuration, an anti-pattern for a kind that owns its gateway |
 | `aws_opensearch_domain_policy` | standalone twin of the domain's own access_policies argument, which AwsOpenSearchDomain models directly; the standalone resource exists for out-of-band policy management |
 | `aws_redshift_cluster_iam_roles` | attaches/detaches IAM roles on an existing cluster -- an out-of-band alternative to the inline surface AwsRedshiftCluster spec.iam_roles already owns (the autoscaling-attachment class) |
+| `aws_secretsmanager_tag` | the per-tag granular twin of the secret's own tags argument -- AwsSecretsManagerSecret's module-wired identity tag map owns the surface (the ecs_tag/ec2_tag imperative-helper class) |
 | `aws_security_group_rule` | covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set |
 | `aws_sns_topic_policy` | out-of-band delivery of the topic's Policy attribute, which AwsSnsTopic.spec.policy models inline on aws_sns_topic -- both write the same single attribute (the standalone resource cannot even remove a policy on delete; it writes back a synthesized owner-default document, per the provider source) |
 | `aws_sqs_queue_policy` | out-of-band delivery of the queue's Policy attribute, which AwsSqsQueue.spec.policy models inline on aws_sqs_queue -- both mechanisms upsert the same single queue attribute and fight over it when mixed (the attribute-splitter class) |
@@ -487,7 +496,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (726)
+### Planned (719)
 
 | Resource | Recorded reason |
 |---|---|
@@ -939,13 +948,9 @@ rather than trusted.
 | `aws_opensearch_package` | judged as a planned AwsOpenSearchPackage kind (with its association) -- an account-level package object with its own S3-backed lifecycle, usable across many domains |
 | `aws_opensearch_package_association` | judged as a planned AwsOpenSearchPackage kind (the association is the package kind's join to a domain) |
 | `aws_opensearch_vpc_endpoint` | judged as a planned AwsOpenSearchVpcEndpoint kind -- a consumer-side endpoint created in the consumer's VPC (cross-account capable) with its own lifecycle |
-| `aws_opensearchserverless_access_policy` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_collection` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_collection_group` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_lifecycle_policy` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_security_config` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_security_policy` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
-| `aws_opensearchserverless_vpc_endpoint` | judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints) |
+| `aws_opensearchserverless_collection_group` | a shared OCU-capacity container many collections join -- its own lifecycle and capacity limits fail a fold into the per-collection kind (the standalone-vs-satellite test); judged as a future AwsOpenSearchServerlessCollectionGroup kind (AwsOpenSearchServerlessCollection models the membership side via collection_group_name) |
+| `aws_opensearchserverless_security_config` | account-level Dashboards identity-provider configuration (SAML / IAM Identity Center / IAM federation) shared by every collection -- never per-collection surface; judged as a future AwsOpenSearchServerlessSecurityConfig kind (the session's collection close split the founding blanket) |
+| `aws_opensearchserverless_vpc_endpoint` | the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids) |
 | `aws_organizations_account` | judged as a planned AwsOrganizationAccount kind |
 | `aws_organizations_aws_service_access` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
 | `aws_organizations_delegated_administrator` | judged as a planned AwsOrganization kind (organization, service access, delegated administrators, resource policies) |
@@ -1044,9 +1049,6 @@ rather than trusted.
 | `aws_sagemaker_studio_lifecycle_config` | judged as a planned AwsSagemakerStudioLifecycleConfig kind: an account-level, fully immutable named script object referenced by ARN across domain/profile/space/app surfaces -- own identity and lifecycle, not a domain satellite (split from the former Studio-companion fold blanket) |
 | `aws_scheduler_schedule` | judged as a planned AwsEventbridgeScheduler kind (schedules with groups) |
 | `aws_scheduler_schedule_group` | judged as a planned AwsEventbridgeScheduler kind (schedules with groups) |
-| `aws_secretsmanager_secret_policy` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
-| `aws_secretsmanager_secret_rotation` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
-| `aws_secretsmanager_tag` | judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags) |
 | `aws_securityhub_account` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_account_v2` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |
 | `aws_securityhub_action_target` | judged as a planned AwsSecurityHub kind (account enablement v1/v2, organization configuration, standards, insights, action targets, automation rules, aggregators, connectors) |

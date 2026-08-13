@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Production Web Application"
     excerpt: "This preset creates a comprehensive Web ACL suitable for production web applications. It combines rate limiting, geographic blocking, five AWS Managed Rule Groups, custom response bodies, and logging..."
+  - slug: "04-cost-controlled-logging"
+    rank: "04"
+    title: "Cost-Controlled Logging"
+    excerpt: "This preset creates a Web ACL with baseline managed-rule protection, IP rate limiting, and request logging that keeps ONLY the records where WAF acted -- blocked requests, counted matches, and rules..."
 ---
 
 # WAF Web ACL Presets

@@ -128,7 +128,11 @@ These are the most important decisions when configuring a Redshift cluster. Expl
 
 **Audit logging** -- Configure `logging` with `logDestinationType` set to `"s3"` or `"cloudwatch"`. CloudWatch delivery exports exactly the log types you list in `logExports` (`connectionlog`, `useractivitylog`, `userlog`); S3 delivery always writes all three to the designated bucket. The user activity log only produces data when the `enable_user_activity_logging` parameter is set.
 
-**Snapshots and disaster recovery** -- Set `automatedSnapshotRetentionPeriod` (0-35 days; production typically wants 7+) and `manualSnapshotRetentionPeriod` (-1 retains indefinitely). Keep `skipFinalSnapshot: false` with a `finalSnapshotIdentifier` so deletion always leaves a recovery handle. Configure `snapshotCopy` with a `destinationRegion` to automatically copy snapshots to a second region -- KMS-encrypted clusters additionally need a `snapshotCopyGrantName` in the destination region.
+**Snapshots and disaster recovery** -- Set `automatedSnapshotRetentionPeriod` (0-35 days; production typically wants 7+) and `manualSnapshotRetentionPeriod` (-1 retains indefinitely). Keep `skipFinalSnapshot: false` with a `finalSnapshotIdentifier` so deletion always leaves a recovery handle. Configure `snapshotCopy` with a `destinationRegion` to automatically copy snapshots to a second region -- KMS-encrypted clusters additionally need a `snapshotCopyGrantName` in the destination region. Associate an existing account-level snapshot schedule with `snapshotScheduleIdentifier` (AWS keeps one schedule per cluster) to replace the default automated cadence.
+
+**Cost governance** -- `usageLimits` cap what individual features may consume: Spectrum and cross-region datasharing take `data-scanned` (terabytes), concurrency scaling and automatic-optimization compute take `time` (minutes) -- AWS's own pairing, enforced at validation. Breach actions escalate from `log` through `emit-metric` to `disable`. `scheduledActions` pause, resume, or resize the cluster on `cron()`/`at()` schedules (UTC) -- the nights-and-weekends lever that stops compute billing while paused. Two contracts to know: the action's IAM role must trust `scheduler.redshift.amazonaws.com` (AWS validates at create), and action names are unique per AWS ACCOUNT, so include the cluster name in them.
+
+**Cross-VPC and cross-account access** -- `endpointAccesses` create Redshift-managed VPC endpoints (RA3 only): each entry lands in its own subnet group (typically the consuming VPC's) or reuses the cluster's, and its private address is exported in `endpoint_access_addresses`. For consumers in OTHER AWS accounts, `endpointAuthorizations` grant each account permission to create endpoints from its own side -- one grant per account, optionally restricted to specific VPCs; `forceDelete` controls whether revoking the grant tears down the grantee's live endpoints.
 
 ## Outputs and Dependencies
 
@@ -143,6 +147,9 @@ These are the most important decisions when configuring a Redshift cluster. Expl
 | **AwsKmsKey** (optional) | `masterPasswordSecretKmsKeyId` | `status.outputs.key_arn` |
 | **AwsIamRole** (optional) | `iamRoles` | `status.outputs.role_arn` |
 | **AwsIamRole** (optional) | `defaultIamRoleArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (optional) | `scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |
+| **AwsSecurityGroup** (optional) | `endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
+| **AwsVpc** (optional) | `endpointAuthorizations[].vpcIds` | `status.outputs.vpc_id` |
 
 ### What This Component Provides
 
@@ -160,6 +167,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `subnet_group_name` | Redshift subnet group in use (module-managed or referenced) | Audit, related resource lookups |
 | `parameter_group_name` | Cluster parameter group in use (module-managed or referenced) | Parameter auditing |
 | `master_password_secret_arn` | Secrets Manager secret ARN (when the password is AWS-managed) | Application secret retrieval, rotation monitoring |
+| `endpoint_access_addresses` | Private DNS addresses of managed VPC endpoints, keyed by endpoint name | Connection strings for consumers in other VPCs |
+| `usage_limit_ids` | AWS-generated usage-limit IDs, keyed by feature/limit-type/period | Out-of-band CLI operations, state import |
 
 ## Common Patterns
 
@@ -171,10 +180,13 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Analytics workload** -- Multi-node RA3 cluster with IAM roles attached for Spectrum queries, enhanced VPC routing for network governance, CloudWatch audit logging, cross-region snapshot copy, and Multi-AZ. Designed for data lake analytics with S3 integration. Start from the **Analytics Workload** preset.
 
+**Governed warehouse** -- Production cluster with daily Spectrum and concurrency-scaling spend caps, scheduled nightly pause / morning resume, a managed VPC endpoint for a BI-tooling VPC, and a cross-account endpoint grant. Start from the **Governed Warehouse** preset.
+
 ## Works With
 
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets the Redshift subnet group is built from
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for the cluster endpoint
 - [**AWS Elastic IP**](/cloud-catalog/aws-elastic-ip) -- provides a stable public address for a publicly accessible cluster
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for cluster encryption and Secrets Manager password encryption
-- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides service roles for COPY, UNLOAD, and Redshift Spectrum access to S3 and Glue
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides service roles for COPY, UNLOAD, and Redshift Spectrum access to S3 and Glue, and the scheduler-trusting role scheduled actions assume
+- [**AWS VPC**](/cloud-catalog/aws-vpc) -- scopes cross-account endpoint authorizations to specific grantee VPCs

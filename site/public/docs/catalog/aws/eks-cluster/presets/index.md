@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "EKS Auto Mode Cluster"
     excerpt: "This preset creates a hands-off Kubernetes platform: EKS Auto Mode provisions and scales EC2 capacity, provisions EBS volumes, and manages load balancers for the cluster's workloads. There are no..."
+  - slug: "04-hybrid-nodes"
+    rank: "04"
+    title: "EKS Hybrid Nodes Cluster"
+    excerpt: "This preset creates a control plane that on-premises or edge machines join as workers over your VPN or Direct Connect: one Kubernetes API, cloud and on-prem capacity underneath it. AWS bills hybrid..."
 ---
 
 # EKS Cluster Presets

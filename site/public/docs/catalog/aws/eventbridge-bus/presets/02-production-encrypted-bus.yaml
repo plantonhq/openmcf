@@ -13,3 +13,11 @@ spec:
   logConfig:
     level: ERROR
     includeDetail: NONE
+  # Replay-able event history: the archive continuously records every event
+  # delivered to the bus so incidents can be replayed (EventBridge
+  # StartReplay). Storage bills per GB archived; scope with eventPattern or
+  # cap retentionDays to control cost.
+  archives:
+    - name: my-events-archive
+      description: Replay source for disaster recovery and consumer backfill
+      retentionDays: 90

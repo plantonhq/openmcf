@@ -4,8 +4,9 @@ metadata:
   name: my-serverless-kafka
 spec:
   region: us-west-2
-  subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
-  securityGroupIds:
-    - value: "<broker-security-group-id>"
+  vpcConfigs:
+    - subnetIds:
+        - value: subnet-0aaa1111bbb222333
+        - value: subnet-0bbb2222ccc333444
+      securityGroupIds:
+        - value: sg-0abc1234def567890

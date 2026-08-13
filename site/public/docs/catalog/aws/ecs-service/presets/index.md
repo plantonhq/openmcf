@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Blue/Green with Canary"
     excerpt: "This preset turns on ECS-native blue/green deployments: new revisions stand up in the green target group, take 5% canary traffic for 5 minutes, then all traffic, and bake 10 minutes before the blue..."
+  - slug: "04-stateful-managed-ebs"
+    rank: "04"
+    title: "Stateful Service with Managed EBS"
+    excerpt: "This preset runs a stateful service whose every task gets a fresh, service-owned EBS volume attached at deployment time. The task definition declares the volume slot (`configureAtLaunch`); this..."
 ---
 
 # ECS Service Presets

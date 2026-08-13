@@ -1,0 +1,24 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOpenSearchServerlessCollection
+metadata:
+  name: <app>-kb-vectors
+spec:
+  region: <aws-region>
+  description: Vector store for the <app> Bedrock knowledge base
+  # VECTORSEARCH is the collection type Bedrock knowledge bases consume --
+  # wire this collection's collection_arn output as the knowledge base's
+  # vector store.
+  type: VECTORSEARCH
+  standbyReplicas: DISABLED
+  dataAccess:
+    # The Bedrock knowledge base's service role needs full index access to
+    # create and query the vector index.
+    - principals:
+        - valueFrom:
+            kind: AwsIamRole
+            name: <kb-service-role-resource-name>
+            fieldPath: status.outputs.role_arn
+      collectionPermissions:
+        - aoss:DescribeCollectionItems
+      indexPermissions:
+        - "aoss:*"

@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchDeployment
+metadata:
+  name: nightly-pipeline
+spec:
+  endpointId:
+    value: "<your-batch-endpoint-id>"
+  name: pipeline
+  region: eastus
+  # Runs a registered PIPELINE COMPONENT per job instead of a model
+  # scoring recipe -- the endpoint becomes a stable trigger for a
+  # whole batch pipeline.
+  pipelineComponent:
+    componentId: "<your-registered-pipeline-component-version-id>"
+    # String-valued run-time settings for each pipeline job. The
+    # pipeline's steps find their compute HERE (default_compute), not
+    # through the deployment's computeId/resources (those describe
+    # model scoring recipes).
+    settings:
+      default_compute: cpu-pool
+      continue_on_step_failure: "false"
+    jobTags:
+      trigger: batch-endpoint
+    jobDescription: Nightly feature-refresh and scoring pipeline

@@ -153,6 +153,9 @@ var verifiers = map[string]Verifier{
 	"awsfsxontapvolume":                &fsxVolumeVerifier{},
 	"awsfsxdatarepositoryassociation":  &fsxDataRepositoryAssociationVerifier{},
 	"awssagemakerdomain":               &sageMakerDomainVerifier{},
+
+	"awssecretsmanagersecret":           &secretsManagerSecretVerifier{},
+	"awsopensearchserverlesscollection": &openSearchServerlessCollectionVerifier{},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is registered.

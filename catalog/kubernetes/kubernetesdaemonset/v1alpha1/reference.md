@@ -1279,6 +1279,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -2123,6 +2125,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4115,6 +4119,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4959,6 +4965,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -6994,6 +7002,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7838,6 +7848,8 @@ Allowed values (use exactly as shown):
 - `AwsRoute53HealthCheck`
 - `AwsSesConfigurationSet` -- Both SES kinds are dependency-free leaves: an identity's configuration set is optional composition (scenarios declare it via the e2e-prerequisites annotation), and a configuration set's event destinations reference other kinds only optionally.
 - `AwsSesEmailIdentity`
+- `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
+- `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.

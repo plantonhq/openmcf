@@ -15,7 +15,7 @@ Deploys a Route 53 health check — the availability signal DNS records ([AwsRou
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Route 53 Health Check** -- the monitoring model chosen by `check_type` (create-time immutable), with its per-model surface: probe target, child set, mirrored alarm, or routing control
-- **Probe Configuration** -- interval (10s/30s, create-time immutable), failure threshold, optional latency graphing (create-time immutable), SNI, and an optional checker-region subset (min 3)
+- **Probe Configuration** -- interval (10s/30s, create-time immutable; AWS defaults to 30), failure threshold (AWS defaults to 3), optional latency graphing (create-time immutable), SNI, and an optional checker-region subset (min 3). Probe tuning applies to ENDPOINT checks only -- the aggregation, alarm, and recovery models take none of it, enforced at authoring time
 - **Behavior Dials** -- inversion and the administrative disable switch (the maintenance lever), both editable in place
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 

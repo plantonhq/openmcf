@@ -14,9 +14,9 @@ Deploys a subnet inside an AWS VPC -- a contiguous range of IP addresses pinned 
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Subnet** -- the IP range in the chosen VPC and availability zone, with its IPv4 CIDR and optional IPv6 `/64`
+- **Subnet** -- the IP range in the chosen VPC and availability zone: an explicit IPv4 CIDR or an IPAM-pool allocation, an optional IPv6 `/64` (explicit or IPAM), or an IPv6-only subnet (`ipv6Native`)
 - **Launch behaviour** -- map-public-IP-on-launch, IPv6 auto-assignment, DNS64, and resource-name DNS A/AAAA records, applied to instances started in the subnet
-- **Dedicated route table** -- created only when inline `routes` are supplied; the rules are written into a table owned and associated by this subnet
+- **Dedicated route table** -- created when inline `routes` and/or `propagatingVgws` are supplied; the rules (and any VGW route propagation) are written into a table owned and associated by this subnet
 - **Route table association** -- created when `routeTableId` references an existing table; otherwise the subnet uses the VPC's main route table
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the subnet
 
@@ -83,13 +83,13 @@ This creates a public subnet whose dedicated route table sends all IPv4 traffic 
 
 These are the most important decisions when configuring a subnet. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Placement** -- `region`, `vpcId`, and `availabilityZone` define the subnet and are immutable. Reference the VPC (`valueFrom`) rather than pasting a literal id so the dependency is an explicit edge in your InfraChart graph.
+**Placement** -- `region`, `vpcId`, and the availability zone define the subnet and are immutable. Name the zone (`availabilityZone: us-west-2a`) or pin it by account-stable id (`availabilityZoneId: usw2-az1`) when coordinating layouts across AWS accounts, whose zone NAMES are shuffled per account. Reference the VPC (`valueFrom`) rather than pasting a literal id so the dependency is an explicit edge in your InfraChart graph.
 
-**IPv4 CIDR** -- the `cidrBlock` is immutable; size it for the tier it serves (a `/24` per application tier is a good default) and keep it within the VPC range without overlapping siblings.
+**IPv4 addressing** -- declare the `cidrBlock` yourself (immutable; a `/24` per application tier is a good default, within the VPC range, non-overlapping), or allocate it from an IPAM pool (`ipv4IpamPoolId` + `ipv4NetmaskLength`, /16-/28) so your address plan owns the numbers. Exactly one method -- unless the subnet is IPv6-only.
 
-**IPv6** -- set `ipv6CidrBlock` to a `/64` from the VPC's IPv6 range to make the subnet dual-stack, then optionally enable IPv6 auto-assignment and DNS64.
+**IPv6 and IPv6-only** -- set `ipv6CidrBlock` to a `/64` from the VPC's IPv6 range (or allocate via `ipv6IpamPoolId` + `ipv6NetmaskLength`) to make the subnet dual-stack, then optionally enable IPv6 auto-assignment and DNS64. Set `ipv6Native: true` for an IPv6-ONLY subnet -- no IPv4 at all; pair it with `privateDnsHostnameTypeOnLaunch: resource-name` (required for IPv6-only launches) and DNS64/NAT64 for reaching IPv4-only destinations.
 
-**Routing decides identity** -- choose one: inherit the VPC main route table (isolated/default), associate an existing `routeTableId`, or supply inline `routes`. A default route (`0.0.0.0/0`) to an `internet_gateway` makes the subnet public; one to a `nat_gateway` makes it private with egress; an `::/0` route to an `egress_only_internet_gateway` gives private IPv6 egress.
+**Routing decides identity** -- choose one: inherit the VPC main route table (isolated/default), associate an existing `routeTableId`, or supply inline `routes` (and/or `propagatingVgws`, which pulls Site-to-Site VPN / Direct Connect routes in from a virtual private gateway automatically). A default route (`0.0.0.0/0`) to an `internet_gateway` makes the subnet public; one to a `nat_gateway` makes it private with egress; an `::/0` route to an `egress_only_internet_gateway` gives private IPv6 egress. Route targets cover the provider's full set -- including `carrier_gateway` (Wavelength), `core_network` (Cloud WAN, by ARN), `local_gateway` (Outposts), and `odb_network` (Oracle Database@AWS, by ARN).
 
 ## Outputs and Dependencies
 

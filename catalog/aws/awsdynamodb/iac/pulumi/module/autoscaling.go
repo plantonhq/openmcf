@@ -163,11 +163,11 @@ func trackingPolicy(ctx *pulumi.Context, provider *aws.Provider, tableName strin
 	}
 
 	if _, err := appautoscaling.NewPolicy(ctx, dimension+"-utilization-policy", &appautoscaling.PolicyArgs{
-		Name:              pulumi.Sprintf("%s-%s-utilization", tableName, dimension),
-		PolicyType:        pulumi.String("TargetTrackingScaling"),
-		ServiceNamespace:  target.ServiceNamespace,
-		ResourceId:        target.ResourceId,
-		ScalableDimension: target.ScalableDimension,
+		Name:                                     pulumi.Sprintf("%s-%s-utilization", tableName, dimension),
+		PolicyType:                               pulumi.String("TargetTrackingScaling"),
+		ServiceNamespace:                         target.ServiceNamespace,
+		ResourceId:                               target.ResourceId,
+		ScalableDimension:                        target.ScalableDimension,
 		TargetTrackingScalingPolicyConfiguration: policyCfg,
 	}, pulumi.Provider(provider), pulumi.Parent(target)); err != nil {
 		return errors.Wrapf(err, "failed to create %s target-tracking policy", dimension)

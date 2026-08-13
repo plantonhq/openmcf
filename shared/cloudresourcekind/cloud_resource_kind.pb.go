@@ -319,6 +319,16 @@ const (
 	// destinations reference other kinds only optionally.
 	CloudResourceKind_AwsSesConfigurationSet CloudResourceKind = 1166
 	CloudResourceKind_AwsSesEmailIdentity    CloudResourceKind = 1167
+	// A dependency-free leaf: the KMS key, rotation Lambda, and external
+	// rotation role references are all optional composition -- scenarios
+	// declare them via the e2e-prerequisites annotation, never registry
+	// edges.
+	CloudResourceKind_AwsSecretsManagerSecret CloudResourceKind = 1180
+	// A dependency-free leaf: the collection-scoped encryption/network/
+	// data-access/retention policies are module-rendered, and the KMS key
+	// and data-access principal references are optional composition
+	// (e2e-prerequisites annotation).
+	CloudResourceKind_AwsOpenSearchServerlessCollection CloudResourceKind = 1185
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1637,6 +1647,8 @@ var (
 		1176:  "AwsRoute53HealthCheck",
 		1166:  "AwsSesConfigurationSet",
 		1167:  "AwsSesEmailIdentity",
+		1180:  "AwsSecretsManagerSecret",
+		1185:  "AwsOpenSearchServerlessCollection",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2318,6 +2330,8 @@ var (
 		"AwsRoute53HealthCheck":                          1176,
 		"AwsSesConfigurationSet":                         1166,
 		"AwsSesEmailIdentity":                            1167,
+		"AwsSecretsManagerSecret":                        1180,
+		"AwsOpenSearchServerlessCollection":              1185,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3259,7 +3273,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xfe\xaf\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf7\xb0\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3384,7 +3398,9 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AwsPlantonRunner\x10\x82\t\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsrun:\x02\xbc\b\x123\n" +
 	"\x15AwsRoute53HealthCheck\x10\x98\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05r53hc\x127\n" +
 	"\x16AwsSesConfigurationSet\x10\x8e\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssescs\x124\n" +
-	"\x13AwsSesEmailIdentity\x10\x8f\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesid\x121\n" +
+	"\x13AwsSesEmailIdentity\x10\x8f\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesid\x125\n" +
+	"\x17AwsSecretsManagerSecret\x10\x9c\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awssm\x12@\n" +
+	"!AwsOpenSearchServerlessCollection\x10\xa1\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsoss\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

@@ -79,7 +79,7 @@ These are the most important decisions when configuring a target group. Explore 
 
 **The target type shapes everything** -- `instance` (EC2 fleets), `ip` (ECS awsvpc tasks, pod IPs, peered/on-premises addresses), `lambda` (the load balancer invokes the function — no port, protocol, or VPC), or `alb` (the NLB-in-front-of-ALB pattern combining static Layer-4 IPs with Layer-7 routing).
 
-**The protocol decides the family** -- HTTP/HTTPS groups attach to ALBs and unlock request-level tuning (routing algorithm, anomaly mitigation, slow start, cookie stickiness); TCP/UDP/TCP_UDP/TLS groups attach to NLBs and unlock connection-level tuning (client-IP preservation, Proxy Protocol v2, connection termination, source-IP stickiness).
+**The protocol decides the family** -- HTTP/HTTPS groups attach to ALBs and unlock request-level tuning (routing algorithm, anomaly mitigation, slow start, cookie stickiness, Target Optimizer readiness routing); TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC groups attach to NLBs and unlock connection-level tuning (client-IP preservation, Proxy Protocol v2, connection termination, flow-hash stickiness, QUIC server-ID registrations).
 
 **Health checks probe independently of traffic** -- an NLB TCP group can (and usually should) run HTTP probes against a readiness endpoint; a TCP probe only proves the port is open. AWS applies protocol-appropriate defaults when the block is omitted.
 

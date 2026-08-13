@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Private VPC DNS Zone"
     excerpt: "This preset creates a private Route53 hosted zone that resolves DNS queries only within associated VPCs. Private zones enable split-horizon DNS, where internal services use private domain names..."
+  - slug: "03-dnssec-signed-zone"
+    rank: "03"
+    title: "DNSSEC-Signed Public Zone"
+    excerpt: "This preset creates a public Route53 hosted zone with DNSSEC signing enabled: Route 53 signs the zone's records with a key-signing key (KSK) backed by an asymmetric KMS key, protecting resolvers from..."
 ---
 
 # DNS Zone on AWS Route53 Presets

@@ -1,0 +1,47 @@
+# AwsSecretsManagerSecret full-surface scenario: the managed version with a
+# custom staging label riding AWSCURRENT, the resource policy rendered
+# through the standalone policy resource (block_public_policy true -- the
+# secure default), and a us-east-1 replica (replicas are free; the
+# zero-orphan sweep must verify the replica region too).
+# force_overwrite_replica_secret keeps re-runs clean if a prior lane's
+# replica lingers; recovery_window_in_days 0 frees the name immediately on
+# destroy.
+#
+# Deliberately not exercised here: a customer-managed KMS key (pass-through
+# reference -- the AWS-managed key path is the live arm), binary_value
+# (same PutSecretValue path as string_value), the managed-external-secret
+# partner type, and rotation (offline-proven only -- see the profile).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSecretsManagerSecret
+metadata:
+  name: planton-oss-e2e-awssm-full
+  id: planton-oss-e2e-awssm-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecretsmanagersecret
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E full-surface secret
+  stringValue: '{"username":"e2e","password":"planton-e2e-example","host":"db.example.internal"}'
+  versionStages:
+    - bluegreen-active
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowOwnAccountRead
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::859666865785:root
+        Action: secretsmanager:GetSecretValue
+        Resource: "*"
+  blockPublicPolicy: true
+  replicaRegions:
+    - region: us-east-1
+  forceOverwriteReplicaSecret: true
+  recoveryWindowInDays: 0

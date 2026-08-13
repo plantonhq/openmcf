@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSecretsManagerSecret
+metadata:
+  name: <env>/<app>/shared-config
+spec:
+  region: <primary-region>
+  description: Multi-region replicated secret for <app>
+  stringValue: $secret/<app>-shared-config
+  # Read-only regional copies kept in sync by Secrets Manager -- consumers
+  # in these regions read locally (same name, regional ARN) with no
+  # cross-region call. Each replica encrypts under ITS OWN region's
+  # AWS-managed key here; give a replica its own kmsKeyId to use a
+  # customer-managed key living in that region.
+  replicaRegions:
+    - region: <replica-region-1>
+    - region: <replica-region-2>
+  # A resource policy restricting reads to the application role -- with the
+  # public-policy guard on (the default), a policy that would grant
+  # anonymous access is rejected at deploy.
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowAppRead
+        Effect: Allow
+        Principal:
+          AWS: <app-role-arn>
+        Action: secretsmanager:GetSecretValue
+        Resource: "*"
+  blockPublicPolicy: true

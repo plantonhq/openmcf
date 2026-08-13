@@ -24,6 +24,10 @@ presets:
     rank: "04"
     title: "Preset: Governed Canvas Workspace"
     excerpt: "A SageMaker Domain configured for business analysts using Canvas (no-code ML), with governance guardrails: models flow through the model registry instead of being deployed straight to endpoints, and..."
+  - slug: "05-team-workspaces"
+    rank: "05"
+    title: "Team Workspaces SageMaker Domain"
+    excerpt: "This preset creates a Studio domain provisioned as a complete team setup in one manifest: the domain itself, one user profile per team member (the per-person plane — each gets a private home..."
 ---
 
 # SageMaker Domain Presets

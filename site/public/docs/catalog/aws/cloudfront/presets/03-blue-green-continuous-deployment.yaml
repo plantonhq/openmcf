@@ -1,0 +1,43 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudFront
+metadata:
+  name: my-cdn-primary
+spec:
+  region: us-east-1
+  origins:
+    - originId: s3-site
+      domainName: <bucket-name>.s3.<bucket-region>.amazonaws.com
+      s3Origin:
+        createOriginAccessControl: true
+  defaultCacheBehavior:
+    targetOriginId: s3-site
+    viewerProtocolPolicy: redirect-to-https
+    compress: true
+    # Managed-CachingOptimized: the AWS managed cache policy for static
+    # content.
+    cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  defaultRootObject: index.html
+  # Blue/green rollout: this PRIMARY distribution owns a continuous-
+  # deployment policy that routes a slice of production traffic to a
+  # STAGING distribution carrying the candidate configuration. Deploy the
+  # staging twin as its own AwsCloudFront resource with `staging: true`,
+  # reference its domain name here, watch real traffic hit the new
+  # configuration, then promote by copying the staging configuration to
+  # this primary and removing the policy.
+  continuousDeployment:
+    stagingDistributionDnsNames:
+      # The staging distribution's CloudFront domain name -- compose it
+      # from the staging AwsCloudFront resource's domain_name output.
+      - valueFrom:
+          kind: AwsCloudFront
+          name: <staging-distribution-resource-name>
+          fieldPath: status.outputs.domain_name
+    # Send 10% of ALL traffic to staging, keeping each viewer pinned to
+    # one side for their session so nobody sees a mixed experience.
+    # (The alternative arm, singleHeader, routes only requests carrying
+    # an aws-cf-cd-* header -- opt-in testing instead of a canary slice.)
+    singleWeight:
+      weight: 0.10
+      sessionStickiness:
+        idleTtlSeconds: 300
+        maximumTtlSeconds: 600

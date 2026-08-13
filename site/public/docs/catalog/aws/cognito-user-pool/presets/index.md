@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Production Hardened"
     excerpt: "**Rank**: 3"
+  - slug: "04-threat-protected"
+    rank: "04"
+    title: "Preset: Threat Protected"
+    excerpt: "**Rank**: 4"
 ---
 
 # Cognito User Pool Presets

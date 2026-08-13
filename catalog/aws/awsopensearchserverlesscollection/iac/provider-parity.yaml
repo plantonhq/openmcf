@@ -1,0 +1,83 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_opensearchserverless_collection:
+    mappings:
+      # The provider nests the single vector toggle under a one-element
+      # block; the spec carries the leaf directly.
+      - arg: vector_options
+        spec: spec.serverless_vector_acceleration
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the collection name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: encryption_config
+        reason: one setting, two provider homes -- the encryption key choice lives on the module-rendered encryption security policy (the universally supported arm at the pin; a collection cannot be created without a matching policy), and this inline CreateCollection twin is deliberately not sent
+
+  aws_opensearchserverless_security_policy:
+    # ONE resource type, TWO policy types, TWO typed spec homes: the module
+    # renders an "encryption" policy from spec.encryption and a "network"
+    # policy from spec.network -- both scoped to exactly this collection.
+    # The opaque JSON document argument fans out to every typed leaf the
+    # two documents are rendered from.
+    mappings:
+      - arg: policy
+        spec: spec.encryption.kms_key_arn
+      - arg: policy
+        spec: spec.network.allow_from_public
+      - arg: policy
+        spec: spec.network.vpc_endpoint_ids
+      - arg: policy
+        spec: spec.network.include_dashboards
+    exclusions:
+      - arg: name
+        reason: wired by the module (the collection's own name; policy types are separate namespaces) -- never user surface
+      - arg: type
+        reason: wired by the module ("encryption" / "network" per rendered policy) -- structural, never user surface
+      - arg: description
+        reason: wired by the module (a fixed management notice naming the collection) -- carries no configuration
+
+  aws_opensearchserverless_access_policy:
+    # The opaque JSON document argument fans out to the typed data-access
+    # rule leaves it is rendered from.
+    mappings:
+      - arg: policy
+        spec: spec.data_access.principals
+      - arg: policy
+        spec: spec.data_access.collection_permissions
+      - arg: policy
+        spec: spec.data_access.index_permissions
+      - arg: policy
+        spec: spec.data_access.index_patterns
+    exclusions:
+      - arg: name
+        reason: wired by the module (the collection's own name) -- never user surface
+      - arg: type
+        reason: wired by the module ("data" is the only legal value at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: description
+        reason: wired by the module (a fixed management notice naming the collection) -- carries no configuration
+
+  aws_opensearchserverless_lifecycle_policy:
+    # The opaque JSON document argument fans out to the typed retention
+    # rule leaves it is rendered from.
+    mappings:
+      - arg: policy
+        spec: spec.retention_rules.index_patterns
+      - arg: policy
+        spec: spec.retention_rules.min_index_retention
+      - arg: policy
+        spec: spec.retention_rules.unlimited
+    exclusions:
+      - arg: name
+        reason: wired by the module (the collection's own name) -- never user surface
+      - arg: type
+        reason: wired by the module ("retention" is the only legal value at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: description
+        reason: wired by the module (a fixed management notice naming the collection) -- carries no configuration

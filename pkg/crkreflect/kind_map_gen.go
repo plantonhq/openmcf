@@ -130,6 +130,7 @@ import (
 	awsneptuneclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsneptunecluster/v1alpha1"
 	awsnlbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsnlb/v1alpha1"
 	awsopensearchdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchdomain/v1alpha1"
+	awsopensearchserverlesscollectionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsopensearchserverlesscollection/v1alpha1"
 	awsplantonrunnerv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsplantonrunner/v1alpha1"
 	awsrdsclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1"
 	awsrdsinstancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
@@ -143,6 +144,7 @@ import (
 	awss3bucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
 	awss3objectsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1"
 	awssagemakerdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1"
+	awssecretsmanagersecretv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecretsmanagersecret/v1alpha1"
 	awssecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecuritygroup/v1alpha1"
 	awsserverlesselasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsserverlesselasticache/v1alpha1"
 	awssesconfigurationsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssesconfigurationset/v1alpha1"
@@ -835,6 +837,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsNeptuneCluster:                      &awsneptuneclusterv1alpha1.AwsNeptuneCluster{},
 	cloudresourcekind.CloudResourceKind_AwsNlb:                                 &awsnlbv1alpha1.AwsNlb{},
 	cloudresourcekind.CloudResourceKind_AwsOpenSearchDomain:                    &awsopensearchdomainv1alpha1.AwsOpenSearchDomain{},
+	cloudresourcekind.CloudResourceKind_AwsOpenSearchServerlessCollection:      &awsopensearchserverlesscollectionv1alpha1.AwsOpenSearchServerlessCollection{},
 	cloudresourcekind.CloudResourceKind_AwsPlantonRunner:                       &awsplantonrunnerv1alpha1.AwsPlantonRunner{},
 	cloudresourcekind.CloudResourceKind_AwsRdsCluster:                          &awsrdsclusterv1alpha1.AwsRdsCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRdsInstance:                         &awsrdsinstancev1alpha1.AwsRdsInstance{},
@@ -848,6 +851,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1alpha1.AwsS3Bucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                         &awss3objectsetv1alpha1.AwsS3ObjectSet{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:                     &awssagemakerdomainv1alpha1.AwsSagemakerDomain{},
+	cloudresourcekind.CloudResourceKind_AwsSecretsManagerSecret:                &awssecretsmanagersecretv1alpha1.AwsSecretsManagerSecret{},
 	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                       &awssecuritygroupv1alpha1.AwsSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:               &awsserverlesselasticachev1alpha1.AwsServerlessElasticache{},
 	cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet:                 &awssesconfigurationsetv1alpha1.AwsSesConfigurationSet{},

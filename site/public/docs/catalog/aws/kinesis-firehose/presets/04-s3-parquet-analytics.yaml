@@ -45,9 +45,22 @@ spec:
       retryDurationInSeconds: 300
     dataFormatConversion:
       enabled: true
-      inputFormat: OPENX_JSON
-      outputFormat: PARQUET
-      parquetCompression: SNAPPY
+      # The OpenX JSON deserializer reads the incoming records. Keys that
+      # collide with Hive reserved words map to safe column names; dotted
+      # keys convert to underscores so they land in Glue columns.
+      openXJson:
+        columnToJsonKeyMappings:
+          ts: timestamp
+        convertDotsInJsonKeysToUnderscores: true
+      # Parquet tuned for Athena/Spark scans: harder compression for cheap
+      # storage, 128 MiB row groups aligned to the buffering ceiling, and
+      # dictionary encoding for the low-cardinality event_type column.
+      parquet:
+        compression: GZIP
+        blockSizeBytes: 134217728
+        pageSizeBytes: 2097152
+        enableDictionaryCompression: true
+        writerVersion: V2
       schema:
         databaseName: analytics_db
         tableName: events

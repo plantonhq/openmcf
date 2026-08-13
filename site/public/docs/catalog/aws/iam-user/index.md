@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **IAM User** -- created with the specified username matching the pattern `[a-zA-Z0-9+=,.@_-]{1,64}`, at the optional IAM `path` (defaults to `/`), with an optional `permissionsBoundary` capping its maximum permissions
 - **Managed Policy Attachments** -- one attachment per entry in `managedPolicyArns`, linking AWS-managed or customer-managed policies to the user. Each entry is a literal ARN or a reference to an AwsIamPolicy's `policy_arn` output.
 - **Inline Policies** -- one inline policy per entry in `inlinePolicies`, embedded directly on the user with the specified policy name and JSON document
-- **Access Key** -- created only when `disableAccessKeys` is `false` (default); generates an active access key pair for programmatic AWS API access. The secret access key is base64-encoded in outputs.
+- **Access Key** -- created only when `disableAccessKeys` is `false` (default); generates an access key pair for programmatic AWS API access. The secret access key is base64-encoded in outputs. `accessKeyStatus` flips the key between `Active` (default) and `Inactive` in place -- the rotation lever: an Inactive key keeps its id and secret while AWS rejects requests signed with it, so you can prove nothing depends on it before deleting.
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the user
 
 ## Before You Deploy

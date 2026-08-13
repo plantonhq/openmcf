@@ -394,6 +394,7 @@ Fields on other kinds that can point at this resource:
 | AwsNeptuneCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.roleArn` | `status.outputs.role_arn` |
+| AwsOpenSearchServerlessCollection | `spec.dataAccess[].principals` | `status.outputs.role_arn` |
 | AwsPlantonRunner | `spec.taskRole` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.instances[].monitoringRoleArn` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.iamRoles[].role` | `status.outputs.role_arn` |
@@ -424,6 +425,7 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `status.outputs.role_arn` |
+| AwsSecretsManagerSecret | `spec.rotation.externalRotationRoleArn` | `status.outputs.role_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
 | AwsSnsSubscription | `spec.subscriptionRoleArn` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.application.successFeedbackRole` | `status.outputs.role_arn` |

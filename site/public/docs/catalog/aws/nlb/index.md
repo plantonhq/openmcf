@@ -91,7 +91,9 @@ These are the most important decisions when configuring an NLB. Explore the full
 
 **The scheme is a one-way door** -- `internal` decides internet-facing vs VPC-only and cannot change; AWS replaces the load balancer, issuing a new DNS name and orphaning Elastic IP associations. Subnet mappings are replace-on-change for NLBs too.
 
-**Subnet mappings are the placement** -- one mapping per Availability Zone, each placing one NLB node. Internet-facing mappings can pin an Elastic IP (the static-IP story: firewall allowlists, DNS pinning); internal mappings can pin a private IPv4 address inside the subnet's CIDR. AWS recommends two or more zones.
+**Subnet mappings are the placement** -- one mapping per Availability Zone, each placing one NLB node. Internet-facing mappings can pin an Elastic IP (the static-IP story: firewall allowlists, DNS pinning); internal mappings can pin a private IPv4 address inside the subnet's CIDR; dualstack mappings can additionally pin an `ipv6Address` from the subnet's IPv6 range. AWS recommends two or more zones. Modifying an existing mapping replaces the load balancer -- pure additions do not.
+
+**Capacity and connection headroom** -- `minimumLoadBalancerCapacityUnits` reserves LCU capacity ahead of a known traffic event (billed whether used or not); `secondaryIpsAutoAssignedPerSubnet` (0-7) widens each node's source-port budget for very high connection counts to a single target, and decreasing it later replaces the load balancer. For UDP on a dualstack NLB, set `enablePrefixForIpv6SourceNat: "on"` -- prefix-based IPv6 source NAT is a prerequisite for IPv6 UDP flow handling.
 
 **Security groups are optional but permanent** -- without them the NLB accepts all traffic on its listener ports (filtering happens at the targets); once attached, at least one group must remain forever, and a group-less NLB can never gain them. The PrivateLink enforcement setting decides whether inbound rules also filter traffic arriving through VPC endpoints.
 

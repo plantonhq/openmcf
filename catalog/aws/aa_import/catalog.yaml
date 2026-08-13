@@ -310,3 +310,61 @@ spec:
       notes: >-
         The full alias name including the "alias/" prefix
         (e.g. "alias/my-key-alias").
+
+    # --- Secrets Manager -------------------------------------------------------
+    # The secret and its satellites all import by the secret ARN (the
+    # provider's ArnIdentity); only the version adds its own segment.
+    - terraform_type: aws_secretsmanager_secret
+      pulumi_type: aws:secretsmanager/secret:Secret
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::Secret
+      # recovery_window_in_days is delete-time scheduling input and
+      # force_overwrite_replica_secret is replication apply behavior --
+      # DescribeSecret reports neither back.
+      config_only_attributes: [recovery_window_in_days, force_overwrite_replica_secret]
+    - terraform_type: aws_secretsmanager_secret_policy
+      pulumi_type: aws:secretsmanager/secretPolicy:SecretPolicy
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::ResourcePolicy
+      # block_public_policy is PutResourcePolicy validation input;
+      # GetResourcePolicy never echoes it.
+      config_only_attributes: [block_public_policy]
+    - terraform_type: aws_secretsmanager_secret_version
+      pulumi_type: aws:secretsmanager/secretVersion:SecretVersion
+      id_format: "{secret_arn}|{version_id}"
+      notes: >-
+        Secret ARN and version id separated by a pipe
+        (`aws secretsmanager list-secret-version-ids --secret-id <arn>`
+        shows each version's VersionId).
+    - terraform_type: aws_secretsmanager_secret_rotation
+      pulumi_type: aws:secretsmanager/secretRotation:SecretRotation
+      id_format: "{secret_arn}"
+      cloud_control_type_name: AWS::SecretsManager::RotationSchedule
+      # rotate_immediately is RotateSecret invocation input; DescribeSecret
+      # never reports it back.
+      config_only_attributes: [rotate_immediately]
+
+    # --- OpenSearch Serverless -------------------------------------------------
+    # The collection imports by its service-generated id; the three policy
+    # objects import by "{name}/{type}" (the provider's composite identity;
+    # types: encryption|network for security policies, data for access
+    # policies, retention for lifecycle policies). The policy types are not
+    # Cloud Control-listable without type-scoping input, so only the
+    # collection carries a scan correspondence.
+    - terraform_type: aws_opensearchserverless_collection
+      pulumi_type: aws:opensearch/serverlessCollection:ServerlessCollection
+      id_format: "{collection_id}"
+      cloud_control_type_name: AWS::OpenSearchServerless::Collection
+      notes: >-
+        The service-generated collection id (the leading label of the
+        collection endpoint; `aws opensearchserverless list-collections`
+        shows it as id), never the collection name.
+    - terraform_type: aws_opensearchserverless_security_policy
+      pulumi_type: aws:opensearch/serverlessSecurityPolicy:ServerlessSecurityPolicy
+      id_format: "{policy_name}/{security_policy_type}"
+    - terraform_type: aws_opensearchserverless_access_policy
+      pulumi_type: aws:opensearch/serverlessAccessPolicy:ServerlessAccessPolicy
+      id_format: "{policy_name}/{access_policy_type}"
+    - terraform_type: aws_opensearchserverless_lifecycle_policy
+      pulumi_type: aws:opensearch/serverlessLifecyclePolicy:ServerlessLifecyclePolicy
+      id_format: "{policy_name}/{lifecycle_policy_type}"

@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcsCluster
+metadata:
+  name: my-managed-instances-cluster
+spec:
+  region: <aws-region>
+  containerInsights: enhanced
+  capacityProviders:
+    - FARGATE  # keep the serverless lane beside the managed EC2 capacity
+  managedInstancesCapacityProviders:
+    - name: mi-general
+      infrastructureRoleArn:
+        value: "<infrastructure-role-arn>"  # or reference an AwsIamRole's role_arn output; must trust ecs.amazonaws.com
+      instanceLaunchTemplate:
+        ec2InstanceProfileArn:
+          value: "<instance-profile-arn>"  # or reference an AwsIamInstanceProfile's instance_profile_arn output
+        networkConfiguration:
+          subnets:
+            - value: "<private-subnet-1-id>"  # or reference AwsSubnet subnet_id outputs
+            - value: "<private-subnet-2-id>"
+        instanceRequirements:
+          memoryMib:
+            min: 2048  # at least 2 GiB per instance; leave max unset for no ceiling
+          vcpuCount:
+            min: 1
+          cpuManufacturers:
+            - amazon-web-services  # Graviton-only fleet; drop for any-CPU
+        monitoring: BASIC
+      scaleInAfterSeconds: 300  # retire idle instances after 5 minutes
+  defaultCapacityProviderStrategy:
+    - capacityProvider: mi-general
+      weight: 1

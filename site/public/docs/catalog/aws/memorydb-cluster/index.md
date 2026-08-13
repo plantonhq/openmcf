@@ -118,9 +118,11 @@ These are the most important decisions when configuring a MemoryDB cluster. Expl
 
 **Authentication** -- Every cluster requires an `aclName`. Use the built-in `"open-access"` ACL for development (no authentication) or reference an [AwsMemorydbAcl](/cloud-catalog/aws-memorydb-acl) whose member users ([AwsMemorydbUser](/cloud-catalog/aws-memorydb-user)) carry per-application permissions for production. Swapping ACLs applies in place. When `tlsEnabled` is `false`, only `"open-access"` is allowed.
 
-**Encryption** -- TLS is on by default (omit `tlsEnabled` to keep AWS's default). MemoryDB always encrypts data at rest; provide `kmsKeyArn` to use a customer-managed KMS key instead of the AWS-managed key. Both `tlsEnabled` and `kmsKeyArn` are ForceNew -- changing them destroys and recreates the cluster.
+**Encryption** -- TLS is on by default, and omitting `tlsEnabled` is identical to setting it `true` (the provider enforces that default itself); explicit `false` is the only way to disable it. MemoryDB always encrypts data at rest; provide `kmsKeyArn` to use a customer-managed KMS key instead of the AWS-managed key. Both `tlsEnabled` and `kmsKeyArn` are ForceNew -- changing them destroys and recreates the cluster.
 
-**Snapshot restore** -- seed a new cluster's data from a named MemoryDB snapshot (`snapshotName`) or S3-hosted RDB files (`snapshotArns`, the migrate-from-self-managed path). The two are mutually exclusive and both are create-time decisions.
+**Maintenance and snapshots** -- `maintenanceWindow` and `snapshotWindow` are one-way once applied: leaving them empty lets AWS assign a window, but removing them later keeps the current window rather than reverting -- change a window by naming the new one explicitly. `snapshotRetentionLimit: 0` (the default) disables automatic snapshots. `finalSnapshotName` (1-255 lowercase alphanumeric/hyphen characters, no consecutive or trailing hyphens) preserves the data as a snapshot when the cluster is deleted -- without it, deletion is final.
+
+**Snapshot restore** -- seed a new cluster's data from a named MemoryDB snapshot (`snapshotName`) or S3-hosted RDB files (`snapshotArns`, S3 object ARNs -- the migrate-from-self-managed path). The two are mutually exclusive and both are create-time decisions.
 
 **Network addressing** -- `networkType` (`ipv4`/`ipv6`/`dual_stack`, ForceNew) sets which IP families the cluster serves; `ipDiscovery` (updates in place) sets which family discovery commands return -- the dual-stack + flip-discovery combination migrates clients to IPv6 without replacement. `multiRegionClusterName` (ForceNew) joins an existing multi-Region cluster for active-active replication.
 

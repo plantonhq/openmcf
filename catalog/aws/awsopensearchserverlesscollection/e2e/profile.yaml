@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  # An OpenSearch Serverless collection under live E2E: one full-surface
+  # lane -- the collection (SEARCH, standby DISABLED for the 0.5+0.5 OCU
+  # dev floor) plus all four module-rendered collection-scoped policies:
+  # encryption (AWS-owned key -- the policy that must exist BEFORE the
+  # collection; its create/destroy ordering is the module's own dependency
+  # edge), network (public posture, collection + dashboard rules), data
+  # access (one rule against the test account's admin role), and retention
+  # (a 24h rule). Collection provisioning is minutes-scale (~5-10 each
+  # way); cost is the OCU floor for the lane's minutes -- pennies.
+  # Verification is BatchGetCollection keyed on the collection name
+  # (ACTIVE counts as present; DELETING counts as absent) plus the four
+  # policies' Get* echoes.
+  #
+  # Deliberately not exercised live: a customer-managed KMS key (the
+  # AWS-owned-key arm is the live path; the KmsARN document member is
+  # offline-proven), VPC-endpoint network access (needs an OpenSearch
+  # Serverless VPC endpoint -- a future kind; unblock: model it and
+  # compose), collection groups (needs a collection-group fixture -- a
+  # future kind), and vector acceleration (VECTORSEARCH GPU capacity --
+  # cost).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q32
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

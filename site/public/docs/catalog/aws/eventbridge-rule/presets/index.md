@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Multi-Target Fan-Out"
     excerpt: "This preset creates an event-pattern-based rule on a custom event bus that routes matching events to two targets simultaneously — a Lambda function with input transformation and retry policy, and an..."
+  - slug: "04-data-warehouse-events"
+    rank: "04"
+    title: "Data Warehouse Events"
+    excerpt: "This preset runs a Redshift Data API statement whenever matching events arrive — here, calling an ingestion procedure each time new data lands in an S3 bucket. It demonstrates the event-driven ELT..."
 ---
 
 # EventBridge Rule Presets

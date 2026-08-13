@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Log Archive with Lifecycle Tiering"
     excerpt: "This preset creates a private bucket purpose-built as a log/archive destination: objects tier down through cheaper storage classes as they age and are deleted after a year, with no manual..."
+  - slug: "04-governed-data-lake"
+    rank: "04"
+    title: "Governed Data Lake"
+    excerpt: "This preset creates a private, versioned data-lake bucket with the full governance toolkit switched on: scheduled inventory reports, storage-class analytics, request metrics, and S3 Metadata tables —..."
 ---
 
 # S3 Bucket Presets

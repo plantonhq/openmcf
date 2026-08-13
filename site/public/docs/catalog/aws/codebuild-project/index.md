@@ -112,7 +112,7 @@ These are the most important decisions when configuring a CodeBuild project. Exp
 
 **Source type** -- Determines where build input comes from. Use `GITHUB`, `BITBUCKET`, or `GITLAB` for webhook-triggered CI. Use `CODEPIPELINE` when the project is a stage in an AWS CodePipeline (both `source.type` and `artifacts.type` must be CODEPIPELINE). Use `S3` for archive-based builds.
 
-**Compute type and environment** -- `BUILD_GENERAL1_SMALL` (3 GB, 2 vCPUs) handles most test suites. Use `BUILD_GENERAL1_LARGE` (15 GB, 8 vCPUs) for Docker builds. Enable `environment.privilegedMode` when the build needs Docker daemon access. Lambda compute types (`BUILD_LAMBDA_*`) provide faster cold starts for lightweight builds.
+**Compute type and environment** -- `BUILD_GENERAL1_SMALL` (3 GB, 2 vCPUs) handles most test suites. Use `BUILD_GENERAL1_LARGE` (15 GB, 8 vCPUs) for Docker builds. Enable `environment.privilegedMode` when the build needs Docker daemon access. Lambda compute types (`BUILD_LAMBDA_*`) provide faster cold starts for lightweight builds. On Linux container and EC2 environment types, `environment.hostKernel` selects the build host's kernel line (`LINUX_KERNEL_4`, `LINUX_KERNEL_6`, or `LINUX_KERNEL_LATEST`) for builds that depend on newer kernel features (eBPF, io_uring); omit it to let AWS choose.
 
 **Build caching** -- Set `cache.type` to `LOCAL` with `LOCAL_DOCKER_LAYER_CACHE` for Docker builds or `S3` for shared caches across concurrent builds. Local caching is faster but ephemeral.
 

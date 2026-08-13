@@ -106,6 +106,10 @@ These are the most important decisions when configuring a security group. Explor
 
 **Deletion posture** -- `revokeRulesOnDelete` is off by default: deleting a group that other groups' rules still reference fails with a DependencyViolation, surfacing the dependency. Enable it for groups referenced cross-group in environments that are torn down whole, so teardown never requires manual rule surgery. Safe to toggle in place.
 
+**Multi-VPC sharing** -- `additionalVpcIds` shares the group into other VPCs in the same account and region, so workloads there attach the same group instead of maintaining drifting per-VPC copies. Associations add and remove in place. One rule of thumb: AWS ignores a rule that references a security group from a different VPC than the one a packet traverses, so shared groups should carry CIDR or prefix-list rules, which behave identically everywhere.
+
+**Rule direction is validated** -- `sourceSecurityGroupIds` belongs to ingress rules and `destinationSecurityGroupIds` to egress rules; a value in the wrong direction would be silently dropped by the module, so validation rejects it up front.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -113,6 +117,7 @@ These are the most important decisions when configuring a security group. Explor
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AwsVpc** | `vpcId` | `status.outputs.vpc_id` |
+| **AwsVpc** (optional) | `additionalVpcIds` | `status.outputs.vpc_id` |
 | **AwsSecurityGroup** (optional) | `ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | **AwsSecurityGroup** (optional) | `egress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
 
@@ -125,6 +130,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `security_group_id` | ID of the created security group | EKS cluster security, RDS instance access, EC2 instance network interfaces |
 | `security_group_arn` | Amazon Resource Name of the group | IAM policies and support tooling |
 | `owner_id` | The AWS account that owns the group | Cross-account rule references (account/group-id pairs) |
+| `additional_vpc_association_ids` | Association ids of the group's multi-VPC shares, keyed by VPC id | Attachment evidence, import tooling |
 
 ## Common Patterns
 
@@ -135,6 +141,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Database tier** -- Restricts inbound access to specific ports (e.g., 5432 for PostgreSQL, 3306 for MySQL) from application-tier security groups only. No public CIDR access. Start from the **Database Tier** preset.
 
 **Bastion host** -- Allows inbound SSH (22) from a restricted set of administrator IP addresses and full outbound access for management tasks. Start from the **Bastion** preset.
+
+**Shared multi-VPC group** -- One baseline firewall definition associated with several VPCs, attached by workloads everywhere it is shared. Start from the **Shared Multi-VPC** preset.
 
 ## Works With
 

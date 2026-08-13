@@ -1009,6 +1009,22 @@ func TestAwsSagemakerDomain_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssagemakerdomain", "terraform")
 }
 
+func TestAwsSecretsManagerSecret_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecretsmanagersecret", "pulumi")
+}
+
+func TestAwsSecretsManagerSecret_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssecretsmanagersecret", "terraform")
+}
+
+func TestAwsOpenSearchServerlessCollection_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "pulumi")
+}
+
+func TestAwsOpenSearchServerlessCollection_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

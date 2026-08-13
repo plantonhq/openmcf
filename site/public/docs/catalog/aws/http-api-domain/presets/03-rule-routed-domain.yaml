@@ -1,0 +1,49 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsHttpApiDomain
+metadata:
+  name: <domain-resource-name>
+  org: <organization>
+  env: <environment>
+  id: <resource-id>
+spec:
+  region: <aws-region>
+  # Replace with your owned domain (lowercase; must be covered by the
+  # certificate).
+  domainName: api.example.com
+  # The certificate must be in the same region and cover the domain name
+  # (exact or wildcard match).
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: <certificate-resource-name>
+      fieldPath: status.outputs.cert_arn
+  # Rules are evaluated in ascending priority; the first match wins. A
+  # rule-routed domain carries NO apiMappings (AWS rejects HTTP-API
+  # mappings on rule-mode domains), and rules invoke ONLY REST-protocol
+  # APIs -- pass each REST API's id literally (the catalog does not yet
+  # model REST APIs). Requests matching no rule receive API Gateway's 404
+  # -- ensure the rule set covers every path family the domain serves.
+  routingMode: ROUTING_RULE_ONLY
+  routingRules:
+    # Path-based service split: /orders/... reaches the orders REST API
+    # with the base path stripped, so the API sees /list instead of
+    # /orders/list.
+    - priority: 10
+      conditions:
+        - basePaths:
+            - orders
+      apiId:
+        value: a1b2c3d4e5
+      stage: prod
+      stripBasePath: true
+    # Header-based tenant pinning: beta tenants reach the canary REST API
+    # no matter which path they call. Combine a basePaths condition and a
+    # header condition on ONE rule to require both.
+    - priority: 20
+      conditions:
+        - header:
+            name: x-tenant-id
+            valueGlob: beta-*
+      apiId:
+        value: f6a7b8c9d0
+      stage: prod

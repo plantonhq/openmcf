@@ -1137,6 +1137,26 @@ enum CloudResourceKind {
     id_prefix: "awssesid"
   }];
 
+  // A dependency-free leaf: the KMS key, rotation Lambda, and external
+  // rotation role references are all optional composition -- scenarios
+  // declare them via the e2e-prerequisites annotation, never registry
+  // edges.
+  AwsSecretsManagerSecret = 1180 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssm"
+  }];
+
+  // A dependency-free leaf: the collection-scoped encryption/network/
+  // data-access/retention policies are module-rendered, and the KMS key
+  // and data-access principal references are optional composition
+  // (e2e-prerequisites annotation).
+  AwsOpenSearchServerlessCollection = 1185 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsoss"
+  }];
+
   // 2000–2999: Azure resources
   AzureResourceGroup = 2000 [(kind_meta) = {
     provider: azure
