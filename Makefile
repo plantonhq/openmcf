@@ -350,10 +350,6 @@ release-buf:
 next-version:  ## show what the next version would be
 	@python3 tools/ci/release/next_version.py $(bump)
 
-.PHONY: snapshot
-snapshot: deps  ## build a local snapshot using GoReleaser
-	goreleaser release --snapshot --clean --skip=publish
-
 .PHONY: release
 release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: patch). Override with version=vX.Y.Z
 	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
@@ -376,19 +372,6 @@ run-docs:
 .PHONY: build-docs
 build-docs:
 	$(MAKE) -C docs build
-
-# ── website (site/) ────────────────────────────────────────────────────────────
-.PHONY: run-site
-run-site:
-	$(MAKE) -C site dev
-
-.PHONY: build-site
-build-site:
-	$(MAKE) -C site build
-
-.PHONY: preview-site
-preview-site:
-	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies

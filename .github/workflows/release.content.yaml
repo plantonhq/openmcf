@@ -36,7 +36,7 @@
 # A changed logo may serve stale for the CDN cache TTL (accepted: logos
 # change rarely; add a purge step only if that ever matters).
 #
-# Called by: .github/workflows/release.yaml (after CLI release creates the release)
+# Called by: .github/workflows/release.yaml (after its github-release job creates the release)
 # =============================================================================
 
 name: release.content

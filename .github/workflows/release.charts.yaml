@@ -3,9 +3,9 @@
 # =============================================================================
 # Packages the InfraChart catalog (the charts/ tree) as a single versioned zip
 # and attaches it - with its checksum and a version pointer - to the GitHub
-# Release that the CLI job already created for this tag. There is nothing to
-# "build": a chart is just files (Chart.yaml + values.yaml + templates/), so
-# this is a publish step, not a build pipeline.
+# Release that the orchestrator's github-release job already created for this
+# tag. There is nothing to "build": a chart is just files (Chart.yaml +
+# values.yaml + templates/), so this is a publish step, not a build pipeline.
 #
 # Why an explicit checksummed asset instead of GitHub's auto source archive:
 #   - GitHub does NOT guarantee byte-stable source archives, so a pinned
@@ -20,7 +20,7 @@
 #   https://github.com/plantonhq/planton/releases/latest/download/infra-charts.sha256
 #   https://github.com/plantonhq/planton/releases/latest/download/version.txt
 #
-# Called by: .github/workflows/release.yaml (after the CLI job publishes the
+# Called by: .github/workflows/release.yaml (after its github-release job publishes the
 # release). Not triggered directly - it rides the strict-semver release so its
 # assets land on the release that /releases/latest/download resolves to.
 # =============================================================================
@@ -62,7 +62,7 @@ jobs:
 
           echo "Built infra-charts.zip ($(wc -c < infra-charts.zip) bytes), sha256=$(cat infra-charts.sha256)"
 
-          # Attach to the release the CLI job already created for this tag.
+          # Attach to the release the github-release job already created for this tag.
           # --clobber makes a re-run of the tag idempotent.
           gh release upload "${VERSION}" \
             infra-charts.zip \
