@@ -1,0 +1,30 @@
+# Install profile used when GcpWorkflow is a PREREQUISITE of another
+# component's lanes (e.g. a GcpEventarcTrigger workflow-destination
+# scenario): the smallest ACTIVE workflow an Eventarc destination can
+# reference. deletion_protection false so the consuming lane's teardown
+# runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpWorkflow
+metadata:
+  name: planton-oss-e2e-gcpwflow-prereq
+  id: planton-oss-e2e-gcpwflow-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpworkflow
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-central1
+  sourceContents: |
+    main:
+      params: [event]
+      steps:
+        - done:
+            return: "received"
+  description: Workflow fixture for consuming components' E2E chains.
+  deletionProtection: false
+  deletionPolicy: DELETE

@@ -74,4 +74,9 @@ resource "google_vertex_ai_index_endpoint_deployed_index" "this" {
       }
     }
   }
+
+  # Client-side destroy behavior (DELETE undeploys; PREVENT refuses;
+  # ABANDON drops from state but keeps serving). Empty follows the
+  # provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

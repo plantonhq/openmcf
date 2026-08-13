@@ -27,7 +27,8 @@ spec:
   # incl. plugin warm-up; deploy itself 16s) / Terraform 58s incl. the S3
   # fixture chain; zero-orphan sweep clean.
   tier: 1
-  status: green
+  # pending_proof: the session-043 depth closure changed the live send surface (the Name tag on both engines) -- Q29 proves it
+  status: pending_proof
   validated_provisioners:
     - pulumi
     - terraform

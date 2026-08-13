@@ -140,7 +140,7 @@ expect them to be permanent.
 ### Chart.yaml
 
 ```yaml
-apiVersion: infra-hub.planton.ai/v1
+apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: <Provider> <Human Name>          # e.g. "AWS Terraform State Backend"

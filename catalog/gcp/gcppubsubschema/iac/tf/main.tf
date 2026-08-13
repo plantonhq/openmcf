@@ -24,6 +24,10 @@ resource "google_pubsub_schema" "schema" {
   type       = var.spec.type
   definition = var.spec.definition
 
+  # Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+  # Sent only when set so the provider default stays in charge otherwise.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [
     google_project_service.pubsub_api,
   ]

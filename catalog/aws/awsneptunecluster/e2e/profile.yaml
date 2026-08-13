@@ -13,7 +13,8 @@ spec:
   # serverless scaling block. Instance provisioning dominates the runtime
   # at roughly ten minutes each way per engine.
   tier: 1
-  status: green
+  # pending_proof: the session-043 depth closure changed the live send surface (instance port pinning, apply-immediately/skip-final-snapshot forwards, folded custom endpoints, the managed instance parameter group, storage encryption default-on) -- Q29 proves it
+  status: pending_proof
   validated_provisioners:
     - pulumi
     - terraform

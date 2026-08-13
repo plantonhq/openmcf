@@ -18,6 +18,10 @@ The **AwsEventBridgeBus** resource provides a standardized way to provision and 
 - **log_config.level**: Logging level — `"OFF"`, `"ERROR"`, `"INFO"`, or `"TRACE"`. Required when `log_config` is set.
 - **log_config.include_detail**: Whether to include event detail in logs — `"NONE"` or `"FULL"`. Optional; defaults to `"NONE"`.
 
+### Event Archives (Replay / Disaster Recovery)
+
+- **archives**: Event archives recorded from this bus — replay-able event history for disaster recovery and consumer backfill. Each entry creates one archive sourced from this bus: `name` (unique per account/region, ≤48 chars), optional `description`, `retention_days` (0 = retain indefinitely), `event_pattern` (omit to archive every event), and `kms_key_identifier` (the archive's own key, independent of the bus's). Replay itself is the on-demand EventBridge StartReplay operation — the archive defines what is recorded and for how long. An empty archive costs nothing; storage bills per GB archived.
+
 ### Partner Event Sources (Niche)
 
 - **event_source_name**: Partner event source name for SaaS integrations (e.g., Datadog, PagerDuty). Must match the pattern `aws.partner/{partner}/{...}`. The bus name (`metadata.name`) must match this value. Immutable after creation.
@@ -28,6 +32,7 @@ After provisioning, the AwsEventBridgeBus resource provides the following output
 
 - **bus_name**: The name of the event bus — the primary identifier used in EventBridge API calls and rule configurations.
 - **bus_arn**: The Amazon Resource Name (ARN) of the event bus — used for IAM policies, cross-account event delivery, and as a reference in other resources.
+- **archives**: The archives declared in `spec.archives`, in spec order — each entry's name and ARN, for replay operations (StartReplay) and IAM policies.
 
 ## How It Works
 
@@ -79,6 +84,8 @@ The API enforces these validations:
 3. **Log config level**: Must be one of `OFF`, `ERROR`, `INFO`, `TRACE`.
 4. **Log config include_detail**: Must be one of `NONE`, `FULL` when set.
 5. **Dead letter config ARN**: Required when `dead_letter_config` is present.
+6. **Archive names**: Required, at most 48 characters of letters, digits, dots, hyphens, and underscores — and unique within the bus.
+7. **Archive retention**: `retention_days` must be zero (retain indefinitely) or positive.
 
 ## References
 

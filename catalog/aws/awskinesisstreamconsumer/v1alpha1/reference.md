@@ -43,18 +43,10 @@ apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: test-consumer
-  org: test-org
-  env: dev
-  id: test-consumer-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsKinesisStreamConsumer.test-consumer
 spec:
   region: us-west-2
   streamArn:
-    value: arn:aws:kinesis:us-east-1:123456789012:stream/test-stream
+    value: arn:aws:kinesis:us-west-2:123456789012:stream/test-stream
 ```
 
 ## Spec Fields

@@ -56,9 +56,11 @@ func Resources(ctx *pulumi.Context, stackInput *awseksclusterv1alpha1.AwsEksClus
 		}
 		vpcConfig.SecurityGroupIds = securityGroupIds
 	}
-	// PARITY-EXCEPTION: control_plane_egress_mode is not yet modeled by
-	// pulumi-aws (v7.35.0); the Terraform module implements it. Revisit on
-	// the next pulumi-aws upgrade. Stack outputs are unaffected.
+	// Sent only when set so AWS's default (AWS_MANAGED) keeps applying.
+	// Reverting CUSTOMER_ROUTED to AWS_MANAGED forces cluster replacement.
+	if spec.ControlPlaneEgressMode != "" {
+		vpcConfig.ControlPlaneEgressMode = pulumi.StringPtr(spec.ControlPlaneEgressMode)
+	}
 
 	clusterArgs := &eks.ClusterArgs{
 		Name:      pulumi.String(target.Metadata.Name),
@@ -158,6 +160,32 @@ func Resources(ctx *pulumi.Context, stackInput *awseksclusterv1alpha1.AwsEksClus
 		clusterArgs.ZonalShiftConfig = &eks.ClusterZonalShiftConfigArgs{
 			Enabled: pulumi.BoolPtr(true),
 		}
+	}
+	// Provisioned control-plane capacity (billed hourly on top of the
+	// cluster fee). Sent only when set so AWS's default (standard) keeps
+	// applying; tier changes update in place.
+	if spec.ControlPlaneScalingTier != "" {
+		clusterArgs.ControlPlaneScalingConfig = &eks.ClusterControlPlaneScalingConfigArgs{
+			Tier: pulumi.StringPtr(spec.ControlPlaneScalingTier),
+		}
+	}
+	// EKS Hybrid Nodes: the on-premises node/pod CIDR ranges allowed to
+	// join. Updatable in place; each nested block is sent only when its
+	// list is non-empty (spec validation guarantees at least one list
+	// carries a range).
+	if spec.RemoteNetworks != nil {
+		remoteNetworkConfig := &eks.ClusterRemoteNetworkConfigArgs{}
+		if len(spec.RemoteNetworks.NodeCidrs) > 0 {
+			remoteNetworkConfig.RemoteNodeNetworks = &eks.ClusterRemoteNetworkConfigRemoteNodeNetworksArgs{
+				Cidrs: pulumi.ToStringArray(spec.RemoteNetworks.NodeCidrs),
+			}
+		}
+		if len(spec.RemoteNetworks.PodCidrs) > 0 {
+			remoteNetworkConfig.RemotePodNetworks = &eks.ClusterRemoteNetworkConfigRemotePodNetworksArgs{
+				Cidrs: pulumi.ToStringArray(spec.RemoteNetworks.PodCidrs),
+			}
+		}
+		clusterArgs.RemoteNetworkConfig = remoteNetworkConfig
 	}
 	// Always send the explicit boolean: the provider attribute is
 	// Optional+Computed, so leaving it unset means "keep the cluster's

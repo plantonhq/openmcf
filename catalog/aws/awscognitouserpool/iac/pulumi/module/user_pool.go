@@ -38,9 +38,13 @@ func userPool(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cog
 	// ---------------------------------------------------------------------------
 
 	// AWS expresses deletion protection as an ACTIVE/INACTIVE string; the spec
-	// keeps it an honest boolean and the module translates.
+	// keeps it an honest boolean and the module translates. Always sent (both
+	// engines state-pin it) so a true->false edit deactivates protection
+	// instead of silently no-opping.
 	if spec.DeletionProtection {
 		args.DeletionProtection = pulumi.StringPtr("ACTIVE")
+	} else {
+		args.DeletionProtection = pulumi.StringPtr("INACTIVE")
 	}
 
 	// Omitted tier means AWS's default (ESSENTIALS); only forward an explicit
@@ -53,6 +57,11 @@ func userPool(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cog
 	// Password and sign-in policy
 	// ---------------------------------------------------------------------------
 
+	// The zero-gates below are faithful, not lossy: AWS itself treats a
+	// submitted 0 as null for temporary_password_validity_days (applying its
+	// 7-day default), and 0 is AWS's own default posture for
+	// password_history_size (history off) -- so 0 and absent are the same
+	// policy at the API for all three numerics.
 	if spec.PasswordPolicy != nil {
 		pp := spec.PasswordPolicy
 		passwordPolicy := &cognito.UserPoolPasswordPolicyArgs{
@@ -185,8 +194,8 @@ func userPool(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cog
 		if ec.ReplyToEmailAddress != "" {
 			emailArgs.ReplyToEmailAddress = pulumi.StringPtr(ec.ReplyToEmailAddress)
 		}
-		if ec.ConfigurationSet != "" {
-			emailArgs.ConfigurationSet = pulumi.StringPtr(ec.ConfigurationSet)
+		if ec.ConfigurationSet.GetValue() != "" {
+			emailArgs.ConfigurationSet = pulumi.StringPtr(ec.ConfigurationSet.GetValue())
 		}
 
 		args.EmailConfiguration = emailArgs
@@ -224,9 +233,11 @@ func userPool(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cog
 	// ---------------------------------------------------------------------------
 
 	if spec.AllowAdminCreateUserOnly || spec.InviteMessageTemplate != nil {
-		adminCreateUser := &cognito.UserPoolAdminCreateUserConfigArgs{}
-		if spec.AllowAdminCreateUserOnly {
-			adminCreateUser.AllowAdminCreateUserOnly = pulumi.BoolPtr(true)
+		// The flag is always sent inside the block (both engines state-pin
+		// it): a template-only configuration explicitly keeps
+		// self-registration open rather than leaving the choice unstated.
+		adminCreateUser := &cognito.UserPoolAdminCreateUserConfigArgs{
+			AllowAdminCreateUserOnly: pulumi.BoolPtr(spec.AllowAdminCreateUserOnly),
 		}
 		if spec.InviteMessageTemplate != nil {
 			it := spec.InviteMessageTemplate
@@ -263,15 +274,15 @@ func userPool(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*cog
 	if len(spec.CustomAttributes) > 0 {
 		var schemas cognito.UserPoolSchemaArray
 		for _, attr := range spec.CustomAttributes {
+			// All three flags are always sent (both engines state-pin them):
+			// they are fixed at the moment the attribute is added, so an
+			// unstated flag would freeze AWS's default invisibly.
 			schemaArgs := &cognito.UserPoolSchemaArgs{
 				Name:                   pulumi.String(attr.Name),
 				AttributeDataType:      pulumi.String(attr.AttributeDataType),
 				Mutable:                pulumi.BoolPtr(attr.Mutable),
+				Required:               pulumi.BoolPtr(attr.Required),
 				DeveloperOnlyAttribute: pulumi.BoolPtr(attr.DeveloperOnlyAttribute),
-			}
-
-			if attr.Required {
-				schemaArgs.Required = pulumi.BoolPtr(true)
 			}
 
 			if attr.AttributeDataType == "String" && (attr.StringMinLength != "" || attr.StringMaxLength != "") {

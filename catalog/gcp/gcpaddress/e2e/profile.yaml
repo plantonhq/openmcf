@@ -9,10 +9,13 @@ spec:
   # the kind's two primary branches — an EXTERNAL regional IP (minimal) and an
   # INTERNAL GCE_ENDPOINT in a subnetwork chain (internal-subnetwork). deploy
   # -> compute addresses.get verify -> destroy -> verify gone, on both
-  # provisioners. Regional addresses are free and create in seconds.
+  # provisioners. Regional addresses are free and create in seconds. The
+  # minimal scenario arms user labels (the merge idiom's live round-trip).
+  #
+  # Offline-proven arms: ip_collection needs a real BYOIP
+  # PublicDelegatedPrefix (an org-level program, not a test fixture) —
+  # offline-rendered; unblock: a BYOIP PDP in the test org.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

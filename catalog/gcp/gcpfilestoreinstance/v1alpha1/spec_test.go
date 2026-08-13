@@ -640,6 +640,147 @@ var _ = ginkgo.Describe("GcpFilestoreInstanceSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	// ──────────────── LDAP directory services ────────────────
+
+	ginkgo.It("should accept LDAP with NFS_V4_1 protocol", func() {
+		msg := minimal()
+		msg.Spec.Tier = "ZONAL"
+		msg.Spec.FileShare.CapacityGb = 1024
+		msg.Spec.Protocol = "NFS_V4_1"
+		msg.Spec.Ldap = &GcpFilestoreInstanceLdapConfig{
+			Domain:   "corp.example.com",
+			Servers:  []string{"ldap1.example.com", "ldap2.example.com"},
+			GroupsOu: "ou=groups",
+			UsersOu:  "ou=users",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject LDAP without NFS_V4_1 protocol", func() {
+		msg := minimal()
+		msg.Spec.Ldap = &GcpFilestoreInstanceLdapConfig{
+			Domain:  "corp.example.com",
+			Servers: []string{"10.0.0.5"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("NFS_V4_1"))
+	})
+
+	ginkgo.It("should reject LDAP without a domain", func() {
+		msg := minimal()
+		msg.Spec.Protocol = "NFS_V4_1"
+		msg.Spec.Ldap = &GcpFilestoreInstanceLdapConfig{
+			Servers: []string{"10.0.0.5"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject LDAP without servers", func() {
+		msg := minimal()
+		msg.Spec.Protocol = "NFS_V4_1"
+		msg.Spec.Ldap = &GcpFilestoreInstanceLdapConfig{
+			Domain: "corp.example.com",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	// ──────────────── PSC endpoint project ────────────────
+
+	ginkgo.It("should accept psc_endpoint_project with PRIVATE_SERVICE_CONNECT", func() {
+		msg := minimal()
+		msg.Spec.NetworkConfig.ConnectMode = "PRIVATE_SERVICE_CONNECT"
+		msg.Spec.NetworkConfig.PscEndpointProject = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "consumer-project"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject psc_endpoint_project without PRIVATE_SERVICE_CONNECT", func() {
+		msg := minimal()
+		msg.Spec.NetworkConfig.ConnectMode = "DIRECT_PEERING"
+		msg.Spec.NetworkConfig.PscEndpointProject = &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "consumer-project"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("PRIVATE_SERVICE_CONNECT"))
+	})
+
+	// ──────────────── NFS export source network ────────────────
+
+	ginkgo.It("should accept an export option with a source network", func() {
+		msg := minimal()
+		msg.Spec.FileShare.NfsExportOptions = []*GcpFilestoreInstanceNfsExportOption{
+			{
+				IpRanges: []string{"10.0.0.0/24"},
+				Network: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "prod-vpc"},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	// ──────────────── Restore sources ────────────────
+
+	ginkgo.It("should accept a file share restored from a Backup and DR backup", func() {
+		msg := minimal()
+		msg.Spec.FileShare.SourceBackupdrBackup = "projects/p/locations/us-central1/backupVaults/v/dataSources/d/backups/b"
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject both restore sources on one share", func() {
+		msg := minimal()
+		msg.Spec.FileShare.SourceBackup = "projects/p/locations/us-central1/backups/nightly"
+		msg.Spec.FileShare.SourceBackupdrBackup = "projects/p/locations/us-central1/backupVaults/v/dataSources/d/backups/b"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	// ──────────────── Replica state and deletion policy ────────────────
+
+	ginkgo.It("should accept desired_replica_state READY and PAUSED", func() {
+		for _, state := range []string{"READY", "PAUSED"} {
+			msg := minimal()
+			msg.Spec.DesiredReplicaState = proto.String(state)
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid desired_replica_state", func() {
+		msg := minimal()
+		msg.Spec.DesiredReplicaState = proto.String("STOPPED")
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("desired_replica_state"))
+	})
+
+	ginkgo.It("should accept all deletion_policy values", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("deletion_policy"))
+	})
+
 	ginkgo.It("should reject missing spec entirely", func() {
 		msg := minimal()
 		msg.Spec = nil

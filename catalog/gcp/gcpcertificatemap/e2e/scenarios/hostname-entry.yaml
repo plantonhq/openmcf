@@ -1,0 +1,37 @@
+# Hostname-entry GcpCertificateMap scenario: the entry fan-out — one
+# hostname entry bound to the PROVISIONING certificate fixture (the
+# registry prerequisite chain deploys it first; the reference resolves
+# its certificate_id output). Also exercises entry labels/description.
+# The entry hostname MUST match the cert fixture's run-scoped domain:
+# the API validates certificate-covers-hostname at entry CREATE time
+# (live-verified 400 on a mismatch), so the two stay in lockstep.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertificateMap
+metadata:
+  name: planton-oss-e2e-gcpcmap-entry
+  id: planton-oss-e2e-gcpcmap-entry
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcertificatemap
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: E2E entry map — one hostname entry on the cert fixture.
+  entries:
+    - entryName: e2e-host
+      hostname: map-e2e-${E2E_RUN_ID}.example.com
+      certificates:
+        - valueFrom:
+            kind: GcpCertManagerCert
+            name: planton-oss-e2e-gcpcert-prereq
+            fieldPath: status.outputs.certificate_id
+      description: E2E hostname entry
+      labels:
+        e2e-suite: gcp
+  labels:
+    e2e-suite: gcp
+  deletionPolicy: DELETE

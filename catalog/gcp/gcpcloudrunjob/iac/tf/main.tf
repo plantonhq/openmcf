@@ -24,6 +24,16 @@ resource "google_cloud_run_v2_job" "main" {
 
   deletion_protection = var.spec.deletion_protection
 
+  # Terraform-side destroy stance: PREVENT fails destroys, ABANDON removes
+  # the job from management without deleting it in GCP.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  # Declarative run-on-deploy tokens (mutually exclusive — proto-enforced):
+  # start_* counts the job ready when the triggered execution STARTS;
+  # run_* counts it ready when the execution COMPLETES.
+  start_execution_token = var.spec.start_execution_token != "" ? var.spec.start_execution_token : null
+  run_execution_token   = var.spec.run_execution_token != "" ? var.spec.run_execution_token : null
+
   dynamic "binary_authorization" {
     for_each = var.spec.binary_authorization != null ? [var.spec.binary_authorization] : []
     content {
@@ -34,17 +44,22 @@ resource "google_cloud_run_v2_job" "main" {
   }
 
   template {
-    task_count   = var.spec.task_count
+    task_count  = var.spec.task_count
     parallelism = var.spec.parallelism
+
+    # Execution-level metadata, stamped on every execution the job creates
+    # (distinct from the job-object labels/annotations above).
+    labels      = length(var.spec.execution_labels) > 0 ? var.spec.execution_labels : null
+    annotations = length(var.spec.execution_annotations) > 0 ? var.spec.execution_annotations : null
 
     # The inner template describes one task: containers, volumes, identity,
     # networking, and per-task limits.
     template {
-      service_account       = local.service_account
-      execution_environment = local.execution_environment
-      encryption_key        = local.encryption_key
-      timeout               = local.timeout
-      max_retries           = var.spec.template.max_retries
+      service_account               = local.service_account
+      execution_environment         = local.execution_environment
+      encryption_key                = local.encryption_key
+      timeout                       = local.timeout
+      max_retries                   = var.spec.template.max_retries
       gpu_zonal_redundancy_disabled = var.spec.gpu_zonal_redundancy_disabled ? true : null
 
       dynamic "node_selector" {
@@ -111,8 +126,9 @@ resource "google_cloud_run_v2_job" "main" {
           dynamic "gcs" {
             for_each = volumes.value.gcs != null ? [volumes.value.gcs] : []
             content {
-              bucket    = gcs.value.bucket
-              read_only = gcs.value.read_only
+              bucket        = gcs.value.bucket
+              read_only     = gcs.value.read_only
+              mount_options = length(gcs.value.mount_options) > 0 ? gcs.value.mount_options : null
             }
           }
 
@@ -170,6 +186,61 @@ resource "google_cloud_run_v2_job" "main" {
             content {
               name       = volume_mounts.value.name
               mount_path = volume_mounts.value.mount_path
+              sub_path   = volume_mounts.value.sub_path != "" ? volume_mounts.value.sub_path : null
+            }
+          }
+
+          # The port a probe targets by default — jobs serve no traffic,
+          # so this exists purely for the startup probe.
+          dynamic "ports" {
+            for_each = containers.value.ports != null ? [containers.value.ports] : []
+            content {
+              container_port = ports.value.container_port
+              name           = ports.value.name != "" ? ports.value.name : null
+            }
+          }
+
+          # Startup probe: gates task start; a container that never passes
+          # is shut down and the task retried per max_retries. The only
+          # probe type jobs have.
+          dynamic "startup_probe" {
+            for_each = containers.value.startup_probe != null ? [containers.value.startup_probe] : []
+            content {
+              initial_delay_seconds = startup_probe.value.initial_delay_seconds
+              timeout_seconds       = startup_probe.value.timeout_seconds
+              period_seconds        = startup_probe.value.period_seconds
+              failure_threshold     = startup_probe.value.failure_threshold
+
+              dynamic "http_get" {
+                for_each = startup_probe.value.http_get != null ? [startup_probe.value.http_get] : []
+                content {
+                  path = http_get.value.path != "" ? http_get.value.path : null
+                  port = http_get.value.port
+
+                  dynamic "http_headers" {
+                    for_each = http_get.value.http_headers
+                    content {
+                      name  = http_headers.value.name
+                      value = http_headers.value.value
+                    }
+                  }
+                }
+              }
+
+              dynamic "tcp_socket" {
+                for_each = startup_probe.value.tcp_socket != null ? [startup_probe.value.tcp_socket] : []
+                content {
+                  port = tcp_socket.value.port
+                }
+              }
+
+              dynamic "grpc" {
+                for_each = startup_probe.value.grpc != null ? [startup_probe.value.grpc] : []
+                content {
+                  port    = grpc.value.port
+                  service = grpc.value.service != "" ? grpc.value.service : null
+                }
+              }
             }
           }
         }

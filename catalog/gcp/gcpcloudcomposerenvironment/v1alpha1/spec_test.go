@@ -786,4 +786,20 @@ var _ = ginkgo.Describe("GcpCloudComposerEnvironmentSpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept deletion_policy DELETE, PREVENT, ABANDON, and empty", func() {
+		for _, policy := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "policy %q", policy)
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

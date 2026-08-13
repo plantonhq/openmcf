@@ -130,11 +130,14 @@ message AwsFsxOntapStorageVirtualMachineSpec {
   // CEL Validations
   // ---------------------------------------------------------------------------
 
-  // root_volume_security_style valid values.
+  // root_volume_security_style valid values. The !has() form (not an == ''
+  // arm) rejects an explicit empty string: the field is presence-typed, so ""
+  // would survive default materialization and reach the provider's enum
+  // validation.
   option (buf.validate.message).cel = {
     id: "security_style_valid"
     message: "root_volume_security_style must be 'UNIX', 'NTFS', or 'MIXED'"
-    expression: "this.root_volume_security_style == '' || this.root_volume_security_style in ['UNIX', 'NTFS', 'MIXED']"
+    expression: "!has(this.root_volume_security_style) || this.root_volume_security_style in ['UNIX', 'NTFS', 'MIXED']"
   };
 
   // svm_admin_password length validation (8-50 when provided).

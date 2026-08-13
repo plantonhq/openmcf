@@ -35,6 +35,49 @@ var _ = ginkgo.Describe("AwsAthenaWorkgroupSpec validations", func() {
 	// Happy path
 	// -------------------------------------------------------------------------
 
+	ginkgo.It("rejects a managed-results KMS alias -- this field is ARN-only", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{
+			KmsKey: strRef("alias/athena-results"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("aliases are not accepted here"))
+	})
+
+	ginkgo.It("accepts a managed-results KMS key ARN", func() {
+		spec.ManagedQueryResults = &AwsAthenaWorkgroupManagedQueryResults{
+			KmsKey: strRef("arn:aws:kms:us-west-2:111122223333:key/abc"),
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a CloudWatch log group name with illegal characters", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			CloudWatchLogging: &AwsAthenaWorkgroupCloudWatchLoggingConfig{
+				LogGroup: "my log group",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an s3 logging location with an uppercase bucket", func() {
+		spec.Monitoring = &AwsAthenaWorkgroupMonitoringConfig{
+			S3Logging: &AwsAthenaWorkgroupS3LoggingConfig{
+				LogLocation: "s3://My-Bucket/logs/",
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a literal execution role that is not an ARN", func() {
+		spec.ExecutionRole = strRef("athena-spark-role")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be an IAM role ARN"))
+	})
+
 	ginkgo.It("accepts a minimal empty spec (all defaults)", func() {
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())

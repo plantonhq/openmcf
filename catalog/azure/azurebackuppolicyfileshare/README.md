@@ -24,3 +24,7 @@ The **AzureBackupPolicyFileShare** component creates an Azure Backup policy for 
 ## Future Enhancements
 
 - Azure Files vaulted backup gains capabilities release by release (cross-region restore among them) -- the tier vocabulary extends additively as azurerm models them.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

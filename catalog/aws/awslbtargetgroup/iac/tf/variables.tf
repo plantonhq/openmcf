@@ -21,9 +21,6 @@ variable "spec" {
     protocol = optional(string, "")
     protocol_version = optional(string, "")
     ip_address_type = optional(string, "")
-    # enabled and preserve_client_ip default to null (not false): AWS defaults
-    # them contextually, and null keeps the AWS default while an explicit
-    # false overrides it.
     health_check = optional(object({
       enabled = optional(bool)
       protocol = optional(string, "")
@@ -68,6 +65,8 @@ variable "spec" {
       target_id = string
       port = optional(number, 0)
       availability_zone = optional(string, "")
+      quic_server_id = optional(string, "")
     })), [])
+    target_control_port = optional(number, 0)
   })
 }

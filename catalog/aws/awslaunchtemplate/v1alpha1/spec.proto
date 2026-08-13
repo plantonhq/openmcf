@@ -187,9 +187,66 @@ message AwsLaunchTemplateSpec {
   // should never be resurrected by hand).
   string instance_initiated_shutdown_behavior = 25;
 
+  // Launch into EC2 Capacity Reservations -- guaranteed capacity a
+  // reserved fleet has already paid for (On-Demand Capacity
+  // Reservations, or Capacity Blocks for ML). Leave unset for the AWS
+  // default (use a matching open reservation when one exists).
+  AwsLaunchTemplateCapacityReservation capacity_reservation = 26;
+
+  // The purchase market for launched instances: "spot" (pairs with
+  // spot_options) or "capacity-block" (pre-purchased Capacity Blocks
+  // for ML -- requires capacity_reservation targeting the block).
+  // Unset means On-Demand, unless spot_options implies "spot".
+  string market_type = 27;
+
+  // Network bandwidth weighting on supported types: "default", "vpc-1"
+  // (shift baseline bandwidth toward VPC networking), or "ebs-1"
+  // (shift it toward EBS throughput). A no-cost performance bias for
+  // network- or storage-heavy workloads.
+  string bandwidth_weighting = 28;
+
+  // AWS License Manager license-configuration ARNs launched instances
+  // consume -- BYOL license tracking (e.g. per-core database
+  // licenses). Literal ARNs: License Manager has no Planton kind.
+  repeated string license_configuration_arns = 29;
+
+  // Additional network interfaces attached at launch BEYOND the
+  // primary set in network_interfaces -- a 2026 EC2 capability for
+  // multi-homed instances (e.g. a dedicated storage-subnet interface).
+  // Interfaces are created and deleted with the instance.
+  repeated AwsLaunchTemplateSecondaryInterface secondary_interfaces = 30;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "market_type_valid"
+    message: "market_type must be 'spot' or 'capacity-block' when set"
+    expression: "this.market_type == '' || this.market_type in ['spot', 'capacity-block']"
+  };
+
+  // spot_options IS the spot market configuration -- declaring it under
+  // the capacity-block market is contradictory.
+  option (buf.validate.message).cel = {
+    id: "spot_options_require_spot_market"
+    message: "spot_options only applies to the 'spot' market (leave market_type unset or 'spot')"
+    expression: "!has(this.spot_options) || this.market_type == '' || this.market_type == 'spot'"
+  };
+
+  // A Capacity Block is a targeted reservation: AWS rejects the
+  // capacity-block market without a reservation target to launch into.
+  option (buf.validate.message).cel = {
+    id: "capacity_block_requires_reservation_target"
+    message: "market_type 'capacity-block' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn"
+    expression: "this.market_type != 'capacity-block' || (has(this.capacity_reservation) && (this.capacity_reservation.capacity_reservation_id != '' || this.capacity_reservation.capacity_reservation_resource_group_arn != ''))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "bandwidth_weighting_valid"
+    message: "bandwidth_weighting must be 'default', 'vpc-1', or 'ebs-1' when set"
+    expression: "this.bandwidth_weighting == '' || this.bandwidth_weighting in ['default', 'vpc-1', 'ebs-1']"
+  };
 
   option (buf.validate.message).cel = {
     id: "instance_type_xor_requirements"
@@ -234,6 +291,81 @@ message AwsLaunchTemplateSpec {
     id: "security_groups_conflict_with_interfaces"
     message: "when network_interfaces are declared, attach security groups on each interface instead of security_group_ids"
     expression: "size(this.network_interfaces) == 0 || size(this.security_group_ids) == 0"
+  };
+}
+
+// AwsLaunchTemplateCapacityReservation targets launches at EC2 Capacity
+// Reservations: pre-purchased, guaranteed capacity (On-Demand Capacity
+// Reservations for steady reserved fleets, Capacity Blocks for
+// GPU/ML bursts).
+message AwsLaunchTemplateCapacityReservation {
+  // How launches relate to reservations:
+  // - "open": use a matching open reservation when one exists (the AWS
+  //   default behavior), otherwise launch as regular On-Demand.
+  // - "none": never consume a reservation, even a matching open one.
+  // - "capacity-reservations-only": launch ONLY into reserved capacity
+  //   -- fail rather than fall back to On-Demand.
+  // Leave empty when targeting a specific reservation below.
+  string preference = 1;
+
+  // A specific Capacity Reservation to launch into ("cr-..."). The
+  // required target for Capacity Blocks. Mutually exclusive with
+  // capacity_reservation_resource_group_arn.
+  string capacity_reservation_id = 2;
+
+  // A resource-group ARN collecting Capacity Reservations -- target the
+  // group instead of one reservation ID. Mutually exclusive with
+  // capacity_reservation_id.
+  string capacity_reservation_resource_group_arn = 3;
+
+  option (buf.validate.message).cel = {
+    id: "preference_valid"
+    message: "preference must be 'open', 'none', or 'capacity-reservations-only' when set"
+    expression: "this.preference == '' || this.preference in ['open', 'none', 'capacity-reservations-only']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "id_xor_resource_group"
+    message: "capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive"
+    expression: "this.capacity_reservation_id == '' || this.capacity_reservation_resource_group_arn == ''"
+  };
+}
+
+// AwsLaunchTemplateSecondaryInterface is one additional network interface
+// created and attached at launch beyond the primary interface set --
+// multi-homing for launched instances (e.g. a storage-subnet leg). The
+// interface lives and dies with its instance.
+message AwsLaunchTemplateSecondaryInterface {
+  // The device index the interface attaches at.
+  int32 device_index = 1;
+
+  // The network card the interface binds to, on instance types with
+  // multiple network cards.
+  int32 network_card_index = 2;
+
+  // Delete the interface when the instance terminates.
+  bool delete_on_termination = 3;
+
+  // The subnet the secondary interface lives in. Reference an
+  // AwsSubnet's subnet_id output or pass a literal subnet ID -- e.g. a
+  // dedicated storage or replication subnet.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef secondary_subnet_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Number of private IPv4 addresses AWS auto-assigns on the
+  // interface. Mutually exclusive with private_ip_addresses.
+  int32 private_ip_address_count = 5;
+
+  // Specific private IPv4 addresses to assign. Mutually exclusive with
+  // private_ip_address_count.
+  repeated string private_ip_addresses = 6;
+
+  option (buf.validate.message).cel = {
+    id: "ip_count_xor_addresses"
+    message: "private_ip_address_count and private_ip_addresses are mutually exclusive"
+    expression: "this.private_ip_address_count == 0 || size(this.private_ip_addresses) == 0"
   };
 }
 
@@ -461,7 +593,8 @@ message AwsLaunchTemplateEbs {
   // (baseline 3000 without it); not valid for other types.
   int32 iops = 3;
 
-  // Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+  // Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it);
+  // gp3 volumes support up to 2,000 MiB/s.
   int32 throughput_mibps = 4;
 
   // Encrypt the volume at rest. Snapshots and volumes created from them
@@ -488,6 +621,25 @@ message AwsLaunchTemplateEbs {
   // data volume") is distinguishable from unset ("keep the AMI default").
   optional bool delete_on_termination = 8;
 
+  // MiB/s at which the volume hydrates from its snapshot, 100-300.
+  // Without it, snapshot blocks load lazily on first read (the classic
+  // cold-start latency on restored volumes); a paid initialization rate
+  // makes the volume fully warm on a schedule. Only meaningful with
+  // snapshot_id.
+  int32 volume_initialization_rate_mibps = 9;
+
+  option (buf.validate.message).cel = {
+    id: "volume_init_rate_range"
+    message: "volume_initialization_rate_mibps must be between 100 and 300 when set"
+    expression: "this.volume_initialization_rate_mibps == 0 || (this.volume_initialization_rate_mibps >= 100 && this.volume_initialization_rate_mibps <= 300)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "volume_init_rate_requires_snapshot"
+    message: "volume_initialization_rate_mibps only applies when creating the volume from snapshot_id"
+    expression: "this.volume_initialization_rate_mibps == 0 || this.snapshot_id != ''"
+  };
+
   option (buf.validate.message).cel = {
     id: "volume_type_valid"
     message: "volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard"
@@ -496,8 +648,8 @@ message AwsLaunchTemplateEbs {
 
   option (buf.validate.message).cel = {
     id: "throughput_range"
-    message: "throughput_mibps must be between 125 and 1000 when set"
-    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 1000)"
+    message: "throughput_mibps must be between 125 and 2000 when set"
+    expression: "this.throughput_mibps == 0 || (this.throughput_mibps >= 125 && this.throughput_mibps <= 2000)"
   };
 
   option (buf.validate.message).cel = {
@@ -601,6 +753,32 @@ message AwsLaunchTemplateNetworkInterface {
   // ipv6_prefix_count.
   repeated string ipv6_prefixes = 18;
 
+  // Associate a Carrier IP (AWS Wavelength zones) -- the Wavelength
+  // analog of a public IP, reachable from the carrier's mobile
+  // network. Only meaningful for interfaces in Wavelength-zone
+  // subnets. Optional tri-state like associate_public_ip_address.
+  optional bool associate_carrier_ip_address = 19;
+
+  // Idle-timeout tuning for the interface's connection tracking --
+  // reclaim conntrack slots faster on connection-churning workloads
+  // (load-balancer backends, NAT-ish proxies).
+  AwsLaunchTemplateConnectionTracking connection_tracking = 20;
+
+  // ENA Express (SRD -- Scalable Reliable Datagram): reduce tail
+  // latency between instances that both enable it, on supported
+  // types. TCP benefits transparently; UDP needs the explicit flag.
+  AwsLaunchTemplateEnaSrd ena_srd = 21;
+
+  // Number of ENA queues for the interface, on instance types that
+  // support ENA queue tuning. 0 keeps the AWS default per instance
+  // size.
+  int32 ena_queue_count = 22;
+
+  // Make the auto-assigned IPv6 address the instance's PRIMARY,
+  // stable identity: it survives network-interface replacement --
+  // required for IPv6-only instances whose address must not change.
+  optional bool primary_ipv6 = 23;
+
   // ---------------------------------------------------------------------------
   // Network interface CEL validations
   // ---------------------------------------------------------------------------
@@ -633,6 +811,59 @@ message AwsLaunchTemplateNetworkInterface {
     id: "ipv6_prefix_count_xor_prefixes"
     message: "ipv6_prefix_count and ipv6_prefixes are mutually exclusive"
     expression: "this.ipv6_prefix_count == 0 || size(this.ipv6_prefixes) == 0"
+  };
+}
+
+// AwsLaunchTemplateConnectionTracking tunes the interface's connection
+// tracking idle timeouts. Lower timeouts reclaim tracking slots faster on
+// connection-churning workloads; the defaults suit most fleets.
+message AwsLaunchTemplateConnectionTracking {
+  // Idle timeout for established TCP connections, 60-432000 seconds
+  // (5 days, the AWS default).
+  int32 tcp_established_timeout_seconds = 1;
+
+  // Idle timeout for UDP "connections" that have seen traffic BOTH
+  // ways (streams), 60-180 seconds.
+  int32 udp_stream_timeout_seconds = 2;
+
+  // Idle timeout for single-direction UDP flows, 30-60 seconds.
+  int32 udp_timeout_seconds = 3;
+
+  option (buf.validate.message).cel = {
+    id: "tcp_established_range"
+    message: "tcp_established_timeout_seconds must be between 60 and 432000 when set"
+    expression: "this.tcp_established_timeout_seconds == 0 || (this.tcp_established_timeout_seconds >= 60 && this.tcp_established_timeout_seconds <= 432000)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "udp_stream_range"
+    message: "udp_stream_timeout_seconds must be between 60 and 180 when set"
+    expression: "this.udp_stream_timeout_seconds == 0 || (this.udp_stream_timeout_seconds >= 60 && this.udp_stream_timeout_seconds <= 180)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "udp_range"
+    message: "udp_timeout_seconds must be between 30 and 60 when set"
+    expression: "this.udp_timeout_seconds == 0 || (this.udp_timeout_seconds >= 30 && this.udp_timeout_seconds <= 60)"
+  };
+}
+
+// AwsLaunchTemplateEnaSrd enables ENA Express (Scalable Reliable
+// Datagram) on the interface -- lower tail latency between enabled
+// instances on supported instance types.
+message AwsLaunchTemplateEnaSrd {
+  // Turn ENA Express on for the interface (TCP flows benefit
+  // transparently).
+  bool enabled = 1;
+
+  // Also run eligible UDP traffic over SRD. Only meaningful when
+  // enabled is true.
+  bool udp_enabled = 2;
+
+  option (buf.validate.message).cel = {
+    id: "udp_requires_enabled"
+    message: "udp_enabled requires enabled to be true"
+    expression: "!this.udp_enabled || this.enabled"
   };
 }
 
@@ -711,7 +942,7 @@ message AwsLaunchTemplatePlacement {
 
   // The placement group to launch into: "cluster" groups pack instances
   // for lowest latency, "spread" and "partition" groups separate them for
-  // fault isolation.
+  // fault isolation. Mutually exclusive with group_id.
   string group_name = 2;
 
   // Partition number within a partition placement group.
@@ -722,10 +953,58 @@ message AwsLaunchTemplatePlacement {
   // licensing scenarios).
   string tenancy = 4;
 
+  // The placement group by ID ("pg-...") instead of name. Mutually
+  // exclusive with group_name.
+  string group_id = 5;
+
+  // The Dedicated Host to land on ("h-..."). Host tenancy pins BYOL
+  // workloads (per-socket/per-core licenses) to specific hardware.
+  // Mutually exclusive with host_resource_group_arn.
+  string host_id = 6;
+
+  // A License Manager host resource group ARN -- AWS picks (and
+  // manages) a Dedicated Host from the group instead of naming one.
+  // Mutually exclusive with host_id.
+  string host_resource_group_arn = 7;
+
+  // Dedicated Host affinity: "default" (instance may restart on any
+  // host) or "host" (the instance always restarts on the same host --
+  // needed when licenses are bound to specific hardware).
+  string affinity = 8;
+
+  // Named spread domain on AWS Outposts placement groups.
+  string spread_domain = 9;
+
   option (buf.validate.message).cel = {
     id: "tenancy_valid"
     message: "tenancy must be 'default', 'dedicated', or 'host' when set"
     expression: "this.tenancy == '' || this.tenancy in ['default', 'dedicated', 'host']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "group_name_xor_group_id"
+    message: "group_name and group_id are mutually exclusive"
+    expression: "this.group_name == '' || this.group_id == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "host_id_xor_resource_group"
+    message: "host_id and host_resource_group_arn are mutually exclusive"
+    expression: "this.host_id == '' || this.host_resource_group_arn == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "affinity_valid"
+    message: "affinity must be 'default' or 'host' when set"
+    expression: "this.affinity == '' || this.affinity in ['default', 'host']"
+  };
+
+  // Naming a specific host or host group only makes sense on host
+  // tenancy -- AWS ignores or rejects it otherwise.
+  option (buf.validate.message).cel = {
+    id: "host_targeting_requires_host_tenancy"
+    message: "host_id / host_resource_group_arn / affinity require tenancy 'host'"
+    expression: "(this.host_id == '' && this.host_resource_group_arn == '' && this.affinity == '') || this.tenancy == 'host'"
   };
 }
 
@@ -746,10 +1025,20 @@ message AwsLaunchTemplateCpuOptions {
   // "disabled". Confidential-computing hardening.
   string amd_sev_snp = 3;
 
+  // Hardware-assisted nested virtualization on supported types:
+  // "enabled" (run hypervisors/VMs inside the instance) or "disabled".
+  string nested_virtualization = 4;
+
   option (buf.validate.message).cel = {
     id: "threads_per_core_valid"
     message: "threads_per_core must be 1 or 2 when set"
     expression: "this.threads_per_core == 0 || this.threads_per_core in [1, 2]"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "nested_virtualization_valid"
+    message: "nested_virtualization must be 'enabled' or 'disabled' when set"
+    expression: "this.nested_virtualization == '' || this.nested_virtualization in ['enabled', 'disabled']"
   };
 
   option (buf.validate.message).cel = {

@@ -62,22 +62,25 @@ message GcpSslPolicySpec {
   // while keeping broad reach; RESTRICTED narrows to ciphers with modern
   // security guarantees (and is required when the TLS floor is raised beyond
   // what other profiles allow); CUSTOM hand-picks cipher suites via
-  // custom_features. Mutable — tightening the profile applies to every proxy
+  // custom_features; FIPS_202205 pins the FIPS 140-2/3 validated suite set
+  // (and requires min_tls_version TLS_1_2 — the only floor that profile
+  // supports). Mutable — tightening the profile applies to every proxy
   // referencing this policy on its next handshake.
   string profile = 5 [(buf.validate.field).cel = {
     id: "valid_profile"
-    message: "profile must be COMPATIBLE, MODERN, RESTRICTED, or CUSTOM"
-    expression: "this == '' || this in ['COMPATIBLE', 'MODERN', 'RESTRICTED', 'CUSTOM']"
+    message: "profile must be COMPATIBLE, MODERN, RESTRICTED, CUSTOM, or FIPS_202205"
+    expression: "this == '' || this in ['COMPATIBLE', 'MODERN', 'RESTRICTED', 'CUSTOM', 'FIPS_202205']"
   }];
 
   // The minimum TLS protocol version clients may negotiate (default
   // TLS_1_0). Raise to TLS_1_2 for PCI DSS and most modern compliance
-  // regimes. GCP has no maximum-version control; TLS 1.3 is always
-  // negotiable when the client supports it. Mutable.
+  // regimes; TLS_1_3 is the strictest floor and requires the RESTRICTED
+  // profile. GCP has no maximum-version control — TLS 1.3 is always
+  // negotiable when the client supports it, whatever the floor. Mutable.
   string min_tls_version = 6 [(buf.validate.field).cel = {
     id: "valid_min_tls_version"
-    message: "min_tls_version must be TLS_1_0, TLS_1_1, or TLS_1_2"
-    expression: "this == '' || this in ['TLS_1_0', 'TLS_1_1', 'TLS_1_2']"
+    message: "min_tls_version must be TLS_1_0, TLS_1_1, TLS_1_2, or TLS_1_3"
+    expression: "this == '' || this in ['TLS_1_0', 'TLS_1_1', 'TLS_1_2', 'TLS_1_3']"
   }];
 
   // Exact cipher suites to allow — required with (and only valid with) the
@@ -90,6 +93,35 @@ message GcpSslPolicySpec {
     (buf.validate.field).repeated.items.string.max_len = 128
   ];
 
+  // Post-quantum key exchange (X25519MLKEM768) posture for TLS handshakes
+  // (default DEFAULT). GCP rolls the hybrid post-quantum group out on its
+  // own schedule; this dial controls the rollout stance rather than a
+  // static on/off:
+  //   DEFAULT  -- follow GCP's rollout timeline
+  //   ENABLED  -- allow post-quantum key exchange now
+  //   DEFERRED -- opt out until GCP's later mandatory date
+  // Mutable.
+  string post_quantum_key_exchange = 8 [(buf.validate.field).cel = {
+    id: "valid_post_quantum_key_exchange"
+    message: "post_quantum_key_exchange must be DEFAULT, ENABLED, or DEFERRED"
+    expression: "this == '' || this in ['DEFAULT', 'ENABLED', 'DEFERRED']"
+  }];
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the policy is deleted (GCP refuses while any proxy
+  //                still references it, so destroy fails rather than
+  //                silently loosening TLS floors)
+  //   "PREVENT" -- destroy FAILS; protects a compliance-mandated TLS
+  //                posture from accidental teardown
+  //   "ABANDON" -- the policy is removed from management but left in
+  //                GCP, still enforced by every proxy referencing it
+  string deletion_policy = 9 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   option (buf.validate.message).cel = {
     id: "custom_profile_requires_features"
     message: "the CUSTOM profile requires at least one cipher suite in custom_features"
@@ -100,5 +132,17 @@ message GcpSslPolicySpec {
     id: "features_require_custom_profile"
     message: "custom_features is only valid with the CUSTOM profile — GCP rejects it on COMPATIBLE, MODERN, and RESTRICTED"
     expression: "size(this.custom_features) == 0 || this.profile == 'CUSTOM'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "fips_profile_requires_tls12"
+    message: "the FIPS_202205 profile requires min_tls_version TLS_1_2 — the only floor GCP supports on that profile"
+    expression: "this.profile != 'FIPS_202205' || this.min_tls_version == 'TLS_1_2'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "tls13_floor_requires_restricted"
+    message: "min_tls_version TLS_1_3 requires the RESTRICTED profile — GCP rejects a TLS 1.3 floor on any other profile"
+    expression: "this.min_tls_version != 'TLS_1_3' || this.profile == 'RESTRICTED'"
   };
 }

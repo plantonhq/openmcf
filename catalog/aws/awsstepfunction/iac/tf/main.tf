@@ -17,24 +17,32 @@ resource "aws_sfn_state_machine" "this" {
 
   tags = local.aws_tags
 
-  # X-Ray tracing is a single toggle; the role must be able to put trace
-  # segments (xray:PutTraceSegments / PutTelemetryRecords).
+  # X-Ray tracing is a tri-state toggle; the role must be able to put trace
+  # segments (xray:PutTraceSegments / PutTelemetryRecords). Unset sends no
+  # block (AWS default: off); an explicit true or false sends the block --
+  # the explicit false is what turns tracing OFF on a machine that had it
+  # on (block removal alone is suppressed by the provider and reverts
+  # nothing).
   dynamic "tracing_configuration" {
-    for_each = var.spec.tracing_enabled ? [1] : []
+    for_each = var.spec.tracing_enabled != null ? [1] : []
     content {
-      enabled = true
+      enabled = var.spec.tracing_enabled
     }
   }
 
-  # Execution-history logging. Only rendered for a real level -- AWS treats
-  # level OFF and an absent block identically, and rendering an OFF block
-  # with no destination would fail the provider's plan-time validation.
+  # Execution-history logging. Rendered for ANY configured level, including
+  # an explicit OFF -- the OFF block is the disable send that turns logging
+  # off on a machine that had it on (an absent block is suppressed by the
+  # provider and reverts nothing). The destination is sent only when it
+  # resolves non-empty: a reference that resolves empty at deploy time must
+  # not reach the provider's ":*"-suffix validation as an empty string
+  # (matching the Pulumi module's send condition).
   dynamic "logging_configuration" {
-    for_each = local.logging_enabled ? [1] : []
+    for_each = local.logging_configured ? [1] : []
     content {
       level                  = local.logging_level
       include_execution_data = try(var.spec.logging.include_execution_data, false)
-      log_destination        = local.log_destination
+      log_destination        = local.log_destination != "" ? local.log_destination : null
     }
   }
 

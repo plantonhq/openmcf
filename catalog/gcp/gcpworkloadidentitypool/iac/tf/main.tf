@@ -29,7 +29,12 @@ resource "google_iam_workload_identity_pool" "this" {
   dynamic "inline_certificate_issuance_config" {
     for_each = local.certificate_issuance != null ? [local.certificate_issuance] : []
     content {
-      ca_pools                   = inline_certificate_issuance_config.value.ca_pools
+      # The provider declares ca_pools and use_default_shared_ca as a
+      # two-sided ExactlyOneOf, and a bool set to FALSE still counts as
+      # "set" — so each is sent only when it is the chosen source.
+      ca_pools              = length(inline_certificate_issuance_config.value.ca_pools) > 0 ? inline_certificate_issuance_config.value.ca_pools : null
+      use_default_shared_ca = inline_certificate_issuance_config.value.use_default_shared_ca ? true : null
+
       key_algorithm              = inline_certificate_issuance_config.value.key_algorithm
       lifetime                   = inline_certificate_issuance_config.value.lifetime
       rotation_window_percentage = inline_certificate_issuance_config.value.rotation_window_percentage
@@ -44,6 +49,11 @@ resource "google_iam_workload_identity_pool" "this" {
         content {
           trust_domain = additional_trust_bundles.value.trust_domain
 
+          # Additionally trust the GCP-managed regional roots (managed
+          # identity trust domains only). Sent only when true so plain
+          # PEM-anchor bundles stay byte-identical to their pre-flag shape.
+          trust_default_shared_ca = additional_trust_bundles.value.trust_default_shared_ca ? true : null
+
           dynamic "trust_anchors" {
             for_each = additional_trust_bundles.value.trust_anchors
             content {
@@ -54,4 +64,16 @@ resource "google_iam_workload_identity_pool" "this" {
       }
     }
   }
+
+  # Which workloads may receive a managed identity. GCP applies these
+  # through a second API call after the pool create; a failed apply can
+  # leave a pool without its rules — re-apply converges.
+  dynamic "attestation_rules" {
+    for_each = var.spec.attestation_rules
+    content {
+      google_cloud_resource = attestation_rules.value.google_cloud_resource
+    }
+  }
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 }

@@ -1,0 +1,24 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCertificateMap
+metadata:
+  name: my-sample-certificate-map
+spec:
+  # What this map routes (shown in the console).
+  description: Sample map — one hostname entry bound to the certificate fixture.
+
+  entries:
+    # Exactly one of hostname / matcher per entry; 1–15 certificates
+    # each. The certificate references the fixture the lanes deploy
+    # first.
+    - entryName: www
+      hostname: www.e2e.example.com
+      certificates:
+        - valueFrom:
+            kind: GcpCertManagerCert
+            name: planton-oss-e2e-gcpcert-prereq
+            fieldPath: status.outputs.certificate_id
+
+  # What a destroy does: DELETE (detach from proxies first), PREVENT
+  # (the posture while proxies reference the map), or ABANDON (keep
+  # serving unmanaged).
+  deletionPolicy: DELETE

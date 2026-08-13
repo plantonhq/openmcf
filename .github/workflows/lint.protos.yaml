@@ -46,22 +46,10 @@ jobs:
       - name: buf lint
         run: buf lint
 
-  bundle-conformance:
-    name: catalog bundle conforms to the compiled registry
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-          cache: true
-      - uses: bufbuild/buf-action@v1
-        with:
-          setup_only: true
-      - name: build and verify the bundle
-        run: |
-          make build-catalog-bundle
-          make verify-catalog-bundle
+  # The catalog-bundle and catalog-schemas conformance gates live in
+  # lint.catalog-artifacts.yaml: those artifacts derive from the whole
+  # catalog tree (catalog.md, iac/, presets), so gating them here -- on
+  # proto-only triggers -- would let a non-proto edit break the release.
 
   buf-breaking:
     name: buf breaking vs main (channel-aware)

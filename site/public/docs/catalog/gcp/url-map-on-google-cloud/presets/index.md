@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Apex-to-WWW HTTPS Redirect"
     excerpt: "A catch-all URL map whose only job is redirecting bare-apex (`example.com`) and unmatched traffic to `www.example.com` over HTTPS — the usual first step before attaching real backends behind a global..."
+  - slug: "04-traffic-managed-canary"
+    rank: "04"
+    title: "Traffic-Managed Canary"
+    excerpt: "A weighted canary hardened with the per-route traffic-management surface: bounded timeouts, deliberate retries, CORS answered at the load balancer, a response header attributing which arm served each..."
 ---
 
 # URL Map on Google Cloud Presets

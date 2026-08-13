@@ -40,3 +40,15 @@ output "custom_domains" {
     }
   ]
 }
+
+output "vpc_ingress_connections" {
+  description = "Per-connection identifiers for the declared VPC Ingress Connections: the domain_name clients inside each connected VPC resolve to reach the service privately. Empty when no ingress connections are declared."
+  value = [
+    for name, conn in aws_apprunner_vpc_ingress_connection.this : {
+      name        = name
+      arn         = conn.arn
+      domain_name = conn.domain_name
+      status      = conn.status
+    }
+  ]
+}

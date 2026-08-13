@@ -5,12 +5,20 @@ metadata:
 spec:
   # An empty STREAM_UPDATE index (no initial data) creates in roughly
   # 10-60 minutes — the provider's create timeout is a generous 180m
-  # because batch loads can run hours. The stream-minimal scenario is
-  # the timing probe for the deployed-index chain: keep the batch
+  # because batch loads can run hours (the 2026-08-13 proof measured an
+  # empty small-dimension stream index at ~25s; keep the generous budget
+  # for corpus-carrying shapes). The stream-minimal scenario is the
+  # timing probe for the deployed-index chain: keep the batch
   # go test -timeout at >=240m for both engines.
+  #
+  # Live-proven 2026-08-13 both engines under the apply-idempotency gate
+  # (deletion_policy DELETE round-trip included). Offline-proven-only
+  # arms with unblock conditions: CMEK encryption_spec (needs a KMS key
+  # + the Vertex AI service agent's cryptoKeyEncrypterDecrypter grant —
+  # the undeletable-material class) and BATCH_UPDATE with contents_delta
+  # (needs a staged GCS corpus fixture; the empty-stream shape proves
+  # the module contract).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 120

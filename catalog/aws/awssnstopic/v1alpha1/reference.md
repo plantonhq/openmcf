@@ -36,9 +36,6 @@ metadata:
   id: test-topic-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSnsTopic.test-topic
 spec:
   region: us-west-2
   signatureVersion: 2

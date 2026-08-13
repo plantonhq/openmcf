@@ -28,7 +28,9 @@ per-application credentials deserve a first-class, composable node:
 
 - **Password**: clients present one of 1–2 passwords (16–128 characters) in
   the AUTH command; two passwords enable zero-downtime rotation (add the new
-  password, roll clients, remove the old).
+  password, roll clients, remove the old). Write-only at AWS: the API never
+  returns passwords, so out-of-band changes are undetectable and imported
+  users carry no password state — the manifest is the source of truth.
 - **IAM**: clients sign short-lived tokens with their AWS IAM identity — no
   long-lived secret anywhere; requires TLS on the cluster and
   `memorydb:Connect` on both the user ARN and the cluster ARN.

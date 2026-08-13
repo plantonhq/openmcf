@@ -1,6 +1,6 @@
 # Pulumi Module to Deploy AwsNeptuneCluster
 
-This Pulumi program deploys an AWS Neptune cluster (fully managed graph database supporting Gremlin and SPARQL) using the Planton API and module.
+This Pulumi program deploys an AWS Neptune cluster (fully managed graph database supporting Gremlin and SPARQL) using the Planton API and module: the cluster, its subnet group, the managed cluster and instance parameter groups (for inline `parameters` / `instanceParameters`), per-name folded instances (pinned to the cluster's port, with `applyImmediately` and `skipFinalSnapshot` forwarded), and per-name folded custom endpoints. Send conditions match the Terraform module argument-for-argument.
 
 ## Requirements
 - Planton CLI built locally

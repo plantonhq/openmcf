@@ -1,0 +1,10 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLoggingSink
+metadata:
+  name: error-archive
+spec:
+  destination:
+    gcsBucket:
+      value: my-log-archive-bucket
+  filter: severity>=ERROR
+  description: Archives error-level logs for compliance review

@@ -1,0 +1,97 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ec2_transit_gateway_route_table:
+    exclusions:
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_ec2_transit_gateway_route_table_association:
+    # One association per spec.associations entry, keyed by attachment ID --
+    # the routing domain's membership fold.
+    specRoot: spec.associations
+    mappings:
+      # The spec names the field for what it references (an
+      # AwsTransitGatewayVpcAttachment, chart-wired via StringValueOrRef);
+      # the provider carries the resource-qualified API name.
+      - spec: spec.associations.attachment_id
+        arg: transit_gateway_attachment_id
+    exclusions:
+      - arg: transit_gateway_route_table_id
+        reason: wired by the module to the route table it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- associations follow the table's spec.region through the provider connection
+
+  aws_ec2_transit_gateway_route_table_propagation:
+    # One propagation per spec.propagations entry, keyed by attachment ID.
+    specRoot: spec.propagations
+    mappings:
+      # The propagation resource carries exactly one piece of user surface
+      # (which attachment advertises here), so the spec models it as a bare
+      # reference list: each entry IS the attachment argument.
+      - spec: spec.propagations
+        arg: transit_gateway_attachment_id
+    exclusions:
+      - arg: transit_gateway_route_table_id
+        reason: wired by the module to the route table it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- propagations follow the table's spec.region through the provider connection
+
+  aws_ec2_transit_gateway_route:
+    # One static route per spec.routes entry, keyed by destination CIDR.
+    specRoot: spec.routes
+    mappings:
+      # The spec names the field for what it references; the provider
+      # carries the resource-qualified API name.
+      - spec: spec.routes.attachment_id
+        arg: transit_gateway_attachment_id
+    exclusions:
+      - arg: transit_gateway_route_table_id
+        reason: wired by the module to the route table it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- routes follow the table's spec.region through the provider connection
+
+  aws_ec2_transit_gateway_prefix_list_reference:
+    # One reference per spec.prefix_list_references entry, keyed by prefix
+    # list ID.
+    specRoot: spec.prefix_list_references
+    mappings:
+      # The spec names the field for what it references; the provider
+      # carries the resource-qualified API name.
+      - spec: spec.prefix_list_references.attachment_id
+        arg: transit_gateway_attachment_id
+    exclusions:
+      - arg: transit_gateway_route_table_id
+        reason: wired by the module to the route table it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- references follow the table's spec.region through the provider connection
+
+  aws_ec2_transit_gateway_default_route_table_association:
+    # Created when spec.set_as_default_association_table is true: repoints
+    # the GATEWAY's default association pointer at this table. Its region
+    # and transit_gateway_id exact-match the table's own fields under the
+    # default root.
+    mappings:
+      # The flag's only payload is WHICH table the gateway's default
+      # pointer names -- the module wires the id of the table it creates
+      # whenever the flag is set.
+      - spec: spec.set_as_default_association_table
+        arg: transit_gateway_route_table_id
+
+  aws_ec2_transit_gateway_default_route_table_propagation:
+    # Created when spec.set_as_default_propagation_table is true: repoints
+    # the GATEWAY's default propagation pointer at this table.
+    mappings:
+      # Same judgment as the association designation: the flag's payload is
+      # the created table's id.
+      - spec: spec.set_as_default_propagation_table
+        arg: transit_gateway_route_table_id

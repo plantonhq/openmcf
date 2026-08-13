@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpPubSubSubscriptionSpec defines the configuration for a GCP Pub/Sub subscription.
 
 A subscription is a named resource representing the stream of messages from a
@@ -45,6 +47,9 @@ spec:
   subscriptionName: test-subscription
   topic:
     value: "projects/test-project/topics/test-topic"
+  # Explicit destroy behavior: DELETE removes the subscription (and its
+  # unacknowledged backlog) with the stack.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -97,10 +102,17 @@ spec:
 | `spec.cloudStorageConfig.serviceAccountEmail` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.messageTransforms` | `[]GcpPubSubSubscriptionMessageTransform` |  |  |  |
-| `spec.messageTransforms[].javascriptUdf` | `GcpPubSubSubscriptionMessageTransformJavascriptUdf` | yes |  |  |
+| `spec.messageTransforms[].javascriptUdf` | `GcpPubSubSubscriptionMessageTransformJavascriptUdf` |  |  |  |
 | `spec.messageTransforms[].javascriptUdf.functionName` | `string` | yes |  |  |
 | `spec.messageTransforms[].javascriptUdf.code` | `string` | yes |  |  |
 | `spec.messageTransforms[].disabled` | `bool` |  |  |  |
+| `spec.messageTransforms[].aiInference` | `GcpPubSubSubscriptionMessageTransformAiInference` |  |  |  |
+| `spec.messageTransforms[].aiInference.endpoint` | `string \| valueFrom` | yes |  | GcpVertexAiEndpoint (`status.outputs.endpoint_id`) |
+| `spec.messageTransforms[].aiInference.serviceAccountEmail` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
+| `spec.messageTransforms[].aiInference.unstructuredInference` | `GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference` |  |  |  |
+| `spec.messageTransforms[].aiInference.unstructuredInference.parameters` | `map<string, string>` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -498,13 +510,13 @@ without changing what other subscriptions on the topic see.
 Transforms run in list order; a transform returning null drops the
 message.
 
+- rule: each transform step is exactly one of: javascript_udf or ai_inference
+
 ### spec.messageTransforms[].javascriptUdf
 
-`GcpPubSubSubscriptionMessageTransformJavascriptUdf` · required
+`GcpPubSubSubscriptionMessageTransformJavascriptUdf`
 
 A JavaScript user-defined function transform.
-
-- rule: {"required":true}
 
 ### spec.messageTransforms[].javascriptUdf.functionName
 
@@ -532,6 +544,79 @@ to drop the message.
 When true, this transform is kept in the pipeline definition but not
 applied — the staging lever for rolling a transform in or out without
 losing its position in the ordered list.
+
+### spec.messageTransforms[].aiInference
+
+`GcpPubSubSubscriptionMessageTransformAiInference`
+
+An AI inference transform backed by a Vertex AI model endpoint.
+
+### spec.messageTransforms[].aiInference.endpoint
+
+`string | valueFrom` · required
+
+The Vertex AI model endpoint inference requests are sent to. Accepts a
+literal path — projects/{project}/locations/{location}/endpoints/{endpoint}
+for a dedicated endpoint, or
+projects/{project}/locations/{location}/publishers/{publisher}/models/{model}
+for a publisher model — or a reference to a GcpVertexAiEndpoint resource
+(its endpoint_id output is exactly the dedicated-endpoint form).
+
+- references: GcpVertexAiEndpoint (`status.outputs.endpoint_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVertexAiEndpoint, name: <that resource's name>, fieldPath: status.outputs.endpoint_id}} -- a bare string does not parse
+
+### spec.messageTransforms[].aiInference.serviceAccountEmail
+
+`string | valueFrom`
+
+The service account used to make prediction requests against the
+endpoint (it needs Vertex AI invocation permission on the model).
+Accepts a literal email or a reference to a GcpServiceAccount resource.
+Defaults to the Pub/Sub service agent if not specified.
+
+- references: GcpServiceAccount (`status.outputs.email`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
+
+### spec.messageTransforms[].aiInference.unstructuredInference
+
+`GcpPubSubSubscriptionMessageTransformAiInferenceUnstructuredInference`
+
+Configuration for making inferences using arbitrary JSON payloads
+(rather than a model-specific request schema).
+
+### spec.messageTransforms[].aiInference.unstructuredInference.parameters
+
+`map<string, string>`
+
+A parameters object included in each inference request (e.g. model
+temperature or system-prompt knobs the endpoint understands). Combined
+with the message data to form the request body.
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the subscription for org-policy and
+IAM conditions. Keys in the form "tagKeys/{id}", values
+"tagValues/{id}". Create-time only: changing them later replaces the
+subscription (its backlog is lost — plan tag changes deliberately).
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the subscription — what happens when this
+resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the subscription is deleted; its unacknowledged
+               backlog is lost immediately
+  "PREVENT" -- destroy FAILS; protects a consumer whose backlog
+               must never be silently dropped
+  "ABANDON" -- the subscription is removed from management but keeps
+               accumulating and serving messages in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 
@@ -562,6 +647,8 @@ Fields that can point at another resource's outputs:
 | `spec.bigqueryConfig.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
 | `spec.cloudStorageConfig.bucket` | GcpGcsBucket | `status.outputs.bucket_id` |
 | `spec.cloudStorageConfig.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
+| `spec.messageTransforms[].aiInference.endpoint` | GcpVertexAiEndpoint | `status.outputs.endpoint_id` |
+| `spec.messageTransforms[].aiInference.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
 
 ## See Also
 

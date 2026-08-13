@@ -56,6 +56,7 @@ Reference the certificate's `self_link` from a target HTTPS proxy's `sslCertific
 | `description` | `string` | `""` | What this certificate secures and where it came from. Immutable. |
 | `certificate` | `string` | — (required) | PEM chain: leaf first, then intermediates (max 5 certs). Public material. Immutable. |
 | `privateKey` | `string` (sensitive) | — (required) | Matching unencrypted PEM key. Write-only in GCP; never in outputs. Immutable. |
+| `deletionPolicy` | `string` | `DELETE` | What happens on destroy: `DELETE`, `PREVENT`, or `ABANDON` (leave in GCP — useful mid-rotation handoff). |
 
 ## Stack Outputs
 
@@ -86,7 +87,7 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`private_key_wo` / `private_key_wo_version`** (Terraform write-only argument flow) — absent from the released 6.x schema; Planton's sensitive-field handling already keeps the key out of rendered outputs.
+- **`private_key_wo` / `private_key_wo_version`** (Terraform write-only argument flow) — the same key material as `privateKey` with Terraform-state-only plumbing; adopting it would raise this module's toolchain floor to Terraform/OpenTofu ≥ 1.11, a divergence from the catalog-wide assumption. Re-evaluate when the catalog declares a ≥ 1.11 floor.
 - **`name_prefix`** — a Terraform-side create-before-destroy naming trick; Planton's metadata-driven naming owns resource names, and the rotation pattern it serves is expressed as a new Planton resource with a versioned `certificateName` instead (see the rotation preset).
 
 ## Related Components

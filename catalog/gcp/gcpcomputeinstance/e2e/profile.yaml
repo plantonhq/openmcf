@@ -6,11 +6,35 @@ spec:
   # VM creates are fast (~1 min). The minimal scenario proves the
   # subnetwork chain with an ephemeral external IP; the features scenario
   # proves the composed graph live — Spot scheduling, shielded VM, a
-  # dedicated GcpServiceAccount identity, and a pre-created GcpComputeDisk
-  # attached by self-link reference.
+  # dedicated GcpServiceAccount identity, a pre-created GcpComputeDisk
+  # attached by self-link reference, explicit boot-disk guest OS
+  # features, and an explicit DELETE deletion policy.
+  #
+  # Scenarios (and the consumer-scoped subnetwork/disk prerequisites)
+  # moved to us-east1 2026-08-11 after an audit-log-verified us-central1
+  # ZONE_RESOURCE_POOL_EXHAUSTED stockout on the small-VM zonal pools;
+  # the chain is self-contained, so region is a free variable pinned to
+  # measured capacity.
+  #
+  # replica_zones (regional boot disk) is LIVE-PROVEN by a throwaway REST
+  # probe (2026-08-11): image + replica_zones is API-rejected (400
+  # "Creating a regional disk from a source image is not supported yet"
+  # — first caught by this lane, now a spec CEL), while snapshot +
+  # replica_zones created a true regional boot disk (verified in the
+  # instance's disk source). No committed scenario arm: it needs a
+  # bootable-snapshot fixture the harness lacks (unblock: a disk →
+  # snapshot fixture chain).
+  #
+  # Offline-proven-only arms with unblock conditions: FLEX_START
+  # (a live create pends on Dynamic Workload Scheduler capacity —
+  # unbounded wait; unblock: a reliably-fast short-max-run shape),
+  # PSC network_attachment (needs a producer-side network-attachment
+  # fixture), the IPv6 family (needs a dual-stack subnetwork fixture —
+  # shared unblock with the RouterNat NAT64 item), CMEK arms (need a
+  # GcpKmsKeyRing/GcpKmsKey fixture chain + the compute service agent's
+  # cryptoKeyEncrypterDecrypter grant), and resource_manager_tags (needs
+  # org-level tagKeys/tagValues — the standing org-fixture item).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

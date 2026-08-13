@@ -3,6 +3,8 @@
 # registry), resolved live via the vpcConnector reference — the FK
 # composition proof for the serverless family. Source staging works exactly
 # as in http-minimal.
+# 2026-08-11: region moved us-central1 → us-east1 with the whole function
+# chain (us-central1 e2 zonal stockout — see the connector prerequisite).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudFunction
 metadata:
@@ -18,7 +20,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  region: us-east1
   functionName: e2e-fn-vpc-${E2E_RUN_ID}
   description: Ephemeral function created by the Planton E2E harness; safe to delete
   buildConfig:
@@ -44,3 +46,5 @@ spec:
       maxInstanceCount: 1
   trigger:
     triggerType: HTTP
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

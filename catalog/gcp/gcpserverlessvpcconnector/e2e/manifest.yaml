@@ -18,3 +18,7 @@ spec:
   machineType: e2-micro
   minInstances: 2
   maxInstances: 4
+
+  # DELETE keeps destroys real; PREVENT belongs on the region's
+  # production serverless egress path.
+  deletionPolicy: DELETE

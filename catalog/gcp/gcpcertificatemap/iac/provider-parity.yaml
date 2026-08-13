@@ -1,0 +1,66 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# One kind, two resources: the map is the primary and the entries fan out
+# one google_certificate_manager_certificate_map_entry per spec entry --
+# the hostname-to-certificate routing table a GcpTargetHttpsProxy's
+# certificate_map argument consumes (this kind's map_uri output).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (description, labels, and
+# deletion_policy auto-match that way on the map). Every exclusion
+# carries its reason: omission is a decision, never an accident.
+
+resources:
+  google_certificate_manager_certificate_map:
+    mappings:
+      # The map name defaults from metadata.name; the spec names it for
+      # what it is.
+      - spec: spec.map_name
+        arg: name
+
+      - spec: spec.project_id
+        arg: project
+
+  google_certificate_manager_certificate_map_entry:
+    mappings:
+      # The entry name is unique within its map; the spec names it for
+      # what it is.
+      - spec: spec.entries.entry_name
+        arg: name
+
+      - spec: spec.project_id
+        arg: project
+
+      # Per-entry plural leaves: the entry's own field feeds its
+      # resource's argument (labels layered with the map-level set by the
+      # modules).
+      - spec: spec.entries.hostname
+        arg: hostname
+
+      - spec: spec.entries.matcher
+        arg: matcher
+
+      - spec: spec.entries.certificates
+        arg: certificates
+
+      - spec: spec.entries.description
+        arg: description
+
+      - spec: spec.entries.labels
+        arg: labels
+    exclusions:
+      - arg: map
+        reason: >-
+          Wired by both modules to the map resource this kind CREATES (the
+          created map's name attribute) -- an entry belongs to exactly the
+          map it is declared under; there is nothing for a practitioner to
+          choose.
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      certificatemanager.googleapis.com with fixed arguments
+      (disable_on_destroy false so destroying one map never disables
+      Certificate Manager project-wide); not spec surface.

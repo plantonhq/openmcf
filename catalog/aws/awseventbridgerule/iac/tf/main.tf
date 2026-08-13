@@ -33,6 +33,10 @@ resource "aws_cloudwatch_event_target" "this" {
   target_id      = each.key
   arn            = each.value.arn
 
+  # One teardown-forcing decision governs the rule and its targets: the
+  # same spec flag forces RemoveTargets on destroy.
+  force_destroy = var.spec.force_destroy
+
   role_arn = each.value.role_arn != "" ? each.value.role_arn : null
 
   # Input transformation (mutually exclusive — CEL-enforced).
@@ -149,6 +153,59 @@ resource "aws_cloudwatch_event_target" "this" {
           expression = placement_constraint.value.expression != "" ? placement_constraint.value.expression : null
         }
       }
+
+      # Tags applied to the ECS TASKS each event launches -- distinct from
+      # the rule's own resource tags above.
+      tags = length(ecs_target.value.tags) > 0 ? ecs_target.value.tags : null
+    }
+  }
+
+  # Redshift Data API: the target arn is the CLUSTER; each event runs the
+  # SQL statement here, authenticated by db_user (temporary credentials)
+  # or a Secrets Manager secret.
+  dynamic "redshift_target" {
+    for_each = each.value.redshift_target != null ? [each.value.redshift_target] : []
+    content {
+      database            = redshift_target.value.database
+      db_user             = redshift_target.value.db_user != "" ? redshift_target.value.db_user : null
+      secrets_manager_arn = redshift_target.value.secrets_manager_arn != "" ? redshift_target.value.secrets_manager_arn : null
+      sql                 = redshift_target.value.sql != "" ? redshift_target.value.sql : null
+      statement_name      = redshift_target.value.statement_name != "" ? redshift_target.value.statement_name : null
+      with_event          = redshift_target.value.with_event
+    }
+  }
+
+  # SSM Run Command: the target arn is the DOCUMENT; each selector block
+  # narrows the instances the command dispatches to (selectors AND together).
+  dynamic "run_command_targets" {
+    for_each = each.value.run_command_targets
+    content {
+      key    = run_command_targets.value.key
+      values = run_command_targets.value.values
+    }
+  }
+
+  # SageMaker Pipelines: the target arn is the PIPELINE; each event starts
+  # an execution with these parameters.
+  dynamic "sagemaker_pipeline_target" {
+    for_each = each.value.sagemaker_pipeline_target != null ? [each.value.sagemaker_pipeline_target] : []
+    content {
+      dynamic "pipeline_parameter_list" {
+        for_each = sagemaker_pipeline_target.value.pipeline_parameter_list
+        content {
+          name  = pipeline_parameter_list.value.name
+          value = pipeline_parameter_list.value.value
+        }
+      }
+    }
+  }
+
+  # AppSync: the target arn is the API's endpoint ARN; each event invokes
+  # the GraphQL operation.
+  dynamic "appsync_target" {
+    for_each = each.value.appsync_target != null ? [each.value.appsync_target] : []
+    content {
+      graphql_operation = appsync_target.value.graphql_operation
     }
   }
 }

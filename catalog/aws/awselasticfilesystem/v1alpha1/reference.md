@@ -434,6 +434,8 @@ Fields on other kinds that can point at this resource:
 | AwsElasticFileSystem | `spec.replication.destinationFileSystemId` | `status.outputs.file_system_id` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `status.outputs.file_system_id` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `status.outputs.file_system_id` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `status.outputs.file_system_id` |
+| AwsSagemakerDomain | `spec.spaces[].spaceSettings.customFileSystems[].fileSystemId` | `status.outputs.file_system_id` |
 
 ## See Also
 

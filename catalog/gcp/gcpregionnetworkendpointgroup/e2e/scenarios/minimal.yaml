@@ -25,3 +25,6 @@ spec:
   cloudRun:
     service:
       value: planton-oss-e2e-cloud-run-placeholder
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

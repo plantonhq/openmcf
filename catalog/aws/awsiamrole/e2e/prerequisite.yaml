@@ -459,3 +459,35 @@ spec:
         Principal:
           Service: sagemaker.amazonaws.com
         Action: sts:AssumeRole
+---
+# ECS Managed Instances infrastructure role: trusts ecs.amazonaws.com and
+# carries AmazonECSInfrastructureRolePolicyForManagedInstances -- the role
+# ECS assumes to launch, patch, and retire managed instances. The caller
+# applying a manifest that references it needs iam:PassRole on it; the
+# capacity-provider association is where a missing PassRole surfaces.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-ecs-mi-infra-role
+  id: planton-oss-e2e-ecs-mi-infra-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for ECS Managed Instances infrastructure
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/AmazonECSInfrastructureRolePolicyForManagedInstances
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: ecs.amazonaws.com
+        Action: sts:AssumeRole

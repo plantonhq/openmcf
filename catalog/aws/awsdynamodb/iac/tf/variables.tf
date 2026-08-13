@@ -88,13 +88,16 @@ variable "spec" {
       mode = optional(string, "")
       gsi_index_names = optional(list(string), [])
     }))
-    resource_policy = optional(string, "")
+    resource_policy = optional(object({
+      policy = any
+      confirm_remove_self_resource_access = optional(bool, false)
+    }))
     kinesis_streaming_destination = optional(object({
       stream_arn = string
       approximate_creation_date_time_precision = optional(string, "")
     }))
     replicas = optional(list(object({
-      region_name = string
+      region_name = optional(string, "")
       kms_key_arn = optional(string, "")
       point_in_time_recovery = optional(bool, false)
       deletion_protection_enabled = optional(bool, false)
@@ -102,7 +105,7 @@ variable "spec" {
       consistency_mode = optional(string, "")
     })), [])
     global_table_witness = optional(object({
-      region_name = string
+      region_name = optional(string, "")
     }))
     restore_source_name = optional(string, "")
     restore_source_table_arn = optional(string, "")
@@ -119,6 +122,32 @@ variable "spec" {
         delimiter = optional(string, "")
         header_list = optional(list(string), [])
       }))
+    }))
+    autoscaling = optional(object({
+      read = optional(object({
+        min_capacity = optional(number, 0)
+        max_capacity = optional(number, 0)
+        target_utilization_percent = optional(number, 0)
+        scale_in_cooldown_seconds = optional(number, 0)
+        scale_out_cooldown_seconds = optional(number, 0)
+      }))
+      write = optional(object({
+        min_capacity = optional(number, 0)
+        max_capacity = optional(number, 0)
+        target_utilization_percent = optional(number, 0)
+        scale_in_cooldown_seconds = optional(number, 0)
+        scale_out_cooldown_seconds = optional(number, 0)
+      }))
+      scheduled_adjustments = optional(list(object({
+        name = string
+        dimension = string
+        schedule = optional(string, "")
+        timezone = optional(string, "")
+        min_capacity = optional(number, 0)
+        max_capacity = optional(number, 0)
+        start_time = optional(string, "")
+        end_time = optional(string, "")
+      })), [])
     }))
   })
 }

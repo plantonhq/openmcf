@@ -41,7 +41,9 @@ type GcpServiceAccountStackOutputs struct {
 	// Used by APIs that address the service account as a resource (key management,
 	// IAM policy on the service account itself, Workload Identity bindings).
 	Name string `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
-	// Base64-encoded JSON private key, populated only when spec.create_key is true.
+	// Base64-encoded private key, populated only when spec.user_managed_key
+	// requested the generate flow (empty for keyless accounts and for the
+	// public_key_data upload flow).
 	// This is a live, long-lived credential — the engines mark it secret in state;
 	// handle it like a password and prefer keyless patterns entirely.
 	KeyBase64     string `protobuf:"bytes,5,opt,name=key_base64,json=keyBase64,proto3" json:"key_base64,omitempty"`

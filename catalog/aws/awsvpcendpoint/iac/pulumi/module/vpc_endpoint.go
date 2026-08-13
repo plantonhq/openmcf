@@ -1,6 +1,8 @@
 package module
 
 import (
+	"encoding/json"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -62,13 +64,14 @@ func vpcEndpoint(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRe
 		args.SecurityGroupIds = securityGroupIds
 	}
 
-	// private_dns_enabled is only expressible on Interface endpoints
-	// (CEL), where it updates in place. Forwarded only when true so a
-	// gateway endpoint's create call carries no DNS argument at all --
-	// matching the Terraform module, which prunes false booleans from
-	// its tfvars.
-	if spec.PrivateDnsEnabled {
-		args.PrivateDnsEnabled = pulumi.BoolPtr(true)
+	// private_dns_enabled is only expressible on Interface endpoints (CEL),
+	// where it updates in place. Tri-state send-when-set: the provider
+	// attribute is Optional+Computed, so an omitted value keeps an existing
+	// endpoint's current setting — an EXPLICIT false is the only way to
+	// disable private DNS once enabled. Unset is never sent, so a gateway
+	// endpoint's create call carries no DNS argument at all.
+	if spec.PrivateDnsEnabled != nil {
+		args.PrivateDnsEnabled = pulumi.BoolPtr(spec.GetPrivateDnsEnabled())
 	}
 
 	if spec.DnsOptions != nil {
@@ -92,10 +95,15 @@ func vpcEndpoint(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRe
 		args.IpAddressType = pulumi.StringPtr(spec.IpAddressType)
 	}
 
-	// Empty policy means AWS's full-access default; forwarding nothing
-	// (instead of an empty string) lets AWS attach its default document.
-	if spec.Policy != "" {
-		args.Policy = pulumi.StringPtr(spec.Policy)
+	// Empty policy means AWS's full-access default; forwarding nothing lets
+	// AWS attach its default document. The spec carries the policy as a
+	// structured document; it is serialized to JSON here.
+	if spec.Policy != nil {
+		policyJson, err := json.Marshal(spec.Policy.AsMap())
+		if err != nil {
+			return errors.Wrap(err, "marshal endpoint policy")
+		}
+		args.Policy = pulumi.StringPtr(string(policyJson))
 	}
 
 	if len(spec.SubnetConfigurations) > 0 {

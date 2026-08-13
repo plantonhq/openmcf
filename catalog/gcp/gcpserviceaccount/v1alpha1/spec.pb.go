@@ -66,11 +66,13 @@ type GcpServiceAccountSpec struct {
 	// Useful as a kill switch during incident response or for staged decommissioning
 	// (disable first, observe breakage, then delete).
 	Disabled *bool `protobuf:"varint,5,opt,name=disabled,proto3,oneof" json:"disabled,omitempty"`
-	// Whether to create a user-managed JSON key for this service account.
-	// Default false (keyless). When true, the private key is exported in stack outputs
-	// as `key_base64` — treat that output as a live credential. Prefer Workload Identity
-	// or federation over keys wherever the workload supports it.
-	CreateKey *bool `protobuf:"varint,6,opt,name=create_key,json=createKey,proto3,oneof" json:"create_key,omitempty"`
+	// Create a user-managed key for this service account. Omit for keyless
+	// (the recommended default — prefer Workload Identity, impersonation, or
+	// federation wherever the workload supports it). When present, a key is
+	// created with the configured algorithm and formats, and the private key
+	// (unless public_key_data supplies your own public key) is exported in
+	// stack outputs as `key_base64` — treat that output as a live credential.
+	UserManagedKey *GcpServiceAccountUserManagedKey `protobuf:"bytes,6,opt,name=user_managed_key,json=userManagedKey,proto3" json:"user_managed_key,omitempty"`
 	// IAM roles granted to this service account at the PROJECT scope, e.g.
 	// ["roles/logging.logWriter", "roles/storage.admin"]. Grants are additive
 	// (member-level): they never clobber other members' bindings on the same role.
@@ -85,9 +87,23 @@ type GcpServiceAccountSpec struct {
 	// ["roles/resourcemanager.organizationViewer"]. Requires org_id. Grants are
 	// additive (member-level). Org-scope grants affect every project under the
 	// organization — grant sparingly.
-	OrgIamRoles   []string `protobuf:"bytes,9,rep,name=org_iam_roles,json=orgIamRoles,proto3" json:"org_iam_roles,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OrgIamRoles []string `protobuf:"bytes,9,rep,name=org_iam_roles,json=orgIamRoles,proto3" json:"org_iam_roles,omitempty"`
+	// If true, creating the service account succeeds (as a no-op adoption)
+	// when an account with the same email already exists, instead of
+	// failing. Useful for idempotent bootstrap flows that may race other
+	// provisioning paths onto well-known identity names.
+	CreateIgnoreAlreadyExists bool `protobuf:"varint,10,opt,name=create_ignore_already_exists,json=createIgnoreAlreadyExists,proto3" json:"create_ignore_already_exists,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the service account is deleted
+	//	"PREVENT" -- destroy FAILS; a guard rail for identities whose
+	//	             deletion would invalidate IAM bindings fleet-wide
+	//
+	// Mutable in place.
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpServiceAccountSpec) Reset() {
@@ -155,11 +171,11 @@ func (x *GcpServiceAccountSpec) GetDisabled() bool {
 	return false
 }
 
-func (x *GcpServiceAccountSpec) GetCreateKey() bool {
-	if x != nil && x.CreateKey != nil {
-		return *x.CreateKey
+func (x *GcpServiceAccountSpec) GetUserManagedKey() *GcpServiceAccountUserManagedKey {
+	if x != nil {
+		return x.UserManagedKey
 	}
-	return false
+	return nil
 }
 
 func (x *GcpServiceAccountSpec) GetProjectIamRoles() []string {
@@ -183,26 +199,180 @@ func (x *GcpServiceAccountSpec) GetOrgIamRoles() []string {
 	return nil
 }
 
+func (x *GcpServiceAccountSpec) GetCreateIgnoreAlreadyExists() bool {
+	if x != nil {
+		return x.CreateIgnoreAlreadyExists
+	}
+	return false
+}
+
+func (x *GcpServiceAccountSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+// Configuration of a user-managed service account key. The message's
+// presence is the decision to create a key; every field is optional and
+// defaults to GCP's own defaults, so `user_managed_key: {}` creates the
+// classic 2048-bit RSA JSON key.
+type GcpServiceAccountUserManagedKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Algorithm used to generate the key:
+	//
+	//	""                  -- GCP default ("KEY_ALG_RSA_2048")
+	//	"KEY_ALG_RSA_2048"  -- 2048-bit RSA (the standard choice)
+	//	"KEY_ALG_RSA_1024"  -- 1024-bit RSA (legacy; weaker — avoid for
+	//	                       new keys)
+	//
+	// Create-time only: changing it replaces the key.
+	Algorithm string `protobuf:"bytes,1,opt,name=algorithm,proto3" json:"algorithm,omitempty"`
+	// Output format of the generated private key:
+	//
+	//	""                             -- GCP default
+	//	                                  ("TYPE_GOOGLE_CREDENTIALS_FILE")
+	//	"TYPE_GOOGLE_CREDENTIALS_FILE" -- the standard JSON credentials file
+	//	"TYPE_PKCS12_FILE"             -- PKCS#12 bundle (password "notasecret";
+	//	                                  for legacy tooling that requires p12)
+	PrivateKeyType string `protobuf:"bytes,2,opt,name=private_key_type,json=privateKeyType,proto3" json:"private_key_type,omitempty"`
+	// Output format of the public key:
+	//
+	//	""                    -- GCP default ("TYPE_X509_PEM_FILE")
+	//	"TYPE_X509_PEM_FILE"  -- X.509 certificate PEM
+	//	"TYPE_RAW_PUBLIC_KEY" -- raw public key bytes
+	//	"TYPE_NONE"           -- do not return the public key
+	PublicKeyType string `protobuf:"bytes,3,opt,name=public_key_type,json=publicKeyType,proto3" json:"public_key_type,omitempty"`
+	// Your own public key (base64-encoded X.509 PEM) — the UPLOAD flow: the
+	// matching private key never leaves your custody and GCP returns no
+	// private key material (the key_base64 stack output stays empty).
+	// The strongest key posture when a user-managed key is unavoidable.
+	PublicKeyData string `protobuf:"bytes,4,opt,name=public_key_data,json=publicKeyData,proto3" json:"public_key_data,omitempty"`
+	// Arbitrary key/value pairs whose CHANGE forces a new key to be
+	// generated — the idiomatic rotation trigger. Set e.g.
+	// {"rotation": "2026-08"} and bump the value on your rotation cadence;
+	// the old key is destroyed and a fresh one exported.
+	Keepers map[string]string `protobuf:"bytes,5,rep,name=keepers,proto3" json:"keepers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the key itself:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the key is deleted on destroy
+	//	"PREVENT" -- destroy FAILS while this key exists
+	DeletionPolicy string `protobuf:"bytes,6,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GcpServiceAccountUserManagedKey) Reset() {
+	*x = GcpServiceAccountUserManagedKey{}
+	mi := &file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpServiceAccountUserManagedKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpServiceAccountUserManagedKey) ProtoMessage() {}
+
+func (x *GcpServiceAccountUserManagedKey) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpServiceAccountUserManagedKey.ProtoReflect.Descriptor instead.
+func (*GcpServiceAccountUserManagedKey) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetAlgorithm() string {
+	if x != nil {
+		return x.Algorithm
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetPrivateKeyType() string {
+	if x != nil {
+		return x.PrivateKeyType
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetPublicKeyType() string {
+	if x != nil {
+		return x.PublicKeyType
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetPublicKeyData() string {
+	if x != nil {
+		return x.PublicKeyData
+	}
+	return ""
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetKeepers() map[string]string {
+	if x != nil {
+		return x.Keepers
+	}
+	return nil
+}
+
+func (x *GcpServiceAccountUserManagedKey) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/gcp/gcpserviceaccount/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpserviceaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x99\x05\n" +
+	"1catalog/gcp/gcpserviceaccount/v1alpha1/spec.proto\x12*dev.planton.gcp.gcpserviceaccount.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xba\a\n" +
 	"\x15GcpServiceAccountSpec\x12X\n" +
 	"\x12service_account_id\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x06\x18\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x10serviceAccountId\x12u\n" +
 	"\n" +
 	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12!\n" +
 	"\fdisplay_name\x18\x03 \x01(\tR\vdisplayName\x12*\n" +
 	"\vdescription\x18\x04 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12*\n" +
-	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12-\n" +
-	"\n" +
-	"create_key\x18\x06 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x01R\tcreateKey\x88\x01\x01\x12*\n" +
+	"\bdisabled\x18\x05 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x00R\bdisabled\x88\x01\x01\x12u\n" +
+	"\x10user_managed_key\x18\x06 \x01(\v2K.dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKeyR\x0euserManagedKey\x12*\n" +
 	"\x11project_iam_roles\x18\a \x03(\tR\x0fprojectIamRoles\x12\x15\n" +
 	"\x06org_id\x18\b \x01(\tR\x05orgId\x12\"\n" +
-	"\rorg_iam_roles\x18\t \x03(\tR\vorgIamRoles:\x81\x01\xbaH~\x1a|\n" +
+	"\rorg_iam_roles\x18\t \x03(\tR\vorgIamRoles\x12?\n" +
+	"\x1ccreate_ignore_already_exists\x18\n" +
+	" \x01(\bR\x19createIgnoreAlreadyExists\x12\xa4\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB{\xbaHx\xba\x01u\n" +
+	"\x15valid_deletion_policy\x12/deletion_policy must be one of: DELETE, PREVENT\x1a+this == '' || this in ['DELETE', 'PREVENT']R\x0edeletionPolicy:\x81\x01\xbaH~\x1a|\n" +
 	"\x18org_roles_require_org_id\x12,org_id is required when org_iam_roles is set\x1a2size(this.org_iam_roles) == 0 || this.org_id != ''B\v\n" +
-	"\t_disabledB\r\n" +
-	"\v_create_keyB\xe7\x02\n" +
+	"\t_disabled\"\xb7\n" +
+	"\n" +
+	"\x1fGcpServiceAccountUserManagedKey\x12\xba\x01\n" +
+	"\talgorithm\x18\x01 \x01(\tB\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
+	"\x13valid_key_algorithm\x12<algorithm must be one of: KEY_ALG_RSA_2048, KEY_ALG_RSA_1024\x1a>this == '' || this in ['KEY_ALG_RSA_2048', 'KEY_ALG_RSA_1024']R\talgorithm\x12\xe8\x01\n" +
+	"\x10private_key_type\x18\x02 \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
+	"\x16valid_private_key_type\x12Oprivate_key_type must be one of: TYPE_GOOGLE_CREDENTIALS_FILE, TYPE_PKCS12_FILE\x1aJthis == '' || this in ['TYPE_GOOGLE_CREDENTIALS_FILE', 'TYPE_PKCS12_FILE']R\x0eprivateKeyType\x12\xee\x01\n" +
+	"\x0fpublic_key_type\x18\x03 \x01(\tB\xc5\x01\xbaH\xc1\x01\xba\x01\xbd\x01\n" +
+	"\x15valid_public_key_type\x12Rpublic_key_type must be one of: TYPE_X509_PEM_FILE, TYPE_RAW_PUBLIC_KEY, TYPE_NONE\x1aPthis == '' || this in ['TYPE_X509_PEM_FILE', 'TYPE_RAW_PUBLIC_KEY', 'TYPE_NONE']R\rpublicKeyType\x12&\n" +
+	"\x0fpublic_key_data\x18\x04 \x01(\tR\rpublicKeyData\x12r\n" +
+	"\akeepers\x18\x05 \x03(\v2X.dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey.KeepersEntryR\akeepers\x12\xa8\x01\n" +
+	"\x0fdeletion_policy\x18\x06 \x01(\tB\x7f\xbaH|\xba\x01y\n" +
+	"\x19valid_key_deletion_policy\x12/deletion_policy must be one of: DELETE, PREVENT\x1a+this == '' || this in ['DELETE', 'PREVENT']R\x0edeletionPolicy\x1a:\n" +
+	"\fKeepersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf7\x01\xbaH\xf3\x01\x1a\xf0\x01\n" +
+	"(public_key_data_conflicts_with_key_types\x12ipublic_key_data (upload flow) cannot be combined with private_key_type or public_key_type (generate flow)\x1aYthis.public_key_data == '' || (this.private_key_type == '' && this.public_key_type == '')B\xe7\x02\n" +
 	".com.dev.planton.gcp.gcpserviceaccount.v1alpha1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/catalog/gcp/gcpserviceaccount/v1alpha1;gcpserviceaccountv1alpha1\xa2\x02\x04DPGG\xaa\x02*Dev.Planton.Gcp.Gcpserviceaccount.V1alpha1\xca\x02*Dev\\Planton\\Gcp\\Gcpserviceaccount\\V1alpha1\xe2\x026Dev\\Planton\\Gcp\\Gcpserviceaccount\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Gcp::Gcpserviceaccount::V1alpha1b\x06proto3"
 
 var (
@@ -217,18 +387,22 @@ func file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDescGZIP() []byte
 	return file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_goTypes = []any{
-	(*GcpServiceAccountSpec)(nil), // 0: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountSpec
-	(*v1.StringValueOrRef)(nil),   // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpServiceAccountSpec)(nil),           // 0: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountSpec
+	(*GcpServiceAccountUserManagedKey)(nil), // 1: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey
+	nil,                                     // 2: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey.KeepersEntry
+	(*v1.StringValueOrRef)(nil),             // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // [1:1] is the sub-list for method output_type
-	1, // [1:1] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	3, // 0: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 1: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountSpec.user_managed_key:type_name -> dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey
+	2, // 2: dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey.keepers:type_name -> dev.planton.gcp.gcpserviceaccount.v1alpha1.GcpServiceAccountUserManagedKey.KeepersEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_init() }
@@ -243,7 +417,7 @@ func file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpserviceaccount_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

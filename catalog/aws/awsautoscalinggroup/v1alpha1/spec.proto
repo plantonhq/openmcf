@@ -177,8 +177,10 @@ message AwsAutoScalingGroupSpec {
 
   // How capacity distributes across availability zones:
   // "balanced-best-effort" (AWS default -- launch in another zone when
-  // one is impaired) or "balanced-only" (strict balance; launches wait
-  // for the impaired zone).
+  // one is impaired), "balanced-only" (strict balance; launches wait
+  // for the impaired zone), or "reservations-then-balanced" (fill
+  // targeted Capacity Reservations first, then balance -- pairs with
+  // capacity_reservation).
   string capacity_distribution_strategy = 25;
 
   // Delete the group without waiting for instances to terminate
@@ -211,9 +213,59 @@ message AwsAutoScalingGroupSpec {
   // observe launches, terminations, and their failures.
   AwsAutoScalingGroupNotifications notifications = 31;
 
+  // Launch into EC2 Capacity Reservations -- guaranteed capacity a
+  // reserved fleet has already paid for. Leave unset for the AWS
+  // default behavior (use an open reservation when one matches).
+  AwsAutoScalingGroupCapacityReservation capacity_reservation = 32;
+
+  // Traffic sources this group registers its instances with -- the
+  // generalized successor to load-balancer attachment that also covers
+  // VPC Lattice target groups. For ALB/NLB target groups prefer
+  // target_groups (typed references); use this for VPC Lattice (no
+  // Planton kind yet -- pass the target group ARN) or Classic ELBs.
+  // Mutually exclusive with target_groups (the provider rejects the
+  // combination).
+  repeated AwsAutoScalingGroupTrafficSource traffic_sources = 33;
+
+  // What happens to instances whose TERMINATING lifecycle hook ends in
+  // ABANDON -- terminate anyway (AWS default) or retain the instance
+  // for debugging. Only meaningful with a terminating-transition
+  // lifecycle hook.
+  AwsAutoScalingGroupInstanceLifecyclePolicy instance_lifecycle_policy = 34;
+
+  // Keep IaC applies moving while a scaling activity is failing: read
+  // the group state without waiting on the failed activity. For groups
+  // whose scaling errors are handled by their own alarms rather than
+  // the deploy pipeline.
+  bool ignore_failed_scaling_activities = 35;
+
+  // When force_delete tears the group down, also force-delete its warm
+  // pool without draining the pooled instances.
+  bool force_delete_warm_pool = 36;
+
+  // Minimum number of instances that must pass ELB health checks
+  // before a CREATE is considered successful. Requires an attached
+  // load balancer (target_groups or traffic_sources) and health checks
+  // that can pass during the wait. An engine-behavior wait (both
+  // engines honor it identically), not an AWS API field -- like
+  // wait_for_capacity_timeout.
+  int32 min_elb_capacity = 37 [(buf.validate.field).int32.gte = 0];
+
+  // Exact number of ELB-healthy instances to wait for on create AND
+  // every update (min_elb_capacity waits on create only). Takes
+  // precedence over min_elb_capacity when both are set. An
+  // engine-behavior wait, not an AWS API field.
+  int32 wait_for_elb_capacity = 38 [(buf.validate.field).int32.gte = 0];
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "traffic_sources_xor_target_groups"
+    message: "traffic_sources and target_groups are mutually exclusive -- the provider rejects declaring both"
+    expression: "size(this.traffic_sources) == 0 || size(this.target_groups) == 0"
+  };
 
   option (buf.validate.message).cel = {
     id: "launch_template_xor_mixed_instances"
@@ -253,8 +305,8 @@ message AwsAutoScalingGroupSpec {
 
   option (buf.validate.message).cel = {
     id: "capacity_distribution_strategy_valid"
-    message: "capacity_distribution_strategy must be 'balanced-only' or 'balanced-best-effort' when set"
-    expression: "this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort']"
+    message: "capacity_distribution_strategy must be 'balanced-only', 'balanced-best-effort', or 'reservations-then-balanced' when set"
+    expression: "this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort', 'reservations-then-balanced']"
   };
 
   option (buf.validate.message).cel = {
@@ -719,6 +771,86 @@ message AwsAutoScalingGroupInstanceMaintenancePolicy {
   ];
 }
 
+// AwsAutoScalingGroupCapacityReservation launches the group's instances
+// into EC2 Capacity Reservations -- pre-purchased, guaranteed capacity.
+// Target specific reservations (or reservation resource groups) for a
+// reserved fleet, or set only the preference to shape how the group uses
+// reservations it happens to match.
+message AwsAutoScalingGroupCapacityReservation {
+  // How launches use reservations:
+  // - "default": AWS account default (open reservations match
+  //   automatically).
+  // - "capacity-reservations-only": launch ONLY into the targeted
+  //   reservations -- fail rather than fall back to on-demand pool
+  //   capacity.
+  // - "capacity-reservations-first": try the reservations, fall back
+  //   to regular capacity when exhausted.
+  // - "none": never consume reservations, even matching open ones.
+  string preference = 1;
+
+  // Specific Capacity Reservation IDs to launch into (e.g. "cr-...").
+  // Mutually exclusive with capacity_reservation_resource_group_arns.
+  repeated string capacity_reservation_ids = 2;
+
+  // Resource-group ARNs that collect Capacity Reservations -- target
+  // the group instead of chasing individual reservation IDs. Mutually
+  // exclusive with capacity_reservation_ids.
+  repeated string capacity_reservation_resource_group_arns = 3;
+
+  option (buf.validate.message).cel = {
+    id: "preference_valid"
+    message: "preference must be one of: default, capacity-reservations-only, capacity-reservations-first, none"
+    expression: "this.preference == '' || this.preference in ['default', 'capacity-reservations-only', 'capacity-reservations-first', 'none']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ids_xor_resource_groups"
+    message: "capacity_reservation_ids and capacity_reservation_resource_group_arns are mutually exclusive"
+    expression: "size(this.capacity_reservation_ids) == 0 || size(this.capacity_reservation_resource_group_arns) == 0"
+  };
+}
+
+// AwsAutoScalingGroupTrafficSource registers the group's instances with
+// one traffic source -- the generalized attachment model covering VPC
+// Lattice target groups and Classic ELBs alongside ALB/NLB target groups
+// (which the typed target_groups field handles better).
+message AwsAutoScalingGroupTrafficSource {
+  // What identifies the source: a VPC Lattice target group ARN, an
+  // ALB/NLB target group ARN, or a Classic ELB name. Reference another
+  // resource's output or pass the literal value.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identifier = 1 [(buf.validate.field).required = true];
+
+  // The source type: "vpc-lattice", "elbv2" (ALB/NLB target group), or
+  // "elb" (Classic). AWS infers it from the identifier when unset --
+  // set it explicitly for Classic ELB names, which look like plain
+  // strings.
+  string type = 2;
+
+  option (buf.validate.message).cel = {
+    id: "type_valid"
+    message: "type must be 'elb', 'elbv2', or 'vpc-lattice' when set"
+    expression: "this.type == '' || this.type in ['elb', 'elbv2', 'vpc-lattice']"
+  };
+}
+
+// AwsAutoScalingGroupInstanceLifecyclePolicy shapes what happens to
+// instances at lifecycle-policy decision points. Today AWS exposes one
+// trigger: the fate of an instance whose TERMINATING lifecycle hook
+// timed out into ABANDON.
+message AwsAutoScalingGroupInstanceLifecyclePolicy {
+  // When a terminating instance's lifecycle hook ends in ABANDON:
+  // "terminate" (AWS default -- proceed with termination) or "retain"
+  // (keep the instance out of the group but running, for post-mortem
+  // debugging of whatever made the hook fail).
+  string terminate_hook_abandon = 1;
+
+  option (buf.validate.message).cel = {
+    id: "terminate_hook_abandon_valid"
+    message: "terminate_hook_abandon must be 'retain' or 'terminate' when set"
+    expression: "this.terminate_hook_abandon == '' || this.terminate_hook_abandon in ['retain', 'terminate']"
+  };
+}
+
 // AwsAutoScalingGroupScalingPolicy attaches one scaling behavior to the
 // group. policy_type decides which configuration block applies -- exactly
 // one must be set, matching the type.
@@ -751,6 +883,12 @@ message AwsAutoScalingGroupScalingPolicy {
 
   // Configuration for "PredictiveScaling".
   AwsAutoScalingGroupPredictiveScalingConfig predictive_scaling = 7;
+
+  // Suspend this policy without deleting it: the policy and its
+  // CloudWatch alarms stay configured but stop acting on the group.
+  // The pause button for incident response or load tests -- deleting
+  // the policy instead would discard alarm history and forecast state.
+  bool disabled = 8;
 
   // ---------------------------------------------------------------------------
   // Scaling policy CEL validations (discriminated union on policy_type)
@@ -1050,18 +1188,21 @@ message AwsAutoScalingGroupSimpleScalingConfig {
 }
 
 // AwsAutoScalingGroupPredictiveScalingConfig forecasts load from history
-// (daily/weekly patterns) and pre-provisions capacity ahead of it.
-// Custom metric-data-query specifications are deliberately not modeled --
-// the predefined metric pairs cover the real predictive use cases; ask
-// for the customized form if a workload genuinely needs it.
+// (daily/weekly patterns) and pre-provisions capacity ahead of it. The
+// metrics come in three forms, most to least common: one predefined PAIR
+// (load + scaling in a single name), SPLIT predefined load and scaling
+// metrics chosen independently, or fully CUSTOMIZED metric-math query
+// sets for workloads whose load signal is not a built-in group metric.
 message AwsAutoScalingGroupPredictiveScalingConfig {
   // The value to hold the scaling metric at (e.g. 60.0 for 60% CPU).
   // Required.
   double target_value = 1 [(buf.validate.field).required = true];
 
-  // The load/scaling metric pair to forecast: "ASGCPUUtilization",
-  // "ASGNetworkIn", "ASGNetworkOut", or "ALBRequestCount". Required.
-  string predefined_metric_pair_type = 2 [(buf.validate.field).required = true];
+  // The predefined load/scaling metric PAIR to forecast:
+  // "ASGCPUUtilization", "ASGNetworkIn", "ASGNetworkOut", or
+  // "ALBRequestCount". The one-liner for the common cases -- mutually
+  // exclusive with the split and customized metric fields below.
+  string predefined_metric_pair_type = 2;
 
   // Identifies the ALB target group when the metric pair is
   // "ALBRequestCount" (load balancer arn_suffix + "/" + target group
@@ -1085,10 +1226,88 @@ message AwsAutoScalingGroupPredictiveScalingConfig {
   // max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
   int32 max_capacity_buffer = 7;
 
+  // SPLIT form, load side: the predefined TOTAL metric the forecast is
+  // trained on ("ASGTotalCPUUtilization", "ASGTotalNetworkIn",
+  // "ASGTotalNetworkOut", "ALBTargetGroupRequestCount"). Pair with
+  // predefined_scaling_metric (or customized_scaling_metric_queries).
+  AwsAutoScalingGroupPredictiveScalingPredefinedMetric predefined_load_metric = 8;
+
+  // SPLIT form, scaling side: the predefined AVERAGE metric capacity is
+  // sized against ("ASGAverageCPUUtilization", "ASGAverageNetworkIn",
+  // "ASGAverageNetworkOut", "ALBRequestCountPerTarget").
+  AwsAutoScalingGroupPredictiveScalingPredefinedMetric predefined_scaling_metric = 9;
+
+  // CUSTOMIZED form, load side: a metric-math query set (up to 10
+  // entries, exactly one returning data) producing the total-load
+  // signal the forecast is trained on. Mutually exclusive with
+  // predefined_load_metric.
+  repeated AwsAutoScalingGroupMetricDataQuery customized_load_metric_queries = 10 [(buf.validate.field).repeated.max_items = 10];
+
+  // CUSTOMIZED form, scaling side: a metric-math query set producing
+  // the per-instance utilization signal capacity is sized against.
+  // Mutually exclusive with predefined_scaling_metric.
+  repeated AwsAutoScalingGroupMetricDataQuery customized_scaling_metric_queries = 11 [(buf.validate.field).repeated.max_items = 10];
+
+  // CUSTOMIZED form, capacity side: a metric-math query set reporting
+  // the group's current capacity -- needed only when the scaling metric
+  // is a custom signal whose relationship to instance count AWS cannot
+  // infer.
+  repeated AwsAutoScalingGroupMetricDataQuery customized_capacity_metric_queries = 12 [(buf.validate.field).repeated.max_items = 10];
+
   option (buf.validate.message).cel = {
     id: "metric_pair_valid"
     message: "predefined_metric_pair_type must be one of: ASGCPUUtilization, ASGNetworkIn, ASGNetworkOut, ALBRequestCount"
-    expression: "this.predefined_metric_pair_type in ['ASGCPUUtilization', 'ASGNetworkIn', 'ASGNetworkOut', 'ALBRequestCount']"
+    expression: "this.predefined_metric_pair_type == '' || this.predefined_metric_pair_type in ['ASGCPUUtilization', 'ASGNetworkIn', 'ASGNetworkOut', 'ALBRequestCount']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "pair_excludes_split_and_customized"
+    message: "predefined_metric_pair_type is the all-in-one form -- it cannot combine with split predefined or customized metric fields"
+    expression: "this.predefined_metric_pair_type == '' || (!has(this.predefined_load_metric) && !has(this.predefined_scaling_metric) && size(this.customized_load_metric_queries) == 0 && size(this.customized_scaling_metric_queries) == 0 && size(this.customized_capacity_metric_queries) == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "one_scaling_metric_required"
+    message: "predictive scaling needs a scaling metric: a predefined pair, predefined_scaling_metric, or customized_scaling_metric_queries"
+    expression: "this.predefined_metric_pair_type != '' || has(this.predefined_scaling_metric) || size(this.customized_scaling_metric_queries) > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "one_load_metric_form"
+    message: "predefined_load_metric and customized_load_metric_queries are mutually exclusive"
+    expression: "!has(this.predefined_load_metric) || size(this.customized_load_metric_queries) == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "one_scaling_metric_form"
+    message: "predefined_scaling_metric and customized_scaling_metric_queries are mutually exclusive"
+    expression: "!has(this.predefined_scaling_metric) || size(this.customized_scaling_metric_queries) == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "capacity_queries_exclude_predefined_load"
+    message: "customized_capacity_metric_queries cannot combine with predefined_load_metric (the provider rejects the combination)"
+    expression: "size(this.customized_capacity_metric_queries) == 0 || !has(this.predefined_load_metric)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "load_metric_type_valid"
+    message: "predefined_load_metric.metric_type must be one of: ASGTotalCPUUtilization, ASGTotalNetworkIn, ASGTotalNetworkOut, ALBTargetGroupRequestCount"
+    expression: "!has(this.predefined_load_metric) || this.predefined_load_metric.metric_type in ['ASGTotalCPUUtilization', 'ASGTotalNetworkIn', 'ASGTotalNetworkOut', 'ALBTargetGroupRequestCount']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "scaling_metric_type_valid"
+    message: "predefined_scaling_metric.metric_type must be one of: ASGAverageCPUUtilization, ASGAverageNetworkIn, ASGAverageNetworkOut, ALBRequestCountPerTarget"
+    expression: "!has(this.predefined_scaling_metric) || this.predefined_scaling_metric.metric_type in ['ASGAverageCPUUtilization', 'ASGAverageNetworkIn', 'ASGAverageNetworkOut', 'ALBRequestCountPerTarget']"
+  };
+
+  // The predictive API has no per-stat period (unlike target tracking,
+  // which shares this query type) -- reject it instead of dropping it.
+  option (buf.validate.message).cel = {
+    id: "no_period_on_predictive_queries"
+    message: "metric_stat.period_seconds is not part of the predictive-scaling API -- leave it unset on predictive metric queries"
+    expression: "this.customized_load_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0) && this.customized_scaling_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0) && this.customized_capacity_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0)"
   };
 
   option (buf.validate.message).cel = {
@@ -1114,6 +1333,19 @@ message AwsAutoScalingGroupPredictiveScalingConfig {
     message: "max_capacity_buffer must be between 0 and 100"
     expression: "this.max_capacity_buffer >= 0 && this.max_capacity_buffer <= 100"
   };
+}
+
+// AwsAutoScalingGroupPredictiveScalingPredefinedMetric names one
+// predefined metric for the split form of predictive scaling. The valid
+// metric_type values differ by position -- TOTAL metrics on the load
+// side, AVERAGE metrics on the scaling side (validated on the parent).
+message AwsAutoScalingGroupPredictiveScalingPredefinedMetric {
+  // The predefined metric name. Required.
+  string metric_type = 1 [(buf.validate.field).required = true];
+
+  // Identifies the ALB target group for the ALB-based metric types
+  // (load balancer arn_suffix + "/" + target group arn_suffix).
+  string resource_label = 2;
 }
 
 // AwsAutoScalingGroupScheduledAction changes capacity on a schedule --
@@ -1203,6 +1435,16 @@ message AwsAutoScalingGroupLifecycleHook {
   // Free-form JSON delivered with every notification -- routing context
   // for the consumer.
   string notification_metadata = 7;
+
+  // Attach this hook atomically AT GROUP CREATION instead of as a
+  // separate post-creation resource. Without it, instances the group
+  // launches in the seconds before the standalone hook attaches slip
+  // through unhooked -- set it on launch-transition hooks that must
+  // catch the very first instance. Trade-off: AWS makes creation-time
+  // hooks immutable, so any change to a flagged hook REPLACES the whole
+  // group; leave it off (the default) for hooks that need in-place
+  // updates.
+  bool apply_at_launch = 8;
 
   option (buf.validate.message).cel = {
     id: "lifecycle_transition_valid"

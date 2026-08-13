@@ -1,6 +1,7 @@
 package module
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -19,11 +20,18 @@ func satellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, cre
 	spec := locals.AwsDynamodb.Spec
 
 	// A resource-based IAM policy on the table -- cross-account access
-	// grants without role assumption.
-	if spec.ResourcePolicy != "" {
+	// grants without role assumption. The confirm flag is AWS's guard
+	// against locking yourself out: a policy that removes the applying
+	// caller's own access is refused unless it is set.
+	if spec.ResourcePolicy != nil {
+		policyJSON, err := json.Marshal(spec.ResourcePolicy.Policy.AsMap())
+		if err != nil {
+			return errors.Wrap(err, "failed to serialize resource policy to JSON")
+		}
 		if _, err := dynamodb.NewResourcePolicy(ctx, "resource-policy", &dynamodb.ResourcePolicyArgs{
-			ResourceArn: createdTable.Arn,
-			Policy:      pulumi.String(spec.ResourcePolicy),
+			ResourceArn:                     createdTable.Arn,
+			Policy:                          pulumi.String(string(policyJSON)),
+			ConfirmRemoveSelfResourceAccess: pulumi.BoolPtr(spec.ResourcePolicy.ConfirmRemoveSelfResourceAccess),
 		}, pulumi.Provider(provider)); err != nil {
 			return errors.Wrap(err, "failed to attach DynamoDB resource policy")
 		}

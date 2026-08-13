@@ -1,0 +1,39 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_kinesis_stream:
+    mappings:
+      # The one-leaf stream_mode_details block collapses to its leaf.
+      - spec: spec.stream_mode
+        arg: stream_mode_details.stream_mode
+      # The spec names the unit for what it is (hours -- AWS's own unit).
+      - spec: spec.retention_period_hours
+        arg: retention_period
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the stream name is platform naming, never free-form spec surface
+      - arg: arn
+        reason: writable-ARN identity escape hatch (the provider accepts a caller-supplied ARN for cross-region import flows) -- identity, never configuration; both modules always create the stream they name
+      - arg: encryption_type
+        reason: derived by both modules from kms_key_id presence (KMS when a key is referenced, NONE otherwise) -- a free-form field could only contradict the key reference
+      - arg: tags
+        reason: wired by the module from metadata (planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The folded resource policy -- AWS models it as a separate resource-policy
+  # API keyed by the stream ARN; it has no identity of its own and follows
+  # the stream's lifecycle.
+  aws_kinesis_resource_policy:
+    mappings:
+      - spec: spec.resource_policy
+        arg: policy
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the ARN of the stream this kind creates -- never free-form user surface

@@ -23,3 +23,7 @@ The **AzurePrivateDnsResolver** component deploys Azure DNS Private Resolver -- 
 ## Future Enhancements
 
 - The endpoint subnets' delegation contract (`Microsoft.Network/dnsResolvers`, /28-/24, dedicated) stays documentation until references can be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

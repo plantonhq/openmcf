@@ -451,4 +451,18 @@ var _ = ginkgo.Describe("GcpDataprocAutoscalingPolicySpec", func() {
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept every valid deletion_policy", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject an unknown deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "RETAIN"
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
 })

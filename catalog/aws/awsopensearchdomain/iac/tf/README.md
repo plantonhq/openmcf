@@ -1,5 +1,13 @@
 ## Terraform Module to Deploy AwsOpenSearchDomain
 
+Provisions the OpenSearch domain (`domain.tf`) plus its folded satellites
+(`satellites.tf`): SAML Dashboards sign-in when `samlOptions` is
+configured, and one cross-account VPC endpoint grant per
+`authorizedVpcEndpointAccessAccounts` entry. Encryption at rest and
+node-to-node TLS default to ON; the encryption, software-update, and
+off-peak blocks are always sent explicitly so a `false` genuinely turns
+the setting off.
+
 Run the module via the Planton CLI (tofu) using the default local backend.
 
 ```shell

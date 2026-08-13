@@ -84,5 +84,33 @@ variable "spec" {
     auto_minor_version_upgrade = optional(bool)
     allow_major_version_upgrade = optional(bool, false)
     apply_immediately = optional(bool, false)
+    engine_lifecycle_support = optional(string, "")
+    upgrade_storage_config = optional(bool, false)
+    s3_import = optional(object({
+      bucket_name = string
+      bucket_prefix = optional(string, "")
+      ingestion_role = string
+      source_engine = string
+      source_engine_version = string
+    }))
+    iam_roles = optional(list(object({
+      role = string
+      feature_name = string
+    })), [])
+    parameters = optional(list(object({
+      name = string
+      value = string
+      apply_method = optional(string, "")
+    })), [])
+    options = optional(list(object({
+      option_name = string
+      option_settings = optional(list(object({
+        name = string
+        value = string
+      })), [])
+      port = optional(number, 0)
+      version = optional(string, "")
+      vpc_security_group_memberships = optional(list(string), [])
+    })), [])
   })
 }

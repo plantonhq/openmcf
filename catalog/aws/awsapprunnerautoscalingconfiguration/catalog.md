@@ -78,6 +78,8 @@ These are the most important decisions when configuring an auto scaling configur
 
 **Blank dials keep AWS defaults** -- an omitted value records no opinion, so AWS's own default applies and a future AWS default change flows through naturally.
 
+**The account default is claimable** -- `setAsAccountDefault: true` designates this configuration as the account/region default: App Runner services created WITHOUT an explicit `autoScalingConfigurationArn` adopt it. Three truths before claiming: one default exists per account/region (claiming displaces the previous holder), only services created AFTERWARDS are affected, and the claim is one-way at AWS -- destroying the resource never restores the previous default; the designation stays until another configuration claims it. Keep exactly one claimant per account/region; `status.outputs.is_default` confirms the claim.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -93,6 +95,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `configuration_arn` | Revision-carrying ARN of the configuration | App Runner service `autoScalingConfigurationArn` |
 | `configuration_revision` | The revision number this deployment registered | Audit and rollout tracking |
 | `latest` | Whether this revision is the configuration name's latest | Fleet-tuning verification |
+| `is_default` | Whether this configuration holds the account/region default designation | Governance verification of the claimed baseline |
 
 ## Common Patterns
 

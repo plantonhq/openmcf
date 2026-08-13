@@ -65,6 +65,10 @@ func targetHttpProxy(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 	if spec.ProxyBind {
 		args.ProxyBind = pulumi.Bool(true)
 	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
 
 	createdProxy, err := compute.NewTargetHttpProxy(ctx, "target-http-proxy", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))

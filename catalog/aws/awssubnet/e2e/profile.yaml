@@ -7,6 +7,12 @@ spec:
   # prerequisite, resolves the subnet's vpc_id from its outputs, then runs
   # deploy -> DescribeSubnets verify -> destroy -> verify-destroyed on both
   # provisioners against the AWS test account via keyless SSO/OIDC credentials.
+  #
+  # pending_proof: the spec surface deepened (AZ-by-id placement, IPAM
+  # allocation, ipv6_native, four newer route targets, VGW propagation) after
+  # the prior green run, so that proof no longer covers the current surface.
+  # Offline plans and previews passed on both engines, including the IPAM and
+  # ipv6-native arms; the live lanes re-earn the badge.
   tier: 1
   status: green
   validated_provisioners:

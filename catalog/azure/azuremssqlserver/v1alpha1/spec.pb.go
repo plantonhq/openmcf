@@ -1104,7 +1104,7 @@ var File_catalog_azure_azuremssqlserver_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_azure_azuremssqlserver_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/azure/azuremssqlserver/v1alpha1/spec.proto\x12+dev.planton.azure.azuremssqlserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x83!\n" +
+	"2catalog/azure/azuremssqlserver/v1alpha1/spec.proto\x12+dev.planton.azure.azuremssqlserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe7 \n" +
 	"\x14AzureMssqlServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -1112,9 +1112,9 @@ const file_catalog_azure_azuremssqlserver_v1alpha1_spec_proto_rawDesc = "" +
 	"\vserver_name\x18\x03 \x01(\tB-\xbaH*\xc8\x01\x01r%\x10\x01\x18?2\x1f^[0-9a-z]([-0-9a-z]*[0-9a-z])?$R\n" +
 	"serverName\x12~\n" +
 	"\aversion\x18\x04 \x01(\tB_\xbaHT\xba\x01Q\n" +
-	"\x13mssql_version_valid\x12!version must be one of: 2.0, 12.0\x1a\x17this in ['2.0', '12.0']\x8a\xa6\x1d\x0412.0H\x00R\aversion\x88\x01\x01\x12\xdf\x02\n" +
-	"\x13administrator_login\x18\x05 \x01(\tB\xad\x02\xbaH\xa9\x02\xba\x01\xa5\x02\n" +
-	"\x1emssql_admin_login_not_reserved\x12{administrator_login cannot be a reserved name (admin, administrator, sa, root, dbmanager, loginmanager, dbo, guest, public)\x1a\x85\x01this == '' || !(this.lowerAscii() in ['admin', 'administrator', 'sa', 'root', 'dbmanager', 'loginmanager', 'dbo', 'guest', 'public'])R\x12administratorLogin\x12o\n" +
+	"\x13mssql_version_valid\x12!version must be one of: 2.0, 12.0\x1a\x17this in ['2.0', '12.0']\x8a\xa6\x1d\x0412.0H\x00R\aversion\x88\x01\x01\x12\xc3\x02\n" +
+	"\x13administrator_login\x18\x05 \x01(\tB\x91\x02\xbaH\x8d\x02\xba\x01\x89\x02\n" +
+	"\x1emssql_admin_login_not_reserved\x12{administrator_login cannot be a reserved name (admin, administrator, sa, root, dbmanager, loginmanager, dbo, guest, public)\x1ajthis == '' || !this.matches('^(?i)(admin|administrator|sa|root|dbmanager|loginmanager|dbo|guest|public)$')R\x12administratorLogin\x12o\n" +
 	"\x16administrator_password\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x15administratorPassword\x12\x86\x01\n" +
 	"\x15azuread_administrator\x18\a \x01(\v2Q.dev.planton.azure.azuremssqlserver.v1alpha1.AzureMssqlServerAzureadAdministratorR\x14azureadAdministrator\x12a\n" +
 	"\bidentity\x18\b \x01(\v2E.dev.planton.azure.azuremssqlserver.v1alpha1.AzureMssqlServerIdentityR\bidentity\x12\xa1\x01\n" +

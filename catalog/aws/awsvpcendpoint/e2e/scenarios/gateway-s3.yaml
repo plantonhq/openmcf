@@ -3,8 +3,11 @@
 # endpoints: the AwsVpc prerequisite's default_route_table_id output. The
 # shared AwsSubnet fixture deliberately carries no inline routes (its
 # route_table_id output is empty -- it rides the VPC main table), so the VPC's
-# own route-table output is the honest anchor here. Full metadata is supplied
-# for tagging/orphan cleanup.
+# own route-table output is the honest anchor here. The endpoint policy arm
+# (structured IAM document, serialized by both engines) rides this free lane:
+# a read-only S3 policy proving the Struct render path end to end -- the
+# evidence bar is DescribeVpcEndpoints echoing the policy document. Full
+# metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpcEndpoint
 metadata:
@@ -33,3 +36,13 @@ spec:
         kind: AwsVpc
         name: planton-oss-e2e-awsvpc-prereq
         fieldPath: status.outputs.default_route_table_id
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: ReadOnlyThroughEndpoint
+        Effect: Allow
+        Principal: "*"
+        Action:
+          - s3:GetObject
+          - s3:ListBucket
+        Resource: "*"

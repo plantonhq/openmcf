@@ -18,4 +18,5 @@ const (
 	OpZookeeperConnectString                   = "zookeeper_connect_string"
 	OpZookeeperConnectStringTls                = "zookeeper_connect_string_tls"
 	OpConfigurationArn                         = "configuration_arn"
+	OpTopicArns                                = "topic_arns"
 )

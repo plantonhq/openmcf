@@ -6,8 +6,10 @@ spec:
   # Leaf scenario: the policy is a pure control-plane object — create,
   # posture-verify (worker bounds + YARN algorithm), destroy in seconds.
   tier: 1
+  # Live-proven 2026-08-13 on both engines at the total-accounting spec:
+  # minimal scenario (primary bounds + secondary spot burst + YARN
+  # algorithm + explicit deletionPolicy DELETE) x 2 engines, all phases
+  # green under the apply-idempotency gate (~40s per lane).
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

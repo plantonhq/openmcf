@@ -177,4 +177,30 @@ var _ = ginkgo.Describe("GcpCloudSqlUserSpec", func() {
 		r.Kind = "GcpCloudSql"
 		expectInvalid(r, "kind")
 	})
+
+	ginkgo.It("accepts database roles", func() {
+		r := minimalBuiltIn()
+		r.Spec.DatabaseRoles = []string{"cloudsqlsuperuser", "reporting_reader"}
+		expectValid(r)
+	})
+
+	ginkgo.It("rejects duplicate database roles", func() {
+		r := minimalBuiltIn()
+		r.Spec.DatabaseRoles = []string{"cloudsqlsuperuser", "cloudsqlsuperuser"}
+		expectInvalid(r, "database_roles")
+	})
+
+	ginkgo.It("accepts every valid deletion_policy", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			r := minimalBuiltIn()
+			r.Spec.DeletionPolicy = policy
+			expectValid(r)
+		}
+	})
+
+	ginkgo.It("rejects an unknown deletion_policy", func() {
+		r := minimalBuiltIn()
+		r.Spec.DeletionPolicy = "RETAIN"
+		expectInvalid(r, "deletion_policy")
+	})
 })

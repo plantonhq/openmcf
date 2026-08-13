@@ -61,9 +61,20 @@ type GcpManagedSslCertificateSpec struct {
 	// Google-managed certificates. Every domain must have DNS pointing at the
 	// load balancer before the certificate can finish provisioning. Immutable:
 	// changing the list destroys and recreates the certificate.
-	Domains       []string `protobuf:"bytes,4,rep,name=domains,proto3" json:"domains,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Domains []string `protobuf:"bytes,4,rep,name=domains,proto3" json:"domains,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the certificate is deleted (GCP refuses while any
+	//	             proxy still references it, so destroy fails rather
+	//	             than dropping TLS)
+	//	"PREVENT" -- destroy FAILS; a guard rail for a certificate whose
+	//	             replacement is not yet provisioned and serving
+	//	"ABANDON" -- the certificate is removed from management but left
+	//	             in GCP (useful mid-rotation handoff)
+	DeletionPolicy string `protobuf:"bytes,5,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpManagedSslCertificateSpec) Reset() {
@@ -124,11 +135,18 @@ func (x *GcpManagedSslCertificateSpec) GetDomains() []string {
 	return nil
 }
 
+func (x *GcpManagedSslCertificateSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpmanagedsslcertificate_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpmanagedsslcertificate_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/gcp/gcpmanagedsslcertificate/v1alpha1/spec.proto\x121dev.planton.gcp.gcpmanagedsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd6\x05\n" +
+	"8catalog/gcp/gcpmanagedsslcertificate/v1alpha1/spec.proto\x121dev.planton.gcp.gcpmanagedsslcertificate.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x94\a\n" +
 	"\x1cGcpManagedSslCertificateSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x9f\x02\n" +
@@ -136,7 +154,9 @@ const file_catalog_gcp_gcpmanagedsslcertificate_v1alpha1_spec_proto_rawDesc = ""
 	"\x16valid_certificate_name\x12\x8f\x01certificate_name must be RFC1035-compliant: 1-63 lowercase letters, digits, or hyphens; must start with a letter and end with a letter or digit\x1a?this == '' || this.matches('^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$')R\x0fcertificateName\x12*\n" +
 	"\vdescription\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12\xf0\x01\n" +
 	"\adomains\x18\x04 \x03(\tB\xd5\x01\xbaH\xd1\x01\xba\x01\xc6\x01\n" +
-	"\x1avalid_managed_cert_domains\x12Xeach domain must be a fully-qualified domain name (no wildcards) such as app.example.com\x1aNthis.all(d, d.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\\\.)+[a-z]{2,63}\\\\.?$'))\x92\x01\x04\b\x01\x10dR\adomainsB\x98\x03\n" +
+	"\x1avalid_managed_cert_domains\x12Xeach domain must be a fully-qualified domain name (no wildcards) such as app.example.com\x1aNthis.all(d, d.matches('^([a-z0-9]([-a-z0-9]*[a-z0-9])?\\\\.)+[a-z]{2,63}\\\\.?$'))\x92\x01\x04\b\x01\x10dR\adomains\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x05 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\x98\x03\n" +
 	"5com.dev.planton.gcp.gcpmanagedsslcertificate.v1alpha1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/catalog/gcp/gcpmanagedsslcertificate/v1alpha1;gcpmanagedsslcertificatev1alpha1\xa2\x02\x04DPGG\xaa\x021Dev.Planton.Gcp.Gcpmanagedsslcertificate.V1alpha1\xca\x021Dev\\Planton\\Gcp\\Gcpmanagedsslcertificate\\V1alpha1\xe2\x02=Dev\\Planton\\Gcp\\Gcpmanagedsslcertificate\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Gcp::Gcpmanagedsslcertificate::V1alpha1b\x06proto3"
 
 var (

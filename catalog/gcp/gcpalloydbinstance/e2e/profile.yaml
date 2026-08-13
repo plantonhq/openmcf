@@ -5,9 +5,17 @@ metadata:
 spec:
   # Composed scenario: deploys the GcpAlloydbCluster prerequisite (itself on
   # the PSA chain) then creates a read pool instance on it.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate. The gate caught a REAL API truth on first contact: read-pool
+  # availability is DERIVED from node_count (1 = ZONAL, 2+ = REGIONAL) and
+  # the API drops a sent availability_type (the stored object omits the
+  # field — perpetual re-plan diff). The spec now refuses availability_type
+  # on READ_POOL instances; the re-run re-planned clean on both engines.
+  # Offline-proven-only arms: gce_zone (needs a ZONAL PRIMARY/SECONDARY
+  # shape), allocated_ip_range_override (needs a second PSA range fixture),
+  # connection pooling live behavior.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90

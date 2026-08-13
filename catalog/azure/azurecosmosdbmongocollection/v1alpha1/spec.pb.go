@@ -232,7 +232,7 @@ var File_catalog_azure_azurecosmosdbmongocollection_v1alpha1_spec_proto protoref
 
 const file_catalog_azure_azurecosmosdbmongocollection_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	">catalog/azure/azurecosmosdbmongocollection/v1alpha1/spec.proto\x127dev.planton.azure.azurecosmosdbmongocollection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xe0\v\n" +
+	">catalog/azure/azurecosmosdbmongocollection/v1alpha1/spec.proto\x127dev.planton.azure.azurecosmosdbmongocollection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xdf\v\n" +
 	" AzureCosmosdbMongoCollectionSpec\x12\x8f\x01\n" +
 	"\x11mongo_database_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xb6\x10\x92\xd4a status.outputs.mongo_database_idR\x0fmongoDatabaseId\x126\n" +
 	"\x0fcollection_name\x18\x02 \x01(\tB\r\xbaH\n" +
@@ -247,9 +247,9 @@ const file_catalog_azure_azurecosmosdbmongocollection_v1alpha1_spec_proto_rawDes
 	"\x13default_ttl_seconds\x18\x06 \x01(\x05B\x98\x01\xbaH\x94\x01\xba\x01\x90\x01\n" +
 	"\x1dcosmosdb_mongo_coll_ttl_valid\x12Vdefault_ttl_seconds must be -1 (on, no default expiry) or a positive number of seconds\x1a\x17this >= -1 && this != 0H\x02R\x11defaultTtlSeconds\x88\x01\x01\x12K\n" +
 	"\x16analytical_storage_ttl\x18\a \x01(\x05B\x10\xbaH\r\x1a\v(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01H\x03R\x14analyticalStorageTtl\x88\x01\x01\x12t\n" +
-	"\aindexes\x18\b \x03(\v2Z.dev.planton.azure.azurecosmosdbmongocollection.v1alpha1.AzureCosmosdbMongoCollectionIndexR\aindexes:\xf6\x02\xbaH\xf2\x02\x1a\xa3\x01\n" +
-	"\"cosmosdb_mongo_coll_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))\x1a\xc9\x01\n" +
-	"%cosmosdb_mongo_coll_id_index_required\x12]indexes must include an index on the '_id' key -- Azure rejects a Mongo collection without it\x1aAthis.indexes.exists(i, i.keys.exists(k, k.lowerAscii() == '_id'))B\r\n" +
+	"\aindexes\x18\b \x03(\v2Z.dev.planton.azure.azurecosmosdbmongocollection.v1alpha1.AzureCosmosdbMongoCollectionIndexR\aindexes:\xf5\x02\xbaH\xf1\x02\x1a\xa3\x01\n" +
+	"\"cosmosdb_mongo_coll_throughput_xor\x12>throughput and autoscale_max_throughput are mutually exclusive\x1a=!(has(this.throughput) && has(this.autoscale_max_throughput))\x1a\xc8\x01\n" +
+	"%cosmosdb_mongo_coll_id_index_required\x12]indexes must include an index on the '_id' key -- Azure rejects a Mongo collection without it\x1a@this.indexes.exists(i, i.keys.exists(k, k.matches('^(?i)_id$')))B\r\n" +
 	"\v_throughputB\x1b\n" +
 	"\x19_autoscale_max_throughputB\x16\n" +
 	"\x14_default_ttl_secondsB\x19\n" +

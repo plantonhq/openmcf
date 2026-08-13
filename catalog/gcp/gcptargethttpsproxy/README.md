@@ -70,6 +70,7 @@ Traffic Director proxies skip certificates and use `serverTlsPolicy` instead.
 | `proxyName` | Cloud-side name (RFC1035); defaults to `metadata.name`. Immutable |
 | `httpKeepAliveTimeoutSec` | Idle client keep-alive, 5-1200s; `EXTERNAL_MANAGED` only. Immutable |
 | `proxyBind` | Bind to Traffic Director mesh VIPs (`INTERNAL_SELF_MANAGED` only). Immutable |
+| `deletionPolicy` | What destroy does: `DELETE` (default) removes the proxy, `PREVENT` fails the destroy to protect a production TLS frontend, `ABANDON` leaves it serving unmanaged |
 
 ## Stack Outputs
 

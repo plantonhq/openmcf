@@ -33,7 +33,7 @@ func validMinimalSpec() *AwsSagemakerDomain {
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-aaa"}},
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-bbb"}},
 			},
-			DefaultUserSettings: &AwsSagemakerDomainDefaultUserSettings{
+			DefaultUserSettings: &AwsSagemakerDomainUserSettings{
 				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
 					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/SageMakerExecRole"},
 				},
@@ -1089,5 +1089,158 @@ var _ = ginkgo.Describe("AwsSagemakerDomainSpec Validation Tests", func() {
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
+	})
+})
+
+// Coverage for the folded user-profile and space satellites, the idle-settings
+// lifecycle_management switch, and the value-domain promotions.
+var _ = ginkgo.Describe("AwsSagemakerDomain folded satellites and promotions", func() {
+
+	ginkgo.It("accepts a domain with user profiles and a space", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{
+			{UserProfileName: "alice"},
+			{UserProfileName: "bob", UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/BobRole"},
+				},
+			}},
+		}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{
+			{
+				SpaceName:            "team-analytics",
+				DisplayName:          "Team Analytics",
+				OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "alice"},
+				SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Shared"},
+				SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+					AppType: proto.String("JupyterLab"),
+					JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+						DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+						IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(120)},
+					},
+					SpaceStorageSettings: &AwsSagemakerDomainSpaceStorage{EbsVolumeSizeInGb: 50},
+				},
+			},
+		}
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects duplicate user profile names", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{
+			{UserProfileName: "alice"},
+			{UserProfileName: "alice"},
+		}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects duplicate space names", func() {
+		input := validMinimalSpec()
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{
+			{SpaceName: "x"},
+			{SpaceName: "x"},
+		}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid user profile name", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{UserProfileName: "alice_smith"}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a lone SSO identifier without its value", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName:            "alice",
+			SingleSignOnUserIdentifier: "UserName",
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an SSO identifier other than UserName", func() {
+		input := validMinimalSpec()
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName:            "alice",
+			SingleSignOnUserIdentifier: "Email",
+			SingleSignOnUserValue:      "alice@example.com",
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects ownership without sharing settings", func() {
+		input := validMinimalSpec()
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:         "solo",
+			OwnershipSettings: &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "alice"},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a space jupyter server block without a resource spec", func() {
+		input := validMinimalSpec()
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName: "legacy",
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterServerAppSettings: &AwsSagemakerDomainJupyterServerAppSettings{},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a space EBS volume below 5 GB", func() {
+		input := validMinimalSpec()
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName: "small",
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				SpaceStorageSettings: &AwsSagemakerDomainSpaceStorage{EbsVolumeSizeInGb: 4},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts the defined-but-disabled idle settings state", func() {
+		input := validMinimalSpec()
+		input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+			IdleSettings: &AwsSagemakerDomainIdleSettings{
+				LifecycleManagement:     proto.String("DISABLED"),
+				IdleTimeoutInMinutes:    120,
+				MinIdleTimeoutInMinutes: 60,
+				MaxIdleTimeoutInMinutes: 240,
+			},
+		}
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an invalid lifecycle management value", func() {
+		input := validMinimalSpec()
+		input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+			IdleSettings: &AwsSagemakerDomainIdleSettings{
+				LifecycleManagement:     proto.String("PAUSED"),
+				IdleTimeoutInMinutes:    120,
+				MinIdleTimeoutInMinutes: 60,
+				MaxIdleTimeoutInMinutes: 240,
+			},
+		}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a malformed trusted account id", func() {
+		input := validMinimalSpec()
+		input.Spec.DockerSettings = &AwsSagemakerDomainDockerSettings{
+			EnableDockerAccess:     "ENABLED",
+			VpcOnlyTrustedAccounts: []string{"12345"},
+		}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a malformed instance type and accepts system", func() {
+		input := validMinimalSpec()
+		input.Spec.DefaultUserSettings.JupyterServerAppSettings = &AwsSagemakerDomainJupyterServerAppSettings{
+			DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "t3.medium"},
+		}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		input.Spec.DefaultUserSettings.JupyterServerAppSettings.DefaultResourceSpec.InstanceType = "system"
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 	})
 })

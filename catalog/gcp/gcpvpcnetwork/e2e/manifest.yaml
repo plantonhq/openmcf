@@ -9,3 +9,14 @@ spec:
   autoCreateSubnetworks: false
   routingMode: REGIONAL
   description: Application VPC with custom subnets
+
+  # BGP best-path selection: STANDARD unlocks MED comparison across
+  # neighbor ASNs and inter-region cost biasing — the multi-site levers.
+  bgpBestPathSelection:
+    mode: STANDARD
+    alwaysCompareMed: true
+    interRegionCost: ADD_COST_TO_MED
+
+  # DELETE keeps destroys real; PREVENT belongs on the network everything
+  # else depends on.
+  deletionPolicy: DELETE

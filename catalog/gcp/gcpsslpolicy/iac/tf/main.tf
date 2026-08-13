@@ -44,6 +44,13 @@ resource "google_compute_ssl_policy" "this" {
   # pairing); GCP rejects the field on predefined profiles.
   custom_features = length(var.spec.custom_features) > 0 ? var.spec.custom_features : null
 
+  # Post-quantum rollout stance; empty falls through to the API default
+  # (DEFAULT — GCP's own timeline).
+  post_quantum_key_exchange = var.spec.post_quantum_key_exchange != "" ? var.spec.post_quantum_key_exchange : null
+
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 }
 
@@ -62,6 +69,11 @@ resource "google_compute_region_ssl_policy" "this" {
   min_tls_version = local.min_tls_version
 
   custom_features = length(var.spec.custom_features) > 0 ? var.spec.custom_features : null
+
+  post_quantum_key_exchange = var.spec.post_quantum_key_exchange != "" ? var.spec.post_quantum_key_exchange : null
+
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   depends_on = [google_project_service.compute_api]
 }

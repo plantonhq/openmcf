@@ -67,5 +67,40 @@ variable "spec" {
       value = string
     })), [])
     parameter_group_family = optional(string, "")
+    snapshot_schedule_identifier = optional(string, "")
+    usage_limits = optional(list(object({
+      feature_type = string
+      limit_type = string
+      amount = optional(number, 0)
+      period = optional(string, "")
+      breach_action = optional(string, "")
+    })), [])
+    scheduled_actions = optional(list(object({
+      name = string
+      description = optional(string, "")
+      disabled = optional(bool, false)
+      schedule = string
+      start_time = optional(string, "")
+      end_time = optional(string, "")
+      iam_role_arn = string
+      pause_cluster = optional(bool, false)
+      resume_cluster = optional(bool, false)
+      resize_cluster = optional(object({
+        classic = optional(bool, false)
+        cluster_type = optional(string, "")
+        node_type = optional(string, "")
+        number_of_nodes = optional(number, 0)
+      }))
+    })), [])
+    endpoint_accesses = optional(list(object({
+      endpoint_name = string
+      subnet_group_name = optional(string, "")
+      vpc_security_group_ids = optional(list(string), [])
+    })), [])
+    endpoint_authorizations = optional(list(object({
+      account = string
+      vpc_ids = optional(list(string), [])
+      force_delete = optional(bool, false)
+    })), [])
   })
 }

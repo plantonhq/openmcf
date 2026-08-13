@@ -17,6 +17,16 @@ spec:
   # creation runs 25-40 minutes each way per engine). The scenario,
   # prerequisite chain, and verifier are live-ready; flip to green after
   # the first full deploy -> verify -> destroy run on both provisioners.
+  #
+  # Depth closure (2026-08-12): the declared-topics fold (spec.topics ->
+  # aws_msk_topic per entry, topic_arns map output), the cluster_policy
+  # string->Struct conversion, and the Pulumi unauthenticated state-pin
+  # are all OFFLINE-PROVEN on both engines (tofu plan renders 5 resources
+  # incl. two topics + the policy; Pulumi preview arm-for-arm identical).
+  # The live scenario carries a free topics arm (e2e.orders, RF 2). A
+  # reopened lane's first-contact evidence bar: DescribeTopic echoes
+  # name/partitions/RF per engine, and GetClusterPolicy echoes the
+  # serialized document.
   tier: 1
   status: deferred
   validated_provisioners:

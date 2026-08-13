@@ -59,6 +59,38 @@ message AwsSecurityGroupSpec {
   // cross-group (e.g. an app tier referenced by a database tier) so teardown
   // never requires manual rule surgery. Safe to toggle in place.
   bool revoke_rules_on_delete = 6;
+
+  // additional_vpc_ids shares this security group into OTHER VPCs beyond its
+  // home vpc_id, so resources in those VPCs can attach the same group instead
+  // of maintaining copied groups per VPC (one firewall definition, many VPCs).
+  // Each entry must be a different VPC in the same account and region as the
+  // group's own VPC, and must not repeat vpc_id or another entry — AWS rejects
+  // duplicates at apply (entries may be references, so this is not validated
+  // here). Reference AwsVpc vpc_id outputs or pass literal "vpc-..." ids.
+  // Adding or removing an entry associates/disassociates in place; the group
+  // itself is never replaced. Rules referencing security groups from a
+  // DIFFERENT VPC than the one a packet traverses are ignored by AWS in that
+  // VPC — prefer CIDR/prefix-list rules on multi-VPC groups.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef additional_vpc_ids = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // The shared rule message carries both direction fields; each direction
+  // renders only its own (source_* for ingress, destination_* for egress).
+  // A value in the wrong direction would be silently dropped -- guarded
+  // here so dead configuration fails at validation instead.
+  option (buf.validate.message).cel = {
+    id: "ingress_rules_use_source_groups"
+    message: "ingress rules take source_security_group_ids -- destination_security_group_ids applies only to egress rules"
+    expression: "this.ingress.all(r, size(r.destination_security_group_ids) == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "egress_rules_use_destination_groups"
+    message: "egress rules take destination_security_group_ids -- source_security_group_ids applies only to ingress rules"
+    expression: "this.egress.all(r, size(r.source_security_group_ids) == 0)"
+  };
 }
 
 // SecurityGroupRule represents a single inbound or outbound rule in the

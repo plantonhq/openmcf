@@ -36,3 +36,13 @@ spec:
     aggregationInterval: INTERVAL_5_SEC
     flowSampling: 0.5
     metadata: INCLUDE_ALL_METADATA
+
+  # Resource Manager tags for org-policy conditions and IAM scoping
+  # (tagKeys/tagValues IDs, not short names). Changing them REPLACES the
+  # subnetwork — plan tag changes deliberately.
+  resourceManagerTags:
+    tagKeys/281475123456789: tagValues/281476987654321
+
+  # Delete the subnet on destroy (GCP's default, made explicit). GCP rejects
+  # the delete while any VM, connector, or proxy still holds an address here.
+  deletionPolicy: DELETE

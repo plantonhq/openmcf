@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFirestoreIndexSpec defines a composite index on a Firestore
 database — the prerequisite for any query that filters or orders on
 multiple fields (Firestore rejects such queries outright until a
@@ -59,6 +61,17 @@ spec:
 | `spec.fields[].arrayConfig` | `string` |  |  |  |
 | `spec.fields[].vectorConfig` | `GcpFirestoreIndexVectorConfig` |  |  |  |
 | `spec.fields[].vectorConfig.dimension` | `int32` | yes |  |  |
+| `spec.fields[].searchConfig` | `GcpFirestoreIndexSearchConfig` |  |  |  |
+| `spec.fields[].searchConfig.textSpec` | `GcpFirestoreIndexTextSpec` |  |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs` | `[]GcpFirestoreIndexTextIndexSpec` | yes |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs[].indexType` | `string` |  |  |  |
+| `spec.fields[].searchConfig.textSpec.indexSpecs[].matchType` | `string` |  |  |  |
+| `spec.fields[].searchConfig.geoSpec` | `GcpFirestoreIndexGeoSpec` |  |  |  |
+| `spec.fields[].searchConfig.geoSpec.geoJsonIndexingDisabled` | `bool` |  |  |  |
+| `spec.multikey` | `bool` |  |  |  |
+| `spec.unique` | `bool` |  |  |  |
+| `spec.skipWait` | `bool` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -115,9 +128,14 @@ COLLECTION_RECURSIVE: queries against the collection and everything
 Which API surface the index serves.
 ANY_API: Firestore Native queries (the default).
 DATASTORE_MODE_API: Datastore Mode queries.
+MONGODB_COMPATIBLE_API: Firestore Enterprise (MongoDB-compatible)
+  queries — required for multikey and search-config indexes, and
+  only valid on an ENTERPRISE-edition database. Requires
+  query_scope COLLECTION_GROUP explicitly (the API rejects the
+  COLLECTION default for this scope).
 
 - default: `ANY_API`
-- rule: api_scope must be ANY_API or DATASTORE_MODE_API
+- rule: api_scope must be ANY_API, DATASTORE_MODE_API, or MONGODB_COMPATIBLE_API
 
 ### spec.density
 
@@ -138,7 +156,7 @@ inequality/sort fields; a vector field, if any, last). At least one
 field. Firestore appends __name__ automatically.
 
 - rule: {"repeated":{"minItems":"1"}}
-- rule: each field declares exactly one of order, array_config, or vector_config
+- rule: each field declares exactly one of order, array_config, vector_config, or search_config
 
 ### spec.fields[].fieldPath
 
@@ -179,6 +197,104 @@ Dimension of the vectors indexed on this field (the embedding
 model's output size, e.g. 768).
 
 - rule: {"required":true,"int32":{"gte":1}}
+
+### spec.fields[].searchConfig
+
+`GcpFirestoreIndexSearchConfig`
+
+Text or geo search index configuration for the field — the
+Firestore Enterprise search surface. Requires an ENTERPRISE-edition
+database (GcpFirestoreDatabase database_edition: ENTERPRISE); text
+search additionally pairs with api_scope MONGODB_COMPATIBLE_API,
+while geo search works under the default scope. Search and
+non-search fields cannot mix in one index (API-enforced): when any
+field carries search_config, every field must.
+
+- rule: search_config must declare text_spec and/or geo_spec
+
+### spec.fields[].searchConfig.textSpec
+
+`GcpFirestoreIndexTextSpec`
+
+Text search index specification for the field.
+
+### spec.fields[].searchConfig.textSpec.indexSpecs
+
+`[]GcpFirestoreIndexTextIndexSpec` · required
+
+Index specifications; at least one.
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.fields[].searchConfig.textSpec.indexSpecs[].indexType
+
+`string`
+
+How the text field value is indexed (e.g. "TOKENIZED").
+
+### spec.fields[].searchConfig.textSpec.indexSpecs[].matchType
+
+`string`
+
+How the text field value is matched (e.g. "MATCH_GLOBALLY").
+
+### spec.fields[].searchConfig.geoSpec
+
+`GcpFirestoreIndexGeoSpec`
+
+Geo search index specification for the field.
+
+### spec.fields[].searchConfig.geoSpec.geoJsonIndexingDisabled
+
+`bool`
+
+If true, disables GeoJSON indexing for the field (GeoJSON points are
+indexed by default). Firestore GeoPoints are indexed regardless.
+
+### spec.multikey
+
+`bool`
+
+Whether the index is multikey: at most one indexed path may reach or
+traverse an array (MongoDB-style array indexing). Only valid with
+api_scope MONGODB_COMPATIBLE_API. Immutable after creation.
+
+### spec.unique
+
+`bool`
+
+Whether the index enforces uniqueness: all values of the indexed
+field(s) must be unique across documents. Immutable after creation.
+
+### spec.skipWait
+
+`bool`
+
+If true, the deploy returns as soon as index creation is REQUESTED
+instead of waiting for the (potentially long) background build to
+finish. The index serves queries only once the build completes —
+use when orchestrating many indexes and the caller polls readiness
+itself.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the index is deleted
+  "PREVENT" -- destroy FAILS; protects indexes whose rebuild would
+               be expensive on a large collection
+  "ABANDON" -- the index is removed from management but kept
+               serving queries in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+## Validation Rules
+
+- `multikey_requires_mongodb_scope`: multikey indexes require api_scope MONGODB_COMPATIBLE_API
+- `mongodb_scope_requires_collection_group`: api_scope MONGODB_COMPATIBLE_API requires query_scope COLLECTION_GROUP (set it explicitly; the COLLECTION default is rejected by the API)
+- `search_and_non_search_fields_dont_mix`: an index is either a search index (every field carries search_config) or a non-search index (no field does) — the API rejects mixed indexes
 
 ## Outputs
 

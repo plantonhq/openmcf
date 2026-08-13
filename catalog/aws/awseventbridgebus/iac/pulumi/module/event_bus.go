@@ -80,9 +80,57 @@ func eventBus(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error
 		}
 	}
 
+	// Event archives recorded from THIS bus — one archive per spec entry,
+	// keyed by the archive's own name (names are identity: reordering entries
+	// is a no-op and a rename is honestly a new archive). Replay is an
+	// on-demand EventBridge operation (StartReplay), never declarative
+	// configuration. Optional fields are sent only when set — omission keeps
+	// AWS's defaults (retain indefinitely, archive every event, AWS-owned key).
+	createdArchives := make([]*cloudwatch.EventArchive, 0, len(spec.Archives))
+	for _, archive := range spec.Archives {
+		archiveArgs := &cloudwatch.EventArchiveArgs{
+			Name:           pulumi.StringPtr(archive.Name),
+			EventSourceArn: bus.Arn,
+		}
+		if archive.Description != "" {
+			archiveArgs.Description = pulumi.StringPtr(archive.Description)
+		}
+		if archive.RetentionDays != 0 {
+			archiveArgs.RetentionDays = pulumi.IntPtr(int(archive.RetentionDays))
+		}
+		if archive.EventPattern != nil {
+			patternJSON, err := json.Marshal(archive.EventPattern.AsMap())
+			if err != nil {
+				return errors.Wrapf(err, "failed to serialize event pattern for archive %s", archive.Name)
+			}
+			archiveArgs.EventPattern = pulumi.StringPtr(string(patternJSON))
+		}
+		if archive.KmsKeyIdentifier.GetValue() != "" {
+			archiveArgs.KmsKeyIdentifier = pulumi.StringPtr(archive.KmsKeyIdentifier.GetValue())
+		}
+
+		createdArchive, err := cloudwatch.NewEventArchive(ctx, archive.Name, archiveArgs,
+			pulumi.Provider(provider), pulumi.Parent(bus))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create event archive %s", archive.Name)
+		}
+		createdArchives = append(createdArchives, createdArchive)
+	}
+
 	// Export outputs matching AwsEventBridgeBusStackOutputs.
 	ctx.Export(OpBusName, bus.Name)
 	ctx.Export(OpBusArn, bus.Arn)
+
+	// The archives in spec order — each entry's name and the ARN AWS assigned
+	// it, for replay operations (StartReplay) and IAM policies.
+	archiveOutputs := make(pulumi.Array, 0, len(createdArchives))
+	for i, createdArchive := range createdArchives {
+		archiveOutputs = append(archiveOutputs, pulumi.Map{
+			"name": pulumi.String(spec.Archives[i].Name),
+			"arn":  createdArchive.Arn,
+		})
+	}
+	ctx.Export(OpArchives, archiveOutputs)
 
 	return nil
 }

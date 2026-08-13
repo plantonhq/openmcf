@@ -45,12 +45,16 @@ func stream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Encryption -- presence of kms_key_id implies KMS encryption
+	// Encryption -- presence of kms_key_id implies KMS encryption.
+	// encryption_type is ALWAYS sent ("KMS" or "NONE"), matching the
+	// Terraform module's derived always-send rendering check-for-check.
 	// -------------------------------------------------------------------
 
 	if spec.KmsKeyId.GetValue() != "" {
 		args.EncryptionType = pulumi.StringPtr("KMS")
 		args.KmsKeyId = pulumi.StringPtr(spec.KmsKeyId.GetValue())
+	} else {
+		args.EncryptionType = pulumi.StringPtr("NONE")
 	}
 
 	// -------------------------------------------------------------------
@@ -76,12 +80,12 @@ func stream(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 
 	// -------------------------------------------------------------------
-	// Deletion behavior
+	// Deletion behavior -- always sent (state-pinned like the Terraform
+	// module), so a true -> false edit is applied instead of silently
+	// leaving the old value in state.
 	// -------------------------------------------------------------------
 
-	if spec.EnforceConsumerDeletion {
-		args.EnforceConsumerDeletion = pulumi.BoolPtr(true)
-	}
+	args.EnforceConsumerDeletion = pulumi.Bool(spec.EnforceConsumerDeletion)
 
 	// -------------------------------------------------------------------
 	// Create stream

@@ -6,9 +6,16 @@ spec:
   # Minimal scenario: a single-task hello job (~3-5 minutes per engine).
   # Jobs do not hold serverless address reservations after destroy the way
   # direct-VPC services do, so the minimal path is a clean create/destroy.
+  #
+  # The execution tokens (start/run) are LIVE-PROVEN via throwaway applies
+  # (2026-08-11), deliberately not scenario defaults (a token-armed create
+  # runs a REAL execution on every sweep). Measured behavior, both arms:
+  # the execution is created as <jobName>-<token> and surfaces in the
+  # latest_created_execution output; a start-token apply returned when the
+  # execution STARTED (~1m12s), a run-token apply blocked until it
+  # COMPLETED (~2m33s — deploy-and-verify semantics confirmed); destroying
+  # the job with a completed execution removed both cleanly.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

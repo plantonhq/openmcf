@@ -1,0 +1,386 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpmonitoringuptimecheck.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// GcpMonitoringUptimeCheckSpec defines a Cloud Monitoring uptime check —
+// a probe that Google runs against a target (a public URL, a monitored
+// resource, a resource group, or a synthetic-monitor Cloud Function) from
+// multiple regions on a fixed cadence, recording availability and latency
+// as metrics.
+//
+// An uptime check on its own only MEASURES. To be paged when the target
+// goes down, pair it with a GcpMonitoringAlertPolicy whose threshold
+// condition filters on the uptime_check_passed metric and the check's
+// uptime_check_id — the composition edge the `uptime_check_id` stack
+// output exists for.
+//
+// Exactly one TARGET (monitored_resource | resource_group |
+// synthetic_monitor) and exactly one CHECK (http_check | tcp_check) must be
+// configured — mirroring the GCP API's own shape. A synthetic monitor is
+// the exception: it carries its own probe logic, so GCP forbids http_check
+// and tcp_check with it.
+message GcpMonitoringUptimeCheckSpec {
+  // Mirrors the provider's own ExactlyOneOf across the three target arms.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_target"
+    message: "configure exactly one target: monitored_resource (a URL or resource), resource_group, or synthetic_monitor"
+    expression: "[has(this.monitored_resource), has(this.resource_group), has(this.synthetic_monitor)].filter(x, x).size() == 1"
+  };
+  // The GCP API requires exactly one check type — except for synthetic
+  // monitors, which embed their own probe logic in the Cloud Function and
+  // reject both check blocks.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_check"
+    message: "configure exactly one of http_check or tcp_check (omit both only for a synthetic_monitor target)"
+    expression: "has(this.synthetic_monitor) ? (!has(this.http_check) && !has(this.tcp_check)) : [has(this.http_check), has(this.tcp_check)].filter(x, x).size() == 1"
+  };
+
+  // The GCP project that owns the uptime check. Can be a literal project ID
+  // or a reference to a GcpProject resource. If omitted, the provider's
+  // default project is used.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  // Human-friendly name shown in the Cloud Monitoring console. Defaults to
+  // metadata.name when left empty (the GCP API requires a display name).
+  string display_name = 2;
+
+  // Maximum time to wait for the probe to complete before recording a
+  // failure, as a duration in seconds (e.g. "10s"). Must be between 1s and
+  // 60s — the GCP API's own bounds.
+  string timeout = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "valid_timeout"
+      message: "timeout must be a whole-second duration between 1s and 60s, such as 10s or 30s"
+      expression: "this.matches('^([1-9]|[1-5][0-9]|60)s$')"
+    }
+  ];
+
+  // How often the check runs (default 300s). The GCP API accepts only
+  // 60s (1 min), 300s (5 min), 600s (10 min), and 900s (15 min) — the list
+  // the provider documents for this field.
+  string period = 4 [(buf.validate.field).cel = {
+    id: "valid_period"
+    message: "period must be one of: 60s, 300s, 600s, 900s"
+    expression: "this == '' || this in ['60s', '300s', '600s', '900s']"
+  }];
+
+  // Where the probes originate (default STATIC_IP_CHECKERS — Google's
+  // public checker fleet with published static IPs, the right choice for
+  // internet-facing targets). VPC_CHECKERS probes private targets from
+  // inside your VPC (requires a private checker setup and is chosen
+  // automatically by GCP for private targets).
+  string checker_type = 5 [(buf.validate.field).cel = {
+    id: "valid_checker_type"
+    message: "checker_type must be STATIC_IP_CHECKERS or VPC_CHECKERS"
+    expression: "this == '' || this in ['STATIC_IP_CHECKERS', 'VPC_CHECKERS']"
+  }];
+
+  // Regions the check runs from (e.g. USA, EUROPE, SOUTH_AMERICA,
+  // ASIA_PACIFIC, or the finer USA_OREGON/USA_IOWA/USA_VIRGINIA). GCP
+  // requires enough regions to cover at least 3 checker locations; leaving
+  // the list empty runs the check from ALL regions — the recommended
+  // default for availability monitoring.
+  repeated string selected_regions = 6;
+
+  // Whether failed probes are written to Cloud Logging (default false).
+  // Enable it when diagnosing flaky checks — each failure logs the probe's
+  // observed status and latency.
+  bool log_check_failures = 7;
+
+  // A public URL or any monitored resource as the probe target. For the
+  // common "is my site up" case, use type uptime_url with labels host
+  // (e.g. example.com) and project_id.
+  GcpMonitoringUptimeCheckMonitoredResource monitored_resource = 8;
+
+  // A Cloud Monitoring resource GROUP as the probe target — every member
+  // of the group is checked. Groups are created in Cloud Monitoring
+  // (outside this kind); reference one by its group ID.
+  GcpMonitoringUptimeCheckResourceGroup resource_group = 9;
+
+  // A synthetic monitor: GCP invokes the referenced 2nd-gen Cloud Function
+  // on the check cadence, and the function's own assertions decide
+  // pass/fail. The function carries the probe logic, so http_check and
+  // tcp_check are forbidden with this target.
+  GcpMonitoringUptimeCheckSyntheticMonitor synthetic_monitor = 10;
+
+  // HTTP(S) probe configuration — path, port, TLS, auth, expected status
+  // codes.
+  GcpMonitoringUptimeCheckHttpCheck http_check = 11;
+
+  // Plain TCP connect probe — succeeds when the port accepts a connection.
+  GcpMonitoringUptimeCheckTcpCheck tcp_check = 12;
+
+  // Assertions on the response body. All matchers must pass for the probe
+  // to pass. Applies to http_check (response body) and tcp_check (bytes
+  // read); leave empty to assert only on status/connectivity.
+  repeated GcpMonitoringUptimeCheckContentMatcher content_matchers = 13;
+
+  // User labels attached to the uptime check for organizing and identifying
+  // it (maps to the provider's user_labels), merged with Planton's platform
+  // labels (which win on key conflicts).
+  map<string, string> labels = 14;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the uptime check is deleted; alert policies that filter
+  //                on its uptime_check_id stop receiving data
+  //   "PREVENT" -- destroy FAILS; protects production availability
+  //                monitoring from accidental teardown
+  //   "ABANDON" -- the check is removed from management but keeps running
+  //                (and billing) in GCP
+  string deletion_policy = 15 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+}
+
+// A monitored resource as the probe target. The canonical public-URL check:
+//   type: uptime_url
+//   labels: { host: "example.com", project_id: "my-project" }
+// Other useful types: gce_instance (labels: instance_id, zone, project_id),
+// gae_app, aws_ec2_instance, aws_elb_load_balancer, servicedirectory_service.
+message GcpMonitoringUptimeCheckMonitoredResource {
+  // The monitored-resource type (see the message comment for common
+  // values). GCP validates the type and its label schema server-side.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // The labels identifying the concrete resource of that type — which
+  // labels are required depends on the type (uptime_url needs host;
+  // gce_instance needs instance_id and zone; all types accept project_id).
+  map<string, string> labels = 2 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// A Cloud Monitoring resource group as the probe target.
+message GcpMonitoringUptimeCheckResourceGroup {
+  // The group ID (the last segment of the group's resource name
+  // projects/{p}/groups/{group_id}). At least one of group_id or
+  // resource_type must be set — the provider's own constraint.
+  string group_id = 1;
+
+  // What the group's members are: INSTANCE (Compute Engine or AWS EC2) or
+  // AWS_ELB_LOAD_BALANCER.
+  string resource_type = 2 [(buf.validate.field).cel = {
+    id: "valid_resource_type"
+    message: "resource_type must be INSTANCE or AWS_ELB_LOAD_BALANCER"
+    expression: "this == '' || this in ['INSTANCE', 'AWS_ELB_LOAD_BALANCER']"
+  }];
+}
+
+// A synthetic monitor target — a 2nd-gen Cloud Function that GCP invokes on
+// the check cadence; the function's assertions decide pass/fail.
+message GcpMonitoringUptimeCheckSyntheticMonitor {
+  // The fully qualified resource name of the 2nd-gen Cloud Function:
+  //   projects/{project}/locations/{region}/functions/{name}
+  // Can be a literal or a reference to a GcpCloudFunction resource.
+  // Immutable: changing the target function replaces the uptime check.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloud_function = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudFunction,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_id"
+  ];
+}
+
+// HTTP(S) probe configuration.
+message GcpMonitoringUptimeCheckHttpCheck {
+  // The API accepts a custom content type only when content_type opts into
+  // it — and an opted-in check without the custom value has nothing to send.
+  option (buf.validate.message).cel = {
+    id: "custom_content_type_pairing"
+    message: "custom_content_type requires content_type USER_PROVIDED, and USER_PROVIDED requires custom_content_type"
+    expression: "(this.custom_content_type == '') == (this.content_type != 'USER_PROVIDED')"
+  };
+
+  // URL path to probe (default "/"). A missing leading slash is prepended
+  // by GCP.
+  string path = 1;
+
+  // Port to probe. Defaults to 80 without SSL and 443 with SSL. Ports 1024
+  // and below require use_ssl for STATIC_IP_CHECKERS.
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "valid_port"
+    message: "port must be between 1 and 65535 (0 means use the protocol default: 80 for HTTP, 443 for HTTPS)"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // HTTP method (default GET). POST requires a content_type and typically a
+  // body.
+  string request_method = 3 [(buf.validate.field).cel = {
+    id: "valid_request_method"
+    message: "request_method must be GET or POST"
+    expression: "this == '' || this in ['GET', 'POST']"
+  }];
+
+  // Probe over HTTPS instead of HTTP (default false). Required when the
+  // target only serves TLS; also required by GCP for low ports on the
+  // public checker fleet.
+  bool use_ssl = 4;
+
+  // Verify the target's TLS certificate chain (default false). Only
+  // meaningful with use_ssl — GCP ignores it on plain HTTP. Enable it in
+  // production so an expired certificate fails the probe instead of passing
+  // silently.
+  bool validate_ssl = 5;
+
+  // Request body for POST probes, base64-encoded (e.g.
+  // base64("foo=bar") = "Zm9vPWJhcg=="). GCP rejects a body on GET probes.
+  // Setting a body without a content_type fails the API's own validation.
+  string body = 6;
+
+  // How the body is declared in the request's Content-Type header:
+  // URL_ENCODED (application/x-www-form-urlencoded) or USER_PROVIDED (the
+  // custom_content_type value below).
+  string content_type = 7 [(buf.validate.field).cel = {
+    id: "valid_content_type"
+    message: "content_type must be URL_ENCODED or USER_PROVIDED"
+    expression: "this == '' || this in ['URL_ENCODED', 'USER_PROVIDED']"
+  }];
+
+  // The Content-Type header value sent when content_type is USER_PROVIDED
+  // (e.g. "application/json").
+  string custom_content_type = 8;
+
+  // Headers to send with the probe (e.g. a Host header for name-based
+  // virtual hosting, or an API key). At most 100 headers.
+  map<string, string> headers = 9;
+
+  // Hide header values in the console and API responses (default false).
+  // GCP sets this permanently once enabled — turning it back off requires
+  // recreating the check. Enable it whenever headers carry credentials.
+  bool mask_headers = 10;
+
+  // HTTP basic authentication for the probe.
+  GcpMonitoringUptimeCheckHttpAuthInfo auth_info = 11;
+
+  // Authenticate the probe AS the check's Monitoring service agent using an
+  // OIDC identity token — the keyless way to probe endpoints (Cloud Run,
+  // Cloud Functions) that require authenticated invocations.
+  GcpMonitoringUptimeCheckServiceAgentAuth service_agent_authentication = 12;
+
+  // Response status codes that count as SUCCESS. Empty means "2xx only"
+  // (GCP's default). Each entry is a class (e.g. STATUS_CLASS_2XX) or one
+  // exact status_value — useful when a health endpoint deliberately returns
+  // 401/403 to anonymous probes.
+  repeated GcpMonitoringUptimeCheckStatusCode accepted_response_status_codes = 13;
+
+  // Include ICMP pings ahead of the HTTP probe (1-3 pings), recording ping
+  // latency alongside the check result.
+  GcpMonitoringUptimeCheckPingConfig ping_config = 14;
+}
+
+// HTTP basic authentication credentials for the probe.
+message GcpMonitoringUptimeCheckHttpAuthInfo {
+  // Basic-auth username.
+  string username = 1 [(buf.validate.field).required = true];
+
+  // Basic-auth password — a secret: the platform stores it as a
+  // managed-secret reference and resolves it just-in-time at deploy.
+  string password = 2 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// Service-agent (OIDC) authentication for the probe.
+message GcpMonitoringUptimeCheckServiceAgentAuth {
+  // The authentication mechanism. OIDC_TOKEN is the only type GCP currently
+  // supports.
+  string type = 1 [(buf.validate.field).cel = {
+    id: "valid_auth_type"
+    message: "type must be OIDC_TOKEN"
+    expression: "this == '' || this == 'OIDC_TOKEN'"
+  }];
+}
+
+// One accepted response status: a class or one exact value, never both —
+// the API models them as alternatives.
+message GcpMonitoringUptimeCheckStatusCode {
+  option (buf.validate.message).cel = {
+    id: "class_xor_value"
+    message: "set either status_class or status_value, not both"
+    expression: "!(this.status_class != '' && this.status_value != 0)"
+  };
+
+  // A status class: STATUS_CLASS_1XX, STATUS_CLASS_2XX, STATUS_CLASS_3XX,
+  // STATUS_CLASS_4XX, STATUS_CLASS_5XX, or STATUS_CLASS_ANY.
+  string status_class = 1 [(buf.validate.field).cel = {
+    id: "valid_status_class"
+    message: "status_class must be one of: STATUS_CLASS_1XX, STATUS_CLASS_2XX, STATUS_CLASS_3XX, STATUS_CLASS_4XX, STATUS_CLASS_5XX, STATUS_CLASS_ANY"
+    expression: "this == '' || this in ['STATUS_CLASS_1XX', 'STATUS_CLASS_2XX', 'STATUS_CLASS_3XX', 'STATUS_CLASS_4XX', 'STATUS_CLASS_5XX', 'STATUS_CLASS_ANY']"
+  }];
+
+  // One exact HTTP status code (e.g. 401).
+  int32 status_value = 2 [(buf.validate.field).cel = {
+    id: "valid_status_value"
+    message: "status_value must be a valid HTTP status code (100-599)"
+    expression: "this == 0 || (this >= 100 && this <= 599)"
+  }];
+}
+
+// ICMP ping configuration.
+message GcpMonitoringUptimeCheckPingConfig {
+  // Number of ICMP pings to send ahead of the probe (1-3).
+  int32 pings_count = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 3
+  ];
+}
+
+// Plain TCP connect probe.
+message GcpMonitoringUptimeCheckTcpCheck {
+  // Port to connect to. Required — TCP checks have no protocol default.
+  int32 port = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  // Include ICMP pings ahead of the TCP probe (1-3 pings).
+  GcpMonitoringUptimeCheckPingConfig ping_config = 2;
+}
+
+// An assertion on the response content. All matchers must pass for the
+// probe to pass.
+message GcpMonitoringUptimeCheckContentMatcher {
+  // The JSON-path arms are the only ones the sub-matcher applies to — the
+  // provider documents json_path_matcher for exactly those two values.
+  option (buf.validate.message).cel = {
+    id: "json_path_matcher_pairing"
+    message: "json_path_matcher is required with MATCHES_JSON_PATH / NOT_MATCHES_JSON_PATH and forbidden with other matchers"
+    expression: "has(this.json_path_matcher) == (this.matcher in ['MATCHES_JSON_PATH', 'NOT_MATCHES_JSON_PATH'])"
+  };
+
+  // The string, regex, or JSON-path expectation to test the response
+  // against.
+  string content = 1 [(buf.validate.field).required = true];
+
+  // How `content` is interpreted (default CONTAINS_STRING).
+  string matcher = 2 [(buf.validate.field).cel = {
+    id: "valid_matcher"
+    message: "matcher must be one of: CONTAINS_STRING, NOT_CONTAINS_STRING, MATCHES_REGEX, NOT_MATCHES_REGEX, MATCHES_JSON_PATH, NOT_MATCHES_JSON_PATH"
+    expression: "this == '' || this in ['CONTAINS_STRING', 'NOT_CONTAINS_STRING', 'MATCHES_REGEX', 'NOT_MATCHES_REGEX', 'MATCHES_JSON_PATH', 'NOT_MATCHES_JSON_PATH']"
+  }];
+
+  // JSON-path details for the MATCHES_JSON_PATH / NOT_MATCHES_JSON_PATH
+  // matchers.
+  GcpMonitoringUptimeCheckJsonPathMatcher json_path_matcher = 3;
+}
+
+// JSON-path matcher details.
+message GcpMonitoringUptimeCheckJsonPathMatcher {
+  // The JSONPath expression selecting the value to test (e.g.
+  // "$.status" or "$.items[0].state").
+  string json_path = 1 [(buf.validate.field).required = true];
+
+  // How the selected value is compared to `content`: EXACT_MATCH (default)
+  // or REGEX_MATCH.
+  string json_matcher = 2 [(buf.validate.field).cel = {
+    id: "valid_json_matcher"
+    message: "json_matcher must be EXACT_MATCH or REGEX_MATCH"
+    expression: "this == '' || this in ['EXACT_MATCH', 'REGEX_MATCH']"
+  }];
+}

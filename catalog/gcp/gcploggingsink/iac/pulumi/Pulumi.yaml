@@ -1,0 +1,4 @@
+name: gcploggingsink-pulumi-project
+runtime:
+  name: go
+description: Planton GcpLoggingSink Pulumi module

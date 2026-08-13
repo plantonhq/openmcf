@@ -198,7 +198,7 @@ func buildSpaceJupyterLabAppSettings(jl *awssagemakerdomainv1alpha1.AwsSagemaker
 	if idle := jl.IdleSettings; idle != nil {
 		jlArgs.AppLifecycleManagement = &sagemaker.DomainDefaultSpaceSettingsJupyterLabAppSettingsAppLifecycleManagementArgs{
 			IdleSettings: &sagemaker.DomainDefaultSpaceSettingsJupyterLabAppSettingsAppLifecycleManagementIdleSettingsArgs{
-				LifecycleManagement:     pulumi.String("ENABLED"),
+				LifecycleManagement:     pulumi.String(lifecycleManagement(idle)),
 				IdleTimeoutInMinutes:    pulumi.IntPtr(int(idle.IdleTimeoutInMinutes)),
 				MinIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MinIdleTimeoutInMinutes)),
 				MaxIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MaxIdleTimeoutInMinutes)),

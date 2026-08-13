@@ -69,7 +69,9 @@ type AwsRedisElasticacheSpec struct {
 	// is inherited from the primary and must be left empty.
 	Engine string `protobuf:"bytes,2,opt,name=engine,proto3" json:"engine,omitempty"`
 	// Engine version to deploy. Examples: "7.1", "7.0", "6.2" for Redis;
-	// "7.2", "8.0" for Valkey. Leave empty to use the provider default.
+	// "7.2", "8.0" for Valkey. Redis 6+ and Valkey use major.minor ("7.1");
+	// Redis 5 and earlier use full three-part versions ("5.0.6"). Leave empty
+	// to use the provider default.
 	// Must be left empty when joining a global datastore (inherited).
 	EngineVersion string `protobuf:"bytes,3,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
 	// Human-readable description for the replication group. Required by AWS.
@@ -85,7 +87,10 @@ type AwsRedisElasticacheSpec struct {
 	Port *int32 `protobuf:"varint,6,opt,name=port,proto3,oneof" json:"port,omitempty"`
 	// Total number of cache clusters (nodes) in the replication group. This includes
 	// the primary and all read replicas. For example, 3 means 1 primary + 2 replicas.
-	// Range: 1–6 (AWS caps a non-clustered group at 1 primary + 5 replicas).
+	// Range: 1–6 — AWS's CreateReplicationGroup contract caps a non-clustered
+	// group at 1 primary + 5 replicas (the Terraform provider stopped
+	// validating this cap in 6.35.0; the spec deliberately mirrors AWS's
+	// contract, not the provider's looseness).
 	// Mutually exclusive with `num_node_groups`.
 	NumCacheClusters int32 `protobuf:"varint,7,opt,name=num_cache_clusters,json=numCacheClusters,proto3" json:"num_cache_clusters,omitempty"`
 	// Preferred Availability Zones for the cache clusters of a NON-clustered
@@ -99,8 +104,11 @@ type AwsRedisElasticacheSpec struct {
 	// and forbidden when joining a global datastore (the primary defines the
 	// shard layout).
 	NumNodeGroups int32 `protobuf:"varint,9,opt,name=num_node_groups,json=numNodeGroups,proto3" json:"num_node_groups,omitempty"`
-	// Number of read replicas per shard. Range: 0–5. Only valid when
-	// `num_node_groups` is set.
+	// Number of read replicas per shard. Range: 0–5 — AWS's
+	// CreateReplicationGroup contract ("Valid values are 0 to 5"; the
+	// Terraform provider stopped validating the ceiling in 6.35.0 — the spec
+	// deliberately mirrors AWS's contract, not the provider's looseness).
+	// Only valid when `num_node_groups` is set.
 	ReplicasPerNodeGroup int32 `protobuf:"varint,10,opt,name=replicas_per_node_group,json=replicasPerNodeGroup,proto3" json:"replicas_per_node_group,omitempty"`
 	// Per-shard placement for Cluster Mode Enabled — pin each shard's primary
 	// and replicas to specific Availability Zones, control its replica count,
@@ -156,12 +164,21 @@ type AwsRedisElasticacheSpec struct {
 	// clients migrate address families without replacing the cluster.
 	IpDiscovery string `protobuf:"bytes,20,opt,name=ip_discovery,json=ipDiscovery,proto3" json:"ip_discovery,omitempty"`
 	// Enable encryption at rest for data stored on disk and in snapshots.
-	// ForceNew — changing this destroys and recreates the cluster.
-	AtRestEncryptionEnabled bool `protobuf:"varint,21,opt,name=at_rest_encryption_enabled,json=atRestEncryptionEnabled,proto3" json:"at_rest_encryption_enabled,omitempty"`
+	// Presence matters: leave unset to let AWS apply its engine default,
+	// set true/false to pin it explicitly. Must be left UNSET when joining a
+	// global datastore — the setting is inherited from the primary, and the
+	// provider rejects the argument's presence alongside
+	// global_replication_group_id. ForceNew — changing it destroys and
+	// recreates the cluster.
+	AtRestEncryptionEnabled *bool `protobuf:"varint,21,opt,name=at_rest_encryption_enabled,json=atRestEncryptionEnabled,proto3,oneof" json:"at_rest_encryption_enabled,omitempty"`
 	// Enable encryption in transit (TLS) for all client connections and
 	// replication traffic. Strongly recommended for production; required for
-	// AUTH tokens and IAM-authenticated RBAC users.
-	TransitEncryptionEnabled bool `protobuf:"varint,22,opt,name=transit_encryption_enabled,json=transitEncryptionEnabled,proto3" json:"transit_encryption_enabled,omitempty"`
+	// AUTH tokens and IAM-authenticated RBAC users. Presence matters: leave
+	// unset to let AWS apply its default (disabled), set true/false to pin it
+	// explicitly. Must be left UNSET when joining a global datastore — the
+	// setting is inherited from the primary, and the provider rejects the
+	// argument's presence alongside global_replication_group_id.
+	TransitEncryptionEnabled *bool `protobuf:"varint,22,opt,name=transit_encryption_enabled,json=transitEncryptionEnabled,proto3,oneof" json:"transit_encryption_enabled,omitempty"`
 	// TLS enforcement mode. "preferred" allows both TLS and non-TLS connections
 	// (useful during migration); "required" enforces TLS for all connections.
 	// Only valid when `transit_encryption_enabled` is true.
@@ -178,8 +195,10 @@ type AwsRedisElasticacheSpec struct {
 	// How an auth-token CHANGE is applied to the running cluster. Values:
 	// "ROTATE" (old and new tokens both work until the rotation completes —
 	// zero-downtime), "SET" (the new token replaces the old immediately),
-	// "DELETE" (remove the token entirely and turn AUTH off). Only meaningful
-	// alongside `auth_token`.
+	// "DELETE" (remove the token entirely and turn AUTH off — the migration
+	// step from AUTH to RBAC user groups). ROTATE and SET require
+	// `auth_token`; DELETE requires it to be ABSENT (the provider rejects a
+	// token alongside DELETE — you are removing it).
 	AuthTokenUpdateStrategy string `protobuf:"bytes,26,opt,name=auth_token_update_strategy,json=authTokenUpdateStrategy,proto3" json:"auth_token_update_strategy,omitempty"`
 	// RBAC user groups controlling fine-grained access. Each group carries
 	// users with specific command and key permissions
@@ -229,8 +248,12 @@ type AwsRedisElasticacheSpec struct {
 	// SNS topic ARN for cluster event notifications (failover, maintenance,
 	// configuration changes, etc.).
 	NotificationTopicArn *v1.StringValueOrRef `protobuf:"bytes,39,opt,name=notification_topic_arn,json=notificationTopicArn,proto3" json:"notification_topic_arn,omitempty"`
-	// Automatically apply minor engine version upgrades during maintenance windows.
-	AutoMinorVersionUpgrade bool `protobuf:"varint,40,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3" json:"auto_minor_version_upgrade,omitempty"`
+	// Automatically apply minor engine version upgrades during maintenance
+	// windows. AWS enables this by default: leave unset to keep the default,
+	// set false to pin the running minor version explicitly, set true to pin
+	// the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+	// never as false.
+	AutoMinorVersionUpgrade *bool `protobuf:"varint,40,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
 	// Enable data tiering — automatically moves less-frequently-accessed data to
 	// SSD storage for up to 5x more data per node. Only available on r6gd node
 	// types. ForceNew — cannot be changed after creation.
@@ -417,15 +440,15 @@ func (x *AwsRedisElasticacheSpec) GetIpDiscovery() string {
 }
 
 func (x *AwsRedisElasticacheSpec) GetAtRestEncryptionEnabled() bool {
-	if x != nil {
-		return x.AtRestEncryptionEnabled
+	if x != nil && x.AtRestEncryptionEnabled != nil {
+		return *x.AtRestEncryptionEnabled
 	}
 	return false
 }
 
 func (x *AwsRedisElasticacheSpec) GetTransitEncryptionEnabled() bool {
-	if x != nil {
-		return x.TransitEncryptionEnabled
+	if x != nil && x.TransitEncryptionEnabled != nil {
+		return *x.TransitEncryptionEnabled
 	}
 	return false
 }
@@ -550,8 +573,8 @@ func (x *AwsRedisElasticacheSpec) GetNotificationTopicArn() *v1.StringValueOrRef
 }
 
 func (x *AwsRedisElasticacheSpec) GetAutoMinorVersionUpgrade() bool {
-	if x != nil {
-		return x.AutoMinorVersionUpgrade
+	if x != nil && x.AutoMinorVersionUpgrade != nil {
+		return *x.AutoMinorVersionUpgrade
 	}
 	return false
 }
@@ -799,7 +822,7 @@ var File_catalog_aws_awsrediselasticache_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_aws_awsrediselasticache_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsrediselasticache/v1alpha1/spec.proto\x12,dev.planton.aws.awsrediselasticache.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xacM\n" +
+	"3catalog/aws/awsrediselasticache/v1alpha1/spec.proto\x12,dev.planton.aws.awsrediselasticache.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfbQ\n" +
 	"\x17AwsRedisElasticacheSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x16\n" +
 	"\x06engine\x18\x02 \x01(\tR\x06engine\x12%\n" +
@@ -824,9 +847,9 @@ const file_catalog_aws_awsrediselasticache_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11subnet_group_name\x18\x11 \x01(\tR\x0fsubnetGroupName\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\x12 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12!\n" +
 	"\fnetwork_type\x18\x13 \x01(\tR\vnetworkType\x12!\n" +
-	"\fip_discovery\x18\x14 \x01(\tR\vipDiscovery\x12E\n" +
-	"\x1aat_rest_encryption_enabled\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueR\x17atRestEncryptionEnabled\x12F\n" +
-	"\x1atransit_encryption_enabled\x18\x16 \x01(\bB\b\x92\xa6\x1d\x04trueR\x18transitEncryptionEnabled\x126\n" +
+	"\fip_discovery\x18\x14 \x01(\tR\vipDiscovery\x12J\n" +
+	"\x1aat_rest_encryption_enabled\x18\x15 \x01(\bB\b\x92\xa6\x1d\x04trueH\x01R\x17atRestEncryptionEnabled\x88\x01\x01\x12K\n" +
+	"\x1atransit_encryption_enabled\x18\x16 \x01(\bB\b\x92\xa6\x1d\x04trueH\x02R\x18transitEncryptionEnabled\x88\x01\x01\x126\n" +
 	"\x17transit_encryption_mode\x18\x17 \x01(\tR\x15transitEncryptionMode\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\x18 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12W\n" +
@@ -847,12 +870,13 @@ const file_catalog_aws_awsrediselasticache_v1alpha1_spec_proto_rawDesc = "" +
 	"parameters\x120\n" +
 	"\x14parameter_group_name\x18% \x01(\tR\x12parameterGroupName\x12\x92\x01\n" +
 	"\x1blog_delivery_configurations\x18& \x03(\v2R.dev.planton.aws.awsrediselasticache.v1alpha1.AwsRedisElasticacheLogDeliveryConfigR\x19logDeliveryConfigurations\x12\x8b\x01\n" +
-	"\x16notification_topic_arn\x18' \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12;\n" +
-	"\x1aauto_minor_version_upgrade\x18( \x01(\bR\x17autoMinorVersionUpgrade\x120\n" +
+	"\x16notification_topic_arn\x18' \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x14notificationTopicArn\x12@\n" +
+	"\x1aauto_minor_version_upgrade\x18( \x01(\bH\x03R\x17autoMinorVersionUpgrade\x88\x01\x01\x120\n" +
 	"\x14data_tiering_enabled\x18) \x01(\bR\x12dataTieringEnabled\x12!\n" +
-	"\fcluster_mode\x18* \x01(\tR\vclusterMode:\xc55\xbaH\xc15\x1a\xa5\x02\n" +
+	"\fcluster_mode\x18* \x01(\tR\vclusterMode:\xa89\xbaH\xa49\x1a\xa5\x02\n" +
 	"\x1cengine_required_or_inherited\x12\xa3\x01set engine to 'redis' or 'valkey' — or leave it empty only when joining a global datastore (global_replication_group_id), where the primary's engine is inherited\x1a_this.global_replication_group_id != '' ? this.engine == '' : this.engine in ['redis', 'valkey']\x1a\xd5\x01\n" +
-	"$engine_version_inherited_with_global\x12hleave engine_version empty when joining a global datastore — the primary's engine version is inherited\x1aCthis.global_replication_group_id == '' || this.engine_version == ''\x1a\xed\x01\n" +
+	"$engine_version_inherited_with_global\x12hleave engine_version empty when joining a global datastore — the primary's engine version is inherited\x1aCthis.global_replication_group_id == '' || this.engine_version == ''\x1a\xcf\x02\n" +
+	"\x15engine_version_format\x12{engine_version format is invalid — Redis uses '5.0.6'-style below 6, '6.x' or '7.1'-style from 6; Valkey uses '7.2'-style\x1a\xb8\x01this.engine_version == '' || (this.engine == 'valkey' ? this.engine_version.matches('^[7-9]\\\\.[0-9]+$') : this.engine_version.matches('^[1-5](\\\\.[0-9]+){2}$|^6\\\\.x$|^[6-9]\\\\.[0-9]+$'))\x1a\xed\x01\n" +
 	"\x1fnode_type_required_or_inherited\x12\x85\x01node_type is required — unless joining a global datastore (global_replication_group_id), where the primary's node type is inherited\x1aB(this.node_type != '') != (this.global_replication_group_id != '')\x1a\xca\x02\n" +
 	"\x17topology_mode_selection\x12\xab\x01specify either num_cache_clusters (non-clustered) or num_node_groups (clustered), not both and not neither — a global-datastore secondary may set only num_cache_clusters\x1a\x80\x01this.global_replication_group_id != '' ? this.num_node_groups == 0 : (this.num_cache_clusters > 0) != (this.num_node_groups > 0)\x1a\xd3\x01\n" +
 	"\x18num_cache_clusters_range\x12Wnum_cache_clusters must be between 1 and 6 when set (1 primary + up to 5 read replicas)\x1a^this.num_cache_clusters == 0 || (this.num_cache_clusters >= 1 && this.num_cache_clusters <= 6)\x1a\x9a\x01\n" +
@@ -868,20 +892,23 @@ const file_catalog_aws_awsrediselasticache_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19network_type_valid_values\x12=network_type must be 'ipv4', 'ipv6', or 'dual_stack' when set\x1aNthis.network_type == '' || this.network_type in ['ipv4', 'ipv6', 'dual_stack']\x1a\x8d\x01\n" +
 	"\x19ip_discovery_valid_values\x12.ip_discovery must be 'ipv4' or 'ipv6' when set\x1a@this.ip_discovery == '' || this.ip_discovery in ['ipv4', 'ipv6']\x1a\xd8\x01\n" +
 	"\x15auth_mutual_exclusion\x12\x83\x01auth_token and user_group_ids are mutually exclusive; choose one authentication method (user groups are the recommended RBAC model)\x1a9!(has(this.auth_token) && this.user_group_ids.size() > 0)\x1a\xcf\x01\n" +
-	"\x1aauth_strategy_valid_values\x12Hauth_token_update_strategy must be 'ROTATE', 'SET', or 'DELETE' when set\x1agthis.auth_token_update_strategy == '' || this.auth_token_update_strategy in ['ROTATE', 'SET', 'DELETE']\x1a\xc8\x01\n" +
-	"\x1cauth_strategy_requires_token\x12iauth_token_update_strategy only applies alongside auth_token — it controls how a token change rolls out\x1a=this.auth_token_update_strategy == '' || has(this.auth_token)\x1a\xb1\x01\n" +
-	" transit_mode_requires_encryption\x12Ftransit_encryption_mode requires transit_encryption_enabled to be true\x1aEthis.transit_encryption_mode == '' || this.transit_encryption_enabled\x1a\xc0\x01\n" +
+	"\x1aauth_strategy_valid_values\x12Hauth_token_update_strategy must be 'ROTATE', 'SET', or 'DELETE' when set\x1agthis.auth_token_update_strategy == '' || this.auth_token_update_strategy in ['ROTATE', 'SET', 'DELETE']\x1a\x9a\x02\n" +
+	"\x1cauth_strategy_requires_token\x12rauth_token_update_strategy ROTATE/SET require auth_token; DELETE removes AUTH and requires auth_token to be absent\x1a\x85\x01this.auth_token_update_strategy == '' || (this.auth_token_update_strategy == 'DELETE' ? !has(this.auth_token) : has(this.auth_token))\x1a\xe6\x01\n" +
+	" transit_mode_requires_encryption\x12Qtransit_encryption_mode requires transit_encryption_enabled to be explicitly true\x1aothis.transit_encryption_mode == '' || (has(this.transit_encryption_enabled) && this.transit_encryption_enabled)\x1a\xc0\x01\n" +
 	"\x19transit_mode_valid_values\x12Btransit_encryption_mode must be 'preferred' or 'required' when set\x1a_this.transit_encryption_mode == '' || this.transit_encryption_mode in ['preferred', 'required']\x1a\xe7\x01\n" +
 	" restore_sources_mutual_exclusion\x12\x84\x01snapshot_arns and snapshot_name are alternative restore sources — seed from S3 RDB files or from an ElastiCache snapshot, not both\x1a<!(this.snapshot_arns.size() > 0 && this.snapshot_name != '')\x1a\xa1\x02\n" +
-	"\x1drestore_forbidden_with_global\x12\x97\x01a global-datastore secondary receives its data from the primary — snapshot_arns and snapshot_name cannot be combined with global_replication_group_id\x1afthis.global_replication_group_id == '' || (this.snapshot_arns.size() == 0 && this.snapshot_name == '')\x1a\xf0\x02\n" +
-	" encryption_inherited_with_global\x12\xb2\x01a global-datastore secondary inherits encryption from the primary — leave at_rest_encryption_enabled, transit_encryption_enabled, and transit_encryption_mode unset when joining\x1a\x96\x01this.global_replication_group_id == '' || (!this.at_rest_encryption_enabled && !this.transit_encryption_enabled && this.transit_encryption_mode == '')\x1a\xe0\x02\n" +
+	"\x1drestore_forbidden_with_global\x12\x97\x01a global-datastore secondary receives its data from the primary — snapshot_arns and snapshot_name cannot be combined with global_replication_group_id\x1afthis.global_replication_group_id == '' || (this.snapshot_arns.size() == 0 && this.snapshot_name == '')\x1a\xfa\x02\n" +
+	" encryption_inherited_with_global\x12\xb2\x01a global-datastore secondary inherits encryption from the primary — leave at_rest_encryption_enabled, transit_encryption_enabled, and transit_encryption_mode unset when joining\x1a\xa0\x01this.global_replication_group_id == '' || (!has(this.at_rest_encryption_enabled) && !has(this.transit_encryption_enabled) && this.transit_encryption_mode == '')\x1a\xe0\x02\n" +
 	"%parameter_group_inherited_with_global\x12\xa4\x01a global-datastore secondary inherits its parameter group from the primary — leave parameters, parameter_group_family, and parameter_group_name unset when joining\x1a\x8f\x01this.global_replication_group_id == '' || (this.parameters.size() == 0 && this.parameter_group_name == '' && this.parameter_group_family == '')\x1a\xd7\x01\n" +
 	"\x1csubnet_arms_mutual_exclusion\x12xsubnet_ids and subnet_group_name are mutually exclusive — build a subnet group from subnets or bring an existing group\x1a=!(this.subnet_ids.size() > 0 && this.subnet_group_name != '')\x1a\xd5\x01\n" +
 	"\x1fparameter_arms_mutual_exclusion\x12pparameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group\x1a@!(this.parameters.size() > 0 && this.parameter_group_name != '')\x1a\x9e\x01\n" +
 	"\x19parameters_require_family\x12?parameter_group_family is required when parameters are provided\x1a@this.parameters.size() == 0 || this.parameter_group_family != ''\x1a\x8a\x01\n" +
 	"\x14log_delivery_max_two\x12Dat most 2 log delivery configurations are allowed (one per log_type)\x1a,this.log_delivery_configurations.size() <= 2\x1a\x84\x02\n" +
 	"\x19log_delivery_unique_types\x12Xeach log_type (slow-log, engine-log) can only appear once in log_delivery_configurations\x1a\x8c\x01this.log_delivery_configurations.size() <= 1 || this.log_delivery_configurations[0].log_type != this.log_delivery_configurations[1].log_typeB\a\n" +
-	"\x05_port\"\xb9\x02\n" +
+	"\x05_portB\x1d\n" +
+	"\x1b_at_rest_encryption_enabledB\x1d\n" +
+	"\x1b_transit_encryption_enabledB\x1d\n" +
+	"\x1b_auto_minor_version_upgrade\"\xb9\x02\n" +
 	")AwsRedisElasticacheNodeGroupConfiguration\x127\n" +
 	"\rnode_group_id\x18\x01 \x01(\tB\x13\xbaH\x10\xd8\x01\x01r\v2\t^\\d{1,4}$R\vnodeGroupId\x12:\n" +
 	"\x19primary_availability_zone\x18\x02 \x01(\tR\x17primaryAvailabilityZone\x12<\n" +

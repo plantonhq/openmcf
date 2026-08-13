@@ -20,6 +20,7 @@ func initializeLocals(_ *pulumi.Context, stackInput *awsiaminstanceprofilev1alph
 
 	metadata := stackInput.Target.Metadata
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: metadata.Org,
 		awstagkeys.Environment:  metadata.Env,

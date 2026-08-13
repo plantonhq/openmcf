@@ -19,3 +19,10 @@ spec:
   ipVersion: IPV4
 
   description: Static external IP for Cloud NAT in us-central1
+
+  # User labels, merged with the platform labels (the one mutable surface).
+  labels:
+    team: platform
+
+  # Ephemeral test fixture: release the reservation on destroy.
+  deletionPolicy: DELETE

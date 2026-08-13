@@ -1,0 +1,79 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Route 53 is a global service: no consumed resource carries a region
+# argument, and spec.region only selects the provider connection.
+
+resources:
+  aws_route53_zone:
+    mappings:
+      # The spec names the association list for what it does; the provider
+      # block is the bare "vpc". Exact matching resumes below the subtree
+      # (vpc_id, vpc_region).
+      - spec: spec.vpc_associations
+        arg: vpc
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the zone IS its domain name, create-time immutable
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_route53_key_signing_key:
+    # Created when spec.dnssec is set: the KMS-backed key-signing key behind
+    # the zone's signatures.
+    specRoot: spec.dnssec
+    mappings:
+      # The spec names the fields for what they reference/are; the provider
+      # carries API-qualified names.
+      - spec: spec.dnssec.kms_key_arn
+        arg: key_management_service_arn
+      - spec: spec.dnssec.key_signing_key_name
+        arg: name
+      - spec: spec.dnssec.key_signing_key_status
+        arg: status
+    exclusions:
+      - arg: hosted_zone_id
+        reason: wired by the module to the zone it creates -- never user surface
+      # NOTE -- recorded boundary, not an omission: AWS allows a SECOND
+      # concurrent KSK per zone (the zero-downtime rotation pair, per
+      # CreateKeySigningKey's contract). This kind models the one
+      # steady-state KSK; the rotation is performed with AWS tooling and
+      # reconciled here afterwards (documented on the spec field).
+
+  aws_route53_hosted_zone_dnssec:
+    # Created when spec.dnssec is set: flips the zone's signing on, after
+    # the KSK exists.
+    specRoot: spec.dnssec
+    exclusions:
+      - arg: hosted_zone_id
+        reason: wired by the module to the zone it creates -- never user surface
+      - arg: signing_status
+        reason: derived by the module from the dnssec block's presence -- a declared block is a SIGNING zone (NOT_SIGNING-with-KSK-kept is a transitional rotation state, not durable configuration; removing the block tears signing down)
+
+  aws_route53_query_log:
+    # Created when spec.query_logging is set; cloudwatch_log_group_arn
+    # exact-matches under the root.
+    specRoot: spec.query_logging
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone it creates -- never user surface
+
+specExclusions:
+  # Route 53 is global -- no consumed resource takes a region argument; the
+  # field selects the provider connection (and the default vpc_region for
+  # private-zone associations).
+  - field: spec.region
+    reason: provider-connection region for a global service -- no consumed resource carries a region argument
+  # Privateness is defined by the VPC set in the provider's contract (a
+  # zone with vpc blocks IS private); the spec keeps the explicit switch so
+  # validation can gate the public-only features both ways.
+  - field: spec.is_private
+    reason: arm-selection switch -- the provider derives private from the vpc block's presence; the module renders vpc blocks only when set (CEL couples it to vpc_associations both ways)

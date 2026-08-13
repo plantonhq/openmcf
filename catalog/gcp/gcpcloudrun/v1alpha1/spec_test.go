@@ -277,60 +277,52 @@ var _ = Describe("GcpCloudRunSpec validations", func() {
 	Context("Probes", func() {
 		It("accepts an HTTP startup probe", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].StartupProbe = &GcpCloudRunProbe{
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
 				InitialDelaySeconds: proto.Int32(0),
 				PeriodSeconds:       proto.Int32(10),
 				TimeoutSeconds:      proto.Int32(1),
 				FailureThreshold:    proto.Int32(3),
-				Handler:             &GcpCloudRunProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/healthz"}},
+				Handler:             &GcpCloudRunStartupProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/healthz"}},
 			}
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 
 		It("accepts a TCP startup probe", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].StartupProbe = &GcpCloudRunProbe{
-				Handler: &GcpCloudRunProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{Port: proto.Int32(8080)}},
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				Handler: &GcpCloudRunStartupProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{Port: proto.Int32(8080)}},
 			}
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 
 		It("accepts a gRPC liveness probe", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].LivenessProbe = &GcpCloudRunProbe{
-				Handler: &GcpCloudRunProbe_Grpc{Grpc: &GcpCloudRunGrpcAction{Service: "my.Service"}},
+			spec.Containers[0].LivenessProbe = &GcpCloudRunLivenessProbe{
+				Handler: &GcpCloudRunLivenessProbe_Grpc{Grpc: &GcpCloudRunGrpcAction{Service: "my.Service"}},
 			}
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 
-		It("rejects a TCP liveness probe", func() {
-			spec := makeValidSpec()
-			spec.Containers[0].LivenessProbe = &GcpCloudRunProbe{
-				Handler: &GcpCloudRunProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{}},
-			}
-			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
-		})
-
 		It("rejects a probe without a handler", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].StartupProbe = &GcpCloudRunProbe{PeriodSeconds: proto.Int32(10)}
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{PeriodSeconds: proto.Int32(10)}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 
 		It("rejects timeout exceeding period", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].StartupProbe = &GcpCloudRunProbe{
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
 				TimeoutSeconds: proto.Int32(20),
 				PeriodSeconds:  proto.Int32(10),
-				Handler:        &GcpCloudRunProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{}},
+				Handler:        &GcpCloudRunStartupProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{}},
 			}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 
 		It("rejects a probe path not starting with /", func() {
 			spec := makeValidSpec()
-			spec.Containers[0].StartupProbe = &GcpCloudRunProbe{
-				Handler: &GcpCloudRunProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "healthz"}},
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				Handler: &GcpCloudRunStartupProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "healthz"}},
 			}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
@@ -690,6 +682,204 @@ var _ = Describe("GcpCloudRunSpec validations", func() {
 		})
 	})
 
+	Context("Probe bounds at provider truth", func() {
+		It("accepts a liveness probe with delays beyond the startup cap", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].LivenessProbe = &GcpCloudRunLivenessProbe{
+				InitialDelaySeconds: proto.Int32(3600),
+				PeriodSeconds:       proto.Int32(3600),
+				TimeoutSeconds:      proto.Int32(60),
+				Handler:             &GcpCloudRunLivenessProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/livez"}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects a liveness delay above the API ceiling", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].LivenessProbe = &GcpCloudRunLivenessProbe{
+				InitialDelaySeconds: proto.Int32(3601),
+				Handler:             &GcpCloudRunLivenessProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/livez"}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a startup probe delay above 240", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				InitialDelaySeconds: proto.Int32(241),
+				Handler:             &GcpCloudRunStartupProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a startup window exceeding 240 seconds", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				FailureThreshold: proto.Int32(5),
+				PeriodSeconds:    proto.Int32(60),
+				Handler:          &GcpCloudRunStartupProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a startup period whose defaulted threshold exceeds the window", func() {
+			// period=100 with the API default failure_threshold of 3 is a
+			// 300-second window — over the 240 cap even with nothing else set.
+			spec := makeValidSpec()
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				PeriodSeconds: proto.Int32(100),
+				Handler:       &GcpCloudRunStartupProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts a startup window at exactly 240 seconds", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].StartupProbe = &GcpCloudRunStartupProbe{
+				FailureThreshold: proto.Int32(4),
+				PeriodSeconds:    proto.Int32(60),
+				Handler:          &GcpCloudRunStartupProbe_TcpSocket{TcpSocket: &GcpCloudRunTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+	})
+
+	Context("Readiness probe", func() {
+		It("accepts an HTTP readiness probe", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
+				PeriodSeconds:    proto.Int32(10),
+				FailureThreshold: proto.Int32(3),
+				Handler:          &GcpCloudRunReadinessProbe_HttpGet{HttpGet: &GcpCloudRunReadinessHttpGetAction{Path: "/ready"}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts a gRPC readiness probe", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
+				Handler: &GcpCloudRunReadinessProbe_Grpc{Grpc: &GcpCloudRunGrpcAction{Service: "my.Service"}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects a readiness probe without a handler", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{PeriodSeconds: proto.Int32(10)}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects readiness timeout exceeding period", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
+				TimeoutSeconds: proto.Int32(20),
+				PeriodSeconds:  proto.Int32(10),
+				Handler:        &GcpCloudRunReadinessProbe_HttpGet{HttpGet: &GcpCloudRunReadinessHttpGetAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a readiness path not starting with /", func() {
+			spec := makeValidSpec()
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
+				Handler: &GcpCloudRunReadinessProbe_HttpGet{HttpGet: &GcpCloudRunReadinessHttpGetAction{Path: "ready"}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Multi-region", func() {
+		It("accepts multi-region settings with the global region", func() {
+			spec := makeValidSpec()
+			spec.Region = "global"
+			spec.MultiRegionSettings = &GcpCloudRunMultiRegionSettings{
+				Regions: []string{"us-central1", "europe-west1"},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects multi-region settings on a regional service", func() {
+			spec := makeValidSpec()
+			spec.MultiRegionSettings = &GcpCloudRunMultiRegionSettings{
+				Regions: []string{"us-central1"},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects multi-region settings with no regions", func() {
+			spec := makeValidSpec()
+			spec.Region = "global"
+			spec.MultiRegionSettings = &GcpCloudRunMultiRegionSettings{}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects an invalid region inside the multi-region list", func() {
+			spec := makeValidSpec()
+			spec.Region = "global"
+			spec.MultiRegionSettings = &GcpCloudRunMultiRegionSettings{
+				Regions: []string{"us-central1-a"},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Build config (deploy from source)", func() {
+		It("accepts a source build configuration", func() {
+			spec := makeValidSpec()
+			spec.BuildConfig = &GcpCloudRunBuildConfig{
+				SourceLocation:         "gs://my-bucket/source.zip",
+				FunctionTarget:         "handler",
+				ImageUri:               "us-docker.pkg.dev/p/r/built",
+				BaseImage:              "us-central1-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/nodejs24",
+				EnableAutomaticUpdates: true,
+				EnvironmentVariables:   map[string]string{"BUILD_FLAVOR": "release"},
+				ServiceAccount:         "projects/my-gcp-project/serviceAccounts/builder@my-gcp-project.iam.gserviceaccount.com",
+			}
+			spec.Containers[0].BaseImageUri = "us-central1-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/nodejs24"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+	})
+
+	Context("Deletion policy", func() {
+		It("accepts each documented value", func() {
+			for _, p := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+				spec := makeValidSpec()
+				spec.DeletionPolicy = p
+				Expect(protovalidate.Validate(spec)).To(BeNil(), "deletion_policy=%s", p)
+			}
+		})
+
+		It("rejects an unknown value", func() {
+			spec := makeValidSpec()
+			spec.DeletionPolicy = "KEEP"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Metadata and mount refinements", func() {
+		It("accepts service and revision annotations and labels", func() {
+			spec := makeValidSpec()
+			spec.Annotations = map[string]string{"external-tool/owner": "team-a"}
+			spec.RevisionLabels = map[string]string{"cost-center": "1234"}
+			spec.RevisionAnnotations = map[string]string{"external-tool/trace": "on"}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts a volume mount with a sub_path", func() {
+			spec := makeValidSpec()
+			spec.Volumes = []*GcpCloudRunVolume{{
+				Name: "assets",
+				Source: &GcpCloudRunVolume_Gcs{Gcs: &GcpCloudRunVolumeGcs{
+					Bucket:       strRef("GcpGcsBucket", "my-bucket"),
+					ReadOnly:     true,
+					MountOptions: []string{"implicit-dirs", "only-dir=media"},
+				}},
+			}}
+			spec.Containers[0].VolumeMounts = []*GcpCloudRunVolumeMount{{Name: "assets", MountPath: "/media", SubPath: "static"}}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+	})
+
 	Context("Full production spec", func() {
 		It("accepts a fully populated spec", func() {
 			spec := &GcpCloudRunSpec{
@@ -714,12 +904,12 @@ var _ = Describe("GcpCloudRunSpec validations", func() {
 							StartupCpuBoost: true,
 						},
 						VolumeMounts: []*GcpCloudRunVolumeMount{{Name: "cloudsql", MountPath: "/cloudsql"}},
-						StartupProbe: &GcpCloudRunProbe{
+						StartupProbe: &GcpCloudRunStartupProbe{
 							PeriodSeconds: proto.Int32(5),
-							Handler:       &GcpCloudRunProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/healthz"}},
+							Handler:       &GcpCloudRunStartupProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/healthz"}},
 						},
-						LivenessProbe: &GcpCloudRunProbe{
-							Handler: &GcpCloudRunProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/livez"}},
+						LivenessProbe: &GcpCloudRunLivenessProbe{
+							Handler: &GcpCloudRunLivenessProbe_HttpGet{HttpGet: &GcpCloudRunHttpGetAction{Path: "/livez"}},
 						},
 					},
 				},
@@ -748,7 +938,18 @@ var _ = Describe("GcpCloudRunSpec validations", func() {
 					Type:    "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
 					Percent: proto.Int32(100),
 				}},
-				DeletionProtection: proto.Bool(false),
+				DeletionProtection:  proto.Bool(false),
+				Annotations:         map[string]string{"external-tool/owner": "team-a"},
+				RevisionLabels:      map[string]string{"cost-center": "1234"},
+				RevisionAnnotations: map[string]string{"external-tool/trace": "on"},
+				IapEnabled:          false,
+				DefaultUriDisabled:  true,
+				HealthCheckDisabled: false,
+				DeletionPolicy:      "DELETE",
+			}
+			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
+				PeriodSeconds: proto.Int32(10),
+				Handler:       &GcpCloudRunReadinessProbe_HttpGet{HttpGet: &GcpCloudRunReadinessHttpGetAction{Path: "/ready"}},
 			}
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})

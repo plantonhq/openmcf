@@ -45,6 +45,55 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 		oacIds[o.OriginId] = oac.ID()
 	}
 
+	// The continuous-deployment policy this (primary) distribution owns:
+	// routes a weighted or header-selected slice of production traffic to a
+	// STAGING distribution (one deployed with staging: true, addressed by
+	// its CloudFront domain name). CEL guarantees exactly one routing arm,
+	// so the provider's required type discriminator is derived from arm
+	// presence.
+	var cdPolicy *cloudfront.ContinuousDeploymentPolicy
+	if cd := spec.ContinuousDeployment; cd != nil {
+		stagingDnsNames := make([]string, 0, len(cd.StagingDistributionDnsNames))
+		for _, ref := range cd.StagingDistributionDnsNames {
+			stagingDnsNames = append(stagingDnsNames, ref.GetValue())
+		}
+
+		trafficConfig := &cloudfront.ContinuousDeploymentPolicyTrafficConfigArgs{}
+		if cd.SingleWeight != nil {
+			trafficConfig.Type = pulumi.String("SingleWeight")
+			weightArgs := &cloudfront.ContinuousDeploymentPolicyTrafficConfigSingleWeightConfigArgs{
+				Weight: pulumi.Float64(float64(cd.SingleWeight.Weight)),
+			}
+			if ss := cd.SingleWeight.SessionStickiness; ss != nil {
+				weightArgs.SessionStickinessConfig = &cloudfront.ContinuousDeploymentPolicyTrafficConfigSingleWeightConfigSessionStickinessConfigArgs{
+					IdleTtl:    pulumi.Int(int(ss.IdleTtlSeconds)),
+					MaximumTtl: pulumi.Int(int(ss.MaximumTtlSeconds)),
+				}
+			}
+			trafficConfig.SingleWeightConfig = weightArgs
+		} else {
+			trafficConfig.Type = pulumi.String("SingleHeader")
+			trafficConfig.SingleHeaderConfig = &cloudfront.ContinuousDeploymentPolicyTrafficConfigSingleHeaderConfigArgs{
+				Header: pulumi.String(cd.SingleHeader.Header),
+				Value:  pulumi.String(cd.SingleHeader.Value),
+			}
+		}
+
+		var err error
+		cdPolicy, err = cloudfront.NewContinuousDeploymentPolicy(ctx, meta.Name,
+			&cloudfront.ContinuousDeploymentPolicyArgs{
+				Enabled: pulumi.Bool(cd.GetEnabled()),
+				StagingDistributionDnsNames: &cloudfront.ContinuousDeploymentPolicyStagingDistributionDnsNamesArgs{
+					Items:    pulumi.ToStringArray(stagingDnsNames),
+					Quantity: pulumi.Int(len(stagingDnsNames)),
+				},
+				TrafficConfig: trafficConfig,
+			}, pulumi.Provider(provider))
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create continuous deployment policy")
+		}
+	}
+
 	// --- Origins ----------------------------------------------------------
 	// Exactly one origin-type block renders per origin (CEL enforces the arm
 	// exclusivity). An origin with no arm at all is a plain public S3 REST
@@ -65,6 +114,11 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 		if o.ConnectionTimeoutSeconds != 0 {
 			originArgs.ConnectionTimeout = pulumi.Int(int(o.ConnectionTimeoutSeconds))
 		}
+		// Zero leaves the completion cap unenforced (the AWS default). AWS
+		// requires the cap to be >= the origin read timeout.
+		if o.ResponseCompletionTimeoutSeconds != 0 {
+			originArgs.ResponseCompletionTimeout = pulumi.Int(int(o.ResponseCompletionTimeoutSeconds))
+		}
 
 		if len(o.CustomHeaders) > 0 {
 			var headers cloudfront.DistributionOriginCustomHeaderArray
@@ -84,19 +138,24 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 			}
 		}
 
+		// The OAC attaches at the origin level and works with any origin
+		// type (S3, Lambda URL, MediaPackage v2, MediaStore): either the
+		// s3-type one this module created for the origin, or an existing
+		// one attached by ID (CEL keeps the two exclusive).
+		if oacId, created := oacIds[o.OriginId]; created {
+			originArgs.OriginAccessControlId = oacId
+		} else if o.OriginAccessControlId != "" {
+			originArgs.OriginAccessControlId = pulumi.String(o.OriginAccessControlId)
+		}
+
 		switch {
 		case o.S3Origin != nil:
-			// The OAC attaches at the origin level: either the one this
-			// module created for the origin, or an externally shared one by
-			// ID. The legacy OAI path is only for buckets already wired to
-			// an existing identity -- this module never creates one (OAC
+			// The legacy OAI path is only for buckets already wired to an
+			// existing identity -- this module never creates one (OAC
 			// supersedes it). A bare s3_origin with no access arm renders
-			// the empty identity, the provider's public-bucket shape.
-			if oacId, created := oacIds[o.OriginId]; created {
-				originArgs.OriginAccessControlId = oacId
-			} else if o.S3Origin.OriginAccessControlId != "" {
-				originArgs.OriginAccessControlId = pulumi.String(o.S3Origin.OriginAccessControlId)
-			} else {
+			// the empty identity, the provider's public-bucket shape. An
+			// origin served through an OAC skips the block entirely.
+			if _, created := oacIds[o.OriginId]; !created && o.OriginAccessControlId == "" {
 				originArgs.S3OriginConfig = &cloudfront.DistributionOriginS3OriginConfigArgs{
 					OriginAccessIdentity: pulumi.String(o.S3Origin.OriginAccessIdentity),
 				}
@@ -126,6 +185,18 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 			if o.CustomOrigin.ReadTimeoutSeconds != 0 {
 				customArgs.OriginReadTimeout = pulumi.Int(int(o.CustomOrigin.ReadTimeoutSeconds))
 			}
+			// Empty keeps ipv4 (the AWS default).
+			if o.CustomOrigin.IpAddressType != "" {
+				customArgs.IpAddressType = pulumi.String(o.CustomOrigin.IpAddressType)
+			}
+			// Origin-side mTLS: CloudFront presents this ACM client
+			// certificate (us-east-1) to the origin, so only CloudFront
+			// can reach the backend.
+			if o.CustomOrigin.GetMtlsClientCertificateArn().GetValue() != "" {
+				customArgs.OriginMtlsConfig = &cloudfront.DistributionOriginCustomOriginConfigOriginMtlsConfigArgs{
+					ClientCertificateArn: pulumi.String(o.CustomOrigin.GetMtlsClientCertificateArn().GetValue()),
+				}
+			}
 			originArgs.CustomOriginConfig = customArgs
 
 		case o.VpcOrigin != nil:
@@ -138,12 +209,19 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 			if o.VpcOrigin.ReadTimeoutSeconds != 0 {
 				vpcArgs.OriginReadTimeout = pulumi.Int(int(o.VpcOrigin.ReadTimeoutSeconds))
 			}
+			// Empty means the VPC origin belongs to this account.
+			if o.VpcOrigin.OwnerAccountId != "" {
+				vpcArgs.OwnerAccountId = pulumi.String(o.VpcOrigin.OwnerAccountId)
+			}
 			originArgs.VpcOriginConfig = vpcArgs
 
 		default:
-			// No arm: a plain public S3 REST origin.
-			originArgs.S3OriginConfig = &cloudfront.DistributionOriginS3OriginConfigArgs{
-				OriginAccessIdentity: pulumi.String(""),
+			// No arm: a plain public S3 REST origin (unless an existing OAC
+			// was attached above).
+			if o.OriginAccessControlId == "" {
+				originArgs.S3OriginConfig = &cloudfront.DistributionOriginS3OriginConfigArgs{
+					OriginAccessIdentity: pulumi.String(""),
+				}
 			}
 		}
 
@@ -210,6 +288,63 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 		args.OriginGroups = originGroups
 	}
 
+	// Changing the staging flag REPLACES the distribution (AWS makes it
+	// immutable after create).
+	args.Staging = pulumi.Bool(spec.Staging)
+
+	// Either the policy this resource created (the continuous_deployment
+	// block) or an externally managed one by ID -- CEL keeps the arms
+	// exclusive.
+	if cdPolicy != nil {
+		args.ContinuousDeploymentPolicyId = cdPolicy.ID()
+	} else if spec.ContinuousDeploymentPolicyId != "" {
+		args.ContinuousDeploymentPolicyId = pulumi.String(spec.ContinuousDeploymentPolicyId)
+	}
+
+	// Dedicated static edge IPs -- the list must already be provisioned in
+	// the account (a paid feature).
+	if spec.AnycastIpListId != "" {
+		args.AnycastIpListId = pulumi.String(spec.AnycastIpListId)
+	}
+
+	// Tag-based invalidation: origin responses label objects via this
+	// header; invalidations by tag purge every object carrying the label.
+	// Verbatim pass-through: AWS stores the name LOWERCASED and the
+	// provider does not case-suppress, so a mixed-case value would
+	// re-plan forever -- the spec's format rule enforces lowercase
+	// upstream.
+	if spec.CacheTagHeaderName != "" {
+		args.CacheTagConfig = &cloudfront.DistributionCacheTagConfigArgs{
+			HeaderName: pulumi.String(spec.CacheTagHeaderName),
+		}
+	}
+
+	// A connection function runs at TCP establishment, before any HTTP
+	// parsing -- the earliest programmable point in the request path.
+	if spec.ConnectionFunctionId != "" {
+		args.ConnectionFunctionAssociation = &cloudfront.DistributionConnectionFunctionAssociationArgs{
+			Id: pulumi.String(spec.ConnectionFunctionId),
+		}
+	}
+
+	// Viewer-side mutual TLS: client certificates validated against a
+	// CloudFront trust store ("passthrough" forwards them unvalidated, so
+	// it renders without the trust-store wrapper).
+	if vm := spec.ViewerMtls; vm != nil {
+		mtlsArgs := &cloudfront.DistributionViewerMtlsConfigArgs{}
+		if vm.Mode != "" {
+			mtlsArgs.Mode = pulumi.String(vm.Mode)
+		}
+		if vm.TrustStoreId != "" {
+			mtlsArgs.TrustStoreConfig = &cloudfront.DistributionViewerMtlsConfigTrustStoreConfigArgs{
+				TrustStoreId:               pulumi.String(vm.TrustStoreId),
+				AdvertiseTrustStoreCaNames: pulumi.Bool(vm.AdvertiseTrustStoreCaNames),
+				IgnoreCertificateExpiry:    pulumi.Bool(vm.IgnoreCertificateExpiry),
+			}
+		}
+		args.ViewerMtlsConfig = mtlsArgs
+	}
+
 	// Ordered behaviors are evaluated in list order before the default --
 	// first match wins.
 	if len(spec.OrderedCacheBehaviors) > 0 {
@@ -240,10 +375,15 @@ func createDistribution(ctx *pulumi.Context, locals *Locals, provider *aws.Provi
 		args.CustomErrorResponses = errorResponses
 	}
 
+	// An empty bucket keeps v1 log DELIVERY off while still recording the
+	// cookie preference -- the transition shape for distributions moving to
+	// v2 (CloudWatch-delivered) access logs.
 	if spec.Logging != nil {
 		loggingArgs := &cloudfront.DistributionLoggingConfigArgs{
-			Bucket:         pulumi.String(spec.Logging.Bucket),
 			IncludeCookies: pulumi.Bool(spec.Logging.IncludeCookies),
+		}
+		if spec.Logging.Bucket != "" {
+			loggingArgs.Bucket = pulumi.String(spec.Logging.Bucket)
 		}
 		if spec.Logging.Prefix != "" {
 			loggingArgs.Prefix = pulumi.String(spec.Logging.Prefix)

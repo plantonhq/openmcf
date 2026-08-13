@@ -384,4 +384,153 @@ var _ = ginkgo.Describe("AwsEcsTaskDefinitionSpec Validation Tests", func() {
 			})
 		})
 	})
+
+	ginkgo.Describe("namespace sharing and placement", func() {
+		// An EC2-only definition -- the launch environment where ipc/pid
+		// modes and placement constraints are legal.
+		ec2Only := func() *AwsEcsTaskDefinition {
+			input := minimalValidTaskDefinition()
+			input.Spec.RequiresCompatibilities = []string{"EC2"}
+			input.Spec.NetworkMode = "bridge"
+			return input
+		}
+
+		ginkgo.It("should accept ipc and pid modes on an EC2 definition", func() {
+			input := ec2Only()
+			input.Spec.IpcMode = "task"
+			input.Spec.PidMode = "host"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid ipc_mode", func() {
+			input := ec2Only()
+			input.Spec.IpcMode = "shared"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject ipc_mode on a Fargate definition", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.IpcMode = "task"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept pid_mode 'task' on Fargate and reject 'host'", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.PidMode = "task"
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			input.Spec.PidMode = "host"
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a memberOf placement constraint on EC2", func() {
+			input := ec2Only()
+			input.Spec.PlacementConstraints = []*AwsEcsTaskDefinitionPlacementConstraint{{
+				Type:       "memberOf",
+				Expression: "attribute:ecs.instance-type =~ m5.*",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject placement constraints on Fargate", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.PlacementConstraints = []*AwsEcsTaskDefinitionPlacementConstraint{{
+				Type:       "memberOf",
+				Expression: "attribute:ecs.instance-type =~ m5.*",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a constraint without an expression", func() {
+			input := ec2Only()
+			input.Spec.PlacementConstraints = []*AwsEcsTaskDefinitionPlacementConstraint{{
+				Type: "memberOf",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("fault injection and compatibilities", func() {
+		ginkgo.It("should accept enable_fault_injection", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.EnableFaultInjection = true
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the MANAGED_INSTANCES compatibility", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.RequiresCompatibilities = []string{"MANAGED_INSTANCES"}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("volume backings", func() {
+		ginkgo.It("should accept a configure_at_launch volume with no backing", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name:              "data",
+				ConfigureAtLaunch: true,
+			}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a configure_at_launch volume that also declares a backing", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name:              "data",
+				ConfigureAtLaunch: true,
+				Efs: &AwsEcsTaskDefinitionEfsVolume{
+					FileSystemId: literalRef("fs-0123456789abcdef0"),
+				},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject two backings on one volume", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name:     "data",
+				HostPath: "/mnt/data",
+				Docker: &AwsEcsTaskDefinitionDockerVolume{
+					Scope: "task",
+				},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an s3files volume", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name: "models",
+				S3Files: &AwsEcsTaskDefinitionS3FilesVolume{
+					FileSystemArn: literalRef("arn:aws:s3:::model-artifacts"),
+					RootDirectory: "/models",
+				},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a docker volume autoprovisioning at task scope", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name: "cache",
+				Docker: &AwsEcsTaskDefinitionDockerVolume{
+					Autoprovision: true,
+					Scope:         "task",
+				},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an out-of-range EFS transit encryption port", func() {
+			input := minimalValidTaskDefinition()
+			input.Spec.Volumes = []*AwsEcsTaskDefinitionVolume{{
+				Name: "shared",
+				Efs: &AwsEcsTaskDefinitionEfsVolume{
+					FileSystemId:          literalRef("fs-0123456789abcdef0"),
+					TransitEncryptionPort: 70000,
+				},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+	})
 })

@@ -84,7 +84,8 @@ variable "spec" {
       zone = optional(string, "")
     }), null)
 
-    # Weekly maintenance window (1h, UTC).
+    # Weekly maintenance window (1h, UTC; starts on the hour — the API
+    # supports no finer granularity).
     maintenance_policy = optional(object({
       weekly_maintenance_window = object({
         day  = string
@@ -131,7 +132,30 @@ variable "spec" {
     # middleware materializes the default), and the module sends it
     # explicitly so destroy behavior is identical on both engines.
     deletion_protection_enabled = optional(bool, true)
+
+    # Which CA signs the server certificate for the TLS-enabled instance.
+    # Empty rides GCP's default (GOOGLE_MANAGED_PER_INSTANCE_CA).
+    # Immutable (ForceNew).
+    server_ca_mode = optional(string, "")
+
+    # Certificate Authority Service CA pool, consumed only when
+    # server_ca_mode is CUSTOMER_MANAGED_CAS_CA. Immutable (ForceNew).
+    server_ca_pool = optional(string, "")
+
+    # Self-service maintenance version — set to a newer available version
+    # to apply maintenance on your schedule instead of GCP's rollout.
+    # Update-only; downgrades are rejected.
+    maintenance_version = optional(string, "")
+
+    # Deletion policy: "", "DELETE" (default), "PREVENT" (destroy fails),
+    # or "ABANDON" (remove from management, leave running in GCP).
+    deletion_policy = optional(string, "")
   })
+
+  validation {
+    condition     = contains(["", "DELETE", "PREVENT", "ABANDON"], var.spec.deletion_policy)
+    error_message = "deletion_policy must be one of: DELETE, PREVENT, ABANDON."
+  }
 
   validation {
     condition     = var.spec.instance_name != ""

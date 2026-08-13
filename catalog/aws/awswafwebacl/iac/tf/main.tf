@@ -203,4 +203,49 @@ resource "aws_wafv2_web_acl_logging_configuration" "this" {
       query_string {}
     }
   }
+
+  dynamic "redacted_fields" {
+    for_each = var.spec.logging.redact_method ? [1] : []
+    content {
+      method {}
+    }
+  }
+
+  # Log filtering: keep or drop records by the action WAF applied or by
+  # labels on the request. Each spec condition carries exactly one of
+  # action / label_name (spec CEL), so each renders as a one-armed
+  # condition block.
+  dynamic "logging_filter" {
+    for_each = var.spec.logging.filter != null ? [var.spec.logging.filter] : []
+    content {
+      default_behavior = logging_filter.value.default_behavior
+
+      dynamic "filter" {
+        for_each = logging_filter.value.filters
+        content {
+          behavior    = filter.value.behavior
+          requirement = filter.value.requirement
+
+          dynamic "condition" {
+            for_each = filter.value.conditions
+            content {
+              dynamic "action_condition" {
+                for_each = condition.value.action != "" ? [condition.value.action] : []
+                content {
+                  action = action_condition.value
+                }
+              }
+
+              dynamic "label_name_condition" {
+                for_each = condition.value.label_name != "" ? [condition.value.label_name] : []
+                content {
+                  label_name = label_name_condition.value
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }

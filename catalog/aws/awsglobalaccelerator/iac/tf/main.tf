@@ -98,9 +98,12 @@ resource "aws_globalaccelerator_endpoint_group" "this" {
     content {
       endpoint_id = endpoint_configuration.value.endpoint_id
 
-      # null lets AWS assign the default weight (128); an explicit 0 stops
-      # routing to the endpoint without removing it.
-      weight = endpoint_configuration.value.weight
+      # AWS's documented default weight is 128, but the provider has no
+      # default of its own and SDKv2 materializes an omitted weight as 0 —
+      # which is the "route no traffic" value, silently draining the
+      # endpoint. The module therefore materializes 128 itself; an explicit
+      # 0 still stops routing to the endpoint without removing it.
+      weight = coalesce(endpoint_configuration.value.weight, 128)
 
       # Tri-state: null lets AWS apply its per-endpoint-type default; an
       # explicit value pins it. Only meaningful for ALB and EC2 endpoints.

@@ -38,8 +38,9 @@ const (
 //
 // The same kind serves both Application and Network Load Balancers, exactly as
 // AWS models it: the protocol decides the family (HTTP/HTTPS for ALB;
-// TCP/UDP/TCP_UDP/TLS for NLB), and the family decides which tuning fields
-// apply. Field comments call out the scope of every family-specific field.
+// TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC for NLB), and the family decides which
+// tuning fields apply. Field comments call out the scope of every
+// family-specific field.
 // Gateway Load Balancer (GENEVE) target groups are deliberately not modeled --
 // there is no gateway load balancer kind to compose them with.
 //
@@ -82,10 +83,13 @@ type AwsLbTargetGroupSpec struct {
 	// The protocol used between the load balancer and the targets. Decides the
 	// load balancer family this group can attach to. Immutable.
 	// - ALB: "HTTP", "HTTPS".
-	// - NLB: "TCP", "UDP", "TCP_UDP", "TLS".
+	// - NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC".
 	// Required for every target type except "lambda". A TLS listener may
 	// forward to TCP targets (the NLB terminates TLS); an HTTPS listener may
-	// forward to HTTP targets (the ALB terminates TLS).
+	// forward to HTTP targets (the ALB terminates TLS). "QUIC" carries QUIC
+	// traffic natively; "TCP_QUIC" serves both TCP and QUIC on one group (the
+	// HTTP/3 pattern where clients may fall back to TCP). QUIC targets are
+	// registered with a quic_server_id (see targets).
 	Protocol string `protobuf:"bytes,5,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// The application-layer protocol between an ALB and HTTP/HTTPS targets.
 	// Valid values: "HTTP1" (default), "HTTP2", "GRPC". Immutable.
@@ -102,8 +106,9 @@ type AwsLbTargetGroupSpec struct {
 	// port for NLB protocols).
 	HealthCheck *AwsLbTargetGroupHealthCheck `protobuf:"bytes,8,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
 	// Session stickiness. ALB supports cookie-based stickiness ("lb_cookie",
-	// "app_cookie"); NLB supports source-IP stickiness ("source_ip"). When
-	// omitted, stickiness is disabled.
+	// "app_cookie"); NLB supports flow-hash stickiness ("source_ip",
+	// "source_ip_dest_ip", "source_ip_dest_ip_proto"). When omitted,
+	// stickiness is disabled.
 	Stickiness *AwsLbTargetGroupStickiness `protobuf:"bytes,9,opt,name=stickiness,proto3" json:"stickiness,omitempty"`
 	// Seconds the load balancer waits before completing deregistration of a
 	// draining target, letting in-flight requests finish. Range 0-3600.
@@ -163,9 +168,16 @@ type AwsLbTargetGroupSpec struct {
 	// registered here. Registrations are folded into this kind (not a separate
 	// resource) because a registration is pure glue with no referenceable
 	// identity of its own.
-	Targets       []*AwsLbTargetGroupTarget `protobuf:"bytes,21,rep,name=targets,proto3" json:"targets,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Targets []*AwsLbTargetGroupTarget `protobuf:"bytes,21,rep,name=targets,proto3" json:"targets,omitempty"`
+	// ALB only. The port the ALB Target Optimizer agent listens on, 1-65535.
+	// Setting it enables Target Optimizer for this group: an agent on each
+	// target reports its readiness for new requests over this port, and the
+	// ALB routes accordingly. Requires the agent to be running on every
+	// target -- enabling it without the agent marks targets unavailable.
+	// Immutable: changing it replaces the target group.
+	TargetControlPort int32 `protobuf:"varint,22,opt,name=target_control_port,json=targetControlPort,proto3" json:"target_control_port,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsLbTargetGroupSpec) Reset() {
@@ -345,6 +357,13 @@ func (x *AwsLbTargetGroupSpec) GetTargets() []*AwsLbTargetGroupTarget {
 	return nil
 }
 
+func (x *AwsLbTargetGroupSpec) GetTargetControlPort() int32 {
+	if x != nil {
+		return x.TargetControlPort
+	}
+	return 0
+}
+
 // AwsLbTargetGroupHealthCheck defines how the load balancer decides whether a
 // target may receive traffic.
 //
@@ -503,6 +522,10 @@ type AwsLbTargetGroupStickiness struct {
 	//   - "app_cookie" (ALB): the application issues the cookie named in
 	//     cookie_name; the load balancer follows it.
 	//   - "source_ip" (NLB): affinity by client source IP.
+	//   - "source_ip_dest_ip" (NLB): affinity by source and destination IP --
+	//     for dualstack groups where one client may arrive on both families.
+	//   - "source_ip_dest_ip_proto" (NLB): affinity by source IP, destination
+	//     IP, and protocol -- the narrowest flow-hash affinity.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Whether stickiness is active. AWS default: true (configuring the block
 	// implies enabling it). Optional rather than plain bool so that false
@@ -836,8 +859,13 @@ type AwsLbTargetGroupTarget struct {
 	// For "ip" targets outside the load balancer's VPC (peered VPC,
 	// on-premises): the literal string "all". Leave unset for in-VPC targets.
 	AvailabilityZone string `protobuf:"bytes,3,opt,name=availability_zone,json=availabilityZone,proto3" json:"availability_zone,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// QUIC / TCP_QUIC target groups only: the QUIC server ID this target
+	// serves. QUIC routes established connections by connection ID rather
+	// than by 5-tuple, and the server ID ties a registration to the QUIC
+	// endpoint identity the target presents.
+	QuicServerId  string `protobuf:"bytes,4,opt,name=quic_server_id,json=quicServerId,proto3" json:"quic_server_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsLbTargetGroupTarget) Reset() {
@@ -891,11 +919,18 @@ func (x *AwsLbTargetGroupTarget) GetAvailabilityZone() string {
 	return ""
 }
 
+func (x *AwsLbTargetGroupTarget) GetQuicServerId() string {
+	if x != nil {
+		return x.QuicServerId
+	}
+	return ""
+}
+
 var File_catalog_aws_awslbtargetgroup_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awslbtargetgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awslbtargetgroup/v1alpha1/spec.proto\x12)dev.planton.aws.awslbtargetgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9f*\n" +
+	"0catalog/aws/awslbtargetgroup/v1alpha1/spec.proto\x12)dev.planton.aws.awslbtargetgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xeb-\n" +
 	"\x14AwsLbTargetGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12i\n" +
 	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12-\n" +
@@ -921,13 +956,16 @@ const file_catalog_aws_awslbtargetgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\"lambda_multi_value_headers_enabled\x18\x12 \x01(\bR\x1elambdaMultiValueHeadersEnabled\x12w\n" +
 	"\x13target_group_health\x18\x13 \x01(\v2G.dev.planton.aws.awslbtargetgroup.v1alpha1.AwsLbTargetGroupHealthPolicyR\x11targetGroupHealth\x12|\n" +
 	"\x13target_health_state\x18\x14 \x01(\v2L.dev.planton.aws.awslbtargetgroup.v1alpha1.AwsLbTargetGroupTargetHealthStateR\x11targetHealthState\x12[\n" +
-	"\atargets\x18\x15 \x03(\v2A.dev.planton.aws.awslbtargetgroup.v1alpha1.AwsLbTargetGroupTargetR\atargets:\xd8\x1e\xbaH\xd4\x1e\x1a\xa9\x01\n" +
-	"\x11target_type_valid\x12Atarget_type must be 'instance', 'ip', 'lambda', or 'alb' when set\x1aQthis.target_type == '' || this.target_type in ['instance', 'ip', 'lambda', 'alb']\x1a\xa9\x01\n" +
-	"\x0eprotocol_valid\x12<protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS\x1aYthis.protocol == '' || this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS']\x1a\xae\x01\n" +
+	"\atargets\x18\x15 \x03(\v2A.dev.planton.aws.awslbtargetgroup.v1alpha1.AwsLbTargetGroupTargetR\atargets\x12.\n" +
+	"\x13target_control_port\x18\x16 \x01(\x05R\x11targetControlPort:\xf4!\xbaH\xf0!\x1a\xa9\x01\n" +
+	"\x11target_type_valid\x12Atarget_type must be 'instance', 'ip', 'lambda', or 'alb' when set\x1aQthis.target_type == '' || this.target_type in ['instance', 'ip', 'lambda', 'alb']\x1a\xcd\x01\n" +
+	"\x0eprotocol_valid\x12Lprotocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC\x1amthis.protocol == '' || this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS', 'QUIC', 'TCP_QUIC']\x1a\xae\x01\n" +
 	"$port_protocol_required_unless_lambda\x12=port and protocol are required unless target_type is 'lambda'\x1aGthis.target_type == 'lambda' || (this.port != 0 && this.protocol != '')\x1a\xda\x01\n" +
 	" lambda_takes_no_port_or_protocol\x12Nport, protocol, and protocol_version do not apply when target_type is 'lambda'\x1afthis.target_type != 'lambda' || (this.port == 0 && this.protocol == '' && this.protocol_version == '')\x1aq\n" +
 	"\n" +
-	"port_range\x12)port must be between 1 and 65535 when set\x1a8this.port == 0 || (this.port >= 1 && this.port <= 65535)\x1a\xab\x01\n" +
+	"port_range\x12)port must be between 1 and 65535 when set\x1a8this.port == 0 || (this.port >= 1 && this.port <= 65535)\x1a\xbc\x01\n" +
+	"\x19target_control_port_range\x128target_control_port must be between 1 and 65535 when set\x1aethis.target_control_port == 0 || (this.target_control_port >= 1 && this.target_control_port <= 65535)\x1a\xb6\x01\n" +
+	"*target_control_port_only_for_alb_protocols\x12Ctarget_control_port only applies when protocol is 'HTTP' or 'HTTPS'\x1aCthis.target_control_port == 0 || this.protocol in ['HTTP', 'HTTPS']\x1a\xab\x01\n" +
 	"\x16protocol_version_valid\x12=protocol_version must be 'HTTP1', 'HTTP2', or 'GRPC' when set\x1aRthis.protocol_version == '' || this.protocol_version in ['HTTP1', 'HTTP2', 'GRPC']\x1a\xae\x01\n" +
 	"'protocol_version_only_for_alb_protocols\x12@protocol_version only applies when protocol is 'HTTP' or 'HTTPS'\x1aAthis.protocol_version == '' || this.protocol in ['HTTP', 'HTTPS']\x1a\x92\x01\n" +
 	"\x15ip_address_type_valid\x121ip_address_type must be 'ipv4' or 'ipv6' when set\x1aFthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'ipv6']\x1a\xaa\x01\n" +
@@ -963,14 +1001,14 @@ const file_catalog_aws_awslbtargetgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\rtimeout_range\x122timeout_seconds must be between 2 and 120 when set\x1aWthis.timeout_seconds == 0 || (this.timeout_seconds >= 2 && this.timeout_seconds <= 120)\x1a\xbc\x01\n" +
 	"\x1atimeout_less_than_interval\x125timeout_seconds must be smaller than interval_seconds\x1agthis.timeout_seconds == 0 || this.interval_seconds == 0 || this.timeout_seconds < this.interval_secondsB\n" +
 	"\n" +
-	"\b_enabled\"\xfd\x06\n" +
+	"\b_enabled\"\xdd\a\n" +
 	"\x1aAwsLbTargetGroupStickiness\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x1d\n" +
 	"\aenabled\x18\x02 \x01(\bH\x00R\aenabled\x88\x01\x01\x126\n" +
 	"\x17cookie_duration_seconds\x18\x03 \x01(\x05R\x15cookieDurationSeconds\x12\x1f\n" +
 	"\vcookie_name\x18\x04 \x01(\tR\n" +
-	"cookieName:\xbe\x05\xbaH\xba\x05\x1a\x86\x01\n" +
-	"\x15stickiness_type_valid\x126type must be 'lb_cookie', 'app_cookie', or 'source_ip'\x1a5this.type in ['lb_cookie', 'app_cookie', 'source_ip']\x1a\xa2\x01\n" +
+	"cookieName:\x9e\x06\xbaH\x9a\x06\x1a\xe6\x01\n" +
+	"\x15stickiness_type_valid\x12ftype must be 'lb_cookie', 'app_cookie', 'source_ip', 'source_ip_dest_ip', or 'source_ip_dest_ip_proto'\x1aethis.type in ['lb_cookie', 'app_cookie', 'source_ip', 'source_ip_dest_ip', 'source_ip_dest_ip_proto']\x1a\xa2\x01\n" +
 	"\x1fcookie_name_only_for_app_cookie\x12Fcookie_name is required for 'app_cookie' and not valid for other types\x1a7(this.type == 'app_cookie') == (this.cookie_name != '')\x1a\xbc\x01\n" +
 	"%cookie_duration_only_for_cookie_types\x12Dcookie_duration_seconds only applies to 'lb_cookie' and 'app_cookie'\x1aMthis.cookie_duration_seconds == 0 || this.type in ['lb_cookie', 'app_cookie']\x1a\xca\x01\n" +
 	"\x15cookie_duration_range\x12=cookie_duration_seconds must be between 1 and 604800 when set\x1arthis.cookie_duration_seconds == 0 || (this.cookie_duration_seconds >= 1 && this.cookie_duration_seconds <= 604800)B\n" +
@@ -988,11 +1026,12 @@ const file_catalog_aws_awslbtargetgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"!AwsLbTargetGroupTargetHealthState\x12U\n" +
 	"'enable_unhealthy_connection_termination\x18\x01 \x01(\bR$enableUnhealthyConnectionTermination\x12M\n" +
 	"#unhealthy_draining_interval_seconds\x18\x02 \x01(\x05R unhealthyDrainingIntervalSeconds:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
-	"\x17draining_interval_range\x12@unhealthy_draining_interval_seconds must be between 0 and 360000\x1acthis.unhealthy_draining_interval_seconds >= 0 && this.unhealthy_draining_interval_seconds <= 360000\"\xd4\x02\n" +
+	"\x17draining_interval_range\x12@unhealthy_draining_interval_seconds must be between 0 and 360000\x1acthis.unhealthy_draining_interval_seconds >= 0 && this.unhealthy_draining_interval_seconds <= 360000\"\xfa\x02\n" +
 	"\x16AwsLbTargetGroupTarget\x12z\n" +
 	"\ttarget_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xfc\a\x92\xd4a\x1astatus.outputs.instance_idR\btargetId\x12\x12\n" +
 	"\x04port\x18\x02 \x01(\x05R\x04port\x12+\n" +
-	"\x11availability_zone\x18\x03 \x01(\tR\x10availabilityZone:}\xbaHz\x1ax\n" +
+	"\x11availability_zone\x18\x03 \x01(\tR\x10availabilityZone\x12$\n" +
+	"\x0equic_server_id\x18\x04 \x01(\tR\fquicServerId:}\xbaHz\x1ax\n" +
 	"\x11target_port_range\x12)port must be between 1 and 65535 when set\x1a8this.port == 0 || (this.port >= 1 && this.port <= 65535)B\xe0\x02\n" +
 	"-com.dev.planton.aws.awslbtargetgroup.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/aws/awslbtargetgroup/v1alpha1;awslbtargetgroupv1alpha1\xa2\x02\x04DPAA\xaa\x02)Dev.Planton.Aws.Awslbtargetgroup.V1alpha1\xca\x02)Dev\\Planton\\Aws\\Awslbtargetgroup\\V1alpha1\xe2\x025Dev\\Planton\\Aws\\Awslbtargetgroup\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Aws::Awslbtargetgroup::V1alpha1b\x06proto3"
 

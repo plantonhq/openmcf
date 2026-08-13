@@ -244,7 +244,7 @@ Processor arms (exactly one per entry):
 
 | Arm | Purpose | Fields |
 |-----|---------|--------|
-| `lambda` | Transform records with a Lambda function | `lambda_arn` (ref, required), `buffer_size_in_mbs` (1–3), `buffer_interval_in_seconds` (60–900), `number_of_retries` (0–300) |
+| `lambda` | Transform records with a Lambda function | `lambda_arn` (ref, required), `buffer_size_in_mbs` (0.2–3, fractional legal), `buffer_interval_in_seconds` (60–900), `number_of_retries` (0–300), `role_arn` (ref; a dedicated invocation role — set only when it differs from the delivery role, or the provider reports perpetual diffs) |
 | `metadata_extraction` | Extract partition keys with a JQ expression (drives dynamic partitioning) | `query` (required), `json_parsing_engine` (`"JQ-1.6"`) |
 | `decompression` | Decompress GZIP records (CloudWatch Logs subscriptions) | `compression_format` (`"GZIP"`) |
 | `cloudwatch_log_processing` | Unwrap CloudWatch Logs subscription envelopes | `data_message_extraction` (bool) |
@@ -302,14 +302,56 @@ Define the partition keys with a `metadata_extraction` processor and reference t
 
 #### Data Format Conversion (`data_format_conversion`)
 
+The input format is one deserializer arm (`open_x_json` or `hive_json`), the output format one serializer arm (`parquet` or `orc`) — exactly one of each is required when conversion is enabled, and an empty arm (`openXJson: {}`) accepts that format's defaults.
+
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `enabled` | bool | **Yes** | false | Enable JSON → columnar conversion |
-| `input_format` | string | No | `"OPENX_JSON"` | `"OPENX_JSON"` or `"HIVE_JSON"` |
-| `output_format` | string | Conditional | — | `"PARQUET"` or `"ORC"` (required when enabled) |
-| `parquet_compression` | string | No | `"SNAPPY"` | `"SNAPPY"`, `"GZIP"`, `"UNCOMPRESSED"` (Parquet only) |
-| `orc_compression` | string | No | `"SNAPPY"` | `"SNAPPY"`, `"ZLIB"`, `"NONE"` (ORC only) |
+| `open_x_json` | object | Conditional | — | OpenX JSON deserializer arm (general-purpose JSON) |
+| `hive_json` | object | Conditional | — | Apache Hive JSON deserializer arm (custom timestamp parsing) |
+| `parquet` | object | Conditional | — | Apache Parquet serializer arm |
+| `orc` | object | Conditional | — | Apache ORC serializer arm |
 | `schema` | object | Conditional | — | Glue catalog schema (required when enabled) |
+
+#### OpenX JSON Deserializer (`data_format_conversion.open_x_json`)
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `case_insensitive` | optional bool | No | true | Lowercase JSON keys before matching Glue columns |
+| `column_to_json_key_mappings` | map | No | — | Column → JSON key overrides (e.g. `ts: timestamp` for reserved words) |
+| `convert_dots_in_json_keys_to_underscores` | bool | No | false | Read `a.b` keys into `a_b` columns |
+
+#### Hive JSON Deserializer (`data_format_conversion.hive_json`)
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `timestamp_formats` | repeated string | No | — | Joda-Time patterns for timestamp fields (`"millis"` for epoch ms) |
+
+#### Parquet Serializer (`data_format_conversion.parquet`)
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `compression` | string | No | `"SNAPPY"` | `"SNAPPY"`, `"GZIP"`, `"UNCOMPRESSED"` |
+| `block_size_bytes` | int64 | No | 268435456 | Row-group size; min 67108864 (64 MiB) |
+| `page_size_bytes` | int64 | No | 1048576 | Page size; min 65536 (64 KiB) |
+| `max_padding_bytes` | int64 | No | 0 | Max row-group padding |
+| `enable_dictionary_compression` | bool | No | false | Dictionary-encode repeated values |
+| `writer_version` | string | No | `"V1"` | `"V1"` or `"V2"` (confirm reader support for V2) |
+
+#### ORC Serializer (`data_format_conversion.orc`)
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `compression` | string | No | `"SNAPPY"` | `"SNAPPY"`, `"ZLIB"`, `"NONE"` |
+| `block_size_bytes` | int64 | No | 268435456 | Block size; min 67108864 (64 MiB) |
+| `stripe_size_bytes` | int64 | No | 67108864 | Stripe size; min 8388608 (8 MiB) |
+| `bloom_filter_columns` | repeated string | No | — | Columns to build bloom filters for (equality-filtered columns) |
+| `bloom_filter_false_positive_probability` | optional double | No | 0.05 | 0–1; explicit 0 is legal and distinct from unset |
+| `dictionary_key_threshold` | double | No | 0 | 0–1; distinct-key fraction above which dictionary encoding is abandoned |
+| `enable_padding` | bool | No | false | Pad stripes to HDFS-style block boundaries |
+| `padding_tolerance` | optional double | No | 0.05 | 0–1; max stripe fraction wasted as padding |
+| `format_version` | string | No | `"V0_12"` | `"V0_11"` (legacy Hive 0.11) or `"V0_12"` |
+| `row_index_stride` | int32 | No | 10000 | Rows between index entries; min 1000 |
 
 #### Glue Schema Config (`data_format_conversion.schema`)
 

@@ -8,4 +8,18 @@ spec:
   aliases:
     - alias/demo/app-data
   deletionWindowDays: 30
-
+  # Grants give principals scoped, revocable use of the key without editing
+  # the key policy -- the pattern for wiring "this workload may encrypt and
+  # decrypt under this key".
+  grants:
+    - name: orders-worker-data
+      granteePrincipal:
+        value: arn:aws:iam::123456789012:role/orders-worker
+      operations:
+        - Encrypt
+        - Decrypt
+        - GenerateDataKey
+        - DescribeKey
+      encryptionContextSubset:
+        app: orders
+      retireOnDelete: true

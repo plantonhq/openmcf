@@ -82,8 +82,27 @@ type GcpWorkloadIdentityPoolSpec struct {
 	// Additional trust domains whose certificates this pool's trust domain
 	// accepts. A trust domain always trusts itself; list only foreign domains.
 	InlineTrustConfig *GcpWorkloadIdentityPoolTrustConfig `protobuf:"bytes,8,opt,name=inline_trust_config,json=inlineTrustConfig,proto3" json:"inline_trust_config,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Which workloads may RECEIVE a managed identity from this pool: each
+	// rule names a single Google Cloud workload resource (for example
+	// "//run.googleapis.com/projects/123/type/Service/*"), and matching
+	// workloads are issued the identity. GCP caps a pool at 50 rules.
+	// Mutable — but note GCP applies the rules through a separate API call
+	// after the pool itself is created, so a failed apply can leave a pool
+	// without its rules; re-apply converges.
+	AttestationRules []*GcpWorkloadIdentityPoolAttestationRule `protobuf:"bytes,9,rep,name=attestation_rules,json=attestationRules,proto3" json:"attestation_rules,omitempty"`
+	// What happens to the pool in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the pool is soft-deleted:
+	//	             token exchanges stop immediately, the pool is
+	//	             restorable for ~30 days, and its ID stays reserved
+	//	             until permanent deletion
+	//	"PREVENT" -- destroy FAILS; protects the trust boundary every
+	//	             keyless-CI grant in the project references
+	//	"ABANDON" -- the pool is removed from management but keeps
+	//	             federating in GCP
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpWorkloadIdentityPoolSpec) Reset() {
@@ -172,14 +191,80 @@ func (x *GcpWorkloadIdentityPoolSpec) GetInlineTrustConfig() *GcpWorkloadIdentit
 	return nil
 }
 
+func (x *GcpWorkloadIdentityPoolSpec) GetAttestationRules() []*GcpWorkloadIdentityPoolAttestationRule {
+	if x != nil {
+		return x.AttestationRules
+	}
+	return nil
+}
+
+func (x *GcpWorkloadIdentityPoolSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
+// One attestation rule: a single Google Cloud workload (or wildcard set of
+// workloads) permitted to receive a managed identity from this pool.
+type GcpWorkloadIdentityPoolAttestationRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A single workload operating on Google Cloud, as a full resource name
+	// with optional trailing wildcard — for example
+	// "//run.googleapis.com/projects/123/type/Service/*".
+	GoogleCloudResource string `protobuf:"bytes,1,opt,name=google_cloud_resource,json=googleCloudResource,proto3" json:"google_cloud_resource,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GcpWorkloadIdentityPoolAttestationRule) Reset() {
+	*x = GcpWorkloadIdentityPoolAttestationRule{}
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpWorkloadIdentityPoolAttestationRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpWorkloadIdentityPoolAttestationRule) ProtoMessage() {}
+
+func (x *GcpWorkloadIdentityPoolAttestationRule) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpWorkloadIdentityPoolAttestationRule.ProtoReflect.Descriptor instead.
+func (*GcpWorkloadIdentityPoolAttestationRule) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *GcpWorkloadIdentityPoolAttestationRule) GetGoogleCloudResource() string {
+	if x != nil {
+		return x.GoogleCloudResource
+	}
+	return ""
+}
+
 // Mutual-TLS certificate issuance for the pool's trust domain: which CA pools
 // sign workload certificates, and the key/lifetime/rotation parameters.
+// The signing authority is exactly one of ca_pools (bring your own CA) or
+// use_default_shared_ca (GCP-provisioned regional CAs).
 type GcpWorkloadIdentityPoolCertificateIssuance struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Maps a cloud region to the Certificate Authority Service CA pool (full
 	// resource path projects/<project>/locations/<location>/caPools/<pool>)
 	// that issues certificates for workloads in that region. The region in the
-	// key must match the CA pool's own region; at least one entry is required.
+	// key must match the CA pool's own region. Exactly one of ca_pools or
+	// use_default_shared_ca supplies the signing authority.
 	CaPools map[string]string `protobuf:"bytes,1,rep,name=ca_pools,json=caPools,proto3" json:"ca_pools,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Key algorithm for the generated certificate key pairs. Defaults
 	// server-side to ECDSA_P256 — the right choice unless a legacy verifier
@@ -194,13 +279,18 @@ type GcpWorkloadIdentityPoolCertificateIssuance struct {
 	// Must be between 50 and 80; defaults server-side to 50 (rotate at half
 	// life). Raise it only if workloads tolerate very tight rotation windows.
 	RotationWindowPercentage *int32 `protobuf:"varint,4,opt,name=rotation_window_percentage,json=rotationWindowPercentage,proto3,oneof" json:"rotation_window_percentage,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Issue certificates from the GCP-provisioned default shared CA in the
+	// workload's own region instead of your own CA Service pools — the
+	// zero-setup path for managed-identity trust domains. Exactly one of
+	// ca_pools or use_default_shared_ca supplies the signing authority.
+	UseDefaultSharedCa bool `protobuf:"varint,5,opt,name=use_default_shared_ca,json=useDefaultSharedCa,proto3" json:"use_default_shared_ca,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *GcpWorkloadIdentityPoolCertificateIssuance) Reset() {
 	*x = GcpWorkloadIdentityPoolCertificateIssuance{}
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -212,7 +302,7 @@ func (x *GcpWorkloadIdentityPoolCertificateIssuance) String() string {
 func (*GcpWorkloadIdentityPoolCertificateIssuance) ProtoMessage() {}
 
 func (x *GcpWorkloadIdentityPoolCertificateIssuance) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -225,7 +315,7 @@ func (x *GcpWorkloadIdentityPoolCertificateIssuance) ProtoReflect() protoreflect
 
 // Deprecated: Use GcpWorkloadIdentityPoolCertificateIssuance.ProtoReflect.Descriptor instead.
 func (*GcpWorkloadIdentityPoolCertificateIssuance) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GcpWorkloadIdentityPoolCertificateIssuance) GetCaPools() map[string]string {
@@ -256,6 +346,13 @@ func (x *GcpWorkloadIdentityPoolCertificateIssuance) GetRotationWindowPercentage
 	return 0
 }
 
+func (x *GcpWorkloadIdentityPoolCertificateIssuance) GetUseDefaultSharedCa() bool {
+	if x != nil {
+		return x.UseDefaultSharedCa
+	}
+	return false
+}
+
 // Trust extended to additional trust domains: certificates issued within a
 // listed domain are accepted by this pool's trust domain.
 type GcpWorkloadIdentityPoolTrustConfig struct {
@@ -270,7 +367,7 @@ type GcpWorkloadIdentityPoolTrustConfig struct {
 
 func (x *GcpWorkloadIdentityPoolTrustConfig) Reset() {
 	*x = GcpWorkloadIdentityPoolTrustConfig{}
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -282,7 +379,7 @@ func (x *GcpWorkloadIdentityPoolTrustConfig) String() string {
 func (*GcpWorkloadIdentityPoolTrustConfig) ProtoMessage() {}
 
 func (x *GcpWorkloadIdentityPoolTrustConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -295,7 +392,7 @@ func (x *GcpWorkloadIdentityPoolTrustConfig) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GcpWorkloadIdentityPoolTrustConfig.ProtoReflect.Descriptor instead.
 func (*GcpWorkloadIdentityPoolTrustConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GcpWorkloadIdentityPoolTrustConfig) GetAdditionalTrustBundles() []*GcpWorkloadIdentityPoolTrustBundle {
@@ -311,15 +408,22 @@ type GcpWorkloadIdentityPoolTrustBundle struct {
 	// The foreign trust domain being trusted (e.g. "example.com").
 	TrustDomain string `protobuf:"bytes,1,opt,name=trust_domain,json=trustDomain,proto3" json:"trust_domain,omitempty"`
 	// Trust anchors for the domain: incoming end-entity certificates must chain
-	// up to one of these.
-	TrustAnchors  []*GcpWorkloadIdentityPoolTrustAnchor `protobuf:"bytes,2,rep,name=trust_anchors,json=trustAnchors,proto3" json:"trust_anchors,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// up to one of these. GCP requires at least one PEM anchor per bundle even
+	// when trust_default_shared_ca is enabled — the shared CA is ADDED to the
+	// bundle, never a substitute for it.
+	TrustAnchors []*GcpWorkloadIdentityPoolTrustAnchor `protobuf:"bytes,2,rep,name=trust_anchors,json=trustAnchors,proto3" json:"trust_anchors,omitempty"`
+	// Additionally include the GCP-managed regional root certificates (the
+	// default shared CA) in this bundle's trust set, so certificates issued
+	// by use_default_shared_ca pools in the foreign domain are accepted.
+	// Only meaningful for managed-identity (TRUST_DOMAIN) pools.
+	TrustDefaultSharedCa bool `protobuf:"varint,3,opt,name=trust_default_shared_ca,json=trustDefaultSharedCa,proto3" json:"trust_default_shared_ca,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GcpWorkloadIdentityPoolTrustBundle) Reset() {
 	*x = GcpWorkloadIdentityPoolTrustBundle{}
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -331,7 +435,7 @@ func (x *GcpWorkloadIdentityPoolTrustBundle) String() string {
 func (*GcpWorkloadIdentityPoolTrustBundle) ProtoMessage() {}
 
 func (x *GcpWorkloadIdentityPoolTrustBundle) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -344,7 +448,7 @@ func (x *GcpWorkloadIdentityPoolTrustBundle) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GcpWorkloadIdentityPoolTrustBundle.ProtoReflect.Descriptor instead.
 func (*GcpWorkloadIdentityPoolTrustBundle) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *GcpWorkloadIdentityPoolTrustBundle) GetTrustDomain() string {
@@ -361,6 +465,13 @@ func (x *GcpWorkloadIdentityPoolTrustBundle) GetTrustAnchors() []*GcpWorkloadIde
 	return nil
 }
 
+func (x *GcpWorkloadIdentityPoolTrustBundle) GetTrustDefaultSharedCa() bool {
+	if x != nil {
+		return x.TrustDefaultSharedCa
+	}
+	return false
+}
+
 // One PEM-encoded CA certificate acting as a trust anchor.
 type GcpWorkloadIdentityPoolTrustAnchor struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -374,7 +485,7 @@ type GcpWorkloadIdentityPoolTrustAnchor struct {
 
 func (x *GcpWorkloadIdentityPoolTrustAnchor) Reset() {
 	*x = GcpWorkloadIdentityPoolTrustAnchor{}
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -386,7 +497,7 @@ func (x *GcpWorkloadIdentityPoolTrustAnchor) String() string {
 func (*GcpWorkloadIdentityPoolTrustAnchor) ProtoMessage() {}
 
 func (x *GcpWorkloadIdentityPoolTrustAnchor) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -399,7 +510,7 @@ func (x *GcpWorkloadIdentityPoolTrustAnchor) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use GcpWorkloadIdentityPoolTrustAnchor.ProtoReflect.Descriptor instead.
 func (*GcpWorkloadIdentityPoolTrustAnchor) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GcpWorkloadIdentityPoolTrustAnchor) GetPemCertificate() string {
@@ -413,7 +524,8 @@ var File_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/gcp/gcpworkloadidentitypool/v1alpha1/spec.proto\x120dev.planton.gcp.gcpworkloadidentitypool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x92\b\n" +
+	"7catalog/gcp/gcpworkloadidentitypool/v1alpha1/spec.proto\x120dev.planton.gcp.gcpworkloadidentitypool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe2\n" +
+	"\n" +
 	"\x1bGcpWorkloadIdentityPoolSpec\x12\xe7\x01\n" +
 	"\x19workload_identity_pool_id\x18\x01 \x01(\tB\xab\x01\xbaH\xa7\x01\xba\x01\x8b\x01\n" +
 	"\x15pool_id_no_gcp_prefix\x12Xthe prefix 'gcp-' is reserved by Google — choose a pool ID that does not start with it\x1a\x18!this.startsWith('gcp-')\xc8\x01\x01r\x132\x11^[a-z0-9-]{4,32}$R\x16workloadIdentityPoolId\x12u\n" +
@@ -426,27 +538,36 @@ const file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDesc = "" 
 	"\n" +
 	"mode_valid\x12qmode must be FEDERATION_ONLY or TRUST_DOMAIN (SYSTEM_TRUST_DOMAIN pools are Google-managed and cannot be created)\x1a+this in ['FEDERATION_ONLY', 'TRUST_DOMAIN']\x8a\xa6\x1d\x0fFEDERATION_ONLYH\x00R\x04mode\x88\x01\x01\x12\xa9\x01\n" +
 	"\"inline_certificate_issuance_config\x18\a \x01(\v2\\.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuanceR\x1finlineCertificateIssuanceConfig\x12\x84\x01\n" +
-	"\x13inline_trust_config\x18\b \x01(\v2T.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfigR\x11inlineTrustConfigB\a\n" +
-	"\x05_mode\"\xa3\x05\n" +
-	"*GcpWorkloadIdentityPoolCertificateIssuance\x12\x8e\x01\n" +
-	"\bca_pools\x18\x01 \x03(\v2i.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\acaPools\x12\xe8\x01\n" +
+	"\x13inline_trust_config\x18\b \x01(\v2T.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfigR\x11inlineTrustConfig\x12\x8f\x01\n" +
+	"\x11attestation_rules\x18\t \x03(\v2X.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolAttestationRuleB\b\xbaH\x05\x92\x01\x02\x102R\x10attestationRules\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\a\n" +
+	"\x05_mode\"d\n" +
+	"&GcpWorkloadIdentityPoolAttestationRule\x12:\n" +
+	"\x15google_cloud_resource\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13googleCloudResource\"\x96\a\n" +
+	"*GcpWorkloadIdentityPoolCertificateIssuance\x12\x84\x01\n" +
+	"\bca_pools\x18\x01 \x03(\v2i.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntryR\acaPools\x12\xe8\x01\n" +
 	"\rkey_algorithm\x18\x02 \x01(\tB\xbd\x01\xbaH\xb9\x01\xba\x01\xb5\x01\n" +
 	"\x13key_algorithm_valid\x12Tkey_algorithm must be one of RSA_2048, RSA_3072, RSA_4096, ECDSA_P256, or ECDSA_P384\x1aHthis in ['RSA_2048', 'RSA_3072', 'RSA_4096', 'ECDSA_P256', 'ECDSA_P384']H\x00R\fkeyAlgorithm\x88\x01\x01\x121\n" +
 	"\blifetime\x18\x03 \x01(\tB\x10\xbaH\rr\v2\t^[0-9]+s$H\x01R\blifetime\x88\x01\x01\x12L\n" +
-	"\x1arotation_window_percentage\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18P(2H\x02R\x18rotationWindowPercentage\x88\x01\x01\x1a:\n" +
+	"\x1arotation_window_percentage\x18\x04 \x01(\x05B\t\xbaH\x06\x1a\x04\x18P(2H\x02R\x18rotationWindowPercentage\x88\x01\x01\x121\n" +
+	"\x15use_default_shared_ca\x18\x05 \x01(\bR\x12useDefaultSharedCa\x1a:\n" +
 	"\fCaPoolsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"\x15ca_source_exactly_one\x12nchoose exactly one certificate authority source: ca_pools (your own CA Service pools) or use_default_shared_ca\x1a7(size(this.ca_pools) > 0) != this.use_default_shared_caB\x10\n" +
 	"\x0e_key_algorithmB\v\n" +
 	"\t_lifetimeB\x1d\n" +
 	"\x1b_rotation_window_percentage\"\xc1\x01\n" +
 	"\"GcpWorkloadIdentityPoolTrustConfig\x12\x9a\x01\n" +
 	"\x18additional_trust_bundles\x18\x01 \x03(\v2T.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundleB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10\n" +
-	"R\x16additionalTrustBundles\"\xd5\x01\n" +
+	"R\x16additionalTrustBundles\"\x8c\x02\n" +
 	"\"GcpWorkloadIdentityPoolTrustBundle\x12)\n" +
 	"\ftrust_domain\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vtrustDomain\x12\x83\x01\n" +
-	"\rtrust_anchors\x18\x02 \x03(\v2T.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchorB\b\xbaH\x05\x92\x01\x02\b\x01R\ftrustAnchors\"U\n" +
+	"\rtrust_anchors\x18\x02 \x03(\v2T.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchorB\b\xbaH\x05\x92\x01\x02\b\x01R\ftrustAnchors\x125\n" +
+	"\x17trust_default_shared_ca\x18\x03 \x01(\bR\x14trustDefaultSharedCa\"U\n" +
 	"\"GcpWorkloadIdentityPoolTrustAnchor\x12/\n" +
 	"\x0fpem_certificate\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0epemCertificateB\x91\x03\n" +
 	"4com.dev.planton.gcp.gcpworkloadidentitypool.v1alpha1B\tSpecProtoP\x01Zigithub.com/plantonhq/planton/catalog/gcp/gcpworkloadidentitypool/v1alpha1;gcpworkloadidentitypoolv1alpha1\xa2\x02\x04DPGG\xaa\x020Dev.Planton.Gcp.Gcpworkloadidentitypool.V1alpha1\xca\x020Dev\\Planton\\Gcp\\Gcpworkloadidentitypool\\V1alpha1\xe2\x02<Dev\\Planton\\Gcp\\Gcpworkloadidentitypool\\V1alpha1\\GPBMetadata\xea\x024Dev::Planton::Gcp::Gcpworkloadidentitypool::V1alpha1b\x06proto3"
@@ -463,28 +584,30 @@ func file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescGZIP() 
 	return file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpWorkloadIdentityPoolSpec)(nil),                // 0: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec
-	(*GcpWorkloadIdentityPoolCertificateIssuance)(nil), // 1: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance
-	(*GcpWorkloadIdentityPoolTrustConfig)(nil),         // 2: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig
-	(*GcpWorkloadIdentityPoolTrustBundle)(nil),         // 3: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle
-	(*GcpWorkloadIdentityPoolTrustAnchor)(nil),         // 4: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchor
-	nil,                         // 5: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntry
-	(*v1.StringValueOrRef)(nil), // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpWorkloadIdentityPoolAttestationRule)(nil),     // 1: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolAttestationRule
+	(*GcpWorkloadIdentityPoolCertificateIssuance)(nil), // 2: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance
+	(*GcpWorkloadIdentityPoolTrustConfig)(nil),         // 3: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig
+	(*GcpWorkloadIdentityPoolTrustBundle)(nil),         // 4: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle
+	(*GcpWorkloadIdentityPoolTrustAnchor)(nil),         // 5: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchor
+	nil,                         // 6: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntry
+	(*v1.StringValueOrRef)(nil), // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_depIdxs = []int32{
-	6, // 0: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.inline_certificate_issuance_config:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance
-	2, // 2: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.inline_trust_config:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig
-	5, // 3: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.ca_pools:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntry
-	3, // 4: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig.additional_trust_bundles:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle
-	4, // 5: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle.trust_anchors:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchor
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	7, // 0: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.inline_certificate_issuance_config:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance
+	3, // 2: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.inline_trust_config:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig
+	1, // 3: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolSpec.attestation_rules:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolAttestationRule
+	6, // 4: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.ca_pools:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolCertificateIssuance.CaPoolsEntry
+	4, // 5: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustConfig.additional_trust_bundles:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle
+	5, // 6: dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustBundle.trust_anchors:type_name -> dev.planton.gcp.gcpworkloadidentitypool.v1alpha1.GcpWorkloadIdentityPoolTrustAnchor
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_init() }
@@ -493,14 +616,14 @@ func file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
-	file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpworkloadidentitypool_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

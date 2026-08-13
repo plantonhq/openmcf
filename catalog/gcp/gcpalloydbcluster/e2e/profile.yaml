@@ -6,9 +6,16 @@ spec:
   # Composed scenarios: the registry installs the full private-services-access
   # chain before every cluster create. AlloyDB primary clusters are slow
   # (~10–20 min each); run the package with a generous go test -timeout.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface: deletion_protection explicit-send
+  # (spec default TRUE, fixture disarms) and deletionPolicy DEFAULT (the
+  # cluster's own value set) + primary DELETE all re-planned clean; the PSA
+  # chain deployed and reverse-destroyed clean. Offline-proven-only arms
+  # (live proof needs fixtures this profile records): restore sources (need
+  # a source cluster/backup), the primary's PSC arm (needs a PSC cluster),
+  # connection pooling live behavior.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

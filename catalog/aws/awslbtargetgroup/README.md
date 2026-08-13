@@ -21,8 +21,8 @@ definition -- lets you:
   forward action shift traffic gradually; each group keeps its own health
   checks and drain behavior.
 - **Serve both load balancer families with one kind**: the protocol decides
-  the family (HTTP/HTTPS for ALB; TCP/UDP/TCP_UDP/TLS for NLB), exactly as AWS
-  models ELBv2.
+  the family (HTTP/HTTPS for ALB; TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC for NLB),
+  exactly as AWS models ELBv2.
 
 ## Key Features
 
@@ -36,14 +36,20 @@ definition -- lets you:
   (ECS, ASG, Kubernetes controllers) keep managing their own targets.
 - **IPv4 and IPv6 target groups**, with `ipv6` requiring a dualstack load
   balancer.
+- **QUIC / HTTP/3 backends** (NLB): `QUIC` groups carry QUIC natively and
+  `TCP_QUIC` groups serve QUIC with TCP fallback on one port; registrations
+  carry the `quicServerId` that QUIC's connection-ID routing requires.
 
 ### Health and Traffic Policy
 
 - **Full health-check control**: protocol (independent of the traffic
   protocol), port, path, thresholds, interval/timeout, and HTTP or gRPC
   response matchers.
-- **Session stickiness**: `lb_cookie` and `app_cookie` for ALB,
-  `source_ip` for NLB.
+- **Session stickiness**: `lb_cookie` and `app_cookie` for ALB;
+  `source_ip`, `source_ip_dest_ip`, and `source_ip_dest_ip_proto` flow-hash
+  affinity for NLB.
+- **Per-target readiness routing** (ALB): `targetControlPort` enables ALB
+  Target Optimizer, routing by each target's self-reported readiness.
 - **Rollout-friendly draining**: deregistration delay, slow start (ALB),
   connection termination on drain (NLB), and unhealthy-target connection
   policy.

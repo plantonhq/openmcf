@@ -95,3 +95,107 @@ resource "aws_cognito_user_pool_client" "this" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# Client-scoped risk configuration (threat protection's automated responses
+# for THIS client only). Overrides the pool-wide configuration set on the
+# AwsCognitoUserPool spec. Requires the pool's threat protection to be active
+# (advanced_security_mode AUDIT or ENFORCED) -- a cross-resource requirement
+# AWS enforces at apply time.
+# ---------------------------------------------------------------------------
+
+resource "aws_cognito_risk_configuration" "this" {
+  count = var.spec.risk_configuration != null ? 1 : 0
+
+  user_pool_id = var.spec.user_pool_id
+  client_id    = aws_cognito_user_pool_client.this.id
+
+  dynamic "account_takeover_risk_configuration" {
+    for_each = var.spec.risk_configuration.account_takeover != null ? [var.spec.risk_configuration.account_takeover] : []
+    content {
+      # The provider requires the actions block; the spec's CEL requires at
+      # least one action inside it.
+      actions {
+        dynamic "low_action" {
+          for_each = account_takeover_risk_configuration.value.low_action != null ? [account_takeover_risk_configuration.value.low_action] : []
+          content {
+            event_action = low_action.value.event_action
+            notify       = low_action.value.notify
+          }
+        }
+
+        dynamic "medium_action" {
+          for_each = account_takeover_risk_configuration.value.medium_action != null ? [account_takeover_risk_configuration.value.medium_action] : []
+          content {
+            event_action = medium_action.value.event_action
+            notify       = medium_action.value.notify
+          }
+        }
+
+        dynamic "high_action" {
+          for_each = account_takeover_risk_configuration.value.high_action != null ? [account_takeover_risk_configuration.value.high_action] : []
+          content {
+            event_action = high_action.value.event_action
+            notify       = high_action.value.notify
+          }
+        }
+      }
+
+      dynamic "notify_configuration" {
+        for_each = account_takeover_risk_configuration.value.notify_configuration != null ? [account_takeover_risk_configuration.value.notify_configuration] : []
+        content {
+          source_arn = notify_configuration.value.source_arn
+          from       = notify_configuration.value.from != "" ? notify_configuration.value.from : null
+          reply_to   = notify_configuration.value.reply_to != "" ? notify_configuration.value.reply_to : null
+
+          dynamic "block_email" {
+            for_each = notify_configuration.value.block_email != null ? [notify_configuration.value.block_email] : []
+            content {
+              subject   = block_email.value.subject
+              html_body = block_email.value.html_body
+              text_body = block_email.value.text_body
+            }
+          }
+
+          dynamic "mfa_email" {
+            for_each = notify_configuration.value.mfa_email != null ? [notify_configuration.value.mfa_email] : []
+            content {
+              subject   = mfa_email.value.subject
+              html_body = mfa_email.value.html_body
+              text_body = mfa_email.value.text_body
+            }
+          }
+
+          dynamic "no_action_email" {
+            for_each = notify_configuration.value.no_action_email != null ? [notify_configuration.value.no_action_email] : []
+            content {
+              subject   = no_action_email.value.subject
+              html_body = no_action_email.value.html_body
+              text_body = no_action_email.value.text_body
+            }
+          }
+        }
+      }
+    }
+  }
+
+  dynamic "compromised_credentials_risk_configuration" {
+    for_each = var.spec.risk_configuration.compromised_credentials != null ? [var.spec.risk_configuration.compromised_credentials] : []
+    content {
+      actions {
+        event_action = compromised_credentials_risk_configuration.value.event_action
+      }
+
+      # Empty means AWS's default (all supported events) -- send absence.
+      event_filter = length(compromised_credentials_risk_configuration.value.event_filter) > 0 ? compromised_credentials_risk_configuration.value.event_filter : null
+    }
+  }
+
+  dynamic "risk_exception_configuration" {
+    for_each = var.spec.risk_configuration.risk_exception != null ? [var.spec.risk_configuration.risk_exception] : []
+    content {
+      blocked_ip_range_list = length(risk_exception_configuration.value.blocked_ip_ranges) > 0 ? risk_exception_configuration.value.blocked_ip_ranges : null
+      skipped_ip_range_list = length(risk_exception_configuration.value.skipped_ip_ranges) > 0 ? risk_exception_configuration.value.skipped_ip_ranges : null
+    }
+  }
+}

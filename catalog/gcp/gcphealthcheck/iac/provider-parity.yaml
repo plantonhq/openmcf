@@ -1,0 +1,73 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# One kind, two provider resources: GCP models global and regional health
+# checks as separate API collections with an identical probe surface (only
+# source_regions is global-only and region regional-only), so the two
+# resource blocks below mirror each other. spec.region is the scope
+# selector -- it name-matches the regional resource's own region argument.
+
+resources:
+  google_compute_health_check:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.health_check_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider wraps the logging switch in a one-field block.
+      - spec: spec.enable_logging
+        arg: log_config.enable
+      # The protocol oneof's arms map subtree-for-subtree onto the
+      # provider's per-protocol blocks (host, port, port_name,
+      # port_specification, proxy_header, request/request_path, response,
+      # grpc_service_name all match name-for-name below each prefix).
+      - spec: spec.http
+        arg: http_health_check
+      - spec: spec.https
+        arg: https_health_check
+      - spec: spec.http2
+        arg: http2_health_check
+      - spec: spec.tcp
+        arg: tcp_health_check
+      - spec: spec.ssl
+        arg: ssl_health_check
+      - spec: spec.grpc
+        arg: grpc_health_check
+      - spec: spec.grpc_tls
+        arg: grpc_tls_health_check
+
+  google_compute_region_health_check:
+    mappings:
+      - spec: spec.health_check_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.enable_logging
+        arg: log_config.enable
+      - spec: spec.http
+        arg: http_health_check
+      - spec: spec.https
+        arg: https_health_check
+      - spec: spec.http2
+        arg: http2_health_check
+      - spec: spec.tcp
+        arg: tcp_health_check
+      - spec: spec.ssl
+        arg: ssl_health_check
+      - spec: spec.grpc
+        arg: grpc_health_check
+      - spec: spec.grpc_tls
+        arg: grpc_tls_health_check
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables compute.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      health check never disables the API project-wide); not spec surface.

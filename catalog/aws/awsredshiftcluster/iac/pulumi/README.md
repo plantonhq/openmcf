@@ -51,6 +51,17 @@ planton pulumi destroy \
    bring an existing group via `clusterParameterGroupName`
 4. **`redshift.Logging`** (conditional) — when `logging` is configured
 5. **`redshift.SnapshotCopy`** (conditional) — when `snapshotCopy` is configured
+6. **`redshift.UsageLimit`** — one per-feature consumption cap per
+   `usageLimits` entry
+7. **`redshift.ScheduledAction`** — one cron/at pause/resume/resize action per
+   `scheduledActions` entry (the IAM role must trust
+   `scheduler.redshift.amazonaws.com`)
+8. **`redshift.EndpointAccess`** — one managed VPC endpoint per
+   `endpointAccesses` entry
+9. **`redshift.EndpointAuthorization`** — one grantor-side cross-account grant
+   per `endpointAuthorizations` entry
+10. **`redshift.SnapshotScheduleAssociation`** (conditional) — when
+    `snapshotScheduleIdentifier` is set
 
 ## Outputs
 
@@ -61,11 +72,13 @@ planton pulumi destroy \
 | `cluster_namespace_arn` | Namespace ARN for data sharing and the Data API |
 | `endpoint` | Connection endpoint (address:port) |
 | `dns_name` | DNS hostname (without port) |
-| `database_name` | First database name |
+| `database_name` | First database name (empty when the spec omitted it; AWS's default is "dev") |
 | `port` | TCP port for connections |
 | `subnet_group_name` | Subnet group name in use (managed or referenced) |
 | `parameter_group_name` | Parameter group name in use (managed or referenced) |
 | `master_password_secret_arn` | Secrets Manager secret ARN (managed password only) |
+| `endpoint_access_addresses` | Managed VPC endpoint addresses, keyed by endpoint name |
+| `usage_limit_ids` | AWS-generated usage-limit IDs, keyed by feature_type/limit_type/period |
 
 ## Debugging
 

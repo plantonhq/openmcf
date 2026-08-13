@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpArtifactRegistryRepoSpec defines the configuration for a Google Cloud
 Artifact Registry repository — the universal package store for container
 images (Docker/OCI), language packages (Maven, npm, Python, Go), and OS
@@ -62,6 +64,8 @@ spec:
         keepCount: 10
   labels:
     team: platform
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -126,6 +130,7 @@ spec:
 | `spec.iamMembers[].condition.title` | `string` | yes |  |  |
 | `spec.iamMembers[].condition.expression` | `string` | yes |  |  |
 | `spec.iamMembers[].condition.description` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -269,10 +274,12 @@ The Maven version policy for this repository:
   ""         -- accept both release and snapshot versions (default)
   "RELEASE"  -- accept only release versions
   "SNAPSHOT" -- accept only snapshot versions
+  "VERSION_POLICY_UNSPECIFIED" -- the API's explicit mixed-versions
+               sentinel (equivalent to leaving this unset)
 The conventional Maven setup is a RELEASE repository and a SNAPSHOT
 repository, with builds publishing to each as appropriate.
 
-- rule: version_policy must be one of: RELEASE, SNAPSHOT
+- rule: version_policy must be one of: VERSION_POLICY_UNSPECIFIED, RELEASE, SNAPSHOT
 
 ### spec.mavenConfig.allowSnapshotOverwrites
 
@@ -474,10 +481,12 @@ Public Apt upstream (Debian/Ubuntu mirror trees). Immutable.
 `string` · required
 
 The mirror tree to cache from:
-  "DEBIAN" -- deb.debian.org
-  "UBUNTU" -- archive.ubuntu.com
+  "DEBIAN"          -- deb.debian.org
+  "UBUNTU"          -- archive.ubuntu.com
+  "DEBIAN_SNAPSHOT" -- snapshot.debian.org (point-in-time Debian
+                       archives, for reproducible builds)
 
-- rule: repository_base must be one of: DEBIAN, UBUNTU
+- rule: repository_base must be one of: DEBIAN, UBUNTU, DEBIAN_SNAPSHOT
 - rule: {"required":true}
 
 ### spec.remoteRepositoryConfig.aptRepository.repositoryPath
@@ -711,6 +720,22 @@ request.time < timestamp("2027-01-01T00:00:00Z").
 Optional longer explanation of what the condition does.
 
 - rule: {"string":{"maxLen":"256"}}
+
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the repository (IAM grants are
+plain bindings — they are always removed with the destroy):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the repository and every artifact stored in it are
+               deleted; images/packages become unpullable immediately
+  "PREVENT" -- destroy FAILS; protects a registry that running
+               workloads still pull from
+  "ABANDON" -- the repository is removed from management but keeps
+               serving artifacts in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

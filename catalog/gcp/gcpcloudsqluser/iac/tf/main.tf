@@ -25,6 +25,15 @@ resource "google_sql_user" "this" {
   # MySQL-only user@host scoping; null on other engines.
   host = local.host
 
+  # MySQL 8+ / PostgreSQL: roles granted at creation (custom roles must
+  # already exist in the database).
+  database_roles = length(var.spec.database_roles) > 0 ? var.spec.database_roles : null
+
+  # DELETE (default) drops the user; ABANDON removes it from IaC
+  # management — the documented workaround when owned objects block a
+  # PostgreSQL drop; PREVENT fails destroying plans.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "password_policy" {
     for_each = local.password_policy != null ? [local.password_policy] : []
     content {

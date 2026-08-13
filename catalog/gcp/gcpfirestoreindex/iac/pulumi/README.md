@@ -4,7 +4,7 @@ This Pulumi (Go) module provisions a Firestore composite index (`firestore.Index
 
 ## Overview
 
-Every index property is immutable — changing anything replaces the index (Firestore rebuilds in the background). Fields map to order, array_config, or vector_config (with flat index). The module enables the Firestore API so a fresh project works first try.
+Every index property is immutable — changing anything replaces the index (Firestore rebuilds in the background). Fields map to order, array_config, vector_config (with flat index), or the Enterprise search_config (text/geo). `multikey` and `unique` cover the MongoDB-compatible scope, `skip_wait` enables fire-and-forget creation, and `deletion_policy` guards destroys (PREVENT fails; ABANDON unmanages without deleting). The module enables the Firestore API so a fresh project works first try.
 
 ## Usage with Planton CLI
 
@@ -14,14 +14,6 @@ planton pulumi destroy --manifest ../../e2e/manifest.yaml --module-dir .
 ```
 
 Credentials are provided via stack input (by the CLI), not in the manifest `spec`. Manifest file: `../../e2e/manifest.yaml`.
-
-## Direct Pulumi Usage
-
-```bash
-cd catalog/gcp/gcpfirestoreindex/iac/pulumi
-make build
-pulumi up --stack dev
-```
 
 ## Module Layout
 

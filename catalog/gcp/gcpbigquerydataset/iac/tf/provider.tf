@@ -6,7 +6,7 @@ terraform {
     # the released 7.x line, so no google-beta dependency exists to drift.
     google = {
       source  = "hashicorp/google"
-      version = "~> 7.0"
+      version = "~> 7.43"
     }
   }
 }

@@ -86,7 +86,7 @@ message KubernetesPodDisruptionBudgetSpec {
   string min_available = 6 [(buf.validate.field).cel = {
     id: "min_available.int_or_percent"
     message: "min_available must be an absolute number (\"2\") or a percentage between 0% and 100% (\"50%\")"
-    expression: "this == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)"
+    expression: "this == '' || this.matches('^[0-9]+$') || this.matches('^([0-9]|[1-9][0-9]|100)%$')"
   }];
 
   /**
@@ -99,7 +99,7 @@ message KubernetesPodDisruptionBudgetSpec {
   string max_unavailable = 7 [(buf.validate.field).cel = {
     id: "max_unavailable.int_or_percent"
     message: "max_unavailable must be an absolute number (\"1\") or a percentage between 0% and 100% (\"25%\")"
-    expression: "this == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)"
+    expression: "this == '' || this.matches('^[0-9]+$') || this.matches('^([0-9]|[1-9][0-9]|100)%$')"
   }];
 
   /**

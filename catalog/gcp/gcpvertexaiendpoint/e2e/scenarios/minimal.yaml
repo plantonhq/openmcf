@@ -27,3 +27,5 @@ spec:
   location: us-central1
   labels:
     e2e: minimal
+  # Explicit provider default: proves the DELETE round-trip on re-plan.
+  deletionPolicy: DELETE

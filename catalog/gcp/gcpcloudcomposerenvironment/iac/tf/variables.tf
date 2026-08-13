@@ -171,6 +171,9 @@ variable "spec" {
     # User labels merged beneath Planton platform labels (platform keys
     # win on conflict).
     labels = optional(map(string), {})
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

@@ -41,6 +41,13 @@ behind it.
 - **IP address family**: `ipv4`, `dualstack`, or
   `dualstack-without-public-ipv4` to serve IPv6 clients without paying for
   public IPv4.
+- **BYOIP addressing**: `ipv4IpamPoolId` draws the ALB's public IPv4
+  addresses from your own VPC IPAM pool instead of AWS's ranges -- for
+  clients that allowlist source ranges.
+- **Reserved capacity**: `minimumLoadBalancerCapacityUnits` pre-provisions
+  LCUs for a known traffic event instead of waiting for organic scaling;
+  the reservation bills while set, so set it for the event window and
+  remove it after.
 
 ### HTTP Behavior Attributes
 

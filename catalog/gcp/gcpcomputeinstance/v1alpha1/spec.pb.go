@@ -179,8 +179,22 @@ type GcpComputeInstanceSpec struct {
 	// Action GCP takes on the VM when a Cloud KMS key protecting it is
 	// revoked: "NONE" (default) or "STOP".
 	KeyRevocationActionType string `protobuf:"bytes,32,opt,name=key_revocation_action_type,json=keyRevocationActionType,proto3" json:"key_revocation_action_type,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Customer-managed encryption key (CMEK) for INSTANCE-LEVEL data —
+	// memory contents and other instance state, distinct from the per-disk
+	// keys on boot_disk/attached_disks. Create-time only.
+	InstanceEncryptionKey *GcpComputeInstanceEncryptionKey `protobuf:"bytes,33,opt,name=instance_encryption_key,json=instanceEncryptionKey,proto3" json:"instance_encryption_key,omitempty"`
+	// Deletion policy — what happens when this resource is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the instance is deleted (disks follow their own
+	//	             lifecycle: boot auto_delete, GcpComputeDisk configs)
+	//	"PREVENT" -- destroy FAILS; a guard rail beyond deletion_protection
+	//	             because it blocks the IaC destroy itself
+	//	"ABANDON" -- the instance is removed from management but left
+	//	             running in GCP
+	DeletionPolicy string `protobuf:"bytes,34,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpComputeInstanceSpec) Reset() {
@@ -437,6 +451,20 @@ func (x *GcpComputeInstanceSpec) GetKeyRevocationActionType() string {
 	return ""
 }
 
+func (x *GcpComputeInstanceSpec) GetInstanceEncryptionKey() *GcpComputeInstanceEncryptionKey {
+	if x != nil {
+		return x.InstanceEncryptionKey
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 // GcpComputeInstanceBootDisk defines the disk the instance boots from.
 // Exactly one source must be set: an image (fresh install), a snapshot
 // (restore), or an existing bootable GcpComputeDisk.
@@ -456,7 +484,8 @@ type GcpComputeInstanceBootDisk struct {
 	// already owns them.
 	SourceDisk *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=source_disk,json=sourceDisk,proto3" json:"source_disk,omitempty"`
 	// Size of the boot disk in GB. When omitted, the image or snapshot size
-	// is used. Grows in place; never shrinks.
+	// is used. Grows in place; never shrinks. Most OS images need at least
+	// 10 GB; the API floor itself is 1 GB.
 	SizeGb int32 `protobuf:"varint,4,opt,name=size_gb,json=sizeGb,proto3" json:"size_gb,omitempty"`
 	// Disk type: "pd-standard" (HDD), "pd-balanced" (default in GCP for most
 	// machine shapes and the sensible choice), "pd-ssd" (high IOPS), or a
@@ -499,9 +528,62 @@ type GcpComputeInstanceBootDisk struct {
 	ResourcePolicies []string `protobuf:"bytes,14,rep,name=resource_policies,json=resourcePolicies,proto3" json:"resource_policies,omitempty"`
 	// URL of the storage pool to create the boot disk in (hyperdisk storage
 	// pools).
-	StoragePool   string `protobuf:"bytes,15,opt,name=storage_pool,json=storagePool,proto3" json:"storage_pool,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	StoragePool string `protobuf:"bytes,15,opt,name=storage_pool,json=storagePool,proto3" json:"storage_pool,omitempty"`
+	// Attachment mode: "READ_WRITE" (default) or "READ_ONLY" (share one
+	// boot disk read-only across many VMs).
+	Mode string `protobuf:"bytes,16,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Disk attachment interface: "SCSI" or "NVME". GCP normally selects
+	// the right interface from the machine type and disk type — the
+	// provider's own guidance is "only used for specific cases, please
+	// don't specify this field without advice from Google". Leave unset
+	// unless you have such a case.
+	Interface string `protobuf:"bytes,17,opt,name=interface,proto3" json:"interface,omitempty"`
+	// Force-attach a REGIONAL boot disk even if it is currently attached
+	// to another instance (regional-disk failover takeover). Attempting to
+	// force-attach a zonal disk fails. Changing this replaces the VM.
+	ForceAttach bool `protobuf:"varint,18,opt,name=force_attach,json=forceAttach,proto3" json:"force_attach,omitempty"`
+	// Guest OS features to enable on the boot disk, e.g.
+	// ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+	// "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+	// operating system features" in the Compute Engine docs. Create-time
+	// only. When set, list the image's COMPLETE feature set, never just
+	// the additions: the API merges this list with the image's own
+	// features at create and the stored disk echoes the merged set, which
+	// the provider then compares authoritatively with replace-on-change
+	// semantics — a partial list plans a VM REPLACEMENT on every re-apply
+	// (live-verified: debian-12's ["UEFI_COMPATIBLE", "GVNIC"] echoed back
+	// ["UEFI_COMPATIBLE", "VIRTIO_SCSI_MULTIQUEUE", "GVNIC", "SEV_CAPABLE",
+	// "SEV_LIVE_MIGRATABLE_V2"]). Leave unset to follow the image's own
+	// features cleanly.
+	GuestOsFeatures []string `protobuf:"bytes,19,rep,name=guest_os_features,json=guestOsFeatures,proto3" json:"guest_os_features,omitempty"`
+	// Zones for a REGIONAL boot disk (exactly two, one of which must be
+	// the instance's own zone; short names or self links). Setting this
+	// converts the boot disk to a regional disk replicated across both
+	// zones. Only valid with a source_snapshot boot source (enforced
+	// pre-deploy): GCP rejects creating a regional boot disk from an
+	// image (live-verified API 400: "Creating a regional disk from a
+	// source image is not supported yet" — the snapshot path was
+	// live-verified to produce a true regional boot disk), and a
+	// pre-created source_disk already carries its own zones.
+	// Create-time only.
+	ReplicaZones []string `protobuf:"bytes,20,rep,name=replica_zones,json=replicaZones,proto3" json:"replica_zones,omitempty"`
+	// Resource Manager tags bound to the boot disk at create time. Keys in
+	// the form "tagKeys/{id}", values "tagValues/{id}". Create-time only —
+	// changing them replaces the VM. Ignored when booting from an existing
+	// source_disk.
+	ResourceManagerTags map[string]string `protobuf:"bytes,21,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Service account used for the encryption request of kms_key (CMEK).
+	// When omitted, the Compute Engine default service agent is used.
+	// Only meaningful together with kms_key.
+	KmsKeyServiceAccount string `protobuf:"bytes,22,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	// Decrypts the source image when it is itself CMEK-encrypted. Only
+	// valid together with image.
+	SourceImageEncryption *GcpComputeInstanceSourceEncryption `protobuf:"bytes,23,opt,name=source_image_encryption,json=sourceImageEncryption,proto3" json:"source_image_encryption,omitempty"`
+	// Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+	// valid together with source_snapshot.
+	SourceSnapshotEncryption *GcpComputeInstanceSourceEncryption `protobuf:"bytes,24,opt,name=source_snapshot_encryption,json=sourceSnapshotEncryption,proto3" json:"source_snapshot_encryption,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GcpComputeInstanceBootDisk) Reset() {
@@ -639,6 +721,69 @@ func (x *GcpComputeInstanceBootDisk) GetStoragePool() string {
 	return ""
 }
 
+func (x *GcpComputeInstanceBootDisk) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceBootDisk) GetInterface() string {
+	if x != nil {
+		return x.Interface
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceBootDisk) GetForceAttach() bool {
+	if x != nil {
+		return x.ForceAttach
+	}
+	return false
+}
+
+func (x *GcpComputeInstanceBootDisk) GetGuestOsFeatures() []string {
+	if x != nil {
+		return x.GuestOsFeatures
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceBootDisk) GetReplicaZones() []string {
+	if x != nil {
+		return x.ReplicaZones
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceBootDisk) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceBootDisk) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceBootDisk) GetSourceImageEncryption() *GcpComputeInstanceSourceEncryption {
+	if x != nil {
+		return x.SourceImageEncryption
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceBootDisk) GetSourceSnapshotEncryption() *GcpComputeInstanceSourceEncryption {
+	if x != nil {
+		return x.SourceSnapshotEncryption
+	}
+	return nil
+}
+
 // GcpComputeInstanceAttachedDisk attaches an existing persistent disk —
 // a first-class GcpComputeDisk — to the instance.
 type GcpComputeInstanceAttachedDisk struct {
@@ -655,7 +800,15 @@ type GcpComputeInstanceAttachedDisk struct {
 	// The CMEK key protecting the attached disk, referenced as a GcpKmsKey.
 	// Required only when the disk is CMEK-encrypted — the attachment must
 	// present the same key the disk was created with.
-	KmsKey        *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	KmsKey *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	// Service account used for the encryption request of kms_key (CMEK).
+	// When omitted, the Compute Engine default service agent is used.
+	// Only meaningful together with kms_key.
+	KmsKeyServiceAccount string `protobuf:"bytes,5,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	// Force-attach a REGIONAL disk even if it is currently attached to
+	// another instance (regional-disk failover takeover). Attempting to
+	// force-attach a zonal disk fails. Changing this replaces the VM.
+	ForceAttach   bool `protobuf:"varint,6,opt,name=force_attach,json=forceAttach,proto3" json:"force_attach,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -716,6 +869,20 @@ func (x *GcpComputeInstanceAttachedDisk) GetKmsKey() *v1.StringValueOrRef {
 		return x.KmsKey
 	}
 	return nil
+}
+
+func (x *GcpComputeInstanceAttachedDisk) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceAttachedDisk) GetForceAttach() bool {
+	if x != nil {
+		return x.ForceAttach
+	}
+	return false
 }
 
 // GcpComputeInstanceScratchDisk defines an ephemeral local-SSD disk.
@@ -824,8 +991,35 @@ type GcpComputeInstanceNetworkInterface struct {
 	// Alias IP ranges served by this interface — the mechanism behind
 	// per-pod/per-container IPs and multi-IP VMs.
 	AliasIpRanges []*GcpComputeInstanceAliasIpRange `protobuf:"bytes,10,rep,name=alias_ip_ranges,json=aliasIpRanges,proto3" json:"alias_ip_ranges,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// URL of a Private Service Connect NETWORK ATTACHMENT this interface
+	// connects to, in the form
+	// "projects/{projectNumber}/regions/{region}/networkAttachments/{name}"
+	// — the consumer side of PSC interfaces, connecting this VM into a
+	// producer's VPC. An attachment-only interface is legal (no network or
+	// subnetwork). Immutable after creation.
+	NetworkAttachment string `protobuf:"bytes,11,opt,name=network_attachment,json=networkAttachment,proto3" json:"network_attachment,omitempty"`
+	// VLAN tag (2-255) making this a DYNAMIC network interface — a
+	// sub-interface multiplexed onto a parent NIC. Immutable after
+	// creation.
+	Vlan *int32 `protobuf:"varint,12,opt,name=vlan,proto3,oneof" json:"vlan,omitempty"`
+	// IGMP multicast query support on this interface:
+	//
+	//	""                    -- GCP default (disabled)
+	//	"IGMP_QUERY_V2"       -- IGMPv2 queries enabled (multicast)
+	//	"IGMP_QUERY_DISABLED" -- explicitly disabled
+	//
+	// Updatable in place.
+	IgmpQuery string `protobuf:"bytes,13,opt,name=igmp_query,json=igmpQuery,proto3" json:"igmp_query,omitempty"`
+	// Static INTERNAL IPv6 address for this interface (requires an
+	// IPv6-enabled stack_type and subnetwork). When omitted, GCP assigns
+	// one from the subnetwork's internal IPv6 range. Long-form and
+	// compressed spellings are equivalent.
+	Ipv6Address string `protobuf:"bytes,14,opt,name=ipv6_address,json=ipv6Address,proto3" json:"ipv6_address,omitempty"`
+	// Prefix length of the primary internal IPv6 range assigned to this
+	// interface. When omitted, GCP assigns its default.
+	InternalIpv6PrefixLength *int32 `protobuf:"varint,15,opt,name=internal_ipv6_prefix_length,json=internalIpv6PrefixLength,proto3,oneof" json:"internal_ipv6_prefix_length,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *GcpComputeInstanceNetworkInterface) Reset() {
@@ -928,6 +1122,41 @@ func (x *GcpComputeInstanceNetworkInterface) GetAliasIpRanges() []*GcpComputeIns
 	return nil
 }
 
+func (x *GcpComputeInstanceNetworkInterface) GetNetworkAttachment() string {
+	if x != nil {
+		return x.NetworkAttachment
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceNetworkInterface) GetVlan() int32 {
+	if x != nil && x.Vlan != nil {
+		return *x.Vlan
+	}
+	return 0
+}
+
+func (x *GcpComputeInstanceNetworkInterface) GetIgmpQuery() string {
+	if x != nil {
+		return x.IgmpQuery
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceNetworkInterface) GetIpv6Address() string {
+	if x != nil {
+		return x.Ipv6Address
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceNetworkInterface) GetInternalIpv6PrefixLength() int32 {
+	if x != nil && x.InternalIpv6PrefixLength != nil {
+		return *x.InternalIpv6PrefixLength
+	}
+	return 0
+}
+
 // GcpComputeInstanceAccessConfig grants the interface an external IPv4.
 type GcpComputeInstanceAccessConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1004,8 +1233,21 @@ type GcpComputeInstanceIpv6AccessConfig struct {
 	// Domain name for the public PTR (reverse DNS) record of the external
 	// IPv6 range.
 	PublicPtrDomainName string `protobuf:"bytes,2,opt,name=public_ptr_domain_name,json=publicPtrDomainName,proto3" json:"public_ptr_domain_name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Static EXTERNAL IPv6 address (the first address of the external
+	// range) to pin to this interface. Must be unused and in the same
+	// region as the instance's zone. When omitted, GCP assigns an external
+	// IPv6 range from the subnetwork. Changing it replaces the VM.
+	ExternalIpv6 string `protobuf:"bytes,3,opt,name=external_ipv6,json=externalIpv6,proto3" json:"external_ipv6,omitempty"`
+	// Prefix length of the external IPv6 range (the provider models this
+	// as a string). Normally read back from GCP rather than set — only
+	// meaningful together with external_ipv6. Changing it replaces the VM.
+	ExternalIpv6PrefixLength string `protobuf:"bytes,4,opt,name=external_ipv6_prefix_length,json=externalIpv6PrefixLength,proto3" json:"external_ipv6_prefix_length,omitempty"`
+	// Name of this IPv6 access configuration; GCP's recommended value is
+	// "External IPv6". When omitted, GCP assigns one. Changing it replaces
+	// the VM.
+	Name          string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GcpComputeInstanceIpv6AccessConfig) Reset() {
@@ -1048,6 +1290,27 @@ func (x *GcpComputeInstanceIpv6AccessConfig) GetNetworkTier() string {
 func (x *GcpComputeInstanceIpv6AccessConfig) GetPublicPtrDomainName() string {
 	if x != nil {
 		return x.PublicPtrDomainName
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceIpv6AccessConfig) GetExternalIpv6() string {
+	if x != nil {
+		return x.ExternalIpv6
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceIpv6AccessConfig) GetExternalIpv6PrefixLength() string {
+	if x != nil {
+		return x.ExternalIpv6PrefixLength
+	}
+	return ""
+}
+
+func (x *GcpComputeInstanceIpv6AccessConfig) GetName() string {
+	if x != nil {
+		return x.Name
 	}
 	return ""
 }
@@ -1182,10 +1445,17 @@ type GcpComputeInstanceScheduling struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Provisioning model:
 	//
-	//	""         -- same as "STANDARD"
-	//	"STANDARD" -- on-demand capacity
-	//	"SPOT"     -- deeply discounted preemptible capacity; GCP may
-	//	              reclaim the VM at any time
+	//	""                  -- same as "STANDARD"
+	//	"STANDARD"          -- on-demand capacity
+	//	"SPOT"              -- deeply discounted preemptible capacity; GCP
+	//	                       may reclaim the VM at any time
+	//	"FLEX_START"        -- discounted capacity with a flexible start
+	//	                       time (Dynamic Workload Scheduler); requires
+	//	                       max_run_duration_seconds and is deleted when
+	//	                       reclaimed
+	//	"RESERVATION_BOUND" -- runs only on capacity from one specific
+	//	                       reservation (pair with reservation_affinity
+	//	                       type SPECIFIC_RESERVATION)
 	//
 	// Create-time only.
 	ProvisioningModel string `protobuf:"bytes,1,opt,name=provisioning_model,json=provisioningModel,proto3" json:"provisioning_model,omitempty"`
@@ -1197,9 +1467,11 @@ type GcpComputeInstanceScheduling struct {
 	// (live-migrate; zero downtime), or "TERMINATE" (stop during
 	// maintenance — required for GPUs and confidential VMs).
 	OnHostMaintenance string `protobuf:"bytes,3,opt,name=on_host_maintenance,json=onHostMaintenance,proto3" json:"on_host_maintenance,omitempty"`
-	// What GCP does when a Spot VM is preempted or its run duration
-	// expires: "STOP" (keep the stopped VM and disks) or "DELETE" (remove
-	// the VM). Spot only.
+	// What GCP does when the VM is reclaimed (Spot preemption, FLEX_START
+	// expiry) or a run-duration limit fires: "STOP" (keep the stopped VM
+	// and disks) or "DELETE" (remove the VM). Applies to SPOT and
+	// FLEX_START models and to timed-run VMs
+	// (max_run_duration_seconds/termination_time).
 	InstanceTerminationAction string `protobuf:"bytes,4,opt,name=instance_termination_action,json=instanceTerminationAction,proto3" json:"instance_termination_action,omitempty"`
 	// Maximum run duration in seconds, after which
 	// instance_termination_action is executed. The duration clock starts at
@@ -1789,11 +2061,134 @@ func (x *GcpComputeInstanceSpecificReservation) GetValues() []string {
 	return nil
 }
 
+// GcpComputeInstanceEncryptionKey configures CMEK encryption of
+// instance-level data. Customer-supplied raw keys (CSEK) are
+// deliberately not modeled: raw key material does not belong in
+// declarative manifests or state — use CMEK, where the key stays in
+// Cloud KMS.
+type GcpComputeInstanceEncryptionKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The KMS key encrypting instance-level data, referenced as a
+	// GcpKmsKey or a literal self link. The Compute Engine service agent
+	// needs roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+	KmsKey *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	// Service account used for the encryption request. When omitted, the
+	// Compute Engine default service agent is used.
+	KmsKeyServiceAccount string `protobuf:"bytes,2,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpComputeInstanceEncryptionKey) Reset() {
+	*x = GcpComputeInstanceEncryptionKey{}
+	mi := &file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpComputeInstanceEncryptionKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpComputeInstanceEncryptionKey) ProtoMessage() {}
+
+func (x *GcpComputeInstanceEncryptionKey) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpComputeInstanceEncryptionKey.ProtoReflect.Descriptor instead.
+func (*GcpComputeInstanceEncryptionKey) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GcpComputeInstanceEncryptionKey) GetKmsKey() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKey
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceEncryptionKey) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
+// CMEK decryption parameters for an encrypted boot-disk source (image or
+// snapshot). Customer-supplied raw keys (CSEK) are deliberately not
+// modeled: raw key material does not belong in declarative manifests or
+// state — use CMEK, where the key stays in Cloud KMS.
+type GcpComputeInstanceSourceEncryption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The KMS key the source was encrypted with, referenced as a GcpKmsKey
+	// or a literal self link. The service agent performing the read needs
+	// roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+	KmsKey *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=kms_key,json=kmsKey,proto3" json:"kms_key,omitempty"`
+	// Service account used for the decryption request. When omitted, the
+	// Compute Engine default service agent is used.
+	KmsKeyServiceAccount string `protobuf:"bytes,2,opt,name=kms_key_service_account,json=kmsKeyServiceAccount,proto3" json:"kms_key_service_account,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *GcpComputeInstanceSourceEncryption) Reset() {
+	*x = GcpComputeInstanceSourceEncryption{}
+	mi := &file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpComputeInstanceSourceEncryption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpComputeInstanceSourceEncryption) ProtoMessage() {}
+
+func (x *GcpComputeInstanceSourceEncryption) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpComputeInstanceSourceEncryption.ProtoReflect.Descriptor instead.
+func (*GcpComputeInstanceSourceEncryption) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GcpComputeInstanceSourceEncryption) GetKmsKey() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKey
+	}
+	return nil
+}
+
+func (x *GcpComputeInstanceSourceEncryption) GetKmsKeyServiceAccount() string {
+	if x != nil {
+		return x.KmsKeyServiceAccount
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/gcp/gcpcomputeinstance/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpcomputeinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb4)\n" +
+	"2catalog/gcp/gcpcomputeinstance/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpcomputeinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xce4\n" +
 	"\x16GcpComputeInstanceSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x88\x02\n" +
@@ -1836,7 +2231,10 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14valid_desired_status\x128desired_status must be RUNNING, SUSPENDED, or TERMINATED\x1a<this == '' || this in ['RUNNING', 'SUSPENDED', 'TERMINATED']R\rdesiredStatus\x12H\n" +
 	"\x19allow_stopping_for_update\x18\x1f \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\x16allowStoppingForUpdate\x88\x01\x01\x12\xb9\x01\n" +
 	"\x1akey_revocation_action_type\x18  \x01(\tB|\xbaHy\xba\x01v\n" +
-	"\x1bvalid_key_revocation_action\x12/key_revocation_action_type must be NONE or STOP\x1a&this == '' || this in ['NONE', 'STOP']R\x17keyRevocationActionType\x1a;\n" +
+	"\x1bvalid_key_revocation_action\x12/key_revocation_action_type must be NONE or STOP\x1a&this == '' || this in ['NONE', 'STOP']R\x17keyRevocationActionType\x12\x84\x01\n" +
+	"\x17instance_encryption_key\x18! \x01(\v2L.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceEncryptionKeyR\x15instanceEncryptionKey\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
@@ -1845,20 +2243,22 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
 	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x88\f\xbaH\x84\f\x1a\xde\x02\n" +
-	"\"spot_requires_no_automatic_restart\x12\x96\x01Spot VMs cannot automatically restart after preemption — leave scheduling.automatic_restart unset or set it to false when provisioning_model is SPOT\x1a\x9e\x01!has(this.scheduling) || this.scheduling.provisioning_model != 'SPOT' || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false\x1a\xaf\x02\n" +
-	" termination_action_requires_spot\x12\x8e\x01scheduling.instance_termination_action applies only to Spot VMs — set scheduling.provisioning_model to SPOT or remove the termination action\x1az!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model == 'SPOT'\x1a\xb1\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdd\x14\xbaH\xd9\x14\x1a\xee\x02\n" +
+	"/reclaimable_models_require_no_automatic_restart\x12\x86\x01SPOT and FLEX_START VMs cannot automatically restart after reclamation — leave scheduling.automatic_restart unset or set it to false\x1a\xb1\x01!has(this.scheduling) || !(this.scheduling.provisioning_model in ['SPOT', 'FLEX_START']) || !has(this.scheduling.automatic_restart) || this.scheduling.automatic_restart == false\x1a\xe5\x03\n" +
+	"3termination_action_requires_reclaimable_or_timed_vm\x12\xc5\x01scheduling.instance_termination_action applies to SPOT/FLEX_START VMs and to timed-run VMs (max_run_duration_seconds or termination_time) — configure one of those or remove the termination action\x1a\xe5\x01!has(this.scheduling) || this.scheduling.instance_termination_action == '' || this.scheduling.provisioning_model in ['SPOT', 'FLEX_START'] || has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time != ''\x1a\xf9\x01\n" +
+	"$flex_start_requires_max_run_duration\x12SFLEX_START VMs must bound their runtime — set scheduling.max_run_duration_seconds\x1a|!has(this.scheduling) || this.scheduling.provisioning_model != 'FLEX_START' || has(this.scheduling.max_run_duration_seconds)\x1a\x9e\x02\n" +
+	"\x1fflex_start_terminates_by_delete\x12tFLEX_START VMs are deleted when reclaimed — leave scheduling.instance_termination_action unset or set it to DELETE\x1a\x84\x01!has(this.scheduling) || this.scheduling.provisioning_model != 'FLEX_START' || this.scheduling.instance_termination_action != 'STOP'\x1a\xef\x02\n" +
+	"/reservation_bound_requires_specific_reservation\x12\x86\x01RESERVATION_BOUND VMs consume one named reservation — set reservation_affinity.type to SPECIFIC_RESERVATION and name the reservation\x1a\xb2\x01!has(this.scheduling) || this.scheduling.provisioning_model != 'RESERVATION_BOUND' || (has(this.reservation_affinity) && this.reservation_affinity.type == 'SPECIFIC_RESERVATION')\x1a\xb1\x02\n" +
 	"+confidential_requires_terminate_maintenance\x12\x88\x01confidential VMs cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when confidential_instance_config is configured\x1aw!has(this.confidential_instance_config) || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')\x1a\xb2\x02\n" +
 	"*accelerators_require_terminate_maintenance\x12\x8f\x01VMs with guest accelerators (GPUs) cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when guest_accelerators are attached\x1arsize(this.guest_accelerators) == 0 || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')\x1a\x85\x02\n" +
 	"0max_run_duration_conflicts_with_termination_time\x12^max_run_duration_seconds and termination_time both bound the VM's lifetime — set at most one\x1aq!has(this.scheduling) || !has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time == ''B\x1c\n" +
-	"\x1a_allow_stopping_for_update\"\xd9\v\n" +
+	"\x1a_allow_stopping_for_update\"\xe6\x19\n" +
 	"\x1aGcpComputeInstanceBootDisk\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12'\n" +
 	"\x0fsource_snapshot\x18\x02 \x01(\tR\x0esourceSnapshot\x12v\n" +
 	"\vsource_disk\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\n" +
 	"sourceDisk\x12'\n" +
-	"\asize_gb\x18\x04 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\x80\x04(\n" +
-	"R\x06sizeGb\x12\x12\n" +
+	"\asize_gb\x18\x04 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\x80\x04(\x01R\x06sizeGb\x12\x12\n" +
 	"\x04type\x18\x05 \x01(\tR\x04type\x12.\n" +
 	"\vauto_delete\x18\x06 \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\n" +
 	"autoDelete\x88\x01\x01\x12\x1f\n" +
@@ -1874,27 +2274,47 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cvalid_boot_disk_architecture\x12$architecture must be X86_64 or ARM64\x1a)this == '' || this in ['X86_64', 'ARM64']R\farchitecture\x12>\n" +
 	"\x1benable_confidential_compute\x18\r \x01(\bR\x19enableConfidentialCompute\x125\n" +
 	"\x11resource_policies\x18\x0e \x03(\tB\b\xbaH\x05\x92\x01\x02\x10\x01R\x10resourcePolicies\x12!\n" +
-	"\fstorage_pool\x18\x0f \x01(\tR\vstoragePool\x1a=\n" +
+	"\fstorage_pool\x18\x0f \x01(\tR\vstoragePool\x12\x89\x01\n" +
+	"\x04mode\x18\x10 \x01(\tBu\xbaHr\xba\x01o\n" +
+	"\x14valid_boot_disk_mode\x12$mode must be READ_WRITE or READ_ONLY\x1a1this == '' || this in ['READ_WRITE', 'READ_ONLY']R\x04mode\x12\x87\x01\n" +
+	"\tinterface\x18\x11 \x01(\tBi\xbaHf\xba\x01c\n" +
+	"\x19valid_boot_disk_interface\x12\x1einterface must be SCSI or NVME\x1a&this == '' || this in ['SCSI', 'NVME']R\tinterface\x12!\n" +
+	"\fforce_attach\x18\x12 \x01(\bR\vforceAttach\x12*\n" +
+	"\x11guest_os_features\x18\x13 \x03(\tR\x0fguestOsFeatures\x12\xb6\x01\n" +
+	"\rreplica_zones\x18\x14 \x03(\tB\x90\x01\xbaH\x8c\x01\xba\x01\x88\x01\n" +
+	"\x19replica_zones_exactly_two\x12Greplica_zones takes exactly two zones (one must be the instance's zone)\x1a\"size(this) == 0 || size(this) == 2R\freplicaZones\x12\x94\x01\n" +
+	"\x15resource_manager_tags\x18\x15 \x03(\v2`.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.ResourceManagerTagsEntryR\x13resourceManagerTags\x125\n" +
+	"\x17kms_key_service_account\x18\x16 \x01(\tR\x14kmsKeyServiceAccount\x12\x87\x01\n" +
+	"\x17source_image_encryption\x18\x17 \x01(\v2O.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryptionR\x15sourceImageEncryption\x12\x8d\x01\n" +
+	"\x1asource_snapshot_encryption\x18\x18 \x01(\v2O.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryptionR\x18sourceSnapshotEncryption\x1a=\n" +
 	"\x0fDiskLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xdb\x02\xbaH\xd7\x02\x1a\xd4\x02\n" +
-	"\x1cboot_disk_exactly_one_source\x12\x81\x01exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)\x1a\xaf\x01(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) == 1B\x0e\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9a\b\xbaH\x96\b\x1a\xd4\x02\n" +
+	"\x1cboot_disk_exactly_one_source\x12\x81\x01exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)\x1a\xaf\x01(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) == 1\x1a\x9b\x01\n" +
+	"&source_image_encryption_requires_image\x129source_image_encryption is only valid together with image\x1a6!has(this.source_image_encryption) || this.image != ''\x1a\xbb\x01\n" +
+	",source_snapshot_encryption_requires_snapshot\x12Fsource_snapshot_encryption is only valid together with source_snapshot\x1aC!has(this.source_snapshot_encryption) || this.source_snapshot != ''\x1a\xe0\x02\n" +
+	"%replica_zones_require_snapshot_source\x12\xf9\x01replica_zones requires a source_snapshot boot source — GCP cannot create a regional boot disk from an image (API 400: \"Creating a regional disk from a source image is not supported yet\"), and a pre-created source_disk already carries its own zones\x1a;size(this.replica_zones) == 0 || this.source_snapshot != ''B\x0e\n" +
 	"\f_auto_deleteB\x13\n" +
 	"\x11_provisioned_iopsB\x19\n" +
-	"\x17_provisioned_throughput\"\xb3\x03\n" +
+	"\x17_provisioned_throughput\"\x8d\x04\n" +
 	"\x1eGcpComputeInstanceAttachedDisk\x12s\n" +
 	"\x06source\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xba\x18\x92\xd4a\x18status.outputs.self_linkR\x06source\x12\x1f\n" +
 	"\vdevice_name\x18\x02 \x01(\tR\n" +
 	"deviceName\x12\x8d\x01\n" +
 	"\x04mode\x18\x03 \x01(\tBy\xbaHv\xba\x01s\n" +
 	"\x18valid_attached_disk_mode\x12$mode must be READ_WRITE or READ_ONLY\x1a1this == '' || this in ['READ_WRITE', 'READ_ONLY']R\x04mode\x12k\n" +
-	"\akms_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\"\xac\x02\n" +
+	"\akms_key\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x125\n" +
+	"\x17kms_key_service_account\x18\x05 \x01(\tR\x14kmsKeyServiceAccount\x12!\n" +
+	"\fforce_attach\x18\x06 \x01(\bR\vforceAttach\"\xac\x02\n" +
 	"\x1dGcpComputeInstanceScratchDisk\x122\n" +
 	"\tinterface\x18\x01 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x04NVMER\x04SCSIR\tinterface\x12\xb5\x01\n" +
 	"\asize_gb\x18\x02 \x01(\x05B\x9b\x01\xbaH\x97\x01\xba\x01\x93\x01\n" +
 	"\x17valid_scratch_disk_size\x12Nscratch disk size_gb must be 375 (standard local SSD unit) or 3000 (Z3 shapes)\x1a(this == 0 || this == 375 || this == 3000R\x06sizeGb\x12\x1f\n" +
 	"\vdevice_name\x18\x03 \x01(\tR\n" +
-	"deviceName\"\xd0\f\n" +
+	"deviceName\"\xd9\x10\n" +
 	"\"GcpComputeInstanceNetworkInterface\x12w\n" +
 	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x12\x80\x01\n" +
 	"\n" +
@@ -1913,25 +2333,39 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\vqueue_count\x18\t \x01(\x05B\t\xbaH\x06\x1a\x04\x18 (\x01H\x00R\n" +
 	"queueCount\x88\x01\x01\x12s\n" +
 	"\x0falias_ip_ranges\x18\n" +
-	" \x03(\v2K.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAliasIpRangeR\raliasIpRanges:\xd8\x02\xbaH\xd4\x02\x1a\xd1\x02\n" +
-	"0network_interface_network_or_subnetwork_required\x12meach network interface needs a network (auto-mode VPC) or a subnetwork (custom-mode VPC) — set at least one\x1a\xad\x01(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from)))B\x0e\n" +
-	"\f_queue_count\"\x81\x02\n" +
+	" \x03(\v2K.dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAliasIpRangeR\raliasIpRanges\x12-\n" +
+	"\x12network_attachment\x18\v \x01(\tR\x11networkAttachment\x12#\n" +
+	"\x04vlan\x18\f \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xff\x01(\x02H\x01R\x04vlan\x88\x01\x01\x12\xb3\x01\n" +
+	"\n" +
+	"igmp_query\x18\r \x01(\tB\x93\x01\xbaH\x8f\x01\xba\x01\x8b\x01\n" +
+	"\x10valid_igmp_query\x127igmp_query must be IGMP_QUERY_V2 or IGMP_QUERY_DISABLED\x1a>this == '' || this in ['IGMP_QUERY_V2', 'IGMP_QUERY_DISABLED']R\tigmpQuery\x12!\n" +
+	"\fipv6_address\x18\x0e \x01(\tR\vipv6Address\x12N\n" +
+	"\x1binternal_ipv6_prefix_length\x18\x0f \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\x80\x01(\x01H\x02R\x18internalIpv6PrefixLength\x88\x01\x01:\xbb\x03\xbaH\xb7\x03\x1a\xb4\x03\n" +
+	"+network_interface_attachment_point_required\x12\xb3\x01each network interface needs an attachment point: a network (auto-mode VPC), a subnetwork (custom-mode VPC), or a network_attachment (Private Service Connect) — set at least one\x1a\xce\x01(has(this.network) && (has(this.network.value) || has(this.network.value_from))) || (has(this.subnetwork) && (has(this.subnetwork.value) || has(this.subnetwork.value_from))) || this.network_attachment != ''B\x0e\n" +
+	"\f_queue_countB\a\n" +
+	"\x05_vlanB\x1e\n" +
+	"\x1c_internal_ipv6_prefix_length\"\x81\x02\n" +
 	"\x1eGcpComputeInstanceAccessConfig\x12j\n" +
 	"\x06nat_ip\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xaa\x18\x92\xd4a\x16status.outputs.addressR\x05natIp\x12>\n" +
 	"\fnetwork_tier\x18\x02 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aPREMIUMR\bSTANDARDR\vnetworkTier\x123\n" +
-	"\x16public_ptr_domain_name\x18\x03 \x01(\tR\x13publicPtrDomainName\"\x8f\x01\n" +
+	"\x16public_ptr_domain_name\x18\x03 \x01(\tR\x13publicPtrDomainName\"\x87\x02\n" +
 	"\"GcpComputeInstanceIpv6AccessConfig\x124\n" +
 	"\fnetwork_tier\x18\x01 \x01(\tB\x11\xbaH\x0e\xc8\x01\x01r\tR\aPREMIUMR\vnetworkTier\x123\n" +
-	"\x16public_ptr_domain_name\x18\x02 \x01(\tR\x13publicPtrDomainName\"\x80\x01\n" +
+	"\x16public_ptr_domain_name\x18\x02 \x01(\tR\x13publicPtrDomainName\x12#\n" +
+	"\rexternal_ipv6\x18\x03 \x01(\tR\fexternalIpv6\x12=\n" +
+	"\x1bexternal_ipv6_prefix_length\x18\x04 \x01(\tR\x18externalIpv6PrefixLength\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\"\x80\x01\n" +
 	"\x1eGcpComputeInstanceAliasIpRange\x12*\n" +
 	"\rip_cidr_range\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vipCidrRange\x122\n" +
 	"\x15subnetwork_range_name\x18\x02 \x01(\tR\x13subnetworkRangeName\"\xad\x01\n" +
 	" GcpComputeInstanceServiceAccount\x12g\n" +
 	"\x05email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x05email\x12 \n" +
-	"\x06scopes\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06scopes\"\xcd\b\n" +
-	"\x1cGcpComputeInstanceScheduling\x12\xa8\x01\n" +
-	"\x12provisioning_model\x18\x01 \x01(\tBy\xbaHv\xba\x01s\n" +
-	"\x18valid_provisioning_model\x12+provisioning_model must be STANDARD or SPOT\x1a*this == '' || this in ['STANDARD', 'SPOT']R\x11provisioningModel\x12:\n" +
+	"\x06scopes\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06scopes\"\x93\t\n" +
+	"\x1cGcpComputeInstanceScheduling\x12\xee\x01\n" +
+	"\x12provisioning_model\x18\x01 \x01(\tB\xbe\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
+	"\x18valid_provisioning_model\x12Kprovisioning_model must be STANDARD, SPOT, FLEX_START, or RESERVATION_BOUND\x1aMthis == '' || this in ['STANDARD', 'SPOT', 'FLEX_START', 'RESERVATION_BOUND']R\x11provisioningModel\x12:\n" +
 	"\x11automatic_restart\x18\x02 \x01(\bB\b\x92\xa6\x1d\x04trueH\x00R\x10automaticRestart\x88\x01\x01\x12L\n" +
 	"\x13on_host_maintenance\x18\x03 \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14R\aMIGRATER\tTERMINATER\x11onHostMaintenance\x12V\n" +
 	"\x1binstance_termination_action\x18\x04 \x01(\tB\x16\xbaH\x13\xd8\x01\x01r\x0eR\x04STOPR\x06DELETER\x19instanceTerminationAction\x12L\n" +
@@ -1988,7 +2422,13 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1especific_reservation_coherence\x12Rspecific_reservation must be set when (and only when) type is SPECIFIC_RESERVATION\x1aG(this.type == 'SPECIFIC_RESERVATION') == has(this.specific_reservation)\"c\n" +
 	"%GcpComputeInstanceSpecificReservation\x12\x18\n" +
 	"\x03key\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x03key\x12 \n" +
-	"\x06values\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06valuesB\xee\x02\n" +
+	"\x06values\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\x06values\"\xcb\x01\n" +
+	"\x1fGcpComputeInstanceEncryptionKey\x12q\n" +
+	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x125\n" +
+	"\x17kms_key_service_account\x18\x02 \x01(\tR\x14kmsKeyServiceAccount\"\xce\x01\n" +
+	"\"GcpComputeInstanceSourceEncryption\x12q\n" +
+	"\akms_key\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\x06kmsKey\x125\n" +
+	"\x17kms_key_service_account\x18\x02 \x01(\tR\x14kmsKeyServiceAccountB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpcomputeinstance.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpcomputeinstance/v1alpha1;gcpcomputeinstancev1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpcomputeinstance.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpcomputeinstance\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpcomputeinstance\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpcomputeinstance::V1alpha1b\x06proto3"
 
 var (
@@ -2003,7 +2443,7 @@ func file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpComputeInstanceSpec)(nil),                    // 0: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec
 	(*GcpComputeInstanceBootDisk)(nil),                // 1: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk
@@ -2022,14 +2462,17 @@ var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpComputeInstanceGuestAccelerator)(nil),        // 14: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceGuestAccelerator
 	(*GcpComputeInstanceReservationAffinity)(nil),     // 15: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceReservationAffinity
 	(*GcpComputeInstanceSpecificReservation)(nil),     // 16: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpecificReservation
-	nil,                         // 17: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.MetadataEntry
-	nil,                         // 18: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.LabelsEntry
-	nil,                         // 19: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.ResourceManagerTagsEntry
-	nil,                         // 20: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.DiskLabelsEntry
-	(*v1.StringValueOrRef)(nil), // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*GcpComputeInstanceEncryptionKey)(nil),           // 17: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceEncryptionKey
+	(*GcpComputeInstanceSourceEncryption)(nil),        // 18: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryption
+	nil,                         // 19: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.MetadataEntry
+	nil,                         // 20: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.LabelsEntry
+	nil,                         // 21: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.ResourceManagerTagsEntry
+	nil,                         // 22: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.DiskLabelsEntry
+	nil,                         // 23: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil), // 24: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 0: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.boot_disk:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk
 	2,  // 2: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.attached_disks:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAttachedDisk
 	3,  // 3: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.scratch_disks:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceScratchDisk
@@ -2041,29 +2484,35 @@ var file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_depIdxs = []int32{
 	13, // 9: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.advanced_machine_features:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAdvancedMachineFeatures
 	14, // 10: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.guest_accelerators:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceGuestAccelerator
 	15, // 11: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.reservation_affinity:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceReservationAffinity
-	17, // 12: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.metadata:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.MetadataEntry
-	18, // 13: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.labels:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.LabelsEntry
-	19, // 14: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.ResourceManagerTagsEntry
-	21, // 15: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.source_disk:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 16: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 17: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.disk_labels:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.DiskLabelsEntry
-	21, // 18: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAttachedDisk.source:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 19: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAttachedDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 20: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 21: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 22: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.network_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5,  // 23: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.access_configs:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAccessConfig
-	6,  // 24: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.ipv6_access_configs:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceIpv6AccessConfig
-	7,  // 25: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.alias_ip_ranges:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAliasIpRange
-	21, // 26: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAccessConfig.nat_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 27: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceServiceAccount.email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 28: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceScheduling.node_affinities:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNodeAffinity
-	16, // 29: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceReservationAffinity.specific_reservation:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpecificReservation
-	30, // [30:30] is the sub-list for method output_type
-	30, // [30:30] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	19, // 12: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.metadata:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.MetadataEntry
+	20, // 13: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.labels:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.LabelsEntry
+	21, // 14: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.ResourceManagerTagsEntry
+	17, // 15: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpec.instance_encryption_key:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceEncryptionKey
+	24, // 16: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.source_disk:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 17: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 18: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.disk_labels:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.DiskLabelsEntry
+	23, // 19: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.resource_manager_tags:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.ResourceManagerTagsEntry
+	18, // 20: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.source_image_encryption:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryption
+	18, // 21: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceBootDisk.source_snapshot_encryption:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryption
+	24, // 22: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAttachedDisk.source:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 23: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAttachedDisk.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 24: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 25: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 26: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.network_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 27: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.access_configs:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAccessConfig
+	6,  // 28: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.ipv6_access_configs:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceIpv6AccessConfig
+	7,  // 29: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNetworkInterface.alias_ip_ranges:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAliasIpRange
+	24, // 30: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceAccessConfig.nat_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 31: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceServiceAccount.email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 32: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceScheduling.node_affinities:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceNodeAffinity
+	16, // 33: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceReservationAffinity.specific_reservation:type_name -> dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSpecificReservation
+	24, // 34: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceEncryptionKey.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 35: dev.planton.gcp.gcpcomputeinstance.v1alpha1.GcpComputeInstanceSourceEncryption.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	36, // [36:36] is the sub-list for method output_type
+	36, // [36:36] is the sub-list for method input_type
+	36, // [36:36] is the sub-list for extension type_name
+	36, // [36:36] is the sub-list for extension extendee
+	0,  // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_init() }
@@ -2083,7 +2532,7 @@ func file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

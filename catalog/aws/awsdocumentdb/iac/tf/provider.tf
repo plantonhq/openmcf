@@ -8,10 +8,11 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor: DocumentDB Serverless
-      # (serverless_v2_scaling_configuration, v6.10) and network_type
-      # (v6.23) are v6-line additions -- the v6.23 floor keeps the module
-      # on the modern major where the whole modeled surface is present.
+      # Feature floor: certificate_rotation_restart landed in 6.29.0
+      # (the newest argument this module renders); DocumentDB Serverless
+      # (serverless_v2_scaling_configuration, 6.8.0) and network_type
+      # (6.23.0) are earlier v6-line additions. The 6.58 floor covers
+      # the whole modeled surface.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

@@ -84,10 +84,11 @@ resource "aws_rds_cluster" "this" {
   backtrack_window = var.spec.backtrack_window_seconds != 0 ? var.spec.backtrack_window_seconds : null
 
   iam_database_authentication_enabled = var.spec.iam_database_authentication_enabled
-  # Roles the ENGINE assumes for S3 import/export, Lambda, and ML
-  # integrations. The roles own their policies -- this cluster only
-  # associates them (a module never mutates a resource it references).
-  iam_roles = length(var.spec.iam_roles) > 0 ? var.spec.iam_roles : null
+  # Engine feature roles are managed as one association resource per
+  # spec.iam_roles entry (role_associations.tf) -- never this resource's
+  # inline iam_roles argument, which cannot carry feature names and,
+  # per the provider's own warning, overwrites association resources
+  # when the two are mixed.
 
   # The Data API: SQL over HTTPS with IAM auth -- the natural fit for
   # Lambda and other connection-averse callers.
@@ -129,10 +130,33 @@ resource "aws_rds_cluster" "this" {
     }
   }
 
+  # Kerberos authentication through an AWS Managed Microsoft AD --
+  # clusters only support the managed-directory shape (the pair is
+  # CEL-coupled; self-managed AD is an instance-kind capability).
+  domain               = var.spec.domain != "" ? var.spec.domain : null
+  domain_iam_role_name = var.spec.domain_iam_role_name != "" ? var.spec.domain_iam_role_name : null
+
+  # Tri-state: null keeps the AWS default (true). Per-instance
+  # auto_minor_version_upgrade on the folded instances overrides this
+  # for that instance.
+  auto_minor_version_upgrade = var.spec.auto_minor_version_upgrade
+
   # Create-time restore sources (mutually exclusive, CEL-enforced):
-  # from a snapshot, or from another cluster's continuous backup
-  # (point-in-time restore / copy-on-write fast clone).
+  # from a snapshot, from another cluster's continuous backup
+  # (point-in-time restore / copy-on-write fast clone), or from a
+  # Percona XtraBackup in S3 (aurora-mysql migration on-ramp).
   snapshot_identifier = var.spec.snapshot_identifier != "" ? var.spec.snapshot_identifier : null
+
+  dynamic "s3_import" {
+    for_each = var.spec.s3_import != null ? [var.spec.s3_import] : []
+    content {
+      bucket_name           = s3_import.value.bucket_name
+      bucket_prefix         = s3_import.value.bucket_prefix != "" ? s3_import.value.bucket_prefix : null
+      ingestion_role        = s3_import.value.ingestion_role
+      source_engine         = s3_import.value.source_engine
+      source_engine_version = s3_import.value.source_engine_version
+    }
+  }
 
   dynamic "restore_to_point_in_time" {
     for_each = var.spec.restore_to_point_in_time != null ? [var.spec.restore_to_point_in_time] : []

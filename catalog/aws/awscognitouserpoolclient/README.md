@@ -87,7 +87,7 @@ spec:
 | `refreshTokenValidity` | `int32` | 60 minutes - 10 years in the configured unit (default days). |
 | `tokenValidityUnits` | `object` | `seconds` / `minutes` / `hours` / `days` per token type. |
 | `refreshTokenRotation.feature` | `string` | `ENABLED` / `DISABLED` -- each refresh issues a NEW refresh token. When ENABLED, `ALLOW_REFRESH_TOKEN_AUTH` must not be listed in `explicitAuthFlows` (AWS rejects the combination). |
-| `refreshTokenRotation.retryGracePeriodSeconds` | `int32` | 0-60s the retired token keeps working after rotation. |
+| `refreshTokenRotation.retryGracePeriodSeconds` | `optional int32` | 0-60s the retired token keeps working after rotation. Tri-state: unset leaves the choice to AWS, an EXPLICIT 0 pins immediate retirement (grace disabled), 1-60 grants that many seconds of grace. |
 
 ### Security posture
 
@@ -96,6 +96,7 @@ spec:
 | `enableTokenRevocation` | `bool` | Sign-out revokes tokens. AWS default: true. |
 | `enablePropagateAdditionalUserContextData` | `bool` | Forward client IP/user-agent to threat protection in server-side flows. Requires a secret. |
 | `preventUserExistenceErrors` | `string` | `ENABLED` (recommended -- blocks user enumeration) or `LEGACY`. |
+| `riskConfiguration` | `object` | CLIENT-SCOPED threat-protection responses, overriding the pool-wide policy for this client only: per-risk-level account-takeover actions with notification templates (SES identity ref), compromised-credential blocking with event filters, and IP allow/block exceptions. Requires the POOL's threat protection to be AUDIT/ENFORCED -- AWS rejects it otherwise. |
 
 ### Attribute access and analytics
 
@@ -125,7 +126,7 @@ audiences:
 
 ## Deliberately Omitted
 
-- **`aws_cognito_managed_user_pool_client`**: adopts clients CREATED BY other AWS services (ELB, AppSync) by name pattern, with a no-op delete -- not a graph-owned resource.
+- **`aws_cognito_managed_user_pool_client`**: adopts clients CREATED BY other AWS services (ELB, AppSync) by name pattern, with a no-op delete -- an adoption lifecycle that will be its own kind, never a mode of this one.
 - **Per-kind tags**: app clients are not taggable in AWS.
 
 ---

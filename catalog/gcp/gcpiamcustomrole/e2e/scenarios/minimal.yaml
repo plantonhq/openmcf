@@ -23,3 +23,5 @@ spec:
   permissions:
     - storage.objects.get
     - storage.objects.list
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

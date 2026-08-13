@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcplogmetric.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcplogmetric/v1alpha1/outputs.proto";
+import "catalog/gcp/gcplogmetric/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+//gcp-log-metric
+message GcpLogMetric {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpLogMetric'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpLogMetricSpec spec = 4 [(buf.validate.field).required = true];
+  GcpLogMetricStatus status = 5;
+}
+
+message GcpLogMetricStatus {
+  GcpLogMetricStackOutputs outputs = 1;
+}

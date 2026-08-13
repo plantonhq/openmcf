@@ -54,7 +54,10 @@ message AwsLbListenerSpec {
   // Protocol the listener speaks. Decides the load balancer family and the
   // allowed actions:
   // - ALB: "HTTP", "HTTPS" (full action set).
-  // - NLB: "TCP", "UDP", "TCP_UDP", "TLS" (forward only).
+  // - NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC" (forward
+  //   only). "QUIC" accepts QUIC connections natively; "TCP_QUIC" serves
+  //   TCP and QUIC on one port (the HTTP/3 pattern with TCP fallback) and
+  //   forwards to a matching QUIC-family target group.
   string protocol = 4 [(buf.validate.field).required = true];
 
   // -----------------------------------------------------------------------
@@ -129,10 +132,12 @@ message AwsLbListenerSpec {
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
 
+  // GENEVE is deliberately absent from this domain: the provider admits it
+  // for Gateway Load Balancer listeners, which this catalog does not model.
   option (buf.validate.message).cel = {
     id: "protocol_valid"
-    message: "protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS"
-    expression: "this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS']"
+    message: "protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC"
+    expression: "this.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS', 'QUIC', 'TCP_QUIC']"
   };
 
   option (buf.validate.message).cel = {
@@ -603,6 +608,17 @@ message AwsLbListenerMutualAuthentication {
     id: "mtls_advertise_ca_names_valid"
     message: "advertise_trust_store_ca_names must be 'on' or 'off' when set"
     expression: "this.advertise_trust_store_ca_names == '' || this.advertise_trust_store_ca_names in ['on', 'off']"
+  };
+
+  // Mirrors the provider's plan-time diagnostic: the advertise knob only
+  // exists in "verify" mode (like ignore_client_certificate_expiry above).
+  // The matching rule for trust_store_arn (required when "verify") stays
+  // module-enforced -- message-level CEL cannot inspect StringValueOrRef
+  // fields without breaking protovalidate-java.
+  option (buf.validate.message).cel = {
+    id: "mtls_advertise_ca_names_only_for_verify"
+    message: "advertise_trust_store_ca_names only applies when mode is 'verify'"
+    expression: "this.advertise_trust_store_ca_names == '' || this.mode == 'verify'"
   };
 }
 

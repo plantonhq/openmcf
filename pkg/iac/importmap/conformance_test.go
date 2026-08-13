@@ -230,6 +230,19 @@ func TestImportMapConformance(t *testing.T) {
 								t.Errorf("value %q from_stack_output %q: no such field on %s",
 									v.GetName(), source.FromStackOutput, outputsDescriptor.FullName())
 							}
+						case *componentv1.ImportValueDerivation_FromStackOutputKeyedByAddress:
+							// The arm names a map output whose entries are keyed by
+							// the resource's for_each keys -- a scalar field here
+							// means the map author reached for the wrong arm (plain
+							// from_stack_output serves scalars).
+							field := outputsDescriptor.Fields().ByName(protoreflect.Name(source.FromStackOutputKeyedByAddress))
+							if field == nil {
+								t.Errorf("value %q from_stack_output_keyed_by_address %q: no such field on %s",
+									v.GetName(), source.FromStackOutputKeyedByAddress, outputsDescriptor.FullName())
+							} else if !field.IsMap() {
+								t.Errorf("value %q from_stack_output_keyed_by_address %q: field on %s is not a map -- the arm exists for per-instance entries keyed by the for_each key; use from_stack_output for scalar outputs",
+									v.GetName(), source.FromStackOutputKeyedByAddress, outputsDescriptor.FullName())
+							}
 						case *componentv1.ImportValueDerivation_FromArnPart:
 							switch source.FromArnPart {
 							case "resource_id", "resource_name", "account_id", "region", "arn":

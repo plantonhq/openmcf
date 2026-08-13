@@ -31,6 +31,14 @@ spec:
     maxSurge: 2
     maxUnavailable: 1
     strategy: SURGE
+  deletionPolicy: DELETE
+  # Customized node drain requires per-project enablement from GCP support
+  # (the API rejects it otherwise) — shown here as the documented example
+  # of drain pacing on allowlisted projects.
+  nodeDrainConfig:
+    graceTerminationDuration: "60s"
+    pdbTimeoutDuration: "600s"
+    respectPdbDuringNodePoolDeletion: true
   nodeConfig:
     machineType: n2-standard-4
     diskSizeGb: 100
@@ -49,6 +57,49 @@ spec:
     gvnicEnabled: true
     shieldedInstanceConfig:
       enableSecureBoot: true
+    advancedMachineFeatures:
+      threadsPerCore: 2
+      performanceMonitoringUnit: STANDARD
+    architectureTaintBehavior: ARM
+    containerdConfig:
+      privateRegistryAccess:
+        enabled: true
+        certificateAuthorityDomains:
+          - fqdns:
+              - registry.internal:5000
+            gcpSecretManagerCertificateUri: projects/test-project-123/secrets/registry-ca/versions/latest
+      registryHosts:
+        - server: docker.io
+          hosts:
+            - host: https://mirror.internal
+              capabilities:
+                - pull
+                - resolve
+              dialTimeout: "10s"
     kubeletConfig:
       podPidsLimit: 4096
       insecureKubeletReadonlyPortEnabled: "FALSE"
+      imageMinimumGcAge: "120s"
+      imageMaximumGcAge: "86400s"
+      maxParallelImagePulls: 3
+      evictionSoft:
+        memoryAvailable: 200Mi
+      evictionSoftGracePeriod:
+        memoryAvailable: "90s"
+      # Percentage-only: GKE rejects absolute quantities for minimum
+      # reclaim (the soft thresholds above accept either form).
+      evictionMinimumReclaim:
+        memoryAvailable: "10%"
+      crashLoopBackOff:
+        maxContainerRestartPeriod: "300s"
+      topologyManager:
+        policy: best-effort
+        scope: container
+    linuxNodeConfig:
+      cgroupMode: CGROUP_MODE_V2
+      transparentHugepageEnabled: TRANSPARENT_HUGEPAGE_ENABLED_MADVISE
+      nodeKernelModuleLoadingPolicy: ENFORCE_SIGNED_MODULES
+      swapConfig:
+        enabled: true
+        bootDiskProfile:
+          swapSizePercent: 20

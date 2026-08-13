@@ -222,9 +222,25 @@ type GcpKmsKeySpec struct {
 	// User-defined labels attached to the key, for cost attribution and
 	// fleet queries. Merged with Planton's platform labels (which win on
 	// key conflicts). Mutable in place.
-	Labels        map[string]string `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Labels map[string]string `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// What destroying this resource does to the key. KMS keys can NEVER be
+	// deleted from GCP — only their versions can — so the choice here is
+	// about the versions, and it is the most consequential destroy switch
+	// in this spec:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- EVERY key version is scheduled for destruction (after
+	//	             destroy_scheduled_duration) and rotation is disabled;
+	//	             data encrypted under this key becomes UNRECOVERABLE
+	//	             once the versions are destroyed. The key shell remains
+	//	             in the project.
+	//	"PREVENT" -- destroy FAILS; the right default posture for any key
+	//	             protecting data you cannot afford to lose
+	//	"ABANDON" -- the key leaves management with every version intact
+	//	             and enabled — encrypted data stays decryptable
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpKmsKeySpec) Reset() {
@@ -327,6 +343,13 @@ func (x *GcpKmsKeySpec) GetLabels() map[string]string {
 	return nil
 }
 
+func (x *GcpKmsKeySpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpkmskey_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpkmskey_v1alpha1_spec_proto_rawDesc = "" +
@@ -335,7 +358,7 @@ const file_catalog_gcp_gcpkmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18GcpKmsKeyVersionTemplate\x12$\n" +
 	"\talgorithm\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\talgorithm\x12\xdb\x01\n" +
 	"\x10protection_level\x18\x02 \x01(\tB\xaf\x01\xbaH\xab\x01\xba\x01\xa7\x01\n" +
-	"\x16valid_protection_level\x12Fprotection_level must be one of: SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC\x1aEthis == '' || this in ['SOFTWARE', 'HSM', 'EXTERNAL', 'EXTERNAL_VPC']R\x0fprotectionLevel\"\xaa\x10\n" +
+	"\x16valid_protection_level\x12Fprotection_level must be one of: SOFTWARE, HSM, EXTERNAL, EXTERNAL_VPC\x1aEthis == '' || this in ['SOFTWARE', 'HSM', 'EXTERNAL', 'EXTERNAL_VPC']R\x0fprotectionLevel\"\xe8\x11\n" +
 	"\rGcpKmsKeySpec\x12}\n" +
 	"\vkey_ring_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\x18\x92\xd4a\x1astatus.outputs.key_ring_idR\tkeyRingId\x12:\n" +
 	"\bkey_name\x18\x02 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x172\x15^[a-zA-Z0-9_-]{1,63}$R\akeyName\x12\x18\n" +
@@ -350,7 +373,9 @@ const file_catalog_gcp_gcpkmskey_v1alpha1_spec_proto_rawDesc = "" +
 	"importOnly\x12`\n" +
 	"\x12crypto_key_backend\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x10cryptoKeyBackend\x12U\n" +
 	"\x06labels\x18\n" +
-	" \x03(\v2=.dev.planton.gcp.gcpkmskey.v1alpha1.GcpKmsKeySpec.LabelsEntryR\x06labels\x1a9\n" +
+	" \x03(\v2=.dev.planton.gcp.gcpkmskey.v1alpha1.GcpKmsKeySpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc1\x06\xbaH\xbd\x06\x1a\xed\x01\n" +

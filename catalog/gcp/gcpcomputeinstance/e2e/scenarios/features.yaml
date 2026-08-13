@@ -1,7 +1,10 @@
 # GcpComputeInstance scenario: the composed graph — a Spot VM with
 # shielded boot, a dedicated GcpServiceAccount identity, and a pre-created
 # GcpComputeDisk attached by self-link reference (the disk FK proven
-# live). Private placement: subnetwork only, no external IP.
+# live). Private placement: subnetwork only, no external IP. Also arms
+# the cheap new dials: explicit boot-disk guest OS features and an
+# explicit DELETE deletion policy (the provider default, armed to prove
+# the round-trip stays diff-free).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpComputeInstance
 metadata:
@@ -17,12 +20,29 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  zone: us-central1-a
+  # us-east1: us-central1 zonal e2-micro/e2-small pools answered
+  # ZONE_RESOURCE_POOL_EXHAUSTED on 2026-08-11 (audit-log verified; the
+  # same stockout class hit the VPC-connector fleets there on
+  # 2026-08-10). The VM chain is fully self-contained (own VPC →
+  # subnetwork prerequisites), so its region is a free variable —
+  # pinned to measured capacity reliability.
+  zone: us-east1-b
   machineType: e2-small
   bootDisk:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
+    # The image's COMPLETE feature set in the API's echo order — a
+    # partial list plans a VM replacement on every re-apply (the API
+    # merges at create; the provider compares authoritatively;
+    # live-verified 2026-08-11 against debian-12). If a debian-12 image
+    # release changes its feature set, this list must follow it.
+    guestOsFeatures:
+      - UEFI_COMPATIBLE
+      - VIRTIO_SCSI_MULTIQUEUE
+      - GVNIC
+      - SEV_CAPABLE
+      - SEV_LIVE_MIGRATABLE_V2
   attachedDisks:
     - source:
         valueFrom:
@@ -50,5 +70,6 @@ spec:
     instanceTerminationAction: DELETE
   shieldedInstanceConfig:
     enableSecureBoot: true
+  deletionPolicy: DELETE
   labels:
     e2e-suite: gcp

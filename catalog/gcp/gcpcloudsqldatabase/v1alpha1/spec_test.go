@@ -110,4 +110,18 @@ var _ = ginkgo.Describe("GcpCloudSqlDatabaseSpec", func() {
 		r.Kind = "GcpCloudSql"
 		expectInvalid(r, "kind")
 	})
+
+	ginkgo.It("accepts every valid deletion_policy", func() {
+		for _, policy := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+			r := minimal()
+			r.Spec.DeletionPolicy = policy
+			expectValid(r)
+		}
+	})
+
+	ginkgo.It("rejects an unknown deletion_policy", func() {
+		r := minimal()
+		r.Spec.DeletionPolicy = "RETAIN"
+		expectInvalid(r, "deletion_policy")
+	})
 })

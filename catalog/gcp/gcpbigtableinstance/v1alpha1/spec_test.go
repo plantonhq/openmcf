@@ -527,4 +527,47 @@ var _ = ginkgo.Describe("GcpBigtableInstanceSpec", func() {
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("spec"))
 		})
 	})
+
+	ginkgo.Context("edition, tags, and deletion policy", func() {
+		ginkgo.It("should accept edition ENTERPRISE and ENTERPRISE_PLUS", func() {
+			for _, edition := range []string{"ENTERPRISE", "ENTERPRISE_PLUS", ""} {
+				r := minimal()
+				r.Spec.Edition = edition
+				err := validator.Validate(r)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred(), "edition %q", edition)
+			}
+		})
+
+		ginkgo.It("should reject an invalid edition", func() {
+			r := minimal()
+			r.Spec.Edition = "STANDARD"
+			err := validator.Validate(r)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should accept resource manager tags", func() {
+			r := minimal()
+			r.Spec.ResourceManagerTags = map[string]string{
+				"tagKeys/123": "tagValues/456",
+			}
+			err := validator.Validate(r)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		})
+
+		ginkgo.It("should accept deletion_policy DELETE, PREVENT, ABANDON, and empty", func() {
+			for _, policy := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+				r := minimal()
+				r.Spec.DeletionPolicy = policy
+				err := validator.Validate(r)
+				gomega.Expect(err).ToNot(gomega.HaveOccurred(), "policy %q", policy)
+			}
+		})
+
+		ginkgo.It("should reject an invalid deletion_policy", func() {
+			r := minimal()
+			r.Spec.DeletionPolicy = "RETAIN"
+			err := validator.Validate(r)
+			gomega.Expect(err).To(gomega.HaveOccurred())
+		})
+	})
 })

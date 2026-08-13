@@ -292,6 +292,34 @@ var _ = ginkgo.Describe("AwsDocumentDbSpec Custom Validation Tests", func() {
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("final_snapshot_identifier is required when"))
 		})
+
+		ginkgo.It("rejects a final snapshot identifier with consecutive hyphens", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "my--final"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a well-formed final snapshot identifier", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "docdb-final-2026"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("instance maintenance validations", func() {
+
+		ginkgo.It("accepts an explicit certificate-rotation restart opt-out with immediate apply", func() {
+			input := validCluster()
+			noRestart := false
+			input.Spec.Instances[0].CertificateRotationRestart = &noRestart
+			input.Spec.Instances[0].ApplyImmediately = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("restore validations", func() {

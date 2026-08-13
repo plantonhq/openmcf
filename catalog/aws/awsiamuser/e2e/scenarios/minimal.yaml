@@ -1,8 +1,12 @@
 # Minimal standalone AwsIamUser scenario: a CI-shaped user with one
-# AWS-managed policy attached by literal ARN, an access key (the default), and
-# force_destroy so teardown always succeeds even if out-of-band credentials
-# appear. AwsIamUser has no prerequisites, so the harness applies this
-# directly. Full metadata is supplied for tagging/orphan cleanup.
+# AWS-managed policy attached by literal ARN, one Planton-managed policy
+# attached by reference (the e2e-prerequisites annotation composes the
+# AwsIamPolicy install profile -- the first live proof of the policy_arn
+# reference edge), an access key created explicitly Inactive (the
+# key-rotation lever: proves the non-default status arm at zero cost --
+# nothing in the lane signs requests with it), and force_destroy so teardown
+# always succeeds even if out-of-band credentials appear. Full metadata is
+# supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamUser
 metadata:
@@ -15,6 +19,7 @@ metadata:
     e2e-component: awsiamuser
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamPolicy"
   tags:
     - planton-e2e
 spec:
@@ -24,3 +29,8 @@ spec:
   forceDestroy: true
   managedPolicyArns:
     - value: arn:aws:iam::aws:policy/ReadOnlyAccess
+    - valueFrom:
+        kind: AwsIamPolicy
+        name: planton-oss-e2e-awsiampolicy-prereq
+        fieldPath: status.outputs.policy_arn
+  accessKeyStatus: Inactive

@@ -1,0 +1,31 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpEventarcTrigger
+metadata:
+  name: pubsub-to-cloud-run
+spec:
+  location: us-central1
+
+  # The workhorse pattern: a message published to a topic invokes a
+  # Cloud Run service. Every trigger MUST filter the type attribute.
+  matchingCriteria:
+    - attribute: type
+      value: google.cloud.pubsub.topic.v1.messagePublished
+
+  destination:
+    cloudRunService:
+      # Reference the GcpCloudRun resource; events POST to /events on it.
+      service:
+        value: order-processor
+      path: /events
+
+  # Bring your own topic (a GcpPubSubTopic managed in its own right) —
+  # Eventarc never deletes it with the trigger. Omit to let Eventarc
+  # mint and own a hidden per-trigger topic.
+  transportPubsubTopic:
+    value: projects/my-project/topics/order-events
+
+  # roles/eventarc.eventReceiver + roles/run.invoker on the service.
+  serviceAccount:
+    value: eventarc-invoker@my-project.iam.gserviceaccount.com
+
+  deletionPolicy: DELETE

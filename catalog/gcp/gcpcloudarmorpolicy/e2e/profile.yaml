@@ -3,10 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: gcpcloudarmorpolicy
 spec:
-  # Leaf security policy with explicit default rule (~1–2 minutes).
+  # Leaf security policy with explicit default rule (~1–2 minutes). The
+  # live scenario arms user labels and the flagship advanced-options pairing
+  # (STANDARD JSON parsing + 16KB request-body inspection — the
+  # Optional+Computed echo proven diff-free under the idempotency gate).
+  #
+  # Offline-proven arms: adaptive protection (L7 DDoS defense),
+  # CEL-expression matches, rate-limit/throttle rules, and redirect actions
+  # ride the canonical manifest's offline plans — niche shapes a smoke
+  # fixture cannot honestly exercise without sustained traffic.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

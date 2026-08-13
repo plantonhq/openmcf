@@ -29,17 +29,27 @@ referenced `AwsLbTargetGroup` nodes -- lets you:
 
 - **Bounds and units**: min/max/desired, with `desired_capacity_type`
   counting in instances, vCPUs, or memory for heterogeneous fleets.
-- **Multi-AZ spread** across referenced subnets with balanced-only or
-  best-effort zone distribution and automatic rebalancing.
+- **Multi-AZ spread** across referenced subnets with balanced-only,
+  best-effort, or reservations-first zone distribution and automatic
+  rebalancing.
+- **Reserved capacity**: `capacityReservation` fills targeted On-Demand
+  Capacity Reservations (by ID or resource group) first, only, or never
+  -- the reserved-fleet cost posture.
 - **Warm pools**: pre-initialized (stopped, running, or hibernated)
   instances that cut scale-out latency from minutes to seconds.
+- **Traffic sources**: beyond ALB/NLB `targetGroups`, register instances
+  with VPC Lattice target groups or Classic ELBs via `trafficSources`.
 
 ### Scaling
 
 - **Target tracking** (predefined group metrics, custom CloudWatch
   metrics, or metric-math expressions -- e.g. queue backlog per
   instance), **step scaling** against alarm breaches, legacy **simple
-  scaling**, and **predictive scaling** on forecast load.
+  scaling**, and **predictive scaling** on forecast load -- with the
+  predefined metric pair, split load/scaling metrics, or fully
+  customized metric-math query sets.
+- **Policy pause button**: `disabled` suspends a policy without deleting
+  it, keeping alarms, history, and forecast state intact.
 - **Scheduled actions**: cron or one-shot capacity changes with time
   zones -- business-hours scale-up, overnight scale-down.
 - **Capacity rebalance**: proactively replace Spot instances at elevated
@@ -51,9 +61,16 @@ referenced `AwsLbTargetGroup` nodes -- lets you:
   surge (launch-before-terminate), checkpointed canary waves, CloudWatch
   alarm watch, and auto-rollback.
 - **Lifecycle hooks**: pause launching or terminating instances for
-  warm-up or drain logic, delivered to an SNS topic reference.
+  warm-up or drain logic, delivered to an SNS topic reference --
+  `applyAtLaunch` attaches a hook atomically at group creation so even
+  the first instance is caught.
+- **Failed-drain forensics**: `instanceLifecyclePolicy` retains instances
+  whose terminate hook was abandoned, instead of destroying the
+  evidence.
 - **Fleet hygiene**: max instance lifetime, termination policies,
-  scale-in protection, and process suspension for maintenance windows.
+  scale-in protection, process suspension for maintenance windows, and
+  ELB-health create/update waits (`minElbCapacity`,
+  `waitForElbCapacity`).
 
 ## Benefits
 

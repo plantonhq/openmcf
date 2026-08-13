@@ -5,14 +5,13 @@ metadata:
   org: test-org
   env: dev
   id: test-workflow-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsStepFunction.test-workflow
 spec:
   region: us-west-2
   type: STANDARD
+  publish: true
+  aliases:
+    - name: live
+      description: Follows the version published by the current deployment
   roleArn:
     value: arn:aws:iam::123456789012:role/StepFunctionsExecRole
   definition:

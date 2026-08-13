@@ -1,6 +1,7 @@
 # GcpCloudSqlDatabase scenario: a logical database on the prerequisite
 # instance. The harness resolves the instance reference from the
-# prerequisite's instance_name output.
+# prerequisite's instance_name output. The explicit DELETE teardown policy
+# must be a no-op against the provider default on re-plan.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlDatabase
 metadata:
@@ -22,3 +23,4 @@ spec:
       name: planton-oss-e2e-gcpsql-prereq
       fieldPath: status.outputs.instance_name
   databaseName: e2e_app
+  deletionPolicy: DELETE

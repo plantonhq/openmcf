@@ -4,7 +4,7 @@ metadata:
   name: my-ci-cd-user
 spec:
   region: <aws-region>
-  userName: <ci-cd-user-name>
+  userName: github-actions-deployer
   managedPolicyArns:
     # AWS-managed policies attach by literal ARN; reference an AwsIamPolicy's
     # policy_arn output via valueFrom for policies defined in Planton.

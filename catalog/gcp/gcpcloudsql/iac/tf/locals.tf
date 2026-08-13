@@ -68,11 +68,33 @@ locals {
     : null
   )
 
+  server_certificate_rotation_mode = (
+    try(var.spec.network.server_certificate_rotation_mode, "") != ""
+    ? var.spec.network.server_certificate_rotation_mode
+    : null
+  )
+
   # The Enterprise Plus data cache block is emitted only when enabled so
   # ENTERPRISE instances carry no cache stanza at all (the API rejects it).
   data_cache_enabled = var.spec.data_cache_enabled
 
   backup_enabled = try(var.spec.backup.enabled, false)
+
+  # Empty-string → null normalization for the new optional scalars.
+  deletion_policy          = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+  instance_type            = var.spec.instance_type != "" ? var.spec.instance_type : null
+  backupdr_backup          = var.spec.backupdr_backup != "" ? var.spec.backupdr_backup : null
+  maintenance_version      = var.spec.maintenance_version != "" ? var.spec.maintenance_version : null
+  data_api_access          = var.spec.data_api_access != "" ? var.spec.data_api_access : null
+  failover_dr_replica_name = var.spec.failover_dr_replica_name != "" ? var.spec.failover_dr_replica_name : null
+  replica_names            = length(var.spec.replica_names) > 0 ? var.spec.replica_names : null
+  final_backup_description = try(var.spec.final_backup.description, "") != "" ? var.spec.final_backup.description : null
+
+  # Retention settings emit when either dial is present (the provider
+  # defaults retention_unit to COUNT when only the count is given).
+  backup_retention_settings = (
+    try(var.spec.backup.retained_backups, null) != null || try(var.spec.backup.retention_unit, "") != ""
+  ) ? [1] : []
 
   location_preference = (
     try(var.spec.location_preference.zone, "") != "" || try(var.spec.location_preference.secondary_zone, "") != ""

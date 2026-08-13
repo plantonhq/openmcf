@@ -55,6 +55,10 @@ variable "spec" {
         scale_down_min_worker_fraction = optional(number, 0)
       })
     })
+
+    # Engine-side teardown behavior: DELETE, PREVENT, or ABANDON. The API
+    # additionally refuses to delete a policy any cluster still references.
+    deletion_policy = optional(string, "")
   })
 
   validation {

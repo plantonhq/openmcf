@@ -18,8 +18,13 @@ func Resources(ctx *pulumi.Context, stackInput *awsopensearchdomainv1alpha1.AwsO
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	if err := domain(ctx, locals, provider); err != nil {
+	osDomain, err := domain(ctx, locals, provider)
+	if err != nil {
 		return errors.Wrap(err, "opensearch domain")
+	}
+
+	if err := satellites(ctx, locals, provider, osDomain); err != nil {
+		return errors.Wrap(err, "opensearch domain satellites")
 	}
 
 	return nil

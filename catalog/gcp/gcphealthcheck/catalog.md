@@ -33,7 +33,7 @@ Open the deployment store, find **Health Check on Google Cloud**, and click **De
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpHealthCheck
 metadata:
   name: web-serving-hc

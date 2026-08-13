@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.gcp.gcpeventarcmessagebus.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/gcp/gcpeventarcmessagebus/v1alpha1/outputs.proto";
+import "catalog/gcp/gcpeventarcmessagebus/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+//gcp-eventarc-message-bus
+message GcpEventarcMessageBus {
+  string api_version = 1 [(buf.validate.field).string.const = 'gcp.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'GcpEventarcMessageBus'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  GcpEventarcMessageBusSpec spec = 4 [(buf.validate.field).required = true];
+  GcpEventarcMessageBusStatus status = 5;
+}
+
+message GcpEventarcMessageBusStatus {
+  GcpEventarcMessageBusStackOutputs outputs = 1;
+}

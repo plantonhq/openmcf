@@ -139,6 +139,31 @@ func memorystoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 		args.KmsKey = pulumi.StringPtr(spec.KmsKey.GetValue())
 	}
 
+	// Server certificate authority for the TLS-enabled instance: which CA
+	// signs the certificate clients verify. A customer-managed CA pool is
+	// consumed only in CUSTOMER_MANAGED_CAS_CA mode (spec-enforced
+	// pairing). Both are fixed at creation (ForceNew).
+	if spec.ServerCaMode != "" {
+		args.ServerCaMode = pulumi.StringPtr(spec.ServerCaMode)
+	}
+	if spec.ServerCaPool != "" {
+		args.ServerCaPool = pulumi.StringPtr(spec.ServerCaPool)
+	}
+
+	// Self-service maintenance: setting a newer available version applies
+	// the update now instead of waiting for GCP's rollout. Update-only —
+	// the API rejects it at create and rejects downgrades.
+	if spec.MaintenanceVersion != "" {
+		args.MaintenanceVersion = pulumi.StringPtr(spec.MaintenanceVersion)
+	}
+
+	// Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+	// Sent only when set so the provider default stays in charge otherwise.
+	// Evaluated only after deletion_protection_enabled allows the destroy.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	// Persistence configuration (RDB or AOF).
 	if spec.PersistenceConfig != nil {
 		persistenceArgs := &memorystore.InstancePersistenceConfigArgs{
@@ -178,6 +203,9 @@ func memorystoreInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.P
 			WeeklyMaintenanceWindows: memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowArray{
 				&memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowArgs{
 					Day: pulumi.String(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Day),
+					// Hours only: the Memorystore API rejects a start_time
+					// carrying minutes (400 "Invalid start time, only hours
+					// are supported" — live-verified; narrower than Redis).
 					StartTime: &memorystore.InstanceMaintenancePolicyWeeklyMaintenanceWindowStartTimeArgs{
 						Hours: pulumi.IntPtr(int(spec.MaintenancePolicy.WeeklyMaintenanceWindow.Hour)),
 					},

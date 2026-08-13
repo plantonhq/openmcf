@@ -11,6 +11,18 @@ spec:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
+    # When declaring guest OS features, list the image's COMPLETE
+    # feature set: the API merges the list with the image's own features
+    # at create, and the provider then compares the stored (merged) set
+    # against the config with replace-on-change semantics — a partial
+    # list plans a VM replacement on every re-apply. This is debian-12's
+    # full set.
+    guestOsFeatures:
+      - UEFI_COMPATIBLE
+      - VIRTIO_SCSI_MULTIQUEUE
+      - GVNIC
+      - SEV_CAPABLE
+      - SEV_LIVE_MIGRATABLE_V2
   networkInterfaces:
     - network:
         value: default
@@ -22,6 +34,9 @@ spec:
     instanceTerminationAction: DELETE
   shieldedInstanceConfig:
     enableSecureBoot: true
+  # DELETE is the provider default — armed explicitly to prove the
+  # round-trip stays diff-free.
+  deletionPolicy: DELETE
   labels:
     env: testing
   tags:

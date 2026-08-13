@@ -8,6 +8,7 @@ spec:
   region: us-central1
   clusterName: test-spark-cluster
   gracefulDecommissionTimeout: "600s"
+  deletionPolicy: DELETE
   labels:
     team: data-eng
     workload: spark-etl
@@ -32,12 +33,22 @@ spec:
     workerConfig:
       numInstances: 3
       minNumInstances: 2
-      machineType: n2-standard-4
+      # No machineType: the flexibility policy below replaces it — the
+      # API provisions from the ranked selections and drops a paired
+      # machineTypeUri (mutually exclusive, CEL-enforced).
       diskConfig:
         bootDiskSizeGb: 200
-        bootDiskType: pd-balanced
+        bootDiskType: hyperdisk-balanced
+        bootDiskProvisionedIops: 3060
+        bootDiskProvisionedThroughput: 155
         numLocalSsds: 1
         localSsdInterface: nvme
+      instanceFlexibilityPolicy:
+        instanceSelectionList:
+          - machineTypes:
+              - n2-standard-4
+              - n2d-standard-4
+            rank: 1
     secondaryWorkerConfig:
       numInstances: 4
       preemptibility: SPOT
@@ -69,6 +80,7 @@ spec:
       enableHttpPortAccess: true
     lifecycleConfig:
       idleDeleteTtl: "1800s"
+      idleStopTtl: "900s"
     dataprocMetricConfig:
       metrics:
         - metricSource: SPARK

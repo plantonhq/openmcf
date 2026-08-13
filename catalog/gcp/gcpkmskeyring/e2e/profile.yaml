@@ -8,9 +8,11 @@ spec:
   # destroy removes the ring from state only, and the run-scoped
   # ${E2E_RUN_ID} name means the permanent leftover ring is inert, free,
   # and can never collide with a later run.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (2/2 lane runs; the no-delete-API verify posture held — destroy
+  # removes state only, the run-scoped ring persists inert by design).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

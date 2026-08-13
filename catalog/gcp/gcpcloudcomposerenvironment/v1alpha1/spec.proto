@@ -135,6 +135,24 @@ message GcpCloudComposerEnvironmentSpec {
   // beneath Planton's platform attribution labels (platform keys win on
   // conflict).
   map<string, string> labels = 19;
+
+  // Deletion policy for the environment — what happens when this
+  // resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the environment is deleted (10-15 minutes: Composer
+  //                tears down the managed GKE cluster and database).
+  //                The DAG bucket Composer auto-created survives — GCP
+  //                never deletes it with the environment
+  //   "PREVENT" -- destroy FAILS; protects the environment whose DAGs
+  //                a data platform runs on
+  //   "ABANDON" -- the environment is removed from management but keeps
+  //                running (and billing meaningfully — Composer bills
+  //                for its infrastructure even when idle) in GCP
+  string deletion_policy = 20 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }
 
 // GcpCloudComposerNodeConfig defines networking and compute settings for the

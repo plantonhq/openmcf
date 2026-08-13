@@ -1,0 +1,78 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringDashboard
+metadata:
+  name: golden-signals
+spec:
+  dashboardJson: |
+    {
+      "displayName": "Golden signals",
+      "mosaicLayout": {
+        "columns": 12,
+        "tiles": [
+          {
+            "width": 6, "height": 4,
+            "widget": {
+              "title": "Traffic — request rate",
+              "xyChart": {
+                "dataSets": [{
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"loadbalancing.googleapis.com/https/request_count\" resource.type=\"https_lb_rule\"",
+                      "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM"}
+                    }
+                  }
+                }]
+              }
+            }
+          },
+          {
+            "xPos": 6, "width": 6, "height": 4,
+            "widget": {
+              "title": "Errors — 5xx rate",
+              "xyChart": {
+                "dataSets": [{
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"loadbalancing.googleapis.com/https/request_count\" resource.type=\"https_lb_rule\" metric.labels.response_code_class=\"500\"",
+                      "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM"}
+                    }
+                  }
+                }]
+              }
+            }
+          },
+          {
+            "yPos": 4, "width": 6, "height": 4,
+            "widget": {
+              "title": "Latency — p95 total",
+              "xyChart": {
+                "dataSets": [{
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"loadbalancing.googleapis.com/https/total_latencies\" resource.type=\"https_lb_rule\"",
+                      "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_PERCENTILE_95"}
+                    }
+                  }
+                }]
+              }
+            }
+          },
+          {
+            "xPos": 6, "yPos": 4, "width": 6, "height": 4,
+            "widget": {
+              "title": "Saturation — backend utilization",
+              "xyChart": {
+                "dataSets": [{
+                  "timeSeriesQuery": {
+                    "timeSeriesFilter": {
+                      "filter": "metric.type=\"loadbalancing.googleapis.com/https/backend_request_count\" resource.type=\"https_lb_rule\"",
+                      "aggregation": {"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_RATE", "crossSeriesReducer": "REDUCE_SUM"}
+                    }
+                  }
+                }]
+              }
+            }
+          }
+        ]
+      }
+    }

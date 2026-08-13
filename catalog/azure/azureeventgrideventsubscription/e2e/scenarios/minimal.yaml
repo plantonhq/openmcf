@@ -19,8 +19,12 @@ metadata:
   annotations:
     planton.dev/e2e: "true"
     # The delivery queue is an extra instance this scenario composes --
-    # not a kind-level requirement (see the doc's own chain).
-    planton.dev/e2e-prerequisites: "catalog/azure/azureeventgrideventsubscription/e2e/queue-smoke.yaml"
+    # not a kind-level requirement (see the doc's own chain). The
+    # fixture storage account is named FIRST because both this
+    # scenario's destination and the queue document resolve
+    # storage_account_id against it, and a chain entry only resolves
+    # against instances deployed ahead of it.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount,catalog/azure/azureeventgrideventsubscription/e2e/queue-smoke.yaml"
   tags:
     - planton-e2e
 spec:

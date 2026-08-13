@@ -44,6 +44,8 @@ resource "google_compute_health_check" "this" {
   # equivalent field).
   source_regions = length(var.spec.source_regions) > 0 ? var.spec.source_regions : null
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "http_health_check" {
     for_each = local.http != null ? [local.http] : []
     content {
@@ -150,6 +152,8 @@ resource "google_compute_region_health_check" "this" {
   timeout_sec         = local.timeout_sec
   healthy_threshold   = local.healthy_threshold
   unhealthy_threshold = local.unhealthy_threshold
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   dynamic "http_health_check" {
     for_each = local.http != null ? [local.http] : []

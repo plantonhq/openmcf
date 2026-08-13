@@ -4,6 +4,7 @@ go_library(
     name = "module",
     srcs = [
         "container_properties.go",
+        "eks_properties.go",
         "job_definition.go",
         "locals.go",
         "main.go",

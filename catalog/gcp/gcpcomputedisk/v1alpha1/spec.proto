@@ -16,9 +16,10 @@ import "shared/foreignkey/v1/foreign_key.proto";
 //
 // Important behavioral notes:
 //
-//   - disk_name, zone, type, source (image/snapshot/disk), encryption,
-//     and architecture are create-time decisions — changing them replaces
-//     the disk (and its data). size_gb grows in place but never shrinks.
+//   - disk_name, zone, type, source (image / snapshot / instant
+//     snapshot / storage object / disk), encryption, and architecture
+//     are create-time decisions — changing them replaces the disk (and
+//     its data). size_gb grows in place but never shrinks.
 //   - At most one source may be set. With no source the disk is created
 //     empty (the common case for data volumes).
 //   - Deleting a disk that is still attached to a running instance fails;
@@ -28,13 +29,23 @@ import "shared/foreignkey/v1/foreign_key.proto";
 message GcpComputeDiskSpec {
   option (buf.validate.message).cel = {
     id: "disk_at_most_one_source"
-    expression: "(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) <= 1"
-    message: "at most one disk source may be set: image, source_snapshot, or source_disk — omit all three for an empty disk"
+    expression: "(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + (this.source_instant_snapshot != '' ? 1 : 0) + (this.source_storage_object != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) <= 1"
+    message: "at most one disk source may be set: image, source_snapshot, source_instant_snapshot, source_storage_object, or source_disk — omit all for an empty disk"
   };
   option (buf.validate.message).cel = {
     id: "empty_disk_requires_size"
-    expression: "this.image != '' || this.source_snapshot != '' || (has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) || this.size_gb > 0"
+    expression: "this.image != '' || this.source_snapshot != '' || this.source_instant_snapshot != '' || this.source_storage_object != '' || (has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) || this.size_gb > 0"
     message: "an empty disk (no image, snapshot, or source disk) must declare size_gb"
+  };
+  option (buf.validate.message).cel = {
+    id: "image_encryption_requires_image"
+    expression: "!has(this.source_image_encryption) || this.image != ''"
+    message: "source_image_encryption is only valid together with image"
+  };
+  option (buf.validate.message).cel = {
+    id: "snapshot_encryption_requires_snapshot"
+    expression: "!has(this.source_snapshot_encryption) || this.source_snapshot != ''"
+    message: "source_snapshot_encryption is only valid together with source_snapshot"
   };
   option (buf.validate.message).cel = {
     id: "confidential_compute_requires_kms_key"
@@ -179,4 +190,86 @@ message GcpComputeDiskSpec {
   // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
   // Create-time only.
   map<string, string> resource_manager_tags = 21;
+
+  // Guest OS features to enable when this disk is used as a boot disk,
+  // e.g. ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
+  // "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
+  // operating system features" in the Compute Engine docs. Create-time
+  // only.
+  repeated string guest_os_features = 22;
+
+  // License URIs applicable to this disk, e.g. a Windows Server or
+  // SQL Server license
+  // ("https://www.googleapis.com/compute/v1/projects/windows-cloud/global/licenses/windows-server-core").
+  // Normally inherited from the source image; set explicitly when
+  // importing raw disks that need bring-your-own-license attribution.
+  // Create-time only.
+  repeated string licenses = 23;
+
+  // Source INSTANT snapshot to create the disk from (name, partial or
+  // full URL). Instant snapshots are near-instant, same-region-only
+  // point-in-time copies — the fast restore path, vs. standard
+  // snapshots' cross-region durability. Create-time only.
+  string source_instant_snapshot = 24;
+
+  // Full Google Cloud Storage URI of a raw disk image to create the
+  // disk from (e.g. "https://storage.googleapis.com/bucket/image.vmdk"
+  // or a gs:// URI) — the import-a-disk-file path, skipping the
+  // intermediate compute image. Create-time only.
+  string source_storage_object = 25;
+
+  // Deletion policy — what happens when this resource is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the disk (and its data) is deleted
+  //   "PREVENT" -- destroy FAILS; a guard rail for precious data volumes
+  //                (create_snapshot_before_destroy is the softer net)
+  //   "ABANDON" -- the disk is removed from management but left running
+  //                in GCP
+  string deletion_policy = 26 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+
+  // Service account used for the encryption request of kms_key (CMEK).
+  // When omitted, the Compute Engine default service agent is used.
+  // Only meaningful together with kms_key. Immutable after creation.
+  string kms_key_service_account = 27;
+
+  // Decrypts the source image when it is itself CMEK-encrypted. Only
+  // valid together with image.
+  GcpComputeDiskSourceEncryption source_image_encryption = 28;
+
+  // Decrypts the source snapshot when it is itself CMEK-encrypted. Only
+  // valid together with source_snapshot.
+  GcpComputeDiskSourceEncryption source_snapshot_encryption = 29;
+
+  // Makes this disk an ASYNC REPLICATION SECONDARY of the referenced
+  // primary disk (another GcpComputeDisk, or a literal disk self link in
+  // another region). Replication starts when the pair is activated on
+  // the primary; the secondary must match the primary's size and type.
+  // Create-time only.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef async_primary_disk = 30 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpComputeDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+}
+
+// CMEK decryption parameters for an encrypted disk source (image or
+// snapshot). Customer-supplied raw keys (CSEK) are deliberately not
+// modeled: raw key material does not belong in declarative manifests or
+// state — use CMEK, where the key stays in Cloud KMS.
+message GcpComputeDiskSourceEncryption {
+  // The KMS key the source was encrypted with, referenced as a GcpKmsKey
+  // or a literal self link. The service agent performing the read needs
+  // roles/cloudkms.cryptoKeyEncrypterDecrypter on it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // Service account used for the decryption request. When omitted, the
+  // Compute Engine default service agent is used.
+  string kms_key_service_account = 2;
 }

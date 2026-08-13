@@ -1,0 +1,60 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# This kind is the PRIMARY owner of aws_route53_record. Three sibling kinds
+# (AwsAlb, AwsNlb, AwsCertManagerCert) consume the same resource as
+# deliberately narrow module-wired glue, each accounted on its own manifest
+# with the boundary recorded there: the full record surface lives here.
+
+resources:
+  aws_route53_record:
+    mappings:
+      # The spec names the record data for what it is; the provider carries
+      # the legacy plural.
+      - spec: spec.values
+        arg: records
+      # The alias subtree: the spec names the target coordinates for what
+      # they are (dns_name; the provider reuses "name", already taken by
+      # the record's own name). zone_id and evaluate_target_health
+      # exact-match below the subtree.
+      - spec: spec.alias_target
+        arg: alias
+      - spec: spec.alias_target.dns_name
+        arg: alias.name
+      # The routing-policy oneof: each arm maps onto the provider's
+      # mutually exclusive *_routing_policy blocks; leaves exact-match
+      # below each subtree.
+      - spec: spec.routing_policy.weighted
+        arg: weighted_routing_policy
+      - spec: spec.routing_policy.latency
+        arg: latency_routing_policy
+      - spec: spec.routing_policy.failover
+        arg: failover_routing_policy
+      # The one leaf rename inside the arms: the spec says what the value
+      # selects (failover_type); the provider's bare "type" is already
+      # taken by the record's own type.
+      - spec: spec.routing_policy.failover.failover_type
+        arg: failover_routing_policy.type
+      - spec: spec.routing_policy.geolocation
+        arg: geolocation_routing_policy
+      - spec: spec.routing_policy.geoproximity
+        arg: geoproximity_routing_policy
+      - spec: spec.routing_policy.cidr
+        arg: cidr_routing_policy
+    exclusions:
+      # Block-presence semantics: the multivalue arm is an empty policy
+      # message (its presence IS the configuration), rendered by the module
+      # as the provider's bare boolean.
+      - arg: multivalue_answer_routing_policy
+        reason: derived by the module from the routing_policy.multivalue_answer arm's presence -- the empty policy message IS the flag (parameterless by AWS's contract)
+
+specExclusions:
+  # Route 53 is global -- aws_route53_record takes no region argument; the
+  # field selects the provider connection.
+  - field: spec.region
+    reason: provider-connection region for a global service -- no consumed resource carries a region argument

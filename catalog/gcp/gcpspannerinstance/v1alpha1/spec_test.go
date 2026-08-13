@@ -302,6 +302,77 @@ var _ = ginkgo.Describe("GcpSpannerInstanceSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept asymmetric override with processing-unit bounds", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.Config = "nam-eur-asia1"
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinProcessingUnits: 1000,
+				MaxProcessingUnits: 5000,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinProcessingUnits: 2000,
+						MaxProcessingUnits: 10000,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept asymmetric override with only per-replica targets and disables (no bounds)", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.Config = "nam-eur-asia1"
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						AutoscalingTargetHighPriorityCpuUtilizationPercent: 45,
+						DisableTotalCpuAutoscaling:                         true,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept a total CPU utilization target in instance-wide targets", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 3,
+			},
+			AutoscalingTargets: &GcpSpannerInstanceAutoscalingTargets{
+				TotalCpuUtilizationPercent: 70,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept deletion_policy DELETE, PREVENT, and ABANDON", func() {
+		for _, policy := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = policy
+			err := validator.Validate(msg)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "policy %q", policy)
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
 
 	ginkgo.It("should reject asymmetric option without replica_location", func() {
@@ -359,6 +430,94 @@ var _ = ginkgo.Describe("GcpSpannerInstanceSpec", func() {
 				},
 			},
 		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject asymmetric override mixing node and processing-unit bounds", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinNodes:           1,
+						MaxProcessingUnits: 5000,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject asymmetric override with max_processing_units < min_processing_units", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						MinProcessingUnits: 5000,
+						MaxProcessingUnits: 1000,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject asymmetric override with a per-replica target above 100", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 5,
+			},
+			AsymmetricAutoscalingOptions: []*GcpSpannerInstanceAsymmetricAutoscalingOption{
+				{
+					ReplicaLocation: "europe-west1",
+					Overrides: &GcpSpannerInstanceAsymmetricAutoscalingOverrides{
+						AutoscalingTargetTotalCpuUtilizationPercent: 101,
+					},
+				},
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject a total CPU utilization target above 100", func() {
+		msg := minimal()
+		msg.Spec.NumNodes = 0
+		msg.Spec.AutoscalingConfig = &GcpSpannerInstanceAutoscalingConfig{
+			AutoscalingLimits: &GcpSpannerInstanceAutoscalingLimits{
+				MinNodes: 1,
+				MaxNodes: 3,
+			},
+			AutoscalingTargets: &GcpSpannerInstanceAutoscalingTargets{
+				TotalCpuUtilizationPercent: 150,
+			},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "KEEP"
 		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})

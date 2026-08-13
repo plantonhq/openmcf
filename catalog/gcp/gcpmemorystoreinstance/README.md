@@ -15,7 +15,7 @@ Google Cloud Memorystore (new-generation) replaces the legacy Memorystore for Re
 | **Engine** | Redis | Valkey (Redis-compatible) |
 | **Networking** | VPC peering / Private Service Access | Private Service Connect (PSC) |
 | **Sharding** | Not supported | Native via `shard_count` |
-| **Node sizing** | `memory_size_gb` (arbitrary) | Predefined `node_type` (NANO–XLARGE) |
+| **Node sizing** | `memory_size_gb` (arbitrary) | Predefined `node_type` (NANO–2XLARGE) |
 | **Modes** | BASIC / STANDARD_HA | CLUSTER / CLUSTER_DISABLED |
 | **Persistence** | RDB only | RDB and AOF |
 | **Automated backups** | Not supported | Built-in with configurable retention |
@@ -69,21 +69,22 @@ spec:
 | Category | Options |
 |----------|---------|
 | **Mode** | `CLUSTER` (sharded, cluster-aware clients) or `CLUSTER_DISABLED` (standalone) |
-| **Node type** | `SHARED_CORE_NANO`, `STANDARD_SMALL`, `HIGHMEM_MEDIUM`, `HIGHMEM_XLARGE` |
+| **Node type** | Shared-core/custom: `SHARED_CORE_NANO`, `CUSTOM_PICO`, `CUSTOM_MICRO`, `CUSTOM_MINI`; dedicated: `STANDARD_SMALL`, `STANDARD_LARGE`, `HIGHCPU_MEDIUM`, `HIGHMEM_MEDIUM`, `HIGHMEM_XLARGE`, `HIGHMEM_2XLARGE` |
 | **Sharding** | `shard_count` (1+ shards; each shard handles a portion of the keyspace) |
 | **Replicas** | `replica_count` (0–5 read replicas per shard for read scaling and failover) |
 | **Engine** | `engine_version` (e.g., `VALKEY_8_0`, `VALKEY_7_2`); `engine_configs` for tuning |
 | **Persistence** | `persistence_config.mode`: `DISABLED`, `RDB` (periodic snapshots), or `AOF` (append-only file) |
 | **Encryption** | `transit_encryption_mode: SERVER_AUTHENTICATION` for TLS; `kms_key` for CMEK at rest |
+| **Server CA** | `server_ca_mode` — which CA signs the TLS server certificate: `GOOGLE_MANAGED_PER_INSTANCE_CA` (default), `GOOGLE_MANAGED_SHARED_CA` (one CA to trust fleet-wide), or `CUSTOMER_MANAGED_CAS_CA` paired with `server_ca_pool` (your CA Service pool); both immutable |
 | **Auth** | `authorization_mode: IAM_AUTH` for IAM-based client authentication |
 | **Networking** | `psc_auto_connections` — PSC endpoints in consumer VPCs (immutable after creation); a per-entry `project_id` omitted rides the provider's effective project |
 | **Zones** | `zone_distribution_config`: `MULTI_ZONE` (HA default) or `SINGLE_ZONE` |
-| **Maintenance** | `maintenance_policy` — weekly window (day + hour UTC) |
+| **Maintenance** | `maintenance_policy` — weekly window (day + hour UTC; the API accepts only whole-hour start times); `maintenance_version` — self-service patching trigger (update-only, forward-only) |
 | **Backups** | `automated_backup_config` — daily backups with configurable start hour and retention |
 | **Cross-region DR** | `cross_instance_replication_config` — PRIMARY replicating to secondaries, or SECONDARY replicating from a primary (roles exchange in place during switchover) |
 | **Seeding** | `gcs_source` (RDB files in GCS) XOR `managed_backup_source` (a managed backup) — creation-time only |
 | **Labels** | `labels` — user labels merged beneath platform attribution labels |
-| **Protection** | `deletion_protection_enabled` — defaults TRUE; destroy fails until explicitly set false |
+| **Protection** | `deletion_protection_enabled` — defaults TRUE; destroy fails until explicitly set false. `deletion_policy` — `DELETE` (default), `PREVENT`, or `ABANDON` (evaluated only after deletion protection allows the destroy) |
 
 **Immutable fields** (require instance replacement if changed): `instance_name`, `location`, `mode`, `authorization_mode`, `transit_encryption_mode`, `kms_key`, `zone_distribution_config`, `psc_auto_connections`, and the seed sources.
 
@@ -107,12 +108,22 @@ spec:
 
 ### Deliberately not modeled (recorded reasons)
 
-- **`server_ca_mode` / `server_ca_pool`** — absent from the released google provider 6.x line (schema-probe verified); modeling them would create a one-engine field.
-- **`maintenance_version`** — absent from the released 6.x line.
-- **Expanded node types** (`CUSTOM_PICO/MICRO/MINI`, `HIGHCPU_MEDIUM`, `STANDARD_LARGE`, `HIGHMEM_2XLARGE`) — absent from the released 6.x line; the four released types are modeled.
-- **`allow_fewer_zones_deployment`** — a narrow zonal-capacity escape hatch; absent from the pinned Pulumi SDK line, so modeling it would break engine parity (revisit when both engines carry it).
-- **`deletion_policy`** — a client-side Terraform lever that conflicts with Planton-managed destroy (catalog-wide decision).
-- **`google_memorystore_instance_desired_user_created_endpoints`** — the bring-your-own-forwarding-rules alternative to auto-created endpoints; a Tier-2 sibling on concrete pull.
+- **Maintenance window `minutes`/`seconds`/`nanos`** — the Memorystore API
+  accepts only whole-hour window start times (a minute-carrying start is
+  rejected with 400 "Invalid start time, only hours are supported" —
+  live-verified; narrower than Redis); the spec models the start hour-only
+  (recorded in `iac/provider-parity.yaml`).
+- **`allow_fewer_zones_deployment`** — a beta-only argument (not in the GA
+  provider at the pinned version); GA is the parity baseline, and beta
+  surface enters only through the enumerated admission list.
+- **`google_memorystore_instance_desired_user_created_endpoints`** — the
+  bring-your-own-forwarding-rules alternative to auto-created endpoints; a
+  Tier-2 sibling resource on concrete pull.
+
+Every other configurable argument of `google_memorystore_instance` at the
+pinned provider version is representable through this spec; the recorded
+judgment lives in `iac/provider-parity.yaml`, checked by
+`planton provider-parity --check`.
 
 ## When to Use GcpMemorystoreInstance vs GcpRedisInstance
 

@@ -1,0 +1,470 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# AWS models the bucket as a root resource plus one satellite resource per
+# behavioral setting; the spec folds them into one document. Each satellite
+# therefore binds to its spec subtree (specRoot) or maps from the flat field
+# that instantiates it. Recurring judgment classes on this kind:
+#   - every satellite's `bucket` argument is module-wired to the bucket it
+#     configures (never user surface);
+#   - legacy fine-grained ACL grants (the ACL access_control_policy and the
+#     logging target_grant) are excluded: AWS's recommended model is
+#     ownership-enforced buckets where ACLs are disabled, canned ACLs cover
+#     the legacy integrations, and AWS deprecated the grantee display_name
+#     inside these blocks in 6.12.0;
+#   - AWS's single-vs-and filter document shapes (lifecycle, replication)
+#     are derived by the modules from ONE flat spec filter, so the derived
+#     `tag`/`and` argument arms are exclusions, not spec surface.
+resources:
+  aws_s3_bucket:
+    exclusions:
+      - arg: bucket
+        reason: wired by the module from metadata.name -- S3 bucket names are create-time-immutable global identity, never mutable spec surface
+      - arg: bucket_prefix
+        reason: provider-generated name alternative to `bucket` -- the module always names the bucket from metadata.name
+      - arg: tags
+        reason: module-wired resource-identity tags from metadata; user-defined custom tags are a platform-wide concern, not per-kind spec surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_s3_bucket_versioning:
+    mappings:
+      # The provider wraps the state in a versioning_configuration block; the
+      # spec models it as the flat versioning_status field.
+      - spec: spec.versioning_status
+        arg: versioning_configuration.status
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: mfa
+        reason: root-account MFA device serial + current code, supplied per apply -- an imperative hardware-credential input, never declarative spec surface
+      - arg: versioning_configuration.mfa_delete
+        reason: requires the root account's hardware MFA on every state change (the `mfa` argument) -- unusable declaratively; recorded with the mfa exclusion
+
+  aws_s3_bucket_server_side_encryption_configuration:
+    # The provider models a SET of rules, but AWS's own contract calls this
+    # "the default server-side-encryption configuration" -- one meaningful
+    # rule. The spec flattens that single rule into spec.encryption.
+    mappings:
+      - spec: spec.encryption.sse_algorithm
+        arg: rule.apply_server_side_encryption_by_default.sse_algorithm
+      - spec: spec.encryption.kms_key_id
+        arg: rule.apply_server_side_encryption_by_default.kms_master_key_id
+      - spec: spec.encryption.bucket_key_enabled
+        arg: rule.bucket_key_enabled
+      - spec: spec.encryption.blocked_encryption_types
+        arg: rule.blocked_encryption_types
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_public_access_block:
+    specRoot: spec.public_access_block
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: skip_destroy
+        reason: destroy-time engine behavior (leave the block in place on delete), not bucket configuration -- the recorded apply-behavior exclusion class
+
+  aws_s3_bucket_ownership_controls:
+    mappings:
+      # The provider wraps the setting in a required single-element rule
+      # block; the spec models it as the flat object_ownership field.
+      - spec: spec.object_ownership
+        arg: rule.object_ownership
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_acl:
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: access_control_policy.grant.grantee.email_address
+        reason: legacy fine-grained ACL grants -- AWS steers buckets to ownership-enforced mode where ACLs are disabled; canned ACLs (spec.acl) cover the legacy integrations
+      - arg: access_control_policy.grant.grantee.id
+        reason: legacy fine-grained ACL grants -- see access_control_policy.grant.grantee.email_address
+      - arg: access_control_policy.grant.grantee.type
+        reason: legacy fine-grained ACL grants -- see access_control_policy.grant.grantee.email_address
+      - arg: access_control_policy.grant.grantee.uri
+        reason: legacy fine-grained ACL grants -- see access_control_policy.grant.grantee.email_address
+      - arg: access_control_policy.grant.permission
+        reason: legacy fine-grained ACL grants -- see access_control_policy.grant.grantee.email_address
+      - arg: access_control_policy.owner.id
+        reason: legacy fine-grained ACL grants -- see access_control_policy.grant.grantee.email_address
+
+  aws_s3_bucket_policy:
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_lifecycle_configuration:
+    mappings:
+      # The provider names the repeated rule block in the singular; the spec
+      # uses the catalog's plural list convention. Exact matching resumes
+      # below for id/status/filter/expiration/noncurrent_version_expiration.
+      - spec: spec.lifecycle_rules
+        arg: rule
+      - spec: spec.lifecycle_rules.transitions
+        arg: rule.transition
+      - spec: spec.lifecycle_rules.noncurrent_version_transitions
+        arg: rule.noncurrent_version_transition
+      # The provider wraps the abort setting in a one-field block; the spec
+      # models the flat days field.
+      - spec: spec.lifecycle_rules.abort_incomplete_multipart_upload_days
+        arg: rule.abort_incomplete_multipart_upload.days_after_initiation
+      # The tags map pairs with the multi-predicate `and` arm; when a single
+      # tag is the only predicate the module derives the `tag` block instead
+      # (its key/value args are the exclusions below).
+      - spec: spec.lifecycle_rules.filter.tags
+        arg: rule.filter.and.tags
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      # AWS expresses one predicate directly on the filter and several inside
+      # an `and` wrapper; the modules derive whichever document shape the
+      # predicate count requires from the spec's ONE flat filter message.
+      - arg: rule.filter.tag.key
+        reason: the single-tag document shape -- derived by the module from the spec filter's tags map when it is the only predicate
+      - arg: rule.filter.tag.value
+        reason: the single-tag document shape -- derived by the module from the spec filter's tags map when it is the only predicate
+      - arg: rule.filter.and.prefix
+        reason: the multi-predicate `and` document shape -- derived by the module from the same flat spec filter fields
+      - arg: rule.filter.and.object_size_greater_than
+        reason: the multi-predicate `and` document shape -- derived by the module from the same flat spec filter fields
+      - arg: rule.filter.and.object_size_less_than
+        reason: the multi-predicate `and` document shape -- derived by the module from the same flat spec filter fields
+
+  aws_s3_bucket_replication_configuration:
+    specRoot: spec.replication
+    mappings:
+      - spec: spec.replication.role_arn
+        arg: role
+      # Singular provider block vs the spec's plural list; exact matching
+      # resumes below for id/priority/status/filter/destination leaves.
+      - spec: spec.replication.rules
+        arg: rule
+      # The provider wraps each replication behavior in a status-enum block;
+      # the spec models each as a bool (Enabled when true, block omitted or
+      # Disabled per AWS's requiredness rules when false).
+      - spec: spec.replication.rules.delete_marker_replication
+        arg: rule.delete_marker_replication.status
+      - spec: spec.replication.rules.existing_object_replication
+        arg: rule.existing_object_replication.status
+      - spec: spec.replication.rules.replicate_replica_modifications
+        arg: rule.source_selection_criteria.replica_modifications.status
+      - spec: spec.replication.rules.replicate_sse_kms_encrypted_objects
+        arg: rule.source_selection_criteria.sse_kms_encrypted_objects.status
+      - spec: spec.replication.rules.destination.bucket_arn
+        arg: rule.destination.bucket
+      # The provider wraps ownership translation in a block whose only value
+      # is the constant "Destination"; the spec models the intent as a bool.
+      - spec: spec.replication.rules.destination.change_replica_ownership_to_destination
+        arg: rule.destination.access_control_translation.owner
+      - spec: spec.replication.rules.destination.replica_kms_key_id
+        arg: rule.destination.encryption_configuration.replica_kms_key_id
+      - spec: spec.replication.rules.destination.metrics_enabled
+        arg: rule.destination.metrics.status
+      - spec: spec.replication.rules.destination.replication_time_control_enabled
+        arg: rule.destination.replication_time.status
+      # The tags map pairs with the multi-predicate `and` arm; when a single
+      # tag is the only predicate the module derives the `tag` block instead
+      # (its key/value args are the exclusions below).
+      - spec: spec.replication.rules.filter.tags
+        arg: rule.filter.and.tags
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: token
+        reason: AWS Support-issued Batch-Operations entitlement token, sensitive and write-only -- per-apply credential input, never declarative spec surface
+      - arg: rule.destination.metrics.event_threshold.minutes
+        reason: AWS accepts only 15 minutes -- semantically fixed; the module hardcodes it whenever metrics are enabled
+      - arg: rule.destination.replication_time.time.minutes
+        reason: AWS accepts only 15 minutes (the RTC SLA) -- semantically fixed; the module hardcodes it whenever RTC is enabled
+      # Same single-vs-and filter document shaping as lifecycle rules.
+      - arg: rule.filter.tag.key
+        reason: the single-tag document shape -- derived by the module from the spec filter's tags map when it is the only predicate
+      - arg: rule.filter.tag.value
+        reason: the single-tag document shape -- derived by the module from the spec filter's tags map when it is the only predicate
+      - arg: rule.filter.and.prefix
+        reason: the multi-predicate `and` document shape -- derived by the module from the same flat spec filter fields
+
+  aws_s3_bucket_website_configuration:
+    specRoot: spec.website
+    mappings:
+      # The provider wraps each document target in a one-field block; the
+      # spec models the flat fields.
+      - spec: spec.website.index_document_suffix
+        arg: index_document.suffix
+      - spec: spec.website.error_document_key
+        arg: error_document.key
+      # Singular provider block vs the spec's plural list; exact matching
+      # resumes below for condition/redirect leaves.
+      - spec: spec.website.routing_rules
+        arg: routing_rule
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: routing_rules
+        reason: raw-JSON alternative to the structured routing_rule blocks (provider ConflictsWith) -- the structured form is the modeled surface
+
+  aws_s3_bucket_logging:
+    specRoot: spec.logging
+    mappings:
+      # The provider nests the partition date source two wrappers deep
+      # (target_object_key_format -> partitioned_prefix); the spec models the
+      # flat field, and its absence selects AWS's simple (flat) key format.
+      - spec: spec.logging.partitioned_prefix_date_source
+        arg: target_object_key_format.partitioned_prefix.partition_date_source
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: target_grant.grantee.email_address
+        reason: legacy ACL-based log-delivery grants -- ownership-enforced target buckets grant log delivery via bucket policy instead
+      - arg: target_grant.grantee.id
+        reason: legacy ACL-based log-delivery grants -- see target_grant.grantee.email_address
+      - arg: target_grant.grantee.type
+        reason: legacy ACL-based log-delivery grants -- see target_grant.grantee.email_address
+      - arg: target_grant.grantee.uri
+        reason: legacy ACL-based log-delivery grants -- see target_grant.grantee.email_address
+      - arg: target_grant.permission
+        reason: legacy ACL-based log-delivery grants -- see target_grant.grantee.email_address
+
+  aws_s3_bucket_cors_configuration:
+    mappings:
+      # Singular provider block vs the spec's plural list; exact matching
+      # resumes below for every rule leaf.
+      - spec: spec.cors_rules
+        arg: cors_rule
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_notification:
+    specRoot: spec.notification
+    mappings:
+      # Singular provider blocks vs the spec's plural lists; exact matching
+      # resumes below for arn/events/filter leaves.
+      - spec: spec.notification.lambda_functions
+        arg: lambda_function
+      - spec: spec.notification.queues
+        arg: queue
+      - spec: spec.notification.topics
+        arg: topic
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: lambda_function.id
+        reason: per-target notification-configuration identifier auto-generated by the provider when unset -- bookkeeping, not event-delivery configuration
+      - arg: queue.id
+        reason: per-target notification-configuration identifier auto-generated by the provider when unset -- bookkeeping, not event-delivery configuration
+      - arg: topic.id
+        reason: per-target notification-configuration identifier auto-generated by the provider when unset -- bookkeeping, not event-delivery configuration
+
+  aws_s3_bucket_object_lock_configuration:
+    mappings:
+      # The provider nests the retention two wrappers deep (rule ->
+      # default_retention); the spec models the message directly. Exact
+      # matching resumes below for mode/days/years.
+      - spec: spec.object_lock_default_retention
+        arg: rule.default_retention
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: token
+        reason: AWS Support-issued token for enabling Object Lock on existing buckets, sensitive and write-only -- per-apply credential input, never declarative spec surface
+
+  aws_s3_bucket_accelerate_configuration:
+    mappings:
+      - spec: spec.acceleration_status
+        arg: status
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_request_payment_configuration:
+    mappings:
+      - spec: spec.request_payer
+        arg: payer
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_intelligent_tiering_configuration:
+    specRoot: spec.intelligent_tiering_configurations
+    mappings:
+      # The spec flattens the provider's filter block into prefix/tags
+      # fields (the kind's named-configuration idiom).
+      - spec: spec.intelligent_tiering_configurations.filter_prefix
+        arg: filter.prefix
+      - spec: spec.intelligent_tiering_configurations.filter_tags
+        arg: filter.tags
+      # Singular provider block vs the spec's plural list; access_tier and
+      # days resume exact below.
+      - spec: spec.intelligent_tiering_configurations.tiers
+        arg: tiering
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_abac:
+    mappings:
+      # The provider wraps the state in a one-field abac_status block; the
+      # spec models the flat tri-state field (unset = unmanaged).
+      - spec: spec.abac_status
+        arg: abac_status.status
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_analytics_configuration:
+    specRoot: spec.analytics_configurations
+    mappings:
+      # The spec flattens the provider's filter block into prefix/tags
+      # fields (the kind's named-configuration idiom).
+      - spec: spec.analytics_configurations.filter_prefix
+        arg: filter.prefix
+      - spec: spec.analytics_configurations.filter_tags
+        arg: filter.tags
+      # The provider nests the export destination four wrappers deep
+      # (storage_class_analysis -> data_export -> destination ->
+      # s3_bucket_destination); the spec models one export message.
+      - spec: spec.analytics_configurations.export.bucket_arn
+        arg: storage_class_analysis.data_export.destination.s3_bucket_destination.bucket_arn
+      - spec: spec.analytics_configurations.export.bucket_account_id
+        arg: storage_class_analysis.data_export.destination.s3_bucket_destination.bucket_account_id
+      - spec: spec.analytics_configurations.export.prefix
+        arg: storage_class_analysis.data_export.destination.s3_bucket_destination.prefix
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+      - arg: storage_class_analysis.data_export.output_schema_version
+        reason: V_1 is the only value the API accepts at the pin -- semantically fixed; the module leaves the provider default
+      - arg: storage_class_analysis.data_export.destination.s3_bucket_destination.format
+        reason: CSV is the only value the API accepts at the pin -- semantically fixed; the module leaves the provider default
+
+  aws_s3_bucket_inventory:
+    specRoot: spec.inventory_configurations
+    mappings:
+      # The provider's enabled (default true) is modeled as `disabled` so
+      # the spec zero value never fights the active-by-default contract;
+      # the module always sends the negation (AWS requires IsEnabled).
+      - spec: spec.inventory_configurations.disabled
+        arg: enabled
+      # The provider wraps the schedule in a one-field block; the spec
+      # models the flat frequency field.
+      - spec: spec.inventory_configurations.frequency
+        arg: schedule.frequency
+      # The spec flattens the provider's filter block (prefix is its only
+      # field) into filter_prefix.
+      - spec: spec.inventory_configurations.filter_prefix
+        arg: filter.prefix
+      # The provider nests the delivery target under destination.bucket;
+      # the spec models one destination message.
+      - spec: spec.inventory_configurations.destination.bucket_arn
+        arg: destination.bucket.bucket_arn
+      - spec: spec.inventory_configurations.destination.format
+        arg: destination.bucket.format
+      - spec: spec.inventory_configurations.destination.account_id
+        arg: destination.bucket.account_id
+      - spec: spec.inventory_configurations.destination.prefix
+        arg: destination.bucket.prefix
+      - spec: spec.inventory_configurations.destination.sse_kms_key_id
+        arg: destination.bucket.encryption.sse_kms.key_id
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_metric:
+    specRoot: spec.metrics_configurations
+    mappings:
+      # The spec flattens the provider's filter block into access-point/
+      # prefix/tags fields (the kind's named-configuration idiom).
+      - spec: spec.metrics_configurations.filter_access_point_arn
+        arg: filter.access_point
+      - spec: spec.metrics_configurations.filter_prefix
+        arg: filter.prefix
+      - spec: spec.metrics_configurations.filter_tags
+        arg: filter.tags
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+  aws_s3_bucket_metadata_configuration:
+    specRoot: spec.metadata_configuration
+    mappings:
+      # The provider nests both tables under a metadata_configuration
+      # wrapper and types each state as an ENABLED/DISABLED enum; the spec
+      # flattens the wrapper and models each state as a bool.
+      - spec: spec.metadata_configuration.inventory_table_enabled
+        arg: metadata_configuration.inventory_table_configuration.configuration_state
+      - spec: spec.metadata_configuration.inventory_table_encryption.sse_algorithm
+        arg: metadata_configuration.inventory_table_configuration.encryption_configuration.sse_algorithm
+      - spec: spec.metadata_configuration.inventory_table_encryption.kms_key_arn
+        arg: metadata_configuration.inventory_table_configuration.encryption_configuration.kms_key_arn
+      - spec: spec.metadata_configuration.journal_record_expiration.enabled
+        arg: metadata_configuration.journal_table_configuration.record_expiration.expiration
+      - spec: spec.metadata_configuration.journal_record_expiration.days
+        arg: metadata_configuration.journal_table_configuration.record_expiration.days
+      - spec: spec.metadata_configuration.journal_table_encryption.sse_algorithm
+        arg: metadata_configuration.journal_table_configuration.encryption_configuration.sse_algorithm
+      - spec: spec.metadata_configuration.journal_table_encryption.kms_key_arn
+        arg: metadata_configuration.journal_table_configuration.encryption_configuration.kms_key_arn
+    exclusions:
+      - arg: bucket
+        reason: wired by the module to the bucket it creates
+      - arg: region
+        reason: wired by the module -- every bucket satellite follows the bucket's spec.region through the provider connection
+
+specExclusions:
+  # The provider's sse_s3 encryption arm is a presence-only marker block
+  # with an empty schema (no leaf arguments), so the census has no argument
+  # to pair with the spec's flag; the module renders the empty block when
+  # the flag is set.
+  - field: spec.inventory_configurations.destination.sse_s3
+    reason: renders the provider's empty sse_s3 marker block (SSE-S3 report encryption) -- the block has no arguments for the census to pair with

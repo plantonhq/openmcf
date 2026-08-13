@@ -36,6 +36,19 @@ func PulumiDeploy(moduleDir, stackName, backendURL, stackInputFilePath string) (
 	return runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
 }
 
+// PulumiPreviewExpectNoChanges re-plans the just-applied stack and fails if
+// any change is still pending — the Pulumi arm of the IDEMPOTENCY phase. No
+// --refresh here: the point is whether the program's desired state matches
+// what the apply recorded, not whether the cloud drifted in the seconds since.
+func PulumiPreviewExpectNoChanges(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+	args := []string{"preview", "--stack", stackName, "--expect-no-changes", "--non-interactive"}
+	result, err := runPulumi(moduleDir, backendURL, stackInputFilePath, "", args)
+	if err != nil {
+		return result, errors.Wrap(err, "pulumi preview reported pending changes after apply (idempotency violation)")
+	}
+	return result, nil
+}
+
 // PulumiDestroy runs `pulumi destroy` for the given module directory and stack.
 // --run-program keeps the program available so BeforeDelete/AfterDelete
 // resource hooks fire (e.g. Kyverno's webhook-GC sentinel). Without it,
@@ -181,4 +194,18 @@ func GenerateStackName(label string, runID string) string {
 	}
 	digest := sha256.Sum256([]byte(name))
 	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(digest[:4])
+}
+
+// boundStackName truncates a stack name to maxStackNameLen while preserving
+// uniqueness: the head stays readable and the tail is replaced by a short
+// stable hash of the FULL name. A plain head-truncate is a correctness bug,
+// not a cosmetic one -- it cuts off exactly the disambiguating parts (a
+// dependency's manifest-name tail, the run-id suffix), collapsing distinct
+// stacks onto one name.
+func boundStackName(name string) string {
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	sum := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(sum[:4])
 }

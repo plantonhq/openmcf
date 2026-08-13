@@ -26,7 +26,7 @@ This preset creates a production-grade App Runner service with private ECR image
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<account-id>` | Your AWS account ID (12 digits) | AWS Console → Account Settings |
+| `imageIdentifier` | Your private ECR image path -- the preset ships a format-valid example (`123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:v1.0.0`); replace account, region, repo, and tag with your own | AWS ECR Console |
 | `<region>` | AWS region (e.g., `us-east-1`) | Your deployment region |
 | `<repo>` | ECR repository name | AWS ECR Console |
 | `<tag>` | Image tag (e.g., `v1.0.0`, `latest`) | Your CI/CD pipeline |

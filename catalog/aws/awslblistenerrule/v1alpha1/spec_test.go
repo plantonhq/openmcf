@@ -108,6 +108,17 @@ var _ = ginkgo.Describe("AwsLbListenerRuleSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
+			ginkgo.It("should not return a validation error for an IPv6 source-ip condition", func() {
+				input := minimalValidRule()
+				input.Spec.Conditions = []*AwsLbListenerRuleCondition{
+					{SourceIp: &AwsLbListenerRuleSourceIpCondition{
+						Values: []string{"2001:db8::/32", "203.0.113.7/32"},
+					}},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should not return a validation error for a weighted canary forward", func() {
 				input := minimalValidRule()
 				input.Spec.Actions = []*AwsLbListenerRuleAction{{
@@ -218,6 +229,27 @@ var _ = ginkgo.Describe("AwsLbListenerRuleSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error for an out-of-range priority", func() {
 				input := minimalValidRule()
 				input.Spec.Priority = 50001
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a header name with illegal characters", func() {
+				input := minimalValidRule()
+				input.Spec.Conditions = []*AwsLbListenerRuleCondition{
+					{HttpHeader: &AwsLbListenerRuleHttpHeaderCondition{
+						HttpHeaderName: "X Canary",
+						Values:         []string{"true"},
+					}},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a bare IP in a source-ip condition", func() {
+				input := minimalValidRule()
+				input.Spec.Conditions = []*AwsLbListenerRuleCondition{
+					{SourceIp: &AwsLbListenerRuleSourceIpCondition{Values: []string{"203.0.113.7"}}},
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

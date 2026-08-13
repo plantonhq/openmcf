@@ -17,3 +17,12 @@ spec:
           appProtocol: http
       environment:
         APP_ENV: demo
+      mountPoints:
+        - sourceVolume: data
+          containerPath: /var/data
+  # A launch-time volume: only the NAME is declared here -- the ECS
+  # service running this task supplies the managed-EBS backing through
+  # its volume_configuration under the same name.
+  volumes:
+    - name: data
+      configureAtLaunch: true

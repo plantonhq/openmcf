@@ -44,7 +44,7 @@ Open the deployment store, find **GCP BigQuery Table**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigQueryTable
 metadata:
   name: events-raw

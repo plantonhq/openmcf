@@ -4,6 +4,7 @@ package dev.planton.gcp.gcpfilestoreinstance.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
 
 // GcpFilestoreInstanceNfsExportOption defines access controls for an NFS
 // export on a Filestore file share. Each export option specifies which clients
@@ -44,6 +45,17 @@ message GcpFilestoreInstanceNfsExportOption {
   // Defaults to 65534 (nogroup) if not specified.
   // Only valid when squash_mode is ROOT_SQUASH.
   optional int32 anon_gid = 5;
+
+  // Source VPC network for ip_ranges, as the network NAME — a
+  // GcpVpcNetwork reference resolves to it. Required by GCP for
+  // instances using Private Service Connect (where client IPs are not
+  // otherwise attributable to a network), optional for other connect
+  // modes.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_name"
+  ];
 }
 
 // GcpFilestoreInstanceFileShare defines the single file share on a Filestore
@@ -58,6 +70,15 @@ message GcpFilestoreInstanceNfsExportOption {
 //   - HIGH_SCALE_SSD: 10 TiB (10240 GiB)
 //   - ZONAL / REGIONAL / ENTERPRISE: 1 TiB (1024 GiB)
 message GcpFilestoreInstanceFileShare {
+  // A share is restored from at most one source; the API has no
+  // combined-restore semantics (the provider leaves this unenforced
+  // and the create would fail server-side).
+  option (buf.validate.message).cel = {
+    id: "at_most_one_restore_source"
+    expression: "this.source_backup == '' || this.source_backupdr_backup == ''"
+    message: "source_backup and source_backupdr_backup are mutually exclusive; restore from a Filestore backup or a Backup and DR backup, not both"
+  };
+
   // Name of the file share. Becomes the NFS export path.
   // Must start with a letter, followed by letters, numbers, or underscores.
   // Maximum 16 characters.
@@ -87,6 +108,14 @@ message GcpFilestoreInstanceFileShare {
   // The share's capacity must be at least the backup's source capacity.
   // Create-time only.
   string source_backup = 4;
+
+  // Restore this file share from a Backup and DR Service backup, in
+  // the format projects/{project}/locations/{location}/
+  // backupVaults/{vault}/dataSources/{source}/backups/{backup}.
+  // The vault-based alternative to source_backup (which restores from
+  // Filestore's own backups); set at most one restore source.
+  // Create-time only.
+  string source_backupdr_backup = 5;
 }
 
 // GcpFilestoreInstanceNetworkConfig defines the VPC network configuration
@@ -140,6 +169,45 @@ message GcpFilestoreInstanceNetworkConfig {
       }
     }
   }];
+
+  // Consumer project in which the Private Service Connect endpoint is
+  // created — a project ID; a GcpProject reference resolves to it. If
+  // omitted, the endpoint is created in the instance's own project.
+  // Only meaningful when connect_mode is PRIVATE_SERVICE_CONNECT
+  // (enforced pre-deploy). Immutable after creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef psc_endpoint_project = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "psc_endpoint_project_requires_psc_mode"
+    expression: "!has(this.psc_endpoint_project) || this.connect_mode == 'PRIVATE_SERVICE_CONNECT'"
+    message: "psc_endpoint_project is only meaningful when connect_mode is PRIVATE_SERVICE_CONNECT"
+  };
+}
+
+// GcpFilestoreInstanceLdapConfig integrates the instance with an LDAP
+// directory service for NFSv4.1 identity mapping: user and group names
+// on clients resolve through the directory instead of numeric UID/GID
+// matching. Requires protocol NFS_V4_1 (enforced pre-deploy).
+message GcpFilestoreInstanceLdapConfig {
+  // LDAP domain name, e.g. "my-domain.com".
+  string domain = 1 [(buf.validate.field).required = true];
+
+  // LDAP server addresses — either all DNS names (e.g.
+  // "ldap.example.com") or all IP addresses; GCP rejects a mix of the
+  // two formats.
+  repeated string servers = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Groups Organizational Unit (OU) — an optional hint that narrows
+  // LDAP lookups to one OU instead of querying the whole namespace
+  // (faster lookups on large directories).
+  string groups_ou = 3;
+
+  // Users Organizational Unit (OU) — the same lookup-narrowing hint
+  // for user entries.
+  string users_ou = 4;
 }
 
 // GcpFilestoreInstanceFixedIops configures a fixed IOPS provisioning model
@@ -320,6 +388,50 @@ message GcpFilestoreInstanceSpec {
   // conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
   // Create-time only.
   map<string, string> tags = 15;
+
+  // LDAP directory integration for NFSv4.1 identity mapping. Requires
+  // protocol NFS_V4_1 — with NFSv3, identity is numeric UID/GID
+  // matching and no directory service applies.
+  GcpFilestoreInstanceLdapConfig ldap = 16;
+
+  option (buf.validate.message).cel = {
+    id: "ldap_requires_nfs_v4_1"
+    expression: "!has(this.ldap) || this.protocol == 'NFS_V4_1'"
+    message: "ldap requires protocol NFS_V4_1 — LDAP identity mapping is not available on NFSv3"
+  };
+
+  // Desired state of THIS instance's replica relationship, when the
+  // instance is the STANDBY side of a replication pair:
+  //   "READY"  (default) -- replication runs; the standby receives
+  //                         changes from the active peer
+  //   "PAUSED"           -- replication is paused (e.g. to freeze the
+  //                         standby at a point in time); resume by
+  //                         setting READY again
+  // Updatable in place; has no effect on an instance without a
+  // replica relationship.
+  optional string desired_replica_state = 17 [
+    (dev.planton.shared.options.default) = "READY",
+    (buf.validate.field).cel = {
+      id: "valid_desired_replica_state"
+      expression: "this == '' || this in ['READY', 'PAUSED']"
+      message: "desired_replica_state must be READY or PAUSED"
+    }
+  ];
+
+  // Deletion policy for the instance — what happens when this resource
+  // is destroyed (evaluated only after deletion_protection_enabled
+  // allows the destroy at all):
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the instance and every file on its share are deleted
+  //   "PREVENT" -- destroy FAILS; a second, independent guard for a
+  //                file server whose data exists nowhere else
+  //   "ABANDON" -- the instance is removed from management but left
+  //                running (and billing) in GCP with its data intact
+  string deletion_policy = 18 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }
 
 // GcpFilestoreInstanceInitialReplication configures create-time

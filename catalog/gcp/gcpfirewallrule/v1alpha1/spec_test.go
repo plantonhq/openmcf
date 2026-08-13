@@ -200,5 +200,30 @@ var _ = ginkgo.Describe("GcpFirewallRuleSpec Validations", func() {
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
+
+		ginkgo.It("should accept resource manager tags", func() {
+			input := validFirewallRule()
+			input.Spec.ResourceManagerTags = map[string]string{
+				"tagKeys/123456789": "tagValues/987654321",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept every deletion_policy value", func() {
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+				input := validFirewallRule()
+				input.Spec.DeletionPolicy = v
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			}
+		})
+
+		ginkgo.It("should reject an unknown deletion_policy", func() {
+			input := validFirewallRule()
+			input.Spec.DeletionPolicy = "FORCE"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
 	})
 })

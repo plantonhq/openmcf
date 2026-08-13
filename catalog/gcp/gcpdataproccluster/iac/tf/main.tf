@@ -33,6 +33,10 @@ resource "google_dataproc_cluster" "cluster" {
   # tasks for up to this window before nodes are removed.
   graceful_decommission_timeout = var.spec.graceful_decommission_timeout != "" ? var.spec.graceful_decommission_timeout : null
 
+  # Engine-side teardown behavior (DELETE / PREVENT / ABANDON) — the
+  # ABANDON lever hands the cluster to out-of-band management.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "cluster_config" {
     for_each = var.spec.cluster_config != null ? [var.spec.cluster_config] : []
     content {
@@ -42,6 +46,11 @@ resource "google_dataproc_cluster" "cluster" {
       temp_bucket    = cluster_config.value.temp_bucket != "" ? cluster_config.value.temp_bucket : null
 
       cluster_tier = cluster_config.value.cluster_tier != "" ? cluster_config.value.cluster_tier : null
+
+      # Structural type (STANDARD / SINGLE_NODE / ZERO_SCALE) and execution
+      # engine (DEFAULT / LIGHTNING). Both immutable.
+      cluster_type = cluster_config.value.cluster_type != "" ? cluster_config.value.cluster_type : null
+      engine       = cluster_config.value.engine != "" ? cluster_config.value.engine : null
 
       # GCE environment: networking, identity, hardening, placement.
       dynamic "gce_cluster_config" {
@@ -55,6 +64,8 @@ resource "google_dataproc_cluster" "cluster" {
           internal_ip_only       = gce_cluster_config.value.internal_ip_only
           tags                   = length(gce_cluster_config.value.tags) > 0 ? gce_cluster_config.value.tags : null
           metadata               = length(gce_cluster_config.value.metadata) > 0 ? gce_cluster_config.value.metadata : null
+          # IAM-governed secure tags (distinct from network tags).
+          resource_manager_tags = length(gce_cluster_config.value.resource_manager_tags) > 0 ? gce_cluster_config.value.resource_manager_tags : null
 
           dynamic "shielded_instance_config" {
             for_each = gce_cluster_config.value.shielded_instance_config != null ? [gce_cluster_config.value.shielded_instance_config] : []
@@ -94,7 +105,11 @@ resource "google_dataproc_cluster" "cluster" {
       dynamic "master_config" {
         for_each = cluster_config.value.master_config != null ? [cluster_config.value.master_config] : []
         content {
-          num_instances    = master_config.value.num_instances > 0 ? master_config.value.num_instances : null
+          num_instances = master_config.value.num_instances > 0 ? master_config.value.num_instances : null
+          # machine_type never coexists with instance_flexibility_policy
+          # (spec CEL): the API drops a paired machineTypeUri from the
+          # stored config, and the create-only argument then re-plans as
+          # cluster replacement forever.
           machine_type     = master_config.value.machine_type != "" ? master_config.value.machine_type : null
           min_cpu_platform = master_config.value.min_cpu_platform != "" ? master_config.value.min_cpu_platform : null
           image_uri        = master_config.value.image_uri != "" ? master_config.value.image_uri : null
@@ -106,6 +121,9 @@ resource "google_dataproc_cluster" "cluster" {
               boot_disk_type      = disk_config.value.boot_disk_type != "" ? disk_config.value.boot_disk_type : null
               num_local_ssds      = disk_config.value.num_local_ssds > 0 ? disk_config.value.num_local_ssds : null
               local_ssd_interface = disk_config.value.local_ssd_interface != "" ? disk_config.value.local_ssd_interface : null
+              # Provisioned-performance dials (hyperdisk classes).
+              boot_disk_provisioned_iops       = disk_config.value.boot_disk_provisioned_iops
+              boot_disk_provisioned_throughput = disk_config.value.boot_disk_provisioned_throughput
             }
           }
 
@@ -114,6 +132,21 @@ resource "google_dataproc_cluster" "cluster" {
             content {
               accelerator_type  = accelerators.value.accelerator_type
               accelerator_count = accelerators.value.accelerator_count
+            }
+          }
+
+          # Ranked machine-type fallbacks (masters carry no provisioning
+          # mix — that argument exists on secondary workers only).
+          dynamic "instance_flexibility_policy" {
+            for_each = master_config.value.instance_flexibility_policy != null ? [master_config.value.instance_flexibility_policy] : []
+            content {
+              dynamic "instance_selection_list" {
+                for_each = instance_flexibility_policy.value.instance_selection_list
+                content {
+                  machine_types = instance_selection_list.value.machine_types
+                  rank          = instance_selection_list.value.rank
+                }
+              }
             }
           }
         }
@@ -125,7 +158,9 @@ resource "google_dataproc_cluster" "cluster" {
       dynamic "worker_config" {
         for_each = cluster_config.value.worker_config != null ? [cluster_config.value.worker_config] : []
         content {
-          num_instances     = worker_config.value.num_instances > 0 ? worker_config.value.num_instances : null
+          num_instances = worker_config.value.num_instances > 0 ? worker_config.value.num_instances : null
+          # machine_type never coexists with instance_flexibility_policy
+          # (spec CEL) — see the master_config note.
           machine_type      = worker_config.value.machine_type != "" ? worker_config.value.machine_type : null
           min_cpu_platform  = worker_config.value.min_cpu_platform != "" ? worker_config.value.min_cpu_platform : null
           image_uri         = worker_config.value.image_uri != "" ? worker_config.value.image_uri : null
@@ -138,6 +173,9 @@ resource "google_dataproc_cluster" "cluster" {
               boot_disk_type      = disk_config.value.boot_disk_type != "" ? disk_config.value.boot_disk_type : null
               num_local_ssds      = disk_config.value.num_local_ssds > 0 ? disk_config.value.num_local_ssds : null
               local_ssd_interface = disk_config.value.local_ssd_interface != "" ? disk_config.value.local_ssd_interface : null
+              # Provisioned-performance dials (hyperdisk classes).
+              boot_disk_provisioned_iops       = disk_config.value.boot_disk_provisioned_iops
+              boot_disk_provisioned_throughput = disk_config.value.boot_disk_provisioned_throughput
             }
           }
 
@@ -146,6 +184,22 @@ resource "google_dataproc_cluster" "cluster" {
             content {
               accelerator_type  = accelerators.value.accelerator_type
               accelerator_count = accelerators.value.accelerator_count
+            }
+          }
+
+          # Ranked machine-type fallbacks (primary workers carry no
+          # provisioning mix — that argument exists on secondary workers
+          # only).
+          dynamic "instance_flexibility_policy" {
+            for_each = worker_config.value.instance_flexibility_policy != null ? [worker_config.value.instance_flexibility_policy] : []
+            content {
+              dynamic "instance_selection_list" {
+                for_each = instance_flexibility_policy.value.instance_selection_list
+                content {
+                  machine_types = instance_selection_list.value.machine_types
+                  rank          = instance_selection_list.value.rank
+                }
+              }
             }
           }
         }
@@ -167,6 +221,9 @@ resource "google_dataproc_cluster" "cluster" {
               boot_disk_type      = disk_config.value.boot_disk_type != "" ? disk_config.value.boot_disk_type : null
               num_local_ssds      = disk_config.value.num_local_ssds > 0 ? disk_config.value.num_local_ssds : null
               local_ssd_interface = disk_config.value.local_ssd_interface != "" ? disk_config.value.local_ssd_interface : null
+              # Provisioned-performance dials (hyperdisk classes).
+              boot_disk_provisioned_iops       = disk_config.value.boot_disk_provisioned_iops
+              boot_disk_provisioned_throughput = disk_config.value.boot_disk_provisioned_throughput
             }
           }
 
@@ -274,12 +331,15 @@ resource "google_dataproc_cluster" "cluster" {
         }
       }
 
-      # Cost-control TTLs — both update in place.
+      # Cost-control levers — all update in place. Delete destroys the
+      # cluster; stop shuts the VMs down and keeps it restartable.
       dynamic "lifecycle_config" {
         for_each = cluster_config.value.lifecycle_config != null ? [cluster_config.value.lifecycle_config] : []
         content {
           idle_delete_ttl  = lifecycle_config.value.idle_delete_ttl != "" ? lifecycle_config.value.idle_delete_ttl : null
           auto_delete_time = lifecycle_config.value.auto_delete_time != "" ? lifecycle_config.value.auto_delete_time : null
+          idle_stop_ttl    = lifecycle_config.value.idle_stop_ttl != "" ? lifecycle_config.value.idle_stop_ttl : null
+          auto_stop_time   = lifecycle_config.value.auto_stop_time != "" ? lifecycle_config.value.auto_stop_time : null
         }
       }
 
@@ -328,6 +388,9 @@ resource "google_dataproc_cluster" "cluster" {
                     boot_disk_type      = disk_config.value.boot_disk_type != "" ? disk_config.value.boot_disk_type : null
                     num_local_ssds      = disk_config.value.num_local_ssds > 0 ? disk_config.value.num_local_ssds : null
                     local_ssd_interface = disk_config.value.local_ssd_interface != "" ? disk_config.value.local_ssd_interface : null
+                    # Provisioned-performance dials (hyperdisk classes).
+                    boot_disk_provisioned_iops       = disk_config.value.boot_disk_provisioned_iops
+                    boot_disk_provisioned_throughput = disk_config.value.boot_disk_provisioned_throughput
                   }
                 }
 

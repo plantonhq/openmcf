@@ -47,3 +47,18 @@ output "region" {
   description = "The region the VPC was created in"
   value       = var.spec.region
 }
+
+output "secondary_ipv4_cidr_association_ids" {
+  description = "Association IDs (vpc-cidr-assoc-...) of the secondary IPv4 CIDR blocks, keyed by the module's for_each key (the literal CIDR, or ipam-<index>) -- the handles disassociate-vpc-cidr-block and state import take."
+  value       = { for k, assoc in aws_vpc_ipv4_cidr_block_association.secondary : k => assoc.id }
+}
+
+output "secondary_ipv6_cidr_association_ids" {
+  description = "Association IDs of the secondary IPv6 CIDR blocks, keyed by the module's for_each key (the pinned CIDR, or ipv6-<index>)."
+  value       = { for k, assoc in aws_vpc_ipv6_cidr_block_association.secondary : k => assoc.id }
+}
+
+output "encryption_control_id" {
+  description = "The ID (vpcec-...) of the VPC Encryption Control resource, empty when spec.encryption_control is not configured."
+  value       = try(aws_vpc_encryption_control.this[0].id, "")
+}

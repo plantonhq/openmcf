@@ -75,5 +75,10 @@ variable "spec" {
       default_storage_location_uri = optional(string, "")
       parameters                   = optional(map(string), {})
     }), null)
+
+    # DELETE (default) removes the dataset on destroy (GCP refuses while
+    # tables remain unless delete_contents_on_destroy is true); PREVENT
+    # fails the destroy; ABANDON leaves the dataset serving in GCP.
+    deletion_policy = optional(string, "")
   })
 }

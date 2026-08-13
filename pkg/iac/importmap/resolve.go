@@ -161,6 +161,17 @@ func resolveDerivation(d *componentv1.ImportValueDerivation, rctx ResolveContext
 			return ""
 		}
 		return value
+	case *componentv1.ImportValueDerivation_FromStackOutputKeyedByAddress:
+		// The module exports a map keyed by the SAME key as the resource's
+		// for_each instances, so the enumerated address selects the entry.
+		// The lookup composes the flattened dot-path key directly (map keys
+		// may themselves contain dots -- a CIDR like "10.1.0.0/16" -- which
+		// is safe because the flattened map is consulted by exact string,
+		// never re-parsed). Addresses without an instance key resolve empty.
+		if rctx.AddressKey == "" {
+			return ""
+		}
+		return rctx.StackOutputs[source.FromStackOutputKeyedByAddress+"."+rctx.AddressKey]
 	case *componentv1.ImportValueDerivation_FromAddressKeySegment:
 		// The delimiter is fixed to "//" — the kubectl composed-ID form
 		// this arm exists for (see the proto comment). An out-of-range

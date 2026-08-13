@@ -20,10 +20,16 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 ## Files
 
 - `variables.tf` (generated; do not edit)
-- `provider.tf` — provider setup (`hashicorp/aws >= 6.0.0`;
-  price_performance_target and track_name ride the v6 line)
+- `provider.tf` — provider setup (catalog-wide `hashicorp/aws` pin, plus
+  `hashicorp/time` for the destroy-side settle)
 - `locals.tf` — naming basis and identity tags
 - `workgroup.tf` — the `aws_redshiftserverless_workgroup` resource
+- `endpoint_access.tf` — managed VPC endpoints into consuming subnets
+- `usage_limits.tf` — per-period consumption caps (RPU-hours / TB)
+- `custom_domain.tf` — the one-per-workgroup custom domain association
+- `satellite_settle.tf` — the destroy-side `time_sleep` between the
+  usage-limit deletes and the endpoint delete (AWS serializes workgroup
+  operations; the full live-probed contract is documented there)
 - `outputs.tf` — outputs matching `AwsRedshiftServerlessWorkgroupStackOutputs`
 
 ## Outputs
@@ -35,3 +41,6 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 | arn | ARN of the workgroup |
 | endpoint_address | DNS hostname SQL clients connect to |
 | port | TCP port for connections |
+| endpoint_access_addresses | Private endpoint DNS addresses, keyed by endpoint name |
+| usage_limit_ids | AWS-generated usage-limit IDs, keyed by usage_type/period |
+| custom_domain_certificate_expiry_time | ACM certificate expiry (empty without a custom domain) |

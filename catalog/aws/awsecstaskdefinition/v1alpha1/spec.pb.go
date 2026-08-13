@@ -61,11 +61,12 @@ type AwsEcsTaskDefinitionSpec struct {
 	// the whole task stops.
 	Containers []*AwsEcsTaskDefinitionContainer `protobuf:"bytes,2,rep,name=containers,proto3" json:"containers,omitempty"`
 	// Launch types the task definition validates against: "FARGATE",
-	// "EC2", and/or "EXTERNAL" (ECS Anywhere). AWS registers the definition
-	// for those environments and rejects incompatible settings at
-	// registration time instead of at run time. When empty, both modules
-	// register for ["FARGATE"] -- the serverless launch type that needs no
-	// instance management.
+	// "EC2", "EXTERNAL" (ECS Anywhere), and/or "MANAGED_INSTANCES" (ECS
+	// Managed Instances capacity). AWS registers the definition for those
+	// environments and rejects incompatible settings at registration time
+	// instead of at run time. When empty, both modules register for
+	// ["FARGATE"] -- the serverless launch type that needs no instance
+	// management.
 	RequiresCompatibilities []string `protobuf:"bytes,3,rep,name=requires_compatibilities,json=requiresCompatibilities,proto3" json:"requires_compatibilities,omitempty"`
 	// Total CPU for the task, in CPU units (1024 = 1 vCPU). REQUIRED for
 	// Fargate, where it selects the task size: 256, 512, 1024, 2048, 4096,
@@ -105,8 +106,11 @@ type AwsEcsTaskDefinitionSpec struct {
 	// workload needs more (image processing, builds, large temp files).
 	EphemeralStorageGib int32 `protobuf:"varint,10,opt,name=ephemeral_storage_gib,json=ephemeralStorageGib,proto3" json:"ephemeral_storage_gib,omitempty"`
 	// Named volumes containers mount via mount_points. Fargate supports EFS
-	// volumes (durable, shared across tasks) and the implicit ephemeral
-	// storage; host-path volumes are EC2-only.
+	// and S3-backed volumes (durable, shared across tasks) and the implicit
+	// ephemeral storage; host-path and Docker volumes are EC2-only. A
+	// configure_at_launch volume declares only the NAME here -- the
+	// AwsEcsService running the task supplies the backing (managed EBS) at
+	// deployment time through its volume_configuration.
 	Volumes []*AwsEcsTaskDefinitionVolume `protobuf:"bytes,11,rep,name=volumes,proto3" json:"volumes,omitempty"`
 	// Default CloudWatch logging for every container that does not declare
 	// its own log_configuration. Enabled by default: the modules create ONE
@@ -119,9 +123,33 @@ type AwsEcsTaskDefinitionSpec struct {
 	// of deregistering every revision of the family. Useful when other
 	// consumers (a scheduled task, a manual RunTask) may still reference
 	// older revisions.
-	SkipDestroy   bool `protobuf:"varint,13,opt,name=skip_destroy,json=skipDestroy,proto3" json:"skip_destroy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	SkipDestroy bool `protobuf:"varint,13,opt,name=skip_destroy,json=skipDestroy,proto3" json:"skip_destroy,omitempty"`
+	// Enable AWS Fault Injection Service (FIS) actions against this task's
+	// containers -- the opt-in that lets chaos experiments (CPU stress,
+	// network latency, process kill) target the task. Off by default; only
+	// enable on definitions you deliberately run experiments against.
+	EnableFaultInjection bool `protobuf:"varint,14,opt,name=enable_fault_injection,json=enableFaultInjection,proto3" json:"enable_fault_injection,omitempty"`
+	// IPC namespace sharing for the task's containers: "host" (share the
+	// instance's IPC namespace -- weakest isolation), "task" (containers
+	// share one namespace within the task), or "none" (each container
+	// isolated). EC2 tasks only -- Fargate rejects it at registration.
+	// Unset keeps Docker's default (private namespace per container).
+	IpcMode string `protobuf:"bytes,15,opt,name=ipc_mode,json=ipcMode,proto3" json:"ipc_mode,omitempty"`
+	// Process namespace sharing: "host" (containers see the instance's
+	// processes -- weakest isolation) or "task" (containers within the task
+	// share one PID namespace -- what lets a sidecar observe the app's
+	// processes). On Fargate only "task" is supported (platform 1.4+).
+	// Unset keeps Docker's default (private namespace per container).
+	PidMode string `protobuf:"bytes,16,opt,name=pid_mode,json=pidMode,proto3" json:"pid_mode,omitempty"`
+	// Task-level placement constraints, evaluated at RunTask/service
+	// scheduling time on EC2 container instances (at most 10). EC2 tasks
+	// only -- Fargate rejects them at registration. Service-level
+	// constraints live on the AwsEcsService; declare here only what is
+	// intrinsic to the task itself (e.g. an instance-attribute expression
+	// every consumer must honor).
+	PlacementConstraints []*AwsEcsTaskDefinitionPlacementConstraint `protobuf:"bytes,17,rep,name=placement_constraints,json=placementConstraints,proto3" json:"placement_constraints,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *AwsEcsTaskDefinitionSpec) Reset() {
@@ -243,6 +271,95 @@ func (x *AwsEcsTaskDefinitionSpec) GetSkipDestroy() bool {
 		return x.SkipDestroy
 	}
 	return false
+}
+
+func (x *AwsEcsTaskDefinitionSpec) GetEnableFaultInjection() bool {
+	if x != nil {
+		return x.EnableFaultInjection
+	}
+	return false
+}
+
+func (x *AwsEcsTaskDefinitionSpec) GetIpcMode() string {
+	if x != nil {
+		return x.IpcMode
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionSpec) GetPidMode() string {
+	if x != nil {
+		return x.PidMode
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionSpec) GetPlacementConstraints() []*AwsEcsTaskDefinitionPlacementConstraint {
+	if x != nil {
+		return x.PlacementConstraints
+	}
+	return nil
+}
+
+// AwsEcsTaskDefinitionPlacementConstraint is one task-level placement rule
+// evaluated when tasks from this definition are scheduled onto EC2
+// container instances.
+type AwsEcsTaskDefinitionPlacementConstraint struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The constraint type. "memberOf" (restrict placement to instances
+	// matching the expression) is the only type AWS supports at the task
+	// definition level.
+	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
+	// A cluster query language expression, e.g.
+	// "attribute:ecs.instance-type =~ t2.*" or
+	// "attribute:ecs.availability-zone in [us-west-2a, us-west-2b]".
+	Expression    string `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsTaskDefinitionPlacementConstraint) Reset() {
+	*x = AwsEcsTaskDefinitionPlacementConstraint{}
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsTaskDefinitionPlacementConstraint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsTaskDefinitionPlacementConstraint) ProtoMessage() {}
+
+func (x *AwsEcsTaskDefinitionPlacementConstraint) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsTaskDefinitionPlacementConstraint.ProtoReflect.Descriptor instead.
+func (*AwsEcsTaskDefinitionPlacementConstraint) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsEcsTaskDefinitionPlacementConstraint) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionPlacementConstraint) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
 }
 
 // AwsEcsTaskDefinitionContainer describes one container of the task: its
@@ -373,7 +490,7 @@ type AwsEcsTaskDefinitionContainer struct {
 
 func (x *AwsEcsTaskDefinitionContainer) Reset() {
 	*x = AwsEcsTaskDefinitionContainer{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +502,7 @@ func (x *AwsEcsTaskDefinitionContainer) String() string {
 func (*AwsEcsTaskDefinitionContainer) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +515,7 @@ func (x *AwsEcsTaskDefinitionContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionContainer.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionContainer) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsEcsTaskDefinitionContainer) GetName() string {
@@ -627,7 +744,7 @@ type AwsEcsTaskDefinitionPortMapping struct {
 
 func (x *AwsEcsTaskDefinitionPortMapping) Reset() {
 	*x = AwsEcsTaskDefinitionPortMapping{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -639,7 +756,7 @@ func (x *AwsEcsTaskDefinitionPortMapping) String() string {
 func (*AwsEcsTaskDefinitionPortMapping) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionPortMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -652,7 +769,7 @@ func (x *AwsEcsTaskDefinitionPortMapping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionPortMapping.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionPortMapping) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsEcsTaskDefinitionPortMapping) GetContainerPort() int32 {
@@ -706,7 +823,7 @@ type AwsEcsTaskDefinitionHealthCheck struct {
 
 func (x *AwsEcsTaskDefinitionHealthCheck) Reset() {
 	*x = AwsEcsTaskDefinitionHealthCheck{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -718,7 +835,7 @@ func (x *AwsEcsTaskDefinitionHealthCheck) String() string {
 func (*AwsEcsTaskDefinitionHealthCheck) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionHealthCheck) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -731,7 +848,7 @@ func (x *AwsEcsTaskDefinitionHealthCheck) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionHealthCheck.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionHealthCheck) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *AwsEcsTaskDefinitionHealthCheck) GetCommand() []string {
@@ -785,7 +902,7 @@ type AwsEcsTaskDefinitionContainerDependency struct {
 
 func (x *AwsEcsTaskDefinitionContainerDependency) Reset() {
 	*x = AwsEcsTaskDefinitionContainerDependency{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -797,7 +914,7 @@ func (x *AwsEcsTaskDefinitionContainerDependency) String() string {
 func (*AwsEcsTaskDefinitionContainerDependency) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionContainerDependency) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -810,7 +927,7 @@ func (x *AwsEcsTaskDefinitionContainerDependency) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsEcsTaskDefinitionContainerDependency.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionContainerDependency) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AwsEcsTaskDefinitionContainerDependency) GetContainerName() string {
@@ -844,7 +961,7 @@ type AwsEcsTaskDefinitionMountPoint struct {
 
 func (x *AwsEcsTaskDefinitionMountPoint) Reset() {
 	*x = AwsEcsTaskDefinitionMountPoint{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -856,7 +973,7 @@ func (x *AwsEcsTaskDefinitionMountPoint) String() string {
 func (*AwsEcsTaskDefinitionMountPoint) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionMountPoint) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -869,7 +986,7 @@ func (x *AwsEcsTaskDefinitionMountPoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionMountPoint.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionMountPoint) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *AwsEcsTaskDefinitionMountPoint) GetSourceVolume() string {
@@ -894,9 +1011,11 @@ func (x *AwsEcsTaskDefinitionMountPoint) GetReadOnly() bool {
 }
 
 // AwsEcsTaskDefinitionVolume declares one named volume tasks can mount.
-// Exactly one backing must be set: an EFS file system (durable, shared,
-// Fargate-supported) or a host path (EC2 only -- data lives and dies with
-// the instance).
+// At most one backing may be set: an EFS file system (durable, shared,
+// Fargate-supported), a host path (EC2 only -- data lives and dies with
+// the instance), a Docker volume (EC2 only), or an S3 bucket mounted as a
+// file system. A volume with configure_at_launch carries NO backing here
+// -- the service that runs the task supplies it at deployment time.
 type AwsEcsTaskDefinitionVolume struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The volume's name, referenced by containers' mount_points.
@@ -905,14 +1024,29 @@ type AwsEcsTaskDefinitionVolume struct {
 	Efs *AwsEcsTaskDefinitionEfsVolume `protobuf:"bytes,2,opt,name=efs,proto3" json:"efs,omitempty"`
 	// Back the volume with a path on the container instance (EC2 launch
 	// type only). Example: "/mnt/data".
-	HostPath      string `protobuf:"bytes,3,opt,name=host_path,json=hostPath,proto3" json:"host_path,omitempty"`
+	HostPath string `protobuf:"bytes,3,opt,name=host_path,json=hostPath,proto3" json:"host_path,omitempty"`
+	// Defer the volume's configuration to launch time: the AwsEcsService
+	// running this task supplies the backing through its
+	// volume_configuration (managed EBS -- a fresh, service-owned EBS
+	// volume per task) under this same volume name. Set it true and leave
+	// every backing here unset; the service side names the volume in
+	// spec.volume_configuration.name.
+	ConfigureAtLaunch bool `protobuf:"varint,4,opt,name=configure_at_launch,json=configureAtLaunch,proto3" json:"configure_at_launch,omitempty"`
+	// Back the volume with a Docker volume on the container instance (EC2
+	// launch type only) -- named Docker-managed storage, optionally via a
+	// volume driver plugin.
+	Docker *AwsEcsTaskDefinitionDockerVolume `protobuf:"bytes,5,opt,name=docker,proto3" json:"docker,omitempty"`
+	// Back the volume with an S3 bucket mounted as a file system
+	// (Mountpoint for Amazon S3) -- read-heavy shared data (models,
+	// reference datasets) without provisioning EFS.
+	S3Files       *AwsEcsTaskDefinitionS3FilesVolume `protobuf:"bytes,6,opt,name=s3files,proto3" json:"s3files,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsEcsTaskDefinitionVolume) Reset() {
 	*x = AwsEcsTaskDefinitionVolume{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -924,7 +1058,7 @@ func (x *AwsEcsTaskDefinitionVolume) String() string {
 func (*AwsEcsTaskDefinitionVolume) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -937,7 +1071,7 @@ func (x *AwsEcsTaskDefinitionVolume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionVolume.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionVolume) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AwsEcsTaskDefinitionVolume) GetName() string {
@@ -959,6 +1093,193 @@ func (x *AwsEcsTaskDefinitionVolume) GetHostPath() string {
 		return x.HostPath
 	}
 	return ""
+}
+
+func (x *AwsEcsTaskDefinitionVolume) GetConfigureAtLaunch() bool {
+	if x != nil {
+		return x.ConfigureAtLaunch
+	}
+	return false
+}
+
+func (x *AwsEcsTaskDefinitionVolume) GetDocker() *AwsEcsTaskDefinitionDockerVolume {
+	if x != nil {
+		return x.Docker
+	}
+	return nil
+}
+
+func (x *AwsEcsTaskDefinitionVolume) GetS3Files() *AwsEcsTaskDefinitionS3FilesVolume {
+	if x != nil {
+		return x.S3Files
+	}
+	return nil
+}
+
+// AwsEcsTaskDefinitionDockerVolume backs a task volume with a Docker
+// volume on the EC2 container instance -- Docker-managed named storage,
+// optionally through a volume driver plugin (e.g. rexray). EC2 launch
+// type only.
+type AwsEcsTaskDefinitionDockerVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Provision the volume automatically if it does not already exist.
+	// Only meaningful with scope "shared".
+	Autoprovision bool `protobuf:"varint,1,opt,name=autoprovision,proto3" json:"autoprovision,omitempty"`
+	// The Docker volume driver. Default: "local". Must match a driver
+	// installed on the container instance.
+	Driver string `protobuf:"bytes,2,opt,name=driver,proto3" json:"driver,omitempty"`
+	// Driver-specific options passed at volume creation.
+	DriverOpts map[string]string `protobuf:"bytes,3,rep,name=driver_opts,json=driverOpts,proto3" json:"driver_opts,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Custom metadata labels applied to the volume.
+	Labels map[string]string `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The volume's lifetime: "task" (AWS default -- destroyed when the task
+	// stops) or "shared" (persists on the instance across tasks).
+	Scope         string `protobuf:"bytes,5,opt,name=scope,proto3" json:"scope,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) Reset() {
+	*x = AwsEcsTaskDefinitionDockerVolume{}
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsTaskDefinitionDockerVolume) ProtoMessage() {}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsTaskDefinitionDockerVolume.ProtoReflect.Descriptor instead.
+func (*AwsEcsTaskDefinitionDockerVolume) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) GetAutoprovision() bool {
+	if x != nil {
+		return x.Autoprovision
+	}
+	return false
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) GetDriver() string {
+	if x != nil {
+		return x.Driver
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) GetDriverOpts() map[string]string {
+	if x != nil {
+		return x.DriverOpts
+	}
+	return nil
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *AwsEcsTaskDefinitionDockerVolume) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+// AwsEcsTaskDefinitionS3FilesVolume backs a task volume with an S3 bucket
+// mounted as a file system (Mountpoint for Amazon S3) -- the pattern for
+// read-heavy shared data without provisioning a network file system.
+type AwsEcsTaskDefinitionS3FilesVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The S3 bucket (by ARN) mounted as the volume. Reference an
+	// AwsS3Bucket's bucket_arn output or pass a literal bucket ARN.
+	FileSystemArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=file_system_arn,json=fileSystemArn,proto3" json:"file_system_arn,omitempty"`
+	// An S3 access point ARN to mount through instead of the bucket
+	// directly -- scopes the mount to the access point's policy.
+	AccessPointArn string `protobuf:"bytes,2,opt,name=access_point_arn,json=accessPointArn,proto3" json:"access_point_arn,omitempty"`
+	// The path within the bucket mounted as the volume root. Default: "/".
+	RootDirectory string `protobuf:"bytes,3,opt,name=root_directory,json=rootDirectory,proto3" json:"root_directory,omitempty"`
+	// The port for encrypted transit between host and mount target.
+	// 0 (unset) lets AWS choose.
+	TransitEncryptionPort int32 `protobuf:"varint,4,opt,name=transit_encryption_port,json=transitEncryptionPort,proto3" json:"transit_encryption_port,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) Reset() {
+	*x = AwsEcsTaskDefinitionS3FilesVolume{}
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsTaskDefinitionS3FilesVolume) ProtoMessage() {}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsTaskDefinitionS3FilesVolume.ProtoReflect.Descriptor instead.
+func (*AwsEcsTaskDefinitionS3FilesVolume) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) GetFileSystemArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.FileSystemArn
+	}
+	return nil
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) GetAccessPointArn() string {
+	if x != nil {
+		return x.AccessPointArn
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) GetRootDirectory() string {
+	if x != nil {
+		return x.RootDirectory
+	}
+	return ""
+}
+
+func (x *AwsEcsTaskDefinitionS3FilesVolume) GetTransitEncryptionPort() int32 {
+	if x != nil {
+		return x.TransitEncryptionPort
+	}
+	return 0
 }
 
 // AwsEcsTaskDefinitionEfsVolume backs a task volume with EFS. Transit
@@ -983,13 +1304,17 @@ type AwsEcsTaskDefinitionEfsVolume struct {
 	// must carry elasticfilesystem:ClientMount/ClientWrite). Requires
 	// transit encryption, which the modules enable automatically.
 	IamAuthorization bool `protobuf:"varint,4,opt,name=iam_authorization,json=iamAuthorization,proto3" json:"iam_authorization,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The port for the encrypted transit tunnel between host and EFS.
+	// 0 (unset) lets AWS choose an ephemeral port -- the right answer
+	// unless a host firewall requires a fixed one.
+	TransitEncryptionPort int32 `protobuf:"varint,5,opt,name=transit_encryption_port,json=transitEncryptionPort,proto3" json:"transit_encryption_port,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *AwsEcsTaskDefinitionEfsVolume) Reset() {
 	*x = AwsEcsTaskDefinitionEfsVolume{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1001,7 +1326,7 @@ func (x *AwsEcsTaskDefinitionEfsVolume) String() string {
 func (*AwsEcsTaskDefinitionEfsVolume) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionEfsVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1014,7 +1339,7 @@ func (x *AwsEcsTaskDefinitionEfsVolume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionEfsVolume.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionEfsVolume) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsEcsTaskDefinitionEfsVolume) GetFileSystemId() *v1.StringValueOrRef {
@@ -1045,6 +1370,13 @@ func (x *AwsEcsTaskDefinitionEfsVolume) GetIamAuthorization() bool {
 	return false
 }
 
+func (x *AwsEcsTaskDefinitionEfsVolume) GetTransitEncryptionPort() int32 {
+	if x != nil {
+		return x.TransitEncryptionPort
+	}
+	return 0
+}
+
 // AwsEcsTaskDefinitionRuntimePlatform selects the CPU architecture and OS
 // family of the runtime environment.
 type AwsEcsTaskDefinitionRuntimePlatform struct {
@@ -1063,7 +1395,7 @@ type AwsEcsTaskDefinitionRuntimePlatform struct {
 
 func (x *AwsEcsTaskDefinitionRuntimePlatform) Reset() {
 	*x = AwsEcsTaskDefinitionRuntimePlatform{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1075,7 +1407,7 @@ func (x *AwsEcsTaskDefinitionRuntimePlatform) String() string {
 func (*AwsEcsTaskDefinitionRuntimePlatform) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionRuntimePlatform) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1088,7 +1420,7 @@ func (x *AwsEcsTaskDefinitionRuntimePlatform) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsEcsTaskDefinitionRuntimePlatform.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionRuntimePlatform) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsEcsTaskDefinitionRuntimePlatform) GetCpuArchitecture() string {
@@ -1128,7 +1460,7 @@ type AwsEcsTaskDefinitionLogging struct {
 
 func (x *AwsEcsTaskDefinitionLogging) Reset() {
 	*x = AwsEcsTaskDefinitionLogging{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1140,7 +1472,7 @@ func (x *AwsEcsTaskDefinitionLogging) String() string {
 func (*AwsEcsTaskDefinitionLogging) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionLogging) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1153,7 +1485,7 @@ func (x *AwsEcsTaskDefinitionLogging) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionLogging.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionLogging) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AwsEcsTaskDefinitionLogging) GetDisabled() bool {
@@ -1199,7 +1531,7 @@ type AwsEcsTaskDefinitionLogConfiguration struct {
 
 func (x *AwsEcsTaskDefinitionLogConfiguration) Reset() {
 	*x = AwsEcsTaskDefinitionLogConfiguration{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1211,7 +1543,7 @@ func (x *AwsEcsTaskDefinitionLogConfiguration) String() string {
 func (*AwsEcsTaskDefinitionLogConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionLogConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1224,7 +1556,7 @@ func (x *AwsEcsTaskDefinitionLogConfiguration) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AwsEcsTaskDefinitionLogConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionLogConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsEcsTaskDefinitionLogConfiguration) GetLogDriver() string {
@@ -1264,7 +1596,7 @@ type AwsEcsTaskDefinitionFirelens struct {
 
 func (x *AwsEcsTaskDefinitionFirelens) Reset() {
 	*x = AwsEcsTaskDefinitionFirelens{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1276,7 +1608,7 @@ func (x *AwsEcsTaskDefinitionFirelens) String() string {
 func (*AwsEcsTaskDefinitionFirelens) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionFirelens) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1289,7 +1621,7 @@ func (x *AwsEcsTaskDefinitionFirelens) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionFirelens.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionFirelens) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsEcsTaskDefinitionFirelens) GetType() string {
@@ -1323,7 +1655,7 @@ type AwsEcsTaskDefinitionUlimit struct {
 
 func (x *AwsEcsTaskDefinitionUlimit) Reset() {
 	*x = AwsEcsTaskDefinitionUlimit{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1335,7 +1667,7 @@ func (x *AwsEcsTaskDefinitionUlimit) String() string {
 func (*AwsEcsTaskDefinitionUlimit) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionUlimit) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1348,7 +1680,7 @@ func (x *AwsEcsTaskDefinitionUlimit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsTaskDefinitionUlimit.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionUlimit) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsEcsTaskDefinitionUlimit) GetName() string {
@@ -1390,7 +1722,7 @@ type AwsEcsTaskDefinitionRestartPolicy struct {
 
 func (x *AwsEcsTaskDefinitionRestartPolicy) Reset() {
 	*x = AwsEcsTaskDefinitionRestartPolicy{}
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1402,7 +1734,7 @@ func (x *AwsEcsTaskDefinitionRestartPolicy) String() string {
 func (*AwsEcsTaskDefinitionRestartPolicy) ProtoMessage() {}
 
 func (x *AwsEcsTaskDefinitionRestartPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1415,7 +1747,7 @@ func (x *AwsEcsTaskDefinitionRestartPolicy) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsEcsTaskDefinitionRestartPolicy.ProtoReflect.Descriptor instead.
 func (*AwsEcsTaskDefinitionRestartPolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AwsEcsTaskDefinitionRestartPolicy) GetEnabled() bool {
@@ -1443,13 +1775,13 @@ var File_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto protoreflect.FileD
 
 const file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awsecstaskdefinition/v1alpha1/spec.proto\x12-dev.planton.aws.awsecstaskdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x88\x16\n" +
+	"4catalog/aws/awsecstaskdefinition/v1alpha1/spec.proto\x12-dev.planton.aws.awsecstaskdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfc\x1f\n" +
 	"\x18AwsEcsTaskDefinitionSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12v\n" +
 	"\n" +
 	"containers\x18\x02 \x03(\v2L.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
-	"containers\x12_\n" +
-	"\x18requires_compatibilities\x18\x03 \x03(\tB$\xbaH!\x92\x01\x1e\x18\x01\"\x1ar\x18R\aFARGATER\x03EC2R\bEXTERNALR\x17requiresCompatibilities\x12\x10\n" +
+	"containers\x12r\n" +
+	"\x18requires_compatibilities\x18\x03 \x03(\tB7\xbaH4\x92\x011\x18\x01\"-r+R\aFARGATER\x03EC2R\bEXTERNALR\x11MANAGED_INSTANCESR\x17requiresCompatibilities\x12\x10\n" +
 	"\x03cpu\x18\x04 \x01(\x05R\x03cpu\x12\x16\n" +
 	"\x06memory\x18\x05 \x01(\x05R\x06memory\x12-\n" +
 	"\fnetwork_mode\x18\x06 \x01(\tB\n" +
@@ -1461,13 +1793,29 @@ const file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	" \x01(\x05R\x13ephemeralStorageGib\x12c\n" +
 	"\avolumes\x18\v \x03(\v2I.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolumeR\avolumes\x12d\n" +
 	"\alogging\x18\f \x01(\v2J.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLoggingR\alogging\x12!\n" +
-	"\fskip_destroy\x18\r \x01(\bR\vskipDestroy:\x87\x0e\xbaH\x83\x0e\x1a\xba\x02\n" +
+	"\fskip_destroy\x18\r \x01(\bR\vskipDestroy\x124\n" +
+	"\x16enable_fault_injection\x18\x0e \x01(\bR\x14enableFaultInjection\x12\x19\n" +
+	"\bipc_mode\x18\x0f \x01(\tR\aipcMode\x12\x19\n" +
+	"\bpid_mode\x18\x10 \x01(\tR\apidMode\x12\x95\x01\n" +
+	"\x15placement_constraints\x18\x11 \x03(\v2V.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPlacementConstraintB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x14placementConstraints:\xe4\x15\xbaH\xe0\x15\x1a\xba\x02\n" +
 	"\x17fargate_requires_awsvpc\x12\x85\x01Fargate task definitions must use the 'awsvpc' network mode -- leave network_mode unset (it defaults to awsvpc) or set it to 'awsvpc'\x1a\x96\x01(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.network_mode == '' || this.network_mode == 'awsvpc'\x1a\xf9\x01\n" +
 	"\x1cfargate_requires_task_sizing\x12XFargate task definitions must set task-level cpu and memory (e.g. cpu: 256, memory: 512)\x1a\x7f(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || (this.cpu > 0 && this.memory > 0)\x1a\xa3\x01\n" +
 	"\x12network_mode_valid\x127network_mode must be one of: awsvpc, bridge, host, none\x1aTthis.network_mode == '' || this.network_mode in ['awsvpc', 'bridge', 'host', 'none']\x1a\xe5\x01\n" +
 	"\x17ephemeral_storage_range\x12^ephemeral_storage_gib must be between 21 and 200 when set (Fargate includes 20 GiB by default)\x1ajthis.ephemeral_storage_gib == 0 || (this.ephemeral_storage_gib >= 21 && this.ephemeral_storage_gib <= 200)\x1a\xea\x01\n" +
 	" at_least_one_essential_container\x12\x88\x01at least one container must be essential (essential defaults to true when unset) -- when every essential container exits, the task stops\x1a;this.containers.exists(c, !has(c.essential) || c.essential)\x1a\xcc\x04\n" +
-	"'fargate_awslogs_requires_execution_role\x12\xd2\x01Fargate tasks using the awslogs driver (which the default logging wiring does) need an execution_role that can write logs -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy, or disable logging\x1a\xcb\x02(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || has(this.execution_role) || !(((!has(this.logging) || !this.logging.disabled) && this.containers.exists(c, !has(c.log_configuration))) || this.containers.exists(c, has(c.log_configuration) && c.log_configuration.log_driver == 'awslogs'))\"\xbf\x14\n" +
+	"'fargate_awslogs_requires_execution_role\x12\xd2\x01Fargate tasks using the awslogs driver (which the default logging wiring does) need an execution_role that can write logs -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy, or disable logging\x1a\xcb\x02(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || has(this.execution_role) || !(((!has(this.logging) || !this.logging.disabled) && this.containers.exists(c, !has(c.log_configuration))) || this.containers.exists(c, has(c.log_configuration) && c.log_configuration.log_driver == 'awslogs'))\x1a\x87\x01\n" +
+	"\x0eipc_mode_valid\x123ipc_mode must be 'host', 'task', or 'none' when set\x1a@this.ipc_mode == '' || this.ipc_mode in ['host', 'task', 'none']\x1av\n" +
+	"\x0epid_mode_valid\x12*pid_mode must be 'host' or 'task' when set\x1a8this.pid_mode == '' || this.pid_mode in ['host', 'task']\x1a\xce\x01\n" +
+	"\x18fargate_forbids_ipc_mode\x12?ipc_mode is EC2-only -- Fargate task definitions may not set it\x1aq(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.ipc_mode == ''\x1a\x82\x02\n" +
+	"\x1afargate_pid_mode_task_only\x12Uon Fargate pid_mode may only be 'task' -- 'host' requires an EC2-only task definition\x1a\x8c\x01(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || this.pid_mode == '' || this.pid_mode == 'task'\x1a\x82\x02\n" +
+	"%fargate_forbids_placement_constraints\x12Splacement_constraints are EC2-only -- Fargate task definitions may not declare them\x1a\x83\x01(size(this.requires_compatibilities) > 0 && !('FARGATE' in this.requires_compatibilities)) || size(this.placement_constraints) == 0\"v\n" +
+	"'AwsEcsTaskDefinitionPlacementConstraint\x12#\n" +
+	"\x04type\x18\x01 \x01(\tB\x0f\xbaH\fr\n" +
+	"R\bmemberOfR\x04type\x12&\n" +
+	"\n" +
+	"expression\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"expression\"\xbf\x14\n" +
 	"\x1dAwsEcsTaskDefinitionContainer\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
 	"\x05image\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05image\x12!\n" +
@@ -1535,17 +1883,42 @@ const file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1eAwsEcsTaskDefinitionMountPoint\x12+\n" +
 	"\rsource_volume\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\fsourceVolume\x12-\n" +
 	"\x0econtainer_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rcontainerPath\x12\x1b\n" +
-	"\tread_only\x18\x03 \x01(\bR\breadOnly\"\xb0\x02\n" +
+	"\tread_only\x18\x03 \x01(\bR\breadOnly\"\xae\a\n" +
 	"\x1aAwsEcsTaskDefinitionVolume\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12^\n" +
 	"\x03efs\x18\x02 \x01(\v2L.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolumeR\x03efs\x12\x1b\n" +
-	"\thost_path\x18\x03 \x01(\tR\bhostPath:y\xbaHv\x1at\n" +
-	"\x11efs_xor_host_path\x127a volume is backed by either efs or host_path, not both\x1a&!has(this.efs) || this.host_path == ''\"\x86\x03\n" +
+	"\thost_path\x18\x03 \x01(\tR\bhostPath\x12.\n" +
+	"\x13configure_at_launch\x18\x04 \x01(\bR\x11configureAtLaunch\x12g\n" +
+	"\x06docker\x18\x05 \x01(\v2O.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolumeR\x06docker\x12j\n" +
+	"\as3files\x18\x06 \x01(\v2P.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionS3FilesVolumeR\as3files:\xf1\x03\xbaH\xed\x03\x1a\xd8\x01\n" +
+	"\x13at_most_one_backing\x12Ea volume is backed by at most one of: efs, host_path, docker, s3files\x1az((has(this.efs) ? 1 : 0) + (this.host_path == '' ? 0 : 1) + (has(this.docker) ? 1 : 0) + (has(this.s3files) ? 1 : 0)) <= 1\x1a\x8f\x02\n" +
+	"#configure_at_launch_forbids_backing\x12va configure_at_launch volume must not declare a backing here -- the AwsEcsService supplies it via volume_configuration\x1ap!this.configure_at_launch || (!has(this.efs) && this.host_path == '' && !has(this.docker) && !has(this.s3files))\"\xae\x06\n" +
+	" AwsEcsTaskDefinitionDockerVolume\x12$\n" +
+	"\rautoprovision\x18\x01 \x01(\bR\rautoprovision\x12\x16\n" +
+	"\x06driver\x18\x02 \x01(\tR\x06driver\x12\x80\x01\n" +
+	"\vdriver_opts\x18\x03 \x03(\v2_.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.DriverOptsEntryR\n" +
+	"driverOpts\x12s\n" +
+	"\x06labels\x18\x04 \x03(\v2[.dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.LabelsEntryR\x06labels\x12\x14\n" +
+	"\x05scope\x18\x05 \x01(\tR\x05scope\x1a=\n" +
+	"\x0fDriverOptsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc3\x02\xbaH\xbf\x02\x1an\n" +
+	"\vscope_valid\x12)scope must be 'task' or 'shared' when set\x1a4this.scope == '' || this.scope in ['task', 'shared']\x1a\xcc\x01\n" +
+	"#autoprovision_requires_shared_scope\x12vautoprovision only applies to 'shared' scope volumes -- a task-scoped volume always exists exactly as long as its task\x1a-!this.autoprovision || this.scope == 'shared'\"\xc4\x02\n" +
+	"!AwsEcsTaskDefinitionS3FilesVolume\x12\x88\x01\n" +
+	"\x0ffile_system_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x19status.outputs.bucket_arn\x98\xd4a\x01R\rfileSystemArn\x12(\n" +
+	"\x10access_point_arn\x18\x02 \x01(\tR\x0eaccessPointArn\x12%\n" +
+	"\x0eroot_directory\x18\x03 \x01(\tR\rrootDirectory\x12C\n" +
+	"\x17transit_encryption_port\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x15transitEncryptionPort\"\xcb\x03\n" +
 	"\x1dAwsEcsTaskDefinitionEfsVolume\x12\x8a\x01\n" +
 	"\x0efile_system_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\b\x92\xd4a\x1dstatus.outputs.file_system_id\x98\xd4a\x01R\ffileSystemId\x12%\n" +
 	"\x0eroot_directory\x18\x02 \x01(\tR\rrootDirectory\x12\x83\x01\n" +
 	"\x0faccess_point_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\x88\xd4a\x88\t\x92\xd4a\x1estatus.outputs.access_point_idR\raccessPointId\x12+\n" +
-	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\"\xdb\x04\n" +
+	"\x11iam_authorization\x18\x04 \x01(\bR\x10iamAuthorization\x12C\n" +
+	"\x17transit_encryption_port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x15transitEncryptionPort\"\xdb\x04\n" +
 	"#AwsEcsTaskDefinitionRuntimePlatform\x12)\n" +
 	"\x10cpu_architecture\x18\x01 \x01(\tR\x0fcpuArchitecture\x126\n" +
 	"\x17operating_system_family\x18\x02 \x01(\tR\x15operatingSystemFamily:\xd0\x03\xbaH\xcc\x03\x1a\x9c\x01\n" +
@@ -1599,60 +1972,71 @@ func file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescGZIP() []b
 	return file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsEcsTaskDefinitionSpec)(nil),                // 0: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec
-	(*AwsEcsTaskDefinitionContainer)(nil),           // 1: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer
-	(*AwsEcsTaskDefinitionPortMapping)(nil),         // 2: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPortMapping
-	(*AwsEcsTaskDefinitionHealthCheck)(nil),         // 3: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionHealthCheck
-	(*AwsEcsTaskDefinitionContainerDependency)(nil), // 4: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerDependency
-	(*AwsEcsTaskDefinitionMountPoint)(nil),          // 5: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionMountPoint
-	(*AwsEcsTaskDefinitionVolume)(nil),              // 6: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume
-	(*AwsEcsTaskDefinitionEfsVolume)(nil),           // 7: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume
-	(*AwsEcsTaskDefinitionRuntimePlatform)(nil),     // 8: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRuntimePlatform
-	(*AwsEcsTaskDefinitionLogging)(nil),             // 9: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging
-	(*AwsEcsTaskDefinitionLogConfiguration)(nil),    // 10: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration
-	(*AwsEcsTaskDefinitionFirelens)(nil),            // 11: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens
-	(*AwsEcsTaskDefinitionUlimit)(nil),              // 12: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionUlimit
-	(*AwsEcsTaskDefinitionRestartPolicy)(nil),       // 13: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRestartPolicy
-	nil,                         // 14: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.EnvironmentEntry
-	nil,                         // 15: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.SecretsEntry
-	nil,                         // 16: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.DockerLabelsEntry
-	nil,                         // 17: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
-	nil,                         // 18: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
-	nil,                         // 19: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.OptionsEntry
-	(*v1.StringValueOrRef)(nil), // 20: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEcsTaskDefinitionPlacementConstraint)(nil), // 1: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPlacementConstraint
+	(*AwsEcsTaskDefinitionContainer)(nil),           // 2: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer
+	(*AwsEcsTaskDefinitionPortMapping)(nil),         // 3: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPortMapping
+	(*AwsEcsTaskDefinitionHealthCheck)(nil),         // 4: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionHealthCheck
+	(*AwsEcsTaskDefinitionContainerDependency)(nil), // 5: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerDependency
+	(*AwsEcsTaskDefinitionMountPoint)(nil),          // 6: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionMountPoint
+	(*AwsEcsTaskDefinitionVolume)(nil),              // 7: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume
+	(*AwsEcsTaskDefinitionDockerVolume)(nil),        // 8: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume
+	(*AwsEcsTaskDefinitionS3FilesVolume)(nil),       // 9: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionS3FilesVolume
+	(*AwsEcsTaskDefinitionEfsVolume)(nil),           // 10: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume
+	(*AwsEcsTaskDefinitionRuntimePlatform)(nil),     // 11: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRuntimePlatform
+	(*AwsEcsTaskDefinitionLogging)(nil),             // 12: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging
+	(*AwsEcsTaskDefinitionLogConfiguration)(nil),    // 13: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration
+	(*AwsEcsTaskDefinitionFirelens)(nil),            // 14: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens
+	(*AwsEcsTaskDefinitionUlimit)(nil),              // 15: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionUlimit
+	(*AwsEcsTaskDefinitionRestartPolicy)(nil),       // 16: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRestartPolicy
+	nil,                         // 17: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.EnvironmentEntry
+	nil,                         // 18: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.SecretsEntry
+	nil,                         // 19: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.DockerLabelsEntry
+	nil,                         // 20: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.DriverOptsEntry
+	nil,                         // 21: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.LabelsEntry
+	nil,                         // 22: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
+	nil,                         // 23: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
+	nil,                         // 24: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.OptionsEntry
+	(*v1.StringValueOrRef)(nil), // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_depIdxs = []int32{
-	1,  // 0: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.containers:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer
-	20, // 1: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.execution_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 2: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.task_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 3: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.runtime_platform:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRuntimePlatform
-	6,  // 4: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.volumes:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume
-	9,  // 5: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.logging:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging
-	2,  // 6: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.port_mappings:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPortMapping
-	14, // 7: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.environment:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.EnvironmentEntry
-	15, // 8: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.secrets:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.SecretsEntry
-	3,  // 9: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.health_check:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionHealthCheck
-	4,  // 10: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.depends_on:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerDependency
-	5,  // 11: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.mount_points:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionMountPoint
-	10, // 12: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.log_configuration:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration
-	11, // 13: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.firelens_configuration:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens
-	12, // 14: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.ulimits:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionUlimit
-	16, // 15: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.docker_labels:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.DockerLabelsEntry
-	13, // 16: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.restart_policy:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRestartPolicy
-	7,  // 17: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume.efs:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume
-	20, // 18: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 19: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume.access_point_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 20: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 21: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
-	18, // 22: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.secret_options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
-	19, // 23: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.OptionsEntry
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	2,  // 0: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.containers:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer
+	25, // 1: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.execution_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 2: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.task_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 3: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.runtime_platform:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRuntimePlatform
+	7,  // 4: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.volumes:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume
+	12, // 5: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.logging:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging
+	1,  // 6: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionSpec.placement_constraints:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPlacementConstraint
+	3,  // 7: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.port_mappings:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionPortMapping
+	17, // 8: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.environment:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.EnvironmentEntry
+	18, // 9: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.secrets:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.SecretsEntry
+	4,  // 10: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.health_check:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionHealthCheck
+	5,  // 11: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.depends_on:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainerDependency
+	6,  // 12: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.mount_points:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionMountPoint
+	13, // 13: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.log_configuration:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration
+	14, // 14: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.firelens_configuration:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens
+	15, // 15: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.ulimits:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionUlimit
+	19, // 16: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.docker_labels:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.DockerLabelsEntry
+	16, // 17: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionContainer.restart_policy:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionRestartPolicy
+	10, // 18: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume.efs:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume
+	8,  // 19: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume.docker:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume
+	9,  // 20: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionVolume.s3files:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionS3FilesVolume
+	20, // 21: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.driver_opts:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.DriverOptsEntry
+	21, // 22: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.labels:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionDockerVolume.LabelsEntry
+	25, // 23: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionS3FilesVolume.file_system_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 24: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 25: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionEfsVolume.access_point_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 26: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogging.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 27: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.OptionsEntry
+	23, // 28: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.secret_options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionLogConfiguration.SecretOptionsEntry
+	24, // 29: dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.options:type_name -> dev.planton.aws.awsecstaskdefinition.v1alpha1.AwsEcsTaskDefinitionFirelens.OptionsEntry
+	30, // [30:30] is the sub-list for method output_type
+	30, // [30:30] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_init() }
@@ -1660,15 +2044,15 @@ func file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto != nil {
 		return
 	}
-	file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
-	file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsecstaskdefinition_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

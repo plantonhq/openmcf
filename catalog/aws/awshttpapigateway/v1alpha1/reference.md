@@ -454,9 +454,11 @@ AWS service integrations (integration_subtype) always use "1.0".
 
 `string`
 
-HTTP method used for the integration request. Defaults to the route's HTTP
-method for HTTP_PROXY integrations. For AWS_PROXY (Lambda) integrations,
-this is always POST regardless of the value set here.
+HTTP method used for the integration request. Valid values: "ANY",
+"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" (uppercase).
+Defaults to the route's HTTP method for HTTP_PROXY integrations. For
+AWS_PROXY (Lambda) integrations, this is always POST regardless of the
+value set here.
 
 ### spec.routes[].integration.timeoutMilliseconds
 
@@ -534,9 +536,10 @@ header. Supported by proxy and service integrations on HTTP APIs.
 `string`
 
 The backend response status code these mappings apply to (e.g. "403",
-"500").
+"500"). API Gateway accepts 200-599 -- informational (1xx) codes cannot
+carry response overrides.
 
-- rule: {"string":{"pattern":"^[1-5][0-9][0-9]$"}}
+- rule: {"string":{"pattern":"^[2-5][0-9][0-9]$"}}
 
 ### spec.routes[].integration.responseParameters[].mappings
 
@@ -740,6 +743,7 @@ Only applicable to REQUEST authorizers.
 - `payload_format_version_valid`: route integration payload_format_version must be '1.0' or '2.0' when set
 - `payload_format_version_lambda_only`: payload_format_version '2.0' applies only to Lambda proxy integrations -- HTTP_PROXY and AWS service integrations (integration_subtype) are fixed at '1.0' by AWS
 - `integration_timeout_range`: route integration timeout_milliseconds must be between 50 and 30000 when set
+- `integration_method_valid`: route integration integration_method must be one of 'ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT' when set
 - `authorizer_ttl_range`: authorizer result_ttl_seconds must be between 0 and 3600 when set
 - `authorizer_payload_format_version_valid`: authorizer authorizer_payload_format_version must be '1.0' or '2.0' when set
 - `stage_route_settings_target_defined_routes`: stage.route_settings route_key values must match a route defined in routes

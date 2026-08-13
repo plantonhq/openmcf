@@ -32,6 +32,11 @@ resource "google_spanner_database" "this" {
   # set, before touching GCP. Identical semantics on both engines.
   deletion_protection = var.spec.deletion_protection
 
+  # What a PERMITTED destroy does once the guards above allow one:
+  # DELETE (default), PREVENT (destroy fails), or ABANDON (drop from
+  # state, keep the database and its data in GCP).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # CMEK: immutable. kms_key_name for regional instance configs,
   # kms_key_names (one key per region) for multi-region configs — the spec
   # enforces exactly one shape pre-deploy.

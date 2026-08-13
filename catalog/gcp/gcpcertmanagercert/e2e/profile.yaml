@@ -6,6 +6,10 @@ spec:
   # Composed chain: zone -> auth -> validation record -> managed cert.
   # Verifier asserts creation posture, not ACTIVE (~2–5 minutes).
   tier: 1
+  # Proven live 2026-08-11 (both engines, idempotency gate) on the managed
+  # arm. The self-managed arm (pem key material; Pulumi stores it
+  # state-encrypted via ToSecret) stays offline-proven — a live self-managed
+  # arm should verify the key shows as secret in Pulumi state.
   status: green
   validated_provisioners:
     - pulumi

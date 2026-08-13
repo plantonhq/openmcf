@@ -37,5 +37,9 @@ variable "spec" {
     # Traffic Director binding; false for internet-facing frontends.
     # Immutable.
     proxy_bind = optional(bool, false)
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 }

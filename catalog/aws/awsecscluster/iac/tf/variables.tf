@@ -51,5 +51,79 @@ variable "spec" {
       kms_key_id = optional(string, "")
     }))
     service_connect_namespace_arn = optional(string, "")
+    managed_instances_capacity_providers = optional(list(object({
+      name = string
+      infrastructure_role_arn = string
+      instance_launch_template = object({
+        ec2_instance_profile_arn = string
+        network_configuration = object({
+          subnets = list(string)
+          security_groups = list(string)
+        })
+        capacity_option_type = optional(string, "")
+        capacity_reservations = optional(object({
+          reservation_preference = optional(string, "")
+          reservation_group_arn = optional(string, "")
+        }))
+        instance_requirements = optional(object({
+          memory_mib = object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          })
+          vcpu_count = object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          })
+          allowed_instance_types = optional(list(string), [])
+          excluded_instance_types = optional(list(string), [])
+          instance_generations = optional(list(string), [])
+          cpu_manufacturers = optional(list(string), [])
+          bare_metal = optional(string, "")
+          burstable_performance = optional(string, "")
+          require_hibernate_support = optional(bool, false)
+          spot_max_price_percentage_over_lowest_price = optional(number, 0)
+          max_spot_price_as_percentage_of_optimal_on_demand_price = optional(number, 0)
+          on_demand_max_price_percentage_over_lowest_price = optional(number, 0)
+          local_storage = optional(string, "")
+          local_storage_types = optional(list(string), [])
+          total_local_storage_gb = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          memory_gib_per_vcpu = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          network_interface_count = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          network_bandwidth_gbps = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          baseline_ebs_bandwidth_mbps = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          accelerator_count = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+          accelerator_manufacturers = optional(list(string), [])
+          accelerator_names = optional(list(string), [])
+          accelerator_types = optional(list(string), [])
+          accelerator_total_memory_mib = optional(object({
+            min = optional(number, 0)
+            max = optional(number, 0)
+          }))
+        }))
+        use_local_storage = optional(bool)
+        monitoring = optional(string, "")
+        storage_size_gib = optional(number, 0)
+      })
+      scale_in_after_seconds = optional(number)
+      propagate_tags = optional(string, "")
+    })), [])
   })
 }

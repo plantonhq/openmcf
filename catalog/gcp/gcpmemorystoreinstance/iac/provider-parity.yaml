@@ -1,0 +1,51 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_memorystore_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: instance_id
+      - spec: spec.project_id
+        arg: project
+      # The provider renamed the endpoint-automation block when the PSC
+      # aliases were deprecated; the spec keeps the API's own
+      # psc_auto_connections vocabulary (what the feature IS). Matching
+      # resumes exactly below the subtree (network, project_id).
+      - spec: spec.psc_auto_connections
+        arg: desired_auto_created_endpoints
+      # The spec flattens the provider's start_time nesting: a window
+      # start is one hour-of-day field, and a daily backup start is one
+      # hour-of-day field.
+      - spec: spec.maintenance_policy.weekly_maintenance_window.hour
+        arg: maintenance_policy.weekly_maintenance_window.start_time.hours
+      - spec: spec.automated_backup_config.start_hour
+        arg: automated_backup_config.fixed_frequency_schedule.start_time.hours
+    exclusions:
+      # The provider passes the full TimeOfDay message through, but the
+      # Memorystore service accepts ONLY whole-hour start times: a create
+      # carrying minutes is rejected with 400 "Invalid start time, only
+      # hours are supported" (field violation on
+      # weekly_maintenance_window.start_time; live-verified 2026-08-12 on
+      # both engines — narrower than Redis, whose window start takes
+      # minutes). The spec therefore models the start as hour-only.
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.minutes
+        reason: the Memorystore API rejects non-zero minutes (live 400 "Invalid start time, only hours are supported"); the spec models the start hour-only
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.seconds
+        reason: sub-minute precision on an hour-anchored 1-hour maintenance window; the service supports whole hours only
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.nanos
+        reason: sub-second precision on an hour-anchored 1-hour maintenance window; the service supports whole hours only
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      memorystore.googleapis.com and networkconnectivity.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the APIs project-wide); not spec surface.

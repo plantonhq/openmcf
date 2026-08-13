@@ -85,10 +85,18 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 			DnsIps:     dnsIps,
 		}
 
+		// Each credential field is guarded independently (matching the
+		// Terraform module) rather than branched either/or: the secret ARN is
+		// a StringValueOrRef resolved at deploy time, so a reference that
+		// resolves empty must not force empty username/password strings into
+		// the provider's length validation.
 		if smad.DomainJoinServiceAccountSecretArn != nil && smad.DomainJoinServiceAccountSecretArn.GetValue() != "" {
 			smadArgs.DomainJoinServiceAccountSecret = pulumi.StringPtr(smad.DomainJoinServiceAccountSecretArn.GetValue())
-		} else {
+		}
+		if smad.Username != "" {
 			smadArgs.Username = pulumi.StringPtr(smad.Username)
+		}
+		if smad.Password != "" {
 			smadArgs.Password = pulumi.StringPtr(smad.Password)
 		}
 

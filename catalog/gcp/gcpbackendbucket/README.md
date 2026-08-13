@@ -68,6 +68,8 @@ planton apply -f backend-bucket.yaml
 | `edgeSecurityPolicy` | `StringValueOrRef` | none | Cloud Armor EDGE policy (type `CLOUD_ARMOR_EDGE`) filtering requests before cache and origin. Can reference a GcpCloudArmorPolicy. |
 | `loadBalancingScheme` | `string` | external | `INTERNAL_MANAGED` for cross-region internal ALBs. Incompatible with CDN. Immutable. |
 | `signedUrlKeys` | `list(object)` | `[]` | Up to 3 named signing keys for Cloud CDN signed URLs/cookies. `keyValue` is secret material. |
+| `resourceManagerTags` | `map<string,string>` | `{}` | Create-time Resource Manager tags (`tagKeys/{id}` → `tagValues/{id}`) for org policy and IAM conditions. Immutable. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does to the backend bucket AND its signed-URL keys: `DELETE`, `PREVENT` (refuse), or `ABANDON` (keep serving, drop from management). |
 
 ### CDN Policy
 

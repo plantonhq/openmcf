@@ -87,12 +87,26 @@ type AwsFsxWindowsFileSystemSpec struct {
 	//     SINGLE_AZ_2 and MULTI_AZ_1 deployment types. Requires minimum 2000 GiB
 	//     storage capacity.
 	//
+	// The provider's shared storage-type enum also accepts INTELLIGENT_TIERING,
+	// but AWS's CreateFileSystem contract scopes Intelligent-Tiering to OpenZFS
+	// multi-AZ and Lustre PERSISTENT_2 file systems only — it is not valid for
+	// Windows. The two-value domain here is deliberate (spec mirrors AWS where
+	// the provider is loose).
+	//
 	// Default: SSD
 	StorageType *string `protobuf:"bytes,4,opt,name=storage_type,json=storageType,proto3,oneof" json:"storage_type,omitempty"`
 	// Throughput capacity in MB/s. Required.
 	//
 	// Valid values: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288.
-	// The maximum available throughput depends on the deployment type.
+	// The maximum available throughput depends on the deployment type, and the
+	// 4608+ tiers are available only in a handful of regions (per the FSx for
+	// Windows performance documentation).
+	//
+	// Known provider defect at the pinned release: the provider's value list
+	// carries a digit-transposition typo — it validates 12228 where AWS's
+	// documented top tier is 12288 — so the 12288 tier fails the provider's
+	// plan-time validation on both engines until a provider release fixes the
+	// list. The spec mirrors AWS's contract, never the typo.
 	//
 	// Throughput can be changed after creation to scale performance up or down.
 	ThroughputCapacity int32 `protobuf:"varint,5,opt,name=throughput_capacity,json=throughputCapacity,proto3" json:"throughput_capacity,omitempty"`
@@ -689,8 +703,8 @@ const file_catalog_aws_awsfsxwindowsfilesystem_v1alpha1_spec_proto_rawDesc = "" 
 	"\x14FinalBackupTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf1\x14\xbaH\xed\x14\x1a\xc2\x01\n" +
-	"\x15deployment_type_valid\x12Edeployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', or 'MULTI_AZ_1'\x1abthis.deployment_type == '' || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']\x1ay\n" +
-	"\x12storage_type_valid\x12#storage_type must be 'SSD' or 'HDD'\x1a>this.storage_type == '' || this.storage_type in ['SSD', 'HDD']\x1a\xd2\x01\n" +
+	"\x15deployment_type_valid\x12Edeployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', or 'MULTI_AZ_1'\x1ab!has(this.deployment_type) || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']\x1ay\n" +
+	"\x12storage_type_valid\x12#storage_type must be 'SSD' or 'HDD'\x1a>!has(this.storage_type) || this.storage_type in ['SSD', 'HDD']\x1a\xd2\x01\n" +
 	"\"hdd_requires_compatible_deployment\x12Wstorage_type 'HDD' is only supported with deployment_type 'SINGLE_AZ_2' or 'MULTI_AZ_1'\x1aSthis.storage_type != 'HDD' || this.deployment_type in ['SINGLE_AZ_2', 'MULTI_AZ_1']\x1a\xb3\x01\n" +
 	"\x13hdd_minimum_storage\x128storage_type 'HDD' requires storage_capacity_gib >= 2000\x1abthis.storage_type != 'HDD' || !has(this.storage_capacity_gib) || this.storage_capacity_gib >= 2000\x1a\xa9\x01\n" +
 	"\x19storage_capacity_required\x12Tstorage_capacity_gib is required (leave it unset only when restoring from backup_id)\x1a6has(this.storage_capacity_gib) || this.backup_id != ''\x1a\xbe\x01\n" +
@@ -705,7 +719,8 @@ const file_catalog_aws_awsfsxwindowsfilesystem_v1alpha1_spec_proto_rawDesc = "" 
 	"\x15_storage_capacity_gibB\x0f\n" +
 	"\r_storage_typeB\"\n" +
 	" _automatic_backup_retention_daysB\x14\n" +
-	"\x12_skip_final_backup\"\xd7\b\n" +
+	"\x12_skip_final_backup\"\xda\n" +
+	"\n" +
 	"1AwsFsxWindowsFileSystemSelfManagedActiveDirectory\x12(\n" +
 	"\vdomain_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\n" +
 	"domainName\x12)\n" +
@@ -715,22 +730,23 @@ const file_catalog_aws_awsfsxwindowsfilesystem_v1alpha1_spec_proto_rawDesc = "" 
 	"\bpassword\x18\x04 \x01(\tB\f\xbaH\x05r\x03\x18\x80\x02\xa0\xa6\x1d\x01R\bpassword\x12\x85\x01\n" +
 	"&domain_join_service_account_secret_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR!domainJoinServiceAccountSecretArn\x12_\n" +
 	" file_system_administrators_group\x18\x06 \x01(\tB\x11\x8a\xa6\x1d\rDomain AdminsH\x00R\x1dfileSystemAdministratorsGroup\x88\x01\x01\x12]\n" +
-	"&organizational_unit_distinguished_name\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR#organizationalUnitDistinguishedName:\x8f\x04\xbaH\x8b\x04\x1a\xbe\x02\n" +
+	"&organizational_unit_distinguished_name\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xd0\x0fR#organizationalUnitDistinguishedName:\x92\x06\xbaH\x8e\x06\x1a\xbe\x02\n" +
 	"\x1ccredentials_mutual_exclusion\x12Tspecify either username/password or domain_join_service_account_secret_arn, not both\x1a\xc7\x01(this.username == '' && this.password == '' && has(this.domain_join_service_account_secret_arn)) || ((this.username != '' || this.password != '') && !has(this.domain_join_service_account_secret_arn))\x1a\xc7\x01\n" +
-	"\x1bdirect_credentials_complete\x12Jwhen using direct credentials, both username and password must be provided\x1a\\(this.username == '' && this.password == '') || (this.username != '' && this.password != '')B#\n" +
+	"\x1bdirect_credentials_complete\x12Jwhen using direct credentials, both username and password must be provided\x1a\\(this.username == '' && this.password == '') || (this.username != '' && this.password != '')\x1a\x80\x02\n" +
+	"\x1badministrators_group_length\x12Gfile_system_administrators_group must be 1-256 characters when provided\x1a\x97\x01!has(this.file_system_administrators_group) || (size(this.file_system_administrators_group) >= 1 && size(this.file_system_administrators_group) <= 256)B#\n" +
 	"!_file_system_administrators_group\"\x84\b\n" +
 	",AwsFsxWindowsFileSystemAuditLogConfiguration\x12O\n" +
 	"\x1bfile_access_audit_log_level\x18\x01 \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x00R\x17fileAccessAuditLogLevel\x88\x01\x01\x12Z\n" +
 	"!file_share_access_audit_log_level\x18\x02 \x01(\tB\f\x8a\xa6\x1d\bDISABLEDH\x01R\x1cfileShareAccessAuditLogLevel\x88\x01\x01\x12\x8d\x01\n" +
 	"\x15audit_log_destination\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x13auditLogDestination:\xd0\x04\xbaH\xcc\x04\x1a\x97\x02\n" +
-	"\x17file_access_level_valid\x12hfile_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x91\x01this.file_access_audit_log_level == '' || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']\x1a\xaf\x02\n" +
-	"\x1dfile_share_access_level_valid\x12nfile_share_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x9d\x01this.file_share_access_audit_log_level == '' || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']B\x1e\n" +
+	"\x17file_access_level_valid\x12hfile_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x91\x01!has(this.file_access_audit_log_level) || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']\x1a\xaf\x02\n" +
+	"\x1dfile_share_access_level_valid\x12nfile_share_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'\x1a\x9d\x01!has(this.file_share_access_audit_log_level) || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']B\x1e\n" +
 	"\x1c_file_access_audit_log_levelB$\n" +
 	"\"_file_share_access_audit_log_level\"\xa9\x03\n" +
 	",AwsFsxWindowsFileSystemDiskIopsConfiguration\x12&\n" +
 	"\x04mode\x18\x01 \x01(\tB\r\x8a\xa6\x1d\tAUTOMATICH\x00R\x04mode\x88\x01\x01\x12$\n" +
 	"\x04iops\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xb0\xae\x15(\x00H\x01R\x04iops\x88\x01\x01:\x98\x02\xbaH\x94\x02\x1a\x84\x01\n" +
-	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aAthis.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x8a\x01\n" +
+	"\x0fiops_mode_valid\x12.mode must be 'AUTOMATIC' or 'USER_PROVISIONED'\x1aA!has(this.mode) || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']\x1a\x8a\x01\n" +
 	"\x1eiops_requires_user_provisioned\x124iops can only be set when mode is 'USER_PROVISIONED'\x1a2!has(this.iops) || this.mode == 'USER_PROVISIONED'B\a\n" +
 	"\x05_modeB\a\n" +
 	"\x05_iopsB\x91\x03\n" +

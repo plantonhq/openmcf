@@ -116,13 +116,14 @@ func (x *GcpSpannerDatabaseEncryptionConfig) GetKmsKeyNames() []*v1.StringValueO
 //   - Spanner databases do not support GCP labels; labels exist only at
 //     the instance level.
 //
-//   - TWO deletion guards exist and differ in enforcement point:
+//   - THREE deletion levers exist and differ in enforcement point:
 //     enable_drop_protection is GCP API-side (blocks deletion through
 //     Console, gcloud, API, and IaC alike — and blocks deletion of the
 //     PARENT INSTANCE while set); deletion_protection is IaC-side (both
 //     engines refuse to destroy this resource while true — GCP itself
-//     would still allow a console delete). deletion_protection defaults
-//     TRUE, matching the safe posture.
+//     would still allow a console delete) and defaults TRUE, matching
+//     the safe posture; deletion_policy decides WHAT a permitted destroy
+//     does (delete the database, fail, or abandon it in GCP).
 type GcpSpannerDatabaseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The GCP project that owns the parent Spanner instance. Accepts a
@@ -181,8 +182,20 @@ type GcpSpannerDatabaseSpec struct {
 	// teardown. Unlike enable_drop_protection, GCP itself does not enforce
 	// this: a console/gcloud delete would still succeed.
 	DeletionProtection *bool `protobuf:"varint,10,opt,name=deletion_protection,json=deletionProtection,proto3,oneof" json:"deletion_protection,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Deletion policy — what a PERMITTED destroy does, once the two guards
+	// above allow one (deletion_protection false, enable_drop_protection
+	// off):
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the database and its data are deleted (backups
+	//	             already taken survive until their retention expires)
+	//	"PREVENT" -- destroy FAILS — a third, explicit wall for databases
+	//	             whose teardown must never ride along with a stack's
+	//	"ABANDON" -- the database is removed from management but left
+	//	             intact in GCP, still billing for its storage
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpSpannerDatabaseSpec) Reset() {
@@ -285,6 +298,13 @@ func (x *GcpSpannerDatabaseSpec) GetDeletionProtection() bool {
 	return false
 }
 
+func (x *GcpSpannerDatabaseSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpspannerdatabase_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpspannerdatabase_v1alpha1_spec_proto_rawDesc = "" +
@@ -294,7 +314,7 @@ const file_catalog_gcp_gcpspannerdatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\fkms_key_name\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\n" +
 	"kmsKeyName\x12v\n" +
 	"\rkms_key_names\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\x93\x18\x92\xd4a\x15status.outputs.key_idR\vkmsKeyNames:\xb0\x01\xbaH\xac\x01\x1a\xa9\x01\n" +
-	" encryption_exactly_one_key_shape\x12Jset exactly one of kms_key_name (regional) or kms_key_names (multi-region)\x1a9has(this.kms_key_name) != (this.kms_key_names.size() > 0)\"\xae\a\n" +
+	" encryption_exactly_one_key_shape\x12Jset exactly one of kms_key_name (regional) or kms_key_names (multi-region)\x1a9has(this.kms_key_name) != (this.kms_key_names.size() > 0)\"\xec\b\n" +
 	"\x16GcpSpannerDatabaseSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12{\n" +
@@ -308,7 +328,9 @@ const file_catalog_gcp_gcpspannerdatabase_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11encryption_config\x18\b \x01(\v2O.dev.planton.gcp.gcpspannerdatabase.v1alpha1.GcpSpannerDatabaseEncryptionConfigR\x10encryptionConfig\x12*\n" +
 	"\x11default_time_zone\x18\t \x01(\tR\x0fdefaultTimeZone\x12>\n" +
 	"\x13deletion_protection\x18\n" +
-	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01B\x16\n" +
+	" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12deletionProtection\x88\x01\x01\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\x16\n" +
 	"\x14_deletion_protectionB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpspannerdatabase.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpspannerdatabase/v1alpha1;gcpspannerdatabasev1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpspannerdatabase.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpspannerdatabase\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpspannerdatabase\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpspannerdatabase::V1alpha1b\x06proto3"
 

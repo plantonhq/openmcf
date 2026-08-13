@@ -33,6 +33,30 @@ message AwsAppRunnerServiceStackOutputs {
   // composes directly into an AwsRoute53DnsRecord resource. Empty when the
   // spec associates no custom domains.
   repeated AwsAppRunnerServiceCustomDomainOutput custom_domains = 6;
+
+  // Per-connection identifiers for the spec's vpc_ingress_connections --
+  // one entry per spec entry. The domain_name is what clients inside the
+  // connected VPC resolve to reach the service privately. Empty when the
+  // spec declares no ingress connections.
+  repeated AwsAppRunnerServiceVpcIngressConnectionOutput vpc_ingress_connections = 7;
+}
+
+// AwsAppRunnerServiceVpcIngressConnectionOutput carries the identifiers of
+// one VPC Ingress Connection published for this service.
+message AwsAppRunnerServiceVpcIngressConnectionOutput {
+  // The connection name (matches the spec entry's name).
+  string name = 1;
+
+  // The ARN of the VPC Ingress Connection resource.
+  string arn = 2;
+
+  // The domain name clients inside the connected VPC use to reach the
+  // service (resolves through the interface VPC endpoint).
+  string domain_name = 3;
+
+  // The connection status at the end of the deployment ("AVAILABLE" when
+  // serving).
+  string status = 4;
 }
 
 // AwsAppRunnerServiceCustomDomainOutput carries the DNS material App Runner

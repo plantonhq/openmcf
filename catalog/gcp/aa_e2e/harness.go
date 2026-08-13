@@ -42,16 +42,24 @@ import (
 	"google.golang.org/api/container/v1"
 	dataproc "google.golang.org/api/dataproc/v1"
 	"google.golang.org/api/dns/v1"
+	eventarc "google.golang.org/api/eventarc/v1"
 	firestore "google.golang.org/api/firestore/v1"
 	"google.golang.org/api/iam/v1"
+	iamv2 "google.golang.org/api/iam/v2"
+	identitytoolkit "google.golang.org/api/identitytoolkit/v2"
+	logging "google.golang.org/api/logging/v2"
+	monitoringv1 "google.golang.org/api/monitoring/v1"
+	monitoring "google.golang.org/api/monitoring/v3"
 	"google.golang.org/api/networkconnectivity/v1"
 	pubsub "google.golang.org/api/pubsub/v1"
 	"google.golang.org/api/redis/v1"
 	run "google.golang.org/api/run/v2"
+	secretmanager "google.golang.org/api/secretmanager/v1"
 	"google.golang.org/api/spanner/v1"
 	"google.golang.org/api/sqladmin/v1"
 	"google.golang.org/api/storage/v1"
 	"google.golang.org/api/vpcaccess/v1"
+	workflows "google.golang.org/api/workflows/v1"
 )
 
 // Harness manages the GCP E2E test lifecycle.
@@ -108,6 +116,23 @@ func (h *Harness) Setup(ctx context.Context) error {
 	storageService, err := storage.NewService(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to create storage client")
+	}
+
+	// The project's GCS service agent (service-{project_number}@
+	// gs-project-accounts.iam.gserviceaccount.com) is the identity GCS
+	// publishes bucket notifications as, and it needs
+	// roles/pubsub.publisher granted BEFORE a notification config can be
+	// created. The email is project-specific, so committed fixtures
+	// reference it through the ${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL}
+	// token; this lookup (side-effect-free, and it lazily provisions the
+	// agent — GCP creates it on first read) is what makes those fixtures
+	// deployable against any test project.
+	gcsAgent, err := storageService.Projects.ServiceAccount.Get(project).Context(ctx).Do()
+	if err != nil {
+		return errors.Wrapf(err, "failed to resolve the GCS service agent for project %s", project)
+	}
+	if err := os.Setenv("PLANTON_E2E_GCS_AGENT_EMAIL", gcsAgent.EmailAddress); err != nil {
+		return errors.Wrap(err, "failed to export PLANTON_E2E_GCS_AGENT_EMAIL")
 	}
 	sqlAdminService, err := sqladmin.NewService(ctx)
 	if err != nil {
@@ -193,6 +218,41 @@ func (h *Harness) Setup(ctx context.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to create certificatemanager client")
 	}
+	monitoringService, err := monitoring.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create monitoring client")
+	}
+	// Dashboards are served by the Monitoring API's v1 surface — a
+	// DIFFERENT API version from the v3 client above, with its own typed
+	// client on the same pinned google.golang.org/api line.
+	monitoringDashboardsService, err := monitoringv1.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create monitoring dashboards (v1) client")
+	}
+	secretManagerService, err := secretmanager.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create secretmanager client")
+	}
+	loggingService, err := logging.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create logging client")
+	}
+	identityToolkitService, err := identitytoolkit.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create identitytoolkit client")
+	}
+	iamV2Service, err := iamv2.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create iam v2 client")
+	}
+	workflowsService, err := workflows.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create workflows client")
+	}
+	eventarcService, err := eventarc.NewService(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create eventarc client")
+	}
 	// ADC-authenticated plain HTTP client for services whose typed Go
 	// client is not in the pinned google.golang.org/api line (Memorystore
 	// for Valkey) — verifiers use it for REST GET probes only.
@@ -210,33 +270,41 @@ func (h *Harness) Setup(ctx context.Context) error {
 	fmt.Printf("  [gcp] authenticated against project %s (%s)\n", gotProject.ProjectId, gotProject.LifecycleState)
 
 	h.services = &verify.Services{
-		Project:             project,
-		Crm:                 crmService,
-		Iam:                 iamService,
-		Compute:             computeService,
-		Storage:             storageService,
-		SqlAdmin:            sqlAdminService,
-		Redis:               redisService,
-		Container:           containerService,
-		Run:                 runService,
-		AlloyDB:             alloyDBService,
-		DNS:                 dnsService,
-		Spanner:             spannerService,
-		BigQuery:            bigQueryService,
-		VpcAccess:           vpcAccessService,
-		Functions:           cloudFunctionsService,
-		NetworkConnectivity: networkConnectivityService,
-		BigtableAdmin:       bigtableAdminService,
-		Firestore:           firestoreService,
-		Dataproc:            dataprocService,
-		Composer:            composerService,
-		PubSub:              pubsubService,
-		CloudKms:            cloudKmsService,
-		CloudTasks:          cloudTasksService,
-		CloudScheduler:      cloudSchedulerService,
-		ArtifactRegistry:    artifactRegistryService,
-		CertificateManager:  certificateManagerService,
-		RestClient:          restClient,
+		Project:              project,
+		Crm:                  crmService,
+		Iam:                  iamService,
+		Compute:              computeService,
+		Storage:              storageService,
+		SqlAdmin:             sqlAdminService,
+		Redis:                redisService,
+		Container:            containerService,
+		Run:                  runService,
+		AlloyDB:              alloyDBService,
+		DNS:                  dnsService,
+		Spanner:              spannerService,
+		BigQuery:             bigQueryService,
+		VpcAccess:            vpcAccessService,
+		Functions:            cloudFunctionsService,
+		NetworkConnectivity:  networkConnectivityService,
+		BigtableAdmin:        bigtableAdminService,
+		Firestore:            firestoreService,
+		Dataproc:             dataprocService,
+		Composer:             composerService,
+		PubSub:               pubsubService,
+		CloudKms:             cloudKmsService,
+		CloudTasks:           cloudTasksService,
+		CloudScheduler:       cloudSchedulerService,
+		ArtifactRegistry:     artifactRegistryService,
+		CertificateManager:   certificateManagerService,
+		Monitoring:           monitoringService,
+		MonitoringDashboards: monitoringDashboardsService,
+		SecretManager:        secretManagerService,
+		Logging:              loggingService,
+		IdentityToolkit:      identityToolkitService,
+		IamV2:                iamV2Service,
+		Workflows:            workflowsService,
+		Eventarc:             eventarcService,
+		RestClient:           restClient,
 	}
 	return nil
 }

@@ -39,3 +39,5 @@ spec:
   retryConfig:
     retryCount: 3
     maxDoublings: 3
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

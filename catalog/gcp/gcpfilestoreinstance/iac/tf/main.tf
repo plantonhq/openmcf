@@ -43,9 +43,11 @@ resource "google_filestore_instance" "this" {
     name        = var.spec.file_share.name
     capacity_gb = var.spec.file_share.capacity_gb
 
-    # Restore-from-backup is create-time only; the share's capacity must
+    # Restore is create-time only and single-source (Filestore backup OR
+    # Backup and DR backup — CEL-enforced); the share's capacity must
     # cover the backup's source capacity.
-    source_backup = var.spec.file_share.source_backup != "" ? var.spec.file_share.source_backup : null
+    source_backup          = var.spec.file_share.source_backup != "" ? var.spec.file_share.source_backup : null
+    source_backupdr_backup = var.spec.file_share.source_backupdr_backup != "" ? var.spec.file_share.source_backupdr_backup : null
 
     dynamic "nfs_export_options" {
       for_each = var.spec.file_share.nfs_export_options
@@ -55,6 +57,9 @@ resource "google_filestore_instance" "this" {
         squash_mode = nfs_export_options.value.squash_mode != "" ? nfs_export_options.value.squash_mode : null
         anon_uid    = nfs_export_options.value.anon_uid
         anon_gid    = nfs_export_options.value.anon_gid
+        # Source VPC network (name) for ip_ranges — GCP requires it on
+        # PSC instances where client IPs aren't otherwise attributable.
+        network = nfs_export_options.value.network != "" ? nfs_export_options.value.network : null
       }
     }
   }
@@ -64,7 +69,42 @@ resource "google_filestore_instance" "this" {
     modes             = local.modes
     connect_mode      = local.connect_mode
     reserved_ip_range = local.reserved_ip_range
+
+    # Consumer project hosting the PSC endpoint; PSC connect mode only
+    # (CEL-enforced). Omitted means the instance's own project.
+    dynamic "psc_config" {
+      for_each = var.spec.network_config.psc_endpoint_project != "" ? [var.spec.network_config.psc_endpoint_project] : []
+      content {
+        endpoint_project = psc_config.value
+      }
+    }
   }
+
+  # LDAP directory integration for NFSv4.1 identity mapping (protocol
+  # NFS_V4_1 required — CEL-enforced pre-deploy).
+  dynamic "directory_services" {
+    for_each = var.spec.ldap != null ? [var.spec.ldap] : []
+    content {
+      ldap {
+        domain    = directory_services.value.domain
+        servers   = directory_services.value.servers
+        groups_ou = directory_services.value.groups_ou != "" ? directory_services.value.groups_ou : null
+        users_ou  = directory_services.value.users_ou != "" ? directory_services.value.users_ou : null
+      }
+    }
+  }
+
+  # Replica-relationship state: the provider pauses/resumes replication
+  # to match. READY is both the spec default and the provider default;
+  # sent explicitly so both engines and the provider agree on who chose
+  # the value.
+  desired_replica_state = var.spec.desired_replica_state
+
+  # Client-side destroy behavior (DELETE deletes the share's data;
+  # PREVENT refuses; ABANDON drops from state but keeps the instance
+  # running), evaluated only after deletion_protection_enabled allows
+  # the destroy. Empty follows the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   dynamic "performance_config" {
     for_each = var.spec.performance_config != null ? [var.spec.performance_config] : []

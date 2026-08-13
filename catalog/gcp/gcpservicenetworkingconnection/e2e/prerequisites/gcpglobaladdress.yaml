@@ -25,5 +25,5 @@ spec:
   network:
     valueFrom:
       kind: GcpVpcNetwork
-      name: planton-oss-e2e-gcpvpc-prereq
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link

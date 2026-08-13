@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudFunctionSpec defines a Cloud Functions (Gen 2) function
 (`google_cloudfunctions2_function`) — source-based serverless compute
 built on Cloud Run and Eventarc. You ship a source archive; Cloud Build
@@ -39,6 +41,8 @@ metadata:
   org: planton-dev
   env: dev
 spec:
+  projectId:
+    value: hack-project
   region: us-central1
   functionName: hack-api
   description: Development function exercising the deep service surface
@@ -86,6 +90,8 @@ spec:
     allowUnauthenticated: false
   trigger:
     triggerType: HTTP
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -147,6 +153,11 @@ spec:
 | `spec.serviceConfig.allTrafficOnLatestRevision` | `bool` |  | `true` |  |
 | `spec.serviceConfig.binaryAuthorizationPolicy` | `string` |  |  |  |
 | `spec.serviceConfig.allowUnauthenticated` | `bool` |  | `false` |  |
+| `spec.serviceConfig.directVpcNetworkInterface` | `GcpCloudFunctionDirectVpcNetworkInterface` |  |  |  |
+| `spec.serviceConfig.directVpcNetworkInterface.network` | `string \| valueFrom` |  |  | GcpVpcNetwork (`status.outputs.network_name`) |
+| `spec.serviceConfig.directVpcNetworkInterface.subnetwork` | `string \| valueFrom` |  |  | GcpSubnetwork (`status.outputs.subnetwork_name`) |
+| `spec.serviceConfig.directVpcNetworkInterface.tags` | `[]string` |  |  |  |
+| `spec.serviceConfig.directVpcEgress` | `enum` |  | `PRIVATE_RANGES_ONLY` |  |
 | `spec.trigger` | `GcpCloudFunctionTrigger` |  |  |  |
 | `spec.trigger.triggerType` | `enum` |  | `HTTP` |  |
 | `spec.trigger.eventTrigger` | `GcpCloudFunctionEventTrigger` |  |  |  |
@@ -159,6 +170,7 @@ spec:
 | `spec.trigger.eventTrigger.triggerRegion` | `string` |  |  |  |
 | `spec.trigger.eventTrigger.retryPolicy` | `enum` |  | `RETRY_POLICY_DO_NOT_RETRY` |  |
 | `spec.trigger.eventTrigger.serviceAccountEmail` | `string \| valueFrom` |  |  | GcpServiceAccount (`status.outputs.email`) |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -414,6 +426,8 @@ Allowed values (use exactly as shown):
 
 How the function runs: compute resources, environment, secrets,
 networking, scaling, and invocation policy.
+
+- rule: use direct VPC egress (direct_vpc_network_interface) or a Serverless VPC Access connector (vpc_connector), not both
 
 ### spec.serviceConfig.serviceAccountEmail
 
@@ -676,6 +690,65 @@ identities instead.
 
 - default: `false`
 
+### spec.serviceConfig.directVpcNetworkInterface
+
+`GcpCloudFunctionDirectVpcNetworkInterface`
+
+Direct VPC egress: attach the function straight to a VPC network or
+subnet — no Serverless VPC Access connector to size, pay for, or
+saturate. The modern alternative to vpc_connector (mutually
+exclusive with it); instances get IPs from the subnet, so size its
+range for the scaling ceiling.
+
+- rule: set at least one of network or subnetwork on the direct VPC interface
+
+### spec.serviceConfig.directVpcNetworkInterface.network
+
+`string | valueFrom`
+
+The VPC network to attach to. Accepts a literal network name or a
+reference to a GcpVpcNetwork resource.
+
+- references: GcpVpcNetwork (`status.outputs.network_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_name}} -- a bare string does not parse
+
+### spec.serviceConfig.directVpcNetworkInterface.subnetwork
+
+`string | valueFrom`
+
+The subnetwork instances draw their IPs from. Accepts a literal
+subnetwork name or a reference to a GcpSubnetwork resource. The
+subnet's free range caps how far the function can scale.
+
+- references: GcpSubnetwork (`status.outputs.subnetwork_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpSubnetwork, name: <that resource's name>, fieldPath: status.outputs.subnetwork_name}} -- a bare string does not parse
+
+### spec.serviceConfig.directVpcNetworkInterface.tags
+
+`[]string`
+
+Network tags applied to the function's instances — how VPC firewall
+rules select their egress.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"pattern":"^[a-z]([-a-z0-9]*[a-z0-9])?$"}}}}
+
+### spec.serviceConfig.directVpcEgress
+
+`enum`
+
+Which egress traffic takes the direct-VPC path: only RFC1918/private
+destinations (the API default; public egress keeps the normal path),
+or everything (enables static egress IPs via Cloud NAT). Only
+meaningful with direct_vpc_network_interface — the connector path is
+steered by vpc_connector_egress_settings instead.
+
+- default: `PRIVATE_RANGES_ONLY`
+
+Allowed values (use exactly as shown):
+
+- `PRIVATE_RANGES_ONLY` -- Only RFC1918/private destinations route through the connector; public egress keeps the normal path.
+- `ALL_TRAFFIC` -- All outbound traffic routes through the connector — enables static egress IPs via Cloud NAT.
+
 ### spec.trigger
 
 `GcpCloudFunctionTrigger`
@@ -796,6 +869,20 @@ default compute service account is used.
 - references: GcpServiceAccount (`status.outputs.email`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
 
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the function:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the function (and the Cloud Run service serving it) is
+               deleted; event triggers stop firing
+  "PREVENT" -- destroy FAILS; protects a function other systems invoke
+  "ABANDON" -- the function is removed from management but keeps
+               serving and consuming events in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: GcpCloudFunction, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -826,6 +913,8 @@ Fields that can point at another resource's outputs:
 | `spec.buildConfig.dockerRepository` | GcpArtifactRegistryRepo | `status.outputs.repository_path` |
 | `spec.serviceConfig.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
 | `spec.serviceConfig.vpcConnector` | GcpServerlessVpcConnector | `status.outputs.self_link` |
+| `spec.serviceConfig.directVpcNetworkInterface.network` | GcpVpcNetwork | `status.outputs.network_name` |
+| `spec.serviceConfig.directVpcNetworkInterface.subnetwork` | GcpSubnetwork | `status.outputs.subnetwork_name` |
 | `spec.trigger.eventTrigger.pubsubTopic` | GcpPubSubTopic | `status.outputs.topic_id` |
 | `spec.trigger.eventTrigger.serviceAccountEmail` | GcpServiceAccount | `status.outputs.email` |
 
@@ -835,6 +924,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| GcpIdentityPlatformConfig | `spec.blockingFunctions.triggers[].functionUri` | `status.outputs.function_url` |
+| GcpMonitoringUptimeCheck | `spec.syntheticMonitor.cloudFunction` | `status.outputs.function_id` |
 | GcpRegionNetworkEndpointGroup | `spec.cloudFunction.function` | `status.outputs.name` |
 
 ## See Also

@@ -23,6 +23,8 @@ spec:
       name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: e2e-dpc-subnet-${E2E_RUN_ID}
-  region: us-central1
+  # Region-matched to the cluster scenarios (us-east1 since the
+  # 2026-08-12 us-central1 stockout relocation).
+  region: us-east1
   ipCidrRange: 10.10.1.0/24
   description: Ephemeral /24 for the GcpDataprocCluster E2E chain; safe to delete

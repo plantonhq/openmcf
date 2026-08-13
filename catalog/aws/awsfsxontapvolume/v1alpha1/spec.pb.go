@@ -372,7 +372,9 @@ func (x *AwsFsxOntapVolumeSpec) GetAggregateConfiguration() *AwsFsxOntapVolumeAg
 // by automatically migrating infrequently accessed data.
 type AwsFsxOntapVolumeTieringPolicy struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The tiering policy name.
+	// The tiering policy name. Required when a tiering policy is declared —
+	// declaring the block is choosing a policy; to keep AWS's default
+	// (SNAPSHOT_ONLY), omit tiering_policy entirely.
 	//
 	//   - "NONE": All data remains on primary SSD storage. No tiering. Use for
 	//     latency-sensitive workloads where all data must be instantly accessible.
@@ -571,16 +573,24 @@ func (x *AwsFsxOntapVolumeSnaplockConfiguration) GetRetentionPeriod() *AwsFsxOnt
 // WORM state after a period of inactivity.
 type AwsFsxOntapVolumeAutocommitPeriod struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unit of time for the autocommit period.
+	// The unit of time for the autocommit period. Required when autocommit_period
+	// is declared — the AWS API's AutocommitPeriod.Type member is required, and a
+	// unit-less period cannot be expressed. To disable autocommit, set "NONE"
+	// (or omit autocommit_period entirely; NONE is also AWS's default).
 	//
 	//   - "NONE": Autocommit is disabled.
 	//   - "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": The time unit for the
 	//     value field.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// The number of time units before an unmodified file is auto-committed to
-	// WORM state. Required when type is not "NONE".
+	// WORM state. Required for every unit type except "NONE" (which takes no
+	// value). Each unit carries its own AWS range:
 	//
-	// Range: 1-65535.
+	// - MINUTES: 5-65,535
+	// - HOURS: 1-65,535
+	// - DAYS: 1-3,650
+	// - MONTHS: 1-120
+	// - YEARS: 1-10
 	Value         int32 `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -709,17 +719,26 @@ func (x *AwsFsxOntapVolumeRetentionPeriod) GetMaximumRetention() *AwsFsxOntapVol
 // retention periods. Used for default, minimum, and maximum retention.
 type AwsFsxOntapVolumeRetentionDuration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The unit of time for the retention duration.
+	// The unit of time for the retention duration. Required when the duration is
+	// declared — the AWS API's RetentionPeriod.Type member is required, and a
+	// unit-less duration cannot be expressed.
 	//
 	//   - "SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": Standard
 	//     time units. The value field specifies the count.
-	//   - "INFINITE": Files are retained forever. The value field is ignored.
-	//   - "UNSPECIFIED": No retention period is set. The value field is ignored.
+	//   - "INFINITE": Files are retained forever. The value field takes no value.
+	//   - "UNSPECIFIED": No retention period is set. The value field takes no value.
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
-	// The number of time units for the retention duration. Ignored when type is
-	// "INFINITE" or "UNSPECIFIED".
+	// The number of time units for the retention duration. Each unit carries its
+	// own AWS range (0 is legal and means a zero-length duration):
 	//
-	// Range: 0-65535.
+	// - SECONDS: 0-65,535
+	// - MINUTES: 0-65,535
+	// - HOURS: 0-24
+	// - DAYS: 0-365
+	// - MONTHS: 0-12
+	// - YEARS: 0-100
+	//
+	// INFINITE and UNSPECIFIED take no value.
 	Value         int32 `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -846,7 +865,7 @@ var File_catalog_aws_awsfsxontapvolume_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awsfsxontapvolume_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awsfsxontapvolume/v1alpha1/spec.proto\x12*dev.planton.aws.awsfsxontapvolume.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdd\x16\n" +
+	"1catalog/aws/awsfsxontapvolume/v1alpha1/spec.proto\x12*dev.planton.aws.awsfsxontapvolume.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe4\x15\n" +
 	"\x15AwsFsxOntapVolumeSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x95\x01\n" +
 	"\x1astorage_virtual_machine_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xc7\b\x92\xd4a\x15status.outputs.svm_idR\x17storageVirtualMachineId\x12\x1e\n" +
@@ -871,14 +890,14 @@ const file_catalog_aws_awsfsxontapvolume_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17aggregate_configuration\x18\x12 \x01(\v2S.dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeAggregateConfigurationR\x16aggregateConfiguration\x1aB\n" +
 	"\x14FinalBackupTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbd\t\xbaH\xb9\t\x1a\xb2\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc4\b\xbaH\xc0\b\x1a\xb2\x01\n" +
 	"\vname_format\x12jname must contain only alphanumeric characters and underscores (no hyphens, spaces, or special characters)\x1a7this.name == '' || this.name.matches('^[a-zA-Z0-9_]+$')\x1a\x8e\x01\n" +
 	"\x14size_exactly_one_arm\x12>exactly one of size_in_megabytes and size_in_bytes must be set\x1a6has(this.size_in_megabytes) != has(this.size_in_bytes)\x1a\x89\x01\n" +
 	"\x17ontap_volume_type_valid\x12&ontap_volume_type must be 'RW' or 'DP'\x1aFthis.ontap_volume_type == '' || this.ontap_volume_type in ['RW', 'DP']\x1a\x8d\x01\n" +
 	"\x12volume_style_valid\x12-volume_style must be 'FLEXVOL' or 'FLEXGROUP'\x1aHthis.volume_style == '' || this.volume_style in ['FLEXVOL', 'FLEXGROUP']\x1a\x98\x01\n" +
 	"\x14security_style_valid\x121security_style must be 'UNIX', 'NTFS', or 'MIXED'\x1aMthis.security_style == '' || this.security_style in ['UNIX', 'NTFS', 'MIXED']\x1ay\n" +
-	"\x14junction_path_format\x12!junction_path must start with '/'\x1a>this.junction_path == '' || this.junction_path.startsWith('/')\x1a\xbe\x02\n" +
-	"\x1caggregate_requires_flexgroup\x12]aggregate_configuration is only valid for FLEXGROUP volumes (set volume_style to 'FLEXGROUP')\x1a\xbe\x01!has(this.aggregate_configuration) || this.aggregate_configuration == dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeAggregateConfiguration{} || this.volume_style == 'FLEXGROUP'B\x14\n" +
+	"\x14junction_path_format\x12!junction_path must start with '/'\x1a>this.junction_path == '' || this.junction_path.startsWith('/')\x1a\xc5\x01\n" +
+	"\x1caggregate_requires_flexgroup\x12]aggregate_configuration is only valid for FLEXGROUP volumes (set volume_style to 'FLEXGROUP')\x1aF!has(this.aggregate_configuration) || this.volume_style == 'FLEXGROUP'B\x14\n" +
 	"\x12_size_in_megabytesB\x10\n" +
 	"\x0e_size_in_bytesB\x14\n" +
 	"\x12_ontap_volume_typeB\x0f\n" +
@@ -886,11 +905,11 @@ const file_catalog_aws_awsfsxontapvolume_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1b_storage_efficiency_enabledB\x17\n" +
 	"\x15_copy_tags_to_backupsB\x14\n" +
 	"\x12_skip_final_backupB'\n" +
-	"%_bypass_snaplock_enterprise_retention\"\xed\x04\n" +
+	"%_bypass_snaplock_enterprise_retention\"\xda\x04\n" +
 	"\x1eAwsFsxOntapVolumeTieringPolicy\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12%\n" +
-	"\x0ecooling_period\x18\x02 \x01(\x05R\rcoolingPeriod:\x8f\x04\xbaH\x8b\x04\x1a\xa5\x01\n" +
-	"\x12tiering_name_valid\x12Etiering policy name must be 'NONE', 'SNAPSHOT_ONLY', 'AUTO', or 'ALL'\x1aHthis.name == '' || this.name in ['NONE', 'SNAPSHOT_ONLY', 'AUTO', 'ALL']\x1a\xc2\x01\n" +
+	"\x0ecooling_period\x18\x02 \x01(\x05R\rcoolingPeriod:\xfc\x03\xbaH\xf8\x03\x1a\x92\x01\n" +
+	"\x12tiering_name_valid\x12Etiering policy name must be 'NONE', 'SNAPSHOT_ONLY', 'AUTO', or 'ALL'\x1a5this.name in ['NONE', 'SNAPSHOT_ONLY', 'AUTO', 'ALL']\x1a\xc2\x01\n" +
 	"(cooling_period_requires_auto_or_snapshot\x12Rcooling_period is only valid when tiering policy name is 'AUTO' or 'SNAPSHOT_ONLY'\x1aBthis.cooling_period == 0 || this.name in ['AUTO', 'SNAPSHOT_ONLY']\x1a\x9b\x01\n" +
 	"\x14cooling_period_range\x12-cooling_period must be between 2 and 183 days\x1aTthis.cooling_period == 0 || (this.cooling_period >= 2 && this.cooling_period <= 183)\"\xb5\a\n" +
 	"&AwsFsxOntapVolumeSnaplockConfiguration\x12,\n" +
@@ -904,21 +923,21 @@ const file_catalog_aws_awsfsxontapvolume_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17privileged_delete_valid\x12Jprivileged_delete must be 'DISABLED', 'ENABLED', or 'PERMANENTLY_DISABLED'\x1aithis.privileged_delete == '' || this.privileged_delete in ['DISABLED', 'ENABLED', 'PERMANENTLY_DISABLED']B\x13\n" +
 	"\x11_audit_log_volumeB\x14\n" +
 	"\x12_privileged_deleteB\x1d\n" +
-	"\x1b_volume_append_mode_enabled\"\xd1\x04\n" +
+	"\x1b_volume_append_mode_enabled\"\x91\a\n" +
 	"!AwsFsxOntapVolumeAutocommitPeriod\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12!\n" +
-	"\x05value\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x05value:\xf4\x03\xbaH\xf0\x03\x1a\xc9\x01\n" +
-	"\x15autocommit_type_valid\x12Wautocommit period type must be 'NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', or 'YEARS'\x1aWthis.type == '' || this.type in ['NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS']\x1a\x94\x01\n" +
-	"\x19autocommit_value_required\x12<autocommit period value must be >= 1 when type is not 'NONE'\x1a9this.type == '' || this.type == 'NONE' || this.value >= 1\x1a\x8a\x01\n" +
-	"\x16autocommit_value_range\x123autocommit period value must be between 1 and 65535\x1a;this.value == 0 || (this.value >= 1 && this.value <= 65535)\"\x99\x03\n" +
+	"\x05value\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x05value:\xb4\x06\xbaH\xb0\x06\x1a\xb6\x01\n" +
+	"\x15autocommit_type_valid\x12Wautocommit period type must be 'NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', or 'YEARS'\x1aDthis.type in ['NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS']\x1a\xf4\x04\n" +
+	"\x16autocommit_value_range\x12\x93\x01autocommit value must match its unit's AWS range (MINUTES 5-65535, HOURS 1-65535, DAYS 1-3650, MONTHS 1-120, YEARS 1-10) and must be unset for NONE\x1a\xc3\x03(this.type == 'NONE' && this.value == 0) || (this.type == 'MINUTES' && this.value >= 5 && this.value <= 65535) || (this.type == 'HOURS' && this.value >= 1 && this.value <= 65535) || (this.type == 'DAYS' && this.value >= 1 && this.value <= 3650) || (this.type == 'MONTHS' && this.value >= 1 && this.value <= 120) || (this.type == 'YEARS' && this.value >= 1 && this.value <= 10) || !(this.type in ['NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS'])\"\x99\x03\n" +
 	" AwsFsxOntapVolumeRetentionPeriod\x12{\n" +
 	"\x11default_retention\x18\x01 \x01(\v2N.dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeRetentionDurationR\x10defaultRetention\x12{\n" +
 	"\x11minimum_retention\x18\x02 \x01(\v2N.dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeRetentionDurationR\x10minimumRetention\x12{\n" +
-	"\x11maximum_retention\x18\x03 \x01(\v2N.dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeRetentionDurationR\x10maximumRetention\"\xea\x02\n" +
+	"\x11maximum_retention\x18\x03 \x01(\v2N.dev.planton.aws.awsfsxontapvolume.v1alpha1.AwsFsxOntapVolumeRetentionDurationR\x10maximumRetention\"\xbd\a\n" +
 	"\"AwsFsxOntapVolumeRetentionDuration\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12!\n" +
-	"\x05value\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x05value:\x8c\x02\xbaH\x88\x02\x1a\x85\x02\n" +
-	"\x14retention_type_valid\x12vretention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'\x1authis.type == '' || this.type in ['SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', 'UNSPECIFIED']\"\xe8\x03\n" +
+	"\x05value\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x05value:\xdf\x06\xbaH\xdb\x06\x1a\xf2\x01\n" +
+	"\x14retention_type_valid\x12vretention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'\x1abthis.type in ['SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', 'UNSPECIFIED']\x1a\xe3\x04\n" +
+	"\x15retention_value_range\x12\xa6\x01retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED\x1a\xa0\x03(this.type in ['INFINITE', 'UNSPECIFIED'] && this.value == 0) || (this.type in ['SECONDS', 'MINUTES'] && this.value <= 65535) || (this.type == 'HOURS' && this.value <= 24) || (this.type == 'DAYS' && this.value <= 365) || (this.type == 'MONTHS' && this.value <= 12) || (this.type == 'YEARS' && this.value <= 100) || !(this.type in ['SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', 'UNSPECIFIED'])\"\xe8\x03\n" +
 	"'AwsFsxOntapVolumeAggregateConfiguration\x12\xb0\x01\n" +
 	"\n" +
 	"aggregates\x18\x01 \x03(\tB\x8f\x01\xbaH\x8b\x01\x92\x01\x87\x01\x10\f\"\x82\x01\xba\x01\x7f\n" +

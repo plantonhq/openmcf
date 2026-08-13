@@ -122,6 +122,29 @@ var _ = ginkgo.Describe("AwsEksNodeGroupSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should accept a warm pool with an explicit zero ceiling", func() {
+				zero := int32(0)
+				input := minimalValidNodeGroup()
+				input.Spec.WarmPoolConfig = &AwsEksNodeGroupWarmPoolConfig{
+					PoolState:                "STOPPED",
+					MinSize:                  2,
+					MaxGroupPreparedCapacity: &zero,
+					ReuseOnScaleIn:           true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept a warm pool with the ceiling left to AWS", func() {
+				input := minimalValidNodeGroup()
+				input.Spec.WarmPoolConfig = &AwsEksNodeGroupWarmPoolConfig{
+					PoolState: "HIBERNATED",
+					MinSize:   1,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -276,6 +299,25 @@ var _ = ginkgo.Describe("AwsEksNodeGroupSpec Validation Tests", func() {
 							RepairAction:            "Terminate",
 						},
 					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an unknown warm pool state", func() {
+				input := minimalValidNodeGroup()
+				input.Spec.WarmPoolConfig = &AwsEksNodeGroupWarmPoolConfig{
+					PoolState: "Stopped",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a negative warm pool ceiling", func() {
+				negative := int32(-1)
+				input := minimalValidNodeGroup()
+				input.Spec.WarmPoolConfig = &AwsEksNodeGroupWarmPoolConfig{
+					MaxGroupPreparedCapacity: &negative,
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())

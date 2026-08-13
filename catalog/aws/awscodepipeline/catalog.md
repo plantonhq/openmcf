@@ -121,6 +121,8 @@ These are the most important decisions when configuring a CodePipeline. Explore 
 
 **Git triggers** -- V2 pipelines can trigger automatically on git push or pull request events via CodeStar Connections. Configure branch, tag, and file path filters to control which events start the pipeline. Triggers replace legacy polling and webhook mechanisms.
 
+**Inline compute checks** -- A `Compute` action runs shell commands directly in CodePipeline-managed compute (no CodeBuild project to maintain): set `commands`, export values to downstream actions with `outputVariables` + `namespace`, and publish files with `outputArtifactsForComputeAction` (Compute actions use file-based artifacts instead of the plain `outputArtifacts`). Compute time bills through CodeBuild per execution.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

@@ -28,6 +28,11 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 - `cluster_param_group.tf` — parameter group from inline `parameters`
 - `logging.tf` — audit logging when `spec.logging` is set
 - `snapshot_copy.tf` — cross-region snapshot copy when `spec.snapshot_copy` is set
+- `usage_limits.tf` — per-feature consumption caps from `spec.usage_limits`
+- `scheduled_actions.tf` — cron/at pause, resume, and resize actions
+- `endpoint_access.tf` — managed VPC endpoints from `spec.endpoint_accesses`
+- `endpoint_authorization.tf` — grantor-side cross-account access grants
+- `snapshot_schedule.tf` — the singular snapshot-schedule association
 - `outputs.tf` — outputs matching `AwsRedshiftClusterStackOutputs`
 
 ## Conditional Resources
@@ -48,8 +53,10 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 | cluster_namespace_arn | Namespace ARN for data sharing and the Data API |
 | endpoint | Connection endpoint (address:port) |
 | dns_name | DNS hostname (without port) |
-| database_name | First database name |
+| database_name | First database name (empty when the spec omitted it; AWS's default is "dev") |
 | port | TCP port for connections |
 | subnet_group_name | Subnet group name in use (managed or referenced) |
 | parameter_group_name | Parameter group name in use (managed or referenced) |
 | master_password_secret_arn | Secrets Manager secret ARN (managed password only) |
+| endpoint_access_addresses | Managed VPC endpoint addresses, keyed by endpoint name |
+| usage_limit_ids | AWS-generated usage-limit IDs, keyed by feature_type/limit_type/period |

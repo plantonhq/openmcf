@@ -412,5 +412,16 @@ var _ = ginkgo.Describe("AwsBatchComputeEnvironmentSpec validations", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("with an update policy missing its timeout", func() {
+			ginkgo.It("should return a validation error (the provider sends the member unconditionally; unset would reach AWS as 0)", func() {
+				spec := minimalEc2Spec()
+				spec.UpdatePolicy = &AwsBatchUpdatePolicy{
+					TerminateJobsOnUpdate: true,
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
 	})
 })

@@ -1,0 +1,436 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Reading guide: the spec names each destination without the provider's
+# _configuration suffix (extended_s3, opensearch, ...), groups buffering as
+# interval_in_seconds/size_in_mbs under one message, calls every
+# cloudwatch_logging_options block `logging`, every staging/backup S3 block
+# `s3_config`/`s3_backup`, and every secrets_manager_configuration block
+# `secrets_manager` -- so each destination carries the same small mapping
+# set below its subtree root, and exact matching covers the rest.
+
+resources:
+  aws_kinesis_firehose_delivery_stream:
+    mappings:
+      # --- Sources -----------------------------------------------------
+      - spec: spec.kinesis_stream_source
+        arg: kinesis_source_configuration
+      - spec: spec.kinesis_stream_source.stream_arn
+        arg: kinesis_source_configuration.kinesis_stream_arn
+      # The MSK authentication wrapper (single-use) is flattened into the
+      # source message.
+      - spec: spec.msk_source
+        arg: msk_source_configuration
+      - spec: spec.msk_source.connectivity
+        arg: msk_source_configuration.authentication_configuration.connectivity
+      - spec: spec.msk_source.role_arn
+        arg: msk_source_configuration.authentication_configuration.role_arn
+
+      # --- Server-side encryption (Direct PUT only) --------------------
+      - spec: spec.sse_enabled
+        arg: server_side_encryption.enabled
+      - spec: spec.sse_kms_key_arn
+        arg: server_side_encryption.key_arn
+
+      # --- Extended S3 destination --------------------------------------
+      - spec: spec.extended_s3
+        arg: extended_s3_configuration
+      - spec: spec.extended_s3.buffering.interval_in_seconds
+        arg: extended_s3_configuration.buffering_interval
+      - spec: spec.extended_s3.buffering.size_in_mbs
+        arg: extended_s3_configuration.buffering_size
+      - spec: spec.extended_s3.logging
+        arg: extended_s3_configuration.cloudwatch_logging_options
+      - spec: spec.extended_s3.processing
+        arg: extended_s3_configuration.processing_configuration
+      - spec: spec.extended_s3.s3_backup
+        arg: extended_s3_configuration.s3_backup_configuration
+      - spec: spec.extended_s3.s3_backup.buffering.interval_in_seconds
+        arg: extended_s3_configuration.s3_backup_configuration.buffering_interval
+      - spec: spec.extended_s3.s3_backup.buffering.size_in_mbs
+        arg: extended_s3_configuration.s3_backup_configuration.buffering_size
+      - spec: spec.extended_s3.s3_backup.logging
+        arg: extended_s3_configuration.s3_backup_configuration.cloudwatch_logging_options
+      - spec: spec.extended_s3.dynamic_partitioning
+        arg: extended_s3_configuration.dynamic_partitioning_configuration
+      - spec: spec.extended_s3.dynamic_partitioning.retry_duration_in_seconds
+        arg: extended_s3_configuration.dynamic_partitioning_configuration.retry_duration
+      # Data format conversion: the provider's single-use
+      # input_format_configuration.deserializer / output_format_configuration.serializer
+      # wrappers are flattened -- the spec's four arms sit directly on the
+      # conversion message, and arm presence selects the format.
+      - spec: spec.extended_s3.data_format_conversion
+        arg: extended_s3_configuration.data_format_conversion_configuration
+      - spec: spec.extended_s3.data_format_conversion.open_x_json
+        arg: extended_s3_configuration.data_format_conversion_configuration.input_format_configuration.deserializer.open_x_json_ser_de
+      - spec: spec.extended_s3.data_format_conversion.hive_json
+        arg: extended_s3_configuration.data_format_conversion_configuration.input_format_configuration.deserializer.hive_json_ser_de
+      - spec: spec.extended_s3.data_format_conversion.parquet
+        arg: extended_s3_configuration.data_format_conversion_configuration.output_format_configuration.serializer.parquet_ser_de
+      - spec: spec.extended_s3.data_format_conversion.orc
+        arg: extended_s3_configuration.data_format_conversion_configuration.output_format_configuration.serializer.orc_ser_de
+      - spec: spec.extended_s3.data_format_conversion.schema
+        arg: extended_s3_configuration.data_format_conversion_configuration.schema_configuration
+
+      # --- OpenSearch destination ---------------------------------------
+      - spec: spec.opensearch
+        arg: opensearch_configuration
+      - spec: spec.opensearch.buffering.interval_in_seconds
+        arg: opensearch_configuration.buffering_interval
+      - spec: spec.opensearch.buffering.size_in_mbs
+        arg: opensearch_configuration.buffering_size
+      - spec: spec.opensearch.retry_duration_in_seconds
+        arg: opensearch_configuration.retry_duration
+      - spec: spec.opensearch.logging
+        arg: opensearch_configuration.cloudwatch_logging_options
+      - spec: spec.opensearch.processing
+        arg: opensearch_configuration.processing_configuration
+      # The single-use document_id_options wrapper is flattened to one leaf.
+      - spec: spec.opensearch.default_document_id_format
+        arg: opensearch_configuration.document_id_options.default_document_id_format
+      - spec: spec.opensearch.s3_config
+        arg: opensearch_configuration.s3_configuration
+      - spec: spec.opensearch.s3_config.buffering.interval_in_seconds
+        arg: opensearch_configuration.s3_configuration.buffering_interval
+      - spec: spec.opensearch.s3_config.buffering.size_in_mbs
+        arg: opensearch_configuration.s3_configuration.buffering_size
+      - spec: spec.opensearch.s3_config.logging
+        arg: opensearch_configuration.s3_configuration.cloudwatch_logging_options
+
+      # --- OpenSearch Serverless destination ----------------------------
+      - spec: spec.opensearch_serverless
+        arg: opensearchserverless_configuration
+      - spec: spec.opensearch_serverless.buffering.interval_in_seconds
+        arg: opensearchserverless_configuration.buffering_interval
+      - spec: spec.opensearch_serverless.buffering.size_in_mbs
+        arg: opensearchserverless_configuration.buffering_size
+      - spec: spec.opensearch_serverless.retry_duration_in_seconds
+        arg: opensearchserverless_configuration.retry_duration
+      - spec: spec.opensearch_serverless.logging
+        arg: opensearchserverless_configuration.cloudwatch_logging_options
+      - spec: spec.opensearch_serverless.processing
+        arg: opensearchserverless_configuration.processing_configuration
+      - spec: spec.opensearch_serverless.s3_config
+        arg: opensearchserverless_configuration.s3_configuration
+      - spec: spec.opensearch_serverless.s3_config.buffering.interval_in_seconds
+        arg: opensearchserverless_configuration.s3_configuration.buffering_interval
+      - spec: spec.opensearch_serverless.s3_config.buffering.size_in_mbs
+        arg: opensearchserverless_configuration.s3_configuration.buffering_size
+      - spec: spec.opensearch_serverless.s3_config.logging
+        arg: opensearchserverless_configuration.s3_configuration.cloudwatch_logging_options
+
+      # --- HTTP endpoint destination -------------------------------------
+      - spec: spec.http_endpoint
+        arg: http_endpoint_configuration
+      - spec: spec.http_endpoint.buffering.interval_in_seconds
+        arg: http_endpoint_configuration.buffering_interval
+      - spec: spec.http_endpoint.buffering.size_in_mbs
+        arg: http_endpoint_configuration.buffering_size
+      - spec: spec.http_endpoint.retry_duration_in_seconds
+        arg: http_endpoint_configuration.retry_duration
+      - spec: spec.http_endpoint.logging
+        arg: http_endpoint_configuration.cloudwatch_logging_options
+      - spec: spec.http_endpoint.processing
+        arg: http_endpoint_configuration.processing_configuration
+      - spec: spec.http_endpoint.request_config
+        arg: http_endpoint_configuration.request_configuration
+      - spec: spec.http_endpoint.secrets_manager
+        arg: http_endpoint_configuration.secrets_manager_configuration
+      - spec: spec.http_endpoint.s3_config
+        arg: http_endpoint_configuration.s3_configuration
+      - spec: spec.http_endpoint.s3_config.buffering.interval_in_seconds
+        arg: http_endpoint_configuration.s3_configuration.buffering_interval
+      - spec: spec.http_endpoint.s3_config.buffering.size_in_mbs
+        arg: http_endpoint_configuration.s3_configuration.buffering_size
+      - spec: spec.http_endpoint.s3_config.logging
+        arg: http_endpoint_configuration.s3_configuration.cloudwatch_logging_options
+
+      # --- Redshift destination ------------------------------------------
+      - spec: spec.redshift
+        arg: redshift_configuration
+      - spec: spec.redshift.retry_duration_in_seconds
+        arg: redshift_configuration.retry_duration
+      - spec: spec.redshift.logging
+        arg: redshift_configuration.cloudwatch_logging_options
+      - spec: spec.redshift.processing
+        arg: redshift_configuration.processing_configuration
+      - spec: spec.redshift.secrets_manager
+        arg: redshift_configuration.secrets_manager_configuration
+      - spec: spec.redshift.s3_config
+        arg: redshift_configuration.s3_configuration
+      - spec: spec.redshift.s3_config.buffering.interval_in_seconds
+        arg: redshift_configuration.s3_configuration.buffering_interval
+      - spec: spec.redshift.s3_config.buffering.size_in_mbs
+        arg: redshift_configuration.s3_configuration.buffering_size
+      - spec: spec.redshift.s3_config.logging
+        arg: redshift_configuration.s3_configuration.cloudwatch_logging_options
+      - spec: spec.redshift.s3_backup
+        arg: redshift_configuration.s3_backup_configuration
+      - spec: spec.redshift.s3_backup.buffering.interval_in_seconds
+        arg: redshift_configuration.s3_backup_configuration.buffering_interval
+      - spec: spec.redshift.s3_backup.buffering.size_in_mbs
+        arg: redshift_configuration.s3_backup_configuration.buffering_size
+      - spec: spec.redshift.s3_backup.logging
+        arg: redshift_configuration.s3_backup_configuration.cloudwatch_logging_options
+
+      # --- Splunk destination --------------------------------------------
+      - spec: spec.splunk
+        arg: splunk_configuration
+      - spec: spec.splunk.hec_acknowledgment_timeout_in_seconds
+        arg: splunk_configuration.hec_acknowledgment_timeout
+      - spec: spec.splunk.buffering.interval_in_seconds
+        arg: splunk_configuration.buffering_interval
+      - spec: spec.splunk.buffering.size_in_mbs
+        arg: splunk_configuration.buffering_size
+      - spec: spec.splunk.retry_duration_in_seconds
+        arg: splunk_configuration.retry_duration
+      - spec: spec.splunk.logging
+        arg: splunk_configuration.cloudwatch_logging_options
+      - spec: spec.splunk.processing
+        arg: splunk_configuration.processing_configuration
+      - spec: spec.splunk.secrets_manager
+        arg: splunk_configuration.secrets_manager_configuration
+      - spec: spec.splunk.s3_config
+        arg: splunk_configuration.s3_configuration
+      - spec: spec.splunk.s3_config.buffering.interval_in_seconds
+        arg: splunk_configuration.s3_configuration.buffering_interval
+      - spec: spec.splunk.s3_config.buffering.size_in_mbs
+        arg: splunk_configuration.s3_configuration.buffering_size
+      - spec: spec.splunk.s3_config.logging
+        arg: splunk_configuration.s3_configuration.cloudwatch_logging_options
+
+      # --- Snowflake destination ------------------------------------------
+      - spec: spec.snowflake
+        arg: snowflake_configuration
+      - spec: spec.snowflake.buffering.interval_in_seconds
+        arg: snowflake_configuration.buffering_interval
+      - spec: spec.snowflake.buffering.size_in_mbs
+        arg: snowflake_configuration.buffering_size
+      - spec: spec.snowflake.retry_duration_in_seconds
+        arg: snowflake_configuration.retry_duration
+      - spec: spec.snowflake.logging
+        arg: snowflake_configuration.cloudwatch_logging_options
+      - spec: spec.snowflake.processing
+        arg: snowflake_configuration.processing_configuration
+      - spec: spec.snowflake.secrets_manager
+        arg: snowflake_configuration.secrets_manager_configuration
+      # The single-use role/vpc wrappers are flattened to spec leaves.
+      - spec: spec.snowflake.snowflake_role
+        arg: snowflake_configuration.snowflake_role_configuration.snowflake_role
+      - spec: spec.snowflake.private_link_vpce_id
+        arg: snowflake_configuration.snowflake_vpc_configuration.private_link_vpce_id
+      - spec: spec.snowflake.s3_config
+        arg: snowflake_configuration.s3_configuration
+      - spec: spec.snowflake.s3_config.buffering.interval_in_seconds
+        arg: snowflake_configuration.s3_configuration.buffering_interval
+      - spec: spec.snowflake.s3_config.buffering.size_in_mbs
+        arg: snowflake_configuration.s3_configuration.buffering_size
+      - spec: spec.snowflake.s3_config.logging
+        arg: snowflake_configuration.s3_configuration.cloudwatch_logging_options
+
+      # --- Iceberg destination ---------------------------------------------
+      - spec: spec.iceberg
+        arg: iceberg_configuration
+      - spec: spec.iceberg.buffering.interval_in_seconds
+        arg: iceberg_configuration.buffering_interval
+      - spec: spec.iceberg.buffering.size_in_mbs
+        arg: iceberg_configuration.buffering_size
+      - spec: spec.iceberg.retry_duration_in_seconds
+        arg: iceberg_configuration.retry_duration
+      - spec: spec.iceberg.logging
+        arg: iceberg_configuration.cloudwatch_logging_options
+      - spec: spec.iceberg.processing
+        arg: iceberg_configuration.processing_configuration
+      # The spec pluralizes the repeated per-table routing block.
+      - spec: spec.iceberg.destination_tables
+        arg: iceberg_configuration.destination_table_configuration
+      - spec: spec.iceberg.s3_config
+        arg: iceberg_configuration.s3_configuration
+      - spec: spec.iceberg.s3_config.buffering.interval_in_seconds
+        arg: iceberg_configuration.s3_configuration.buffering_interval
+      - spec: spec.iceberg.s3_config.buffering.size_in_mbs
+        arg: iceberg_configuration.s3_configuration.buffering_size
+      - spec: spec.iceberg.s3_config.logging
+        arg: iceberg_configuration.s3_configuration.cloudwatch_logging_options
+
+    exclusions:
+      # --- Top-level machinery and derived values -------------------------
+      - arg: name
+        reason: wired by the module from metadata.name (the delivery stream name; ForceNew)
+      - arg: destination
+        reason: wired by the module from the destination oneof arm -- each arm renders its configuration block plus the matching destination string
+      - arg: arn
+        reason: legacy Optional+Computed attribute -- AWS always assigns the ARN; read back as the delivery_stream_arn stack output, never real configuration
+      - arg: destination_id
+        reason: provider handshake attribute (Optional+Computed) -- exposed as the destination_id stack output, never user surface
+      - arg: version_id
+        reason: provider handshake attribute (Optional+Computed) -- exposed as the version_id stack output, never user surface
+      - arg: server_side_encryption.key_type
+        reason: derived by the module from sse_kms_key_arn presence -- CUSTOMER_MANAGED_CMK when a key is set, AWS_OWNED_CMK otherwise
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+      # --- Typed processor arms vs the provider's generic vocabulary ------
+      # The spec models the pipeline as typed arms (lambda,
+      # metadata_extraction, decompression, cloudwatch_log_processing,
+      # append_delimiter, record_deaggregation); the modules normalize them
+      # into the provider's generic type/parameters pairs once, shared by
+      # every destination. Per-arm judgment under specExclusions.
+      - arg: extended_s3_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.extended_s3.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: extended_s3_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.extended_s3.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: extended_s3_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.extended_s3.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearch_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.opensearch.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearch_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.opensearch.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearch_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.opensearch.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearchserverless_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.opensearch_serverless.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearchserverless_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.opensearch_serverless.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: opensearchserverless_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.opensearch_serverless.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: http_endpoint_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.http_endpoint.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: http_endpoint_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.http_endpoint.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: http_endpoint_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.http_endpoint.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: redshift_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.redshift.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: redshift_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.redshift.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: redshift_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.redshift.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: splunk_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.splunk.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: splunk_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.splunk.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: splunk_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.splunk.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: snowflake_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.snowflake.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: snowflake_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.snowflake.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: snowflake_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.snowflake.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: iceberg_configuration.processing_configuration.processors.type
+        reason: rendered from the typed processor arms (spec.iceberg.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: iceberg_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: rendered from the typed processor arms (spec.iceberg.processing.processors) -- normalized into the provider's generic vocabulary
+      - arg: iceberg_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: rendered from the typed processor arms (spec.iceberg.processing.processors) -- normalized into the provider's generic vocabulary
+
+      # --- Presence-derived enable flags ----------------------------------
+      - arg: http_endpoint_configuration.secrets_manager_configuration.enabled
+        reason: derived by the module from secrets_manager presence -- declaring the block enables it (ForceNew enable flag)
+      - arg: redshift_configuration.secrets_manager_configuration.enabled
+        reason: derived by the module from secrets_manager presence -- declaring the block enables it (ForceNew enable flag)
+      - arg: splunk_configuration.secrets_manager_configuration.enabled
+        reason: derived by the module from secrets_manager presence -- declaring the block enables it (ForceNew enable flag)
+      - arg: snowflake_configuration.secrets_manager_configuration.enabled
+        reason: derived by the module from secrets_manager presence -- declaring the block enables it (ForceNew enable flag)
+      - arg: snowflake_configuration.snowflake_role_configuration.enabled
+        reason: derived by the module from snowflake_role presence -- naming a role enables the role configuration
+
+      # --- Legacy Elasticsearch destination (deliberately unmodeled) ------
+      # A superseded API arm for the same domain fleet: Amazon OpenSearch
+      # Service is the renamed service, so Elasticsearch-engine domains are
+      # served through the opensearch arm (domain_arn / cluster_endpoint
+      # accept them). Recorded omission in the kind README's Deliberate
+      # Omissions table.
+      - arg: elasticsearch_configuration.buffering_interval
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.buffering_size
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.cloudwatch_logging_options.enabled
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.cloudwatch_logging_options.log_group_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.cloudwatch_logging_options.log_stream_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.cluster_endpoint
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.domain_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.index_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.index_rotation_period
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.processing_configuration.enabled
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.processing_configuration.processors.type
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.processing_configuration.processors.parameters.parameter_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.processing_configuration.processors.parameters.parameter_value
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.retry_duration
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.role_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_backup_mode
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.bucket_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.buffering_interval
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.buffering_size
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.cloudwatch_logging_options.enabled
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.cloudwatch_logging_options.log_group_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.cloudwatch_logging_options.log_stream_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.compression_format
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.error_output_prefix
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.kms_key_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.prefix
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.s3_configuration.role_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.type_name
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.vpc_config.role_arn
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.vpc_config.security_group_ids
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+      - arg: elasticsearch_configuration.vpc_config.subnet_ids
+        reason: legacy Elasticsearch destination arm -- superseded; ES-engine domains compose through the opensearch arm
+
+specExclusions:
+  # The typed processor arms fan out to the provider's generic
+  # processors.type/parameters vocabulary (the excluded processing args
+  # above) -- the modules normalize all six arm shapes once, shared by
+  # every destination.
+  - field: spec.extended_s3.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.opensearch.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.opensearch_serverless.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.http_endpoint.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.redshift.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.splunk.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.snowflake.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)
+  - field: spec.iceberg.processing.processors
+    reason: typed arms normalized into the provider's generic processors.type/parameters pairs (judged on the consuming destination's processing exclusions)

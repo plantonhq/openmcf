@@ -31,3 +31,4 @@ spec:
   cron: "0 2 * * *"
   retentionDuration: 86400s
   backupType: FULL
+  deletionPolicy: DELETE

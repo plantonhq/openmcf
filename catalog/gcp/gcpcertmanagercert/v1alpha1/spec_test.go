@@ -207,5 +207,21 @@ var _ = ginkgo.Describe("GcpCertManagerCertSpec Validation Tests", func() {
 			input.Spec.SelfManaged.PemPrivateKey = testPemCertificate
 			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
 		})
+
+		ginkgo.It("should reject an invalid deletion_policy", func() {
+			input := managedCert()
+			input.Spec.DeletionPolicy = "KEEP"
+			gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("Deletion policy", func() {
+		ginkgo.It("should accept each deletion_policy value", func() {
+			for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+				input := managedCert()
+				input.Spec.DeletionPolicy = v
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
+		})
 	})
 })

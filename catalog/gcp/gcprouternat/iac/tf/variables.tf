@@ -33,11 +33,34 @@ variable "spec" {
     # Immutable.
     vpc_self_link = string
 
-    # BGP ASN for the router (private ASN). 0 means GCP assigns one.
-    router_asn = optional(number, 0)
+    # The router's BGP configuration. Only needed when the router also
+    # serves BGP sessions (VPN/Interconnect); null means NAT-only and GCP
+    # assigns the ASN.
+    router_bgp = optional(object({
+      asn               = number
+      advertise_mode    = optional(string, "")
+      advertised_groups = optional(list(string), [])
+      advertised_ip_ranges = optional(list(object({
+        range       = string
+        description = optional(string, "")
+      })), [])
+      keepalive_interval = optional(number, 0)
+      identifier_range   = optional(string, "")
+    }), null)
 
-    # BGP keepalive interval in seconds (20-60). 0 means the API default.
-    router_keepalive_interval = optional(number, 0)
+    # Human-readable description of the Cloud Router.
+    router_description = optional(string, "")
+
+    # Dedicate the router to encrypted VLAN attachments. Immutable.
+    encrypted_interconnect_router = optional(bool, false)
+
+    # Resource Manager tags on the router (tagKeys/{id} -> tagValues/{id}).
+    # Create-time only.
+    resource_manager_tags = optional(map(string), {})
+
+    # DELETE (default), PREVENT, or ABANDON — applied to both the router
+    # and the NAT.
+    deletion_policy = optional(string, "")
 
     # PUBLIC (internet egress, default) or PRIVATE (NCC spoke-to-spoke NAT).
     # Immutable.
@@ -104,5 +127,14 @@ variable "spec" {
     # TRANSLATIONS_ONLY. The tfvars converter emits the proto enum NAME as
     # a string; empty means the ERRORS_ONLY default.
     log_filter = optional(string, "ERRORS_ONLY")
+
+    # NAT64 scope: ALL_IPV6_SUBNETWORKS or LIST_OF_IPV6_SUBNETWORKS. Empty
+    # derives: LIST_OF_IPV6_SUBNETWORKS when nat64_subnetworks are listed,
+    # else no NAT64.
+    source_subnetwork_ip_ranges_to_nat64 = optional(string, "")
+
+    # Dual-stack subnetworks whose IPv6 traffic is translated by NAT64.
+    # Subnetwork references arrive as plain self-link strings.
+    nat64_subnetworks = optional(list(string), [])
   })
 }

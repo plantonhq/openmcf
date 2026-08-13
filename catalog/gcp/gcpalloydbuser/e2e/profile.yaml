@@ -5,9 +5,12 @@ metadata:
 spec:
   # Composed scenario: deploys the GcpAlloydbCluster prerequisite then creates
   # a BUILT_IN user on it.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface (deletionPolicy DELETE armed explicitly,
+  # re-plans clean; the write-only password pair stays a recorded exclusion,
+  # not spec surface).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90

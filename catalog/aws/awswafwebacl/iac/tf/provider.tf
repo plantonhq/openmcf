@@ -10,7 +10,9 @@ terraform {
       #
       # Feature floor (v6 baseline): the asn_match statement landed in 6.0.0 (rule_json itself
       # in 5.61, data_protection_config in 5.100) -- the full modeled
-      # surface needs the v6 line.
+      # surface needs the v6 line. The logging_filter block and method
+      # redaction (modeled 2026-08-11) are pre-v6 provider surface and do
+      # not move the floor.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

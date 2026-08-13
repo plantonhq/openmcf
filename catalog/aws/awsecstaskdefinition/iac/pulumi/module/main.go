@@ -128,6 +128,36 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1alpha1.Aws
 		args.TaskRoleArn = pulumi.StringPtr(spec.TaskRole.GetValue())
 	}
 
+	// The FIS opt-in that lets chaos experiments target this task's
+	// containers; false stays unsent (Optional+Computed at the provider --
+	// sending false forces a diff on definitions registered before the
+	// field existed).
+	if spec.EnableFaultInjection {
+		args.EnableFaultInjection = pulumi.BoolPtr(true)
+	}
+
+	// Namespace sharing is EC2-surface (CEL guards the Fargate rules);
+	// empty stays unsent so Docker's per-container default stays in charge.
+	if spec.IpcMode != "" {
+		args.IpcMode = pulumi.StringPtr(spec.IpcMode)
+	}
+	if spec.PidMode != "" {
+		args.PidMode = pulumi.StringPtr(spec.PidMode)
+	}
+
+	// Task-level placement rules, evaluated when tasks schedule onto EC2
+	// container instances.
+	if len(spec.PlacementConstraints) > 0 {
+		constraints := make(ecs.TaskDefinitionPlacementConstraintArray, 0, len(spec.PlacementConstraints))
+		for _, constraint := range spec.PlacementConstraints {
+			constraints = append(constraints, &ecs.TaskDefinitionPlacementConstraintArgs{
+				Type:       pulumi.String(constraint.Type),
+				Expression: pulumi.StringPtr(constraint.Expression),
+			})
+		}
+		args.PlacementConstraints = constraints
+	}
+
 	if spec.RuntimePlatform != nil {
 		runtimePlatform := &ecs.TaskDefinitionRuntimePlatformArgs{}
 		if spec.RuntimePlatform.CpuArchitecture != "" {
@@ -151,6 +181,13 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1alpha1.Aws
 			volumeArgs := &ecs.TaskDefinitionVolumeArgs{
 				Name: pulumi.String(volume.Name),
 			}
+			// A launch-time volume declares only its name here -- the
+			// consuming service's volume_configuration supplies the
+			// managed-EBS backing. false stays unsent (Optional+Computed
+			// at the provider).
+			if volume.ConfigureAtLaunch {
+				volumeArgs.ConfigureAtLaunch = pulumi.BoolPtr(true)
+			}
 			if volume.Efs != nil {
 				efs := &ecs.TaskDefinitionVolumeEfsVolumeConfigurationArgs{
 					// References (AwsElasticFileSystem / AwsEfsAccessPoint)
@@ -164,6 +201,9 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1alpha1.Aws
 				}
 				if volume.Efs.RootDirectory != "" {
 					efs.RootDirectory = pulumi.StringPtr(volume.Efs.RootDirectory)
+				}
+				if volume.Efs.TransitEncryptionPort != 0 {
+					efs.TransitEncryptionPort = pulumi.IntPtr(int(volume.Efs.TransitEncryptionPort))
 				}
 				if volume.Efs.AccessPointId.GetValue() != "" || volume.Efs.IamAuthorization {
 					authorization := &ecs.TaskDefinitionVolumeEfsVolumeConfigurationAuthorizationConfigArgs{}
@@ -179,6 +219,40 @@ func Resources(ctx *pulumi.Context, stackInput *awsecstaskdefinitionv1alpha1.Aws
 			}
 			if volume.HostPath != "" {
 				volumeArgs.HostPath = pulumi.StringPtr(volume.HostPath)
+			}
+			if volume.Docker != nil {
+				docker := &ecs.TaskDefinitionVolumeDockerVolumeConfigurationArgs{}
+				if volume.Docker.Autoprovision {
+					docker.Autoprovision = pulumi.BoolPtr(true)
+				}
+				if volume.Docker.Driver != "" {
+					docker.Driver = pulumi.StringPtr(volume.Docker.Driver)
+				}
+				if len(volume.Docker.DriverOpts) > 0 {
+					docker.DriverOpts = pulumi.ToStringMap(volume.Docker.DriverOpts)
+				}
+				if len(volume.Docker.Labels) > 0 {
+					docker.Labels = pulumi.ToStringMap(volume.Docker.Labels)
+				}
+				if volume.Docker.Scope != "" {
+					docker.Scope = pulumi.StringPtr(volume.Docker.Scope)
+				}
+				volumeArgs.DockerVolumeConfiguration = docker
+			}
+			if volume.S3Files != nil {
+				s3files := &ecs.TaskDefinitionVolumeS3filesVolumeConfigurationArgs{
+					FileSystemArn: pulumi.String(volume.S3Files.FileSystemArn.GetValue()),
+				}
+				if volume.S3Files.AccessPointArn != "" {
+					s3files.AccessPointArn = pulumi.StringPtr(volume.S3Files.AccessPointArn)
+				}
+				if volume.S3Files.RootDirectory != "" {
+					s3files.RootDirectory = pulumi.StringPtr(volume.S3Files.RootDirectory)
+				}
+				if volume.S3Files.TransitEncryptionPort != 0 {
+					s3files.TransitEncryptionPort = pulumi.IntPtr(int(volume.S3Files.TransitEncryptionPort))
+				}
+				volumeArgs.S3filesVolumeConfiguration = s3files
 			}
 			volumes = append(volumes, volumeArgs)
 		}

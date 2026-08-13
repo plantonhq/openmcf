@@ -1,0 +1,69 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_bigtable_table:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names (two resources in one kind keep the
+      # table_/instance references unambiguous).
+      - spec: spec.table_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.instance
+        arg: instance_name
+      # The provider's singular repeated-block name; the spec uses the
+      # plural. Matching resumes name-for-name below the subtree (family,
+      # type; the per-family gc_policy message maps onto the companion
+      # google_bigtable_gc_policy resource below, not onto the table).
+      - spec: spec.column_families
+        arg: column_family
+
+  # GC policies are modeled per column family in the spec and fanned out
+  # to one companion google_bigtable_gc_policy resource per family that
+  # declares one -- the API's own granularity, so policy edits never touch
+  # the table object.
+  google_bigtable_gc_policy:
+    mappings:
+      - spec: spec.project_id
+        arg: project
+      - spec: spec.instance
+        arg: instance_name
+      - spec: spec.column_families.family
+        arg: column_family
+      - spec: spec.column_families.gc_policy.mode
+        arg: mode
+      - spec: spec.column_families.gc_policy.gc_rules
+        arg: gc_rules
+      - spec: spec.column_families.gc_policy.ignore_warnings
+        arg: ignore_warnings
+      # The provider wraps each typed condition in a single-field block;
+      # the spec flattens both to scalars.
+      - spec: spec.column_families.gc_policy.max_age
+        arg: max_age.duration
+      - spec: spec.column_families.gc_policy.max_versions
+        arg: max_version.number
+      # ONE spec field drives the destroy behavior of both objects this
+      # kind manages -- the table's deletion_policy matches by name; the
+      # gc policy's maps onto the same field.
+      - spec: spec.deletion_policy
+        arg: deletion_policy
+    exclusions:
+      - arg: table
+        reason: >-
+          wired by the module to the table it creates -- a GC policy has
+          no independent life apart from its family's table, which is why
+          the resource is folded into this kind at all
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      bigtableadmin.googleapis.com with fixed arguments
+      (disable_on_destroy false so destroying one table never disables
+      the API project-wide); not spec surface.

@@ -1,0 +1,129 @@
+# GcpUrlMap scenario: the per-route traffic-management surface, end to end —
+# a weighted arm with header attribution, overall + per-try timeouts and
+# retry conditions, fire-and-forget request mirroring to a second backend,
+# CORS answered at the edge, a route-scoped CDN cache policy (key policy,
+# TTL trio, negative caching) against a CDN-enabled backend, fault
+# injection scoped to a /chaos/ route rule, and a route rule proving the
+# relaxed target rule (a plain service target accompanied by a
+# sub-policy-only route_action). The EXTERNAL_MANAGED fixtures ride the
+# e2e-prerequisites annotation: GCP accepts these policies only against
+# EXTERNAL_MANAGED backends, and the registry's standard prerequisite is a
+# classic EXTERNAL backend. max_stream_duration is deliberately absent —
+# GCP restricts it to Traffic Director URL maps (proof-lane watch item).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpUrlMap
+metadata:
+  name: planton-oss-e2e-gcpum-features
+  id: planton-oss-e2e-gcpum-features
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpurlmap
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/gcp/gcpurlmap/e2e/prerequisites/gcpbackendservice-managed.yaml,catalog/gcp/gcpurlmap/e2e/prerequisites/gcpbackendservice-mirror.yaml"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral URL map created by the Planton E2E harness; exercises per-route traffic management; safe to delete
+  deletionPolicy: DELETE
+  defaultRouteAction:
+    weightedBackendServices:
+      - backendService:
+          valueFrom:
+            kind: GcpBackendService
+            name: planton-oss-e2e-gcpbs-managed
+            fieldPath: status.outputs.self_link
+        weight: 1000
+        headerAction:
+          responseHeadersToAdd:
+            - headerName: x-served-by
+              headerValue: primary
+              replace: true
+    timeout:
+      seconds: 15
+    retryPolicy:
+      numRetries: 2
+      retryConditions:
+        - 5xx
+        - connect-failure
+      perTryTimeout:
+        seconds: 5
+    requestMirrorPolicy:
+      backendService:
+        valueFrom:
+          kind: GcpBackendService
+          name: planton-oss-e2e-gcpbs-mirror
+          fieldPath: status.outputs.self_link
+    corsPolicy:
+      allowOrigins:
+        - https://features.example.com
+      allowMethods:
+        - GET
+        - OPTIONS
+      allowHeaders:
+        - authorization
+      maxAge: 600
+    cachePolicy:
+      cacheMode: CACHE_ALL_STATIC
+      negativeCaching: true
+      requestCoalescing: true
+      cacheKeyPolicy:
+        includeHost: true
+        includeProtocol: true
+        includeQueryString: true
+      clientTtl:
+        seconds: 300
+      defaultTtl:
+        seconds: 3600
+      maxTtl:
+        seconds: 86400
+      serveWhileStale:
+        seconds: 86400
+      negativeCachingPolicy:
+        - code: 404
+          ttl:
+            seconds: 120
+  hostRules:
+    - hosts:
+        - features.example.com
+      pathMatcher: features
+  pathMatchers:
+    - name: features
+      defaultService:
+        valueFrom:
+          kind: GcpBackendService
+          name: planton-oss-e2e-gcpbs-managed
+          fieldPath: status.outputs.self_link
+      routeRules:
+        # The relaxed target rule live: a plain service target with a
+        # sub-policy-only route_action carrying the fault-injection arms.
+        - priority: 10
+          matchRules:
+            - prefixMatch: /chaos/
+          service:
+            valueFrom:
+              kind: GcpBackendService
+              name: planton-oss-e2e-gcpbs-managed
+              fieldPath: status.outputs.self_link
+          routeAction:
+            timeout:
+              seconds: 5
+            faultInjectionPolicy:
+              abort:
+                httpStatus: 503
+                percentage: 50
+              delay:
+                fixedDelay:
+                  nanos: 100000000
+                percentage: 10
+  tests:
+    - host: features.example.com
+      path: /chaos/ping
+      service:
+        valueFrom:
+          kind: GcpBackendService
+          name: planton-oss-e2e-gcpbs-managed
+          fieldPath: status.outputs.self_link
+      description: Chaos prefix resolves to the managed backend

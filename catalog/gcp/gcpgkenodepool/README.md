@@ -17,14 +17,15 @@ The pool inherits its project and location from the parent cluster (both resolve
 ## Key Features
 
 - **Sizing**: fixed count or cluster-autoscaler management with per-zone (`min_nodes`/`max_nodes`) or total (`total_min_nodes`/`total_max_nodes`) bounds and the `BALANCED`/`ANY` location policy
-- **Upgrades**: surge (max_surge/max_unavailable) or blue-green strategy with batch rollout pacing and soak windows
-- **Machine shape**: machine type, boot disk size/type (incl. hyperdisk), image type, min CPU platform, local SSDs (SCSI count, NVMe ephemeral-storage backing with data cache, raw-block NVMe)
-- **GPUs**: accelerator type/count, GKE-managed driver installation, MIG partitioning, time-sharing/MPS GPU sharing, NCCL Fast Socket + gVNIC for distributed training
-- **Scheduling**: Kubernetes node labels, taints with all three effects, network tags, compact placement (+ TPU topology), queued provisioning (Dynamic Workload Scheduler), flex-start, max run duration
-- **Identity & security**: node service account by reference, OAuth scopes, shielded VM options, confidential nodes (SEV/SEV-SNP/TDX), CMEK boot-disk encryption by `GcpKmsKey` reference, workload metadata mode
-- **Networking**: dedicated per-pool pod ranges (create-new or use-existing), per-pool private nodes override, TIER_1 egress bandwidth, pod CIDR overprovision control
-- **Node tuning**: kubelet (CPU manager, CFS quota, PID limits, log rotation, image GC, the insecure read-only port), Linux sysctls, cgroup mode, hugepages, logging variant, image streaming (GCFS)
-- **Capacity**: Spot and legacy preemptible VMs, Compute Engine reservation affinity, secondary boot disks for image preloading
+- **Upgrades & lifecycle**: surge (max_surge/max_unavailable) or blue-green strategy with batch rollout pacing and soak windows; drain pacing on pool deletion (`node_drain_config` with PDB respect — requires per-project enablement from GCP support; the API rejects it on projects without the allowlist); engine-side `deletion_policy` (DELETE/PREVENT/ABANDON); GKE-generated names via `name_prefix` for swap-without-collision workflows
+- **Machine shape**: machine type, boot disk size/type — including the first-class `boot_disk` block with hyperdisk provisioned IOPS/throughput — custom node images, image type, min CPU platform, local SSDs (SCSI count, NVMe ephemeral-storage backing with data cache, raw-block NVMe, encryption modes), hyperdisk storage pools, SMT/nested-virtualization/PMU controls
+- **GPUs**: accelerator type/count, GKE-managed driver installation, MIG partitioning, time-sharing/MPS GPU sharing, NCCL Fast Socket + gVNIC, GPUDirect strategies, RDMA accelerator network profiles
+- **Scheduling & tenancy**: Kubernetes node labels, taints with all three effects, ARM architecture-taint behavior, network tags, Resource Manager tags, compact placement (+ TPU topology), queued provisioning (Dynamic Workload Scheduler), flex-start, max run duration, sole-tenant node groups with affinity rules, host maintenance cadence
+- **Identity & security**: node service account by reference, OAuth scopes, shielded VM options, confidential nodes (SEV/SEV-SNP/TDX) and confidential storage, CMEK boot-disk encryption by `GcpKmsKey` reference, workload metadata mode, gVisor sandboxing, Windows Server pools
+- **Networking**: dedicated per-pool pod ranges (create-new or use-existing), a pool-specific subnetwork, multi-networking (additional node interfaces and pod networks), per-pool private nodes override, TIER_1 egress bandwidth, pod CIDR overprovision control
+- **Registry access**: containerd configuration — private registries behind custom CAs (Secret Manager-held certificates), per-registry mirrors with capabilities, timeouts, client TLS and custom headers, writable cgroups
+- **Node tuning**: kubelet (CPU/memory/topology managers, CFS quota, PID limits, log rotation, image GC by threshold AND age, parallel image pulls, soft-eviction thresholds with grace periods and minimum reclaim (reclaim values are percentage-only — GKE rejects absolute quantities), crash-loop backoff caps, single-process OOM kill, unsafe sysctl allowlists, the insecure read-only port), Linux (sysctls, cgroup mode, hugepages, transparent hugepage modes, signed-kernel-module enforcement, PTP/KVM time sync, swap with sizing profiles and encryption), logging variant, image streaming (GCFS)
+- **Capacity**: Spot and legacy preemptible VMs, Compute Engine reservation affinity (incl. reserve-or-fail), secondary boot disks for image preloading
 
 ## Stack Outputs
 
@@ -41,13 +42,13 @@ The pool inherits its project and location from the parent cluster (both resolve
 
 ## Deliberately not modeled (recorded reasons)
 
+Every provider argument of `google_container_node_pool` is accounted for —
+matched, mapped, or excluded with the reason recorded in
+`iac/provider-parity.yaml`. The exclusions, in plain terms:
+
 | Excluded Feature | Why |
 |---|---|
-| `node_drain_config`, `ignore_node_count_changes`, `gpudirect_strategy`, `node_image_config`, `sandbox_config` (gVisor), `architecture_taint_behavior` | Exist only on the provider's unreleased main line, not on the released 6.x major the GCP modules pin. Revisit on the next provider major. |
-| `boot_disk` block (provisioned IOPS/throughput), `containerd_config` (private registry CAs), `advanced_machine_features`, `host_maintenance_policy`, `enable_confidential_storage`, `local_ssd_encryption_mode`, `storage_pools`, `node_group` + `sole_tenant_config` (sole tenancy), `windows_node_config`, kubelet eviction tuning (`eviction_soft`/`eviction_minimum_reclaim`/grace periods), `allowed_unsafe_sysctls`, transparent-hugepage knobs, `memory_manager`/`topology_manager`, `crash_loop_back_off`, `single_process_oom_kill` | Deep niches (sole tenancy, Windows pools, hyperdisk performance tuning, NUMA pinning, kubelet eviction surgery) without real-world pull relative to their spec weight. Each returns on demand — the modeled kubelet/Linux surface covers the tuning production pools actually reach for. |
-| `name_prefix` | Planton owns resource naming — the pool name is `node_pool_name` or `metadata.name`, never generated. |
-| `resource_manager_tags` | Catalog-wide decision — tag bindings are an org-governance layer pending a first-class design. |
-| `additional_node_network_configs` / `additional_pod_network_configs`, `network_config.subnetwork` | Multi-networking (extra node NICs / pod networks) is an advanced cluster feature modeled when the cluster's `enable_multi_networking` gains real pull; the pool's subnetwork override rides the same wave. |
+| Kubelet `shutdown_grace_period_seconds` / `shutdown_grace_period_critical_pods_seconds`, `custom_node_init`, `maintenance_policy.exclusion_until_end_of_support` | GA at the pinned provider but not yet bridged by the pinned Pulumi SDK — modeling them only in Terraform would break cross-engine parity (a spec field one engine silently drops). Re-evaluated at every SDK bump. |
 
 ## Related Components
 

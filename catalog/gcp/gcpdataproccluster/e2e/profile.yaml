@@ -12,8 +12,18 @@ spec:
   # scenario-run — the arm is proven by the offline gate (spec tests +
   # both engines' converters exercised by the spark-on-gke preset).
   tier: 1
+  # Live-proven 2026-08-13 on both engines at the total-accounting spec:
+  # 2 scenarios (minimal-single-node: first-class clusterType SINGLE_NODE
+  # + Component Gateway + deletionPolicy DELETE; autoscaling: policy FK +
+  # primary-worker instance_flexibility_policy — the stored cluster's
+  # instance_selection_results carried the ranked list's choice) x 2
+  # engines, all phases green under the apply-idempotency gate. Scenarios
+  # live in us-east1 after a us-central1 ZONE_RESOURCE_POOL_EXHAUSTED on
+  # e2-standard-2 (Dataproc's auto-zone placement still chose the
+  # exhausted zone — the recurring capacity class in e2e/README.md).
+  # First contact also caught machine_type + instance_flexibility_policy
+  # as API-mutually-exclusive (silent machineTypeUri drop -> perpetual
+  # replacement re-plan) — now a spec CEL wall on master and worker.
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

@@ -35,11 +35,6 @@ apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: my-search
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: my-org
-    pulumi.planton.dev/project: my-project
-    pulumi.planton.dev/stack.name: dev.AwsOpenSearchDomain.my-search
 spec:
   engineVersion: "OpenSearch_2.11"
   clusterConfig:
@@ -99,9 +94,9 @@ This creates a single-node OpenSearch domain with gp3 storage, encryption at res
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `encryptAtRestEnabled` | `bool` | `false` (recommended: `true`) | Encrypt indices and snapshots at rest. Uses AWS-managed `aws/es` key unless `kmsKeyId` is set. ForceNew when disabling. |
+| `encryptAtRestEnabled` | `optional bool` | `true` | Encrypt indices and snapshots at rest (secure by default). Uses AWS-managed `aws/es` key unless `kmsKeyId` is set. Set an explicit `false` only for legacy engine versions that cannot encrypt; disabling later forces recreation. |
 | `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key ARN for at-rest encryption. ForceNew. Can reference `AwsKmsKey`. |
-| `nodeToNodeEncryptionEnabled` | `bool` | `false` (recommended: `true`) | TLS encryption for inter-node traffic. Strongly recommended. |
+| `nodeToNodeEncryptionEnabled` | `optional bool` | `true` | TLS encryption for inter-node traffic (secure by default). Disabling later forces recreation. |
 
 ### Networking — VPC (`vpcOptions`)
 
@@ -140,6 +135,22 @@ This creates a single-node OpenSearch domain with gp3 storage, encryption at res
 | `userPoolId` | `StringValueOrRef` | Cognito user pool. Required when enabled. |
 | `identityPoolId` | `string` | Cognito identity pool ID. Required when enabled. |
 | `roleArn` | `StringValueOrRef` | IAM role that grants OpenSearch access to the Cognito pools. Required when enabled. |
+
+### SAML Authentication for Dashboards (`samlOptions`)
+
+Requires fine-grained access control. Managed as its own provider resource alongside the domain -- removing the block disables SAML.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `idpEntityId` | `string` | The identity provider's entity ID. Required. |
+| `idpMetadataContent` | `string` | The IdP's SAML metadata XML. Required. |
+| `masterBackendRole` / `masterUserName` | `string` | The SAML principal granted master access (mutually exclusive; both optional). |
+| `rolesKey` / `subjectKey` | `string` | Assertion attributes carrying roles and identity. |
+| `sessionTimeoutMinutes` | `int32` | Dashboards session lifetime, 1-1440. 0 keeps the AWS default (60). |
+
+### Cross-Account VPC Endpoint Grants (`authorizedVpcEndpointAccessAccounts`)
+
+Twelve-digit AWS account IDs authorized to create OpenSearch-managed VPC endpoints against this domain (the grantor side of cross-account private access). One provider resource per account, keyed by ID.
 
 ### Log Publishing (`logPublishingOptions`)
 

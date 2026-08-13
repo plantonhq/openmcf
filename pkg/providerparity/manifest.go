@@ -78,7 +78,11 @@ type ResourceManifest struct {
 	Mappings []Mapping `yaml:"mappings,omitempty"`
 	// Exclusions are configurable arguments deliberately not modeled, each
 	// with its mandatory reason -- the recorded decision that makes the
-	// omission loud instead of silent.
+	// omission loud instead of silent. An exclusion may name an argument
+	// subtree (a block): one judgment then covers everything under it,
+	// mirroring mappings and specExclusions -- the form for a resource
+	// that embeds another kind's whole surface inline (the exclusion stays
+	// one recorded decision, not one line per leaf).
 	Exclusions []ArgExclusion `yaml:"exclusions,omitempty"`
 }
 
@@ -86,12 +90,24 @@ type ResourceManifest struct {
 // block, e.g. "lifecycle_rule.condition.age") is spec (an absolute
 // spec-rooted path, e.g. "spec.lifecycle_rules.condition.age_days").
 // Both sides may name a subtree; matching resumes exactly below it.
+//
+// Collapse marks a subtree-to-leaf judgment: EVERY argument at or under arg
+// accounts to the ONE spec leaf named by spec. This exists for recursive
+// provider grammars (the provider expands a recursive schema into bounded
+// nesting levels, while the spec census records each re-entry as one leaf —
+// e.g. a WAF and_statement's nested statement list). The flag is explicit
+// so an ordinary mapping can never silently swallow a subtree: without it,
+// matching resumes below the mapped subtree and unmatched leaves surface as
+// findings. A collapse mapping's spec must be an exact census leaf
+// (enforced by the accounting's staleness checks).
 type Mapping struct {
-	Spec string `yaml:"spec"`
-	Arg  string `yaml:"arg"`
+	Spec     string `yaml:"spec"`
+	Arg      string `yaml:"arg"`
+	Collapse bool   `yaml:"collapse,omitempty"`
 }
 
-// ArgExclusion is one deliberately unmodeled argument and its reason.
+// ArgExclusion is one deliberately unmodeled argument (or argument
+// subtree) and its reason.
 type ArgExclusion struct {
 	Arg    string `yaml:"arg"`
 	Reason string `yaml:"reason"`
@@ -187,7 +203,15 @@ func (m *Manifest) validate() error {
 		if rm.SpecRoot != "" && !isSpecPath(rm.SpecRoot) {
 			return errors.Errorf("resource %s: specRoot %q must be spec-rooted (e.g. spec.iam_members)", resource, rm.SpecRoot)
 		}
+		// An argument may carry SEVERAL mappings — the fan-in dual of one
+		// spec field mapping onto several arguments (the name/value pair
+		// gathered into one spec map). The idiom: a map-typed argument
+		// (e.g. a container resources.limits map) realizing several
+		// honest spec fields. Only the identical (spec, arg) pair
+		// repeated is a recording error; a mapped arg still can never
+		// also be excluded.
 		seenArgs := map[string]bool{}
+		seenPairs := map[string]bool{}
 		for _, mp := range rm.Mappings {
 			if mp.Arg == "" {
 				return errors.Errorf("resource %s: mapping for spec %q names no arg", resource, mp.Spec)
@@ -195,9 +219,11 @@ func (m *Manifest) validate() error {
 			if !isSpecPath(mp.Spec) {
 				return errors.Errorf("resource %s: mapping for arg %q must be spec-rooted, got %q", resource, mp.Arg, mp.Spec)
 			}
-			if seenArgs[mp.Arg] {
-				return errors.Errorf("resource %s: arg %q is judged twice", resource, mp.Arg)
+			pair := mp.Spec + " -> " + mp.Arg
+			if seenPairs[pair] {
+				return errors.Errorf("resource %s: mapping %q is recorded twice", resource, pair)
 			}
+			seenPairs[pair] = true
 			seenArgs[mp.Arg] = true
 		}
 		for _, ex := range rm.Exclusions {

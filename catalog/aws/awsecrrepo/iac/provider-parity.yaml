@@ -1,0 +1,82 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ecr_repository:
+    mappings:
+      # The spec names identity for what it is; the provider's arg is bare.
+      - spec: spec.repository_name
+        arg: name
+      # The spec flattens the two single-purpose wrappers -- encryption and
+      # scan-on-push are first-class dials, not nested details.
+      - spec: spec.encryption_type
+        arg: encryption_configuration.encryption_type
+      - spec: spec.kms_key_id
+        arg: encryption_configuration.kms_key
+      - spec: spec.scan_on_push
+        arg: image_scanning_configuration.scan_on_push
+      # One filter string per entry; the provider wraps each in a block.
+      - spec: spec.image_tag_mutability_exclusion_filters
+        arg: image_tag_mutability_exclusion_filter.filter
+    exclusions:
+      # Single-value domain.
+      - arg: image_tag_mutability_exclusion_filter.filter_type
+        reason: the provider's filter-type enum carries exactly one value ("WILDCARD") -- materialized by both modules; a spec field would have one legal value
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys; no Name tag -- the repository carries its own name in spec.repository_name) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_ecr_lifecycle_policy:
+    # The folded 1:1 lifecycle policy -- the spec models the policy JSON
+    # structurally and both modules rebuild the exact document AWS expects
+    # (selection incl. storage classes, expire and transition actions).
+    mappings:
+      # One provider argument, many spec homes: the structured rule list
+      # renders into the single policy JSON document. The identity member
+      # carries the mapping; the sibling members are recorded in
+      # specExclusions below.
+      - spec: spec.lifecycle_rules.rule_priority
+        arg: policy
+    exclusions:
+      - arg: repository
+        reason: module-shaped plumbing -- always this repository's own name (the policy is a folded 1:1 satellite)
+
+  aws_ecr_repository_policy:
+    mappings:
+      # The spec's Struct policy document serializes into the provider's
+      # JSON string.
+      - spec: spec.repository_policy
+        arg: policy
+    exclusions:
+      - arg: repository
+        reason: module-shaped plumbing -- always this repository's own name (the policy is a folded 1:1 satellite)
+
+specExclusions:
+  # The structured lifecycle-rule members below all render into the same
+  # aws_ecr_lifecycle_policy policy JSON document as rule_priority (the
+  # identity member carrying the mapping above).
+  - field: spec.lifecycle_rules.description
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (description member)
+  - field: spec.lifecycle_rules.tag_status
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.tagStatus member)
+  - field: spec.lifecycle_rules.tag_prefixes
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.tagPrefixList member)
+  - field: spec.lifecycle_rules.tag_patterns
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.tagPatternList member)
+  - field: spec.lifecycle_rules.count_type
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.countType member; the days countUnit is materialized for the since... types)
+  - field: spec.lifecycle_rules.count_number
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.countNumber member)
+  - field: spec.lifecycle_rules.storage_class
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (selection.storageClass member)
+  - field: spec.lifecycle_rules.action_type
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (action.type member; "expire" materialized when unset)
+  - field: spec.lifecycle_rules.target_storage_class
+    reason: renders into the same aws_ecr_lifecycle_policy policy JSON document as rule_priority (action.targetStorageClass member)

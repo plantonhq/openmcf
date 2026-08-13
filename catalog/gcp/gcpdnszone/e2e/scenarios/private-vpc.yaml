@@ -25,3 +25,6 @@ spec:
             kind: GcpVpcNetwork
             name: planton-oss-e2e-gcpvpc-prereq
             fieldPath: status.outputs.network_self_link
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

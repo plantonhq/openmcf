@@ -32,5 +32,6 @@ variable "spec" {
 
     default_time_zone   = optional(string, "")
     deletion_protection = optional(bool, true)
+    deletion_policy     = optional(string, "")
   })
 }

@@ -1,6 +1,11 @@
-# Minimal standalone AwsVpc scenario: a single thin VPC with a primary IPv4 CIDR.
-# AwsVpc has no prerequisites, so the harness applies this directly. Full metadata
-# is supplied for tagging/orphan cleanup.
+# Minimal standalone AwsVpc scenario: a single thin VPC with a primary IPv4
+# CIDR plus one literal secondary CIDR (associations are free, create-time,
+# and exercise the grow-in-place association resource live). The IPAM and
+# encryption-control arms are offline-proven only: no IPAM pool fixture
+# exists, and encryption control's billing is unverified -- never a silent
+# skip (see the kind's profile comment). AwsVpc has no prerequisites, so the
+# harness applies this directly. Full metadata is supplied for tagging/orphan
+# cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsVpc
 metadata:
@@ -19,3 +24,5 @@ spec:
   region: us-west-2
   cidrBlock: 10.0.0.0/16
   enableDnsHostnames: true
+  secondaryIpv4Cidrs:
+    - cidrBlock: 10.1.0.0/16

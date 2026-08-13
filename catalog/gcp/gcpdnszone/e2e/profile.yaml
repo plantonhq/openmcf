@@ -4,9 +4,13 @@ metadata:
   name: gcpdnszone
 spec:
   # Public and private managed zone scenarios (~2–5 minutes each).
+  #
+  # Offline-proven arms: forwarding targets (incl. the IPv6 one-family
+  # pairing) stay offline — the committed private-vpc scenario is an
+  # authoritative private zone, and a live forwarding arm would change its
+  # semantics; unblock: a dedicated forwarding-zone scenario with reachable
+  # target nameservers.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -29,6 +29,11 @@ spec:
   port: 8080
   protocol: HTTP
   deregistrationDelaySeconds: 30
+  # ALB Target Optimizer agent port: free create-time config on a group that
+  # never registers targets (validation is create-time only; no agent needs
+  # to run). If AWS ever rejects it at CreateTargetGroup, trim this arm and
+  # record the deferral -- fixture decision, not module defect.
+  targetControlPort: 9999
   healthCheck:
     protocol: HTTP
     path: /healthz

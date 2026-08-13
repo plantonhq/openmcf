@@ -17,3 +17,9 @@ spec:
     - pulumi
     - terraform
   timeout_minutes: 10
+  # 2026-08-13 tag-convergence sweep: the Terraform module's metadata.labels
+  # merge into cloud tags was dropped (the canonical six-key identity map --
+  # user labels are platform metadata). Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awscloudwatchloggroup
+  # represents it).

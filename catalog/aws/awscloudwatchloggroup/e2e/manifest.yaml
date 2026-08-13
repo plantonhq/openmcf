@@ -7,20 +7,42 @@ metadata:
   id: test-log-group-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchLogGroup.test-log-group
 spec:
   region: us-west-2
   retentionInDays: 30
   metricFilters:
     - name: error-count
       pattern: "ERROR"
+      applyOnTransformedLogs: true
       transformation:
         metricName: ErrorCount
         metricNamespace: TestApp/Errors
         metricValue: "1"
         defaultValue: 0
+  subscriptionFilters:
+    - name: central-delivery
+      destinationArn:
+        value: arn:aws:kinesis:us-west-2:123456789012:stream/central-logs
+      roleArn:
+        value: arn:aws:iam::123456789012:role/cwl-to-kinesis-delivery
+      filterPattern: ""
+      emitSystemFields:
+        - "@aws.account"
+        - "@aws.region"
+        - "@source.log"
+  logStreams:
+    - agent-primary
+  transformer:
+    processors:
+      - parseJson: {}
+      - renameKeys:
+          entries:
+            - key: msg
+              renameTo: message
+      - typeConverter:
+          entries:
+            - key: statusCode
+              type: integer
   fieldIndexPolicy:
     Fields:
       - requestId

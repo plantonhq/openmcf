@@ -120,6 +120,23 @@ message AwsRedshiftServerlessWorkgroupSpec {
     }
   ];
 
+  // A custom DNS name for the workgroup's endpoint, fronted by an ACM
+  // certificate (one custom domain per workgroup -- AWS's own model).
+  // You own the CNAME record pointing the domain at the workgroup
+  // endpoint; AWS serves TLS for it from the certificate.
+  AwsRedshiftServerlessWorkgroupCustomDomain custom_domain = 13;
+
+  // VPC endpoints exposing this workgroup inside other subnets --
+  // same-account cross-VPC access without peering. Each entry keys one
+  // managed endpoint; its private address and port are exported per
+  // endpoint on the outputs contract.
+  repeated AwsRedshiftServerlessWorkgroupEndpointAccess endpoint_accesses = 14;
+
+  // Usage limits capping this workgroup's consumption -- RPU-hours of
+  // serverless compute or terabytes of cross-region datasharing
+  // transfer -- each with a breach action from logging to deactivation.
+  repeated AwsRedshiftServerlessWorkgroupUsageLimit usage_limits = 15;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -158,6 +175,34 @@ message AwsRedshiftServerlessWorkgroupSpec {
     id: "port_in_serverless_ranges"
     message: "port must be within 5431-5455 or 8191-8215 -- the only ranges Redshift Serverless accepts; 0 keeps the AWS default (5439)"
     expression: "this.port == 0 || (this.port >= 5431 && this.port <= 5455) || (this.port >= 8191 && this.port <= 8215)"
+  };
+
+  // Each endpoint access keys one aws_redshiftserverless_endpoint_access
+  // resource by endpoint name.
+  option (buf.validate.message).cel = {
+    id: "endpoint_access_names_unique"
+    message: "endpoint access names must be unique"
+    expression: "this.endpoint_accesses.map(e, e.endpoint_name).unique()"
+  };
+
+  // An endpoint entry without its own subnets falls back to the
+  // workgroup's subnet_ids -- which must then exist (a workgroup on the
+  // account's default VPC has no subnet list for endpoints to reuse).
+  option (buf.validate.message).cel = {
+    id: "endpoint_access_subnets_resolvable"
+    message: "an endpoint access without its own subnet_ids requires the workgroup to declare subnet_ids to fall back on"
+    expression: "this.endpoint_accesses.all(e, e.subnet_ids.size() > 0 || this.subnet_ids.size() > 0)"
+  };
+
+  // Each usage limit keys one aws_redshiftserverless_usage_limit
+  // resource by its (usage type, period) pair -- AWS rejects duplicates
+  // for the same workgroup anyway. An empty period normalizes to
+  // "monthly" (the AWS default) so it collides with an explicit
+  // monthly entry.
+  option (buf.validate.message).cel = {
+    id: "usage_limits_unique"
+    message: "usage_limits must be unique per (usage_type, period) -- AWS allows one limit per usage type and period, and an empty period means monthly"
+    expression: "this.usage_limits.map(l, l.usage_type + '/' + (l.period == '' ? 'monthly' : l.period)).unique()"
   };
 }
 
@@ -218,4 +263,114 @@ message AwsRedshiftServerlessWorkgroupConfigParameter {
 
   // The parameter value. Required.
   string value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsRedshiftServerlessWorkgroupCustomDomain fronts the workgroup's
+// endpoint with a custom DNS name and an ACM certificate. AWS keeps one
+// custom domain per workgroup; the CNAME record pointing the domain at
+// the workgroup endpoint stays yours to manage.
+message AwsRedshiftServerlessWorkgroupCustomDomain {
+  // The custom domain name (e.g. "warehouse.example.com"), 1-253
+  // characters. Changing it replaces the association.
+  string domain_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 253
+  ];
+
+  // The ACM certificate that serves TLS for the domain -- it must
+  // cover the domain name and live in the workgroup's region.
+  // Reference an AwsCertManagerCert cert_arn output or pass a literal
+  // certificate ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+}
+
+// AwsRedshiftServerlessWorkgroupEndpointAccess is one VPC endpoint
+// exposing this workgroup inside other subnets -- same-account
+// cross-VPC access without peering. The endpoint's private address and
+// port are exported per endpoint on the outputs contract.
+message AwsRedshiftServerlessWorkgroupEndpointAccess {
+  // The endpoint's name: 1-30 characters, unique within the workgroup.
+  // Changing it replaces the endpoint.
+  string endpoint_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 30
+    }
+  ];
+
+  // Subnets the endpoint's network interfaces land in -- typically the
+  // CONSUMING VPC's subnets. Empty reuses the workgroup's own
+  // subnet_ids (which must then be set -- CEL-enforced). Reference
+  // AwsSubnet subnet_id outputs or pass literal subnet IDs. Changing
+  // the list replaces the endpoint.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups attached to the endpoint's network interfaces.
+  // Empty uses the VPC's default security group. Reference
+  // AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_security_group_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsRedshiftServerlessWorkgroupUsageLimit caps one dimension of this
+// workgroup's consumption in a given period, with a configurable breach
+// action.
+message AwsRedshiftServerlessWorkgroupUsageLimit {
+  // What the limit measures: "serverless-compute" (RPU-hours of
+  // compute) or "cross-region-datasharing" (terabytes transferred to
+  // consumers in other regions). Required.
+  string usage_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "serverless-compute",
+        "cross-region-datasharing"
+      ]
+    }
+  ];
+
+  // The limit amount: RPU-hours for "serverless-compute", terabytes
+  // for "cross-region-datasharing". Must be positive.
+  int64 amount = 2 [(buf.validate.field).int64.gt = 0];
+
+  // The period the amount applies to: "daily", "weekly", or "monthly".
+  // Empty keeps the AWS default (monthly). A weekly period begins on
+  // Sunday. Changing it replaces the limit.
+  string period = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    }
+  ];
+
+  // What Redshift Serverless does when the limit is breached: "log"
+  // writes an event to the system table, "emit-metric" additionally
+  // publishes a CloudWatch metric, "deactivate" turns queries off
+  // until the period resets. Empty keeps the AWS default (log). Note
+  // the serverless action vocabulary differs from provisioned
+  // clusters' ("deactivate", not "disable").
+  string breach_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "log",
+        "emit-metric",
+        "deactivate"
+      ]
+    }
+  ];
 }

@@ -17,11 +17,13 @@ variable "spec" {
     region = string
     force_destroy = optional(bool, false)
     object_lock_enabled = optional(bool, false)
+    bucket_namespace = optional(string, "")
     versioning_status = optional(string, "")
     encryption = optional(object({
       sse_algorithm = optional(string, "")
       kms_key_id = optional(string, "")
       bucket_key_enabled = optional(bool, false)
+      blocked_encryption_types = optional(list(string), [])
     }))
     public_access_block = optional(object({
       block_public_acls = optional(bool, false)
@@ -43,7 +45,7 @@ variable "spec" {
         object_size_less_than = optional(number, 0)
       }))
       transitions = optional(list(object({
-        days = optional(number, 0)
+        days = optional(number)
         date = optional(string, "")
         storage_class = string
       })), [])
@@ -160,5 +162,53 @@ variable "spec" {
         days = optional(number, 0)
       }))
     })), [])
+    abac_status = optional(string, "")
+    analytics_configurations = optional(list(object({
+      name = string
+      filter_prefix = optional(string, "")
+      filter_tags = optional(map(string), {})
+      export = optional(object({
+        bucket_arn = string
+        bucket_account_id = optional(string, "")
+        prefix = optional(string, "")
+      }))
+    })), [])
+    inventory_configurations = optional(list(object({
+      name = string
+      disabled = optional(bool, false)
+      included_object_versions = string
+      frequency = string
+      optional_fields = optional(list(string), [])
+      filter_prefix = optional(string, "")
+      destination = object({
+        bucket_arn = string
+        format = string
+        account_id = optional(string, "")
+        prefix = optional(string, "")
+        sse_kms_key_id = optional(string, "")
+        sse_s3 = optional(bool, false)
+      })
+    })), [])
+    metrics_configurations = optional(list(object({
+      name = string
+      filter_access_point_arn = optional(string, "")
+      filter_prefix = optional(string, "")
+      filter_tags = optional(map(string), {})
+    })), [])
+    metadata_configuration = optional(object({
+      inventory_table_enabled = optional(bool, false)
+      inventory_table_encryption = optional(object({
+        sse_algorithm = string
+        kms_key_arn = optional(string, "")
+      }))
+      journal_record_expiration = object({
+        enabled = optional(bool, false)
+        days = optional(number, 0)
+      })
+      journal_table_encryption = optional(object({
+        sse_algorithm = string
+        kms_key_arn = optional(string, "")
+      }))
+    }))
   })
 }

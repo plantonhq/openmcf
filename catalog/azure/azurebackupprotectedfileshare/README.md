@@ -23,3 +23,7 @@ The **AzureBackupProtectedFileShare** component puts one Azure Files share under
 ## Future Enhancements
 
 - Restore flows (point-in-time to original or alternate location) are operational actions, not declarative state -- they stay in the portal/CLI by design.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

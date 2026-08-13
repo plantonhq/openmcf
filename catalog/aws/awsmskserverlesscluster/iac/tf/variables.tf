@@ -15,7 +15,9 @@ variable "spec" {
   description = "AwsMskServerlessCluster specification"
   type = object({
     region = string
-    subnet_ids = list(string)
-    security_group_ids = optional(list(string), [])
+    vpc_configs = list(object({
+      subnet_ids = list(string)
+      security_group_ids = optional(list(string), [])
+    }))
   })
 }

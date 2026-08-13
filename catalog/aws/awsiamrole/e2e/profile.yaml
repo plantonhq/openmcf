@@ -5,9 +5,13 @@ metadata:
 spec:
   # An IAM role under live E2E: the harness runs deploy -> GetRole verify ->
   # destroy -> verify-destroyed on both provisioners against the AWS test
-  # account via keyless SSO/OIDC credentials. The scenario attaches an
+  # account via keyless SSO/OIDC credentials. The minimal scenario attaches an
   # AWS-managed policy by literal ARN and an inline policy, exercising the
-  # attachment reconciliation on both engines. IAM is global and free.
+  # attachment reconciliation on both engines; the oidc-trust scenario
+  # deploys a path-form OIDC provider fixture and proves the typed
+  # federated-trust composition (both statement forms + the default
+  # audience). IAM is global and free.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

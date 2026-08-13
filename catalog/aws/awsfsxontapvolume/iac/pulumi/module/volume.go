@@ -126,7 +126,9 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 		// Retention bounds (default, minimum, maximum). A value of 0 IS
 		// meaningful for unit types (e.g. a 0-day minimum retention), so the
 		// value is sent whenever the type is a unit type and only elided for
-		// INFINITE/UNSPECIFIED, where AWS ignores it.
+		// INFINITE/UNSPECIFIED, where AWS takes no value. The container is
+		// attached only when at least one duration survives its type gate —
+		// an empty retention_period would send an empty struct to the AWS API.
 		if sl.RetentionPeriod != nil {
 			retentionValue := func(retentionType string, value int32) pulumi.IntPtrInput {
 				if retentionType == "INFINITE" || retentionType == "UNSPECIFIED" || retentionType == "" {
@@ -136,12 +138,14 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 			}
 
 			rp := &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodArgs{}
+			hasRetention := false
 
 			if dr := sl.RetentionPeriod.DefaultRetention; dr != nil && dr.Type != "" {
 				rp.DefaultRetention = &fsx.OntapVolumeSnaplockConfigurationRetentionPeriodDefaultRetentionArgs{
 					Type:  pulumi.StringPtr(dr.Type),
 					Value: retentionValue(dr.Type, dr.Value),
 				}
+				hasRetention = true
 			}
 
 			if mn := sl.RetentionPeriod.MinimumRetention; mn != nil && mn.Type != "" {
@@ -149,6 +153,7 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 					Type:  pulumi.StringPtr(mn.Type),
 					Value: retentionValue(mn.Type, mn.Value),
 				}
+				hasRetention = true
 			}
 
 			if mx := sl.RetentionPeriod.MaximumRetention; mx != nil && mx.Type != "" {
@@ -156,27 +161,35 @@ func volume(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*fsx.O
 					Type:  pulumi.StringPtr(mx.Type),
 					Value: retentionValue(mx.Type, mx.Value),
 				}
+				hasRetention = true
 			}
 
-			slArgs.RetentionPeriod = rp
+			if hasRetention {
+				slArgs.RetentionPeriod = rp
+			}
 		}
 
 		args.SnaplockConfiguration = slArgs
 	}
 
-	// Aggregate configuration (for FLEXGROUP volumes).
-	if spec.AggregateConfiguration != nil && len(spec.AggregateConfiguration.Aggregates) > 0 {
-		aggrs := make(pulumi.StringArray, 0, len(spec.AggregateConfiguration.Aggregates))
-		for _, a := range spec.AggregateConfiguration.Aggregates {
-			aggrs = append(aggrs, pulumi.String(a))
+	// Aggregate configuration (for FLEXGROUP volumes). The block renders when
+	// ANY leaf is set — constituents_per_aggregate WITHOUT aggregates is a
+	// legitimate shape (AWS spreads constituents across all of the file
+	// system's aggregates and pins only the constituent count). Gating on a
+	// non-empty aggregates list alone would silently drop that shape.
+	if ac := spec.AggregateConfiguration; ac != nil && (len(ac.Aggregates) > 0 || ac.ConstituentsPerAggregate > 0) {
+		aggrArgs := &fsx.OntapVolumeAggregateConfigurationArgs{}
+
+		if len(ac.Aggregates) > 0 {
+			aggrs := make(pulumi.StringArray, 0, len(ac.Aggregates))
+			for _, a := range ac.Aggregates {
+				aggrs = append(aggrs, pulumi.String(a))
+			}
+			aggrArgs.Aggregates = aggrs
 		}
 
-		aggrArgs := &fsx.OntapVolumeAggregateConfigurationArgs{
-			Aggregates: aggrs,
-		}
-
-		if spec.AggregateConfiguration.ConstituentsPerAggregate > 0 {
-			aggrArgs.ConstituentsPerAggregate = pulumi.IntPtr(int(spec.AggregateConfiguration.ConstituentsPerAggregate))
+		if ac.ConstituentsPerAggregate > 0 {
+			aggrArgs.ConstituentsPerAggregate = pulumi.IntPtr(int(ac.ConstituentsPerAggregate))
 		}
 
 		args.AggregateConfiguration = aggrArgs

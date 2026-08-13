@@ -14,11 +14,13 @@ locals {
   project_id = (
     var.spec.project_id != ""
     ? var.spec.project_id
-    : data.google_client_config.current.project
+    : data.google_client_config.current[0].project
   )
 }
 
 # The provider's own resolved configuration — the source of the default
-# project when spec.project_id is omitted.
+# project when spec.project_id is omitted. Count-gated on that one case so
+# every plan that names its project runs credential-free.
 data "google_client_config" "current" {
+  count = var.spec.project_id == "" ? 1 : 0
 }

@@ -1,6 +1,6 @@
 # AwsMskServerlessCluster
 
-Amazon MSK Serverless cluster resource for Planton. Provisions a fully managed, capacity-managed Apache Kafka cluster on AWS: no brokers, instance types, storage volumes, or Kafka version to declare — AWS scales compute and storage automatically and bills per throughput and storage consumed. The whole declaration is where the cluster lives (subnets + security groups); clients authenticate with AWS IAM (SASL/IAM) on port 9098.
+Amazon MSK Serverless cluster resource for Planton. Provisions a fully managed, capacity-managed Apache Kafka cluster on AWS: no brokers, instance types, storage volumes, or Kafka version to declare — AWS scales compute and storage automatically and bills per throughput and storage consumed. The whole declaration is where the cluster lives (one or more VPC placements); clients authenticate with AWS IAM (SASL/IAM) on port 9098.
 
 ## When to use
 
@@ -31,8 +31,9 @@ spec: { ... }
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `region` | string | **yes** | — | AWS region for the cluster. |
-| `subnetIds` | list(StringValueOrRef) | **yes** (≥1) | — | VPC subnets for the cluster network interfaces (2+ AZs recommended). Supports `value` or `valueFrom` (AwsSubnet). **ForceNew**. |
-| `securityGroupIds` | list(StringValueOrRef) | no (≤5) | VPC default group | Security groups attached to the cluster network interfaces. Ingress for port 9098 lives on the referenced `AwsSecurityGroup` nodes. **ForceNew**. |
+| `vpcConfigs` | list(object) | **yes** (≥1) | — | VPC placements. AWS provisions client-facing network interfaces in EACH declared VPC, so applications in every listed VPC connect privately — no peering or PrivateLink setup. **ForceNew**. |
+| `vpcConfigs[].subnetIds` | list(StringValueOrRef) | **yes** (≥1) | — | Subnets hosting this placement's network interfaces (2+ AZs recommended; all subnets in one entry must belong to the same VPC). Supports `value` or `valueFrom` (AwsSubnet). |
+| `vpcConfigs[].securityGroupIds` | list(StringValueOrRef) | no (≤5) | VPC default group | Security groups attached to this placement's network interfaces. Ingress for port 9098 lives on the referenced `AwsSecurityGroup` nodes. |
 
 The resource is effectively immutable: every field above is create-time (ForceNew) in the AWS provider — only tags change in place. SASL/IAM authentication is AWS's sole, mandatory scheme and is enabled unconditionally by both IaC modules, so it is not a spec field.
 
@@ -50,7 +51,6 @@ The resource is effectively immutable: every field above is create-time (ForceNe
 | Provider surface | Why omitted |
 |---|---|
 | `client_authentication.sasl.iam.enabled` as a field | AWS requires it true and offers no alternative scheme — a field that can only ever hold one value is decoration, not configuration. Both modules hardcode it. |
-| Multiple `vpc_config` blocks | AWS accepts a list, but a single config is the near-universal shape (the provisioned sibling makes the same simplification). |
 | Kafka version, broker sizing, storage, tiered storage, `server.properties` | Serverless MSK has none of these — AWS manages capacity and version. Use the provisioned `AwsMskCluster` for that control. |
 | SASL/SCRAM, mTLS, unauthenticated access, public access, PrivateLink connectivity | Not supported by serverless MSK — provisioned-cluster surfaces. |
 
@@ -63,23 +63,28 @@ metadata:
   name: events-kafka
 spec:
   region: us-west-2
-  subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: platform-private-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: platform-private-b
-        fieldPath: status.outputs.subnet_id
-  securityGroupIds:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: kafka-broker-sg
-        fieldPath: status.outputs.security_group_id
+  vpcConfigs:
+    - subnetIds:
+        - valueFrom:
+            kind: AwsSubnet
+            name: platform-private-a
+            fieldPath: status.outputs.subnet_id
+        - valueFrom:
+            kind: AwsSubnet
+            name: platform-private-b
+            fieldPath: status.outputs.subnet_id
+      securityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: kafka-broker-sg
+            fieldPath: status.outputs.security_group_id
 ```
 
 The referenced `kafka-broker-sg` carries the ingress rule for port 9098 (e.g. from the application tier's security group), keeping network policy on composable first-class nodes.
+
+### Multi-VPC access
+
+Declare additional `vpcConfigs` entries to serve clients in other VPCs privately — AWS provisions network interfaces in every listed VPC, so each VPC's workloads connect without peering, transit routing, or PrivateLink endpoints. Each placement carries its own security group, keeping per-VPC network policy where that VPC's clients live (see the `03-multi-vpc-access` preset).
 
 ## Client IAM permissions
 

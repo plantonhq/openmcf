@@ -1283,7 +1283,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -1519,7 +1519,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -1594,9 +1594,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -2135,7 +2154,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -2371,7 +2390,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -2446,9 +2465,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4136,7 +4174,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -4372,7 +4410,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -4447,9 +4485,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -4988,7 +5045,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -5224,7 +5281,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -5299,9 +5356,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7030,7 +7106,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -7266,7 +7342,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -7341,9 +7417,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`
@@ -7882,7 +7977,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -8118,7 +8213,7 @@ Allowed values (use exactly as shown):
 - `AzureEventgridNamespaceTopic` -- One named CloudEvents stream inside an Azure Event Grid namespace ({namespace_id}/topics/{name}) -- many per namespace, publishers and teams creating and deleting their own against the shared namespace (which is why the topic is a standalone kind, exactly like AzureEventgridDomainTopic and AzureEventHubConsumerGroup). Part of the Event Grid family (2193-2197) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureMongoClusterUser` -- Grants one Microsoft Entra principal access to an Azure Cosmos DB for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an access binding, not a password user: many per cluster, principals joining and leaving independently (which is why the grant is a standalone kind, the access-grant class of AzureRoleAssignment). Part of the Mongo vCore family (2211) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
-- `GcpTargetHttpsProxy`
+- `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
 - `GcpCloudRun`
 - `GcpCloudSql`
@@ -8193,9 +8288,28 @@ Allowed values (use exactly as shown):
 - `GcpAddress`
 - `GcpServiceConnectionPolicy`
 - `GcpCertManagerDnsAuthorization`
+- `GcpCertificateMap` -- GcpCertManagerCert is a prerequisite because a map entry binds hostnames to EXISTING certificates — the canonical map references a certificate fixture's resource name.
 - `GcpCloudRunJob` -- 3120–3129: GCP serverless overflow
 - `GcpServerlessVpcConnector`
 - `GcpComputeDisk` -- 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that holds GcpComputeInstance is fully allocated)
+- `GcpComputeMig` -- GcpVpcNetwork is a prerequisite because the canonical group runs its fleet on a dedicated custom-mode VPC — a managed instance group's template must attach every VM to a network, and the default VPC is never assumed.
+- `GcpMonitoringNotificationChannel` -- 3140–3149: GCP observability & log routing
+- `GcpMonitoringAlertPolicy` -- GcpMonitoringNotificationChannel is a prerequisite because the policy's canonical shape references a channel to notify — a policy without a delivery endpoint measures but never pages.
+- `GcpMonitoringUptimeCheck`
+- `GcpLoggingSink` -- GcpGcsBucket is a prerequisite because the canonical sink exports to a Cloud Storage bucket — the cheapest destination that proves the whole writer-identity grant flow.
+- `GcpMonitoringDashboard`
+- `GcpMonitoringSlo`
+- `GcpLogBucket`
+- `GcpLogMetric`
+- `GcpSecretManagerSecret` -- 3150–3159: GCP security & identity GcpServiceAccount is a prerequisite because the canonical secret grants secretAccessor to a workload service account — the access story the kind exists to model.
+- `GcpIdentityPlatformConfig`
+- `GcpIdentityPlatformTenant` -- GcpIdentityPlatformConfig is a prerequisite because tenants exist only in projects whose Identity Platform config enables multi_tenant.allow_tenants — a tenant without the initialized, tenant-enabled project config cannot be created at all.
+- `GcpIamOauthClient`
+- `GcpIamDenyPolicy`
+- `GcpCloudRunDomainMapping` -- 3160–3169: GCP serverless edge GcpCloudRun is a prerequisite because a domain mapping exists only to point a verified domain at a running Cloud Run service — the route it maps must already exist for the mapping to be created at all.
+- `GcpWorkflow`
+- `GcpEventarcTrigger` -- GcpCloudRun is a prerequisite because the canonical trigger routes a Pub/Sub messagePublished event to a Cloud Run service — the destination story the kind exists to model.
+- `GcpEventarcMessageBus`
 - `KubernetesNamespace` -- 4000–4999: Kubernetes resources, organized in family sub-bands (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts analytics & ML; 4190–4199 reserved for growth) 4000–4029: Kubernetes building blocks (core API primitives)
 - `KubernetesDeployment`
 - `KubernetesStatefulSet`

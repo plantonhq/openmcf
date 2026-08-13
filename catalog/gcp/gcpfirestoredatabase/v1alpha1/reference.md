@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFirestoreDatabaseSpec defines the configuration for a Google Cloud
 Firestore database.
 
@@ -23,8 +25,8 @@ Important behavioral notes:
   - The type field can be changed between FIRESTORE_NATIVE and DATASTORE_MODE
     after creation, but this is a significant operational change.
 
-  - Firestore databases do not support GCP labels. Resource Manager tags are
-    available but are an advanced organizational feature excluded from v1.
+  - Firestore databases do not support GCP labels. Resource Manager tags
+    are supported at create time via resource_manager_tags.
 
   - The "(default)" database name is special -- it is the primary database
     that Firestore client libraries connect to when no database ID is
@@ -49,6 +51,11 @@ spec:
 
   # Keep the database independent of any App Engine app lifecycle.
   appEngineIntegrationMode: DISABLED
+
+  # DELETE (the default) keeps destroys real — the raw provider would
+  # ABANDON the database. Production databases pair PREVENT here with
+  # deleteProtectionState: DELETE_PROTECTION_ENABLED.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -65,6 +72,11 @@ spec:
 | `spec.databaseEdition` | `string` |  |  |  |
 | `spec.kmsKeyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
 | `spec.appEngineIntegrationMode` | `string` |  |  |  |
+| `spec.firestoreDataAccessMode` | `string` |  |  |  |
+| `spec.mongodbCompatibleDataAccessMode` | `string` |  |  |  |
+| `spec.realtimeUpdatesMode` | `string` |  |  |  |
+| `spec.resourceManagerTags` | `map<string, string>` |  |  |  |
+| `spec.deletionPolicy` | `string` |  | `DELETE` |  |
 
 ## Field Details
 
@@ -230,9 +242,79 @@ If not set, GCP applies its default.
 
 - rule: app_engine_integration_mode must be ENABLED or DISABLED
 
+### spec.firestoreDataAccessMode
+
+`string`
+
+Firestore API data access mode — whether the classic Firestore API
+can read and write this database. ENTERPRISE edition only. Use
+DATA_ACCESS_MODE_DISABLED on a database dedicated to the
+MongoDB-compatible API to keep access single-protocol. At most one of
+the two data-access modes can be ENABLED on a database (the API
+rejects both-enabled at create), and realtime updates require THIS
+mode to be explicitly ENABLED.
+
+- rule: firestore_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED
+
+### spec.mongodbCompatibleDataAccessMode
+
+`string`
+
+MongoDB-compatible API data access mode — whether MongoDB drivers
+and tools can read and write this database. ENTERPRISE edition only.
+Pair with MONGODB_COMPATIBLE_API-scoped GcpFirestoreIndex indexes
+for query support. Mutually exclusive with an ENABLED
+firestore_data_access_mode — a database is single-protocol, so a
+MongoDB-dedicated database can never carry realtime updates.
+
+- rule: mongodb_compatible_data_access_mode must be DATA_ACCESS_MODE_ENABLED or DATA_ACCESS_MODE_DISABLED
+
+### spec.realtimeUpdatesMode
+
+`string`
+
+Realtime updates mode — whether clients can subscribe to live query
+snapshots on this database. ENTERPRISE edition only. Enabling it
+requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED
+(realtime subscriptions ride the classic Firestore API; leaving the
+access mode unset does not count as enabled).
+
+- rule: realtime_updates_mode must be REALTIME_UPDATES_MODE_ENABLED or REALTIME_UPDATES_MODE_DISABLED
+
+### spec.resourceManagerTags
+
+`map<string, string>`
+
+Resource Manager tags bound to the database for org-policy and IAM
+conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
+Create-time only: changing them later replaces the database.
+
+### spec.deletionPolicy
+
+`string` · optional (explicit presence)
+
+Deletion policy — what happens when this resource is destroyed:
+  ""        -- same as "DELETE" (the Planton default; note the raw
+               provider defaults to ABANDON, which would leave the
+               database running unmanaged after a destroy)
+  "DELETE"  -- the database is deleted (delete protection, if
+               enabled, still blocks it)
+  "PREVENT" -- destroy FAILS; belt-and-suspenders beside
+               delete_protection_state
+  "ABANDON" -- the database is removed from management but keeps
+               running in GCP
+
+- default: `DELETE`
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `enterprise_requires_firestore_native`: database_edition ENTERPRISE requires type to be FIRESTORE_NATIVE
+- `firestore_data_access_mode_requires_enterprise`: firestore_data_access_mode can only be set on ENTERPRISE edition databases
+- `mongodb_data_access_mode_requires_enterprise`: mongodb_compatible_data_access_mode can only be set on ENTERPRISE edition databases
+- `realtime_updates_mode_requires_enterprise`: realtime_updates_mode can only be set on ENTERPRISE edition databases
+- `data_access_modes_mutually_exclusive`: only one of firestore_data_access_mode and mongodb_compatible_data_access_mode can be DATA_ACCESS_MODE_ENABLED
+- `realtime_updates_requires_firestore_access`: realtime_updates_mode REALTIME_UPDATES_MODE_ENABLED requires firestore_data_access_mode DATA_ACCESS_MODE_ENABLED (realtime subscriptions use the Firestore API; unset does not count as enabled)
 
 ## Outputs
 

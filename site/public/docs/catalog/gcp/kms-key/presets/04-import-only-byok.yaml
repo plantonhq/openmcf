@@ -16,3 +16,6 @@ spec:
   skipInitialVersionCreation: true
   versionTemplate:
     algorithm: GOOGLE_SYMMETRIC_ENCRYPTION
+  # Imported material is irreplaceable from GCP's side — destroys must
+  # fail unless deliberately re-decided.
+  deletionPolicy: PREVENT

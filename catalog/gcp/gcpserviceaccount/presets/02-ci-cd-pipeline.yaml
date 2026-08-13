@@ -8,7 +8,12 @@ spec:
     value: "<gcp-project-id>"
   displayName: CI/CD Pipeline
   description: Deploys releases from the pipeline; prefer Workload Identity Federation over the exported key where the CI system supports OIDC
-  createKey: true  # JSON key exported for CI/CD systems that cannot federate; rotate regularly
+  # JSON key exported for CI/CD systems that cannot federate. keepers is the
+  # rotation trigger: bump the value on your rotation cadence and the key is
+  # replaced (old key destroyed, fresh key_base64 exported).
+  userManagedKey:
+    keepers:
+      rotation: "2026-Q3"  # replace on your rotation cadence
   projectIamRoles:
     - roles/artifactregistry.writer
     - roles/container.developer

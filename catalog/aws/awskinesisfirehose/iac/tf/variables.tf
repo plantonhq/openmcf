@@ -67,6 +67,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -98,10 +99,34 @@ variable "spec" {
       }))
       data_format_conversion = optional(object({
         enabled = optional(bool, false)
-        input_format = optional(string, "")
-        output_format = optional(string, "")
-        parquet_compression = optional(string, "")
-        orc_compression = optional(string, "")
+        open_x_json = optional(object({
+          case_insensitive = optional(bool)
+          column_to_json_key_mappings = optional(map(string), {})
+          convert_dots_in_json_keys_to_underscores = optional(bool, false)
+        }))
+        hive_json = optional(object({
+          timestamp_formats = optional(list(string), [])
+        }))
+        parquet = optional(object({
+          compression = optional(string, "")
+          block_size_bytes = optional(number, 0)
+          page_size_bytes = optional(number, 0)
+          max_padding_bytes = optional(number, 0)
+          enable_dictionary_compression = optional(bool, false)
+          writer_version = optional(string, "")
+        }))
+        orc = optional(object({
+          compression = optional(string, "")
+          block_size_bytes = optional(number, 0)
+          stripe_size_bytes = optional(number, 0)
+          bloom_filter_columns = optional(list(string), [])
+          bloom_filter_false_positive_probability = optional(number)
+          dictionary_key_threshold = optional(number, 0)
+          enable_padding = optional(bool, false)
+          padding_tolerance = optional(number)
+          format_version = optional(string, "")
+          row_index_stride = optional(number, 0)
+        }))
         schema = optional(object({
           database_name = string
           table_name = string
@@ -151,6 +176,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -217,6 +243,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -288,6 +315,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -377,6 +405,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -443,6 +472,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -518,6 +548,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string
@@ -585,6 +616,7 @@ variable "spec" {
             buffer_size_in_mbs = optional(number, 0)
             buffer_interval_in_seconds = optional(number, 0)
             number_of_retries = optional(number, 0)
+            role_arn = optional(string, "")
           }))
           metadata_extraction = optional(object({
             query = string

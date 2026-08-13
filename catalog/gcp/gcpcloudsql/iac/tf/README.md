@@ -4,7 +4,7 @@ This Terraform module provisions a Cloud SQL instance (`google_sql_database_inst
 
 ## Overview
 
-The module creates a managed MySQL, PostgreSQL, or SQL Server instance — a primary, or (with `master_instance_name`) a read replica — with edition/HA, disk tuning, explicit connectivity (public IPv4 / private VPC IP / Private Service Connect), backups with point-in-time recovery, maintenance scheduling, Query Insights, password policies, managed connection pooling, CMEK, and both delete guards. It also enables the Cloud SQL Admin API (`sqladmin.googleapis.com`) so a fresh project works on the first deploy.
+The module creates a managed MySQL, PostgreSQL, or SQL Server instance — a primary, a read replica (with `master_instance_name`), or a read pool (`instance_type: READ_POOL_INSTANCE` with `node_count` / `read_pool_auto_scale`) — with edition/HA, disk tuning (including hyperdisk provisioned IOPS/throughput), explicit connectivity (public IPv4 / private VPC IP / Private Service Connect with DNS automation), backups with point-in-time recovery and a final backup on delete, restore provenance (clone / backup-run restore / Backup-and-DR point-in-time restore), cross-region DR pairing, maintenance scheduling and version pinning, Query Insights (standard and enhanced), password policies, managed connection pooling, Active Directory and Entra ID authentication for SQL Server, CMEK, both delete guards, and the `deletion_policy` teardown lever. It also enables the Cloud SQL Admin API (`sqladmin.googleapis.com`) so a fresh project works on the first deploy.
 
 ## Usage with Planton CLI
 

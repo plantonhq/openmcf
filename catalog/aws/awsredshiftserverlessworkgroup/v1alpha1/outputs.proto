@@ -22,4 +22,21 @@ message AwsRedshiftServerlessWorkgroupStackOutputs {
 
   // The port the workgroup accepts connections on.
   int32 port = 5;
+
+  // The private DNS addresses of the workgroup's VPC endpoints, keyed
+  // by endpoint name (spec.endpoint_accesses entries) -- what consumers
+  // inside the endpoint's VPC put in connection strings.
+  map<string, string> endpoint_access_addresses = 6;
+
+  // The AWS-generated usage-limit IDs, keyed exactly as the module keys
+  // each limit: "<usage_type>/<period>", with an unset period rendered
+  // as "monthly" (the AWS default). These are the handles
+  // `aws redshift-serverless delete-usage-limit` and state import take;
+  // AWS generates them at creation time.
+  map<string, string> usage_limit_ids = 7;
+
+  // When the custom domain's ACM certificate expires (RFC 3339) --
+  // empty without a custom domain. Renewals through ACM update it in
+  // place.
+  string custom_domain_certificate_expiry_time = 8;
 }

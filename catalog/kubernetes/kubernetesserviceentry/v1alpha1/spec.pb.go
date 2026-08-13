@@ -431,10 +431,10 @@ const file_catalog_kubernetes_kubernetesserviceentry_v1alpha1_spec_proto_rawDesc
 	"\vtarget_port\x18\x04 \x01(\rB\v\xbaH\b*\x06\x18\xff\xff\x03(\x01H\x01R\n" +
 	"targetPort\x88\x01\x01B\v\n" +
 	"\t_protocolB\x0e\n" +
-	"\f_target_port\"\xb3\v\n" +
-	"\x1eKubernetesServiceEntryEndpoint\x12\xa8\x03\n" +
-	"\aaddress\x18\x01 \x01(\tB\x88\x03\xbaH\x84\x03\xba\x01\xdb\x01\n" +
-	"/service_entry_endpoint.uds_absolute_or_abstract\x12Ma unix:// endpoint address must be an absolute path or an abstract socket (@)\x1aY!this.startsWith('unix://') || this.substring(7, 8) == '/' || this.substring(7, 8) == '@'\xba\x01\x9c\x01\n" +
+	"\f_target_port\"\x95\v\n" +
+	"\x1eKubernetesServiceEntryEndpoint\x12\x8a\x03\n" +
+	"\aaddress\x18\x01 \x01(\tB\xea\x02\xbaH\xe6\x02\xba\x01\xbd\x01\n" +
+	"/service_entry_endpoint.uds_absolute_or_abstract\x12Ma unix:// endpoint address must be an absolute path or an abstract socket (@)\x1a;!this.startsWith('unix://') || this.matches('^unix://[/@]')\xba\x01\x9c\x01\n" +
 	"$service_entry_endpoint.uds_not_a_dir\x12@a unix:// endpoint address may not be a directory (trailing '/')\x1a2!this.startsWith('unix://') || !this.endsWith('/')r\x03\x18\x80\x02H\x00R\aaddress\x88\x01\x01\x12\xbc\x01\n" +
 	"\x05ports\x18\x02 \x03(\v2a.dev.planton.kubernetes.kubernetesserviceentry.v1alpha1.KubernetesServiceEntryEndpoint.PortsEntryBC\xbaH@\x9a\x01=\x10\x80\x01\".r,\x18?2(^[a-zA-Z0-9]([-a-zA-Z0-9]*[a-zA-Z0-9])?$*\b*\x06\x18\xff\xff\x03(\x01R\x05ports\x12\x85\x01\n" +
 	"\x06labels\x18\x03 \x03(\v2b.dev.planton.kubernetes.kubernetesserviceentry.v1alpha1.KubernetesServiceEntryEndpoint.LabelsEntryB\t\xbaH\x06\x9a\x01\x03\x10\x80\x02R\x06labels\x12'\n" +

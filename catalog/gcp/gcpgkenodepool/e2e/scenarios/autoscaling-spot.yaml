@@ -1,8 +1,12 @@
 # Autoscaling Spot GcpGkeNodePool scenario: exercises the autoscaling sizing
 # arm (scale-to-zero minimum, ANY location policy), Spot capacity, taints,
-# Kubernetes node labels, explicit management/upgrade settings, and kubelet
-# hardening — the depth surface of the rebuilt spec, live on the
-# prerequisite cluster.
+# Kubernetes node labels, explicit management/upgrade settings, kubelet
+# hardening AND tuning (soft-eviction trio, crash-loop backoff, image GC
+# ages), an explicit deletion policy, and cgroup v2 — the depth surface of
+# the expanded spec, live on the prerequisite cluster. node_drain_config is
+# deliberately NOT armed: GKE gates customized node drain behind a
+# per-project support-case allowlist (the API 400s without it — see the
+# spec field comment and this kind's e2e profile deferral).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeNodePool
 metadata:
@@ -42,6 +46,15 @@ spec:
   upgradeSettings:
     maxSurge: 1
     maxUnavailable: 0
+  # Read-side switch in its natural habitat (the autoscaler owns the
+  # size): skips the per-pool IGM node-count queries. The pool's
+  # instance_group_urls output stays populated — only the provider's
+  # unexported managed-IGM attribute is skipped — so the live evidence
+  # is the clean re-plan after apply (the idempotency gate).
+  ignoreNodeCountChanges: true
+  # Explicit destroy stance: the destroy-verified phase proves the pool
+  # deletes cleanly with the policy armed.
+  deletionPolicy: DELETE
   nodeConfig:
     machineType: e2-standard-2
     diskSizeGb: 50
@@ -58,3 +71,18 @@ spec:
     kubeletConfig:
       insecureKubeletReadonlyPortEnabled: "FALSE"
       podPidsLimit: 4096
+      # The expanded tuning families, one representative each: eviction
+      # (threshold + grace + reclaim as a coherent trio), restart backoff,
+      # and age-based image GC. Reclaim is percentage-only — the live API
+      # rejected 100Mi with 'invalid percentage, must end with "%"'.
+      evictionSoft:
+        memoryAvailable: 200Mi
+      evictionSoftGracePeriod:
+        memoryAvailable: "90s"
+      evictionMinimumReclaim:
+        memoryAvailable: "10%"
+      crashLoopBackOff:
+        maxContainerRestartPeriod: "300s"
+      imageMinimumGcAge: "120s"
+    linuxNodeConfig:
+      cgroupMode: CGROUP_MODE_V2

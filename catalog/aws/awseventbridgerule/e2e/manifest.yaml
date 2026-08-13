@@ -1,3 +1,8 @@
+# Canonical validated example: a scheduled operations rule fanning out to
+# the full typed-target spread -- Redshift Data API, SSM Run Command,
+# SageMaker Pipelines, AppSync, and ECS RunTask with task tags (AWS caps a
+# rule at 5 targets). Each service-typed target carries the role
+# EventBridge assumes to invoke it.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEventBridgeRule
 metadata:
@@ -5,16 +10,69 @@ metadata:
   org: test-org
   env: dev
   id: test-rule-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeRule.test-rule
 spec:
   region: us-east-1
-  description: Test rule for local development
+  description: Nightly operations fan-out for local development
   scheduleExpression: "rate(1 hour)"
   targets:
-    - name: test-target
+    - name: warehouse-refresh
       arn:
-        value: arn:aws:lambda:us-east-1:123456789012:function:test-function
+        value: arn:aws:redshift:us-east-1:123456789012:cluster:analytics-warehouse
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-redshift-data
+      redshiftTarget:
+        database: analytics
+        dbUser: etl_maintenance
+        sql: "REFRESH MATERIALIZED VIEW mv_hourly_orders;"
+        statementName: hourly-mv-refresh
+        withEvent: true
+    - name: fleet-log-rotate
+      arn:
+        value: arn:aws:ssm:us-east-1::document/AWS-RunShellScript
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-run-command
+      runCommandTargets:
+        - key: tag:Environment
+          values:
+            - production
+        - key: tag:Role
+          values:
+            - app-server
+      input: '{"commands":["logrotate -f /etc/logrotate.conf"]}'
+    - name: model-retrain
+      arn:
+        value: arn:aws:sagemaker:us-east-1:123456789012:pipeline/churn-retrain
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-sagemaker-pipeline
+      sagemakerPipelineTarget:
+        pipelineParameterList:
+          - name: InputDataS3Uri
+            value: s3://training-data/hourly/
+    - name: cache-invalidate
+      arn:
+        value: arn:aws:appsync:us-east-1:123456789012:endpoints/graphql-api/abcdef123456
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-appsync-invoke
+      appsyncTarget:
+        graphqlOperation: "mutation InvalidateCache($ts:String){ invalidateCache(timestamp:$ts){ ok } }"
+      inputTransformer:
+        inputPaths:
+          ts: "$.time"
+        inputTemplate: '{"ts": <ts>}'
+    - name: batch-compaction-task
+      arn:
+        value: arn:aws:ecs:us-east-1:123456789012:cluster/ops-cluster
+      roleArn:
+        value: arn:aws:iam::123456789012:role/events-ecs-run-task
+      ecsTarget:
+        taskDefinitionArn:
+          value: arn:aws:ecs:us-east-1:123456789012:task-definition/compaction:5
+        launchType: FARGATE
+        networkConfiguration:
+          subnets:
+            - value: subnet-0a1b2c3d4e5f60718
+          securityGroups:
+            - value: sg-0a1b2c3d4e5f60718
+        tags:
+          team: data-platform
+          cost-center: warehouse-ops

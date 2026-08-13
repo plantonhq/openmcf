@@ -20,6 +20,12 @@ resource "google_compute_security_policy" "this" {
   description = var.spec.description != "" ? var.spec.description : null
   type        = var.spec.type != "" ? var.spec.type : null
 
+  labels = local.final_labels
+
+  # What destroy does to the WAF shield: DELETE (default), PREVENT
+  # (refuse), or ABANDON (drop from state, keep enforcing).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.compute_api]
 
   # Adaptive Protection (CAAP): Layer 7 DDoS detection with optional
@@ -65,6 +71,9 @@ resource "google_compute_security_policy" "this" {
       json_parsing            = advanced_options_config.value.json_parsing != "" ? advanced_options_config.value.json_parsing : null
       log_level               = advanced_options_config.value.log_level != "" ? advanced_options_config.value.log_level : null
       user_ip_request_headers = length(advanced_options_config.value.user_ip_request_headers) > 0 ? advanced_options_config.value.user_ip_request_headers : null
+
+      # How much of each request body the WAF inspects (8KB default).
+      request_body_inspection_size = advanced_options_config.value.request_body_inspection_size != "" ? advanced_options_config.value.request_body_inspection_size : null
 
       dynamic "json_custom_config" {
         for_each = advanced_options_config.value.json_custom_config != null ? [advanced_options_config.value.json_custom_config] : []

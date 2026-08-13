@@ -1,0 +1,29 @@
+# Standard AwsSqsQueue scenario proving the explicit encryption OPT-OUT: AWS
+# enables SSE-SQS on new queues by default, and `sqsManagedSseEnabled: false`
+# is the only way to declare an unencrypted queue -- the presence-typed
+# explicit-false send path. The lane's verifier must see SqsManagedSseEnabled
+# reported false by GetQueueAttributes (the omit path, by contrast, leaves
+# AWS's default ON and is exercised by the shared prerequisite fixture, which
+# sets no encryption field at all).
+#
+# This is also the standard (non-FIFO) queue shape's first proof under the
+# kind's own lanes -- previously it ran live only as other kinds' fixture.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSqsQueue
+metadata:
+  name: planton-oss-e2e-awssqsqueue-standard-opt-out
+  id: planton-oss-e2e-awssqsqueue-standard-opt-out
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssqsqueue
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  sqsManagedSseEnabled: false
+  delaySeconds: 5
+  receiveWaitTimeSeconds: 20

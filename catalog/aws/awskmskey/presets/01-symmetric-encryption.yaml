@@ -10,4 +10,4 @@ spec:
   rotation_period_in_days: 365
   deletion_window_days: 30
   aliases:
-    - alias/<key-alias>
+    - alias/my-symmetric-key

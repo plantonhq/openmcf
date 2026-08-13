@@ -324,7 +324,9 @@ type GcpCloudTasksQueueHttpTarget struct {
 	// HTTP method override for all tasks in this queue.
 	// When specified, overrides the method on individual tasks.
 	// Note: if set to GET, the task body is ignored at execution time.
-	// Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS".
+	// Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS",
+	// or the API's explicit "HTTP_METHOD_UNSPECIFIED" sentinel (equivalent to
+	// leaving the override unset).
 	HttpMethod string `protobuf:"bytes,1,opt,name=http_method,json=httpMethod,proto3" json:"http_method,omitempty"`
 	// HTTP headers to set on all tasks dispatched from this queue.
 	// These headers override any task-level headers with the same key.
@@ -716,9 +718,15 @@ func (x *GcpCloudTasksQueueLoggingConfig) GetSamplingRatio() float64 {
 //
 //   - Cloud Tasks queues do NOT support GCP labels.
 //
-//   - Pause/resume (the API's queue state) is a runtime operation, not part
-//     of this declarative surface. Use the gcloud CLI or the Cloud Tasks API
-//     to pause or resume dispatch on a provisioned queue.
+//   - Pause/resume is declarative here: editing desired_state and applying
+//     pauses or resumes the queue. But the provider tracks the field as a
+//     config-only (virtual) value — it never reads the queue's live dispatch
+//     state back into it — so an out-of-band gcloud pause is INVISIBLE to an
+//     apply whose desired_state did not change (live-verified: the apply
+//     plans zero changes and the queue stays paused). To recover a queue
+//     paused out-of-band, either resume it out-of-band or flip the spec
+//     PAUSED → apply → RUNNING → apply (the value must change for the
+//     provider to issue the resume call).
 //
 //   - Rate limits and retry config have GCP-computed defaults when not specified.
 //     For most workloads, the defaults are reasonable starting points.
@@ -758,8 +766,35 @@ type GcpCloudTasksQueueSpec struct {
 	RetryConfig *GcpCloudTasksQueueRetryConfig `protobuf:"bytes,7,opt,name=retry_config,json=retryConfig,proto3" json:"retry_config,omitempty"`
 	// Cloud Logging configuration for task dispatch operations.
 	StackdriverLoggingConfig *GcpCloudTasksQueueLoggingConfig `protobuf:"bytes,8,opt,name=stackdriver_logging_config,json=stackdriverLoggingConfig,proto3" json:"stackdriver_logging_config,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// Dispatch state the queue is held in:
+	//
+	//	""        -- same as "RUNNING" (the provider default)
+	//	"RUNNING" -- tasks are dispatched to their targets
+	//	"PAUSED"  -- tasks accumulate in the queue but none are dispatched —
+	//	             the safe holding state during target maintenance or
+	//	             incident response
+	//
+	// Declarative for spec-driven transitions: editing this value and
+	// applying pauses/resumes the queue (live-verified both directions).
+	// NOT drift-correcting: the provider treats this as a config-only
+	// (virtual) field and never reads the live dispatch state back, so an
+	// out-of-band gcloud pause survives applies whose spec value is
+	// unchanged. Recover by resuming out-of-band, or by flipping this field
+	// PAUSED → apply → RUNNING → apply so the value change triggers the
+	// provider's resume call.
+	DesiredState string `protobuf:"bytes,9,opt,name=desired_state,json=desiredState,proto3" json:"desired_state,omitempty"`
+	// What destroying this resource does to the queue:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the queue and every task still in it are deleted; the
+	//	             queue's ID is reserved by the API for up to 7 days
+	//	"PREVENT" -- destroy FAILS; protects a queue whose backlog must not
+	//	             be lost
+	//	"ABANDON" -- the queue is removed from management but keeps running
+	//	             (and dispatching) in GCP
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudTasksQueueSpec) Reset() {
@@ -848,6 +883,20 @@ func (x *GcpCloudTasksQueueSpec) GetStackdriverLoggingConfig() *GcpCloudTasksQue
 	return nil
 }
 
+func (x *GcpCloudTasksQueueSpec) GetDesiredState() string {
+	if x != nil {
+		return x.DesiredState
+	}
+	return ""
+}
+
+func (x *GcpCloudTasksQueueSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcloudtasksqueue_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudtasksqueue_v1alpha1_spec_proto_rawDesc = "" +
@@ -870,10 +919,10 @@ const file_catalog_gcp_gcpcloudtasksqueue_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04path\x18\x04 \x01(\tR\x04path\x12!\n" +
 	"\fquery_params\x18\x05 \x01(\tR\vqueryParams\x12\x9e\x01\n" +
 	"\fenforce_mode\x18\x06 \x01(\tB{\xbaHx\xba\x01u\n" +
-	"\x12valid_enforce_mode\x12,enforce_mode must be ALWAYS or IF_NOT_EXISTS\x1a1this == '' || this in ['ALWAYS', 'IF_NOT_EXISTS']R\venforceMode\"\xd2\x06\n" +
-	"\x1cGcpCloudTasksQueueHttpTarget\x12\xdb\x01\n" +
-	"\vhttp_method\x18\x01 \x01(\tB\xb9\x01\xbaH\xb5\x01\xba\x01\xb1\x01\n" +
-	"\x11valid_http_method\x12Hhttp_method must be one of: POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS\x1aRthis == '' || this in ['POST', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']R\n" +
+	"\x12valid_enforce_mode\x12,enforce_mode must be ALWAYS or IF_NOT_EXISTS\x1a1this == '' || this in ['ALWAYS', 'IF_NOT_EXISTS']R\venforceMode\"\x86\a\n" +
+	"\x1cGcpCloudTasksQueueHttpTarget\x12\x8f\x02\n" +
+	"\vhttp_method\x18\x01 \x01(\tB\xed\x01\xbaH\xe9\x01\xba\x01\xe5\x01\n" +
+	"\x11valid_http_method\x12ahttp_method must be one of: HTTP_METHOD_UNSPECIFIED, POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS\x1amthis == '' || this in ['HTTP_METHOD_UNSPECIFIED', 'POST', 'GET', 'HEAD', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']R\n" +
 	"httpMethod\x12|\n" +
 	"\x10header_overrides\x18\x02 \x03(\v2Q.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueHttpHeaderOverrideR\x0fheaderOverrides\x12j\n" +
 	"\voauth_token\x18\x03 \x01(\v2I.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueOAuthTokenR\n" +
@@ -899,7 +948,7 @@ const file_catalog_gcp_gcpcloudtasksqueue_v1alpha1_spec_proto_rawDesc = "" +
 	"\rmax_doublings\x18\x05 \x01(\x05R\fmaxDoublings\"\xb9\x01\n" +
 	"\x1fGcpCloudTasksQueueLoggingConfig\x12\x95\x01\n" +
 	"\x0esampling_ratio\x18\x01 \x01(\x01Bn\xbaHk\xba\x01h\n" +
-	"\x14valid_sampling_ratio\x124sampling_ratio must be between 0.0 and 1.0 inclusive\x1a\x1athis >= 0.0 && this <= 1.0R\rsamplingRatio\"\xe6\x06\n" +
+	"\x14valid_sampling_ratio\x124sampling_ratio must be between 0.0 and 1.0 inclusive\x1a\x1athis >= 0.0 && this <= 1.0R\rsamplingRatio\"\xbd\t\n" +
 	"\x16GcpCloudTasksQueueSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12D\n" +
@@ -912,7 +961,12 @@ const file_catalog_gcp_gcpcloudtasksqueue_v1alpha1_spec_proto_rawDesc = "" +
 	"\vrate_limits\x18\x06 \x01(\v2I.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueRateLimitsR\n" +
 	"rateLimits\x12m\n" +
 	"\fretry_config\x18\a \x01(\v2J.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueRetryConfigR\vretryConfig\x12\x8a\x01\n" +
-	"\x1astackdriver_logging_config\x18\b \x01(\v2L.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueLoggingConfigR\x18stackdriverLoggingConfigB\xee\x02\n" +
+	"\x1astackdriver_logging_config\x18\b \x01(\v2L.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1.GcpCloudTasksQueueLoggingConfigR\x18stackdriverLoggingConfig\x12\x96\x01\n" +
+	"\rdesired_state\x18\t \x01(\tBq\xbaHn\xba\x01k\n" +
+	"\x13valid_desired_state\x12'desired_state must be RUNNING or PAUSED\x1a+this == '' || this in ['RUNNING', 'PAUSED']R\fdesiredState\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xee\x02\n" +
 	"/com.dev.planton.gcp.gcpcloudtasksqueue.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/gcp/gcpcloudtasksqueue/v1alpha1;gcpcloudtasksqueuev1alpha1\xa2\x02\x04DPGG\xaa\x02+Dev.Planton.Gcp.Gcpcloudtasksqueue.V1alpha1\xca\x02+Dev\\Planton\\Gcp\\Gcpcloudtasksqueue\\V1alpha1\xe2\x027Dev\\Planton\\Gcp\\Gcpcloudtasksqueue\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Gcp::Gcpcloudtasksqueue::V1alpha1b\x06proto3"
 
 var (

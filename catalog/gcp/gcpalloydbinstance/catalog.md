@@ -33,7 +33,7 @@ Open the deployment store, find **GCP AlloyDB Instance**, and click **Deploy**. 
 ### CLI
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbInstance
 metadata:
   name: orders-read-pool
@@ -47,7 +47,6 @@ spec:
   readPoolConfig:
     nodeCount: 2
   cpuCount: 4
-  availabilityType: REGIONAL
 ```
 
 ### InfraChart
@@ -67,7 +66,7 @@ spec:
 
 **Instance type** — Blank or `READ_POOL` is the common read-scaling shape. `PRIMARY` and `SECONDARY` exist for advanced topologies where the cluster does not bundle the compute node.
 
-**Read pool sizing** — `readPoolConfig.nodeCount` sets how many read nodes serve traffic. Pair with `availabilityType: REGIONAL` for multi-zone read HA.
+**Read pool sizing** — `readPoolConfig.nodeCount` sets how many read nodes serve traffic, and it alone decides availability: 1 node is zonal, 2+ nodes spread across zones for regional read HA. Leave `availabilityType` empty on read pools — the API derives it from the node count and does not store a sent value (`availabilityType` is for PRIMARY/SECONDARY instances).
 
 **Machine sizing** — Set `cpuCount` (2, 4, 8, 16, 32, 64, 96, 128) or `machineType` explicitly — never both.
 

@@ -23,3 +23,6 @@ spec:
   locationId: nam5
   type: FIRESTORE_NATIVE
   deleteProtectionState: DELETE_PROTECTION_DISABLED
+  # Explicit DELETE (also the spec default): proves the modeled field
+  # round-trips with no diff against the module's safe-teardown contract.
+  deletionPolicy: DELETE

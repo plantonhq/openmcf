@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
@@ -41,8 +42,11 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53zonev1alpha1.AwsRoute5
 	if spec.DelegationSetId != "" {
 		zoneArgs.DelegationSetId = pulumi.String(spec.DelegationSetId)
 	}
-	if spec.EnableAcceleratedRecovery {
-		zoneArgs.EnableAcceleratedRecovery = pulumi.Bool(true)
+	// Tri-state pass-through: AWS keeps the feature's current state when the
+	// argument is absent and requires an EXPLICIT false to switch it back
+	// off, so the spec's presence travels as-is.
+	if spec.EnableAcceleratedRecovery != nil {
+		zoneArgs.EnableAcceleratedRecovery = pulumi.Bool(spec.GetEnableAcceleratedRecovery())
 	}
 
 	// A private zone is defined by its VPC set. AWS creates the zone attached
@@ -73,10 +77,21 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53zonev1alpha1.AwsRoute5
 	// status flips to SIGNING — an explicit dependency, not just ordering.
 	// The KMS key requirements (us-east-1, ECC_NIST_P256, the
 	// dnssec-route53.amazonaws.com key policy) are documented on the spec.
+	// The DNSSEC chain-of-trust outputs are empty unless signing is enabled.
+	dsRecord := pulumi.String("").ToStringOutput()
+	dnskeyRecord := pulumi.String("").ToStringOutput()
+	keySigningKeyTag := pulumi.String("").ToStringOutput()
 	if spec.Dnssec != nil {
 		kskName := spec.Dnssec.KeySigningKeyName
 		if kskName == "" {
 			kskName = locals.ResourceName + "-ksk"
+		}
+		// ACTIVE unless the spec deactivates the key (the diagnostics
+		// lever); spec default and provider default agree, so this is
+		// always sent.
+		kskStatus := spec.Dnssec.KeySigningKeyStatus
+		if kskStatus == "" {
+			kskStatus = "ACTIVE"
 		}
 		createdKsk, err := route53.NewKeySigningKey(ctx,
 			fmt.Sprintf("%s-ksk", locals.ResourceName),
@@ -84,7 +99,7 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53zonev1alpha1.AwsRoute5
 				HostedZoneId:            createdZone.ZoneId,
 				KeyManagementServiceArn: pulumi.String(spec.Dnssec.KmsKeyArn.GetValue()),
 				Name:                    pulumi.String(kskName),
-				Status:                  pulumi.String("ACTIVE"),
+				Status:                  pulumi.String(kskStatus),
 			}, pulumi.Provider(provider))
 		if err != nil {
 			return errors.Wrap(err, "failed to create DNSSEC key-signing key")
@@ -99,6 +114,12 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53zonev1alpha1.AwsRoute5
 		if err != nil {
 			return errors.Wrap(err, "failed to enable DNSSEC signing")
 		}
+
+		dsRecord = createdKsk.DsRecord
+		dnskeyRecord = createdKsk.DnskeyRecord
+		keySigningKeyTag = createdKsk.KeyTag.ApplyT(func(tag int) string {
+			return strconv.Itoa(tag)
+		}).(pulumi.StringOutput)
 	}
 
 	// Query logging: the log group must live in us-east-1 and carry a
@@ -122,6 +143,9 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53zonev1alpha1.AwsRoute5
 	ctx.Export(OpNameservers, createdZone.NameServers)
 	ctx.Export(OpPrimaryNameServer, createdZone.PrimaryNameServer)
 	ctx.Export(OpZoneArn, createdZone.Arn)
+	ctx.Export(OpDsRecord, dsRecord)
+	ctx.Export(OpDnskeyRecord, dnskeyRecord)
+	ctx.Export(OpKeySigningKeyTag, keySigningKeyTag)
 
 	return nil
 }

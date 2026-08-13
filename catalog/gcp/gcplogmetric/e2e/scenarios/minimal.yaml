@@ -1,0 +1,33 @@
+# Minimal GcpLogMetric scenario: a DELTA/INT64 counter with a labeled
+# descriptor and a label extractor — the canonical shape, proving the
+# descriptor wiring, the explicit-send disabled posture, and the
+# metric_name output. Metrics are project-scoped and hard-deleted, so a
+# fixed name is safe across runs.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogMetric
+metadata:
+  name: planton-oss-e2e-gcplogmt-smoke
+  id: planton-oss-e2e-gcplogmt-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcplogmetric
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  filter: resource.type="cloud_run_revision" AND severity>=ERROR
+  metricDescriptor:
+    metricKind: DELTA
+    valueType: INT64
+    unit: "1"
+    labels:
+      - key: status
+        description: HTTP status code
+        valueType: STRING
+  labelExtractors:
+    status: EXTRACT(httpRequest.status)
+  description: E2E smoke metric — counts error entries; delete freely.
+  deletionPolicy: DELETE

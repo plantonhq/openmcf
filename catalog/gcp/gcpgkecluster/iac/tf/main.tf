@@ -40,6 +40,31 @@ resource "google_container_cluster" "this" {
 
   deletion_protection = var.spec.deletion_protection
 
+  # Engine-side destroy stance, layered UNDER deletion_protection: the
+  # GKE-native guard blocks the API call; deletion_policy governs what the
+  # engine even attempts (PREVENT fails the plan, ABANDON drops state).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  # Read-side performance switches for large clusters: skip the per-pool
+  # IGM node-count queries and the inline node-pool refresh. The refresh
+  # skip is safe in this composition because pools are always separate
+  # GcpGkeNodePool resources, never inline blocks here.
+  ignore_node_count_changes = var.spec.ignore_node_count_changes ? true : null
+  skip_node_pool_refresh    = var.spec.skip_node_pool_refresh ? true : null
+
+  # ALPHA cluster: every alpha feature gate on, no SLA, deleted by GKE
+  # after 30 days. Strictly for short-lived evaluation.
+  enable_kubernetes_alpha = var.spec.enable_kubernetes_alpha ? true : null
+
+  dynamic "enable_k8s_beta_apis" {
+    for_each = length(var.spec.k8s_beta_apis) > 0 ? [1] : []
+    content {
+      enabled_apis = var.spec.k8s_beta_apis
+    }
+  }
+
+  dataplane_optimization_mode = var.spec.dataplane_optimization_mode != "" ? var.spec.dataplane_optimization_mode : null
+
   # Clusters are always VPC-native (alias IP). The ip_allocation_policy
   # block is emitted even when the spec omits ip_allocation: an empty block
   # tells GKE to create and manage the pod/service secondary ranges itself,
@@ -65,6 +90,29 @@ resource "google_container_cluster" "this" {
         disabled = true
       }
     }
+
+    dynamic "additional_ip_ranges_config" {
+      for_each = try(var.spec.ip_allocation.additional_ip_ranges, [])
+      content {
+        subnetwork           = additional_ip_ranges_config.value.subnetwork
+        pod_ipv4_range_names = length(additional_ip_ranges_config.value.pod_ipv4_range_names) > 0 ? additional_ip_ranges_config.value.pod_ipv4_range_names : null
+        status               = additional_ip_ranges_config.value.status != "" ? additional_ip_ranges_config.value.status : null
+      }
+    }
+
+    dynamic "auto_ipam_config" {
+      for_each = try(var.spec.ip_allocation.auto_ipam_enabled, false) ? [1] : []
+      content {
+        enabled = true
+      }
+    }
+
+    dynamic "network_tier_config" {
+      for_each = try(var.spec.ip_allocation.network_tier, "") != "" ? [1] : []
+      content {
+        network_tier = var.spec.ip_allocation.network_tier
+      }
+    }
   }
 
   # Standard clusters: drop the API-mandated default node pool immediately —
@@ -76,16 +124,19 @@ resource "google_container_cluster" "this" {
   enable_autopilot = local.is_autopilot ? true : null
   allow_net_admin  = var.spec.allow_net_admin ? true : null
 
-  datapath_provider          = local.datapath_provider
-  default_max_pods_per_node  = var.spec.default_max_pods_per_node
-  enable_intranode_visibility = var.spec.enable_intranode_visibility
-  enable_l4_ilb_subsetting    = var.spec.enable_l4_ilb_subsetting
-  enable_fqdn_network_policy  = var.spec.enable_fqdn_network_policy
+  datapath_provider         = local.datapath_provider
+  default_max_pods_per_node = var.spec.default_max_pods_per_node
+  # Sent only when true: the provider rejects the argument as CONFIGURED
+  # (even false) on Autopilot clusters, and null and false mean the same
+  # thing to GKE.
+  enable_intranode_visibility              = var.spec.enable_intranode_visibility ? true : null
+  enable_l4_ilb_subsetting                 = var.spec.enable_l4_ilb_subsetting
+  enable_fqdn_network_policy               = var.spec.enable_fqdn_network_policy
   enable_cilium_clusterwide_network_policy = var.spec.enable_cilium_clusterwide_network_policy
-  enable_multi_networking     = var.spec.enable_multi_networking
-  private_ipv6_google_access  = local.private_ipv6_google_access
-  in_transit_encryption_config = local.in_transit_encryption
-  disable_l4_lb_firewall_reconciliation = var.spec.disable_l4_lb_firewall_reconciliation
+  enable_multi_networking                  = var.spec.enable_multi_networking
+  private_ipv6_google_access               = local.private_ipv6_google_access
+  in_transit_encryption_config             = local.in_transit_encryption
+  disable_l4_lb_firewall_reconciliation    = var.spec.disable_l4_lb_firewall_reconciliation
 
   # Calico NetworkPolicy enforcement is two coupled settings: the
   # enforcement block here and the addon below. Both follow the single
@@ -143,9 +194,9 @@ resource "google_container_cluster" "this" {
   dynamic "private_cluster_config" {
     for_each = var.spec.private_cluster != null ? [var.spec.private_cluster] : []
     content {
-      enable_private_nodes    = private_cluster_config.value.enable_private_nodes
-      enable_private_endpoint = private_cluster_config.value.enable_private_endpoint
-      master_ipv4_cidr_block  = private_cluster_config.value.master_ipv4_cidr_block != "" ? private_cluster_config.value.master_ipv4_cidr_block : null
+      enable_private_nodes        = private_cluster_config.value.enable_private_nodes
+      enable_private_endpoint     = private_cluster_config.value.enable_private_endpoint
+      master_ipv4_cidr_block      = private_cluster_config.value.master_ipv4_cidr_block != "" ? private_cluster_config.value.master_ipv4_cidr_block : null
       private_endpoint_subnetwork = private_cluster_config.value.private_endpoint_subnetwork != "" ? private_cluster_config.value.private_endpoint_subnetwork : null
 
       dynamic "master_global_access_config" {
@@ -177,11 +228,211 @@ resource "google_container_cluster" "this" {
     for_each = var.spec.control_plane_endpoints != null ? [var.spec.control_plane_endpoints] : []
     content {
       dns_endpoint_config {
-        allow_external_traffic = control_plane_endpoints_config.value.dns_endpoint_allow_external_traffic
+        allow_external_traffic    = control_plane_endpoints_config.value.dns_endpoint_allow_external_traffic
+        enable_k8s_tokens_via_dns = control_plane_endpoints_config.value.enable_k8s_tokens_via_dns
+        enable_k8s_certs_via_dns  = control_plane_endpoints_config.value.enable_k8s_certs_via_dns
       }
       ip_endpoints_config {
         enabled = control_plane_endpoints_config.value.ip_endpoints_enabled
       }
+    }
+  }
+
+  # Legacy client-certificate issuance: certificate auth bypasses IAM and
+  # cannot be revoked short of rotating the cluster CA — emitted only when
+  # a manifest explicitly takes a stance.
+  dynamic "master_auth" {
+    for_each = var.spec.issue_client_certificate != null ? [1] : []
+    content {
+      client_certificate_config {
+        issue_client_certificate = var.spec.issue_client_certificate
+      }
+    }
+  }
+
+  dynamic "node_creation_config" {
+    for_each = var.spec.node_creation_mode != "" ? [1] : []
+    content {
+      node_creation_mode = var.spec.node_creation_mode
+    }
+  }
+
+  dynamic "gke_auto_upgrade_config" {
+    for_each = var.spec.gke_auto_upgrade_patch_mode != "" ? [1] : []
+    content {
+      patch_mode = var.spec.gke_auto_upgrade_patch_mode
+    }
+  }
+
+  dynamic "rbac_binding_config" {
+    for_each = var.spec.rbac_binding_config != null ? [var.spec.rbac_binding_config] : []
+    content {
+      enable_insecure_binding_system_authenticated   = rbac_binding_config.value.enable_insecure_binding_system_authenticated
+      enable_insecure_binding_system_unauthenticated = rbac_binding_config.value.enable_insecure_binding_system_unauthenticated
+    }
+  }
+
+  dynamic "autopilot_cluster_policy_config" {
+    for_each = var.spec.autopilot_policy != null ? [var.spec.autopilot_policy] : []
+    content {
+      no_standard_node_pools  = autopilot_cluster_policy_config.value.no_standard_node_pools
+      no_system_impersonation = autopilot_cluster_policy_config.value.no_system_impersonation
+      no_system_mutation      = autopilot_cluster_policy_config.value.no_system_mutation
+      no_unsafe_webhooks      = autopilot_cluster_policy_config.value.no_unsafe_webhooks
+    }
+  }
+
+  autopilot_privileged_admission = length(var.spec.autopilot_privileged_admission_paths) > 0 ? var.spec.autopilot_privileged_admission_paths : null
+
+  # Node settings GKE applies to the pools IT manages on Autopilot — the
+  # Autopilot counterpart of per-pool node_config.
+  dynamic "node_pool_auto_config" {
+    for_each = var.spec.node_pool_auto_config != null ? [var.spec.node_pool_auto_config] : []
+    content {
+      resource_manager_tags = length(node_pool_auto_config.value.resource_manager_tags) > 0 ? node_pool_auto_config.value.resource_manager_tags : null
+
+      dynamic "network_tags" {
+        for_each = length(node_pool_auto_config.value.network_tags) > 0 ? [1] : []
+        content {
+          tags = node_pool_auto_config.value.network_tags
+        }
+      }
+
+      dynamic "linux_node_config" {
+        for_each = (node_pool_auto_config.value.cgroup_mode != "" || node_pool_auto_config.value.node_kernel_module_loading_policy != "") ? [1] : []
+        content {
+          cgroup_mode = node_pool_auto_config.value.cgroup_mode != "" ? node_pool_auto_config.value.cgroup_mode : null
+
+          dynamic "node_kernel_module_loading" {
+            for_each = node_pool_auto_config.value.node_kernel_module_loading_policy != "" ? [1] : []
+            content {
+              policy = node_pool_auto_config.value.node_kernel_module_loading_policy
+            }
+          }
+        }
+      }
+
+      dynamic "node_kubelet_config" {
+        for_each = node_pool_auto_config.value.insecure_kubelet_readonly_port_enabled != "" ? [1] : []
+        content {
+          insecure_kubelet_readonly_port_enabled = node_pool_auto_config.value.insecure_kubelet_readonly_port_enabled
+        }
+      }
+    }
+  }
+
+  # Creation-time defaults inherited by every node pool on a Standard
+  # cluster; a pool's own node_config overrides these.
+  dynamic "node_pool_defaults" {
+    for_each = var.spec.node_pool_defaults != null ? [var.spec.node_pool_defaults] : []
+    content {
+      node_config_defaults {
+        insecure_kubelet_readonly_port_enabled = node_pool_defaults.value.insecure_kubelet_readonly_port_enabled != "" ? node_pool_defaults.value.insecure_kubelet_readonly_port_enabled : null
+        logging_variant                        = node_pool_defaults.value.logging_variant != "" ? node_pool_defaults.value.logging_variant : null
+
+        dynamic "gcfs_config" {
+          for_each = node_pool_defaults.value.gcfs_enabled != null ? [1] : []
+          content {
+            enabled = node_pool_defaults.value.gcfs_enabled
+          }
+        }
+
+        dynamic "containerd_config" {
+          for_each = node_pool_defaults.value.containerd_config != null ? [node_pool_defaults.value.containerd_config] : []
+          content {
+            dynamic "private_registry_access_config" {
+              for_each = containerd_config.value.private_registry_access != null ? [containerd_config.value.private_registry_access] : []
+              content {
+                enabled = private_registry_access_config.value.enabled
+
+                dynamic "certificate_authority_domain_config" {
+                  for_each = private_registry_access_config.value.certificate_authority_domains
+                  content {
+                    fqdns = certificate_authority_domain_config.value.fqdns
+
+                    gcp_secret_manager_certificate_config {
+                      secret_uri = certificate_authority_domain_config.value.gcp_secret_manager_certificate_uri
+                    }
+                  }
+                }
+              }
+            }
+
+            dynamic "registry_hosts" {
+              for_each = containerd_config.value.registry_hosts
+              content {
+                server = registry_hosts.value.server
+
+                dynamic "hosts" {
+                  for_each = registry_hosts.value.hosts
+                  content {
+                    host          = hosts.value.host
+                    capabilities  = length(hosts.value.capabilities) > 0 ? hosts.value.capabilities : null
+                    dial_timeout  = hosts.value.dial_timeout != "" ? hosts.value.dial_timeout : null
+                    override_path = hosts.value.override_path
+
+                    dynamic "ca" {
+                      for_each = hosts.value.ca_secret_uri != "" ? [1] : []
+                      content {
+                        gcp_secret_manager_secret_uri = hosts.value.ca_secret_uri
+                      }
+                    }
+
+                    dynamic "client" {
+                      for_each = (hosts.value.client_cert_secret_uri != "" || hosts.value.client_key_secret_uri != "") ? [1] : []
+                      content {
+                        dynamic "cert" {
+                          for_each = hosts.value.client_cert_secret_uri != "" ? [1] : []
+                          content {
+                            gcp_secret_manager_secret_uri = hosts.value.client_cert_secret_uri
+                          }
+                        }
+                        dynamic "key" {
+                          for_each = hosts.value.client_key_secret_uri != "" ? [1] : []
+                          content {
+                            gcp_secret_manager_secret_uri = hosts.value.client_key_secret_uri
+                          }
+                        }
+                      }
+                    }
+
+                    dynamic "header" {
+                      for_each = hosts.value.headers
+                      content {
+                        key   = header.key
+                        value = header.value
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            dynamic "writable_cgroups" {
+              for_each = containerd_config.value.writable_cgroups_enabled != null ? [1] : []
+              content {
+                enabled = containerd_config.value.writable_cgroups_enabled
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # Bring-your-own control-plane trust: customer CAs and KMS keys for the
+  # control plane's disks and ServiceAccount JWT signing.
+  dynamic "user_managed_keys_config" {
+    for_each = var.spec.user_managed_keys != null ? [var.spec.user_managed_keys] : []
+    content {
+      cluster_ca                        = user_managed_keys_config.value.cluster_ca != "" ? user_managed_keys_config.value.cluster_ca : null
+      etcd_api_ca                       = user_managed_keys_config.value.etcd_api_ca != "" ? user_managed_keys_config.value.etcd_api_ca : null
+      etcd_peer_ca                      = user_managed_keys_config.value.etcd_peer_ca != "" ? user_managed_keys_config.value.etcd_peer_ca : null
+      aggregation_ca                    = user_managed_keys_config.value.aggregation_ca != "" ? user_managed_keys_config.value.aggregation_ca : null
+      control_plane_disk_encryption_key = user_managed_keys_config.value.control_plane_disk_encryption_key != "" ? user_managed_keys_config.value.control_plane_disk_encryption_key : null
+      gkeops_etcd_backup_encryption_key = user_managed_keys_config.value.gkeops_etcd_backup_encryption_key != "" ? user_managed_keys_config.value.gkeops_etcd_backup_encryption_key : null
+      service_account_signing_keys      = length(user_managed_keys_config.value.service_account_signing_keys) > 0 ? user_managed_keys_config.value.service_account_signing_keys : null
+      service_account_verification_keys = length(user_managed_keys_config.value.service_account_verification_keys) > 0 ? user_managed_keys_config.value.service_account_verification_keys : null
     }
   }
 
@@ -210,6 +461,14 @@ resource "google_container_cluster" "this" {
         }
       }
 
+      dynamic "disruption_budget" {
+        for_each = maintenance_policy.value.disruption_budget != null ? [maintenance_policy.value.disruption_budget] : []
+        content {
+          minor_version_disruption_interval = disruption_budget.value.minor_version_disruption_interval != "" ? disruption_budget.value.minor_version_disruption_interval : null
+          patch_version_disruption_interval = disruption_budget.value.patch_version_disruption_interval != "" ? disruption_budget.value.patch_version_disruption_interval : null
+        }
+      }
+
       dynamic "maintenance_exclusion" {
         for_each = maintenance_policy.value.exclusions
         content {
@@ -220,7 +479,8 @@ resource "google_container_cluster" "this" {
           dynamic "exclusion_options" {
             for_each = maintenance_exclusion.value.scope != "" ? [1] : []
             content {
-              scope = maintenance_exclusion.value.scope
+              scope             = maintenance_exclusion.value.scope
+              end_time_behavior = maintenance_exclusion.value.end_time_behavior != "" ? maintenance_exclusion.value.end_time_behavior : null
             }
           }
         }
@@ -234,9 +494,10 @@ resource "google_container_cluster" "this" {
   dynamic "cluster_autoscaling" {
     for_each = var.spec.cluster_autoscaling != null ? [var.spec.cluster_autoscaling] : []
     content {
-      enabled             = cluster_autoscaling.value.enabled
-      autoscaling_profile = cluster_autoscaling.value.autoscaling_profile
-      auto_provisioning_locations = length(cluster_autoscaling.value.auto_provisioning_locations) > 0 ? cluster_autoscaling.value.auto_provisioning_locations : null
+      enabled                       = cluster_autoscaling.value.enabled
+      autoscaling_profile           = cluster_autoscaling.value.autoscaling_profile
+      auto_provisioning_locations   = length(cluster_autoscaling.value.auto_provisioning_locations) > 0 ? cluster_autoscaling.value.auto_provisioning_locations : null
+      default_compute_class_enabled = cluster_autoscaling.value.default_compute_class_enabled
 
       dynamic "resource_limits" {
         for_each = cluster_autoscaling.value.resource_limits
@@ -266,6 +527,31 @@ resource "google_container_cluster" "this" {
           management {
             auto_upgrade = auto_provisioning_defaults.value.auto_upgrade
             auto_repair  = auto_provisioning_defaults.value.auto_repair
+          }
+
+          dynamic "upgrade_settings" {
+            for_each = auto_provisioning_defaults.value.upgrade_settings != null ? [auto_provisioning_defaults.value.upgrade_settings] : []
+            content {
+              max_surge       = upgrade_settings.value.max_surge
+              max_unavailable = upgrade_settings.value.max_unavailable
+              strategy        = upgrade_settings.value.strategy != "" ? upgrade_settings.value.strategy : null
+
+              dynamic "blue_green_settings" {
+                for_each = upgrade_settings.value.blue_green_settings != null ? [upgrade_settings.value.blue_green_settings] : []
+                content {
+                  node_pool_soak_duration = blue_green_settings.value.node_pool_soak_duration != "" ? blue_green_settings.value.node_pool_soak_duration : null
+
+                  dynamic "standard_rollout_policy" {
+                    for_each = blue_green_settings.value.standard_rollout_policy != null ? [blue_green_settings.value.standard_rollout_policy] : []
+                    content {
+                      batch_percentage    = standard_rollout_policy.value.batch_percentage
+                      batch_node_count    = standard_rollout_policy.value.batch_node_count
+                      batch_soak_duration = standard_rollout_policy.value.batch_soak_duration != "" ? standard_rollout_policy.value.batch_soak_duration : null
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -341,6 +627,31 @@ resource "google_container_cluster" "this" {
     for_each = var.spec.enable_secret_manager_csi ? [1] : []
     content {
       enabled = true
+
+      dynamic "rotation_config" {
+        for_each = var.spec.secret_manager_rotation != null ? [var.spec.secret_manager_rotation] : []
+        content {
+          enabled           = rotation_config.value.enabled
+          rotation_interval = rotation_config.value.rotation_interval != "" ? rotation_config.value.rotation_interval : null
+        }
+      }
+    }
+  }
+
+  # The Secret Manager SYNC add-on (secrets into Kubernetes Secret
+  # objects) — a separate add-on from the CSI mount path above.
+  dynamic "secret_sync_config" {
+    for_each = var.spec.secret_sync != null ? [var.spec.secret_sync] : []
+    content {
+      enabled = secret_sync_config.value.enabled
+
+      dynamic "rotation_config" {
+        for_each = secret_sync_config.value.rotation_enabled || secret_sync_config.value.rotation_interval != "" ? [1] : []
+        content {
+          enabled           = secret_sync_config.value.rotation_enabled
+          rotation_interval = secret_sync_config.value.rotation_interval != "" ? secret_sync_config.value.rotation_interval : null
+        }
+      }
     }
   }
 
@@ -509,15 +820,84 @@ resource "google_container_cluster" "this" {
         for_each = try(var.spec.addons.ray_operator_enabled, false) ? [1] : []
         content {
           enabled = true
+
+          dynamic "ray_cluster_logging_config" {
+            for_each = try(var.spec.addons.ray_cluster_logging_enabled, false) ? [1] : []
+            content {
+              enabled = true
+            }
+          }
+
+          dynamic "ray_cluster_monitoring_config" {
+            for_each = try(var.spec.addons.ray_cluster_monitoring_enabled, false) ? [1] : []
+            content {
+              enabled = true
+            }
+          }
+        }
+      }
+
+      # The Cloud Run addon's argument is inverted (disabled) — the spec
+      # keeps the affirmative form every other addon uses.
+      dynamic "cloudrun_config" {
+        for_each = try(var.spec.addons.cloudrun_enabled, false) ? [1] : []
+        content {
+          disabled           = false
+          load_balancer_type = try(var.spec.addons.cloudrun_load_balancer_type, "") != "" ? var.spec.addons.cloudrun_load_balancer_type : null
+        }
+      }
+
+      dynamic "parallelstore_csi_driver_config" {
+        for_each = try(var.spec.addons.parallelstore_csi_driver_enabled, false) ? [1] : []
+        content {
+          enabled = true
+        }
+      }
+
+      dynamic "lustre_csi_driver_config" {
+        for_each = try(var.spec.addons.lustre_csi_driver_enabled, false) ? [1] : []
+        content {
+          enabled                   = true
+          enable_legacy_lustre_port = try(var.spec.addons.lustre_csi_legacy_port_enabled, false) ? true : null
+          disable_multi_nic         = try(var.spec.addons.lustre_csi_disable_multi_nic, false) ? true : null
+        }
+      }
+
+      dynamic "pod_snapshot_config" {
+        for_each = try(var.spec.addons.pod_snapshot_enabled, false) ? [1] : []
+        content {
+          enabled = true
+        }
+      }
+
+      dynamic "agent_sandbox_config" {
+        for_each = try(var.spec.addons.agent_sandbox_enabled, false) ? [1] : []
+        content {
+          enabled = true
+        }
+      }
+
+      dynamic "slice_controller_config" {
+        for_each = try(var.spec.addons.slice_controller_enabled, false) ? [1] : []
+        content {
+          enabled = true
+        }
+      }
+
+      dynamic "slurm_operator_config" {
+        for_each = try(var.spec.addons.slurm_operator_enabled, false) ? [1] : []
+        content {
+          enabled = true
         }
       }
     }
   }
 
   dynamic "fleet" {
-    for_each = var.spec.fleet_project != "" ? [1] : []
+    for_each = (var.spec.fleet_project != "" || var.spec.fleet_membership_type != "") ? [1] : []
     content {
-      project = var.spec.fleet_project
+      project         = var.spec.fleet_project != "" ? var.spec.fleet_project : null
+      membership_type = var.spec.fleet_membership_type != "" ? var.spec.fleet_membership_type : null
     }
   }
 

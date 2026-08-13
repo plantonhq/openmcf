@@ -1,0 +1,17 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogMetric
+metadata:
+  name: latency-distribution
+spec:
+  filter: resource.type="cloud_run_revision" AND resource.labels.service_name="checkout" AND jsonPayload.latency_ms>0
+  metricDescriptor:
+    metricKind: DELTA
+    valueType: DISTRIBUTION
+    unit: ms
+  valueExtractor: EXTRACT(jsonPayload.latency_ms)
+  bucketOptions:
+    exponentialBuckets:
+      numFiniteBuckets: 64
+      growthFactor: 1.4142135
+      scale: 1
+  description: Request latency histogram extracted from checkout access logs

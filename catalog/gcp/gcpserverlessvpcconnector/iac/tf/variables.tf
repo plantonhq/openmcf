@@ -33,5 +33,9 @@ variable "spec" {
     machine_type  = optional(string, "")
     min_instances = optional(number, null)
     max_instances = optional(number, null)
+
+    # DELETE (default) / PREVENT / ABANDON; empty falls through to the
+    # provider default (DELETE).
+    deletion_policy = optional(string, "")
   })
 }

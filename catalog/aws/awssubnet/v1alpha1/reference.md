@@ -16,8 +16,9 @@ default route points at a NAT gateway (or which has no internet route) is
 private. Routing is therefore folded into this spec.
 
 Two mutually exclusive ways to attach a route table are supported:
-  - routes: inline rules from which a dedicated route table is created and
-    owned by this subnet.
+  - routes (and/or propagating_vgws): a dedicated route table is created,
+    owned by this subnet, populated with the inline rules and any VGW
+    route propagations.
   - route_table_id: an existing, externally-managed route table to associate.
 If neither is set, the subnet uses the VPC's main route table. The
 route_table_id is always exported as a stack output so downstream resources
@@ -50,8 +51,8 @@ spec:
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
 | `spec.vpcId` | `string \| valueFrom` | yes |  | AwsVpc (`status.outputs.vpc_id`) |
-| `spec.availabilityZone` | `string` | yes |  |  |
-| `spec.cidrBlock` | `string` | yes |  |  |
+| `spec.availabilityZone` | `string` |  |  |  |
+| `spec.cidrBlock` | `string` |  |  |  |
 | `spec.mapPublicIpOnLaunch` | `bool` |  |  |  |
 | `spec.assignIpv6AddressOnCreation` | `bool` |  |  |  |
 | `spec.ipv6CidrBlock` | `string` |  |  |  |
@@ -66,6 +67,13 @@ spec:
 | `spec.routes[].destinationPrefixListId` | `string` |  |  |  |
 | `spec.routes[].targetType` | `enum` |  |  |  |
 | `spec.routes[].targetId` | `string \| valueFrom` | yes |  |  |
+| `spec.availabilityZoneId` | `string` |  |  |  |
+| `spec.ipv4IpamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.ipv4NetmaskLength` | `int32` |  |  |  |
+| `spec.ipv6IpamPoolId` | `string \| valueFrom` |  |  |  |
+| `spec.ipv6NetmaskLength` | `int32` |  |  |  |
+| `spec.ipv6Native` | `bool` |  |  |  |
+| `spec.propagatingVgws` | `[]string` |  |  |  |
 
 ## Field Details
 
@@ -94,24 +102,28 @@ VPC replaces the subnet.
 
 ### spec.availabilityZone
 
-`string` · required
+`string`
 
-The availability zone the subnet lives in (e.g. "us-west-2a"). AWS subnets
-are single-AZ; to span AZs, create one AwsSubnet per zone. Immutable:
+The availability zone the subnet lives in, by NAME (e.g. "us-west-2a").
+AWS subnets are single-AZ; to span AZs, create one AwsSubnet per zone.
+Exactly one of availability_zone or availability_zone_id must be set --
+explicit placement is mandatory (AWS would otherwise pick a zone at
+random, which is never what declarative infrastructure wants). Immutable:
 changing the AZ replaces the subnet.
-
-- rule: {"string":{"minLen":"1"}}
 
 ### spec.cidrBlock
 
-`string` · required
+`string`
 
 IPv4 CIDR block for the subnet (e.g. "10.0.1.0/24"). Must fall within the
 VPC's CIDR and not overlap any sibling subnet. Note that AWS reserves the
 first four and the last IP address in every subnet, so a /28 yields 11
-usable addresses. Immutable: changing the CIDR replaces the subnet.
+usable addresses. Exactly one IPv4 addressing method is required unless
+ipv6_native is true: either this CIDR or an IPAM allocation
+(ipv4_ipam_pool_id + ipv4_netmask_length). Immutable: changing the CIDR
+replaces the subnet.
 
-- rule: {"required":true,"string":{"pattern":"^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"}}
+- rule: cidr_block must be an IPv4 CIDR like 10.0.1.0/24
 
 ### spec.mapPublicIpOnLaunch
 
@@ -230,6 +242,10 @@ Allowed values (use exactly as shown):
 - `vpc_endpoint`
 - `network_interface`
 - `egress_only_internet_gateway`
+- `carrier_gateway` -- Wavelength Zone carrier gateway (cagw-...), for routing subnet traffic to the telecom carrier network.
+- `core_network` -- AWS Cloud WAN core network ARN (arn:aws:networkmanager::...:core-network/...).
+- `local_gateway` -- Outposts local gateway (lgw-...), for routing to an on-premises network through an Outpost.
+- `odb_network` -- Oracle Database@AWS network ARN (arn:aws:odb:...:odb-network/...). Verified provider quirk: AWS returns a gateway id alongside ODB routes, which older providers surfaced as perpetual drift -- fixed in provider 6.53.0; the modules rely on the pinned provider for this.
 
 ### spec.routes[].targetId
 
@@ -245,9 +261,92 @@ producing resource is referenced explicitly via value_from.
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
+### spec.availabilityZoneId
+
+`string`
+
+The availability zone the subnet lives in, by ID (e.g. "usw2-az1"). AZ IDs
+are stable across AWS accounts, unlike AZ names which are shuffled
+per-account -- use the ID form when coordinating subnet placement across
+accounts. Exactly one of availability_zone or availability_zone_id must be
+set. Immutable: changing it replaces the subnet.
+
+### spec.ipv4IpamPoolId
+
+`string | valueFrom`
+
+The IPAM pool to allocate the subnet's IPv4 CIDR from, as an alternative
+to declaring cidr_block explicitly. Requires ipv4_netmask_length. Supply a
+literal ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable:
+changing it replaces the subnet.
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.ipv4NetmaskLength
+
+`int32` · optional (explicit presence)
+
+Netmask length for the IPv4 CIDR allocated from ipv4_ipam_pool_id
+(e.g. 24 for a /24). Valid range 16-28 (the AWS subnet netmask bounds).
+Requires ipv4_ipam_pool_id; mutually exclusive with cidr_block.
+
+- rule: {"int32":{"lte":28,"gte":16}}
+
+### spec.ipv6IpamPoolId
+
+`string | valueFrom`
+
+The IPAM pool to allocate the subnet's IPv6 CIDR from, as an alternative
+to declaring ipv6_cidr_block explicitly. Requires ipv6_netmask_length.
+Supply a literal ipam-pool-id; there is no IPAM pool catalog kind yet.
+Immutable: changing it replaces the subnet.
+
+- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+
+### spec.ipv6NetmaskLength
+
+`int32` · optional (explicit presence)
+
+Netmask length for the IPv6 CIDR allocated from ipv6_ipam_pool_id. AWS
+subnets accept /44, /48, /52, /56, /60, or /64 (a /64 is the norm --
+anything shorter is for subnets that will be further subdivided by
+longest-prefix-match routing). Requires ipv6_ipam_pool_id; mutually
+exclusive with ipv6_cidr_block.
+
+- rule: {"int32":{"in":[44,48,52,56,60,64]}}
+
+### spec.ipv6Native
+
+`bool`
+
+When true, creates an IPv6-only subnet: no IPv4 addressing at all
+(cidr_block and ipv4_ipam_pool_id must both be empty), and an IPv6 CIDR
+(ipv6_cidr_block or the IPv6 IPAM pair) is required. Instances in an
+IPv6-only subnet need private_dns_hostname_type_on_launch =
+"resource-name" and can reach IPv4-only destinations via DNS64 + NAT64
+(see enable_dns64). Immutable: changing it replaces the subnet.
+
+### spec.propagatingVgws
+
+`[]string`
+
+Virtual private gateway IDs (vgw-...) whose routes propagate into the
+subnet-owned route table -- the mechanism that pulls Site-to-Site VPN /
+Direct Connect routes in automatically instead of declaring them one by
+one. Only valid when this subnet OWNS its route table (inline routes
+mode, or propagation-only with no inline routes); not allowed with an
+external route_table_id, whose owner controls its own propagation.
+
 ## Validation Rules
 
 - `route_table_mutual_exclusivity`: route_table_id and routes are mutually exclusive; provide one or neither
+- `availability_zone_exactly_one`: exactly one of availability_zone or availability_zone_id must be set
+- `ipv4_addressing_exactly_one`: set exactly one of cidr_block or ipv4_ipam_pool_id (neither when ipv6_native is true)
+- `ipv4_netmask_requires_pool`: ipv4_netmask_length requires ipv4_ipam_pool_id
+- `ipv6_netmask_requires_pool`: ipv6_netmask_length requires ipv6_ipam_pool_id
+- `ipv6_addressing_at_most_one`: ipv6_cidr_block and ipv6_ipam_pool_id are mutually exclusive
+- `ipv6_native_requires_ipv6`: ipv6_native requires ipv6_cidr_block or ipv6_ipam_pool_id
+- `propagating_vgws_owned_table_only`: propagating_vgws is not allowed with route_table_id (propagation belongs to the table's owner)
 
 ## Outputs
 
@@ -286,6 +385,7 @@ Fields on other kinds that can point at this resource:
 | AwsDocumentDb | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsEc2Instance | `spec.secondaryNetworkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.subnets` | `status.outputs.subnet_id` |
 | AwsEcsService | `spec.network.subnets` | `status.outputs.subnet_id` |
 | AwsEksCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsEksFargateProfile | `spec.subnetIds` | `status.outputs.subnet_id` |
@@ -306,10 +406,11 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.opensearchServerless.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsLambda | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsLaunchTemplate | `spec.networkInterfaces[].subnetId` | `status.outputs.subnet_id` |
+| AwsLaunchTemplate | `spec.secondaryInterfaces[].secondarySubnetId` | `status.outputs.subnet_id` |
 | AwsMemcachedElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMemorydbCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsMskCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
-| AwsMskServerlessCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsMskServerlessCluster | `spec.vpcConfigs[].subnetIds` | `status.outputs.subnet_id` |
 | AwsMwaaEnvironment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsNatGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsNeptuneCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
@@ -321,6 +422,7 @@ Fields on other kinds that can point at this resource:
 | AwsRedisElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftCluster | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsServerlessElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsTransitGatewayVpcAttachment | `spec.subnetIds` | `status.outputs.subnet_id` |

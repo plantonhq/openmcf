@@ -190,7 +190,9 @@ type AwsRdsInstanceSpec struct {
 	// refuses to delete without knowing the snapshot name.
 	SkipFinalSnapshot bool `protobuf:"varint,35,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
 	// The name for the final snapshot taken on deletion. Required when
-	// skip_final_snapshot is false.
+	// skip_final_snapshot is false. Must start with a letter, contain
+	// only letters, numbers, and hyphens, with no consecutive or
+	// trailing hyphens -- AWS's snapshot-identifier rules.
 	FinalSnapshotIdentifier string `protobuf:"bytes,36,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
 	// Refuse deletion of the instance while enabled. Turn this on for
 	// anything holding data you cannot recreate.
@@ -231,22 +233,26 @@ type AwsRdsInstanceSpec struct {
 	// Insights with 465+ day retention). Empty keeps the AWS default
 	// (standard).
 	DatabaseInsightsMode string `protobuf:"bytes,45,opt,name=database_insights_mode,json=databaseInsightsMode,proto3" json:"database_insights_mode,omitempty"`
-	// The DB parameter group to associate. Empty keeps the engine default
-	// group. A literal name -- parameter groups have no standalone
-	// Planton kind (a named parameter list is configuration, not
-	// infrastructure).
+	// The name of an existing DB parameter group to associate. Mutually
+	// exclusive with `parameters` -- either bring your own group or let
+	// the module manage one from inline parameters. Empty (with
+	// `parameters` also empty) keeps the engine default group.
 	ParameterGroupName string `protobuf:"bytes,46,opt,name=parameter_group_name,json=parameterGroupName,proto3" json:"parameter_group_name,omitempty"`
-	// The option group to associate (engine features like Oracle TDE or
-	// SQL Server native backup). Empty keeps the engine default. A
-	// literal name.
+	// The name of an existing option group to associate. Mutually
+	// exclusive with `options` -- either bring your own group or let the
+	// module manage one from inline options. Empty (with `options` also
+	// empty) keeps the engine default group.
 	OptionGroupName string `protobuf:"bytes,47,opt,name=option_group_name,json=optionGroupName,proto3" json:"option_group_name,omitempty"`
 	// Microsoft Active Directory domain join, for Windows/Kerberos
 	// authentication (SQL Server, and Kerberos auth on MySQL/PostgreSQL/
 	// Oracle).
 	ActiveDirectory *AwsRdsInstanceActiveDirectory `protobuf:"bytes,48,opt,name=active_directory,json=activeDirectory,proto3" json:"active_directory,omitempty"`
-	// The license model, for engines that carry one: "license-included",
-	// "bring-your-own-license", or "general-public-license". Empty keeps
-	// the engine default.
+	// The license model, for engines that carry one. Per AWS's contract:
+	// MySQL/MariaDB use "general-public-license"; PostgreSQL uses
+	// "postgresql-license"; Oracle uses "bring-your-own-license" or
+	// "license-included"; SQL Server uses "license-included" or
+	// "bring-your-own-media"; Db2 uses "bring-your-own-license" or
+	// "marketplace-license". Empty keeps the engine default.
 	LicenseModel string `protobuf:"bytes,49,opt,name=license_model,json=licenseModel,proto3" json:"license_model,omitempty"`
 	// The character set for Oracle and SQL Server instances (e.g.
 	// "AL32UTF8"). Create-time only. Empty keeps the engine default.
@@ -279,8 +285,43 @@ type AwsRdsInstanceSpec struct {
 	// maintenance window. Immediate changes can interrupt connections;
 	// deferred changes wait quietly. AWS defaults to deferred.
 	ApplyImmediately bool `protobuf:"varint,57,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Extended support posture when the engine version leaves standard
+	// support: "open-source-rds-extended-support" (AWS default -- paid
+	// extended support kicks in automatically) or
+	// "open-source-rds-extended-support-disabled" (the instance must be
+	// upgraded before end of standard support; opts out of the extra
+	// cost).
+	EngineLifecycleSupport string `protobuf:"bytes,58,opt,name=engine_lifecycle_support,json=engineLifecycleSupport,proto3" json:"engine_lifecycle_support,omitempty"`
+	// Upgrade the storage file system configuration on a read replica or
+	// snapshot restore, when the source still runs the older 32-bit file
+	// system. One-way and create/restore-scoped.
+	UpgradeStorageConfig bool `protobuf:"varint,59,opt,name=upgrade_storage_config,json=upgradeStorageConfig,proto3" json:"upgrade_storage_config,omitempty"`
+	// Create the instance by restoring a Percona XtraBackup stored in S3
+	// -- the on-ramp for migrating a self-managed MySQL database into
+	// RDS without a logical dump. Create-time only; mutually exclusive
+	// with replicate_source_db, snapshot_identifier, and
+	// restore_to_point_in_time.
+	S3Import *AwsRdsInstanceS3Import `protobuf:"bytes,60,opt,name=s3_import,json=s3Import,proto3" json:"s3_import,omitempty"`
+	// IAM roles the instance assumes for engine features that reach into
+	// other AWS services (e.g. S3 import/export, Lambda invocation).
+	// Each entry associates one role to one named engine feature -- the
+	// roles own their policies; this instance only associates them. Both
+	// IaC modules manage each entry as its own role-association
+	// resource, so roles attach and detach without touching the
+	// instance.
+	IamRoles []*AwsRdsInstanceIamRole `protobuf:"bytes,61,rep,name=iam_roles,json=iamRoles,proto3" json:"iam_roles,omitempty"`
+	// Instance-level engine parameters, managed as a dedicated DB
+	// parameter group owned by this instance (the group is glue -- a
+	// named parameter list -- so it stays folded). Mutually exclusive
+	// with parameter_group_name.
+	Parameters []*AwsRdsInstanceParameter `protobuf:"bytes,62,rep,name=parameters,proto3" json:"parameters,omitempty"`
+	// Engine options (e.g. Oracle TDE/OEM, SQL Server native backup),
+	// managed as a dedicated option group owned by this instance (the
+	// group is glue -- a named option list -- so it stays folded).
+	// Mutually exclusive with option_group_name.
+	Options       []*AwsRdsInstanceOption `protobuf:"bytes,63,rep,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsRdsInstanceSpec) Reset() {
@@ -712,6 +753,48 @@ func (x *AwsRdsInstanceSpec) GetApplyImmediately() bool {
 	return false
 }
 
+func (x *AwsRdsInstanceSpec) GetEngineLifecycleSupport() string {
+	if x != nil {
+		return x.EngineLifecycleSupport
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceSpec) GetUpgradeStorageConfig() bool {
+	if x != nil {
+		return x.UpgradeStorageConfig
+	}
+	return false
+}
+
+func (x *AwsRdsInstanceSpec) GetS3Import() *AwsRdsInstanceS3Import {
+	if x != nil {
+		return x.S3Import
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetIamRoles() []*AwsRdsInstanceIamRole {
+	if x != nil {
+		return x.IamRoles
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetParameters() []*AwsRdsInstanceParameter {
+	if x != nil {
+		return x.Parameters
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceSpec) GetOptions() []*AwsRdsInstanceOption {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
 // AwsRdsInstanceActiveDirectory joins the instance to a Microsoft Active
 // Directory for Windows/Kerberos authentication. Two shapes: an
 // AWS-managed directory (domain + domain_iam_role_name) or a
@@ -903,11 +986,377 @@ func (x *AwsRdsInstanceRestoreToPointInTime) GetUseLatestRestorableTime() bool {
 	return false
 }
 
+// AwsRdsInstanceS3Import restores the instance from a Percona
+// XtraBackup stored in S3 (MySQL only). Every field is create-time
+// only.
+type AwsRdsInstanceS3Import struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The S3 bucket holding the backup files. Required.
+	BucketName string `protobuf:"bytes,1,opt,name=bucket_name,json=bucketName,proto3" json:"bucket_name,omitempty"`
+	// The key prefix of the backup files within the bucket. Empty reads
+	// from the bucket root.
+	BucketPrefix string `protobuf:"bytes,2,opt,name=bucket_prefix,json=bucketPrefix,proto3" json:"bucket_prefix,omitempty"`
+	// The IAM role RDS assumes to read the backup from S3. Reference an
+	// AwsIamRole role_arn output or pass a literal role ARN. Required.
+	IngestionRole *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=ingestion_role,json=ingestionRole,proto3" json:"ingestion_role,omitempty"`
+	// The engine of the source backup. AWS accepts only "mysql" for
+	// instance S3 restores. Required.
+	SourceEngine string `protobuf:"bytes,4,opt,name=source_engine,json=sourceEngine,proto3" json:"source_engine,omitempty"`
+	// The version of the source engine the backup was taken from (e.g.
+	// "8.0"). Required.
+	SourceEngineVersion string `protobuf:"bytes,5,opt,name=source_engine_version,json=sourceEngineVersion,proto3" json:"source_engine_version,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceS3Import) Reset() {
+	*x = AwsRdsInstanceS3Import{}
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceS3Import) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceS3Import) ProtoMessage() {}
+
+func (x *AwsRdsInstanceS3Import) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceS3Import.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceS3Import) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsRdsInstanceS3Import) GetBucketName() string {
+	if x != nil {
+		return x.BucketName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceS3Import) GetBucketPrefix() string {
+	if x != nil {
+		return x.BucketPrefix
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceS3Import) GetIngestionRole() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IngestionRole
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceS3Import) GetSourceEngine() string {
+	if x != nil {
+		return x.SourceEngine
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceS3Import) GetSourceEngineVersion() string {
+	if x != nil {
+		return x.SourceEngineVersion
+	}
+	return ""
+}
+
+// AwsRdsInstanceIamRole associates one IAM role with the instance,
+// linked to a named engine feature. Managed as its own role-association
+// resource so roles attach and detach without touching the instance.
+type AwsRdsInstanceIamRole struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IAM role to associate. Reference an AwsIamRole role_arn output
+	// or pass a literal role ARN. The role owns its policies; the
+	// instance only assumes it. The role's trust policy MUST allow
+	// rds.amazonaws.com to assume it -- AWS validates that server-side at
+	// association time and rejects the call with InvalidParameterValue
+	// ("IAM role ARN value is invalid or does not include the required
+	// permissions") otherwise; no plan-time check catches it. Required.
+	Role *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	// The engine feature the role is linked to (e.g. "s3Import",
+	// "s3Export", "Lambda", "S3_INTEGRATION" -- the valid set is
+	// engine-specific). Required -- AWS rejects an instance role
+	// association without a feature name. Changing it replaces the
+	// association (the instance is untouched).
+	FeatureName   string `protobuf:"bytes,2,opt,name=feature_name,json=featureName,proto3" json:"feature_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceIamRole) Reset() {
+	*x = AwsRdsInstanceIamRole{}
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceIamRole) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceIamRole) ProtoMessage() {}
+
+func (x *AwsRdsInstanceIamRole) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceIamRole.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceIamRole) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsRdsInstanceIamRole) GetRole() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Role
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceIamRole) GetFeatureName() string {
+	if x != nil {
+		return x.FeatureName
+	}
+	return ""
+}
+
+// AwsRdsInstanceParameter is one instance-level engine parameter,
+// applied through the module-managed DB parameter group.
+type AwsRdsInstanceParameter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The parameter name (e.g. "max_connections",
+	// "rds.force_ssl"). Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The parameter value. Required.
+	Value string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	// When the change lands: "immediate" (AWS default -- dynamic
+	// parameters apply now) or "pending-reboot" (static parameters wait
+	// for the next instance reboot).
+	ApplyMethod   string `protobuf:"bytes,3,opt,name=apply_method,json=applyMethod,proto3" json:"apply_method,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceParameter) Reset() {
+	*x = AwsRdsInstanceParameter{}
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceParameter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceParameter) ProtoMessage() {}
+
+func (x *AwsRdsInstanceParameter) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceParameter.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceParameter) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsRdsInstanceParameter) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceParameter) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceParameter) GetApplyMethod() string {
+	if x != nil {
+		return x.ApplyMethod
+	}
+	return ""
+}
+
+// AwsRdsInstanceOption is one option-group option -- an engine feature
+// activated on the instance (e.g. Oracle TDE/OEM, SQL Server native
+// backup), applied through the module-managed option group.
+type AwsRdsInstanceOption struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The option name (e.g. "TDE", "OEM", "SQLSERVER_BACKUP_RESTORE").
+	// Required.
+	OptionName string `protobuf:"bytes,1,opt,name=option_name,json=optionName,proto3" json:"option_name,omitempty"`
+	// Settings the option exposes, as name/value pairs (e.g. the
+	// IAM_ROLE_ARN setting of SQLSERVER_BACKUP_RESTORE).
+	OptionSettings []*AwsRdsInstanceOptionSetting `protobuf:"bytes,2,rep,name=option_settings,json=optionSettings,proto3" json:"option_settings,omitempty"`
+	// The port the option listens on, for options that open one (e.g.
+	// OEM's 1158). 0 omits the port.
+	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
+	// The option version, for options that carry one.
+	Version string `protobuf:"bytes,4,opt,name=version,proto3" json:"version,omitempty"`
+	// Security groups granting access to the option's port. Reference
+	// AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+	VpcSecurityGroupMemberships []*v1.StringValueOrRef `protobuf:"bytes,5,rep,name=vpc_security_group_memberships,json=vpcSecurityGroupMemberships,proto3" json:"vpc_security_group_memberships,omitempty"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceOption) Reset() {
+	*x = AwsRdsInstanceOption{}
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceOption) ProtoMessage() {}
+
+func (x *AwsRdsInstanceOption) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceOption.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceOption) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsRdsInstanceOption) GetOptionName() string {
+	if x != nil {
+		return x.OptionName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceOption) GetOptionSettings() []*AwsRdsInstanceOptionSetting {
+	if x != nil {
+		return x.OptionSettings
+	}
+	return nil
+}
+
+func (x *AwsRdsInstanceOption) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *AwsRdsInstanceOption) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceOption) GetVpcSecurityGroupMemberships() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcSecurityGroupMemberships
+	}
+	return nil
+}
+
+// AwsRdsInstanceOptionSetting is one name/value setting of an option.
+type AwsRdsInstanceOptionSetting struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The setting name. Required.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The setting value. Required.
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsInstanceOptionSetting) Reset() {
+	*x = AwsRdsInstanceOptionSetting{}
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsInstanceOptionSetting) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsInstanceOptionSetting) ProtoMessage() {}
+
+func (x *AwsRdsInstanceOptionSetting) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsInstanceOptionSetting.ProtoReflect.Descriptor instead.
+func (*AwsRdsInstanceOptionSetting) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsRdsInstanceOptionSetting) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceOptionSetting) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
 var File_catalog_aws_awsrdsinstance_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/aws/awsrdsinstance/v1alpha1/spec.proto\x12'dev.planton.aws.awsrdsinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf7C\n" +
+	".catalog/aws/awsrdsinstance/v1alpha1/spec.proto\x12'dev.planton.aws.awsrdsinstance.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8fY\n" +
 	"\x12AwsRdsInstanceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
@@ -946,8 +1395,8 @@ const file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12maintenance_window\x18  \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x121\n" +
 	"\x15copy_tags_to_snapshot\x18! \x01(\bR\x12copyTagsToSnapshot\x12G\n" +
 	"\x18delete_automated_backups\x18\" \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16deleteAutomatedBackups\x88\x01\x01\x12.\n" +
-	"\x13skip_final_snapshot\x18# \x01(\bR\x11skipFinalSnapshot\x12:\n" +
-	"\x19final_snapshot_identifier\x18$ \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13skip_final_snapshot\x18# \x01(\bR\x11skipFinalSnapshot\x12l\n" +
+	"\x19final_snapshot_identifier\x18$ \x01(\tB0\xbaH-\xd8\x01\x01r(2&^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$R\x17finalSnapshotIdentifier\x12/\n" +
 	"\x13deletion_protection\x18% \x01(\bR\x12deletionProtection\x12M\n" +
 	"#iam_database_authentication_enabled\x18& \x01(\bR iamDatabaseAuthenticationEnabled\x12\xe1\x01\n" +
 	"\x1fenabled_cloudwatch_logs_exports\x18' \x03(\tB\x99\x01\xbaH\x95\x01\x92\x01\x91\x01\x18\x01\"\x8c\x01r\x89\x01R\x05agentR\x05alertR\x05auditR\bdiag.logR\x05errorR\ageneralR\x11iam-db-auth-errorR\blistenerR\n" +
@@ -970,15 +1419,26 @@ const file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19blue_green_update_enabled\x186 \x01(\bR\x16blueGreenUpdateEnabled\x12J\n" +
 	"\x1aauto_minor_version_upgrade\x187 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x17autoMinorVersionUpgrade\x88\x01\x01\x12=\n" +
 	"\x1ballow_major_version_upgrade\x188 \x01(\bR\x18allowMajorVersionUpgrade\x12+\n" +
-	"\x11apply_immediately\x189 \x01(\bR\x10applyImmediately:\xc0$\xbaH\xbc$\x1a\xa7\x01\n" +
+	"\x11apply_immediately\x189 \x01(\bR\x10applyImmediately\x128\n" +
+	"\x18engine_lifecycle_support\x18: \x01(\tR\x16engineLifecycleSupport\x124\n" +
+	"\x16upgrade_storage_config\x18; \x01(\bR\x14upgradeStorageConfig\x12\\\n" +
+	"\ts3_import\x18< \x01(\v2?.dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceS3ImportR\bs3Import\x12[\n" +
+	"\tiam_roles\x18= \x03(\v2>.dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceIamRoleR\biamRoles\x12`\n" +
+	"\n" +
+	"parameters\x18> \x03(\v2@.dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceParameterR\n" +
+	"parameters\x12W\n" +
+	"\aoptions\x18? \x03(\v2=.dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOptionR\aoptions:\xc05\xbaH\xbc5\x1a\xa7\x01\n" +
 	"\x10subnets_or_group\x12Rprovide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name\x1a?(this.subnet_ids.size() >= 2) || has(this.db_subnet_group_name)\x1a\xa7\x02\n" +
 	"\x1eengine_required_unless_derived\x12\x87\x01engine is required unless the instance derives it from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)\x1a{this.engine != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\xc0\x02\n" +
 	"\x1fstorage_required_unless_derived\x12\x92\x01allocated_storage_gb is required unless storage is inherited from a source (replicate_source_db, snapshot_identifier, or restore_to_point_in_time)\x1a\x87\x01this.allocated_storage_gb > 0 || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\xb4\x01\n" +
 	"\x14password_xor_managed\x12]password cannot be set when manage_master_user_password is true -- pick one password strategy\x1a=this.manage_master_user_password ? this.password == '' : true\x1a\xc9\x02\n" +
 	" username_required_unless_derived\x12\xa5\x01username is required for a new instance -- AWS rejects a blank username; only read replicas and snapshot/point-in-time restores inherit credentials from their source\x1a}this.username != '' || this.replicate_source_db != '' || this.snapshot_identifier != '' || has(this.restore_to_point_in_time)\x1a\x84\x02\n" +
 	",final_snapshot_id_required_when_not_skipping\x12\x8b\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the instance without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xbf\x01\n" +
-	"#multi_az_excludes_availability_zone\x12favailability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself\x1a0!(this.multi_az && this.availability_zone != '')\x1a\x8b\x02\n" +
-	"\x11one_create_source\x12lreplicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources\x1a\x87\x01(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) <= 1\x1a\x96\x02\n" +
+	"#multi_az_excludes_availability_zone\x12favailability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself\x1a0!(this.multi_az && this.availability_zone != '')\x1a\xb6\x02\n" +
+	"\x11one_create_source\x12wreplicate_source_db, snapshot_identifier, restore_to_point_in_time, and s3_import are mutually exclusive create sources\x1a\xa7\x01(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) + (has(this.s3_import) ? 1 : 0) <= 1\x1a\x99\x01\n" +
+	"\x12s3_import_is_mysql\x12Ss3_import (Percona XtraBackup restore) is a MySQL feature -- engine must be 'mysql'\x1a.!has(this.s3_import) || this.engine == 'mysql'\x1a\xf5\x02\n" +
+	"%charset_conflicts_with_create_sources\x12\xa6\x01character_set_name only applies to a brand-new instance -- it cannot be combined with replicate_source_db, snapshot_identifier, restore_to_point_in_time, or s3_import\x1a\xa2\x01this.character_set_name == '' || (this.replicate_source_db == '' && this.snapshot_identifier == '' && !has(this.restore_to_point_in_time) && !has(this.s3_import))\x1a\x95\x01\n" +
+	"\x1btimezone_not_with_s3_import\x12Itimezone (SQL Server) cannot be combined with s3_import (a MySQL restore)\x1a+this.timezone == '' || !has(this.s3_import)\x1a\x96\x02\n" +
 	"\x1creplica_inherits_credentials\x12\x80\x01username, password, and manage_master_user_password cannot be set on a read replica -- credentials are inherited from the source\x1asthis.replicate_source_db == '' || (this.username == '' && this.password == '' && !this.manage_master_user_password)\x1a\xa1\x01\n" +
 	"\x1dreplica_mode_requires_replica\x12Ereplica_mode only applies to a read replica (replicate_source_db set)\x1a9this.replica_mode == '' || this.replicate_source_db != ''\x1a\xa0\x01\n" +
 	"\x12replica_mode_valid\x12;replica_mode must be 'open-read-only' or 'mounted' when set\x1aMthis.replica_mode == '' || this.replica_mode in ['open-read-only', 'mounted']\x1a\xcf\x01\n" +
@@ -990,8 +1450,13 @@ const file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19monitoring_interval_valid\x12Imonitoring_interval must be 0 (disabled), 1, 5, 10, 15, 30, or 60 seconds\x1a5this.monitoring_interval in [0, 1, 5, 10, 15, 30, 60]\x1a\xdc\x01\n" +
 	"&monitoring_role_required_with_interval\x12rmonitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role\x1a>this.monitoring_interval == 0 || has(this.monitoring_role_arn)\x1a\xbe\x01\n" +
 	"\x1cdatabase_insights_mode_valid\x12@database_insights_mode must be 'standard' or 'advanced' when set\x1a\\this.database_insights_mode == '' || this.database_insights_mode in ['standard', 'advanced']\x1a\x86\x01\n" +
-	"\x12network_type_valid\x12.network_type must be 'IPV4' or 'DUAL' when set\x1a@this.network_type == '' || this.network_type in ['IPV4', 'DUAL']\x1a\xfb\x01\n" +
-	"\x13license_model_valid\x12hlicense_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set\x1azthis.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license']B\x1b\n" +
+	"\x12network_type_valid\x12.network_type must be 'IPV4' or 'DUAL' when set\x1a@this.network_type == '' || this.network_type in ['IPV4', 'DUAL']\x1a\x8e\x03\n" +
+	"\x13license_model_valid\x12\xb4\x01license_model must be one of 'license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', or 'bring-your-own-media' when set\x1a\xbf\x01this.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', 'bring-your-own-media']\x1a\xb9\x02\n" +
+	"\x1eengine_lifecycle_support_valid\x12{engine_lifecycle_support must be 'open-source-rds-extended-support' or 'open-source-rds-extended-support-disabled' when set\x1a\x99\x01this.engine_lifecycle_support == '' || this.engine_lifecycle_support in ['open-source-rds-extended-support', 'open-source-rds-extended-support-disabled']\x1a\xd4\x01\n" +
+	"!own_parameters_xor_existing_group\x12oparameters and parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1a>this.parameter_group_name == '' || this.parameters.size() == 0\x1a\x96\x02\n" +
+	"%parameters_require_engine_and_version\x12\x9b\x01inline parameters require engine and a pinned engine_version -- the managed parameter group's family is derived from them and must match the running engine\x1aOthis.parameters.size() == 0 || (this.engine != '' && this.engine_version != '')\x1a\xc2\x01\n" +
+	"\x1eown_options_xor_existing_group\x12foptions and option_group_name are mutually exclusive -- manage options here or bring an existing group\x1a8this.option_group_name == '' || this.options.size() == 0\x1a\xa2\x02\n" +
+	"\"options_require_engine_and_version\x12\xad\x01inline options require engine and a pinned engine_version -- the managed option group's engine name and major version are derived from them and must match the running engine\x1aLthis.options.size() == 0 || (this.engine != '' && this.engine_version != '')B\x1b\n" +
 	"\x19_delete_automated_backupsB\x1d\n" +
 	"\x1b_auto_minor_version_upgrade\"\xbd\a\n" +
 	"\x1dAwsRdsInstanceActiveDirectory\x12\x16\n" +
@@ -1012,7 +1477,32 @@ const file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\frestore_time\x18\x04 \x01(\tR\vrestoreTime\x12;\n" +
 	"\x1ause_latest_restorable_time\x18\x05 \x01(\bR\x17useLatestRestorableTime:\xdc\x03\xbaH\xd8\x03\x1a\xbb\x02\n" +
 	"\x12exactly_one_source\x12}exactly one of source_db_instance_identifier, source_dbi_resource_id, or source_db_instance_automated_backups_arn must be set\x1a\xa5\x01(this.source_db_instance_identifier != '' ? 1 : 0) + (this.source_dbi_resource_id != '' ? 1 : 0) + (this.source_db_instance_automated_backups_arn != '' ? 1 : 0) == 1\x1a\x97\x01\n" +
-	"\x10exactly_one_time\x12Eexactly one of restore_time or use_latest_restorable_time must be set\x1a<(this.restore_time != '') != this.use_latest_restorable_timeB\xd2\x02\n" +
+	"\x10exactly_one_time\x12Eexactly one of restore_time or use_latest_restorable_time must be set\x1a<(this.restore_time != '') != this.use_latest_restorable_time\"\xdc\x02\n" +
+	"\x16AwsRdsInstanceS3Import\x12'\n" +
+	"\vbucket_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"bucketName\x12#\n" +
+	"\rbucket_prefix\x18\x02 \x01(\tR\fbucketPrefix\x12\x81\x01\n" +
+	"\x0eingestion_role\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\ringestionRole\x124\n" +
+	"\rsource_engine\x18\x04 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\aR\x05mysqlR\fsourceEngine\x12:\n" +
+	"\x15source_engine_version\x18\x05 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13sourceEngineVersion\"\xb2\x01\n" +
+	"\x15AwsRdsInstanceIamRole\x12n\n" +
+	"\x04role\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x04role\x12)\n" +
+	"\ffeature_name\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vfeatureName\"\xa4\x02\n" +
+	"\x17AwsRdsInstanceParameter\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12!\n" +
+	"\fapply_method\x18\x03 \x01(\tR\vapplyMethod:\xab\x01\xbaH\xa7\x01\x1a\xa4\x01\n" +
+	"\x12apply_method_valid\x12=apply_method must be 'immediate' or 'pending-reboot' when set\x1aOthis.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']\"\x8e\x03\n" +
+	"\x14AwsRdsInstanceOption\x12'\n" +
+	"\voption_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"optionName\x12m\n" +
+	"\x0foption_settings\x18\x02 \x03(\v2D.dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOptionSettingR\x0eoptionSettings\x12\x1f\n" +
+	"\x04port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12\x18\n" +
+	"\aversion\x18\x04 \x01(\tR\aversion\x12\xa2\x01\n" +
+	"\x1evpc_security_group_memberships\x18\x05 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x1bvpcSecurityGroupMemberships\"W\n" +
+	"\x1bAwsRdsInstanceOptionSetting\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\xd2\x02\n" +
 	"+com.dev.planton.aws.awsrdsinstance.v1alpha1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1;awsrdsinstancev1alpha1\xa2\x02\x04DPAA\xaa\x02'Dev.Planton.Aws.Awsrdsinstance.V1alpha1\xca\x02'Dev\\Planton\\Aws\\Awsrdsinstance\\V1alpha1\xe2\x023Dev\\Planton\\Aws\\Awsrdsinstance\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Aws::Awsrdsinstance::V1alpha1b\x06proto3"
 
 var (
@@ -1027,28 +1517,41 @@ func file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsRdsInstanceSpec)(nil),                 // 0: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec
 	(*AwsRdsInstanceActiveDirectory)(nil),      // 1: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceActiveDirectory
 	(*AwsRdsInstanceRestoreToPointInTime)(nil), // 2: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceRestoreToPointInTime
-	(*v1.StringValueOrRef)(nil),                // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRdsInstanceS3Import)(nil),             // 3: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceS3Import
+	(*AwsRdsInstanceIamRole)(nil),              // 4: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceIamRole
+	(*AwsRdsInstanceParameter)(nil),            // 5: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceParameter
+	(*AwsRdsInstanceOption)(nil),               // 6: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOption
+	(*AwsRdsInstanceOptionSetting)(nil),        // 7: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOptionSetting
+	(*v1.StringValueOrRef)(nil),                // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 2: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 4: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.master_user_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 5: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.restore_to_point_in_time:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceRestoreToPointInTime
-	3, // 6: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.performance_insights_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 7: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.monitoring_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 8: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.active_directory:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceActiveDirectory
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	8,  // 0: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 1: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.db_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 2: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 3: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 4: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.master_user_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 5: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.restore_to_point_in_time:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceRestoreToPointInTime
+	8,  // 6: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.performance_insights_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 7: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.monitoring_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 8: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.active_directory:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceActiveDirectory
+	3,  // 9: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.s3_import:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceS3Import
+	4,  // 10: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.iam_roles:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceIamRole
+	5,  // 11: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.parameters:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceParameter
+	6,  // 12: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceSpec.options:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOption
+	8,  // 13: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceS3Import.ingestion_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 14: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceIamRole.role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 15: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOption.option_settings:type_name -> dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOptionSetting
+	8,  // 16: dev.planton.aws.awsrdsinstance.v1alpha1.AwsRdsInstanceOption.vpc_security_group_memberships:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_init() }
@@ -1063,7 +1566,7 @@ func file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsrdsinstance_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

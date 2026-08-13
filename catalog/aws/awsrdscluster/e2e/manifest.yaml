@@ -12,9 +12,32 @@ spec:
   manageMasterUserPassword: true
   storageEncrypted: true
   skipFinalSnapshot: true
+  autoMinorVersionUpgrade: true
+  # Kerberos authentication through an AWS Managed Microsoft AD.
+  domain: d-9267012345
+  domainIamRoleName: rds-directory-service-role
   serverlessV2Scaling:
     minCapacity: 0
     maxCapacity: 1
   instances:
     - name: writer
       instanceClass: db.serverless
+      copyTagsToSnapshot: true
+      preferredMaintenanceWindow: sun:05:00-sun:06:00
+  # Engine feature roles, one association per entry (feature-scoped).
+  iamRoles:
+    - role:
+        value: arn:aws:iam::123456789012:role/aurora-s3-export
+      featureName: s3Export
+  # A stable analytics endpoint over the chosen instances.
+  customEndpoints:
+    - name: analytics
+      type: READER
+      excludedMembers:
+        - writer
+  # Compliance-grade audit feed: every database event to a KMS-encrypted
+  # Kinesis stream (the stream name surfaces as an output).
+  activityStream:
+    mode: async
+    kmsKeyId:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab

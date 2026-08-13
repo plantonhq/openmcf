@@ -305,4 +305,31 @@ var _ = ginkgo.Describe("GcpBigtableTableSpec", func() {
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
+
+	ginkgo.It("should accept automated backup locations", func() {
+		target := minimal()
+		target.Spec.AutomatedBackupPolicy = &GcpBigtableTableAutomatedBackupPolicy{
+			RetentionPeriod: "72h",
+			Frequency:       "24h",
+			Locations:       []string{"projects/my-project/locations/us-central1-a"},
+		}
+		err := validator.Validate(target)
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept deletion_policy DELETE, PREVENT, ABANDON, and empty", func() {
+		for _, policy := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			target := minimal()
+			target.Spec.DeletionPolicy = policy
+			err := validator.Validate(target)
+			gomega.Expect(err).ToNot(gomega.HaveOccurred(), "policy %q", policy)
+		}
+	})
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimal()
+		target.Spec.DeletionPolicy = "RETAIN"
+		err := validator.Validate(target)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
 })

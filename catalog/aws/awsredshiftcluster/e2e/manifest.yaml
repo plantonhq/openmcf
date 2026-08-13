@@ -11,3 +11,34 @@ spec:
   masterUsername: hackadmin
   manageMasterPassword: true
   skipFinalSnapshot: true
+  # Governance: cap what individual features may spend, pause the
+  # warehouse outside business hours, and cap Spectrum scans.
+  usageLimits:
+    - featureType: spectrum
+      limitType: data-scanned
+      amount: 5
+    - featureType: concurrency-scaling
+      limitType: time
+      amount: 60
+      period: daily
+      breachAction: disable
+  scheduledActions:
+    - name: awsredshiftcluster-demo-nightly-pause
+      schedule: cron(0 4 * * ? *)
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/redshift-scheduler
+      pauseCluster: true
+    - name: awsredshiftcluster-demo-morning-resume
+      schedule: cron(0 13 * * ? *)
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/redshift-scheduler
+      resumeCluster: true
+  # Cross-VPC access: a managed endpoint in the cluster's own subnet
+  # group, plus a grant letting another account create endpoints.
+  endpointAccesses:
+    - endpointName: analytics-consumers
+  endpointAuthorizations:
+    - account: "210987654321"
+  # Replace the default snapshot cadence with an existing account-level
+  # schedule.
+  snapshotScheduleIdentifier: every-12h

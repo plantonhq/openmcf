@@ -14,8 +14,6 @@ func subnet(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResourc
 
 	subnetArgs := &ec2.SubnetArgs{
 		VpcId:                                   pulumi.String(spec.VpcId.GetValue()),
-		CidrBlock:                               pulumi.StringPtr(spec.CidrBlock),
-		AvailabilityZone:                        pulumi.StringPtr(spec.AvailabilityZone),
 		MapPublicIpOnLaunch:                     pulumi.BoolPtr(spec.MapPublicIpOnLaunch),
 		AssignIpv6AddressOnCreation:             pulumi.BoolPtr(spec.AssignIpv6AddressOnCreation),
 		EnableDns64:                             pulumi.BoolPtr(spec.EnableDns64),
@@ -25,9 +23,44 @@ func subnet(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResourc
 			stringmaps.AddEntry(locals.AwsTags, "Name", name)),
 	}
 
+	// Exactly one placement form is present (spec CEL): the zone name or the
+	// account-stable zone id.
+	if spec.AvailabilityZone != "" {
+		subnetArgs.AvailabilityZone = pulumi.StringPtr(spec.AvailabilityZone)
+	}
+	if spec.AvailabilityZoneId != "" {
+		subnetArgs.AvailabilityZoneId = pulumi.StringPtr(spec.AvailabilityZoneId)
+	}
+
+	// IPv4 addressing: an explicit CIDR, an IPAM allocation, or neither
+	// (ipv6-native subnets). The spec CEL guarantees the arms never mix, and
+	// unset arms are OMITTED (never sent as empty strings) so AWS applies its
+	// own semantics.
+	if spec.CidrBlock != "" {
+		subnetArgs.CidrBlock = pulumi.StringPtr(spec.CidrBlock)
+	}
+	if spec.Ipv4IpamPoolId.GetValue() != "" {
+		subnetArgs.Ipv4IpamPoolId = pulumi.StringPtr(spec.Ipv4IpamPoolId.GetValue())
+	}
+	if spec.Ipv4NetmaskLength != nil {
+		subnetArgs.Ipv4NetmaskLength = pulumi.IntPtr(int(spec.GetIpv4NetmaskLength()))
+	}
+
+	// IPv6 addressing: an explicit CIDR or an IPAM allocation (spec CEL keeps
+	// them exclusive); ipv6_native drops IPv4 entirely (IPv6-only subnet).
 	if spec.Ipv6CidrBlock != "" {
 		subnetArgs.Ipv6CidrBlock = pulumi.StringPtr(spec.Ipv6CidrBlock)
 	}
+	if spec.Ipv6IpamPoolId.GetValue() != "" {
+		subnetArgs.Ipv6IpamPoolId = pulumi.StringPtr(spec.Ipv6IpamPoolId.GetValue())
+	}
+	if spec.Ipv6NetmaskLength != nil {
+		subnetArgs.Ipv6NetmaskLength = pulumi.IntPtr(int(spec.GetIpv6NetmaskLength()))
+	}
+	if spec.Ipv6Native {
+		subnetArgs.Ipv6Native = pulumi.BoolPtr(true)
+	}
+
 	if spec.GetPrivateDnsHostnameTypeOnLaunch() != "" {
 		subnetArgs.PrivateDnsHostnameTypeOnLaunch = pulumi.StringPtr(spec.GetPrivateDnsHostnameTypeOnLaunch())
 	}

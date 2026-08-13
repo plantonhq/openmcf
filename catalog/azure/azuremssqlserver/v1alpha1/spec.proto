@@ -91,7 +91,7 @@ message AzureMssqlServerSpec {
   string administrator_login = 5 [(buf.validate.field).cel = {
     id: "mssql_admin_login_not_reserved"
     message: "administrator_login cannot be a reserved name (admin, administrator, sa, root, dbmanager, loginmanager, dbo, guest, public)"
-    expression: "this == '' || !(this.lowerAscii() in ['admin', 'administrator', 'sa', 'root', 'dbmanager', 'loginmanager', 'dbo', 'guest', 'public'])"
+    expression: "this == '' || !this.matches('^(?i)(admin|administrator|sa|root|dbmanager|loginmanager|dbo|guest|public)$')"
   }];
 
   // The administrator password for SQL authentication (8-128 characters

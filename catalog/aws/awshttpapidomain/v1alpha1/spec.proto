@@ -28,9 +28,11 @@ import "shared/foreignkey/v1/foreign_key.proto";
 //   them. (Edge-optimized domains are a REST API v1 feature.)
 // - The certificate must be issued in the SAME region as the domain and must
 //   cover the domain name (exact match or wildcard).
-// - routing_mode (routing rules) is deliberately not modeled: header/path
-//   rule-based routing is a separate resource family; the default
-//   API-mapping-only mode covers the mapping surface this component models.
+// - The domain routes requests two ways, selected by routing_mode: static
+//   path-key API mappings (api_mappings, the default) and dynamic routing
+//   rules (routing_rules) that match on base path or header and invoke an
+//   API stage by priority order. Rules are their own AWS resources attached
+//   to the domain; the module creates one per routing_rules entry.
 //
 // Credentials, region, and deployment workflow live outside this spec in
 // stack inputs.
@@ -79,8 +81,48 @@ message AwsHttpApiDomainSpec {
   // an optional path key: an empty api_mapping_key serves the API at the
   // domain root ("https://api.example.com/"), while a key like "orders"
   // serves it under "https://api.example.com/orders/". Multiple APIs
-  // compose onto one domain by using distinct keys.
+  // compose onto one domain by using distinct keys. Mutually exclusive
+  // with the routing-rule modes: AWS currently rejects CreateApiMapping
+  // for HTTP/WebSocket APIs on a domain whose routing_mode uses routing
+  // rules ("APIs with a protocol type of HTTP or WEBSOCKET cannot be
+  // associated to domains that have a routingMode that uses
+  // RoutingRules", live-verified) -- route through routing_rules instead
+  // on such domains.
   repeated AwsHttpApiDomainApiMapping api_mappings = 6;
+
+  // ARN of an AWS-issued public ACM certificate that proves ownership of the
+  // custom domain. Required by AWS in exactly two setups: when
+  // certificate_arn is issued by an ACM Private CA, or when mutual_tls is
+  // configured with an ACM-IMPORTED certificate. The certificate must be a
+  // public ACM certificate for the same domain, in the same region. Accepts
+  // a direct ARN or a reference to an AwsCertManagerCert resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ownership_verification_certificate_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // How the domain routes incoming requests. Valid values:
+  // - "API_MAPPING_ONLY" (AWS default when omitted): only the static
+  //   api_mappings path keys route requests.
+  // - "ROUTING_RULE_ONLY": only routing_rules route requests.
+  // - "ROUTING_RULE_THEN_API_MAPPING": routing rules are evaluated first
+  //   (by ascending priority); requests matching no rule fall back to API
+  //   mappings. NOTE: AWS currently rejects HTTP/WebSocket API mappings on
+  //   rule-mode domains (see api_mappings), so under this spec -- whose
+  //   mappings are all HTTP APIs -- the fallback can only serve REST-API
+  //   mappings managed outside this resource.
+  // Updatable in place.
+  string routing_mode = 8;
+
+  // Dynamic routing rules attached to the domain. Each rule matches requests
+  // on base path or header values and invokes one REST API stage -- API
+  // Gateway supports ONLY REST-protocol targets in routing rules
+  // (live-verified; HTTP/WebSocket targets are rejected at
+  // CreateRoutingRule). Rules are evaluated in ascending priority order and
+  // the first match wins; they route requests only when routing_mode is
+  // "ROUTING_RULE_ONLY" or "ROUTING_RULE_THEN_API_MAPPING". Each entry
+  // creates one aws_apigatewayv2_routing_rule resource on the domain.
+  repeated AwsHttpApiDomainRoutingRule routing_rules = 9;
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -100,6 +142,51 @@ message AwsHttpApiDomainSpec {
     message: "api_mapping_key values must be unique across api_mappings (only one API can serve the domain root, and each path key can carry one API)"
     expression: "this.api_mappings.all(m1, this.api_mappings.filter(m2, m2.api_mapping_key == m1.api_mapping_key).size() == 1)"
   };
+
+  // Routing mode must be valid when set.
+  option (buf.validate.message).cel = {
+    id: "routing_mode_valid"
+    message: "routing_mode must be 'API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', or 'ROUTING_RULE_THEN_API_MAPPING' when set"
+    expression: "this.routing_mode == '' || this.routing_mode in ['API_MAPPING_ONLY', 'ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']"
+  };
+
+  // Rules only route when a rule-honoring mode is set -- rules under the
+  // default API_MAPPING_ONLY mode would be silently dead configuration.
+  option (buf.validate.message).cel = {
+    id: "routing_rules_require_rule_mode"
+    message: "routing_rules require routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- under the default API_MAPPING_ONLY mode the rules would never be evaluated"
+    expression: "this.routing_rules.size() == 0 || this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']"
+  };
+
+  // AWS rejects HTTP/WebSocket API mappings on rule-mode domains at
+  // CreateApiMapping (BadRequestException "APIs with a protocol type of
+  // HTTP or WEBSOCKET cannot be associated to domains that have a
+  // routingMode that uses RoutingRules", live-verified on both engines) --
+  // every mapping this spec models is an HTTP API, so failing at validate
+  // names the conflict instead of failing minutes into an apply.
+  option (buf.validate.message).cel = {
+    id: "api_mappings_conflict_with_rule_modes"
+    message: "api_mappings cannot be combined with routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' -- AWS rejects HTTP-API mappings on rule-routed domains; route through routing_rules instead"
+    expression: "this.api_mappings.size() == 0 || !(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING'])"
+  };
+
+  // A rule-honoring mode without rules is equally dead: ROUTING_RULE_ONLY
+  // would route nothing, and ...THEN_API_MAPPING would be API_MAPPING_ONLY
+  // in disguise.
+  option (buf.validate.message).cel = {
+    id: "rule_mode_requires_routing_rules"
+    message: "routing_mode 'ROUTING_RULE_ONLY' or 'ROUTING_RULE_THEN_API_MAPPING' requires at least one routing_rules entry"
+    expression: "!(this.routing_mode in ['ROUTING_RULE_ONLY', 'ROUTING_RULE_THEN_API_MAPPING']) || this.routing_rules.size() > 0"
+  };
+
+  // AWS rejects two rules with the same priority on one domain ("Rules
+  // can't have the same priority"); a duplicate in the spec would mean an
+  // undefined evaluation order.
+  option (buf.validate.message).cel = {
+    id: "routing_rule_priorities_unique"
+    message: "routing_rules priority values must be unique -- AWS rejects two rules with the same priority on one domain"
+    expression: "this.routing_rules.all(r1, this.routing_rules.filter(r2, r2.priority == r1.priority).size() == 1)"
+  };
 }
 
 // AwsHttpApiDomainMutualTls configures mutual TLS client authentication for
@@ -118,6 +205,91 @@ message AwsHttpApiDomainMutualTls {
   // truststore updates are an explicit, auditable change rather than a
   // silent side effect of overwriting the object.
   string truststore_version = 2;
+}
+
+// AwsHttpApiDomainRoutingRule matches requests on base path or header values
+// and routes them to one API stage. Rules are evaluated in ascending
+// priority order; the first rule whose conditions ALL match wins. The
+// provider nests the target under an action/invoke_api wrapper (the only
+// action type API Gateway supports); the spec flattens it to the rule's own
+// api_id / stage / strip_base_path fields. Routing rules can invoke ONLY
+// REST-protocol APIs: AWS rejects HTTP/WebSocket targets at
+// CreateRoutingRule ("Invalid API protocol type. Only the REST protocol
+// type is supported", live-verified on both engines; the provider's own
+// documentation carries the same restriction).
+message AwsHttpApiDomainRoutingRule {
+  // Evaluation order of this rule: lower values are evaluated first. Must
+  // be between 1 and 1,000,000 and unique across the domain's rules (AWS
+  // rejects duplicate priorities). Updatable in place.
+  int32 priority = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000000
+  }];
+
+  // Conditions that must ALL match for this rule to fire. Each condition
+  // tests exactly one dimension -- a set of candidate base paths, or one
+  // header pattern; combine a base-path condition with a header condition
+  // to require both.
+  repeated AwsHttpApiDomainRoutingRuleCondition conditions = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // The REST API that matching requests are routed to. Pass the REST API's
+  // ID literally -- API Gateway rejects HTTP/WebSocket API targets here, so
+  // referencing an AwsHttpApiGateway would always fail the apply (the
+  // catalog does not yet model REST APIs; this becomes referenceable when a
+  // REST API kind ships).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef api_id = 3 [(buf.validate.field).required = true];
+
+  // The stage of the target REST API to invoke (a REST stage name such as
+  // "prod").
+  string stage = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Strip the matched base path from the request before forwarding it to
+  // the target API. With "orders" in a rule's base paths and
+  // strip_base_path=true, a request to "https://<domain>/orders/list"
+  // reaches the API as "/list"; false (the default) forwards
+  // "/orders/list" unchanged.
+  bool strip_base_path = 5;
+}
+
+// AwsHttpApiDomainRoutingRuleCondition tests one dimension of a request:
+// its first path segment (base path) or one of its headers. Set exactly one
+// of the two arms.
+message AwsHttpApiDomainRoutingRuleCondition {
+  // Candidate base paths (the request's first path segment, without
+  // slashes); the condition matches when the request's base path equals ANY
+  // entry. Example: ["orders", "billing"]. Case-sensitive.
+  repeated string base_paths = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // One header pattern the request must match. The condition matches when
+  // the named header's value matches the glob.
+  AwsHttpApiDomainRoutingRuleHeaderMatch header = 2;
+
+  // Exactly one matching dimension per condition -- API Gateway's own
+  // contract (the provider enforces exactly-one-of at plan time; mirroring
+  // it here fails at validate instead).
+  option (buf.validate.message).cel = {
+    id: "condition_exactly_one_arm"
+    message: "each routing rule condition must set exactly one of base_paths or header"
+    expression: "(this.base_paths.size() > 0) != has(this.header)"
+  };
+}
+
+// AwsHttpApiDomainRoutingRuleHeaderMatch matches one request header against
+// a glob pattern.
+message AwsHttpApiDomainRoutingRuleHeaderMatch {
+  // Header name to test (max 40 characters), e.g. "x-tenant-id".
+  // Case-insensitive on the wire, as HTTP headers are.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 40
+  }];
+
+  // Glob pattern the header value must match (max 128 characters), e.g.
+  // "tenant-a-*" or an exact literal like "beta".
+  string value_glob = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
 }
 
 // AwsHttpApiDomainApiMapping binds one API's stage onto the domain under an

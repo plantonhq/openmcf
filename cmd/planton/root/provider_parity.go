@@ -54,8 +54,8 @@ catalog/<provider>/terraform-parity.md (drift-gated by CI once committed).`,
 func init() {
 	ProviderParity.Flags().String("provider", "", "cloud provider whose catalog to account (e.g. gcp)")
 	ProviderParity.Flags().String("ga-schema", "", "the parity-baseline Terraform provider schema (e.g. google)")
-	ProviderParity.Flags().Bool("check", false, "exit non-zero if the parity gate fails (for CI)")
-	ProviderParity.Flags().Bool("write-baseline", false, "regenerate the accepted-gap baseline file")
+	ProviderParity.Flags().Bool("check", false, "exit non-zero if the parity gate fails (for CI; always gates every enrolled provider's findings)")
+	ProviderParity.Flags().Bool("write-baseline", false, "regenerate the accepted-gap baseline file (always from every enrolled provider's findings)")
 	ProviderParity.Flags().Bool("write-report", false, "render the public parity page from the accounting")
 	ProviderParity.Flags().String("report-path", "", "public parity page path (default catalog/<provider>/terraform-parity.md)")
 	ProviderParity.Flags().String("baseline", providerparity.DefaultBaselinePath, "path to the baseline file")
@@ -84,19 +84,37 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 		cliprint.PrintError(fmt.Sprintf("failed to load schema artifacts: %v (run from the repository root)", err))
 		os.Exit(1)
 	}
-	acc, err := providerparity.BuildAccounting(".",
-		cloudresourcekind.CloudResourceProvider(providerValue), schemas, gaSchema, dispositionsPath)
-	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("accounting failed: %v", err))
-		os.Exit(1)
-	}
 
 	if write, _ := cmd.Flags().GetBool("write-baseline"); write {
-		if err := providerparity.WriteBaseline(baselinePath, acc.Findings); err != nil {
+		// The baseline is ONE file for every enrolled provider, so a write
+		// is always computed from all enrollments' merged findings -- writing
+		// this run's single-provider findings would silently drop every
+		// other provider's entries.
+		accountings, err := providerparity.EnrolledAccountings(".", schemas)
+		if err != nil {
+			cliprint.PrintError(fmt.Sprintf("failed to account enrolled providers: %v", err))
+			os.Exit(1)
+		}
+		if err := providerparity.WriteBaseline(baselinePath, providerparity.MergeFindings(accountings)); err != nil {
 			cliprint.PrintError(fmt.Sprintf("failed to write baseline: %v", err))
 			os.Exit(1)
 		}
-		cliprint.PrintSuccess(fmt.Sprintf("baseline written to %s -- review the diff before committing", baselinePath))
+		cliprint.PrintSuccess(fmt.Sprintf("baseline written to %s from all enrolled providers -- review the diff before committing", baselinePath))
+		return
+	}
+
+	if check, _ := cmd.Flags().GetBool("check"); check {
+		// The gate reads the same one-file-for-every-provider baseline the
+		// write above regenerates, so it too must consume the merged
+		// findings of ALL enrollments -- gating this run's single-provider
+		// findings against the shared baseline would misreport every other
+		// provider's entries as stale.
+		accountings, err := providerparity.EnrolledAccountings(".", schemas)
+		if err != nil {
+			cliprint.PrintError(fmt.Sprintf("failed to account enrolled providers: %v", err))
+			os.Exit(1)
+		}
+		runProviderParityCheck(providerparity.MergeFindings(accountings), baselinePath)
 		return
 	}
 
@@ -119,9 +137,11 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 		return
 	}
 
-	if check, _ := cmd.Flags().GetBool("check"); check {
-		runProviderParityCheck(acc, baselinePath)
-		return
+	acc, err := providerparity.BuildAccounting(".",
+		cloudresourcekind.CloudResourceProvider(providerValue), schemas, gaSchema, dispositionsPath)
+	if err != nil {
+		cliprint.PrintError(fmt.Sprintf("accounting failed: %v", err))
+		os.Exit(1)
 	}
 
 	if kind, _ := cmd.Flags().GetString("kind"); kind != "" {
@@ -142,15 +162,15 @@ func providerParityHandler(cmd *cobra.Command, _ []string) {
 	printAccountingSummary(acc)
 }
 
-func runProviderParityCheck(acc providerparity.Accounting, baselinePath string) {
+func runProviderParityCheck(findings []providerparity.Finding, baselinePath string) {
 	baseline, err := providerparity.LoadBaseline(baselinePath)
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("failed to load baseline: %v", err))
 		os.Exit(1)
 	}
-	res := providerparity.Gate(acc.Findings, baseline)
+	res := providerparity.Gate(findings, baseline)
 	if res.OK() {
-		cliprint.PrintSuccess(fmt.Sprintf("provider-parity gate passed (%s@%s)", acc.GASchema, acc.GASchemaVersion))
+		cliprint.PrintSuccess("provider-parity gate passed (all enrolled providers)")
 		return
 	}
 	for _, f := range res.NewFindings {

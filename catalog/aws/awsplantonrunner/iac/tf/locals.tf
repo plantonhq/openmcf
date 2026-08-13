@@ -2,6 +2,10 @@ locals {
   runner_name = var.metadata.name
 
   # Resource-identity tags, matching the Pulumi module key-for-key.
+  # DELIBERATELY five keys, no Name: the appliance's resources (cluster,
+  # service, roles, secret, log group) each carry their own explicit resource
+  # name -- a shared Name tag would mislabel ten distinct resources with one
+  # value (the same recorded convention as AwsEcrRepo/AwsGlobalAccelerator).
   aws_tags = {
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org

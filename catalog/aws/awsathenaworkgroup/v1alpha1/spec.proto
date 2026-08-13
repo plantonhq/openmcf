@@ -242,6 +242,14 @@ message AwsAthenaWorkgroupSpec {
     message: "managed_query_results cannot be combined with result_configuration.output_location; results are stored either in AWS-managed storage or in your S3 bucket, not both"
     expression: "!has(this.managed_query_results) || !has(this.result_configuration) || this.result_configuration.output_location == ''"
   };
+
+  // Literal values must be role ARNs (the provider validates ValidARN at
+  // plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "execution_role_arn_format"
+    message: "execution_role literal value must be an IAM role ARN (arn:...)"
+    expression: "!has(this.execution_role) || this.execution_role.value == '' || this.execution_role.value.startsWith('arn:')"
+  };
 }
 
 // AwsAthenaWorkgroupResultConfig defines where Athena stores query results in
@@ -301,10 +309,22 @@ message AwsAthenaWorkgroupManagedQueryResults {
   // encrypts managed results with an AWS-owned key -- already encrypted at
   // rest; supply a key only when your compliance posture requires
   // customer-controlled key rotation and CloudTrail audit of key usage.
+  //
+  // Unlike the other three KMS fields on this workgroup, this one accepts a
+  // full key ARN ONLY -- the provider rejects "alias/..." forms here at plan
+  // time.
   dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
+
+  // ARN-only: this is the one workgroup KMS field whose provider validation
+  // rejects aliases. References resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "managed_results_kms_arn_only"
+    message: "managed_query_results.kms_key literal value must be a full KMS key ARN (arn:...) -- aliases are not accepted here"
+    expression: "!has(this.kms_key) || this.kms_key.value == '' || this.kms_key.value.startsWith('arn:')"
+  };
 }
 
 // AwsAthenaWorkgroupIdentityCenterConfig integrates the workgroup with AWS IAM
@@ -374,12 +394,20 @@ message AwsAthenaWorkgroupCloudWatchLoggingConfig {
   // Name of the CloudWatch Logs log group to publish to. When omitted, Athena
   // publishes to its service-default log group. 1-512 characters:
   // alphanumeric, periods, underscores, hyphens, and slashes.
-  string log_group = 1 [(buf.validate.field).string.max_len = 512];
+  string log_group = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9._/-]+$"
+  ];
 
   // Prefix for the log stream names Athena creates inside the log group.
   // Useful when several workgroups share one log group. Same character rules
   // as log_group.
-  string log_stream_name_prefix = 2 [(buf.validate.field).string.max_len = 512];
+  string log_stream_name_prefix = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 512,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9._/-]+$"
+  ];
 
   // Which logs to publish, keyed by worker type. Keys are Spark worker types
   // such as "SPARK_DRIVER" and "SPARK_EXECUTOR"; values are the log streams
@@ -427,10 +455,11 @@ message AwsAthenaWorkgroupS3LoggingConfig {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
-  // log_location must be an s3:// URI when set.
+  // log_location must be a well-formed s3:// URI (lowercase bucket name,
+  // no underscores) -- mirrors the provider's plan-time pattern.
   option (buf.validate.message).cel = {
     id: "s3_logging_location_shape"
-    message: "s3_logging.log_location must start with 's3://' when set"
-    expression: "this.log_location == '' || this.log_location.startsWith('s3://')"
+    message: "s3_logging.log_location must be an s3:// URI with a valid lowercase bucket name when set"
+    expression: "this.log_location == '' || this.log_location.matches('^s3://[a-z0-9][a-z0-9-]*[a-z0-9](/.*)?$')"
   };
 }

@@ -359,7 +359,7 @@ message CloudflareWorkerObservability {
   double head_sampling_rate = 2 [(buf.validate.field).cel = {
     id: "observability_head_sampling_rate.valid_range"
     message: "head_sampling_rate must be between 0 and 1"
-    expression: "this >= 0 && this <= 1"
+    expression: "this >= 0.0 && this <= 1.0"
   }];
 }
 

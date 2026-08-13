@@ -1,0 +1,34 @@
+# OIDC-provider scenario: proves the tenant-scoped IdP composition the
+# minimal cannot — one custom OIDC provider (displayName required at
+# tenant level; no responseType exists here), clientPermissions, and an
+# explicit deletionPolicy fanning out to the tenant AND its IdP config.
+# The clientSecret is a placeholder literal; live IdP validation of the
+# issuer (Identity Platform fetches the discovery document at create)
+# may be a watch item for the proof run.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpIdentityPlatformTenant
+metadata:
+  name: planton-oss-e2e-gcpidtenant-oidc
+  id: planton-oss-e2e-gcpidtenant-oidc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpidentityplatformtenant
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  displayName: e2e-oidc
+  allowPasswordSignup: true
+  clientPermissions:
+    disabledUserSignup: false
+    disabledUserDeletion: true
+  oauthIdpConfigs:
+    - name: oidc.e2e-provider
+      displayName: E2E OIDC Provider
+      issuer: https://accounts.example.com
+      clientId: e2e-oidc-client
+      clientSecret: e2e-placeholder-secret
+  deletionPolicy: DELETE

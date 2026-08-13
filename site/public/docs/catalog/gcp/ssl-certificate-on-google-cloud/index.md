@@ -42,7 +42,7 @@ Open the deployment store, find **SSL Certificate on Google Cloud**, and click *
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSslCertificate
 metadata:
   name: prod-app-cert-2026

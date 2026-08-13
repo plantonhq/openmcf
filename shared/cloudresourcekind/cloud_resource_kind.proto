@@ -19,10 +19,11 @@ message CloudResourceKindMeta {
   //(e.g. "aws.planton.dev/v1alpha1" carries version "v1"). the value must match
   //the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
   //the name declares the compatibility channel. this is the kind's sole
-  //served version; per-version metadata blocks arrive additively if a kind
-  //ever serves multiple versions at once. enum-value options are
-  //compile-time data, so the grammar is enforced by the crkreflect
-  //registry tests rather than protovalidate.
+  //served version; per-version metadata arrives additively beside it (see
+  //deprecations), and richer blocks follow if a kind ever serves multiple
+  //versions at once. enum-value options are compile-time data, so the
+  //grammar is enforced by the crkreflect registry tests rather than
+  //protovalidate.
   string version = 2;
 
   //name of the kind as written in manifests. set only when it differs from the
@@ -35,7 +36,21 @@ message CloudResourceKindMeta {
   //ambiguous about which kind they declare.
   string name = 3;
 
-  //cloud-resource id-prefix
+  //cloud-resource id-prefix — the per-kind segment embedded in every
+  //resource id (cr_<id_prefix>_<ulid>) and the id's only kind
+  //discriminator: CLI argument parsing, search lookups, and kind
+  //auto-detection all resolve the kind FROM this segment, so ids stay
+  //self-describing in the surfaces that carry nothing else (logs,
+  //permission tuples, activity streams, support threads).
+  //
+  //Convention (every char rides every id for the resource's lifetime):
+  //  - lowercase letters/digits only — NEVER an underscore, which is the
+  //    id separator the parsers split on
+  //  - starts with the provider's tag (gcp/aws/azure/k8s...) so any id
+  //    attributes its provider at a glance
+  //  - at most 8 characters total; target 5-7
+  //  - unique across the whole registry — enforced mechanically (the
+  //    prefix index fails construction on a duplicate)
   string id_prefix = 4;
 
   //flag indicating whether the cloud-resource kind can be used to launch a service.
@@ -84,6 +99,37 @@ message CloudResourceKindMeta {
   //are the UPSTREAM CRD's group-version-kind, distinct from the Planton
   //groupVersion returned by crkreflect.GroupVersion.
   KubernetesManifestProjection kubernetes_manifest_projection = 8;
+
+  //schema versions of this kind announced as deprecated. a deprecated version
+  //keeps working exactly as before -- documents authored at it are accepted
+  //and converted like any known version; deprecation is advice, never a gate,
+  //and REMOVING a version stays a separate, telemetry-gated decision. what
+  //changes is visibility: every surface that speaks versions (the discovery
+  //API, dashboards, CLI listings) announces the version as on its way out.
+  //each entry must name a version this release actually ships a schema for,
+  //must not name the served version (there would be nothing to upgrade to),
+  //and must have an authored conversion path to the served version -- the
+  //bundle conformance gate refuses dead ends, so a deprecation can never
+  //outlive its version or strand its writers. the upgrade target is never
+  //authored: it is always the kind's served version, derived, so it cannot
+  //drift. like every kind_meta field this is compile-time data enforced by
+  //the crkreflect registry tests and the bundle conformance gate.
+  repeated CloudResourceKindVersionDeprecation deprecations = 9;
+}
+
+//marks one of a kind's schema versions as deprecated. carried on
+//CloudResourceKindMeta.deprecations; see that field for the contract.
+message CloudResourceKindVersionDeprecation {
+  //the deprecated schema version, e.g. "v1alpha1". must match the maturity
+  //grammar, resolve to a schema this release ships for the kind, and differ
+  //from the kind's served version.
+  string version = 1;
+
+  //optional plain-language context appended to the derived deprecation
+  //notice. surfaces compose the base sentence ("deprecated -- upgrade to
+  //<served version>") from data; this adds the why, or a migration caveat
+  //worth a sentence. empty is legal and common.
+  string note = 2;
 }
 
 //identifies the upstream Kubernetes custom resource that a CloudResourceKind
@@ -125,6 +171,13 @@ enum CloudResourceKind {
     provider: _test
     version: "v1alpha2"
     id_prefix: "tcrg"
+    // The permanent deprecation fixture: the kind graduated to v1alpha2 with
+    // an authored conversion bridge, so v1alpha1 exercises the deprecation
+    // lane through every gate (registry tests, bundle conformance, discovery).
+    deprecations: {
+      version: "v1alpha1"
+      note: "superseded by the v1alpha2 shape"
+    }
   }];
   TestCloudResourceKubernetes = 2 [(kind_meta) = {
     provider: _test
@@ -600,11 +653,14 @@ enum CloudResourceKind {
   // AwsInternetGateway is a prerequisite because a public NAT gateway can only
   // become available once the VPC it sits in has an internet gateway attached
   // (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+  // AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode
+  // = regional) references the VPC directly instead of a subnet.
   AwsNatGateway = 1086 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
     id_prefix: "awsnat"
     prerequisites: [
+      AwsVpc,
       AwsSubnet,
       AwsElasticIp,
       AwsInternetGateway
@@ -2933,6 +2989,13 @@ enum CloudResourceKind {
     id_prefix: "gcpart"
     prerequisites: [GcpServiceAccount]
   }];
+  // The URL map is the parent a proxy cannot exist without; the classic
+  // compute certificate kinds and the SSL policy are the fixture parents the
+  // committed scenarios attach. The Certificate Manager certificate list
+  // (certificate_manager_certificates, honored only by the cross-region
+  // internal ALB) is optional composition -- a scenario that arms it declares
+  // GcpCertManagerCert via the e2e-prerequisites annotation, never a registry
+  // edge that would tax every proxy and forwarding-rule chain.
   GcpTargetHttpsProxy = 3001 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
@@ -2941,20 +3004,19 @@ enum CloudResourceKind {
       GcpUrlMap,
       GcpManagedSslCertificate,
       GcpSslPolicy,
-      GcpSslCertificate,
-      GcpCertManagerCert
+      GcpSslCertificate
     ]
   }];
   GcpCloudFunction = 3002 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "cldfunc"
+    id_prefix: "gcpfn"
     prerequisites: [GcpServerlessVpcConnector]
   }];
   GcpCloudRun = 3003 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "cldrun"
+    id_prefix: "gcprun"
   }];
   GcpCloudSql = 3004 [(kind_meta) = {
     provider: gcp
@@ -2973,13 +3035,13 @@ enum CloudResourceKind {
   GcpGcsBucket = 3006 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcsbkt"
+    id_prefix: "gcpgcs"
     prerequisites: [GcpServiceAccount]
   }];
   GcpGkeCluster = 3007 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gke"
+    id_prefix: "gcpgke"
     container_kind: true
     prerequisites: [
       GcpVpcNetwork,
@@ -3013,7 +3075,7 @@ enum CloudResourceKind {
   GcpRouterNat = 3012 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcprnat"
+    id_prefix: "gcpnat"
     prerequisites: [
       GcpVpcNetwork,
       GcpAddress
@@ -3022,18 +3084,18 @@ enum CloudResourceKind {
   GcpGkeNodePool = 3013 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gkenp"
+    id_prefix: "gcpgkenp"
     prerequisites: [GcpGkeCluster]
   }];
   GcpServiceAccount = 3014 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gsa"
+    id_prefix: "gcpsa"
   }];
   GcpGkeWorkloadIdentityBinding = 3015 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gkewib"
+    id_prefix: "gcpwib"
     prerequisites: [GcpServiceAccount]
   }];
   GcpCertManagerCert = 3016 [(kind_meta) = {
@@ -3178,19 +3240,19 @@ enum CloudResourceKind {
   GcpCloudSqlUser = 3038 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpsqlusr"
+    id_prefix: "gcpsqlu"
     prerequisites: [GcpCloudSql]
   }];
   GcpAlloydbInstance = 3039 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpadbinst"
+    id_prefix: "gcpadbi"
     prerequisites: [GcpAlloydbCluster]
   }];
   GcpAlloydbUser = 3040 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpadbusr"
+    id_prefix: "gcpadbu"
     prerequisites: [GcpAlloydbCluster]
   }];
   GcpSpannerBackupSchedule = 3041 [(kind_meta) = {
@@ -3217,7 +3279,7 @@ enum CloudResourceKind {
   GcpFirestoreIndex = 3044 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpfstidx"
+    id_prefix: "gcpfsti"
     prerequisites: [GcpFirestoreDatabase]
   }];
   GcpBigQueryDataset = 3050 [(kind_meta) = {
@@ -3423,12 +3485,12 @@ enum CloudResourceKind {
   GcpSslPolicy = 3111 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpsslpol"
+    id_prefix: "gcpsslp"
   }];
   GcpSslCertificate = 3112 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpsslcert"
+    id_prefix: "gcpsslc"
   }];
   GcpServiceNetworkingConnection = 3113 [(kind_meta) = {
     provider: gcp
@@ -3462,17 +3524,26 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "gcpcmda"
   }];
+  // GcpCertManagerCert is a prerequisite because a map entry binds
+  // hostnames to EXISTING certificates — the canonical map references a
+  // certificate fixture's resource name.
+  GcpCertificateMap = 3117 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpcmap"
+    prerequisites: [GcpCertManagerCert]
+  }];
 
   // 3120–3129: GCP serverless overflow
   GcpCloudRunJob = 3120 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "cldrunjob"
+    id_prefix: "gcprunj"
   }];
   GcpServerlessVpcConnector = 3121 [(kind_meta) = {
     provider: gcp
     version: "v1alpha1"
-    id_prefix: "gcpvpcconn"
+    id_prefix: "gcpvpcc"
     prerequisites: [
       GcpVpcNetwork,
       GcpSubnetwork
@@ -3485,6 +3556,133 @@ enum CloudResourceKind {
     provider: gcp
     version: "v1alpha1"
     id_prefix: "gcpdisk"
+  }];
+
+  // GcpVpcNetwork is a prerequisite because the canonical group runs its
+  // fleet on a dedicated custom-mode VPC — a managed instance group's
+  // template must attach every VM to a network, and the default VPC is
+  // never assumed.
+  GcpComputeMig = 3131 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpmig"
+    prerequisites: [GcpVpcNetwork]
+  }];
+
+  // 3140–3149: GCP observability & log routing
+  GcpMonitoringNotificationChannel = 3140 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpntfch"
+  }];
+  // GcpMonitoringNotificationChannel is a prerequisite because the policy's
+  // canonical shape references a channel to notify — a policy without a
+  // delivery endpoint measures but never pages.
+  GcpMonitoringAlertPolicy = 3141 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpalrt"
+    prerequisites: [GcpMonitoringNotificationChannel]
+  }];
+  GcpMonitoringUptimeCheck = 3142 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpupt"
+  }];
+  // GcpGcsBucket is a prerequisite because the canonical sink exports to a
+  // Cloud Storage bucket — the cheapest destination that proves the whole
+  // writer-identity grant flow.
+  GcpLoggingSink = 3143 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpsink"
+    prerequisites: [GcpGcsBucket]
+  }];
+  GcpMonitoringDashboard = 3144 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpdash"
+  }];
+  GcpMonitoringSlo = 3145 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpslo"
+  }];
+  GcpLogBucket = 3146 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcplogbk"
+  }];
+  GcpLogMetric = 3147 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcplogmt"
+  }];
+
+  // 3150–3159: GCP security & identity
+  // GcpServiceAccount is a prerequisite because the canonical secret grants
+  // secretAccessor to a workload service account — the access story the
+  // kind exists to model.
+  GcpSecretManagerSecret = 3150 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpsec"
+    prerequisites: [GcpServiceAccount]
+  }];
+  GcpIdentityPlatformConfig = 3151 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpidcfg"
+  }];
+  // GcpIdentityPlatformConfig is a prerequisite because tenants exist only
+  // in projects whose Identity Platform config enables
+  // multi_tenant.allow_tenants — a tenant without the initialized,
+  // tenant-enabled project config cannot be created at all.
+  GcpIdentityPlatformTenant = 3152 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpidten"
+    prerequisites: [GcpIdentityPlatformConfig]
+  }];
+  GcpIamOauthClient = 3153 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpoauth"
+  }];
+  GcpIamDenyPolicy = 3154 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpdenyp"
+  }];
+
+  // 3160–3169: GCP serverless edge
+  // GcpCloudRun is a prerequisite because a domain mapping exists only to
+  // point a verified domain at a running Cloud Run service — the route it
+  // maps must already exist for the mapping to be created at all.
+  GcpCloudRunDomainMapping = 3160 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcprundm"
+    prerequisites: [GcpCloudRun]
+  }];
+  GcpWorkflow = 3161 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpwflow"
+  }];
+  // GcpCloudRun is a prerequisite because the canonical trigger routes a
+  // Pub/Sub messagePublished event to a Cloud Run service — the
+  // destination story the kind exists to model.
+  GcpEventarcTrigger = 3162 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpevtrg"
+    prerequisites: [GcpCloudRun]
+  }];
+  GcpEventarcMessageBus = 3163 [(kind_meta) = {
+    provider: gcp
+    version: "v1alpha1"
+    id_prefix: "gcpevbus"
   }];
 
   // 4000–4999: Kubernetes resources, organized in family sub-bands

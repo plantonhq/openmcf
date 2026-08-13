@@ -38,6 +38,8 @@ primary/backup failover with health-checked targets.
   signal) or public endpoints (via a referenced GcpHealthCheck).
 - Wildcard (`*.example.com.`) and underscore service labels
   (`_dmarc.example.com.`) supported.
+- Deletion policy: `DELETE` (default), `PREVENT` (destroy refuses), or
+  `ABANDON` (the record keeps answering but leaves management).
 
 ## Example Usage
 

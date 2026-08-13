@@ -7,6 +7,11 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.56.0: warm_pool_config landed there (this module's
+      # newest argument). Other recent surface this module renders:
+      # update_config.update_strategy 6.26.0; node_repair_config's
+      # parallelism/threshold leaves and overrides 6.20.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

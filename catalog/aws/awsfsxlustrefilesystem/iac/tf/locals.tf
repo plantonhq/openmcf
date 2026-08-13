@@ -4,16 +4,16 @@ locals {
   # the two engines' physical identity converged.
   resource_name = var.metadata.name
 
-  # Resource-identity tags follow the catalog convention; user labels merge in
-  # without being able to override the identity keys.
-  aws_tags = merge(try(var.metadata.labels, {}), {
+  # Resource-identity tags match the Pulumi module key-for-key (the canonical
+  # six-key identity map -- user labels never merge into cloud tags).
+  aws_tags = {
     "Name"                     = local.resource_name
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org
     "planton.ai/environment"   = var.metadata.env
     "planton.ai/resource-kind" = "AwsFsxLustreFileSystem"
     "planton.ai/resource-id"   = var.metadata.id
-  })
+  }
 
   # Empty strings become null so unset stays indistinguishable from the AWS
   # defaults; empty-string arguments would otherwise fail provider validation

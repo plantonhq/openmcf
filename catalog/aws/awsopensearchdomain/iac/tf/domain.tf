@@ -50,10 +50,13 @@ resource "aws_opensearch_domain" "this" {
       }
     }
 
-    # UltraWarm storage
+    # UltraWarm storage. The type and count are value-gated (the
+    # dedicated-master idiom above): an enabled-but-unset value must send
+    # null, never a zero value the provider's validators reject at plan
+    # time. Spec CEL requires both whenever warm_enabled is true.
     warm_enabled = var.spec.cluster_config.warm_enabled
-    warm_type    = var.spec.cluster_config.warm_enabled ? var.spec.cluster_config.warm_type : null
-    warm_count   = var.spec.cluster_config.warm_enabled ? var.spec.cluster_config.warm_count : null
+    warm_type    = var.spec.cluster_config.warm_enabled && var.spec.cluster_config.warm_type != "" ? var.spec.cluster_config.warm_type : null
+    warm_count   = var.spec.cluster_config.warm_enabled && var.spec.cluster_config.warm_count > 0 ? var.spec.cluster_config.warm_count : null
 
     # Cold storage (S3-backed; requires UltraWarm)
     dynamic "cold_storage_options" {
@@ -84,13 +87,16 @@ resource "aws_opensearch_domain" "this" {
   # the KMS key is fixed at creation.
   # ---------------------------------------------------------------------------
 
+  # Tri-state dials (proto `optional bool`, spec default true): the
+  # platform materializes the default, and a direct tfvars caller who
+  # omits the value gets the same secure default via coalesce.
   encrypt_at_rest {
-    enabled    = var.spec.encrypt_at_rest_enabled
+    enabled    = coalesce(var.spec.encrypt_at_rest_enabled, true)
     kms_key_id = var.spec.kms_key_id != "" ? var.spec.kms_key_id : null
   }
 
   node_to_node_encryption {
-    enabled = var.spec.node_to_node_encryption_enabled
+    enabled = coalesce(var.spec.node_to_node_encryption_enabled, true)
   }
 
   # ---------------------------------------------------------------------------
@@ -229,7 +235,9 @@ resource "aws_opensearch_domain" "this" {
   dynamic "off_peak_window_options" {
     for_each = var.spec.off_peak_window_options != null ? [var.spec.off_peak_window_options] : []
     content {
-      enabled = off_peak_window_options.value.enabled
+      # Defaults to true: AWS enables the window on every new domain and
+      # requires it enabled at create time.
+      enabled = coalesce(off_peak_window_options.value.enabled, true)
 
       dynamic "off_peak_window" {
         for_each = off_peak_window_options.value.window_start_hour != null ? [1] : []

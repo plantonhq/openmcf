@@ -53,4 +53,19 @@ message GcpCloudComposerUserWorkloadsConfigMapSpec {
 
   // The ConfigMap's key-value entries (plain configuration data).
   map<string, string> data = 5 [(buf.validate.field).map.min_pairs = 1];
+
+  // Deletion policy for the ConfigMap — what happens when this resource
+  // is destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the Kubernetes ConfigMap is removed from the
+  //                environment; DAGs consuming it start failing
+  //   "PREVENT" -- destroy FAILS; protects configuration live pipelines
+  //                depend on from riding along with a stack teardown
+  //   "ABANDON" -- the ConfigMap is removed from management but stays
+  //                in the environment's cluster
+  string deletion_policy = 6 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
 }

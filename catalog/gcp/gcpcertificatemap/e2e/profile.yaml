@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcertificatemap
+spec:
+  # Two scenarios: minimal (an entry-less map — create/verify/destroy of
+  # the primary alone) and hostname-entry (the entry fan-out bound to
+  # the certificate fixture from the registry prerequisite chain).
+  # WATCH: the fixture certificate stays PROVISIONING (no published
+  # DNS) — Certificate Manager accepts PROVISIONING certificates for
+  # map-entry attachment (the cert kind's own lanes verify that
+  # posture); if the live API rejects the attachment, the lane owns the
+  # redesign (an ACTIVE-cert fixture chain via DNS authorization).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 15

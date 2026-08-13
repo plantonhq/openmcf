@@ -6,9 +6,14 @@ spec:
   # Endpoints deploy quickly (~2-5 minutes per scenario per engine). The
   # minimal scenario proves deterministic endpoint_name derivation; the
   # dedicated-endpoint arm proves dedicated_endpoint_dns output parity.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface (deletionPolicy DELETE from spec wiring
+  # — the hardcoded Pulumi pin is gone — re-planned clean on both
+  # scenarios). Offline-proven-only arms: traffic_split (needs a deployed
+  # model) and psc_automation_configs (needs a PSC-enabled endpoint, which
+  # conflicts with the scenarios' public/dedicated shapes).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

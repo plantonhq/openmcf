@@ -193,4 +193,15 @@ message GcpDataprocAutoscalingPolicySpec {
   // The autoscaling algorithm: evaluation cadence + YARN scaling
   // behavior.
   GcpDataprocAutoscalingPolicyBasicAlgorithm basic_algorithm = 6 [(buf.validate.field).required = true];
+
+  // Engine-side teardown behavior. "DELETE" (default) deletes the
+  // policy; "PREVENT" fails any plan that would delete it; "ABANDON"
+  // removes it from IaC management while leaving it in GCP. Note the API
+  // refuses to delete a policy while any cluster still references it,
+  // regardless of this setting.
+  string deletion_policy = 7 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }

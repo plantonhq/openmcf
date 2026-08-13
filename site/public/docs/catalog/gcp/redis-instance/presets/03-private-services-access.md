@@ -35,6 +35,7 @@ Private services access must exist on the VPC before the instance is created —
 - **Read replicas enabled at creation** — `readReplicasMode` is immutable; the `read_endpoint` output serves read-only traffic
 - **CMEK by reference** — `customerManagedKey` resolves the `GcpKmsKey` node's key id; grant the `persistence_iam_identity` output access for import/export
 - **AUTH + TLS** — the same client hardening as the HA preset
+- **`deletionProtection: true`** — destroying a production cache is a deliberate two-step (flip to false, apply, destroy)
 
 ## Placeholders to Replace
 

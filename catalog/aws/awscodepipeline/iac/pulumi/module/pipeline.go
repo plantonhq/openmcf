@@ -80,6 +80,29 @@ func pipeline(
 			if action.TimeoutInMinutes > 0 {
 				actionArgs.TimeoutInMinutes = pulumi.IntPtr(int(action.TimeoutInMinutes))
 			}
+			// Compute-action surface: inline shell commands with exported
+			// variables and file-based output artifacts (Compute actions use
+			// these INSTEAD of plain output_artifacts — the spec's CEL
+			// enforces the split before the provider's plan-time check).
+			if len(action.Commands) > 0 {
+				actionArgs.Commands = pulumi.ToStringArray(action.Commands)
+			}
+			if len(action.OutputVariables) > 0 {
+				actionArgs.OutputVariables = pulumi.ToStringArray(action.OutputVariables)
+			}
+			if len(action.OutputArtifactsForComputeAction) > 0 {
+				var computeArtifacts codepipeline.PipelineStageActionOutputArtifactsForComputeActionArray
+				for _, artifact := range action.OutputArtifactsForComputeAction {
+					artifactArgs := &codepipeline.PipelineStageActionOutputArtifactsForComputeActionArgs{
+						Name: pulumi.String(artifact.Name),
+					}
+					if len(artifact.Files) > 0 {
+						artifactArgs.Files = pulumi.ToStringArray(artifact.Files)
+					}
+					computeArtifacts = append(computeArtifacts, artifactArgs)
+				}
+				actionArgs.OutputArtifactsForComputeActions = computeArtifacts
+			}
 			actions = append(actions, actionArgs)
 		}
 
@@ -126,27 +149,24 @@ func pipeline(
 	}
 
 	// --- Pipeline args ---
-	// The spec defaults to V2/SUPERSEDED, while the PROVIDER defaults
-	// pipeline_type to V1 -- an omitted value must deploy the same pipeline
-	// an explicit V2 would, so the spec defaults are applied here, never
-	// left to the provider.
-	pipelineType := spec.GetPipelineType()
-	if pipelineType == "" {
-		pipelineType = "V2"
-	}
-	executionMode := spec.GetExecutionMode()
-	if executionMode == "" {
-		executionMode = "SUPERSEDED"
-	}
-
+	// pipeline_type/execution_mode pass through unmodified: the spec's
+	// V2/SUPERSEDED defaults are materialized by the platform when the
+	// manifest is loaded, so the module never re-derives them (one source
+	// of truth; same pass-through in the Terraform module). A raw stack
+	// input that bypasses manifest loading and omits pipeline_type gets
+	// the PROVIDER default, which is V1.
 	args := &codepipeline.PipelineArgs{
 		Name:           pulumi.StringPtr(locals.PipelineName),
 		RoleArn:        pulumi.String(spec.RoleArn.GetValue()),
 		ArtifactStores: artifactStores,
 		Stages:         stages,
-		PipelineType:   pulumi.StringPtr(pipelineType),
-		ExecutionMode:  pulumi.StringPtr(executionMode),
-		Tags:           pulumi.ToStringMap(locals.Labels),
+		Tags:           pulumi.ToStringMap(locals.AwsTags),
+	}
+	if spec.GetPipelineType() != "" {
+		args.PipelineType = pulumi.StringPtr(spec.GetPipelineType())
+	}
+	if spec.GetExecutionMode() != "" {
+		args.ExecutionMode = pulumi.StringPtr(spec.GetExecutionMode())
 	}
 
 	// --- Triggers (V2 git-event execution) ---
@@ -369,27 +389,45 @@ func ruleOwner(id *awscodepipelinev1alpha1.AwsCodePipelineRuleTypeId) string {
 	return "AWS"
 }
 
+// Git filter includes/excludes are sent ONLY when non-empty (matching the
+// Terraform module): the provider requires at least one item in any
+// declared includes/excludes list, so an unconditional send renders an
+// empty list that fails at plan time — an includes-only filter (the
+// common shape) would be undeployable on this engine.
+
 func buildPushFilters(pushes []*awscodepipelinev1alpha1.AwsCodePipelineGitPush) codepipeline.PipelineTriggerGitConfigurationPushArray {
 	var result codepipeline.PipelineTriggerGitConfigurationPushArray
 	for _, push := range pushes {
 		pushArgs := &codepipeline.PipelineTriggerGitConfigurationPushArgs{}
 		if push.Branches != nil {
-			pushArgs.Branches = &codepipeline.PipelineTriggerGitConfigurationPushBranchesArgs{
-				Includes: pulumi.ToStringArray(push.Branches.Includes),
-				Excludes: pulumi.ToStringArray(push.Branches.Excludes),
+			branchesArgs := &codepipeline.PipelineTriggerGitConfigurationPushBranchesArgs{}
+			if len(push.Branches.Includes) > 0 {
+				branchesArgs.Includes = pulumi.ToStringArray(push.Branches.Includes)
 			}
+			if len(push.Branches.Excludes) > 0 {
+				branchesArgs.Excludes = pulumi.ToStringArray(push.Branches.Excludes)
+			}
+			pushArgs.Branches = branchesArgs
 		}
 		if push.FilePaths != nil {
-			pushArgs.FilePaths = &codepipeline.PipelineTriggerGitConfigurationPushFilePathsArgs{
-				Includes: pulumi.ToStringArray(push.FilePaths.Includes),
-				Excludes: pulumi.ToStringArray(push.FilePaths.Excludes),
+			filePathsArgs := &codepipeline.PipelineTriggerGitConfigurationPushFilePathsArgs{}
+			if len(push.FilePaths.Includes) > 0 {
+				filePathsArgs.Includes = pulumi.ToStringArray(push.FilePaths.Includes)
 			}
+			if len(push.FilePaths.Excludes) > 0 {
+				filePathsArgs.Excludes = pulumi.ToStringArray(push.FilePaths.Excludes)
+			}
+			pushArgs.FilePaths = filePathsArgs
 		}
 		if push.Tags != nil {
-			pushArgs.Tags = &codepipeline.PipelineTriggerGitConfigurationPushTagsArgs{
-				Includes: pulumi.ToStringArray(push.Tags.Includes),
-				Excludes: pulumi.ToStringArray(push.Tags.Excludes),
+			tagsArgs := &codepipeline.PipelineTriggerGitConfigurationPushTagsArgs{}
+			if len(push.Tags.Includes) > 0 {
+				tagsArgs.Includes = pulumi.ToStringArray(push.Tags.Includes)
 			}
+			if len(push.Tags.Excludes) > 0 {
+				tagsArgs.Excludes = pulumi.ToStringArray(push.Tags.Excludes)
+			}
+			pushArgs.Tags = tagsArgs
 		}
 		result = append(result, pushArgs)
 	}
@@ -401,16 +439,24 @@ func buildPullRequestFilters(prs []*awscodepipelinev1alpha1.AwsCodePipelineGitPu
 	for _, pr := range prs {
 		prArgs := &codepipeline.PipelineTriggerGitConfigurationPullRequestArgs{}
 		if pr.Branches != nil {
-			prArgs.Branches = &codepipeline.PipelineTriggerGitConfigurationPullRequestBranchesArgs{
-				Includes: pulumi.ToStringArray(pr.Branches.Includes),
-				Excludes: pulumi.ToStringArray(pr.Branches.Excludes),
+			branchesArgs := &codepipeline.PipelineTriggerGitConfigurationPullRequestBranchesArgs{}
+			if len(pr.Branches.Includes) > 0 {
+				branchesArgs.Includes = pulumi.ToStringArray(pr.Branches.Includes)
 			}
+			if len(pr.Branches.Excludes) > 0 {
+				branchesArgs.Excludes = pulumi.ToStringArray(pr.Branches.Excludes)
+			}
+			prArgs.Branches = branchesArgs
 		}
 		if pr.FilePaths != nil {
-			prArgs.FilePaths = &codepipeline.PipelineTriggerGitConfigurationPullRequestFilePathsArgs{
-				Includes: pulumi.ToStringArray(pr.FilePaths.Includes),
-				Excludes: pulumi.ToStringArray(pr.FilePaths.Excludes),
+			filePathsArgs := &codepipeline.PipelineTriggerGitConfigurationPullRequestFilePathsArgs{}
+			if len(pr.FilePaths.Includes) > 0 {
+				filePathsArgs.Includes = pulumi.ToStringArray(pr.FilePaths.Includes)
 			}
+			if len(pr.FilePaths.Excludes) > 0 {
+				filePathsArgs.Excludes = pulumi.ToStringArray(pr.FilePaths.Excludes)
+			}
+			prArgs.FilePaths = filePathsArgs
 		}
 		if len(pr.Events) > 0 {
 			prArgs.Events = pulumi.ToStringArray(pr.Events)

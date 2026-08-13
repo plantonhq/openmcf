@@ -1,0 +1,50 @@
+# Provider-parity mapping manifest for GcpGkeWorkloadIdentityBinding.
+#
+# Records the judgment half of total accounting against the pinned google
+# provider. This kind is a purpose-built composition: it grants exactly
+# roles/iam.workloadIdentityUser on one service account to one Kubernetes
+# service account's workload identity principal. Every divergence below is
+# that design, recorded: the module COMPOSES the provider's three
+# free-form arguments from the spec's four purpose-named fields, so a
+# manifest author states intent (which GSA, which KSA) and can never
+# misspell the member grammar or grant the wrong role.
+resources:
+  google_service_account_iam_member:
+    exclusions:
+      - arg: role
+        reason: >-
+          Fixed by design to roles/iam.workloadIdentityUser — the one role
+          Workload Identity federation requires. Arbitrary service-account
+          IAM grants are GcpServiceAccount's additive iam_members surface,
+          not this kind.
+      - arg: service_account_id
+        reason: >-
+          Composed by the module as
+          projects/{project_id}/serviceAccounts/{service_account_email}
+          from the spec's project_id and service_account_email references
+          — authors bind by email, never by hand-built resource path.
+      - arg: member
+        reason: >-
+          Composed by the module as
+          serviceAccount:{project_id}.svc.id.goog[{ksa_namespace}/{ksa_name}]
+          from the spec's project_id, ksa_namespace, and ksa_name — the
+          Workload Identity member grammar is module-owned so it can never
+          be misspelled.
+specExclusions:
+  - field: spec.project_id
+    reason: >-
+      Drives both composed arguments: the service account resource path
+      and the workload-pool half of the member string
+      ({project_id}.svc.id.goog).
+  - field: spec.service_account_email
+    reason: >-
+      Drives the composed service_account_id argument
+      (projects/{project_id}/serviceAccounts/{email}).
+  - field: spec.ksa_namespace
+    reason: >-
+      Drives the composed member argument — the namespace half of the
+      [{namespace}/{name}] workload identity principal.
+  - field: spec.ksa_name
+    reason: >-
+      Drives the composed member argument — the Kubernetes service
+      account name half of the [{namespace}/{name}] principal.

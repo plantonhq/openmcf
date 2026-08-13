@@ -1,0 +1,35 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpLogMetric
+metadata:
+  name: my-sample-log-metric
+spec:
+  # The logging filter selecting the entries that feed the metric
+  # (https://cloud.google.com/logging/docs/view/logging-query-language).
+  # Lead with the cheapest selective term (resource.type) and scope to
+  # the service — an over-broad filter counts the whole project.
+  filter: resource.type="cloud_run_revision" AND severity>=ERROR
+
+  # The metric's shape: DELTA/INT64 is the counter form (the workhorse).
+  # DISTRIBUTION adds valueExtractor + bucketOptions for histograms.
+  metricDescriptor:
+    metricKind: DELTA
+    valueType: INT64
+    unit: "1"
+    labels:
+      - key: status
+        description: HTTP status code class
+        valueType: STRING
+
+  # Populate the declared labels from each matching entry. Keep label
+  # values BOUNDED (status classes, methods) — every distinct
+  # combination is a billed time series.
+  labelExtractors:
+    status: EXTRACT(httpRequest.status)
+
+  # What this metric measures (shown in the metrics explorer).
+  description: Error entries per service — the input to error-rate alerts
+
+  # What a destroy does: DELETE (default — alert policies watching the
+  # metric silently stop evaluating), PREVENT (the posture once alerts
+  # depend on it), or ABANDON.
+  deletionPolicy: DELETE

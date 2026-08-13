@@ -8,3 +8,6 @@ spec:
   displayName: Orders Spanner
   processingUnits: 100
   edition: STANDARD
+  # Explicit DELETE (the provider default) proves the round-trip; use
+  # PREVENT for instances a whole topology depends on.
+  deletionPolicy: DELETE

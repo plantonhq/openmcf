@@ -11,9 +11,13 @@ spec:
   # ephemeral create -> verify -> destroy cycle cannot tear its subnetwork
   # down without orphaning it. The direct-VPC surface is offline-proven
   # (spec tests + the hack manifest through `planton tofu plan`).
+  #
+  # Deploy-from-source (build_config), IAP, and multi-region are
+  # offline-proven only: source deploys need a staged GCS source archive,
+  # IAP needs an OAuth consent screen, and multi-region needs the global
+  # endpoint -- each is an arm the proof lane designs live or records as a
+  # deferral with its unblock condition.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

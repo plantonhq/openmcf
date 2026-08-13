@@ -131,7 +131,27 @@ var _ = ginkgo.Describe("GcpGlobalAddressSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept user labels", func() {
+		target := minimalExternal()
+		target.Spec.Labels = map[string]string{"team": "platform"}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimalExternal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimalExternal()
+		target.Spec.DeletionPolicy = "KEEP"
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
 
 	ginkgo.It("should accept a missing project_id (falls back to the provider's default project)", func() {
 		msg := minimalExternal()

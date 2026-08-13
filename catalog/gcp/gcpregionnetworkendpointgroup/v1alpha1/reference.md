@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpRegionNetworkEndpointGroupSpec defines a regional network endpoint group
 (NEG) — the bridge that lets a load balancer's backend service send traffic
 to something other than a group of Compute Engine VMs. A regional NEG names
@@ -53,6 +55,10 @@ spec:
   cloudRun:
     service:
       value: my-cloud-run-service
+
+  # DELETE keeps destroys real; PREVENT belongs on NEGs a production
+  # backend service routes through.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -80,6 +86,7 @@ spec:
 | `spec.appEngine.service` | `string` |  |  |  |
 | `spec.appEngine.version` | `string` |  |  |  |
 | `spec.appEngine.urlMask` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -291,6 +298,22 @@ A URL template that parses the service (and version) out of each request
 URL. Immutable.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the NEG — what happens when this resource is
+destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the NEG is deleted (GCP refuses while a backend
+               service still references it — create the replacement
+               before destroying the original)
+  "PREVENT" -- destroy FAILS; protects the attachment a live backend
+               service routes through
+  "ABANDON" -- the NEG is removed from management but left in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 

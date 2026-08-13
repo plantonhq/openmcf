@@ -49,10 +49,13 @@ variable "spec" {
     # disables). Empty leaves change streams off.
     change_stream_retention = optional(string, "")
 
-    # Built-in automated backups (both duration strings).
+    # Built-in automated backups (both duration strings). locations
+    # restricts backup placement to specific zones (ENTERPRISE_PLUS
+    # instances only).
     automated_backup_policy = optional(object({
       retention_period = string
       frequency        = string
+      locations        = optional(list(string), [])
     }), null)
 
     # API-side deletion guard. The spec defaults this to PROTECTED
@@ -63,6 +66,10 @@ variable "spec" {
     # Structured row key schema as the API's Type JSON. In-place update
     # is not supported: clear, apply, then set the new schema.
     row_key_schema = optional(string, "")
+
+    # Client-side destroy behavior for BOTH the table and its per-family
+    # GC policies: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {

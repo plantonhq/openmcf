@@ -33,11 +33,13 @@ func deployedIndex(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		// to carry one. Must match the endpoint's own region —
 		// deployments cannot cross regions.
 		Region: pulumi.StringPtr(spec.Location),
+	}
 
-		// PARITY: the bridged provider carries a client-side deletion_policy
-		// flag the released 6.x Terraform line does not have. Pinned to
-		// DELETE so destroy really undeploys the index on both engines.
-		DeletionPolicy: pulumi.StringPtr("DELETE"),
+	// Client-side destroy behavior (DELETE undeploys; PREVENT refuses;
+	// ABANDON drops from state but keeps serving). Empty follows the
+	// provider default (DELETE) — mirrored zero-vs-omit with Terraform.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Unusually for a display name, the API treats it as immutable on a

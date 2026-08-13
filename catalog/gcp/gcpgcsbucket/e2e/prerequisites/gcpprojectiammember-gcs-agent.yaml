@@ -1,0 +1,27 @@
+# Consumer-scoped prerequisite: grant the test project's GCS service agent
+# permission to publish to Pub/Sub topics, project-wide. Bucket
+# notification configs REQUIRE this grant to exist before create (the
+# Storage API rejects the config otherwise), and the agent's email is
+# project-specific — the harness resolves it at setup and exports the
+# ${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL} token this manifest references.
+# Project scope (rather than per-topic) keeps the fixture a single additive
+# grant; production compositions scope tighter (see the kind's docs).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpProjectIamMember
+metadata:
+  name: planton-oss-e2e-gcsb-gcs-agent-publisher
+  id: planton-oss-e2e-gcsb-gcs-agent-publisher
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgcsbucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  role:
+    value: roles/pubsub.publisher
+  member:
+    value: serviceAccount:${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL}

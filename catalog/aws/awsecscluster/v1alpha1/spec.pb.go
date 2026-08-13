@@ -33,9 +33,12 @@ const (
 // FARGATE / FARGATE_SPOT providers and never thinks about instances. An
 // EC2-backed cluster defines ec2_capacity_providers -- each wrapping a
 // referenced AwsAutoScalingGroup whose fleet ECS scales up and down through
-// managed scaling -- and services blend across all of it by provider name
-// in their capacity_provider_strategy. The cluster itself is free; only
-// the tasks and instances it schedules cost money.
+// managed scaling. A managed-instances cluster defines
+// managed_instances_capacity_providers -- ECS launches and retires the EC2
+// instances itself from attribute-based requirements, no auto-scaling group
+// to own. Services blend across all of it by provider name in their
+// capacity_provider_strategy. The cluster itself is free; only the tasks
+// and instances it schedules cost money.
 type AwsEcsClusterSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the resource will be created.
@@ -68,10 +71,15 @@ type AwsEcsClusterSpec struct {
 	Ec2CapacityProviders []*AwsEcsClusterEc2CapacityProvider `protobuf:"bytes,4,rep,name=ec2_capacity_providers,json=ec2CapacityProviders,proto3" json:"ec2_capacity_providers,omitempty"`
 	// The cluster's default capacity provider strategy -- what ECS uses
 	// when a service or run-task does not declare its own strategy. Name
-	// any associated provider: the Fargate built-ins or an
-	// ec2_capacity_providers entry. Example: FARGATE base 1 / weight 1 +
-	// FARGATE_SPOT weight 4 keeps one guaranteed On-Demand task and runs
-	// ~80% of scaled capacity on Spot.
+	// any associated provider: the Fargate built-ins, an
+	// ec2_capacity_providers entry, or a managed_instances_capacity_providers
+	// entry. Example: FARGATE base 1 / weight 1 + FARGATE_SPOT weight 4
+	// keeps one guaranteed On-Demand task and runs ~80% of scaled capacity
+	// on Spot. Known first-apply caveat when naming a managed-instances
+	// entry created in the SAME apply: the strategy PUT can race the
+	// provider's seconds-long provisioning (AWS rejects it with "not in an
+	// ACTIVE state" until it finishes); a re-apply succeeds. Naming
+	// built-ins or EC2 providers has no such window.
 	DefaultCapacityProviderStrategy []*AwsEcsClusterCapacityProviderStrategy `protobuf:"bytes,5,rep,name=default_capacity_provider_strategy,json=defaultCapacityProviderStrategy,proto3" json:"default_capacity_provider_strategy,omitempty"`
 	// ECS Exec auditing for the cluster: where interactive exec sessions
 	// (`aws ecs execute-command`) are logged and how session traffic is
@@ -87,8 +95,21 @@ type AwsEcsClusterSpec struct {
 	// setting it here is what lets a whole environment share one service
 	// mesh namespace without per-service wiring.
 	ServiceConnectNamespaceArn string `protobuf:"bytes,8,opt,name=service_connect_namespace_arn,json=serviceConnectNamespaceArn,proto3" json:"service_connect_namespace_arn,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// ECS Managed Instances capacity providers: ECS launches, patches, and
+	// retires the EC2 instances itself -- you describe the compute by
+	// attributes (vCPUs, memory, accelerators) and the network to launch
+	// into, and ECS owns the fleet end to end (no auto-scaling group, no
+	// AMI, no user data). Each entry materializes as its own capacity
+	// provider resource that AWS binds to this cluster at creation --
+	// unlike EC2 providers there is no association step
+	// (PutClusterCapacityProviders neither attaches nor detaches
+	// managed-instances providers); services reference entries by name in
+	// their capacity_provider_strategy. Requires an infrastructure role the
+	// ECS service principal can assume and an instance profile for the
+	// launched instances.
+	ManagedInstancesCapacityProviders []*AwsEcsClusterManagedInstancesCapacityProvider `protobuf:"bytes,9,rep,name=managed_instances_capacity_providers,json=managedInstancesCapacityProviders,proto3" json:"managed_instances_capacity_providers,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *AwsEcsClusterSpec) Reset() {
@@ -175,6 +196,13 @@ func (x *AwsEcsClusterSpec) GetServiceConnectNamespaceArn() string {
 		return x.ServiceConnectNamespaceArn
 	}
 	return ""
+}
+
+func (x *AwsEcsClusterSpec) GetManagedInstancesCapacityProviders() []*AwsEcsClusterManagedInstancesCapacityProvider {
+	if x != nil {
+		return x.ManagedInstancesCapacityProviders
+	}
+	return nil
 }
 
 // AwsEcsClusterEc2CapacityProvider wraps one auto-scaling group as ECS
@@ -368,6 +396,764 @@ func (x *AwsEcsClusterManagedScaling) GetInstanceWarmupPeriodSeconds() int32 {
 	return 0
 }
 
+// AwsEcsClusterManagedInstancesCapacityProvider is one ECS Managed
+// Instances capacity provider: ECS itself launches and retires EC2
+// instances matching the launch template's attribute-based requirements,
+// so there is no auto-scaling group, AMI, or user data to manage. The
+// provider is create-time bound to its cluster and name; the launch
+// template's contents (except capacity_option_type) update in place.
+// Creating the provider launches nothing -- instances appear only when a
+// service's capacity_provider_strategy schedules tasks onto it.
+type AwsEcsClusterManagedInstancesCapacityProvider struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The capacity provider name -- what services put in their
+	// capacity_provider_strategy. 1-255 characters: letters, digits,
+	// hyphens, underscores; must not start with "aws", "ecs", or "fargate"
+	// (AWS reserves those prefixes).
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The infrastructure role ECS assumes to launch, patch, and retire the
+	// managed instances. Reference an AwsIamRole's role_arn output or pass
+	// a literal ARN. The role must trust the ecs.amazonaws.com service
+	// principal and carry AmazonECSInfrastructureRolePolicyForManagedInstances
+	// (or equivalent); the caller applying the manifest needs iam:PassRole
+	// on it.
+	InfrastructureRoleArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=infrastructure_role_arn,json=infrastructureRoleArn,proto3" json:"infrastructure_role_arn,omitempty"`
+	// What the launched instances look like: instance profile, network
+	// placement, and the attribute-based requirements ECS resolves into
+	// concrete instance types.
+	InstanceLaunchTemplate *AwsEcsClusterManagedInstancesLaunchTemplate `protobuf:"bytes,3,opt,name=instance_launch_template,json=instanceLaunchTemplate,proto3" json:"instance_launch_template,omitempty"`
+	// Seconds an empty managed instance idles before ECS scales it in,
+	// 0-3600; -1 disables scale-in entirely (instances stay until
+	// terminated another way). Unset keeps AWS's default optimization.
+	ScaleInAfterSeconds *int32 `protobuf:"varint,4,opt,name=scale_in_after_seconds,json=scaleInAfterSeconds,proto3,oneof" json:"scale_in_after_seconds,omitempty"`
+	// Propagate the capacity provider's tags to the EC2 instances ECS
+	// launches: "CAPACITY_PROVIDER" or "NONE". Unset keeps AWS's default.
+	PropagateTags string `protobuf:"bytes,5,opt,name=propagate_tags,json=propagateTags,proto3" json:"propagate_tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) Reset() {
+	*x = AwsEcsClusterManagedInstancesCapacityProvider{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedInstancesCapacityProvider) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedInstancesCapacityProvider.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedInstancesCapacityProvider) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) GetInfrastructureRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.InfrastructureRoleArn
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) GetInstanceLaunchTemplate() *AwsEcsClusterManagedInstancesLaunchTemplate {
+	if x != nil {
+		return x.InstanceLaunchTemplate
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) GetScaleInAfterSeconds() int32 {
+	if x != nil && x.ScaleInAfterSeconds != nil {
+		return *x.ScaleInAfterSeconds
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityProvider) GetPropagateTags() string {
+	if x != nil {
+		return x.PropagateTags
+	}
+	return ""
+}
+
+// AwsEcsClusterManagedInstancesLaunchTemplate describes the instances ECS
+// launches for a managed-instances capacity provider: identity (instance
+// profile), placement (network configuration), shape (attribute-based
+// instance requirements), and purchase model (on-demand, spot, or
+// capacity reservations).
+type AwsEcsClusterManagedInstancesLaunchTemplate struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The instance profile attached to every launched instance -- the
+	// instance-side identity (the ECS agent's permissions come from here).
+	// Reference an AwsIamInstanceProfile's instance_profile_arn output or
+	// pass a literal ARN.
+	Ec2InstanceProfileArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=ec2_instance_profile_arn,json=ec2InstanceProfileArn,proto3" json:"ec2_instance_profile_arn,omitempty"`
+	// Where the managed instances launch: the subnets (required) and
+	// security groups applied to each instance.
+	NetworkConfiguration *AwsEcsClusterManagedInstancesNetworkConfiguration `protobuf:"bytes,2,opt,name=network_configuration,json=networkConfiguration,proto3" json:"network_configuration,omitempty"`
+	// Purchase model for the launched capacity: "ON_DEMAND" (AWS default),
+	// "SPOT", or "RESERVED" (draw from capacity reservations --
+	// capacity_reservations must then be set). Changing this replaces the
+	// capacity provider; everything else in the launch template updates in
+	// place.
+	CapacityOptionType string `protobuf:"bytes,3,opt,name=capacity_option_type,json=capacityOptionType,proto3" json:"capacity_option_type,omitempty"`
+	// Which capacity reservations RESERVED capacity draws from. Only legal
+	// (and required) when capacity_option_type is "RESERVED".
+	CapacityReservations *AwsEcsClusterManagedInstancesCapacityReservations `protobuf:"bytes,4,opt,name=capacity_reservations,json=capacityReservations,proto3" json:"capacity_reservations,omitempty"`
+	// Attribute-based instance requirements -- describe the compute
+	// (memory, vCPUs, accelerators, price protection) and ECS resolves
+	// matching instance types at launch. Required when
+	// capacity_reservations uses a RESERVATIONS_ONLY or RESERVATIONS_FIRST
+	// preference.
+	InstanceRequirements *AwsEcsClusterManagedInstancesRequirements `protobuf:"bytes,5,opt,name=instance_requirements,json=instanceRequirements,proto3" json:"instance_requirements,omitempty"`
+	// Use instance-store (local NVMe) volumes for container storage on
+	// instance types that have them. Unset keeps AWS's default placement.
+	UseLocalStorage *bool `protobuf:"varint,6,opt,name=use_local_storage,json=useLocalStorage,proto3,oneof" json:"use_local_storage,omitempty"`
+	// CloudWatch monitoring detail for the launched instances: "BASIC"
+	// (AWS default) or "DETAILED" (1-minute metrics, billed).
+	Monitoring string `protobuf:"bytes,7,opt,name=monitoring,proto3" json:"monitoring,omitempty"`
+	// Root EBS volume size for each launched instance, in GiB (>= 1).
+	// Unset keeps AWS's default size.
+	StorageSizeGib int32 `protobuf:"varint,8,opt,name=storage_size_gib,json=storageSizeGib,proto3" json:"storage_size_gib,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) Reset() {
+	*x = AwsEcsClusterManagedInstancesLaunchTemplate{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedInstancesLaunchTemplate) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedInstancesLaunchTemplate.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedInstancesLaunchTemplate) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetEc2InstanceProfileArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Ec2InstanceProfileArn
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetNetworkConfiguration() *AwsEcsClusterManagedInstancesNetworkConfiguration {
+	if x != nil {
+		return x.NetworkConfiguration
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetCapacityOptionType() string {
+	if x != nil {
+		return x.CapacityOptionType
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetCapacityReservations() *AwsEcsClusterManagedInstancesCapacityReservations {
+	if x != nil {
+		return x.CapacityReservations
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetInstanceRequirements() *AwsEcsClusterManagedInstancesRequirements {
+	if x != nil {
+		return x.InstanceRequirements
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetUseLocalStorage() bool {
+	if x != nil && x.UseLocalStorage != nil {
+		return *x.UseLocalStorage
+	}
+	return false
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetMonitoring() string {
+	if x != nil {
+		return x.Monitoring
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesLaunchTemplate) GetStorageSizeGib() int32 {
+	if x != nil {
+		return x.StorageSizeGib
+	}
+	return 0
+}
+
+// AwsEcsClusterManagedInstancesNetworkConfiguration places the managed
+// instances on the network: which subnets they launch into and which
+// security groups guard them.
+type AwsEcsClusterManagedInstancesNetworkConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Subnets the instances launch into -- span at least two AZs for
+	// availability. Reference AwsSubnet subnet_id outputs or pass literal
+	// subnet IDs.
+	Subnets []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=subnets,proto3" json:"subnets,omitempty"`
+	// Security groups applied to each instance -- at least one is REQUIRED.
+	// Reference AwsSecurityGroup security_group_id outputs or pass literal
+	// group IDs. Unlike EC2 launch paths there is NO fall-back to the VPC
+	// default group: AWS's CreateCapacityProvider rejects a managed-instances
+	// network configuration without security groups (ClientException
+	// "must specify a Network Configuration that contain security groups"),
+	// even though the Terraform provider's schema marks the argument
+	// optional -- the contract lives only server-side.
+	SecurityGroups []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=security_groups,json=securityGroups,proto3" json:"security_groups,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedInstancesNetworkConfiguration) Reset() {
+	*x = AwsEcsClusterManagedInstancesNetworkConfiguration{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedInstancesNetworkConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedInstancesNetworkConfiguration) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedInstancesNetworkConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedInstancesNetworkConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedInstancesNetworkConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsEcsClusterManagedInstancesNetworkConfiguration) GetSubnets() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnets
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesNetworkConfiguration) GetSecurityGroups() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SecurityGroups
+	}
+	return nil
+}
+
+// AwsEcsClusterManagedInstancesCapacityReservations selects the capacity
+// reservations RESERVED capacity draws from.
+type AwsEcsClusterManagedInstancesCapacityReservations struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How reservations are used:
+	// "RESERVATIONS_ONLY" -- launch only into reservations (pair with
+	//
+	//	reservation_group_arn to scope which ones).
+	//
+	// "RESERVATIONS_FIRST" -- prefer reservations, overflow to on-demand.
+	// "RESERVATIONS_EXCLUDED" -- never consume reservations.
+	// RESERVATIONS_ONLY and RESERVATIONS_FIRST require instance_requirements
+	// on the launch template.
+	ReservationPreference string `protobuf:"bytes,1,opt,name=reservation_preference,json=reservationPreference,proto3" json:"reservation_preference,omitempty"`
+	// A capacity-reservation group ARN scoping which reservations to use.
+	// Only legal when reservation_preference is "RESERVATIONS_ONLY".
+	ReservationGroupArn string `protobuf:"bytes,2,opt,name=reservation_group_arn,json=reservationGroupArn,proto3" json:"reservation_group_arn,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityReservations) Reset() {
+	*x = AwsEcsClusterManagedInstancesCapacityReservations{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityReservations) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedInstancesCapacityReservations) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedInstancesCapacityReservations) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedInstancesCapacityReservations.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedInstancesCapacityReservations) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityReservations) GetReservationPreference() string {
+	if x != nil {
+		return x.ReservationPreference
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesCapacityReservations) GetReservationGroupArn() string {
+	if x != nil {
+		return x.ReservationGroupArn
+	}
+	return ""
+}
+
+// AwsEcsClusterManagedInstancesRequirements describes compute by
+// attributes so ECS resolves the matching instance types at launch,
+// instead of naming one type. memory_mib and vcpu_count are the two
+// required dimensions; every other field narrows the candidate set.
+// Instance types are excluded unless a field says otherwise (e.g.
+// bare_metal defaults to "excluded").
+type AwsEcsClusterManagedInstancesRequirements struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. Memory per instance, in MiB. min is required; leave max
+	// unset (0) for no upper bound.
+	MemoryMib *AwsEcsClusterIntRange `protobuf:"bytes,1,opt,name=memory_mib,json=memoryMib,proto3" json:"memory_mib,omitempty"`
+	// Required. vCPUs per instance. min is required; leave max unset (0)
+	// for no upper bound.
+	VcpuCount *AwsEcsClusterIntRange `protobuf:"bytes,2,opt,name=vcpu_count,json=vcpuCount,proto3" json:"vcpu_count,omitempty"`
+	// Allow-list of instance types or families, with wildcards
+	// ("m5.large", "m5.*", "c*"). At most 400 entries. Mutually exclusive
+	// with excluded_instance_types.
+	AllowedInstanceTypes []string `protobuf:"bytes,3,rep,name=allowed_instance_types,json=allowedInstanceTypes,proto3" json:"allowed_instance_types,omitempty"`
+	// Deny-list of instance types or families, with wildcards. At most 400
+	// entries. Mutually exclusive with allowed_instance_types.
+	ExcludedInstanceTypes []string `protobuf:"bytes,4,rep,name=excluded_instance_types,json=excludedInstanceTypes,proto3" json:"excluded_instance_types,omitempty"`
+	// Instance generations to include: "current" and/or "previous". AWS
+	// default: any generation matching the other requirements.
+	InstanceGenerations []string `protobuf:"bytes,5,rep,name=instance_generations,json=instanceGenerations,proto3" json:"instance_generations,omitempty"`
+	// CPU manufacturers to include: "intel", "amd", "amazon-web-services"
+	// (Graviton), "apple". AWS default: any.
+	CpuManufacturers []string `protobuf:"bytes,6,rep,name=cpu_manufacturers,json=cpuManufacturers,proto3" json:"cpu_manufacturers,omitempty"`
+	// Bare-metal eligibility: "included", "excluded" (AWS default), or
+	// "required".
+	BareMetal string `protobuf:"bytes,7,opt,name=bare_metal,json=bareMetal,proto3" json:"bare_metal,omitempty"`
+	// Burstable (T-family) eligibility: "included", "excluded" (AWS
+	// default), or "required".
+	BurstablePerformance string `protobuf:"bytes,8,opt,name=burstable_performance,json=burstablePerformance,proto3" json:"burstable_performance,omitempty"`
+	// Only instance types that support hibernation.
+	RequireHibernateSupport bool `protobuf:"varint,9,opt,name=require_hibernate_support,json=requireHibernateSupport,proto3" json:"require_hibernate_support,omitempty"`
+	// Spot price protection: exclude types whose Spot price exceeds the
+	// identified lowest-priced type's Spot price by more than this
+	// percentage. Mutually exclusive with
+	// max_spot_price_as_percentage_of_optimal_on_demand_price.
+	SpotMaxPricePercentageOverLowestPrice int32 `protobuf:"varint,10,opt,name=spot_max_price_percentage_over_lowest_price,json=spotMaxPricePercentageOverLowestPrice,proto3" json:"spot_max_price_percentage_over_lowest_price,omitempty"`
+	// Spot price protection anchored to On-Demand: exclude types whose
+	// Spot price exceeds this percentage of the optimal type's On-Demand
+	// price. Mutually exclusive with
+	// spot_max_price_percentage_over_lowest_price.
+	MaxSpotPriceAsPercentageOfOptimalOnDemandPrice int32 `protobuf:"varint,11,opt,name=max_spot_price_as_percentage_of_optimal_on_demand_price,json=maxSpotPriceAsPercentageOfOptimalOnDemandPrice,proto3" json:"max_spot_price_as_percentage_of_optimal_on_demand_price,omitempty"`
+	// On-Demand price protection: exclude types whose On-Demand price
+	// exceeds the identified lowest-priced type's by more than this
+	// percentage. AWS default: 20.
+	OnDemandMaxPricePercentageOverLowestPrice int32 `protobuf:"varint,12,opt,name=on_demand_max_price_percentage_over_lowest_price,json=onDemandMaxPricePercentageOverLowestPrice,proto3" json:"on_demand_max_price_percentage_over_lowest_price,omitempty"`
+	// Instance-store (local disk) eligibility: "included" (AWS default),
+	// "excluded", or "required".
+	LocalStorage string `protobuf:"bytes,13,opt,name=local_storage,json=localStorage,proto3" json:"local_storage,omitempty"`
+	// Local storage technologies when instance-store is in play: "hdd"
+	// and/or "ssd".
+	LocalStorageTypes []string `protobuf:"bytes,14,rep,name=local_storage_types,json=localStorageTypes,proto3" json:"local_storage_types,omitempty"`
+	// Total local (instance-store) storage, in GB.
+	TotalLocalStorageGb *AwsEcsClusterDoubleRange `protobuf:"bytes,15,opt,name=total_local_storage_gb,json=totalLocalStorageGb,proto3" json:"total_local_storage_gb,omitempty"`
+	// Memory-to-vCPU ratio, in GiB per vCPU -- a compact way to say
+	// "memory optimized" (min 8) or "compute optimized" (max 2) without
+	// naming families.
+	MemoryGibPerVcpu *AwsEcsClusterDoubleRange `protobuf:"bytes,16,opt,name=memory_gib_per_vcpu,json=memoryGibPerVcpu,proto3" json:"memory_gib_per_vcpu,omitempty"`
+	// Number of network interfaces the type must support.
+	NetworkInterfaceCount *AwsEcsClusterIntRange `protobuf:"bytes,17,opt,name=network_interface_count,json=networkInterfaceCount,proto3" json:"network_interface_count,omitempty"`
+	// Network bandwidth, in Gbps.
+	NetworkBandwidthGbps *AwsEcsClusterDoubleRange `protobuf:"bytes,18,opt,name=network_bandwidth_gbps,json=networkBandwidthGbps,proto3" json:"network_bandwidth_gbps,omitempty"`
+	// Baseline (non-burst) EBS bandwidth, in Mbps.
+	BaselineEbsBandwidthMbps *AwsEcsClusterIntRange `protobuf:"bytes,19,opt,name=baseline_ebs_bandwidth_mbps,json=baselineEbsBandwidthMbps,proto3" json:"baseline_ebs_bandwidth_mbps,omitempty"`
+	// Number of accelerators (GPUs, FPGAs, inference chips). Set min 1 to
+	// require accelerated types; to EXCLUDE accelerators, leave this unset
+	// and rely on accelerator_types being empty.
+	AcceleratorCount *AwsEcsClusterIntRange `protobuf:"bytes,20,opt,name=accelerator_count,json=acceleratorCount,proto3" json:"accelerator_count,omitempty"`
+	// Accelerator manufacturers: "nvidia", "amd", "amazon-web-services",
+	// "xilinx", "habana".
+	AcceleratorManufacturers []string `protobuf:"bytes,21,rep,name=accelerator_manufacturers,json=acceleratorManufacturers,proto3" json:"accelerator_manufacturers,omitempty"`
+	// Specific accelerator models (e.g. "a100", "v100", "t4",
+	// "inferentia", "radeon-pro-v520").
+	AcceleratorNames []string `protobuf:"bytes,22,rep,name=accelerator_names,json=acceleratorNames,proto3" json:"accelerator_names,omitempty"`
+	// Accelerator categories: "gpu", "fpga", "inference".
+	AcceleratorTypes []string `protobuf:"bytes,23,rep,name=accelerator_types,json=acceleratorTypes,proto3" json:"accelerator_types,omitempty"`
+	// Total accelerator memory, in MiB.
+	AcceleratorTotalMemoryMib *AwsEcsClusterIntRange `protobuf:"bytes,24,opt,name=accelerator_total_memory_mib,json=acceleratorTotalMemoryMib,proto3" json:"accelerator_total_memory_mib,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) Reset() {
+	*x = AwsEcsClusterManagedInstancesRequirements{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterManagedInstancesRequirements) ProtoMessage() {}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterManagedInstancesRequirements.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterManagedInstancesRequirements) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetMemoryMib() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.MemoryMib
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetVcpuCount() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.VcpuCount
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAllowedInstanceTypes() []string {
+	if x != nil {
+		return x.AllowedInstanceTypes
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetExcludedInstanceTypes() []string {
+	if x != nil {
+		return x.ExcludedInstanceTypes
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetInstanceGenerations() []string {
+	if x != nil {
+		return x.InstanceGenerations
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetCpuManufacturers() []string {
+	if x != nil {
+		return x.CpuManufacturers
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetBareMetal() string {
+	if x != nil {
+		return x.BareMetal
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetBurstablePerformance() string {
+	if x != nil {
+		return x.BurstablePerformance
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetRequireHibernateSupport() bool {
+	if x != nil {
+		return x.RequireHibernateSupport
+	}
+	return false
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetSpotMaxPricePercentageOverLowestPrice() int32 {
+	if x != nil {
+		return x.SpotMaxPricePercentageOverLowestPrice
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetMaxSpotPriceAsPercentageOfOptimalOnDemandPrice() int32 {
+	if x != nil {
+		return x.MaxSpotPriceAsPercentageOfOptimalOnDemandPrice
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetOnDemandMaxPricePercentageOverLowestPrice() int32 {
+	if x != nil {
+		return x.OnDemandMaxPricePercentageOverLowestPrice
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetLocalStorage() string {
+	if x != nil {
+		return x.LocalStorage
+	}
+	return ""
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetLocalStorageTypes() []string {
+	if x != nil {
+		return x.LocalStorageTypes
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetTotalLocalStorageGb() *AwsEcsClusterDoubleRange {
+	if x != nil {
+		return x.TotalLocalStorageGb
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetMemoryGibPerVcpu() *AwsEcsClusterDoubleRange {
+	if x != nil {
+		return x.MemoryGibPerVcpu
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetNetworkInterfaceCount() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.NetworkInterfaceCount
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetNetworkBandwidthGbps() *AwsEcsClusterDoubleRange {
+	if x != nil {
+		return x.NetworkBandwidthGbps
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetBaselineEbsBandwidthMbps() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.BaselineEbsBandwidthMbps
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAcceleratorCount() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.AcceleratorCount
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAcceleratorManufacturers() []string {
+	if x != nil {
+		return x.AcceleratorManufacturers
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAcceleratorNames() []string {
+	if x != nil {
+		return x.AcceleratorNames
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAcceleratorTypes() []string {
+	if x != nil {
+		return x.AcceleratorTypes
+	}
+	return nil
+}
+
+func (x *AwsEcsClusterManagedInstancesRequirements) GetAcceleratorTotalMemoryMib() *AwsEcsClusterIntRange {
+	if x != nil {
+		return x.AcceleratorTotalMemoryMib
+	}
+	return nil
+}
+
+// AwsEcsClusterIntRange is an integer min/max pair for attribute-based
+// requirements. 0 means "unset" -- ranges here never legitimately start
+// at zero, so 0 doubles as "no bound" without an optional wrapper.
+type AwsEcsClusterIntRange struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lower bound, inclusive.
+	Min int32 `protobuf:"varint,1,opt,name=min,proto3" json:"min,omitempty"`
+	// Upper bound, inclusive. 0 means no upper bound.
+	Max           int32 `protobuf:"varint,2,opt,name=max,proto3" json:"max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterIntRange) Reset() {
+	*x = AwsEcsClusterIntRange{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterIntRange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterIntRange) ProtoMessage() {}
+
+func (x *AwsEcsClusterIntRange) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterIntRange.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterIntRange) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsEcsClusterIntRange) GetMin() int32 {
+	if x != nil {
+		return x.Min
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterIntRange) GetMax() int32 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
+}
+
+// AwsEcsClusterDoubleRange is a fractional min/max pair for
+// attribute-based requirements (ratios, Gbps). 0 means "unset".
+type AwsEcsClusterDoubleRange struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Lower bound, inclusive.
+	Min float64 `protobuf:"fixed64,1,opt,name=min,proto3" json:"min,omitempty"`
+	// Upper bound, inclusive. 0 means no upper bound.
+	Max           float64 `protobuf:"fixed64,2,opt,name=max,proto3" json:"max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsClusterDoubleRange) Reset() {
+	*x = AwsEcsClusterDoubleRange{}
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsClusterDoubleRange) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsClusterDoubleRange) ProtoMessage() {}
+
+func (x *AwsEcsClusterDoubleRange) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsClusterDoubleRange.ProtoReflect.Descriptor instead.
+func (*AwsEcsClusterDoubleRange) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsEcsClusterDoubleRange) GetMin() float64 {
+	if x != nil {
+		return x.Min
+	}
+	return 0
+}
+
+func (x *AwsEcsClusterDoubleRange) GetMax() float64 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
+}
+
 // AwsEcsClusterCapacityProviderStrategy is one entry of the cluster's
 // default strategy: a provider name with the base/weight distribution ECS
 // applies to tasks that do not choose their own strategy.
@@ -388,7 +1174,7 @@ type AwsEcsClusterCapacityProviderStrategy struct {
 
 func (x *AwsEcsClusterCapacityProviderStrategy) Reset() {
 	*x = AwsEcsClusterCapacityProviderStrategy{}
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -400,7 +1186,7 @@ func (x *AwsEcsClusterCapacityProviderStrategy) String() string {
 func (*AwsEcsClusterCapacityProviderStrategy) ProtoMessage() {}
 
 func (x *AwsEcsClusterCapacityProviderStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -413,7 +1199,7 @@ func (x *AwsEcsClusterCapacityProviderStrategy) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsEcsClusterCapacityProviderStrategy.ProtoReflect.Descriptor instead.
 func (*AwsEcsClusterCapacityProviderStrategy) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsEcsClusterCapacityProviderStrategy) GetCapacityProvider() string {
@@ -465,7 +1251,7 @@ type AwsEcsClusterExecuteCommandConfiguration struct {
 
 func (x *AwsEcsClusterExecuteCommandConfiguration) Reset() {
 	*x = AwsEcsClusterExecuteCommandConfiguration{}
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -477,7 +1263,7 @@ func (x *AwsEcsClusterExecuteCommandConfiguration) String() string {
 func (*AwsEcsClusterExecuteCommandConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsClusterExecuteCommandConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[4]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -490,7 +1276,7 @@ func (x *AwsEcsClusterExecuteCommandConfiguration) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AwsEcsClusterExecuteCommandConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsClusterExecuteCommandConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsEcsClusterExecuteCommandConfiguration) GetLogging() string {
@@ -538,7 +1324,7 @@ type AwsEcsClusterExecuteCommandLogConfiguration struct {
 
 func (x *AwsEcsClusterExecuteCommandLogConfiguration) Reset() {
 	*x = AwsEcsClusterExecuteCommandLogConfiguration{}
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -550,7 +1336,7 @@ func (x *AwsEcsClusterExecuteCommandLogConfiguration) String() string {
 func (*AwsEcsClusterExecuteCommandLogConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsClusterExecuteCommandLogConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[5]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -563,7 +1349,7 @@ func (x *AwsEcsClusterExecuteCommandLogConfiguration) ProtoReflect() protoreflec
 
 // Deprecated: Use AwsEcsClusterExecuteCommandLogConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsClusterExecuteCommandLogConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AwsEcsClusterExecuteCommandLogConfiguration) GetCloudWatchLogGroupName() string {
@@ -619,7 +1405,7 @@ type AwsEcsClusterManagedStorageConfiguration struct {
 
 func (x *AwsEcsClusterManagedStorageConfiguration) Reset() {
 	*x = AwsEcsClusterManagedStorageConfiguration{}
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -631,7 +1417,7 @@ func (x *AwsEcsClusterManagedStorageConfiguration) String() string {
 func (*AwsEcsClusterManagedStorageConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsClusterManagedStorageConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -644,7 +1430,7 @@ func (x *AwsEcsClusterManagedStorageConfiguration) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AwsEcsClusterManagedStorageConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsClusterManagedStorageConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsEcsClusterManagedStorageConfiguration) GetFargateEphemeralStorageKmsKeyId() *v1.StringValueOrRef {
@@ -665,7 +1451,7 @@ var File_catalog_aws_awsecscluster_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsecscluster/v1alpha1/spec.proto\x12&dev.planton.aws.awsecscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf7\f\n" +
+	"-catalog/aws/awsecscluster/v1alpha1/spec.proto\x12&dev.planton.aws.awsecscluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc8\x13\n" +
 	"\x11AwsEcsClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12T\n" +
 	"\x12container_insights\x18\x02 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1dR\aenabledR\benhancedR\bdisabledR\x11containerInsights\x12R\n" +
@@ -674,17 +1460,20 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\"default_capacity_provider_strategy\x18\x05 \x03(\v2M.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterCapacityProviderStrategyR\x1fdefaultCapacityProviderStrategy\x12\x94\x01\n" +
 	"\x1dexecute_command_configuration\x18\x06 \x01(\v2P.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfigurationR\x1bexecuteCommandConfiguration\x12\x94\x01\n" +
 	"\x1dmanaged_storage_configuration\x18\a \x01(\v2P.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfigurationR\x1bmanagedStorageConfiguration\x12A\n" +
-	"\x1dservice_connect_namespace_arn\x18\b \x01(\tR\x1aserviceConnectNamespaceArn:\x88\x06\xbaH\x84\x06\x1a\x83\x03\n" +
-	"+default_strategy_names_associated_providers\x12\xaa\x01every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT) or an ec2_capacity_providers entry\x1a\xa6\x01this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider))\x1a\xb4\x01\n" +
+	"\x1dservice_connect_namespace_arn\x18\b \x01(\tR\x1aserviceConnectNamespaceArn\x12\xa6\x01\n" +
+	"$managed_instances_capacity_providers\x18\t \x03(\v2U.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityProviderR!managedInstancesCapacityProviders:\xb0\v\xbaH\xac\v\x1a\x88\x04\n" +
+	"+default_strategy_names_associated_providers\x12\xd9\x01every default_capacity_provider_strategy entry must name an associated provider -- a capacity_providers built-in (FARGATE/FARGATE_SPOT), an ec2_capacity_providers entry, or a managed_instances_capacity_providers entry\x1a\xfc\x01this.default_capacity_provider_strategy.all(s, s.capacity_provider in this.capacity_providers || this.ec2_capacity_providers.exists(p, p.name == s.capacity_provider) || this.managed_instances_capacity_providers.exists(p, p.name == s.capacity_provider))\x1a\xb4\x01\n" +
 	"\x1cdefault_strategy_single_base\x12Ionly one default_capacity_provider_strategy entry may set a non-zero base\x1aIthis.default_capacity_provider_strategy.filter(s, s.base > 0).size() <= 1\x1a\xc4\x01\n" +
-	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\"\xdc\b\n" +
+	"\"ec2_capacity_provider_names_unique\x125ec2_capacity_providers entries must have unique names\x1agthis.ec2_capacity_providers.all(p, this.ec2_capacity_providers.filter(q, q.name == p.name).size() == 1)\x1a\xfd\x01\n" +
+	"0managed_instances_capacity_provider_names_unique\x12Cmanaged_instances_capacity_providers entries must have unique names\x1a\x83\x01this.managed_instances_capacity_providers.all(p, this.managed_instances_capacity_providers.filter(q, q.name == p.name).size() == 1)\x1a\xa0\x02\n" +
+	"+capacity_provider_names_unique_across_types\x12\x84\x01a managed_instances_capacity_providers entry may not reuse an ec2_capacity_providers name -- both lists share one provider namespace\x1ajthis.managed_instances_capacity_providers.all(p, !this.ec2_capacity_providers.exists(q, q.name == p.name))\"\x80\b\n" +
 	" AwsEcsClusterEc2CapacityProvider\x124\n" +
 	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x9c\x01\n" +
 	"\x16auto_scaling_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\x8b\b\x92\xd4a$status.outputs.autoscaling_group_arnR\x13autoScalingGroupArn\x12l\n" +
 	"\x0fmanaged_scaling\x18\x03 \x01(\v2C.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScalingR\x0emanagedScaling\x12D\n" +
 	"\x1emanaged_termination_protection\x18\x04 \x01(\tR\x1cmanagedTerminationProtection\x12)\n" +
-	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\x83\x05\xbaH\xff\x04\x1a\xf6\x01\n" +
-	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a\x87\x01!(this.name.lowerAscii().startsWith('aws') || this.name.lowerAscii().startsWith('ecs') || this.name.lowerAscii().startsWith('fargate'))\x1a\xdc\x01\n" +
+	"\x10managed_draining\x18\x05 \x01(\tR\x0fmanagedDraining:\xa7\x04\xbaH\xa3\x04\x1a\x9a\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a,!this.name.matches('^(?i)(aws|ecs|fargate)')\x1a\xdc\x01\n" +
 	"$managed_termination_protection_valid\x12Gmanaged_termination_protection must be 'ENABLED' or 'DISABLED' when set\x1akthis.managed_termination_protection == '' || this.managed_termination_protection in ['ENABLED', 'DISABLED']\x1a\xa4\x01\n" +
 	"\x16managed_draining_valid\x129managed_draining must be 'ENABLED' or 'DISABLED' when set\x1aOthis.managed_draining == '' || this.managed_draining in ['ENABLED', 'DISABLED']\"\x94\v\n" +
 	"\x1bAwsEcsClusterManagedScaling\x12\x16\n" +
@@ -698,7 +1487,84 @@ const file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0emin_step_range\x12>minimum_scaling_step_size must be between 1 and 10000 when set\x1awthis.minimum_scaling_step_size == 0 || (this.minimum_scaling_step_size >= 1 && this.minimum_scaling_step_size <= 10000)\x1a\xc9\x01\n" +
 	"\x0emax_step_range\x12>maximum_scaling_step_size must be between 1 and 10000 when set\x1awthis.maximum_scaling_step_size == 0 || (this.maximum_scaling_step_size >= 1 && this.maximum_scaling_step_size <= 10000)\x1a\xa4\x01\n" +
 	"\fwarmup_range\x12:instance_warmup_period_seconds must be between 0 and 10000\x1aXthis.instance_warmup_period_seconds >= 0 && this.instance_warmup_period_seconds <= 10000\x1a\x8d\x02\n" +
-	"\x12step_sizes_ordered\x12fmaximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set\x1a\x8e\x01this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size\"\xa1\x01\n" +
+	"\x12step_sizes_ordered\x12fmaximum_scaling_step_size must be greater than or equal to minimum_scaling_step_size when both are set\x1a\x8e\x01this.minimum_scaling_step_size == 0 || this.maximum_scaling_step_size == 0 || this.maximum_scaling_step_size >= this.minimum_scaling_step_size\"\xf2\x06\n" +
+	"-AwsEcsClusterManagedInstancesCapacityProvider\x124\n" +
+	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x182\x16^[a-zA-Z0-9_-]{1,255}$R\x04name\x12\x92\x01\n" +
+	"\x17infrastructure_role_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x15infrastructureRoleArn\x12\x95\x01\n" +
+	"\x18instance_launch_template\x18\x03 \x01(\v2S.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplateB\x06\xbaH\x03\xc8\x01\x01R\x16instanceLaunchTemplate\x12M\n" +
+	"\x16scale_in_after_seconds\x18\x04 \x01(\x05B\x13\xbaH\x10\x1a\x0e\x18\x90\x1c(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01H\x00R\x13scaleInAfterSeconds\x88\x01\x01\x12%\n" +
+	"\x0epropagate_tags\x18\x05 \x01(\tR\rpropagateTags:\xcc\x02\xbaH\xc8\x02\x1a\x9a\x01\n" +
+	"\x11name_not_reserved\x12Wcapacity provider names may not start with 'aws', 'ecs', or 'fargate' (reserved by AWS)\x1a,!this.name.matches('^(?i)(aws|ecs|fargate)')\x1a\xa8\x01\n" +
+	"\x14propagate_tags_valid\x12=propagate_tags must be 'CAPACITY_PROVIDER' or 'NONE' when set\x1aQthis.propagate_tags == '' || this.propagate_tags in ['CAPACITY_PROVIDER', 'NONE']B\x19\n" +
+	"\x17_scale_in_after_seconds\"\xd0\x0f\n" +
+	"+AwsEcsClusterManagedInstancesLaunchTemplate\x12\x9f\x01\n" +
+	"\x18ec2_instance_profile_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x03\xc8\x01\x01\x88\xd4a\x87\b\x92\xd4a#status.outputs.instance_profile_arnR\x15ec2InstanceProfileArn\x12\x96\x01\n" +
+	"\x15network_configuration\x18\x02 \x01(\v2Y.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesNetworkConfigurationB\x06\xbaH\x03\xc8\x01\x01R\x14networkConfiguration\x120\n" +
+	"\x14capacity_option_type\x18\x03 \x01(\tR\x12capacityOptionType\x12\x8e\x01\n" +
+	"\x15capacity_reservations\x18\x04 \x01(\v2Y.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityReservationsR\x14capacityReservations\x12\x86\x01\n" +
+	"\x15instance_requirements\x18\x05 \x01(\v2Q.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirementsR\x14instanceRequirements\x12/\n" +
+	"\x11use_local_storage\x18\x06 \x01(\bH\x00R\x0fuseLocalStorage\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"monitoring\x18\a \x01(\tR\n" +
+	"monitoring\x12(\n" +
+	"\x10storage_size_gib\x18\b \x01(\x05R\x0estorageSizeGib:\x88\t\xbaH\x84\t\x1a\xc9\x01\n" +
+	"\x1acapacity_option_type_valid\x12Hcapacity_option_type must be 'ON_DEMAND', 'SPOT', or 'RESERVED' when set\x1aathis.capacity_option_type == '' || this.capacity_option_type in ['ON_DEMAND', 'SPOT', 'RESERVED']\x1a\xac\x01\n" +
+	"\x1ereserved_requires_reservations\x12>capacity_option_type 'RESERVED' requires capacity_reservations\x1aJthis.capacity_option_type != 'RESERVED' || has(this.capacity_reservations)\x1a\xb9\x01\n" +
+	"\x1dreservations_require_reserved\x12Kcapacity_reservations is only legal when capacity_option_type is 'RESERVED'\x1aK!has(this.capacity_reservations) || this.capacity_option_type == 'RESERVED'\x1a\xbe\x02\n" +
+	",reservation_preference_requires_requirements\x12areservation_preference 'RESERVATIONS_ONLY' or 'RESERVATIONS_FIRST' requires instance_requirements\x1a\xaa\x01!has(this.capacity_reservations) || !(this.capacity_reservations.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST']) || has(this.instance_requirements)\x1a\x88\x01\n" +
+	"\x10monitoring_valid\x121monitoring must be 'BASIC' or 'DETAILED' when set\x1aAthis.monitoring == '' || this.monitoring in ['BASIC', 'DETAILED']\x1a\x7f\n" +
+	"\x15storage_size_positive\x12,storage_size_gib must be at least 1 when set\x1a8this.storage_size_gib == 0 || this.storage_size_gib >= 1B\x14\n" +
+	"\x12_use_local_storage\"\xcb\x02\n" +
+	"1AwsEcsClusterManagedInstancesNetworkConfiguration\x12~\n" +
+	"\asubnets\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_id\x98\xd4a\x01R\asubnets\x12\x95\x01\n" +
+	"\x0fsecurity_groups\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_id\x98\xd4a\x01R\x0esecurityGroups\"\x99\x05\n" +
+	"1AwsEcsClusterManagedInstancesCapacityReservations\x125\n" +
+	"\x16reservation_preference\x18\x01 \x01(\tR\x15reservationPreference\x122\n" +
+	"\x15reservation_group_arn\x18\x02 \x01(\tR\x13reservationGroupArn:\xf8\x03\xbaH\xf4\x03\x1a\x98\x02\n" +
+	"\x1creservation_preference_valid\x12mreservation_preference must be 'RESERVATIONS_ONLY', 'RESERVATIONS_FIRST', or 'RESERVATIONS_EXCLUDED' when set\x1a\x88\x01this.reservation_preference == '' || this.reservation_preference in ['RESERVATIONS_ONLY', 'RESERVATIONS_FIRST', 'RESERVATIONS_EXCLUDED']\x1a\xd6\x01\n" +
+	"$group_arn_requires_reservations_only\x12Vreservation_group_arn is only legal when reservation_preference is 'RESERVATIONS_ONLY'\x1aVthis.reservation_group_arn == '' || this.reservation_preference == 'RESERVATIONS_ONLY'\"\xe4\x17\n" +
+	")AwsEcsClusterManagedInstancesRequirements\x12d\n" +
+	"\n" +
+	"memory_mib\x18\x01 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeB\x06\xbaH\x03\xc8\x01\x01R\tmemoryMib\x12d\n" +
+	"\n" +
+	"vcpu_count\x18\x02 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeB\x06\xbaH\x03\xc8\x01\x01R\tvcpuCount\x12?\n" +
+	"\x16allowed_instance_types\x18\x03 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\x90\x03R\x14allowedInstanceTypes\x12A\n" +
+	"\x17excluded_instance_types\x18\x04 \x03(\tB\t\xbaH\x06\x92\x01\x03\x10\x90\x03R\x15excludedInstanceTypes\x121\n" +
+	"\x14instance_generations\x18\x05 \x03(\tR\x13instanceGenerations\x12+\n" +
+	"\x11cpu_manufacturers\x18\x06 \x03(\tR\x10cpuManufacturers\x12\x1d\n" +
+	"\n" +
+	"bare_metal\x18\a \x01(\tR\tbareMetal\x123\n" +
+	"\x15burstable_performance\x18\b \x01(\tR\x14burstablePerformance\x12:\n" +
+	"\x19require_hibernate_support\x18\t \x01(\bR\x17requireHibernateSupport\x12Z\n" +
+	"+spot_max_price_percentage_over_lowest_price\x18\n" +
+	" \x01(\x05R%spotMaxPricePercentageOverLowestPrice\x12o\n" +
+	"7max_spot_price_as_percentage_of_optimal_on_demand_price\x18\v \x01(\x05R.maxSpotPriceAsPercentageOfOptimalOnDemandPrice\x12c\n" +
+	"0on_demand_max_price_percentage_over_lowest_price\x18\f \x01(\x05R)onDemandMaxPricePercentageOverLowestPrice\x12#\n" +
+	"\rlocal_storage\x18\r \x01(\tR\flocalStorage\x12.\n" +
+	"\x13local_storage_types\x18\x0e \x03(\tR\x11localStorageTypes\x12u\n" +
+	"\x16total_local_storage_gb\x18\x0f \x01(\v2@.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRangeR\x13totalLocalStorageGb\x12o\n" +
+	"\x13memory_gib_per_vcpu\x18\x10 \x01(\v2@.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRangeR\x10memoryGibPerVcpu\x12u\n" +
+	"\x17network_interface_count\x18\x11 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeR\x15networkInterfaceCount\x12v\n" +
+	"\x16network_bandwidth_gbps\x18\x12 \x01(\v2@.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRangeR\x14networkBandwidthGbps\x12|\n" +
+	"\x1bbaseline_ebs_bandwidth_mbps\x18\x13 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeR\x18baselineEbsBandwidthMbps\x12j\n" +
+	"\x11accelerator_count\x18\x14 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeR\x10acceleratorCount\x12;\n" +
+	"\x19accelerator_manufacturers\x18\x15 \x03(\tR\x18acceleratorManufacturers\x12+\n" +
+	"\x11accelerator_names\x18\x16 \x03(\tR\x10acceleratorNames\x12+\n" +
+	"\x11accelerator_types\x18\x17 \x03(\tR\x10acceleratorTypes\x12~\n" +
+	"\x1caccelerator_total_memory_mib\x18\x18 \x01(\v2=.dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRangeR\x19acceleratorTotalMemoryMib:\x97\b\xbaH\x93\b\x1a\xba\x01\n" +
+	"\x1aallowed_xor_excluded_types\x12Iallowed_instance_types and excluded_instance_types are mutually exclusive\x1aQsize(this.allowed_instance_types) == 0 || size(this.excluded_instance_types) == 0\x1a\x9d\x02\n" +
+	"\x1fspot_price_protection_exclusive\x12~spot_max_price_percentage_over_lowest_price and max_spot_price_as_percentage_of_optimal_on_demand_price are mutually exclusive\x1azthis.spot_max_price_percentage_over_lowest_price == 0 || this.max_spot_price_as_percentage_of_optimal_on_demand_price == 0\x1a\xa7\x01\n" +
+	"\x10bare_metal_valid\x12Abare_metal must be 'included', 'excluded', or 'required' when set\x1aPthis.bare_metal == '' || this.bare_metal in ['included', 'excluded', 'required']\x1a\xd3\x01\n" +
+	"\x1bburstable_performance_valid\x12Lburstable_performance must be 'included', 'excluded', or 'required' when set\x1afthis.burstable_performance == '' || this.burstable_performance in ['included', 'excluded', 'required']\x1a\xb3\x01\n" +
+	"\x13local_storage_valid\x12Dlocal_storage must be 'included', 'excluded', or 'required' when set\x1aVthis.local_storage == '' || this.local_storage in ['included', 'excluded', 'required']\"\xcc\x01\n" +
+	"\x15AwsEcsClusterIntRange\x12\x10\n" +
+	"\x03min\x18\x01 \x01(\x05R\x03min\x12\x10\n" +
+	"\x03max\x18\x02 \x01(\x05R\x03max:\x8e\x01\xbaH\x8a\x01\x1a\x87\x01\n" +
+	"\x11int_range_ordered\x12:max must be greater than or equal to min when both are set\x1a6this.min == 0 || this.max == 0 || this.max >= this.min\"\xd6\x01\n" +
+	"\x18AwsEcsClusterDoubleRange\x12\x10\n" +
+	"\x03min\x18\x01 \x01(\x01R\x03min\x12\x10\n" +
+	"\x03max\x18\x02 \x01(\x01R\x03max:\x95\x01\xbaH\x91\x01\x1a\x8e\x01\n" +
+	"\x14double_range_ordered\x12:max must be greater than or equal to min when both are set\x1a:this.min == 0.0 || this.max == 0.0 || this.max >= this.min\"\xa1\x01\n" +
 	"%AwsEcsClusterCapacityProviderStrategy\x123\n" +
 	"\x11capacity_provider\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10capacityProvider\x12\x1f\n" +
 	"\x04base\x18\x02 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xa0\x8d\x06(\x00R\x04base\x12\"\n" +
@@ -737,33 +1603,58 @@ func file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_catalog_aws_awsecscluster_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsEcsClusterSpec)(nil),                           // 0: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec
-	(*AwsEcsClusterEc2CapacityProvider)(nil),            // 1: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider
-	(*AwsEcsClusterManagedScaling)(nil),                 // 2: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScaling
-	(*AwsEcsClusterCapacityProviderStrategy)(nil),       // 3: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterCapacityProviderStrategy
-	(*AwsEcsClusterExecuteCommandConfiguration)(nil),    // 4: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration
-	(*AwsEcsClusterExecuteCommandLogConfiguration)(nil), // 5: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandLogConfiguration
-	(*AwsEcsClusterManagedStorageConfiguration)(nil),    // 6: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration
-	(*v1.StringValueOrRef)(nil),                         // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEcsClusterSpec)(nil),                                 // 0: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec
+	(*AwsEcsClusterEc2CapacityProvider)(nil),                  // 1: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider
+	(*AwsEcsClusterManagedScaling)(nil),                       // 2: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScaling
+	(*AwsEcsClusterManagedInstancesCapacityProvider)(nil),     // 3: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityProvider
+	(*AwsEcsClusterManagedInstancesLaunchTemplate)(nil),       // 4: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate
+	(*AwsEcsClusterManagedInstancesNetworkConfiguration)(nil), // 5: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesNetworkConfiguration
+	(*AwsEcsClusterManagedInstancesCapacityReservations)(nil), // 6: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityReservations
+	(*AwsEcsClusterManagedInstancesRequirements)(nil),         // 7: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements
+	(*AwsEcsClusterIntRange)(nil),                             // 8: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	(*AwsEcsClusterDoubleRange)(nil),                          // 9: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRange
+	(*AwsEcsClusterCapacityProviderStrategy)(nil),             // 10: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterCapacityProviderStrategy
+	(*AwsEcsClusterExecuteCommandConfiguration)(nil),          // 11: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration
+	(*AwsEcsClusterExecuteCommandLogConfiguration)(nil),       // 12: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandLogConfiguration
+	(*AwsEcsClusterManagedStorageConfiguration)(nil),          // 13: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration
+	(*v1.StringValueOrRef)(nil),                               // 14: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsecscluster_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.ec2_capacity_providers:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider
-	3,  // 1: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.default_capacity_provider_strategy:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterCapacityProviderStrategy
-	4,  // 2: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.execute_command_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration
-	6,  // 3: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.managed_storage_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration
-	7,  // 4: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider.auto_scaling_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2,  // 5: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider.managed_scaling:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScaling
-	5,  // 6: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration.log_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandLogConfiguration
-	7,  // 7: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 8: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration.fargate_ephemeral_storage_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 9: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // [10:10] is the sub-list for method output_type
-	10, // [10:10] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	10, // 1: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.default_capacity_provider_strategy:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterCapacityProviderStrategy
+	11, // 2: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.execute_command_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration
+	13, // 3: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.managed_storage_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration
+	3,  // 4: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterSpec.managed_instances_capacity_providers:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityProvider
+	14, // 5: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider.auto_scaling_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 6: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterEc2CapacityProvider.managed_scaling:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedScaling
+	14, // 7: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityProvider.infrastructure_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 8: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityProvider.instance_launch_template:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate
+	14, // 9: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate.ec2_instance_profile_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 10: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate.network_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesNetworkConfiguration
+	6,  // 11: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate.capacity_reservations:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesCapacityReservations
+	7,  // 12: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesLaunchTemplate.instance_requirements:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements
+	14, // 13: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesNetworkConfiguration.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 14: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesNetworkConfiguration.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 15: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.memory_mib:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	8,  // 16: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.vcpu_count:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	9,  // 17: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.total_local_storage_gb:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRange
+	9,  // 18: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.memory_gib_per_vcpu:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRange
+	8,  // 19: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.network_interface_count:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	9,  // 20: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.network_bandwidth_gbps:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterDoubleRange
+	8,  // 21: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.baseline_ebs_bandwidth_mbps:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	8,  // 22: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.accelerator_count:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	8,  // 23: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedInstancesRequirements.accelerator_total_memory_mib:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterIntRange
+	12, // 24: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration.log_configuration:type_name -> dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandLogConfiguration
+	14, // 25: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterExecuteCommandConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 26: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration.fargate_ephemeral_storage_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 27: dev.planton.aws.awsecscluster.v1alpha1.AwsEcsClusterManagedStorageConfiguration.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsecscluster_v1alpha1_spec_proto_init() }
@@ -771,13 +1662,15 @@ func file_catalog_aws_awsecscluster_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsecscluster_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
+	file_catalog_aws_awsecscluster_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsecscluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,54 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEksNodeGroup
+metadata:
+  name: <node-group-name>
+spec:
+  region: <aws-region>
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: <cluster-resource-name>
+      fieldPath: status.outputs.name
+  nodeRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <node-role-resource-name>
+      fieldPath: status.outputs.role_arn
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-a-resource-name>
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: <private-subnet-b-resource-name>
+        fieldPath: status.outputs.subnet_id
+  # Slow-booting workloads are exactly where warm pools pay off: big
+  # container images, agents that register, caches that fill.
+  instanceTypes:
+    - m6i.xlarge
+  amiType: AL2023_x86_64_STANDARD
+  scaling:
+    minSize: 2
+    maxSize: 10
+    desiredSize: 3
+  diskSizeGb: 100
+  # Pre-initialized nodes that join in seconds instead of minutes.
+  warmPoolConfig:
+    # STOPPED (default): near-zero compute cost, only EBS bills while
+    # pooled. RUNNING joins instantly at full price; HIBERNATED restores
+    # RAM from disk for fast JVM/cache warmup.
+    poolState: STOPPED
+    # Always keep this many pre-initialized nodes ready.
+    minSize: 2
+    # Cap the pool; omit to let AWS size it to the gap between maxSize
+    # and desired capacity.
+    maxGroupPreparedCapacity: 4
+    # Scaled-in nodes return to the pool instead of terminating -- the
+    # warm boot is reused, not paid for again.
+    reuseOnScaleIn: true
+  updateConfig:
+    maxUnavailablePercentage: 25
+    updateStrategy: MINIMAL
+  nodeRepairConfig:
+    enabled: true

@@ -33,7 +33,7 @@ Open the deployment store, find **GCP KMS Key Ring**, and click **Deploy**. The 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpKmsKeyRing
 metadata:
   name: prod-encryption

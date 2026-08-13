@@ -23,3 +23,7 @@ The **AzureBackupProtectedVm** component registers one virtual machine under a b
 ## Future Enhancements
 
 - The file-share protection kind extends the same binding pattern to Azure Files as its contract lands in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

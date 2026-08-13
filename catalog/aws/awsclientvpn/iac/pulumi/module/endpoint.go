@@ -120,28 +120,37 @@ func endpoint(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResou
 	if spec.SessionTimeoutHours != nil {
 		args.SessionTimeoutHours = pulumi.Int(int(*spec.SessionTimeoutHours))
 	}
-	if spec.DisconnectOnSessionTimeout {
-		args.DisconnectOnSessionTimeout = pulumi.Bool(true)
-	}
+	// Always sent explicitly in both states (matching the Terraform module):
+	// the provider declares this Optional+Computed, so an omitted value
+	// absorbs whatever AWS holds and a true->false manifest flip would never
+	// turn the setting off.
+	args.DisconnectOnSessionTimeout = pulumi.Bool(spec.DisconnectOnSessionTimeout)
 	if spec.SelfServicePortalEnabled {
 		args.SelfServicePortal = pulumi.String("enabled")
 	}
+	// The three option blocks below are ALWAYS materialized with an explicit
+	// enabled/enforced value: the provider declares them Optional+Computed and
+	// diff-suppresses a missing block, so removing a once-enabled block from
+	// the manifest would otherwise be a silent no-op. The disabled state
+	// deliberately drops the payload, matching the provider's own expander.
+	connectOpts := &ec2clientvpn.EndpointClientConnectOptionsArgs{
+		Enabled: pulumi.Bool(spec.ClientConnectOptions != nil),
+	}
 	if spec.ClientConnectOptions != nil {
-		args.ClientConnectOptions = &ec2clientvpn.EndpointClientConnectOptionsArgs{
-			Enabled:           pulumi.Bool(true),
-			LambdaFunctionArn: pulumi.String(spec.ClientConnectOptions.LambdaFunctionArn.GetValue()),
-		}
+		connectOpts.LambdaFunctionArn = pulumi.String(spec.ClientConnectOptions.LambdaFunctionArn.GetValue())
+	}
+	args.ClientConnectOptions = connectOpts
+
+	bannerOpts := &ec2clientvpn.EndpointClientLoginBannerOptionsArgs{
+		Enabled: pulumi.Bool(spec.ClientLoginBanner != nil),
 	}
 	if spec.ClientLoginBanner != nil {
-		args.ClientLoginBannerOptions = &ec2clientvpn.EndpointClientLoginBannerOptionsArgs{
-			Enabled:    pulumi.Bool(true),
-			BannerText: pulumi.String(spec.ClientLoginBanner.BannerText),
-		}
+		bannerOpts.BannerText = pulumi.String(spec.ClientLoginBanner.BannerText)
 	}
-	if spec.ClientRouteEnforcementEnabled {
-		args.ClientRouteEnforcementOptions = &ec2clientvpn.EndpointClientRouteEnforcementOptionsArgs{
-			Enforced: pulumi.Bool(true),
-		}
+	args.ClientLoginBannerOptions = bannerOpts
+
+	args.ClientRouteEnforcementOptions = &ec2clientvpn.EndpointClientRouteEnforcementOptionsArgs{
+		Enforced: pulumi.Bool(spec.ClientRouteEnforcementEnabled),
 	}
 	if len(spec.DnsServers) > 0 {
 		args.DnsServers = pulumi.ToStringArray(spec.DnsServers)

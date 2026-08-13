@@ -26,3 +26,4 @@ spec:
   data:
     batch-window-hours: "6"
     feature-lineage-enabled: "true"
+  deletionPolicy: DELETE

@@ -74,6 +74,69 @@ func service(
 		args.LaunchStage = pulumi.String(spec.LaunchStage)
 	}
 
+	// Service-object annotations for external tools (system namespaces are
+	// API-rejected). Revision-level annotations ride the template instead.
+	if len(spec.Annotations) > 0 {
+		args.Annotations = pulumi.ToStringMap(spec.Annotations)
+	}
+
+	// Identity-Aware Proxy in front of the service — Google's managed
+	// login wall. Omitted when false so the provider default applies.
+	if spec.IapEnabled {
+		args.IapEnabled = pulumi.Bool(true)
+	}
+
+	// Turns off the default *.run.app URL, leaving custom-domain / LB
+	// paths as the only front doors.
+	if spec.DefaultUriDisabled {
+		args.DefaultUriDisabled = pulumi.Bool(true)
+	}
+
+	// Engine-side destroy stance: PREVENT fails destroys, ABANDON removes
+	// the service from management without deleting it in GCP.
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
+	// Deploy-from-source: Cloud Build produces the serving image (the
+	// Cloud Run functions build path) instead of a prebuilt image.
+	if spec.BuildConfig != nil {
+		buildConfig := &cloudrunv2.ServiceBuildConfigArgs{}
+		if spec.BuildConfig.SourceLocation != "" {
+			buildConfig.SourceLocation = pulumi.String(spec.BuildConfig.SourceLocation)
+		}
+		if spec.BuildConfig.FunctionTarget != "" {
+			buildConfig.FunctionTarget = pulumi.String(spec.BuildConfig.FunctionTarget)
+		}
+		if spec.BuildConfig.ImageUri != "" {
+			buildConfig.ImageUri = pulumi.String(spec.BuildConfig.ImageUri)
+		}
+		if spec.BuildConfig.BaseImage != "" {
+			buildConfig.BaseImage = pulumi.String(spec.BuildConfig.BaseImage)
+		}
+		if spec.BuildConfig.EnableAutomaticUpdates {
+			buildConfig.EnableAutomaticUpdates = pulumi.Bool(true)
+		}
+		if len(spec.BuildConfig.EnvironmentVariables) > 0 {
+			buildConfig.EnvironmentVariables = pulumi.ToStringMap(spec.BuildConfig.EnvironmentVariables)
+		}
+		if spec.BuildConfig.WorkerPool != "" {
+			buildConfig.WorkerPool = pulumi.String(spec.BuildConfig.WorkerPool)
+		}
+		if spec.BuildConfig.ServiceAccount != "" {
+			buildConfig.ServiceAccount = pulumi.String(spec.BuildConfig.ServiceAccount)
+		}
+		args.BuildConfig = buildConfig
+	}
+
+	// Multi-region service: one identity serving from several regions. The
+	// proto guarantees region is "global" whenever this is present.
+	if spec.MultiRegionSettings != nil {
+		args.MultiRegionSettings = &cloudrunv2.ServiceMultiRegionSettingsArgs{
+			Regions: pulumi.ToStringArray(spec.MultiRegionSettings.Regions),
+		}
+	}
+
 	// Turns the IAM run.routes.invoke check off entirely — the org-policy
 	// alternative to granting allUsers (the IAM member below). The proto
 	// rejects setting both.
@@ -113,6 +176,9 @@ func service(
 		}
 		if spec.ServiceScaling.MinInstanceCount != nil {
 			serviceScaling.MinInstanceCount = pulumi.Int(int(spec.ServiceScaling.GetMinInstanceCount()))
+		}
+		if spec.ServiceScaling.MaxInstanceCount != nil {
+			serviceScaling.MaxInstanceCount = pulumi.Int(int(spec.ServiceScaling.GetMaxInstanceCount()))
 		}
 		args.Scaling = serviceScaling
 	}
@@ -188,6 +254,21 @@ func buildTemplate(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) *cloudrunv2.Servic
 	// (the norm) lets Cloud Run generate names.
 	if spec.Revision != "" {
 		template.Revision = pulumi.String(spec.Revision)
+	}
+
+	// Revision-level metadata, stamped on every revision the template
+	// creates (distinct from the service-object labels/annotations).
+	if len(spec.RevisionLabels) > 0 {
+		template.Labels = pulumi.ToStringMap(spec.RevisionLabels)
+	}
+	if len(spec.RevisionAnnotations) > 0 {
+		template.Annotations = pulumi.ToStringMap(spec.RevisionAnnotations)
+	}
+
+	// Escape hatch disabling ALL probes (startup and liveness) for
+	// workloads whose serving model breaks the probe contract.
+	if spec.HealthCheckDisabled {
+		template.HealthCheckDisabled = pulumi.Bool(true)
 	}
 
 	// The runtime identity whose permissions the code exercises. Unset uses
@@ -326,10 +407,14 @@ func buildTemplate(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) *cloudrunv2.Servic
 				volumeArgs.EmptyDir = emptyDir
 			case *gcpcloudrunv1alpha1.GcpCloudRunVolume_Gcs:
 				// GCS FUSE mounts require the GEN2 execution environment.
-				volumeArgs.Gcs = &cloudrunv2.ServiceTemplateVolumeGcsArgs{
+				gcs := &cloudrunv2.ServiceTemplateVolumeGcsArgs{
 					Bucket:   pulumi.String(source.Gcs.Bucket.GetValue()),
 					ReadOnly: pulumi.Bool(source.Gcs.ReadOnly),
 				}
+				if len(source.Gcs.MountOptions) > 0 {
+					gcs.MountOptions = pulumi.ToStringArray(source.Gcs.MountOptions)
+				}
+				volumeArgs.Gcs = gcs
 			case *gcpcloudrunv1alpha1.GcpCloudRunVolume_Nfs:
 				volumeArgs.Nfs = &cloudrunv2.ServiceTemplateVolumeNfsArgs{
 					Server:   pulumi.String(source.Nfs.Server),
@@ -369,6 +454,12 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 		}
 		if len(container.DependsOn) > 0 {
 			containerArgs.DependsOns = pulumi.ToStringArray(container.DependsOn)
+		}
+
+		// Base image for automatic base-image updates on source deploys
+		// (pairs with build_config.enable_automatic_updates).
+		if container.BaseImageUri != "" {
+			containerArgs.BaseImageUri = pulumi.String(container.BaseImageUri)
 		}
 
 		// Environment: a literal value or a Secret Manager reference
@@ -436,10 +527,14 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 		if len(container.VolumeMounts) > 0 {
 			mounts := cloudrunv2.ServiceTemplateContainerVolumeMountArray{}
 			for _, mount := range container.VolumeMounts {
-				mounts = append(mounts, &cloudrunv2.ServiceTemplateContainerVolumeMountArgs{
+				mountArgs := &cloudrunv2.ServiceTemplateContainerVolumeMountArgs{
 					Name:      pulumi.String(mount.Name),
 					MountPath: pulumi.String(mount.MountPath),
-				})
+				}
+				if mount.SubPath != "" {
+					mountArgs.SubPath = pulumi.String(mount.SubPath)
+				}
+				mounts = append(mounts, mountArgs)
 			}
 			containerArgs.VolumeMounts = mounts
 		}
@@ -462,7 +557,7 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 				startupProbe.FailureThreshold = pulumi.Int(int(probe.GetFailureThreshold()))
 			}
 			switch handler := probe.Handler.(type) {
-			case *gcpcloudrunv1alpha1.GcpCloudRunProbe_HttpGet:
+			case *gcpcloudrunv1alpha1.GcpCloudRunStartupProbe_HttpGet:
 				httpGet := &cloudrunv2.ServiceTemplateContainerStartupProbeHttpGetArgs{}
 				if handler.HttpGet.Path != "" {
 					httpGet.Path = pulumi.String(handler.HttpGet.Path)
@@ -481,13 +576,13 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 					httpGet.HttpHeaders = headers
 				}
 				startupProbe.HttpGet = httpGet
-			case *gcpcloudrunv1alpha1.GcpCloudRunProbe_TcpSocket:
+			case *gcpcloudrunv1alpha1.GcpCloudRunStartupProbe_TcpSocket:
 				tcpSocket := &cloudrunv2.ServiceTemplateContainerStartupProbeTcpSocketArgs{}
 				if handler.TcpSocket.Port != nil {
 					tcpSocket.Port = pulumi.Int(int(handler.TcpSocket.GetPort()))
 				}
 				startupProbe.TcpSocket = tcpSocket
-			case *gcpcloudrunv1alpha1.GcpCloudRunProbe_Grpc:
+			case *gcpcloudrunv1alpha1.GcpCloudRunStartupProbe_Grpc:
 				grpc := &cloudrunv2.ServiceTemplateContainerStartupProbeGrpcArgs{}
 				if handler.Grpc.Port != nil {
 					grpc.Port = pulumi.Int(int(handler.Grpc.GetPort()))
@@ -518,7 +613,7 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 				livenessProbe.FailureThreshold = pulumi.Int(int(probe.GetFailureThreshold()))
 			}
 			switch handler := probe.Handler.(type) {
-			case *gcpcloudrunv1alpha1.GcpCloudRunProbe_HttpGet:
+			case *gcpcloudrunv1alpha1.GcpCloudRunLivenessProbe_HttpGet:
 				httpGet := &cloudrunv2.ServiceTemplateContainerLivenessProbeHttpGetArgs{}
 				if handler.HttpGet.Path != "" {
 					httpGet.Path = pulumi.String(handler.HttpGet.Path)
@@ -537,7 +632,7 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 					httpGet.HttpHeaders = headers
 				}
 				livenessProbe.HttpGet = httpGet
-			case *gcpcloudrunv1alpha1.GcpCloudRunProbe_Grpc:
+			case *gcpcloudrunv1alpha1.GcpCloudRunLivenessProbe_Grpc:
 				grpc := &cloudrunv2.ServiceTemplateContainerLivenessProbeGrpcArgs{}
 				if handler.Grpc.Port != nil {
 					grpc.Port = pulumi.Int(int(handler.Grpc.GetPort()))
@@ -548,6 +643,48 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 				livenessProbe.Grpc = grpc
 			}
 			containerArgs.LivenessProbe = livenessProbe
+		}
+
+		// Readiness probe: pulls a failing instance from serving (and
+		// re-admits it on recovery) without restarting it. HTTP/gRPC only,
+		// no initial delay — the API's readiness shape differs from the
+		// other probes deliberately. The SDK's SuccessThreshold is never
+		// sent: the GA API's probe message carries no such field and
+		// silently drops it, leaving a perpetual re-plan diff
+		// (live-verified; the spec has no such field).
+		if container.ReadinessProbe != nil {
+			probe := container.ReadinessProbe
+			readinessProbe := &cloudrunv2.ServiceTemplateContainerReadinessProbeArgs{}
+			if probe.TimeoutSeconds != nil {
+				readinessProbe.TimeoutSeconds = pulumi.Int(int(probe.GetTimeoutSeconds()))
+			}
+			if probe.PeriodSeconds != nil {
+				readinessProbe.PeriodSeconds = pulumi.Int(int(probe.GetPeriodSeconds()))
+			}
+			if probe.FailureThreshold != nil {
+				readinessProbe.FailureThreshold = pulumi.Int(int(probe.GetFailureThreshold()))
+			}
+			switch handler := probe.Handler.(type) {
+			case *gcpcloudrunv1alpha1.GcpCloudRunReadinessProbe_HttpGet:
+				httpGet := &cloudrunv2.ServiceTemplateContainerReadinessProbeHttpGetArgs{}
+				if handler.HttpGet.Path != "" {
+					httpGet.Path = pulumi.String(handler.HttpGet.Path)
+				}
+				if handler.HttpGet.Port != nil {
+					httpGet.Port = pulumi.Int(int(handler.HttpGet.GetPort()))
+				}
+				readinessProbe.HttpGet = httpGet
+			case *gcpcloudrunv1alpha1.GcpCloudRunReadinessProbe_Grpc:
+				grpc := &cloudrunv2.ServiceTemplateContainerReadinessProbeGrpcArgs{}
+				if handler.Grpc.Port != nil {
+					grpc.Port = pulumi.Int(int(handler.Grpc.GetPort()))
+				}
+				if handler.Grpc.Service != "" {
+					grpc.Service = pulumi.String(handler.Grpc.Service)
+				}
+				readinessProbe.Grpc = grpc
+			}
+			containerArgs.ReadinessProbe = readinessProbe
 		}
 
 		containers = append(containers, containerArgs)

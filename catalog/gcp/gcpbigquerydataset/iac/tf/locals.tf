@@ -10,7 +10,7 @@ locals {
   # and storage_billing_model to LOGICAL when omitted).
   friendly_name                   = var.spec.friendly_name != "" ? var.spec.friendly_name : null
   description                     = var.spec.description != "" ? var.spec.description : null
-  default_table_expiration_ms    = var.spec.default_table_expiration_ms > 0 ? var.spec.default_table_expiration_ms : null
+  default_table_expiration_ms     = var.spec.default_table_expiration_ms > 0 ? var.spec.default_table_expiration_ms : null
   default_partition_expiration_ms = var.spec.default_partition_expiration_ms > 0 ? var.spec.default_partition_expiration_ms : null
   # The provider types max_time_travel_hours as a string.
   max_time_travel_hours = var.spec.max_time_travel_hours > 0 ? tostring(var.spec.max_time_travel_hours) : null

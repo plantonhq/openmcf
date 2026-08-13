@@ -34,9 +34,50 @@ resource "google_cloud_run_v2_service" "main" {
 
   labels = local.final_labels
 
+  # Service-object annotations for external tools (system namespaces are
+  # API-rejected). Revision-level annotations live in the template below.
+  annotations = length(var.spec.annotations) > 0 ? var.spec.annotations : null
+
+  # Identity-Aware Proxy in front of the service — Google's managed login
+  # wall. Omitted when false so the provider default applies cleanly.
+  iap_enabled = var.spec.iap_enabled ? true : null
+
+  # Turns off the default *.run.app URL, leaving custom-domain / LB paths
+  # as the only front doors.
+  default_uri_disabled = var.spec.default_uri_disabled ? true : null
+
   # Deletion guard, honest by default: the spec defaults this to true, so a
   # destroy fails until the manifest explicitly opts out.
   deletion_protection = var.spec.deletion_protection
+
+  # Terraform-side destroy stance: PREVENT fails destroys, ABANDON removes
+  # the service from management without deleting it in GCP.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
+  # Deploy-from-source: Cloud Build produces the serving image (the Cloud
+  # Run functions build path) instead of a prebuilt container image.
+  dynamic "build_config" {
+    for_each = var.spec.build_config != null ? [var.spec.build_config] : []
+    content {
+      source_location          = build_config.value.source_location != "" ? build_config.value.source_location : null
+      function_target          = build_config.value.function_target != "" ? build_config.value.function_target : null
+      image_uri                = build_config.value.image_uri != "" ? build_config.value.image_uri : null
+      base_image               = build_config.value.base_image != "" ? build_config.value.base_image : null
+      enable_automatic_updates = build_config.value.enable_automatic_updates ? true : null
+      environment_variables    = length(build_config.value.environment_variables) > 0 ? build_config.value.environment_variables : null
+      worker_pool              = build_config.value.worker_pool != "" ? build_config.value.worker_pool : null
+      service_account          = build_config.value.service_account != "" ? build_config.value.service_account : null
+    }
+  }
+
+  # Multi-region service: one identity serving from several regions. The
+  # proto guarantees region is "global" whenever this block is present.
+  dynamic "multi_region_settings" {
+    for_each = var.spec.multi_region_settings != null ? [var.spec.multi_region_settings] : []
+    content {
+      regions = multi_region_settings.value.regions
+    }
+  }
 
   # Binary Authorization deploy gate: the project default policy XOR a
   # named platform policy (the proto rejects both).
@@ -57,6 +98,7 @@ resource "google_cloud_run_v2_service" "main" {
       scaling_mode          = scaling.value.scaling_mode != "" ? scaling.value.scaling_mode : null
       manual_instance_count = scaling.value.manual_instance_count
       min_instance_count    = scaling.value.min_instance_count
+      max_instance_count    = scaling.value.max_instance_count
     }
   }
 
@@ -64,6 +106,11 @@ resource "google_cloud_run_v2_service" "main" {
     # Explicit revision naming makes declarative blue/green possible; null
     # (the norm) lets Cloud Run generate names.
     revision = local.revision
+
+    # Revision-level metadata, stamped on every revision the template
+    # creates (distinct from the service-object labels/annotations above).
+    labels      = length(var.spec.revision_labels) > 0 ? var.spec.revision_labels : null
+    annotations = length(var.spec.revision_annotations) > 0 ? var.spec.revision_annotations : null
 
     # The runtime identity whose permissions the code exercises. Null uses
     # the project's Compute Engine default service account.
@@ -75,6 +122,10 @@ resource "google_cloud_run_v2_service" "main" {
     session_affinity                 = var.spec.session_affinity
     encryption_key                   = local.encryption_key
     gpu_zonal_redundancy_disabled    = var.spec.gpu_zonal_redundancy_disabled ? true : null
+
+    # Escape hatch disabling ALL probes (startup and liveness) for
+    # workloads whose serving model breaks the probe contract.
+    health_check_disabled = var.spec.health_check_disabled ? true : null
 
     # Per-revision instance bounds; an omitted block scales 0..default cap.
     dynamic "scaling" {
@@ -156,8 +207,9 @@ resource "google_cloud_run_v2_service" "main" {
         dynamic "gcs" {
           for_each = volumes.value.gcs != null ? [volumes.value.gcs] : []
           content {
-            bucket    = gcs.value.bucket
-            read_only = gcs.value.read_only
+            bucket        = gcs.value.bucket
+            read_only     = gcs.value.read_only
+            mount_options = length(gcs.value.mount_options) > 0 ? gcs.value.mount_options : null
           }
         }
 
@@ -183,6 +235,10 @@ resource "google_cloud_run_v2_service" "main" {
         args        = length(containers.value.args) > 0 ? containers.value.args : null
         working_dir = containers.value.working_dir != "" ? containers.value.working_dir : null
         depends_on  = length(containers.value.depends_on) > 0 ? containers.value.depends_on : null
+
+        # Base image for automatic base-image updates on source deploys
+        # (pairs with build_config.enable_automatic_updates).
+        base_image_uri = containers.value.base_image_uri != "" ? containers.value.base_image_uri : null
 
         # Environment: a literal value or a Secret Manager reference
         # resolved at instance start (never both — proto-enforced).
@@ -235,6 +291,7 @@ resource "google_cloud_run_v2_service" "main" {
           content {
             name       = volume_mounts.value.name
             mount_path = volume_mounts.value.mount_path
+            sub_path   = volume_mounts.value.sub_path != "" ? volume_mounts.value.sub_path : null
           }
         }
 
@@ -309,6 +366,38 @@ resource "google_cloud_run_v2_service" "main" {
 
             dynamic "grpc" {
               for_each = liveness_probe.value.grpc != null ? [liveness_probe.value.grpc] : []
+              content {
+                port    = grpc.value.port
+                service = grpc.value.service != "" ? grpc.value.service : null
+              }
+            }
+          }
+        }
+
+        # Readiness probe: pulls a failing instance from serving (and
+        # re-admits it on recovery) without restarting it. HTTP/gRPC only,
+        # no initial delay — the API's readiness shape differs from the
+        # other probes deliberately. The provider's success_threshold
+        # argument is never sent: the GA API's probe message carries no
+        # such field and silently drops it, leaving a perpetual re-plan
+        # diff (live-verified; the spec has no such field).
+        dynamic "readiness_probe" {
+          for_each = containers.value.readiness_probe != null ? [containers.value.readiness_probe] : []
+          content {
+            timeout_seconds   = readiness_probe.value.timeout_seconds
+            period_seconds    = readiness_probe.value.period_seconds
+            failure_threshold = readiness_probe.value.failure_threshold
+
+            dynamic "http_get" {
+              for_each = readiness_probe.value.http_get != null ? [readiness_probe.value.http_get] : []
+              content {
+                path = http_get.value.path != "" ? http_get.value.path : null
+                port = http_get.value.port
+              }
+            }
+
+            dynamic "grpc" {
+              for_each = readiness_probe.value.grpc != null ? [readiness_probe.value.grpc] : []
               content {
                 port    = grpc.value.port
                 service = grpc.value.service != "" ? grpc.value.service : null

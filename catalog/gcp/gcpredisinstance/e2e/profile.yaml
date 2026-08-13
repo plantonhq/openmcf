@@ -6,9 +6,18 @@ spec:
   # Composed scenarios: the registry installs the full service networking
   # chain before every instance create. Redis instances take ~5-10 min each;
   # run the package with a generous go test -timeout.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate, both scenarios (user labels + to-the-minute maintenance window
+  # round-tripped clean; PSA chain deployed and reverse-destroyed clean).
+  # The deletion_protection destroy guard is LIVE-PROVEN via a throwaway
+  # apply (2026-08-12): protection armed -> destroy refused with the
+  # provider's "cannot destroy redis instance without setting
+  # deletion_protection=false and running `terraform apply`" -> disarmed
+  # -> destroy clean. The guard is provider delete-time logic shared by
+  # both engines through the bridge; the scenarios arm false so the
+  # normal cycle tears down.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

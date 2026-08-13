@@ -86,28 +86,65 @@ func spannerInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 			if targets.StorageUtilizationPercent > 0 {
 				targetsArgs.StorageUtilizationPercent = pulumi.IntPtr(int(targets.StorageUtilizationPercent))
 			}
+			if targets.TotalCpuUtilizationPercent > 0 {
+				targetsArgs.TotalCpuUtilizationPercent = pulumi.IntPtr(int(targets.TotalCpuUtilizationPercent))
+			}
 			autoscalingArgs.AutoscalingTargets = targetsArgs
 		}
 
-		// Per-replica-location node bounds for multi-region instances: a
+		// Per-replica autoscaling tuning for multi-region instances: a
 		// read-heavy region scales independently instead of sizing every
 		// region for the hottest one. The spec flattens the provider's
-		// single-field replica_selection wrapper to replica_location.
+		// single-field replica_selection wrapper to replica_location and
+		// the overrides' autoscaling_limits wrapper onto the overrides
+		// message; the limits block is sent only when a bounds family
+		// (nodes or processing units) is actually set, so a targets-only
+		// override never sends an empty block.
 		if len(spec.AutoscalingConfig.AsymmetricAutoscalingOptions) > 0 {
 			asymmetricOptions := make(spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionArray, 0,
 				len(spec.AutoscalingConfig.AsymmetricAutoscalingOptions))
 			for _, option := range spec.AutoscalingConfig.AsymmetricAutoscalingOptions {
+				overridesArgs := &spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionOverridesArgs{}
+
+				if option.Overrides.MinNodes > 0 || option.Overrides.MaxNodes > 0 ||
+					option.Overrides.MinProcessingUnits > 0 || option.Overrides.MaxProcessingUnits > 0 {
+					limitsArgs := &spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionOverridesAutoscalingLimitsArgs{}
+					if option.Overrides.MinNodes > 0 {
+						limitsArgs.MinNodes = pulumi.IntPtr(int(option.Overrides.MinNodes))
+					}
+					if option.Overrides.MaxNodes > 0 {
+						limitsArgs.MaxNodes = pulumi.IntPtr(int(option.Overrides.MaxNodes))
+					}
+					if option.Overrides.MinProcessingUnits > 0 {
+						limitsArgs.MinProcessingUnits = pulumi.IntPtr(int(option.Overrides.MinProcessingUnits))
+					}
+					if option.Overrides.MaxProcessingUnits > 0 {
+						limitsArgs.MaxProcessingUnits = pulumi.IntPtr(int(option.Overrides.MaxProcessingUnits))
+					}
+					overridesArgs.AutoscalingLimits = limitsArgs
+				}
+
+				if option.Overrides.AutoscalingTargetHighPriorityCpuUtilizationPercent > 0 {
+					overridesArgs.AutoscalingTargetHighPriorityCpuUtilizationPercent = pulumi.IntPtr(
+						int(option.Overrides.AutoscalingTargetHighPriorityCpuUtilizationPercent))
+				}
+				if option.Overrides.AutoscalingTargetTotalCpuUtilizationPercent > 0 {
+					overridesArgs.AutoscalingTargetTotalCpuUtilizationPercent = pulumi.IntPtr(
+						int(option.Overrides.AutoscalingTargetTotalCpuUtilizationPercent))
+				}
+				if option.Overrides.DisableHighPriorityCpuAutoscaling {
+					overridesArgs.DisableHighPriorityCpuAutoscaling = pulumi.BoolPtr(true)
+				}
+				if option.Overrides.DisableTotalCpuAutoscaling {
+					overridesArgs.DisableTotalCpuAutoscaling = pulumi.BoolPtr(true)
+				}
+
 				asymmetricOptions = append(asymmetricOptions,
 					&spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionArgs{
 						ReplicaSelection: &spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionReplicaSelectionArgs{
 							Location: pulumi.String(option.ReplicaLocation),
 						},
-						Overrides: &spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionOverridesArgs{
-							AutoscalingLimits: &spanner.InstanceAutoscalingConfigAsymmetricAutoscalingOptionOverridesAutoscalingLimitsArgs{
-								MinNodes: pulumi.Int(int(option.Overrides.MinNodes)),
-								MaxNodes: pulumi.Int(int(option.Overrides.MaxNodes)),
-							},
-						},
+						Overrides: overridesArgs,
 					})
 			}
 			autoscalingArgs.AsymmetricAutoscalingOptions = asymmetricOptions
@@ -132,6 +169,12 @@ func spannerInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 		args.ForceDestroy = pulumi.BoolPtr(true)
 	}
 
+	// Client-side destroy behavior: DELETE (default), PREVENT (destroy
+	// fails), or ABANDON (drop from state, keep the instance running).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
+	}
+
 	createdInstance, err := spanner.NewInstance(ctx, "spanner-instance", args,
 		pulumi.Provider(gcpProvider),
 		pulumi.DependsOn([]pulumi.Resource{createdProjectService}),
@@ -151,11 +194,12 @@ func spannerInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 	ctx.Export(OpInstanceName, createdInstance.Name)
 	ctx.Export(OpState, createdInstance.State)
 
-	// The bridged provider returns config as the fully qualified
-	// projects/{p}/instanceConfigs/{name} path while the Terraform provider
-	// stores the plain name the spec passed in. The output contract is the
-	// plain config name (what spec authors and API callers use), so strip
-	// the path prefix for cross-engine parity.
+	// The Spanner API's read-back returns config as the fully qualified
+	// projects/{p}/instanceConfigs/{name} path (the bridged provider
+	// surfaces it at create; the Terraform provider's refresh does the
+	// same). The output contract is the plain config name (what spec
+	// authors and API callers use), so strip the path prefix — the
+	// Terraform module normalizes identically.
 	ctx.Export(OpConfig, createdInstance.Config.ApplyT(func(config string) string {
 		if idx := strings.LastIndex(config, "/"); idx >= 0 {
 			return config[idx+1:]

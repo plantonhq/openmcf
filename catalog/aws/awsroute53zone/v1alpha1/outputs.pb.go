@@ -46,9 +46,24 @@ type AwsRoute53ZoneStackOutputs struct {
 	// The Amazon Resource Name of the hosted zone
 	// (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping
 	// route53:ChangeResourceRecordSets to specific zones.
-	ZoneArn       string `protobuf:"bytes,5,opt,name=zone_arn,json=zoneArn,proto3" json:"zone_arn,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ZoneArn string `protobuf:"bytes,5,opt,name=zone_arn,json=zoneArn,proto3" json:"zone_arn,omitempty"`
+	// The DS (Delegation Signer) record for the zone's key-signing key, only
+	// populated when DNSSEC signing is enabled. This is the value to register
+	// with the PARENT zone (the domain registrar) to complete the DNSSEC
+	// chain of trust — signing without it protects nobody, because resolvers
+	// have no trust anchor to validate against.
+	DsRecord string `protobuf:"bytes,6,opt,name=ds_record,json=dsRecord,proto3" json:"ds_record,omitempty"`
+	// The DNSKEY record for the zone's key-signing key (the public key in DNS
+	// record form), only populated when DNSSEC signing is enabled. Useful for
+	// out-of-band verification and for parents that take a DNSKEY instead of
+	// a DS.
+	DnskeyRecord string `protobuf:"bytes,7,opt,name=dnskey_record,json=dnskeyRecord,proto3" json:"dnskey_record,omitempty"`
+	// The key tag of the key-signing key, only populated when DNSSEC signing
+	// is enabled — the short integer identifier registrars display next to a
+	// DS record (matches the first field of ds_record).
+	KeySigningKeyTag string `protobuf:"bytes,8,opt,name=key_signing_key_tag,json=keySigningKeyTag,proto3" json:"key_signing_key_tag,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsRoute53ZoneStackOutputs) Reset() {
@@ -116,17 +131,41 @@ func (x *AwsRoute53ZoneStackOutputs) GetZoneArn() string {
 	return ""
 }
 
+func (x *AwsRoute53ZoneStackOutputs) GetDsRecord() string {
+	if x != nil {
+		return x.DsRecord
+	}
+	return ""
+}
+
+func (x *AwsRoute53ZoneStackOutputs) GetDnskeyRecord() string {
+	if x != nil {
+		return x.DnskeyRecord
+	}
+	return ""
+}
+
+func (x *AwsRoute53ZoneStackOutputs) GetKeySigningKeyTag() string {
+	if x != nil {
+		return x.KeySigningKeyTag
+	}
+	return ""
+}
+
 var File_catalog_aws_awsroute53zone_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsroute53zone_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awsroute53zone/v1alpha1/outputs.proto\x12'dev.planton.aws.awsroute53zone.v1alpha1\"\xbf\x01\n" +
+	"1catalog/aws/awsroute53zone/v1alpha1/outputs.proto\x12'dev.planton.aws.awsroute53zone.v1alpha1\"\xb0\x02\n" +
 	"\x1aAwsRoute53ZoneStackOutputs\x12\x17\n" +
 	"\azone_id\x18\x01 \x01(\tR\x06zoneId\x12\x1b\n" +
 	"\tzone_name\x18\x02 \x01(\tR\bzoneName\x12 \n" +
 	"\vnameservers\x18\x03 \x03(\tR\vnameservers\x12.\n" +
 	"\x13primary_name_server\x18\x04 \x01(\tR\x11primaryNameServer\x12\x19\n" +
-	"\bzone_arn\x18\x05 \x01(\tR\azoneArnB\xd5\x02\n" +
+	"\bzone_arn\x18\x05 \x01(\tR\azoneArn\x12\x1b\n" +
+	"\tds_record\x18\x06 \x01(\tR\bdsRecord\x12#\n" +
+	"\rdnskey_record\x18\a \x01(\tR\fdnskeyRecord\x12-\n" +
+	"\x13key_signing_key_tag\x18\b \x01(\tR\x10keySigningKeyTagB\xd5\x02\n" +
 	"+com.dev.planton.aws.awsroute53zone.v1alpha1B\fOutputsProtoP\x01ZWgithub.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1;awsroute53zonev1alpha1\xa2\x02\x04DPAA\xaa\x02'Dev.Planton.Aws.Awsroute53zone.V1alpha1\xca\x02'Dev\\Planton\\Aws\\Awsroute53zone\\V1alpha1\xe2\x023Dev\\Planton\\Aws\\Awsroute53zone\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Aws::Awsroute53zone::V1alpha1b\x06proto3"
 
 var (

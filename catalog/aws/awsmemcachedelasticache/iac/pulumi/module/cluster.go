@@ -1,6 +1,8 @@
 package module
 
 import (
+	"strconv"
+
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/elasticache"
@@ -100,8 +102,12 @@ func cluster(
 	if spec.MaintenanceWindow != "" {
 		args.MaintenanceWindow = pulumi.String(spec.MaintenanceWindow)
 	}
-	if spec.AutoMinorVersionUpgrade {
-		args.AutoMinorVersionUpgrade = pulumi.String("true")
+	// auto_minor_version_upgrade is presence-typed: AWS (and the provider,
+	// whose default is "true") enables minor upgrades by default, so unset
+	// is omitted and an explicit false is forwarded — never conflated. The
+	// bridge types the provider's nullable bool as a STRING.
+	if spec.AutoMinorVersionUpgrade != nil {
+		args.AutoMinorVersionUpgrade = pulumi.String(strconv.FormatBool(*spec.AutoMinorVersionUpgrade))
 	}
 
 	// -------------------------------------------------------------------
@@ -113,9 +119,13 @@ func cluster(
 	}
 
 	// -------------------------------------------------------------------
-	// Node placement
+	// Node placement: pin ALL nodes to one AZ, or place nodes per-AZ via
+	// the list (mutually exclusive, CEL-enforced).
 	// -------------------------------------------------------------------
 
+	if spec.AvailabilityZone != "" {
+		args.AvailabilityZone = pulumi.String(spec.AvailabilityZone)
+	}
 	if len(spec.PreferredAvailabilityZones) > 0 {
 		args.PreferredAvailabilityZones = pulumi.ToStringArray(spec.PreferredAvailabilityZones)
 	}

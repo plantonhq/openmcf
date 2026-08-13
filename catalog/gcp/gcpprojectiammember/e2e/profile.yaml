@@ -8,9 +8,12 @@ spec:
   # member and role references from their outputs, then runs deploy ->
   # getIamPolicy verify -> destroy -> verify the (role, member) pair is gone.
   # The additive grant never touches other bindings in the test project.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (2/2 lane runs). The scenario deliberately omits projectId, so
+  # these lanes ARE the live proof of the count-gated client-config
+  # ambient-project fallback on both engines.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

@@ -51,6 +51,10 @@ const (
 //     (observability_configuration_arn) enables X-Ray request tracing;
 //     omitted, tracing is off.
 //
+// INBOUND private access is service-owned, not shared, so it is modeled
+// inline: vpc_ingress_connections publishes the service into named VPCs
+// through interface VPC endpoints (AWS PrivateLink).
+//
 // ForceNew honesty (changing these replaces the service):
 //   - kms_key_arn (the stored-source encryption key)
 //   - the service name (derived from metadata.name, not a spec field)
@@ -75,7 +79,9 @@ type AwsAppRunnerServiceSpec struct {
 	// Override the container start command. For image_source this overrides
 	// the image ENTRYPOINT/CMD; for code_source with
 	// configuration_source="API" it is the command that starts the built
-	// application.
+	// application. One-way on a live service: the provider drops empty
+	// values on update, so clearing this does not restore the image's own
+	// ENTRYPOINT/CMD -- set the desired command explicitly instead.
 	StartCommand string `protobuf:"bytes,5,opt,name=start_command,json=startCommand,proto3" json:"start_command,omitempty"`
 	// Environment variables injected into every instance at runtime. Keys are
 	// variable names, values are plaintext strings. Never put secret values
@@ -107,19 +113,28 @@ type AwsAppRunnerServiceSpec struct {
 	// IAM role that service instances assume at runtime to call AWS APIs --
 	// the role your application code uses (reading S3, writing DynamoDB,
 	// resolving environment_secrets). This is NOT the image-pull role (that
-	// is image_source.access_role_arn).
+	// is image_source.access_role_arn). One-way on a live service: the
+	// provider drops empty values on update, so REMOVING the role does not
+	// detach it from a running service -- attach a replacement role instead.
 	InstanceRoleArn *v1.StringValueOrRef `protobuf:"bytes,10,opt,name=instance_role_arn,json=instanceRoleArn,proto3" json:"instance_role_arn,omitempty"`
 	// Health check configuration App Runner uses to monitor instance
 	// readiness; unhealthy instances are replaced automatically. When
 	// omitted, App Runner performs TCP checks on the configured port with
-	// AWS defaults.
+	// AWS defaults. Removing the block from a live service stops managing
+	// the check but does not reset it -- to return to defaults, set the
+	// default values explicitly (protocol TCP, interval 5, timeout 2,
+	// thresholds 1/5).
 	HealthCheck *AwsAppRunnerServiceHealthCheck `protobuf:"bytes,11,opt,name=health_check,json=healthCheck,proto3" json:"health_check,omitempty"`
 	// ARN of an AwsAppRunnerAutoScalingConfiguration revision that governs
 	// concurrency-based scaling. When omitted, AWS applies the account's
 	// default auto scaling configuration (1 min / 25 max / 100 concurrency
 	// unless the account default was changed). The referenced ARN carries a
 	// revision, so registering a new revision rolls this service on its next
-	// deployment.
+	// deployment. One-way on a live service: once set, REMOVING this
+	// reference does not return the service to the account default -- the
+	// provider keeps the last-applied configuration (its attribute is
+	// Optional+Computed, so removal produces no change). To move back to the
+	// default, reference the default configuration's ARN explicitly.
 	AutoScalingConfigurationArn *v1.StringValueOrRef `protobuf:"bytes,12,opt,name=auto_scaling_configuration_arn,json=autoScalingConfigurationArn,proto3" json:"auto_scaling_configuration_arn,omitempty"`
 	// ARN of an AwsAppRunnerVpcConnector for outbound VPC access -- lets the
 	// service reach private resources (databases, caches, internal APIs)
@@ -129,15 +144,30 @@ type AwsAppRunnerServiceSpec struct {
 	VpcConnectorArn *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=vpc_connector_arn,json=vpcConnectorArn,proto3" json:"vpc_connector_arn,omitempty"`
 	// ARN of an AwsAppRunnerObservabilityConfiguration revision. When set,
 	// the service sends request traces to the configured vendor (AWS X-Ray);
-	// when omitted, tracing is off. Presence of the reference IS the enable
-	// switch -- there is no separate toggle to keep in sync.
+	// when omitted at creation, tracing is off. Presence of the reference IS
+	// the enable switch -- there is no separate toggle to keep in sync.
+	// One-way on a live service (upstream provider gap): once tracing is
+	// enabled, REMOVING this reference does not disable it -- the provider
+	// sends nothing for an absent block, so AWS keeps tracing on and the
+	// plan never converges. To genuinely disable tracing today, replace the
+	// service (or disable it in the AWS console) until the provider gains a
+	// disable path.
 	ObservabilityConfigurationArn *v1.StringValueOrRef `protobuf:"bytes,14,opt,name=observability_configuration_arn,json=observabilityConfigurationArn,proto3" json:"observability_configuration_arn,omitempty"`
 	// Whether the service endpoint is publicly reachable from the internet.
 	// When true (default), the service gets a public HTTPS URL. When false,
-	// the endpoint is reachable only from within VPCs that attach an App
-	// Runner VPC Ingress Connection to this service (a separate AWS resource;
-	// create it against the exported service_arn).
+	// the endpoint is reachable only from within VPCs that attach a VPC
+	// Ingress Connection to this service -- declare those below in
+	// vpc_ingress_connections.
 	IsPubliclyAccessible *bool `protobuf:"varint,15,opt,name=is_publicly_accessible,json=isPubliclyAccessible,proto3,oneof" json:"is_publicly_accessible,omitempty"`
+	// VPC Ingress Connections for this service -- each entry publishes the
+	// service into one VPC through an interface VPC endpoint
+	// (AWS PrivateLink), so clients inside that VPC reach the service
+	// privately at the exported per-connection domain name. Pair with
+	// is_publicly_accessible: false for a service reachable ONLY from inside
+	// the named VPCs. Keyed by name: adding or removing entries updates in
+	// place; changing an entry's VPC or endpoint replaces that one
+	// connection.
+	VpcIngressConnections []*AwsAppRunnerServiceVpcIngressConnection `protobuf:"bytes,21,rep,name=vpc_ingress_connections,json=vpcIngressConnections,proto3" json:"vpc_ingress_connections,omitempty"`
 	// IP address type for the service endpoint.
 	// "IPV4": IPv4-only (default). "DUAL_STACK": IPv4 + IPv6.
 	IpAddressType *string `protobuf:"bytes,16,opt,name=ip_address_type,json=ipAddressType,proto3,oneof" json:"ip_address_type,omitempty"`
@@ -151,8 +181,13 @@ type AwsAppRunnerServiceSpec struct {
 	// tracked branch). Disabled by default: deployments then happen only when
 	// this resource is applied or a deployment is started explicitly, which
 	// keeps rollouts deterministic and graph-driven. AWS supports automatic
-	// deployments only for private ECR and code repositories -- ECR Public
-	// images cannot enable this (AWS rejects the create call).
+	// deployments only for private same-account ECR and code repositories --
+	// ECR Public images cannot enable this (AWS rejects the create call).
+	// The modules always send this value explicitly: AWS's own default is
+	// conditional on the source type (on for code repos and same-account
+	// ECR, off otherwise), and the provider substitutes an unconditional
+	// "on" for any omitted value -- explicit send is the only deterministic
+	// path through both layers.
 	AutoDeploymentsEnabled bool `protobuf:"varint,18,opt,name=auto_deployments_enabled,json=autoDeploymentsEnabled,proto3" json:"auto_deployments_enabled,omitempty"`
 	// Custom domains associated with this service, keyed by domain name. App
 	// Runner provisions and renews the TLS certificate for each domain; you
@@ -305,6 +340,13 @@ func (x *AwsAppRunnerServiceSpec) GetIsPubliclyAccessible() bool {
 	return false
 }
 
+func (x *AwsAppRunnerServiceSpec) GetVpcIngressConnections() []*AwsAppRunnerServiceVpcIngressConnection {
+	if x != nil {
+		return x.VpcIngressConnections
+	}
+	return nil
+}
+
 func (x *AwsAppRunnerServiceSpec) GetIpAddressType() string {
 	if x != nil && x.IpAddressType != nil {
 		return *x.IpAddressType
@@ -349,6 +391,9 @@ type AwsAppRunnerServiceImageSource struct {
 	// ECR Public format: "public.ecr.aws/ALIAS/REPO:TAG"
 	// This stays a literal string (not a reference) because it carries a
 	// repository-plus-tag coordinate no single upstream output represents.
+	// The format rule below is AWS's own ImageIdentifier pattern (mirrored
+	// by the provider): a 12-digit-account private ECR host path, or a
+	// public.ecr.aws gallery path.
 	ImageIdentifier string `protobuf:"bytes,1,opt,name=image_identifier,json=imageIdentifier,proto3" json:"image_identifier,omitempty"`
 	// Type of image repository.
 	// "ECR": private Amazon ECR (requires access_role_arn for pull access).
@@ -430,7 +475,9 @@ type AwsAppRunnerServiceCodeSource struct {
 	// Subdirectory within the repository containing the application source.
 	// Defaults to the repository root. Useful for monorepos where the service
 	// lives in a subfolder; with configuration_source="REPOSITORY", the
-	// apprunner.yaml is read from this directory.
+	// apprunner.yaml is read from this directory. One-way on a live service:
+	// clearing this does not return the build to the repository root (the
+	// provider keeps the last-applied value) -- set "/" explicitly instead.
 	SourceDirectory string `protobuf:"bytes,3,opt,name=source_directory,json=sourceDirectory,proto3" json:"source_directory,omitempty"`
 	// ARN of an App Runner connection that authorizes repository access
 	// (GitHub or Bitbucket). Connections require a one-time OAuth handshake
@@ -694,11 +741,87 @@ func (x *AwsAppRunnerServiceCustomDomain) GetEnableWwwSubdomain() bool {
 	return false
 }
 
+// AwsAppRunnerServiceVpcIngressConnection publishes the service into one VPC
+// through an interface VPC endpoint (AWS PrivateLink): clients inside that
+// VPC resolve the exported per-connection domain name and reach the service
+// without traversing the public internet. The endpoint must be an interface
+// endpoint for the App Runner requests service
+// (com.amazonaws.REGION.apprunner.requests) in the target VPC. Every value
+// is create-time immutable -- changing one replaces that connection.
+type AwsAppRunnerServiceVpcIngressConnection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name for this VPC Ingress Connection. Must be unique across all active
+	// VPC Ingress Connections in the AWS account and region (it is the AWS
+	// resource name, not a label). App Runner family names are 4-40
+	// characters.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The VPC to publish the service into.
+	VpcId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=vpc_id,json=vpcId,proto3" json:"vpc_id,omitempty"`
+	// The interface VPC endpoint in that VPC that carries the traffic. AWS
+	// requires both members -- an ingress connection cannot exist without its
+	// endpoint (the provider leaves both optional and lets the create call
+	// fail server-side; this spec enforces AWS's contract up front).
+	VpcEndpointId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=vpc_endpoint_id,json=vpcEndpointId,proto3" json:"vpc_endpoint_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) Reset() {
+	*x = AwsAppRunnerServiceVpcIngressConnection{}
+	mi := &file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAppRunnerServiceVpcIngressConnection) ProtoMessage() {}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAppRunnerServiceVpcIngressConnection.ProtoReflect.Descriptor instead.
+func (*AwsAppRunnerServiceVpcIngressConnection) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) GetVpcId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcId
+	}
+	return nil
+}
+
+func (x *AwsAppRunnerServiceVpcIngressConnection) GetVpcEndpointId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcEndpointId
+	}
+	return nil
+}
+
 var File_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsapprunnerservice/v1alpha1/spec.proto\x12,dev.planton.aws.awsapprunnerservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcc\x1c\n" +
+	"3catalog/aws/awsapprunnerservice/v1alpha1/spec.proto\x12,dev.planton.aws.awsapprunnerservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xdc\x1d\n" +
 	"\x17AwsAppRunnerServiceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
 	"\fimage_source\x18\x02 \x01(\v2L.dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSourceR\vimageSource\x12l\n" +
@@ -716,7 +839,8 @@ const file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1eauto_scaling_configuration_arn\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x90\t\x92\xd4a status.outputs.configuration_arnR\x1bautoScalingConfigurationArn\x12\x89\x01\n" +
 	"\x11vpc_connector_arn\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x91\t\x92\xd4a status.outputs.vpc_connector_arnR\x0fvpcConnectorArn\x12\xa5\x01\n" +
 	"\x1fobservability_configuration_arn\x18\x0e \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\x92\t\x92\xd4a status.outputs.configuration_arnR\x1dobservabilityConfigurationArn\x12C\n" +
-	"\x16is_publicly_accessible\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x14isPubliclyAccessible\x88\x01\x01\x125\n" +
+	"\x16is_publicly_accessible\x18\x0f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x03R\x14isPubliclyAccessible\x88\x01\x01\x12\x8d\x01\n" +
+	"\x17vpc_ingress_connections\x18\x15 \x03(\v2U.dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceVpcIngressConnectionR\x15vpcIngressConnections\x125\n" +
 	"\x0fip_address_type\x18\x10 \x01(\tB\b\x8a\xa6\x1d\x04IPV4H\x04R\ripAddressType\x88\x01\x01\x12s\n" +
 	"\vkms_key_arn\x18\x11 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x128\n" +
 	"\x18auto_deployments_enabled\x18\x12 \x01(\bR\x16autoDeploymentsEnabled\x12t\n" +
@@ -739,13 +863,14 @@ const file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04_cpuB\t\n" +
 	"\a_memoryB\x19\n" +
 	"\x17_is_publicly_accessibleB\x12\n" +
-	"\x10_ip_address_type\"\xa4\x05\n" +
+	"\x10_ip_address_type\"\xde\a\n" +
 	"\x1eAwsAppRunnerServiceImageSource\x122\n" +
 	"\x10image_identifier\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0fimageIdentifier\x12;\n" +
 	"\x15image_repository_type\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x13imageRepositoryType\x12|\n" +
-	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\x92\x03\xbaH\x8e\x03\x1a\xab\x01\n" +
+	"\x0faccess_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\raccessRoleArn:\xcc\x05\xbaH\xc8\x05\x1a\xab\x01\n" +
 	"\x1bvalid_image_repository_type\x12Wimage_repository_type must be 'ECR' (private registry) or 'ECR_PUBLIC' (public gallery)\x1a3this.image_repository_type in ['ECR', 'ECR_PUBLIC']\x1a\xdd\x01\n" +
-	"\x18ecr_requires_access_role\x12\x7faccess_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry\x1a@this.image_repository_type != 'ECR' || has(this.access_role_arn)\"\xad\t\n" +
+	"\x18ecr_requires_access_role\x12\x7faccess_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry\x1a@this.image_repository_type != 'ECR' || has(this.access_role_arn)\x1a\xb7\x02\n" +
+	"\x16valid_image_identifier\x12\x9c\x01image_identifier must be a private ECR path (ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG) or an ECR Public Gallery path (public.ecr.aws/ALIAS/REPO:TAG)\x1a~this.image_identifier.matches('([0-9]{12}\\\\.dkr\\\\.ecr\\\\.[a-z-]+-[0-9]{1,2}\\\\.amazonaws\\\\.com/.*)|(^public\\\\.ecr\\\\.aws/.+/.+)')\"\xad\t\n" +
 	"\x1dAwsAppRunnerServiceCodeSource\x12.\n" +
 	"\x0erepository_url\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\rrepositoryUrl\x12\x1f\n" +
 	"\x06branch\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06branch\x12)\n" +
@@ -777,7 +902,11 @@ const file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\xbaH\ar\x05\x10\x01\x18\xff\x01R\n" +
 	"domainName\x12?\n" +
 	"\x14enable_www_subdomain\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x12enableWwwSubdomain\x88\x01\x01B\x17\n" +
-	"\x15_enable_www_subdomainB\xf5\x02\n" +
+	"\x15_enable_www_subdomain\"\xc5\x02\n" +
+	"'AwsAppRunnerServiceVpcIngressConnection\x12\x1d\n" +
+	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x04\x18(R\x04name\x12o\n" +
+	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x89\x01\n" +
+	"\x0fvpc_endpoint_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\xbaH\x03\xc8\x01\x01\x88\xd4a\x92\b\x92\xd4a\x1estatus.outputs.vpc_endpoint_idR\rvpcEndpointIdB\xf5\x02\n" +
 	"0com.dev.planton.aws.awsapprunnerservice.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/aws/awsapprunnerservice/v1alpha1;awsapprunnerservicev1alpha1\xa2\x02\x04DPAA\xaa\x02,Dev.Planton.Aws.Awsapprunnerservice.V1alpha1\xca\x02,Dev\\Planton\\Aws\\Awsapprunnerservice\\V1alpha1\xe2\x028Dev\\Planton\\Aws\\Awsapprunnerservice\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Aws::Awsapprunnerservice::V1alpha1b\x06proto3"
 
 var (
@@ -792,37 +921,41 @@ func file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsAppRunnerServiceSpec)(nil),         // 0: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec
-	(*AwsAppRunnerServiceImageSource)(nil),  // 1: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSource
-	(*AwsAppRunnerServiceCodeSource)(nil),   // 2: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCodeSource
-	(*AwsAppRunnerServiceHealthCheck)(nil),  // 3: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceHealthCheck
-	(*AwsAppRunnerServiceCustomDomain)(nil), // 4: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCustomDomain
-	nil,                                     // 5: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
-	nil,                                     // 6: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
-	(*v1.StringValueOrRef)(nil),             // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsAppRunnerServiceSpec)(nil),                 // 0: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec
+	(*AwsAppRunnerServiceImageSource)(nil),          // 1: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSource
+	(*AwsAppRunnerServiceCodeSource)(nil),           // 2: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCodeSource
+	(*AwsAppRunnerServiceHealthCheck)(nil),          // 3: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceHealthCheck
+	(*AwsAppRunnerServiceCustomDomain)(nil),         // 4: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCustomDomain
+	(*AwsAppRunnerServiceVpcIngressConnection)(nil), // 5: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceVpcIngressConnection
+	nil,                         // 6: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
+	nil,                         // 7: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
+	(*v1.StringValueOrRef)(nil), // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.image_source:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSource
 	2,  // 1: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.code_source:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCodeSource
-	5,  // 2: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.environment_variables:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
-	6,  // 3: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.environment_secrets:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
-	7,  // 4: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.instance_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 2: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.environment_variables:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentVariablesEntry
+	7,  // 3: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.environment_secrets:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.EnvironmentSecretsEntry
+	8,  // 4: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.instance_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3,  // 5: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.health_check:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceHealthCheck
-	7,  // 6: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.auto_scaling_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 7: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.vpc_connector_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 8: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.observability_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 9: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 10: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.custom_domains:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCustomDomain
-	7,  // 11: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 12: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSource.access_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 13: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCodeSource.connection_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	8,  // 6: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.auto_scaling_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 7: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.vpc_connector_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 8: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.observability_configuration_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 9: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.vpc_ingress_connections:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceVpcIngressConnection
+	8,  // 10: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 11: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.custom_domains:type_name -> dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCustomDomain
+	8,  // 12: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceSpec.web_acl_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 13: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceImageSource.access_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 14: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceCodeSource.connection_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 15: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceVpcIngressConnection.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 16: dev.planton.aws.awsapprunnerservice.v1alpha1.AwsAppRunnerServiceVpcIngressConnection.vpc_endpoint_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // [17:17] is the sub-list for method output_type
+	17, // [17:17] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_init() }
@@ -839,7 +972,7 @@ func file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsapprunnerservice_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

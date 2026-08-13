@@ -72,4 +72,8 @@ message AwsMskClusterStackOutputs {
   // configuration_arn is the ARN of the module-managed MSK Configuration resource,
   // if one was created from server_properties in the spec.
   string configuration_arn = 17;
+
+  // topic_arns are the ARNs of the Kafka topics declared in spec.topics,
+  // keyed by topic name.
+  map<string, string> topic_arns = 18;
 }

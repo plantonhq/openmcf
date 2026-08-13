@@ -22,6 +22,9 @@ message GcpSpannerInstanceStackOutputs {
 
   // The instance configuration the instance was created with
   // (e.g. "regional-us-central1", "nam6") — the geographic topology
-  // handle auditors and capacity planners ask for.
+  // handle auditors and capacity planners ask for. Always the plain
+  // config name: the Spanner API reads the value back as the fully
+  // qualified projects/{project}/instanceConfigs/{name} path, and both
+  // engines normalize to the last path segment.
   string config = 4;
 }

@@ -29,8 +29,9 @@ own component lets you:
   query string, and source IP -- each supporting multiple values (OR within a
   condition), with up to five conditions ANDed together per rule.
 - **Wildcards and regex**: host, path, and header conditions take wildcard
-  patterns (`*`, `?`) and, where enabled on the load balancer, regular
-  expressions.
+  patterns (`*`, `?`) and regular expressions. Regex matching is an opt-in
+  load balancer attribute the Terraform provider does not expose -- enable
+  it on the ALB via the AWS console or CLI before regex rules can match.
 
 ### Actions
 

@@ -24,3 +24,7 @@ The **AzureNetworkWatcherFlowLog** component records network traffic metadata --
 ## Future Enhancements
 
 - Typed references widen as more target kinds prove useful in charts.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

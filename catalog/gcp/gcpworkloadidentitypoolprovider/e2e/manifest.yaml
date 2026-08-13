@@ -37,3 +37,7 @@ spec:
   # The issuer — exactly one of aws / oidc / saml / x509
   oidc:
     issuerUri: https://token.actions.githubusercontent.com
+
+  # DELETE keeps destroys real; PREVENT belongs on providers live
+  # pipelines federate through (deletion also locks the ID ~30 days).
+  deletionPolicy: DELETE

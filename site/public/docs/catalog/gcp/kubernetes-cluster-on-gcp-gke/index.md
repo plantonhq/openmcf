@@ -20,7 +20,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Release-Channel Upgrades** — automatic Kubernetes version management via RAPID / REGULAR / STABLE / EXTENDED, or channel NONE for self-managed versions, inside the maintenance windows and exclusions you set
 - **Node Auto-Provisioning** (Standard, when enabled) — GKE creates and deletes node pools within your resource limits
 - **Workload Identity Pool** — `{projectId}.svc.id.goog` for keyless KSA-to-GSA mapping (on by default)
-- **Cluster Add-ons** — HTTP load balancing, HPA, and the PD CSI driver by default, plus the opt-in set (Filestore/GCS FUSE CSI, Backup for GKE, NodeLocal DNSCache, Config Connector, Stateful HA, Ray)
+- **Cluster Add-ons** — HTTP load balancing, HPA, and the PD CSI driver by default, plus the opt-in set (Filestore/GCS FUSE/Parallelstore/Lustre CSI, Backup for GKE, NodeLocal DNSCache, Config Connector, Stateful HA, Ray with logging/monitoring, Cloud Run, pod snapshots, agent sandbox, slice controller, Slurm)
 
 On Standard clusters the default node pool is removed at create time — every node pool is a separate, first-class `GcpGkeNodePool` resource. Autopilot clusters take no node pools at all.
 
@@ -143,7 +143,11 @@ These are the most important decisions when configuring a GKE cluster. Explore t
 
 **Workload Identity** (`workloadIdentityEnabled`, default true) — keyless workload authentication through `{projectId}.svc.id.goog`. Disabling it forces workloads back to node scopes or exported keys — almost never right.
 
-**Deletion protection** (`deletionProtection`, default true) — both IaC engines refuse to destroy the cluster while it is on.
+**Deletion protection** (`deletionProtection`, default true) — both IaC engines refuse to destroy the cluster while it is on. `deletionPolicy` layers under it: PREVENT fails any destroying plan outright, ABANDON removes the cluster from state without touching it in GCP.
+
+**Secrets add-ons** (`enableSecretManagerCsi` + `secretManagerRotation`, `secretSync`) — mount Secret Manager secrets as CSI volumes with a rotation cadence, or sync them into Kubernetes Secret objects; two add-ons, two delivery models.
+
+**Bring-your-own trust** (`userManagedKeys`) — for regulated estates that must own the control plane's trust chain: customer CA pools for the cluster/etcd/aggregation domains, KMS-held control-plane disk encryption, and ServiceAccount JWT signing keys with rotation-friendly verification-key lists.
 
 ## Outputs and Dependencies
 

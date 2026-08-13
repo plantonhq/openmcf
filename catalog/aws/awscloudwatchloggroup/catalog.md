@@ -75,11 +75,15 @@ These are the most important decisions when configuring a CloudWatch log group. 
 
 **KMS encryption** -- By default, CloudWatch Logs uses SSE-CWL encryption. Provide `kmsKeyId` with a customer-managed KMS key ARN when you need key rotation control, cross-account access via key policy, or CloudTrail audit trails of log data access. Required for most compliance frameworks.
 
-**Deletion protection** -- Set `deletionProtectionEnabled: true` to prevent accidental deletion of production log groups. Any destroy operation fails until the flag is set to false.
+**Deletion protection** -- Set `deletionProtectionEnabled: true` to prevent accidental deletion of production log groups. Any destroy operation fails until the flag is cleared -- and clearing requires an EXPLICIT `false`: leaving the field unset keeps whatever protection state the group already has, so protection never turns off by omission.
 
 **Metric filters** -- Turn log patterns into CloudWatch metrics without any processing code: each entry in `metricFilters` pairs a filter pattern with a metric transformation (name, namespace, value -- "1" counts occurrences, "$field" publishes an extracted value, up to 3 dimensions, an optional default for non-matches). The cheapest path from a log line to an alarm.
 
-**Subscription filters** -- Stream matching log events in real time to a Kinesis data stream, Firehose delivery stream, or Lambda function (up to 2 per log group). Kinesis and Firehose destinations need a `roleArn` CloudWatch Logs assumes to write; cross-account destinations are referenced by literal ARN. `emitSystemFields` can stamp `@aws.account` / `@aws.region` onto forwarded events for centralized multi-account processing.
+**Subscription filters** -- Stream matching log events in real time to a Kinesis data stream, Firehose delivery stream, or Lambda function (up to 2 per log group). Kinesis and Firehose destinations need a `roleArn` CloudWatch Logs assumes to write; cross-account destinations are referenced by literal ARN. `emitSystemFields` can stamp `@aws.account` / `@aws.region` / `@source.log` onto forwarded events for centralized multi-account processing.
+
+**Transformer** -- An ingest-time pipeline of 1--20 processors that parses and reshapes every log event before anything else sees it: parse JSON/grok/CSV/key-value (or one of the vended AWS log formats -- CloudFront, PostgreSQL, Route 53, VPC flow, WAF, OCSF), then rename/add/copy/move/delete keys, convert types and datetimes, and normalize strings. The first processor must be a parser, and transformed events are what Logs Insights queries see; metric and subscription filters opt in per filter with `applyOnTransformedLogs`. STANDARD class only, one per group.
+
+**Pre-created log streams** -- Most log streams are created at runtime by the writing agent, and that is the right default. List names in `logStreams` only when something depends on the stream existing before the first write: an agent configured with a fixed stream name, or IAM policies scoped to specific stream ARNs.
 
 **Data policies** -- `dataProtectionPolicy` scans ingested events for sensitive data (AWS-managed identifiers for emails, credentials, cards) and masks it for everyone without the `logs:Unmask` permission. `fieldIndexPolicy` names up to 20 frequently-queried JSON fields that Logs Insights indexes for faster, cheaper queries.
 

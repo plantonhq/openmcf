@@ -33,6 +33,7 @@ spec:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
   engine: postgres
+  engineVersion: "16.4"
   instanceClass: db.t4g.micro
   allocatedStorageGb: 20
   storageType: gp3
@@ -40,6 +41,20 @@ spec:
   username: hackadmin
   manageMasterUserPassword: true
   skipFinalSnapshot: true
+  # Opt out of paid extended support: upgrade before standard support ends.
+  engineLifecycleSupport: open-source-rds-extended-support-disabled
+  # Instance-owned parameter group from inline parameters (the family is
+  # derived from engine + engineVersion).
+  parameters:
+    - name: rds.force_ssl
+      value: "1"
+      applyMethod: immediate
+  # Engine feature roles, one association per entry (feature_name is
+  # required on instance associations).
+  iamRoles:
+    - role:
+        value: arn:aws:iam::123456789012:role/rds-s3-export
+      featureName: s3Export
 ```
 
 ## Spec Fields
@@ -114,6 +129,29 @@ spec:
 | `spec.autoMinorVersionUpgrade` | `bool` |  | `true` |  |
 | `spec.allowMajorVersionUpgrade` | `bool` |  |  |  |
 | `spec.applyImmediately` | `bool` |  |  |  |
+| `spec.engineLifecycleSupport` | `string` |  |  |  |
+| `spec.upgradeStorageConfig` | `bool` |  |  |  |
+| `spec.s3Import` | `AwsRdsInstanceS3Import` |  |  |  |
+| `spec.s3Import.bucketName` | `string` | yes |  |  |
+| `spec.s3Import.bucketPrefix` | `string` |  |  |  |
+| `spec.s3Import.ingestionRole` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.s3Import.sourceEngine` | `string` | yes |  |  |
+| `spec.s3Import.sourceEngineVersion` | `string` | yes |  |  |
+| `spec.iamRoles` | `[]AwsRdsInstanceIamRole` |  |  |  |
+| `spec.iamRoles[].role` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.iamRoles[].featureName` | `string` | yes |  |  |
+| `spec.parameters` | `[]AwsRdsInstanceParameter` |  |  |  |
+| `spec.parameters[].name` | `string` | yes |  |  |
+| `spec.parameters[].value` | `string` | yes |  |  |
+| `spec.parameters[].applyMethod` | `string` |  |  |  |
+| `spec.options` | `[]AwsRdsInstanceOption` |  |  |  |
+| `spec.options[].optionName` | `string` | yes |  |  |
+| `spec.options[].optionSettings` | `[]AwsRdsInstanceOptionSetting` |  |  |  |
+| `spec.options[].optionSettings[].name` | `string` | yes |  |  |
+| `spec.options[].optionSettings[].value` | `string` | yes |  |  |
+| `spec.options[].port` | `int32` |  |  |  |
+| `spec.options[].version` | `string` |  |  |  |
+| `spec.options[].vpcSecurityGroupMemberships` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 
 ## Field Details
 
@@ -494,7 +532,11 @@ refuses to delete without knowing the snapshot name.
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Must start with a letter, contain
+only letters, numbers, and hyphens, with no consecutive or
+trailing hyphens -- AWS's snapshot-identifier rules.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
 
 ### spec.deletionProtection
 
@@ -583,18 +625,19 @@ Insights with 465+ day retention). Empty keeps the AWS default
 
 `string`
 
-The DB parameter group to associate. Empty keeps the engine default
-group. A literal name -- parameter groups have no standalone
-Planton kind (a named parameter list is configuration, not
-infrastructure).
+The name of an existing DB parameter group to associate. Mutually
+exclusive with `parameters` -- either bring your own group or let
+the module manage one from inline parameters. Empty (with
+`parameters` also empty) keeps the engine default group.
 
 ### spec.optionGroupName
 
 `string`
 
-The option group to associate (engine features like Oracle TDE or
-SQL Server native backup). Empty keeps the engine default. A
-literal name.
+The name of an existing option group to associate. Mutually
+exclusive with `options` -- either bring your own group or let the
+module manage one from inline options. Empty (with `options` also
+empty) keeps the engine default group.
 
 ### spec.activeDirectory
 
@@ -654,9 +697,12 @@ Exactly two DNS server IPs inside the self-managed AD.
 
 `string`
 
-The license model, for engines that carry one: "license-included",
-"bring-your-own-license", or "general-public-license". Empty keeps
-the engine default.
+The license model, for engines that carry one. Per AWS's contract:
+MySQL/MariaDB use "general-public-license"; PostgreSQL uses
+"postgresql-license"; Oracle uses "bring-your-own-license" or
+"license-included"; SQL Server uses "license-included" or
+"bring-your-own-media"; Db2 uses "bring-your-own-license" or
+"marketplace-license". Empty keeps the engine default.
 
 ### spec.characterSetName
 
@@ -723,6 +769,221 @@ Apply modifications immediately instead of waiting for the next
 maintenance window. Immediate changes can interrupt connections;
 deferred changes wait quietly. AWS defaults to deferred.
 
+### spec.engineLifecycleSupport
+
+`string`
+
+Extended support posture when the engine version leaves standard
+support: "open-source-rds-extended-support" (AWS default -- paid
+extended support kicks in automatically) or
+"open-source-rds-extended-support-disabled" (the instance must be
+upgraded before end of standard support; opts out of the extra
+cost).
+
+### spec.upgradeStorageConfig
+
+`bool`
+
+Upgrade the storage file system configuration on a read replica or
+snapshot restore, when the source still runs the older 32-bit file
+system. One-way and create/restore-scoped.
+
+### spec.s3Import
+
+`AwsRdsInstanceS3Import`
+
+Create the instance by restoring a Percona XtraBackup stored in S3
+-- the on-ramp for migrating a self-managed MySQL database into
+RDS without a logical dump. Create-time only; mutually exclusive
+with replicate_source_db, snapshot_identifier, and
+restore_to_point_in_time.
+
+### spec.s3Import.bucketName
+
+`string` · required
+
+The S3 bucket holding the backup files. Required.
+
+- rule: {"required":true}
+
+### spec.s3Import.bucketPrefix
+
+`string`
+
+The key prefix of the backup files within the bucket. Empty reads
+from the bucket root.
+
+### spec.s3Import.ingestionRole
+
+`string | valueFrom` · required
+
+The IAM role RDS assumes to read the backup from S3. Reference an
+AwsIamRole role_arn output or pass a literal role ARN. Required.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.s3Import.sourceEngine
+
+`string` · required
+
+The engine of the source backup. AWS accepts only "mysql" for
+instance S3 restores. Required.
+
+- rule: {"required":true,"string":{"in":["mysql"]}}
+
+### spec.s3Import.sourceEngineVersion
+
+`string` · required
+
+The version of the source engine the backup was taken from (e.g.
+"8.0"). Required.
+
+- rule: {"required":true}
+
+### spec.iamRoles
+
+`[]AwsRdsInstanceIamRole`
+
+IAM roles the instance assumes for engine features that reach into
+other AWS services (e.g. S3 import/export, Lambda invocation).
+Each entry associates one role to one named engine feature -- the
+roles own their policies; this instance only associates them. Both
+IaC modules manage each entry as its own role-association
+resource, so roles attach and detach without touching the
+instance.
+
+### spec.iamRoles[].role
+
+`string | valueFrom` · required
+
+The IAM role to associate. Reference an AwsIamRole role_arn output
+or pass a literal role ARN. The role owns its policies; the
+instance only assumes it. The role's trust policy MUST allow
+rds.amazonaws.com to assume it -- AWS validates that server-side at
+association time and rejects the call with InvalidParameterValue
+("IAM role ARN value is invalid or does not include the required
+permissions") otherwise; no plan-time check catches it. Required.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.iamRoles[].featureName
+
+`string` · required
+
+The engine feature the role is linked to (e.g. "s3Import",
+"s3Export", "Lambda", "S3_INTEGRATION" -- the valid set is
+engine-specific). Required -- AWS rejects an instance role
+association without a feature name. Changing it replaces the
+association (the instance is untouched).
+
+- rule: {"required":true}
+
+### spec.parameters
+
+`[]AwsRdsInstanceParameter`
+
+Instance-level engine parameters, managed as a dedicated DB
+parameter group owned by this instance (the group is glue -- a
+named parameter list -- so it stays folded). Mutually exclusive
+with parameter_group_name.
+
+- rule: apply_method must be 'immediate' or 'pending-reboot' when set
+
+### spec.parameters[].name
+
+`string` · required
+
+The parameter name (e.g. "max_connections",
+"rds.force_ssl"). Required.
+
+- rule: {"required":true}
+
+### spec.parameters[].value
+
+`string` · required
+
+The parameter value. Required.
+
+- rule: {"required":true}
+
+### spec.parameters[].applyMethod
+
+`string`
+
+When the change lands: "immediate" (AWS default -- dynamic
+parameters apply now) or "pending-reboot" (static parameters wait
+for the next instance reboot).
+
+### spec.options
+
+`[]AwsRdsInstanceOption`
+
+Engine options (e.g. Oracle TDE/OEM, SQL Server native backup),
+managed as a dedicated option group owned by this instance (the
+group is glue -- a named option list -- so it stays folded).
+Mutually exclusive with option_group_name.
+
+### spec.options[].optionName
+
+`string` · required
+
+The option name (e.g. "TDE", "OEM", "SQLSERVER_BACKUP_RESTORE").
+Required.
+
+- rule: {"required":true}
+
+### spec.options[].optionSettings
+
+`[]AwsRdsInstanceOptionSetting`
+
+Settings the option exposes, as name/value pairs (e.g. the
+IAM_ROLE_ARN setting of SQLSERVER_BACKUP_RESTORE).
+
+### spec.options[].optionSettings[].name
+
+`string` · required
+
+The setting name. Required.
+
+- rule: {"required":true}
+
+### spec.options[].optionSettings[].value
+
+`string` · required
+
+The setting value. Required.
+
+- rule: {"required":true}
+
+### spec.options[].port
+
+`int32`
+
+The port the option listens on, for options that open one (e.g.
+OEM's 1158). 0 omits the port.
+
+- rule: {"int32":{"lte":65535,"gte":0}}
+
+### spec.options[].version
+
+`string`
+
+The option version, for options that carry one.
+
+### spec.options[].vpcSecurityGroupMemberships
+
+`[]string | valueFrom`
+
+Security groups granting access to the option's port. Reference
+AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
 ## Validation Rules
 
 - `subnets_or_group`: provide at least two subnet_ids (distinct AZs) or an existing db_subnet_group_name
@@ -732,7 +993,10 @@ deferred changes wait quietly. AWS defaults to deferred.
 - `username_required_unless_derived`: username is required for a new instance -- AWS rejects a blank username; only read replicas and snapshot/point-in-time restores inherit credentials from their source
 - `final_snapshot_id_required_when_not_skipping`: final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the instance without a final snapshot name
 - `multi_az_excludes_availability_zone`: availability_zone cannot be pinned on a Multi-AZ instance -- AWS places the primary and standby itself
-- `one_create_source`: replicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources
+- `one_create_source`: replicate_source_db, snapshot_identifier, restore_to_point_in_time, and s3_import are mutually exclusive create sources
+- `s3_import_is_mysql`: s3_import (Percona XtraBackup restore) is a MySQL feature -- engine must be 'mysql'
+- `charset_conflicts_with_create_sources`: character_set_name only applies to a brand-new instance -- it cannot be combined with replicate_source_db, snapshot_identifier, restore_to_point_in_time, or s3_import
+- `timezone_not_with_s3_import`: timezone (SQL Server) cannot be combined with s3_import (a MySQL restore)
 - `replica_inherits_credentials`: username, password, and manage_master_user_password cannot be set on a read replica -- credentials are inherited from the source
 - `replica_mode_requires_replica`: replica_mode only applies to a read replica (replicate_source_db set)
 - `replica_mode_valid`: replica_mode must be 'open-read-only' or 'mounted' when set
@@ -745,7 +1009,12 @@ deferred changes wait quietly. AWS defaults to deferred.
 - `monitoring_role_required_with_interval`: monitoring_role_arn is required when monitoring_interval is set -- Enhanced Monitoring publishes through that role
 - `database_insights_mode_valid`: database_insights_mode must be 'standard' or 'advanced' when set
 - `network_type_valid`: network_type must be 'IPV4' or 'DUAL' when set
-- `license_model_valid`: license_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set
+- `license_model_valid`: license_model must be one of 'license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', or 'bring-your-own-media' when set
+- `engine_lifecycle_support_valid`: engine_lifecycle_support must be 'open-source-rds-extended-support' or 'open-source-rds-extended-support-disabled' when set
+- `own_parameters_xor_existing_group`: parameters and parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group
+- `parameters_require_engine_and_version`: inline parameters require engine and a pinned engine_version -- the managed parameter group's family is derived from them and must match the running engine
+- `own_options_xor_existing_group`: options and option_group_name are mutually exclusive -- manage options here or bring an existing group
+- `options_require_engine_and_version`: inline options require engine and a pinned engine_version -- the managed option group's engine name and major version are derived from them and must match the running engine
 
 ## Outputs
 
@@ -763,6 +1032,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRdsInstance, 
 | `status.outputs.engine_version_actual` | `string` | The resolved engine version actually running (meaningful when the spec leaves engine_version to the AWS default). |
 | `status.outputs.master_user_secret_arn` | `string` | The ARN of the AWS-managed master-user secret in Secrets Manager. Populated only when manage_master_user_password is true -- the handle applications use to fetch credentials at runtime. |
 | `status.outputs.db_subnet_group_name` | `string` | The name of the DB subnet group the instance runs in. |
+| `status.outputs.db_parameter_group_name` | `string` | The name of the DB parameter group in use (module-managed from spec.parameters or the referenced existing group; empty when the engine default group applies). |
+| `status.outputs.option_group_name` | `string` | The name of the option group in use (module-managed from spec.options or the referenced existing group; empty when the engine default group applies). |
 
 ## References
 
@@ -776,6 +1047,9 @@ Fields that can point at another resource's outputs:
 | `spec.masterUserSecretKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.performanceInsightsKmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.monitoringRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.s3Import.ingestionRole` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.iamRoles[].role` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.options[].vpcSecurityGroupMemberships` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
 ## See Also
 

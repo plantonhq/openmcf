@@ -34,5 +34,8 @@ spec:
         name: planton-oss-e2e-gcpvpcnetwork-prereq
         fieldPath: status.outputs.network_name
     connectMode: DIRECT_PEERING
+  # Explicit DELETE proves the client-side lever round-trips (the
+  # provider defaults it server-side; every scenario arms it).
+  deletionPolicy: DELETE
   labels:
     e2e-suite: gcp

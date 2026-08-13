@@ -1,0 +1,34 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKmsKey
+metadata:
+  name: shared-data-key
+spec:
+  region: <aws-region>
+  description: <key-description>
+  enable_key_rotation: true
+  deletion_window_days: 30
+  aliases:
+    - alias/shared-data-key
+  grants:
+    - name: workload-data-access
+      grantee_principal:
+        valueFrom:
+          kind: AwsIamRole
+          name: <workload-role-name>
+          fieldPath: status.outputs.role_arn
+      operations:
+        - Encrypt
+        - Decrypt
+        - GenerateDataKey
+        - DescribeKey
+      encryption_context_subset:
+        app: <app-name>
+      retire_on_delete: true
+    - name: partner-account-decrypt
+      grantee_principal:
+        value: arn:aws:iam::<partner-account-id>:role/<partner-role-name>
+      operations:
+        - Decrypt
+        - DescribeKey
+      retiring_principal:
+        value: arn:aws:iam::<your-account-id>:role/<admin-role-name>

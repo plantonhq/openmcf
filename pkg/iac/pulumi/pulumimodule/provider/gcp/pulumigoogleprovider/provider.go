@@ -79,16 +79,42 @@ const gcpSdkModulePath = "github.com/pulumi/pulumi-gcp/sdk/v9"
 // fallbackGcpPluginVersion mirrors the pulumi-gcp SDK version pinned in go.mod, for build modes
 // whose binaries carry no embedded module info (e.g. Bazel). TestGcpPluginVersion_MatchesSdkPin
 // guards this constant against go.mod drift, so an SDK bump cannot strand a stale version here.
-const fallbackGcpPluginVersion = "9.4.0"
+const fallbackGcpPluginVersion = "9.29.0"
 
 // Get builds a gcp.Provider from the given GcpProviderConfig. There is no region argument: the
 // GCP provider is not region-scoped -- each resource carries its own location. nameSuffixes
 // disambiguate the provider resource name when a module needs more than one provider.
 func Get(ctx *pulumi.Context, gcpProviderConfig *gcpprovider.GcpProviderConfig,
 	nameSuffixes ...string) (*gcp.Provider, error) {
+	return get(ctx, gcpProviderConfig, false, nameSuffixes)
+}
+
+// GetWithUserProjectOverride builds the provider like Get, additionally arming
+// user_project_override so every API call attributes quota and billing to the RESOURCE's
+// project (the X-Goog-User-Project header). Kinds whose APIs REQUIRE a quota project on
+// user-credential calls use this instead of Get — the Identity Toolkit API was the first:
+// without the override, a deploy under plain `gcloud auth application-default login` fails at
+// create with 403 "The identitytoolkit.googleapis.com API requires a quota project, which is
+// not set by default" (live-verified). Service-account and keyless credentials are unaffected
+// by the header, so arming it is safe across every credential mode.
+func GetWithUserProjectOverride(ctx *pulumi.Context, gcpProviderConfig *gcpprovider.GcpProviderConfig,
+	nameSuffixes ...string) (*gcp.Provider, error) {
+	return get(ctx, gcpProviderConfig, true, nameSuffixes)
+}
+
+func get(ctx *pulumi.Context, gcpProviderConfig *gcpprovider.GcpProviderConfig,
+	userProjectOverride bool, nameSuffixes []string) (*gcp.Provider, error) {
 	inputs, err := buildProviderInputs(gcpProviderConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build google provider args")
+	}
+
+	if userProjectOverride {
+		if inputs.webIdentityProps != nil {
+			inputs.webIdentityProps["userProjectOverride"] = pulumi.Bool(true)
+		} else {
+			inputs.args.UserProjectOverride = pulumi.Bool(true)
+		}
 	}
 
 	if inputs.webIdentityProps != nil {

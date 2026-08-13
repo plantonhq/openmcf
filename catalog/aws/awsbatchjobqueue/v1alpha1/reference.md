@@ -33,9 +33,6 @@ metadata:
   env: dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsBatchJobQueue.test-batch-queue
 spec:
   region: us-west-2
   priority: 10

@@ -103,7 +103,11 @@ These are the most important decisions when configuring an ECS service. Explore 
 
 **Load-balancer wiring only registers IPs** -- the target group, listener, and rules are their own first-class resources; each `loadBalancers` entry tells ECS which container/port registers into which target group. Workers and queue consumers leave it empty.
 
-**Service Connect over legacy registries** -- Service Connect gives sidecar-free service-to-service discovery ("call http://orders") with telemetry, retries, and optional Private-CA TLS. Keep legacy Cloud Map `serviceRegistries` only where consumers already resolve its DNS name.
+**Service Connect over legacy registries** -- Service Connect gives sidecar-free service-to-service discovery ("call http://orders") with telemetry, retries, per-request access logs (`accessLogConfiguration`, TEXT or JSON), header-based test-traffic routing for blue/green (`clientAlias.testTrafficRules`), and optional Private-CA TLS. Keep legacy Cloud Map `serviceRegistries` only where consumers already resolve its DNS name.
+
+**VPC Lattice instead of a load balancer** -- each `vpcLatticeConfigurations` entry registers the tasks' named port into a Lattice target group, with an infrastructure role ECS assumes to manage the registrations -- cross-VPC and cross-account traffic without provisioning a load balancer in every VPC.
+
+**Managed EBS volumes close a two-kind contract** -- `volumeConfiguration.name` must match a `configureAtLaunch` volume in the task definition; ECS then attaches a fresh EBS volume per task, tagged via `tagSpecifications` (without them the volumes carry no cost-allocation tags) and optionally hydrated from a snapshot at a chosen `volumeInitializationRate`.
 
 **Autoscaling scales the count** -- target-tracking on CPU, memory, and/or requests-per-target (the AwsAlb / AwsLbTargetGroup `arn_suffix` outputs scope the request metric). The desired count only seeds the initial size once autoscaling owns the service.
 
@@ -122,6 +126,7 @@ These are the most important decisions when configuring an ECS service. Explore 
 | `alarms.alarmNames[]` | AwsCloudwatchAlarm | `status.outputs.alarm_name` |
 | `serviceConnect.services[].tls.kmsKey` | AwsKmsKey | `status.outputs.key_arn` |
 | `volumeConfiguration.managedEbsVolume.roleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `vpcLatticeConfigurations[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `autoscaling.requestsPerTarget.loadBalancerArnSuffix` | AwsAlb | `status.outputs.arn_suffix` |
 | `autoscaling.requestsPerTarget.targetGroupArnSuffix` | AwsLbTargetGroup | `status.outputs.arn_suffix` |
 

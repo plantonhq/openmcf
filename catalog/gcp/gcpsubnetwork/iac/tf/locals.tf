@@ -30,10 +30,11 @@ locals {
   private_ip_google_access = coalesce(var.spec.private_ip_google_access, false)
 
   # Drop entries the tfvars converter may emit as empty objects so the API
-  # never sees a blank secondary range.
+  # never sees a blank secondary range. A range is real when it has a name
+  # and either CIDR source (literal or reserved internal range).
   secondary_ip_ranges = var.spec.secondary_ip_ranges != null ? [
     for secondary_range in var.spec.secondary_ip_ranges : secondary_range
-    if secondary_range.range_name != "" && secondary_range.ip_cidr_range != ""
+    if secondary_range.range_name != "" && (secondary_range.ip_cidr_range != "" || secondary_range.reserved_internal_range != "")
   ] : []
 
   # Flow-log defaults mirror the GCP API's own (5s aggregation, 50% sampling,

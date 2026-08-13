@@ -14,11 +14,14 @@ spec:
   # ALB/CloudFront chain — the alias block is proven by the static-website
   # chart shape + spec tests), health-check gating (its own kind's lane
   # proves the checks; the ref wiring is a plain string pass-through), and
-  # CIDR routing (needs a CIDR collection, a surface with no kind). All
-  # proven by CEL spec tests and the offline gate.
+  # CIDR routing (needs a CIDR collection, a surface with no kind — judged
+  # to the planned AwsRoute53CidrCollection in the dispositions ledger).
+  # All proven by CEL spec tests and the offline gate.
+  #
   tier: 1
+  # Proven live 2026-08-12, both engines, through the presence-typed ttl
+  # send path (the weighted scenario's explicit ttl renders through the new
+  # optional plumbing in both engines; ListResourceRecordSets verified).
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

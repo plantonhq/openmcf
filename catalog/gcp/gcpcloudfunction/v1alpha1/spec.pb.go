@@ -329,9 +329,18 @@ type GcpCloudFunctionSpec struct {
 	// networking, scaling, and invocation policy.
 	ServiceConfig *GcpCloudFunctionServiceConfig `protobuf:"bytes,8,opt,name=service_config,json=serviceConfig,proto3" json:"service_config,omitempty"`
 	// What invokes the function. If not specified, defaults to HTTP.
-	Trigger       *GcpCloudFunctionTrigger `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Trigger *GcpCloudFunctionTrigger `protobuf:"bytes,9,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	// What destroying this resource does to the function:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the function (and the Cloud Run service serving it) is
+	//	             deleted; event triggers stop firing
+	//	"PREVENT" -- destroy FAILS; protects a function other systems invoke
+	//	"ABANDON" -- the function is removed from management but keeps
+	//	             serving and consuming events in GCP
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionSpec) Reset() {
@@ -425,6 +434,13 @@ func (x *GcpCloudFunctionSpec) GetTrigger() *GcpCloudFunctionTrigger {
 		return x.Trigger
 	}
 	return nil
+}
+
+func (x *GcpCloudFunctionSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 // GcpCloudFunctionBuildConfig defines how Cloud Build turns the source
@@ -860,8 +876,20 @@ type GcpCloudFunctionServiceConfig struct {
 	// Leave false for private functions and grant invoker to specific
 	// identities instead.
 	AllowUnauthenticated bool `protobuf:"varint,15,opt,name=allow_unauthenticated,json=allowUnauthenticated,proto3" json:"allow_unauthenticated,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Direct VPC egress: attach the function straight to a VPC network or
+	// subnet — no Serverless VPC Access connector to size, pay for, or
+	// saturate. The modern alternative to vpc_connector (mutually
+	// exclusive with it); instances get IPs from the subnet, so size its
+	// range for the scaling ceiling.
+	DirectVpcNetworkInterface *GcpCloudFunctionDirectVpcNetworkInterface `protobuf:"bytes,16,opt,name=direct_vpc_network_interface,json=directVpcNetworkInterface,proto3" json:"direct_vpc_network_interface,omitempty"`
+	// Which egress traffic takes the direct-VPC path: only RFC1918/private
+	// destinations (the API default; public egress keeps the normal path),
+	// or everything (enables static egress IPs via Cloud NAT). Only
+	// meaningful with direct_vpc_network_interface — the connector path is
+	// steered by vpc_connector_egress_settings instead.
+	DirectVpcEgress GcpCloudFunctionVpcEgressSetting `protobuf:"varint,17,opt,name=direct_vpc_egress,json=directVpcEgress,proto3,enum=dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSetting" json:"direct_vpc_egress,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GcpCloudFunctionServiceConfig) Reset() {
@@ -999,6 +1027,91 @@ func (x *GcpCloudFunctionServiceConfig) GetAllowUnauthenticated() bool {
 	return false
 }
 
+func (x *GcpCloudFunctionServiceConfig) GetDirectVpcNetworkInterface() *GcpCloudFunctionDirectVpcNetworkInterface {
+	if x != nil {
+		return x.DirectVpcNetworkInterface
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionServiceConfig) GetDirectVpcEgress() GcpCloudFunctionVpcEgressSetting {
+	if x != nil {
+		return x.DirectVpcEgress
+	}
+	return GcpCloudFunctionVpcEgressSetting_PRIVATE_RANGES_ONLY
+}
+
+// GcpCloudFunctionDirectVpcNetworkInterface attaches the function directly
+// to a VPC. Set a network, a subnet, or both — if only the network is
+// given, GCP uses the subnet with the same name; if both are given, the
+// subnet must belong to the network. The API supports a single interface.
+type GcpCloudFunctionDirectVpcNetworkInterface struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The VPC network to attach to. Accepts a literal network name or a
+	// reference to a GcpVpcNetwork resource.
+	Network *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=network,proto3" json:"network,omitempty"`
+	// The subnetwork instances draw their IPs from. Accepts a literal
+	// subnetwork name or a reference to a GcpSubnetwork resource. The
+	// subnet's free range caps how far the function can scale.
+	Subnetwork *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=subnetwork,proto3" json:"subnetwork,omitempty"`
+	// Network tags applied to the function's instances — how VPC firewall
+	// rules select their egress.
+	Tags          []string `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) Reset() {
+	*x = GcpCloudFunctionDirectVpcNetworkInterface{}
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpCloudFunctionDirectVpcNetworkInterface) ProtoMessage() {}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpCloudFunctionDirectVpcNetworkInterface.ProtoReflect.Descriptor instead.
+func (*GcpCloudFunctionDirectVpcNetworkInterface) Descriptor() ([]byte, []int) {
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) GetNetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) GetSubnetwork() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Subnetwork
+	}
+	return nil
+}
+
+func (x *GcpCloudFunctionDirectVpcNetworkInterface) GetTags() []string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
 // GcpCloudFunctionSecretEnvVar resolves one Secret Manager secret version
 // into one environment variable at instance start.
 type GcpCloudFunctionSecretEnvVar struct {
@@ -1019,7 +1132,7 @@ type GcpCloudFunctionSecretEnvVar struct {
 
 func (x *GcpCloudFunctionSecretEnvVar) Reset() {
 	*x = GcpCloudFunctionSecretEnvVar{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1031,7 +1144,7 @@ func (x *GcpCloudFunctionSecretEnvVar) String() string {
 func (*GcpCloudFunctionSecretEnvVar) ProtoMessage() {}
 
 func (x *GcpCloudFunctionSecretEnvVar) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[6]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1044,7 +1157,7 @@ func (x *GcpCloudFunctionSecretEnvVar) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionSecretEnvVar.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionSecretEnvVar) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GcpCloudFunctionSecretEnvVar) GetKey() string {
@@ -1096,7 +1209,7 @@ type GcpCloudFunctionSecretVolume struct {
 
 func (x *GcpCloudFunctionSecretVolume) Reset() {
 	*x = GcpCloudFunctionSecretVolume{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1108,7 +1221,7 @@ func (x *GcpCloudFunctionSecretVolume) String() string {
 func (*GcpCloudFunctionSecretVolume) ProtoMessage() {}
 
 func (x *GcpCloudFunctionSecretVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1121,7 +1234,7 @@ func (x *GcpCloudFunctionSecretVolume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionSecretVolume.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionSecretVolume) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *GcpCloudFunctionSecretVolume) GetMountPath() string {
@@ -1165,7 +1278,7 @@ type GcpCloudFunctionSecretVolumeVersion struct {
 
 func (x *GcpCloudFunctionSecretVolumeVersion) Reset() {
 	*x = GcpCloudFunctionSecretVolumeVersion{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1177,7 +1290,7 @@ func (x *GcpCloudFunctionSecretVolumeVersion) String() string {
 func (*GcpCloudFunctionSecretVolumeVersion) ProtoMessage() {}
 
 func (x *GcpCloudFunctionSecretVolumeVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[8]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1190,7 +1303,7 @@ func (x *GcpCloudFunctionSecretVolumeVersion) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use GcpCloudFunctionSecretVolumeVersion.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionSecretVolumeVersion) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GcpCloudFunctionSecretVolumeVersion) GetVersion() string {
@@ -1222,7 +1335,7 @@ type GcpCloudFunctionScalingConfig struct {
 
 func (x *GcpCloudFunctionScalingConfig) Reset() {
 	*x = GcpCloudFunctionScalingConfig{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1234,7 +1347,7 @@ func (x *GcpCloudFunctionScalingConfig) String() string {
 func (*GcpCloudFunctionScalingConfig) ProtoMessage() {}
 
 func (x *GcpCloudFunctionScalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1247,7 +1360,7 @@ func (x *GcpCloudFunctionScalingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionScalingConfig.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionScalingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GcpCloudFunctionScalingConfig) GetMinInstanceCount() int32 {
@@ -1279,7 +1392,7 @@ type GcpCloudFunctionTrigger struct {
 
 func (x *GcpCloudFunctionTrigger) Reset() {
 	*x = GcpCloudFunctionTrigger{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1291,7 +1404,7 @@ func (x *GcpCloudFunctionTrigger) String() string {
 func (*GcpCloudFunctionTrigger) ProtoMessage() {}
 
 func (x *GcpCloudFunctionTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1304,7 +1417,7 @@ func (x *GcpCloudFunctionTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionTrigger.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionTrigger) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GcpCloudFunctionTrigger) GetTriggerType() GcpCloudFunctionTriggerType {
@@ -1358,7 +1471,7 @@ type GcpCloudFunctionEventTrigger struct {
 
 func (x *GcpCloudFunctionEventTrigger) Reset() {
 	*x = GcpCloudFunctionEventTrigger{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1370,7 +1483,7 @@ func (x *GcpCloudFunctionEventTrigger) String() string {
 func (*GcpCloudFunctionEventTrigger) ProtoMessage() {}
 
 func (x *GcpCloudFunctionEventTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1383,7 +1496,7 @@ func (x *GcpCloudFunctionEventTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionEventTrigger.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionEventTrigger) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GcpCloudFunctionEventTrigger) GetEventType() string {
@@ -1445,7 +1558,7 @@ type GcpCloudFunctionEventFilter struct {
 
 func (x *GcpCloudFunctionEventFilter) Reset() {
 	*x = GcpCloudFunctionEventFilter{}
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1457,7 +1570,7 @@ func (x *GcpCloudFunctionEventFilter) String() string {
 func (*GcpCloudFunctionEventFilter) ProtoMessage() {}
 
 func (x *GcpCloudFunctionEventFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1470,7 +1583,7 @@ func (x *GcpCloudFunctionEventFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GcpCloudFunctionEventFilter.ProtoReflect.Descriptor instead.
 func (*GcpCloudFunctionEventFilter) Descriptor() ([]byte, []int) {
-	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GcpCloudFunctionEventFilter) GetAttribute() string {
@@ -1498,7 +1611,7 @@ var File_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpcloudfunction/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpcloudfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x94\a\n" +
+	"0catalog/gcp/gcpcloudfunction/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpcloudfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd2\b\n" +
 	"\x14GcpCloudFunctionSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
@@ -1510,7 +1623,10 @@ const file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"kmsKeyName\x12q\n" +
 	"\fbuild_config\x18\a \x01(\v2F.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfigB\x06\xbaH\x03\xc8\x01\x01R\vbuildConfig\x12o\n" +
 	"\x0eservice_config\x18\b \x01(\v2H.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfigR\rserviceConfig\x12\\\n" +
-	"\atrigger\x18\t \x01(\v2B.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerR\atrigger\x1a9\n" +
+	"\atrigger\x18\t \x01(\v2B.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerR\atrigger\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x88\a\n" +
@@ -1554,7 +1670,7 @@ const file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"\finvert_regex\x18\x06 \x01(\bR\vinvertRegex\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\a \x01(\tR\tprojectId:\xdd\x01\xbaH\xd9\x01\x1a\xd6\x01\n" +
-	" repo_source.exactly_one_revision\x12Ipin the source to exactly one revision: branchName, tagName, or commitSha\x1ag(this.branch_name != '' ? 1 : 0) + (this.tag_name != '' ? 1 : 0) + (this.commit_sha != '' ? 1 : 0) == 1\"\xcb\r\n" +
+	" repo_source.exactly_one_revision\x12Ipin the source to exactly one revision: branchName, tagName, or commitSha\x1ag(this.branch_name != '' ? 1 : 0) + (this.tag_name != '' ? 1 : 0) + (this.commit_sha != '' ? 1 : 0) == 1\"\xab\x12\n" +
 	"\x1dGcpCloudFunctionServiceConfig\x12\x85\x01\n" +
 	"\x15service_account_email\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1d\x88\xd4a\xc6\x17\x92\xd4a\x14status.outputs.emailR\x13serviceAccountEmail\x12^\n" +
 	"\x10available_memory\x18\x02 \x01(\tB3\xbaH(\xd8\x01\x01r#2!^[0-9]+(\\.[0-9]+)?(k|M|G|Mi|Gi)?$\x92\xa6\x1d\x04256MR\x0favailableMemory\x12B\n" +
@@ -1573,11 +1689,21 @@ const file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"\ascaling\x18\f \x01(\v2H.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionScalingConfigR\ascaling\x12Q\n" +
 	"\x1eall_traffic_on_latest_revision\x18\r \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x1aallTrafficOnLatestRevision\x88\x01\x01\x12>\n" +
 	"\x1bbinary_authorization_policy\x18\x0e \x01(\tR\x19binaryAuthorizationPolicy\x12>\n" +
-	"\x15allow_unauthenticated\x18\x0f \x01(\bB\t\x92\xa6\x1d\x05falseR\x14allowUnauthenticated\x1aG\n" +
+	"\x15allow_unauthenticated\x18\x0f \x01(\bB\t\x92\xa6\x1d\x05falseR\x14allowUnauthenticated\x12\x95\x01\n" +
+	"\x1cdirect_vpc_network_interface\x18\x10 \x01(\v2T.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionDirectVpcNetworkInterfaceR\x19directVpcNetworkInterface\x12\x90\x01\n" +
+	"\x11direct_vpc_egress\x18\x11 \x01(\x0e2K.dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSettingB\x17\x92\xa6\x1d\x13PRIVATE_RANGES_ONLYR\x0fdirectVpcEgress\x1aG\n" +
 	"\x19EnvironmentVariablesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B!\n" +
-	"\x1f_all_traffic_on_latest_revision\"\xa5\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb2\x02\xbaH\xae\x02\x1a\xab\x02\n" +
+	"\x1bservice_config.one_vpc_path\x12suse direct VPC egress (direct_vpc_network_interface) or a Serverless VPC Access connector (vpc_connector), not both\x1a\x96\x01!(((has(this.vpc_connector.value) && this.vpc_connector.value != '') || has(this.vpc_connector.value_from)) && has(this.direct_vpc_network_interface))B!\n" +
+	"\x1f_all_traffic_on_latest_revision\"\x94\x05\n" +
+	")GcpCloudFunctionDirectVpcNetworkInterface\x12v\n" +
+	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xc2\x17\x92\xd4a\x1bstatus.outputs.network_name\x98\xd4a\x01R\anetwork\x12\x7f\n" +
+	"\n" +
+	"subnetwork\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\xc3\x17\x92\xd4a\x1estatus.outputs.subnetwork_name\x98\xd4a\x01R\n" +
+	"subnetwork\x12A\n" +
+	"\x04tags\x18\x03 \x03(\tB-\xbaH*\xd8\x01\x01\x92\x01$\x18\x01\" r\x1e2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\x04tags:\xaa\x02\xbaH\xa6\x02\x1a\xa3\x02\n" +
+	" direct_vpc.network_or_subnetwork\x12Eset at least one of network or subnetwork on the direct VPC interface\x1a\xb7\x01(has(this.network.value) && this.network.value != '') || has(this.network.value_from) || (has(this.subnetwork.value) && this.subnetwork.value != '') || has(this.subnetwork.value_from)\"\xa5\x02\n" +
 	"\x1cGcpCloudFunctionSecretEnvVar\x124\n" +
 	"\x03key\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[A-Za-z_][A-Za-z0-9_]*$R\x03key\x12\x89\x01\n" +
 	"\x06secret\x18\x02 \x01(\tBq\xbaH\a\xc8\x01\x01r\x02\x10\x01\xaa\xa6\x1dcSecret Manager secret NAME/identifier only — the secret material itself never appears in the specR\x06secret\x12$\n" +
@@ -1653,66 +1779,71 @@ func file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDescGZIP() []byte 
 }
 
 var file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_goTypes = []any{
-	(GcpCloudFunctionBuildUpdatePolicy)(0),      // 0: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildUpdatePolicy
-	(GcpCloudFunctionTriggerType)(0),            // 1: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerType
-	(GcpCloudFunctionIngressSetting)(0),         // 2: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionIngressSetting
-	(GcpCloudFunctionVpcEgressSetting)(0),       // 3: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSetting
-	(GcpCloudFunctionRetryPolicy)(0),            // 4: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRetryPolicy
-	(*GcpCloudFunctionSpec)(nil),                // 5: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec
-	(*GcpCloudFunctionBuildConfig)(nil),         // 6: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig
-	(*GcpCloudFunctionSource)(nil),              // 7: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSource
-	(*GcpCloudFunctionStorageSource)(nil),       // 8: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionStorageSource
-	(*GcpCloudFunctionRepoSource)(nil),          // 9: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRepoSource
-	(*GcpCloudFunctionServiceConfig)(nil),       // 10: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig
-	(*GcpCloudFunctionSecretEnvVar)(nil),        // 11: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretEnvVar
-	(*GcpCloudFunctionSecretVolume)(nil),        // 12: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume
-	(*GcpCloudFunctionSecretVolumeVersion)(nil), // 13: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolumeVersion
-	(*GcpCloudFunctionScalingConfig)(nil),       // 14: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionScalingConfig
-	(*GcpCloudFunctionTrigger)(nil),             // 15: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger
-	(*GcpCloudFunctionEventTrigger)(nil),        // 16: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger
-	(*GcpCloudFunctionEventFilter)(nil),         // 17: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventFilter
-	nil,                                         // 18: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.LabelsEntry
-	nil,                                         // 19: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
-	nil,                                         // 20: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
-	(*v1.StringValueOrRef)(nil),                 // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(GcpCloudFunctionBuildUpdatePolicy)(0),            // 0: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildUpdatePolicy
+	(GcpCloudFunctionTriggerType)(0),                  // 1: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerType
+	(GcpCloudFunctionIngressSetting)(0),               // 2: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionIngressSetting
+	(GcpCloudFunctionVpcEgressSetting)(0),             // 3: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSetting
+	(GcpCloudFunctionRetryPolicy)(0),                  // 4: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRetryPolicy
+	(*GcpCloudFunctionSpec)(nil),                      // 5: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec
+	(*GcpCloudFunctionBuildConfig)(nil),               // 6: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig
+	(*GcpCloudFunctionSource)(nil),                    // 7: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSource
+	(*GcpCloudFunctionStorageSource)(nil),             // 8: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionStorageSource
+	(*GcpCloudFunctionRepoSource)(nil),                // 9: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRepoSource
+	(*GcpCloudFunctionServiceConfig)(nil),             // 10: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig
+	(*GcpCloudFunctionDirectVpcNetworkInterface)(nil), // 11: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionDirectVpcNetworkInterface
+	(*GcpCloudFunctionSecretEnvVar)(nil),              // 12: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretEnvVar
+	(*GcpCloudFunctionSecretVolume)(nil),              // 13: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume
+	(*GcpCloudFunctionSecretVolumeVersion)(nil),       // 14: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolumeVersion
+	(*GcpCloudFunctionScalingConfig)(nil),             // 15: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionScalingConfig
+	(*GcpCloudFunctionTrigger)(nil),                   // 16: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger
+	(*GcpCloudFunctionEventTrigger)(nil),              // 17: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger
+	(*GcpCloudFunctionEventFilter)(nil),               // 18: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventFilter
+	nil,                                               // 19: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.LabelsEntry
+	nil,                                               // 20: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
+	nil,                                               // 21: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
+	(*v1.StringValueOrRef)(nil),                       // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_depIdxs = []int32{
-	21, // 0: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 1: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.labels:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.LabelsEntry
-	21, // 2: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 0: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 1: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.labels:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.LabelsEntry
+	22, // 2: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.kms_key_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	6,  // 3: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.build_config:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig
 	10, // 4: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.service_config:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig
-	15, // 5: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.trigger:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger
+	16, // 5: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSpec.trigger:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger
 	7,  // 6: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.source:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSource
-	19, // 7: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.build_environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
-	21, // 8: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 9: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.docker_repository:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 7: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.build_environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.BuildEnvironmentVariablesEntry
+	22, // 8: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 9: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.docker_repository:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0,  // 10: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildConfig.update_policy:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionBuildUpdatePolicy
 	8,  // 11: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSource.storage_source:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionStorageSource
 	9,  // 12: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSource.repo_source:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRepoSource
-	21, // 13: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionStorageSource.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 14: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	20, // 15: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
-	11, // 16: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.secret_environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretEnvVar
-	12, // 17: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.secret_volumes:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume
-	21, // 18: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.vpc_connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 13: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionStorageSource.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 14: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	21, // 15: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.EnvironmentVariablesEntry
+	12, // 16: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.secret_environment_variables:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretEnvVar
+	13, // 17: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.secret_volumes:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume
+	22, // 18: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.vpc_connector:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3,  // 19: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.vpc_connector_egress_settings:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSetting
 	2,  // 20: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.ingress_settings:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionIngressSetting
-	14, // 21: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.scaling:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionScalingConfig
-	13, // 22: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume.versions:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolumeVersion
-	1,  // 23: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger.trigger_type:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerType
-	16, // 24: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger.event_trigger:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger
-	21, // 25: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.pubsub_topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 26: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.event_filters:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventFilter
-	4,  // 27: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.retry_policy:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRetryPolicy
-	21, // 28: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // [29:29] is the sub-list for method output_type
-	29, // [29:29] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	15, // 21: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.scaling:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionScalingConfig
+	11, // 22: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.direct_vpc_network_interface:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionDirectVpcNetworkInterface
+	3,  // 23: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionServiceConfig.direct_vpc_egress:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionVpcEgressSetting
+	22, // 24: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionDirectVpcNetworkInterface.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 25: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionDirectVpcNetworkInterface.subnetwork:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 26: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolume.versions:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionSecretVolumeVersion
+	1,  // 27: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger.trigger_type:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTriggerType
+	17, // 28: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionTrigger.event_trigger:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger
+	22, // 29: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.pubsub_topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 30: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.event_filters:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventFilter
+	4,  // 31: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.retry_policy:type_name -> dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionRetryPolicy
+	22, // 32: dev.planton.gcp.gcpcloudfunction.v1alpha1.GcpCloudFunctionEventTrigger.service_account_email:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_init() }
@@ -1722,14 +1853,14 @@ func file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_init() {
 	}
 	file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
-	file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{}
+	file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpcloudfunction_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

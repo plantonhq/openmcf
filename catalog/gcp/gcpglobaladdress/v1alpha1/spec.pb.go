@@ -76,9 +76,25 @@ type GcpGlobalAddressSpec struct {
 	// like Cloud SQL, Redis, AlloyDB, and Filestore for private networking.
 	// PRIVATE_SERVICE_CONNECT — reserves an address for a Private Service Connect endpoint.
 	// Leave empty for standard external address reservations.
-	Purpose       string `protobuf:"bytes,9,opt,name=purpose,proto3" json:"purpose,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Purpose string `protobuf:"bytes,9,opt,name=purpose,proto3" json:"purpose,omitempty"`
+	// User labels attached to the reserved global address, merged with
+	// Planton's platform labels (which win on key conflicts). The one mutable
+	// surface on this resource — every other change destroys and re-reserves.
+	Labels map[string]string `protobuf:"bytes,10,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Deletion policy for the reserved global address — what happens on
+	// destroy:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the reservation is released (GCP refuses while a global
+	//	             forwarding rule or PSA range still uses it); a released
+	//	             external anycast IP is gone for good
+	//	"PREVENT" -- destroy FAILS; protects an IP that external DNS and
+	//	             client allow-lists may still point at
+	//	"ABANDON" -- the reservation is removed from management but stays
+	//	             reserved in GCP
+	DeletionPolicy string `protobuf:"bytes,11,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpGlobalAddressSpec) Reset() {
@@ -174,11 +190,25 @@ func (x *GcpGlobalAddressSpec) GetPurpose() string {
 	return ""
 }
 
+func (x *GcpGlobalAddressSpec) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+func (x *GcpGlobalAddressSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpglobaladdress/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpglobaladdress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb6\v\n" +
+	"0catalog/gcp/gcpglobaladdress/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpglobaladdress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x94\x0e\n" +
 	"\x14GcpGlobalAddressSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
@@ -193,7 +223,14 @@ const file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc = "" +
 	"\anetwork\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_linkR\anetwork\x123\n" +
 	"\rprefix_length\x18\b \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x1d(\bH\x02R\fprefixLength\x88\x01\x01\x12\xaa\x01\n" +
 	"\apurpose\x18\t \x01(\tB\x8f\x01\xbaH\x8b\x01\xba\x01\x87\x01\n" +
-	"\rpurpose_valid\x12>purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT\x1a6this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']R\apurpose:\xee\x03\xbaH\xea\x03\x1a\x89\x01\n" +
+	"\rpurpose_valid\x12>purpose must be empty, VPC_PEERING, or PRIVATE_SERVICE_CONNECT\x1a6this in ['', 'VPC_PEERING', 'PRIVATE_SERVICE_CONNECT']R\apurpose\x12c\n" +
+	"\x06labels\x18\n" +
+	" \x03(\v2K.dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.LabelsEntryR\x06labels\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\v \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xee\x03\xbaH\xea\x03\x1a\x89\x01\n" +
 	"\x19purpose_requires_internal\x125purpose can only be set when address_type is INTERNAL\x1a5this.purpose == '' || this.address_type == 'INTERNAL'\x1a\x95\x01\n" +
 	"\"vpc_peering_requires_prefix_length\x125prefix_length is required when purpose is VPC_PEERING\x1a8this.purpose != 'VPC_PEERING' || has(this.prefix_length)\x1a\xc3\x01\n" +
 	"\x19internal_requires_network\x121network is required when address_type is INTERNAL\x1asthis.address_type != 'INTERNAL' || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))B\x0f\n" +
@@ -214,19 +251,21 @@ func file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDescGZIP() []byte 
 	return file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpGlobalAddressSpec)(nil), // 0: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec
-	(*v1.StringValueOrRef)(nil),  // 1: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                          // 1: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil),  // 2: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_depIdxs = []int32{
-	1, // 0: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.network:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 2: dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.labels:type_name -> dev.planton.gcp.gcpglobaladdress.v1alpha1.GcpGlobalAddressSpec.LabelsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_init() }
@@ -241,7 +280,7 @@ func file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

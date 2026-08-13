@@ -758,9 +758,11 @@ type AwsHttpApiGatewayIntegration struct {
 	// Defaults to "2.0" when empty. Only applicable to AWS_PROXY integrations.
 	// AWS service integrations (integration_subtype) always use "1.0".
 	PayloadFormatVersion string `protobuf:"bytes,4,opt,name=payload_format_version,json=payloadFormatVersion,proto3" json:"payload_format_version,omitempty"`
-	// HTTP method used for the integration request. Defaults to the route's HTTP
-	// method for HTTP_PROXY integrations. For AWS_PROXY (Lambda) integrations,
-	// this is always POST regardless of the value set here.
+	// HTTP method used for the integration request. Valid values: "ANY",
+	// "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" (uppercase).
+	// Defaults to the route's HTTP method for HTTP_PROXY integrations. For
+	// AWS_PROXY (Lambda) integrations, this is always POST regardless of the
+	// value set here.
 	IntegrationMethod string `protobuf:"bytes,5,opt,name=integration_method,json=integrationMethod,proto3" json:"integration_method,omitempty"`
 	// Integration timeout in milliseconds. If the backend does not respond within
 	// this duration, API Gateway returns a 504 Gateway Timeout.
@@ -941,7 +943,8 @@ func (x *AwsHttpApiGatewayIntegration) GetDescription() string {
 type AwsHttpApiGatewayResponseParameters struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The backend response status code these mappings apply to (e.g. "403",
-	// "500").
+	// "500"). API Gateway accepts 200-599 -- informational (1xx) codes cannot
+	// carry response overrides.
 	StatusCode string `protobuf:"bytes,1,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`
 	// Mapping instructions applied to the response. Keys are instructions such
 	// as "overwrite:statuscode", "append:header.<name>",
@@ -1199,7 +1202,7 @@ var File_catalog_aws_awshttpapigateway_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awshttpapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awshttpapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awshttpapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb32\n" +
+	"1catalog/aws/awshttpapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awshttpapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf84\n" +
 	"\x15AwsHttpApiGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12(\n" +
@@ -1210,7 +1213,7 @@ const file_catalog_aws_awshttpapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fip_address_type\x18\x06 \x01(\tR\ripAddressType\x12^\n" +
 	"\x05stage\x18\a \x01(\v2H.dev.planton.aws.awshttpapigateway.v1alpha1.AwsHttpApiGatewayStageConfigR\x05stage\x12d\n" +
 	"\x06routes\x18\b \x03(\v2B.dev.planton.aws.awshttpapigateway.v1alpha1.AwsHttpApiGatewayRouteB\b\xbaH\x05\x92\x01\x02\b\x01R\x06routes\x12i\n" +
-	"\vauthorizers\x18\t \x03(\v2G.dev.planton.aws.awshttpapigateway.v1alpha1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\x90-\xbaH\x8c-\x1a\x9c\x01\n" +
+	"\vauthorizers\x18\t \x03(\v2G.dev.planton.aws.awshttpapigateway.v1alpha1.AwsHttpApiGatewayAuthorizerR\vauthorizers:\xd5/\xbaH\xd1/\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\xd7\x01\n" +
 	"\x11route_keys_unique\x12kroute_key values must be unique across routes -- two routes with the same key would conflict in API Gateway\x1aUthis.routes.all(r1, this.routes.filter(r2, r2.route_key == r1.route_key).size() == 1)\x1a\xe1\x01\n" +
 	"\x1eroute_authorization_type_valid\x12Oroute authorization_type must be 'NONE', 'JWT', 'AWS_IAM', or 'CUSTOM' when set\x1anthis.routes.all(r, r.authorization_type == '' || r.authorization_type in ['NONE', 'JWT', 'AWS_IAM', 'CUSTOM'])\x1a\xda\x01\n" +
@@ -1230,7 +1233,8 @@ const file_catalog_aws_awshttpapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"(integration_vpc_link_requires_http_proxy\x12\xb2\x01integrations with connection_type 'VPC_LINK' must use integration_type 'HTTP_PROXY' -- private integrations proxy HTTP traffic to an ALB, NLB, or Cloud Map service inside the VPC\x1aqthis.routes.all(r, r.integration.connection_type != 'VPC_LINK' || r.integration.integration_type == 'HTTP_PROXY')\x1a\xe2\x01\n" +
 	"\x1cpayload_format_version_valid\x12Hroute integration payload_format_version must be '1.0' or '2.0' when set\x1axthis.routes.all(r, r.integration.payload_format_version == '' || r.integration.payload_format_version in ['1.0', '2.0'])\x1a\xea\x02\n" +
 	"\"payload_format_version_lambda_only\x12\xa1\x01payload_format_version '2.0' applies only to Lambda proxy integrations -- HTTP_PROXY and AWS service integrations (integration_subtype) are fixed at '1.0' by AWS\x1a\x9f\x01this.routes.all(r, r.integration.payload_format_version != '2.0' || (r.integration.integration_type == 'AWS_PROXY' && r.integration.integration_subtype == ''))\x1a\x84\x02\n" +
-	"\x19integration_timeout_range\x12Lroute integration timeout_milliseconds must be between 50 and 30000 when set\x1a\x98\x01this.routes.all(r, r.integration.timeout_milliseconds == 0 || (r.integration.timeout_milliseconds >= 50 && r.integration.timeout_milliseconds <= 30000))\x1a\xad\x01\n" +
+	"\x19integration_timeout_range\x12Lroute integration timeout_milliseconds must be between 50 and 30000 when set\x1a\x98\x01this.routes.all(r, r.integration.timeout_milliseconds == 0 || (r.integration.timeout_milliseconds >= 50 && r.integration.timeout_milliseconds <= 30000))\x1a\xc2\x02\n" +
+	"\x18integration_method_valid\x12~route integration integration_method must be one of 'ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT' when set\x1a\xa5\x01this.routes.all(r, r.integration.integration_method == '' || r.integration.integration_method in ['ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'])\x1a\xad\x01\n" +
 	"\x14authorizer_ttl_range\x12Aauthorizer result_ttl_seconds must be between 0 and 3600 when set\x1aRthis.authorizers.all(a, a.result_ttl_seconds >= 0 && a.result_ttl_seconds <= 3600)\x1a\xf4\x01\n" +
 	"'authorizer_payload_format_version_valid\x12Lauthorizer authorizer_payload_format_version must be '1.0' or '2.0' when set\x1a{this.authorizers.all(a, a.authorizer_payload_format_version == '' || a.authorizer_payload_format_version in ['1.0', '2.0'])\x1a\xe3\x01\n" +
 	"*stage_route_settings_target_defined_routes\x12Jstage.route_settings route_key values must match a route defined in routes\x1ai!has(this.stage) || this.stage.route_settings.all(rs, this.routes.exists(r, r.route_key == rs.route_key))\"\x95\x02\n" +
@@ -1295,7 +1299,7 @@ const file_catalog_aws_awshttpapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa3\x02\n" +
 	"#AwsHttpApiGatewayResponseParameters\x129\n" +
-	"\vstatus_code\x18\x01 \x01(\tB\x18\xbaH\x15r\x132\x11^[1-5][0-9][0-9]$R\n" +
+	"\vstatus_code\x18\x01 \x01(\tB\x18\xbaH\x15r\x132\x11^[2-5][0-9][0-9]$R\n" +
 	"statusCode\x12\x83\x01\n" +
 	"\bmappings\x18\x02 \x03(\v2].dev.planton.aws.awshttpapigateway.v1alpha1.AwsHttpApiGatewayResponseParameters.MappingsEntryB\b\xbaH\x05\x9a\x01\x02\b\x01R\bmappings\x1a;\n" +
 	"\rMappingsEntry\x12\x10\n" +

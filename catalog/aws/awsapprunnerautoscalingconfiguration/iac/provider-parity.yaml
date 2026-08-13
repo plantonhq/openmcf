@@ -1,0 +1,27 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_apprunner_auto_scaling_configuration_version:
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: auto_scaling_configuration_name
+        reason: derived from metadata.name -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-computed merge of resource and provider-default tags -- never user surface
+
+  aws_apprunner_default_auto_scaling_configuration_version:
+    # Folded designation: the account/region default pointer, claimed by
+    # set_as_account_default (the transit-gateway default-table precedent:
+    # the flag's only payload is which configuration the pointer names).
+    mappings:
+      - spec: spec.set_as_account_default
+        arg: auto_scaling_configuration_arn

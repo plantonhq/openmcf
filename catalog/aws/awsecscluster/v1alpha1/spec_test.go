@@ -234,4 +234,189 @@ var _ = ginkgo.Describe("AwsEcsClusterSpec validations", func() {
 			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
+
+	ginkgo.Context("managed instances capacity providers", func() {
+		// A minimal valid managed-instances provider: role, profile,
+		// network (subnets AND security groups -- AWS requires both at
+		// CreateCapacityProvider), and the two required requirement
+		// dimensions.
+		minimalManagedInstances := func(name string) *AwsEcsClusterManagedInstancesCapacityProvider {
+			return &AwsEcsClusterManagedInstancesCapacityProvider{
+				Name:                  name,
+				InfrastructureRoleArn: literal("arn:aws:iam::123456789012:role/ecs-mi-infrastructure"),
+				InstanceLaunchTemplate: &AwsEcsClusterManagedInstancesLaunchTemplate{
+					Ec2InstanceProfileArn: literal("arn:aws:iam::123456789012:instance-profile/ecs-mi-instances"),
+					NetworkConfiguration: &AwsEcsClusterManagedInstancesNetworkConfiguration{
+						Subnets:        []*fk.StringValueOrRef{literal("subnet-0a1b2c3d4e5f60789")},
+						SecurityGroups: []*fk.StringValueOrRef{literal("sg-0a1b2c3d4e5f60001")},
+					},
+					InstanceRequirements: &AwsEcsClusterManagedInstancesRequirements{
+						MemoryMib: &AwsEcsClusterIntRange{Min: 2048},
+						VcpuCount: &AwsEcsClusterIntRange{Min: 1},
+					},
+				},
+			}
+		}
+
+		ginkgo.It("accepts a minimal managed-instances provider", func() {
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{
+				minimalManagedInstances("mi-general"),
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without the infrastructure role", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InfrastructureRoleArn = nil
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without a network configuration", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InstanceLaunchTemplate.NetworkConfiguration = nil
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without subnets", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InstanceLaunchTemplate.NetworkConfiguration.Subnets = nil
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails without security groups", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InstanceLaunchTemplate.NetworkConfiguration.SecurityGroups = nil
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on a reserved name prefix", func() {
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{
+				minimalManagedInstances("ecs-managed"),
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on duplicate managed-instances names", func() {
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{
+				minimalManagedInstances("mi-general"),
+				minimalManagedInstances("mi-general"),
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a managed-instances name collides with an ec2 provider name", func() {
+			spec.Ec2CapacityProviders = []*AwsEcsClusterEc2CapacityProvider{{
+				Name:                "general-purpose",
+				AutoScalingGroupArn: literal("arn:aws:autoscaling:us-west-2:123456789012:autoScalingGroup:uuid:autoScalingGroupName/workers"),
+			}}
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{
+				minimalManagedInstances("general-purpose"),
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("lets the default strategy name a managed-instances provider", func() {
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{
+				minimalManagedInstances("mi-general"),
+			}
+			spec.DefaultCapacityProviderStrategy = []*AwsEcsClusterCapacityProviderStrategy{
+				{CapacityProvider: "mi-general", Weight: 1},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.Context("capacity reservations", func() {
+			ginkgo.It("fails when RESERVED has no capacity_reservations", func() {
+				p := minimalManagedInstances("mi-reserved")
+				p.InstanceLaunchTemplate.CapacityOptionType = "RESERVED"
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("fails when capacity_reservations is set without RESERVED", func() {
+				p := minimalManagedInstances("mi-spot")
+				p.InstanceLaunchTemplate.CapacityOptionType = "SPOT"
+				p.InstanceLaunchTemplate.CapacityReservations = &AwsEcsClusterManagedInstancesCapacityReservations{
+					ReservationPreference: "RESERVATIONS_FIRST",
+				}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("accepts RESERVED with reservations and requirements", func() {
+				p := minimalManagedInstances("mi-reserved")
+				p.InstanceLaunchTemplate.CapacityOptionType = "RESERVED"
+				p.InstanceLaunchTemplate.CapacityReservations = &AwsEcsClusterManagedInstancesCapacityReservations{
+					ReservationPreference: "RESERVATIONS_FIRST",
+				}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+			})
+
+			ginkgo.It("fails when reservation_group_arn is set without RESERVATIONS_ONLY", func() {
+				p := minimalManagedInstances("mi-reserved")
+				p.InstanceLaunchTemplate.CapacityOptionType = "RESERVED"
+				p.InstanceLaunchTemplate.CapacityReservations = &AwsEcsClusterManagedInstancesCapacityReservations{
+					ReservationPreference: "RESERVATIONS_FIRST",
+					ReservationGroupArn:   "arn:aws:resource-groups:us-west-2:123456789012:group/cr-group",
+				}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("fails when a reservations preference has no instance_requirements", func() {
+				p := minimalManagedInstances("mi-reserved")
+				p.InstanceLaunchTemplate.CapacityOptionType = "RESERVED"
+				p.InstanceLaunchTemplate.InstanceRequirements = nil
+				p.InstanceLaunchTemplate.CapacityReservations = &AwsEcsClusterManagedInstancesCapacityReservations{
+					ReservationPreference: "RESERVATIONS_ONLY",
+				}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("instance requirements", func() {
+			ginkgo.It("fails without the required memory and vcpu dimensions", func() {
+				p := minimalManagedInstances("mi-general")
+				p.InstanceLaunchTemplate.InstanceRequirements = &AwsEcsClusterManagedInstancesRequirements{}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("fails on an inverted range", func() {
+				p := minimalManagedInstances("mi-general")
+				p.InstanceLaunchTemplate.InstanceRequirements.MemoryMib = &AwsEcsClusterIntRange{Min: 4096, Max: 2048}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("fails when allow and deny lists are both set", func() {
+				p := minimalManagedInstances("mi-general")
+				p.InstanceLaunchTemplate.InstanceRequirements.AllowedInstanceTypes = []string{"m5.*"}
+				p.InstanceLaunchTemplate.InstanceRequirements.ExcludedInstanceTypes = []string{"t2.*"}
+				spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.It("fails on an out-of-range scale_in_after_seconds", func() {
+			p := minimalManagedInstances("mi-general")
+			scaleIn := int32(7200)
+			p.ScaleInAfterSeconds = &scaleIn
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on an invalid monitoring value", func() {
+			p := minimalManagedInstances("mi-general")
+			p.InstanceLaunchTemplate.Monitoring = "VERBOSE"
+			spec.ManagedInstancesCapacityProviders = []*AwsEcsClusterManagedInstancesCapacityProvider{p}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+	})
 })

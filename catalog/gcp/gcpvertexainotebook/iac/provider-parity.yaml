@@ -1,0 +1,95 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_workbench_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The provider wraps the whole VM shape in a gce_setup block; the
+      # spec flattens it -- a notebook IS a VM, so the wrapper records
+      # nothing. Scalars first, then the blocks (matching resumes
+      # exactly below each subtree).
+      - spec: spec.machine_type
+        arg: gce_setup.machine_type
+      - spec: spec.metadata
+        arg: gce_setup.metadata
+      - spec: spec.tags
+        arg: gce_setup.tags
+      - spec: spec.disable_public_ip
+        arg: gce_setup.disable_public_ip
+      - spec: spec.enable_ip_forwarding
+        arg: gce_setup.enable_ip_forwarding
+      # Singular in the spec (GCP supports exactly one accelerator
+      # config, one data disk, one network interface, one service
+      # account per Workbench instance -- the plural provider blocks are
+      # MaxItems: 1).
+      - spec: spec.accelerator_config
+        arg: gce_setup.accelerator_configs
+      - spec: spec.boot_disk
+        arg: gce_setup.boot_disk
+      - spec: spec.data_disk
+        arg: gce_setup.data_disks
+      - spec: spec.network_interface
+        arg: gce_setup.network_interfaces
+      - spec: spec.confidential_instance_config
+        arg: gce_setup.confidential_instance_config
+      - spec: spec.container_image
+        arg: gce_setup.container_image
+      - spec: spec.reservation_affinity
+        arg: gce_setup.reservation_affinity
+      - spec: spec.shielded_instance_config
+        arg: gce_setup.shielded_instance_config
+      - spec: spec.vm_image
+        arg: gce_setup.vm_image
+      # disk_encryption is DERIVED, never spec-set: presence of a KMS
+      # key means CMEK, absence means Google-managed encryption -- an
+      # either-or the provider leaves as two free-floating fields. One
+      # spec field controls both args (fan-out).
+      - spec: spec.boot_disk.kms_key
+        arg: gce_setup.boot_disk.disk_encryption
+      - spec: spec.data_disk.kms_key
+        arg: gce_setup.data_disks.disk_encryption
+      # The spec flattens the provider's access_configs list to the one
+      # static-external-IP lever it carries (ONE_TO_ONE_NAT with one
+      # address). Longest-mapping-wins places it here, not under the
+      # network_interface mapping above.
+      - spec: spec.network_interface.external_ip
+        arg: gce_setup.network_interfaces.access_configs.external_ip
+      # The VM identity is one service-account email (the provider block
+      # is MaxItems: 1 and its scopes child is read-only).
+      - spec: spec.service_account
+        arg: gce_setup.service_accounts.email
+    exclusions:
+      # A second user-settable identity handle beside `name` (ForceNew,
+      # "user-defined unique ID"): the module derives the instance name
+      # from instance_name/metadata.name, and a duplicate ID lever would
+      # let the two drift apart for no configuration gain.
+      - arg: instance_id
+        reason: vestigial user-settable duplicate of the modeled name derivation; the module names instances from instance_name (falling back to metadata.name)
+      # pulumi-gcp v9.29.0 does not bridge these workbench fields, and
+      # cross-engine parity is the contract: model them once a pin bump
+      # carries them (re-evaluate trigger: the repo-wide pulumi-gcp pin
+      # moving past v9.29.0).
+      - arg: enable_deletion_protection
+        reason: unbridged at pulumi-gcp v9.29.0 (no EnableDeletionProtection on workbench.InstanceArgs); modeling it Terraform-only would break cross-engine parity -- re-evaluate at the next pulumi-gcp pin bump
+      - arg: gce_setup.min_cpu_platform
+        reason: unbridged at pulumi-gcp v9.29.0 (no MinCpuPlatform on the workbench InstanceGceSetup type) -- re-evaluate at the next pulumi-gcp pin bump
+      - arg: gce_setup.data_disks.resource_policies
+        reason: unbridged at pulumi-gcp v9.29.0 (no ResourcePolicies on the workbench data-disk type) -- re-evaluate at the next pulumi-gcp pin bump
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables
+      notebooks.googleapis.com and compute.googleapis.com with fixed
+      arguments (disable_on_destroy false so destroying one notebook
+      never disables the APIs project-wide); not spec surface.

@@ -196,6 +196,7 @@ type AwsGlobalAcceleratorFlowLogs struct {
 	S3Bucket *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=s3_bucket,json=s3Bucket,proto3" json:"s3_bucket,omitempty"`
 	// S3 key prefix for flow logs. Useful for organizing logs when multiple
 	// accelerators share a bucket. Example: "ga-logs/prod-accelerator/".
+	// Maximum 255 characters (the provider's bound).
 	S3Prefix      string `protobuf:"bytes,3,opt,name=s3_prefix,json=s3Prefix,proto3" json:"s3_prefix,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -438,7 +439,8 @@ type AwsGlobalAcceleratorEndpointGroup struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// AWS region for this endpoint group (e.g., "us-east-1", "eu-west-1").
 	// When omitted, defaults to the spec's region. ForceNew — changing
-	// the region requires replacing the endpoint group.
+	// the region requires replacing the endpoint group. The format is checked
+	// here; region-name membership is validated by AWS (the region list grows).
 	EndpointGroupRegion string `protobuf:"bytes,2,opt,name=endpoint_group_region,json=endpointGroupRegion,proto3" json:"endpoint_group_region,omitempty"`
 	// Port to use for health checks. When omitted, AWS uses the first port of
 	// the listener's port ranges. Set this to check health on a dedicated
@@ -612,8 +614,10 @@ type AwsGlobalAcceleratorEndpoint struct {
 	// output via valueFrom). No default_kind is set because the target resource
 	// type varies.
 	EndpointId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=endpoint_id,json=endpointId,proto3" json:"endpoint_id,omitempty"`
-	// Relative weight for this endpoint. Range: 0-255. When omitted, AWS
-	// assigns the default weight of 128. Higher weight means more traffic.
+	// Relative weight for this endpoint. Range: 0-255. When omitted, both
+	// modules materialize AWS's documented default of 128 — the provider has no
+	// default of its own and would otherwise transmit 0, silently draining the
+	// endpoint. Higher weight means more traffic.
 	//
 	// Set to 0 explicitly to temporarily stop routing traffic to this endpoint
 	// without removing it — 0 is a real value here, distinct from omitting the
@@ -769,11 +773,11 @@ const file_catalog_aws_awsglobalaccelerator_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15ip_address_type_valid\x12.ip_address_type must be 'IPV4' or 'DUAL_STACK'\x1aL!has(this.ip_address_type) || this.ip_address_type in ['IPV4', 'DUAL_STACK']B\n" +
 	"\n" +
 	"\b_enabledB\x12\n" +
-	"\x10_ip_address_type\"\xc6\x02\n" +
+	"\x10_ip_address_type\"\xd0\x02\n" +
 	"\x1cAwsGlobalAcceleratorFlowLogs\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12r\n" +
-	"\ts3_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12\x1b\n" +
-	"\ts3_prefix\x18\x03 \x01(\tR\bs3Prefix:{\xbaHx\x1av\n" +
+	"\ts3_bucket\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\bs3Bucket\x12%\n" +
+	"\ts3_prefix\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\bs3Prefix:{\xbaHx\x1av\n" +
 	"\x1cflow_logs_s3_bucket_required\x120s3_bucket is required when flow logs are enabled\x1a$!this.enabled || has(this.s3_bucket)\"\xe1\x06\n" +
 	"\x1cAwsGlobalAcceleratorListener\x12\xcf\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xba\x01\xbaH\xb6\x01\xba\x01\xaf\x01\n" +
@@ -791,11 +795,11 @@ const file_catalog_aws_awsglobalaccelerator_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1dAwsGlobalAcceleratorPortRange\x12+\n" +
 	"\tfrom_port\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\bfromPort\x12'\n" +
 	"\ato_port\x18\x02 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xff\xff\x03(\x01R\x06toPort:k\xbaHh\x1af\n" +
-	"\x10port_range_order\x122to_port must be greater than or equal to from_port\x1a\x1ethis.to_port >= this.from_port\"\xf6\v\n" +
+	"\x10port_range_order\x122to_port must be greater than or equal to from_port\x1a\x1ethis.to_port >= this.from_port\"\x9c\f\n" +
 	"!AwsGlobalAcceleratorEndpointGroup\x12\xd5\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xc0\x01\xbaH\xbc\x01\xba\x01\xb5\x01\n" +
-	"\x1aendpoint_group_name_format\x12oname must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 chars)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\x04name\x122\n" +
-	"\x15endpoint_group_region\x18\x02 \x01(\tR\x13endpointGroupRegion\x12<\n" +
+	"\x1aendpoint_group_name_format\x12oname must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens (max 63 chars)\x1a&this.matches('^[a-z][a-z0-9-]{0,62}$')\xc8\x01\x01R\x04name\x12X\n" +
+	"\x15endpoint_group_region\x18\x02 \x01(\tB$\xbaH!\xd8\x01\x01r\x1c2\x1a^[a-z]{2}(-[a-z]+)+-[0-9]$R\x13endpointGroupRegion\x12<\n" +
 	"\x11health_check_port\x18\x03 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01H\x00R\x0fhealthCheckPort\x88\x01\x01\x12@\n" +
 	"\x15health_check_protocol\x18\x04 \x01(\tB\a\x8a\xa6\x1d\x03TCPH\x01R\x13healthCheckProtocol\x88\x01\x01\x124\n" +
 	"\x11health_check_path\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x0fhealthCheckPath\x12W\n" +
@@ -814,15 +818,15 @@ const file_catalog_aws_awsglobalaccelerator_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16_health_check_protocolB \n" +
 	"\x1e_health_check_interval_secondsB\x12\n" +
 	"\x10_threshold_countB\x1a\n" +
-	"\x18_traffic_dial_percentage\"\xd3\x03\n" +
+	"\x18_traffic_dial_percentage\"\xbf\x04\n" +
 	"\x1cAwsGlobalAcceleratorEndpoint\x12[\n" +
 	"\vendpoint_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"endpointId\x12'\n" +
 	"\x06weight\x18\x02 \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\xff\x01(\x00H\x00R\x06weight\x88\x01\x01\x12H\n" +
-	"\x1eclient_ip_preservation_enabled\x18\x03 \x01(\bH\x01R\x1bclientIpPreservationEnabled\x88\x01\x01\x12\xb4\x01\n" +
-	"\x0eattachment_arn\x18\x04 \x01(\tB\x8c\x01\xbaH\x88\x01\xba\x01\x84\x01\n" +
-	"\x15attachment_arn_format\x12Dattachment_arn must be a Global Accelerator attachment ARN (arn:...)\x1a%this == '' || this.startsWith('arn:')R\rattachmentArnB\t\n" +
+	"\x1eclient_ip_preservation_enabled\x18\x03 \x01(\bH\x01R\x1bclientIpPreservationEnabled\x88\x01\x01\x12\xa0\x02\n" +
+	"\x0eattachment_arn\x18\x04 \x01(\tB\xf8\x01\xbaH\xf4\x01\xba\x01\xf0\x01\n" +
+	"\x15attachment_arn_format\x12yattachment_arn must be a Global Accelerator attachment ARN (arn:<partition>:globalaccelerator::<account>:attachment/<id>)\x1a\\this == '' || this.matches('^arn:aws[a-zA-Z-]*:globalaccelerator::[0-9]{12}:attachment/.+$')R\rattachmentArnB\t\n" +
 	"\a_weightB!\n" +
 	"\x1f_client_ip_preservation_enabled\"\x8c\x01\n" +
 	" AwsGlobalAcceleratorPortOverride\x123\n" +

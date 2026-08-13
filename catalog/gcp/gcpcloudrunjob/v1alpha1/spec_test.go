@@ -349,4 +349,143 @@ var _ = Describe("GcpCloudRunJobSpec validations", func() {
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 	})
+
+	Context("Startup probe", func() {
+		It("accepts a TCP startup probe with a declared port", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].Ports = &GcpCloudRunJobContainerPort{ContainerPort: proto.Int32(8080)}
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				PeriodSeconds:    proto.Int32(2),
+				FailureThreshold: proto.Int32(3),
+				Handler:          &GcpCloudRunJobProbe_TcpSocket{TcpSocket: &GcpCloudRunJobTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts an HTTP startup probe with headers", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				Handler: &GcpCloudRunJobProbe_HttpGet{HttpGet: &GcpCloudRunJobHttpGetAction{
+					Path:        "/healthz",
+					Port:        proto.Int32(8080),
+					HttpHeaders: []*GcpCloudRunJobHttpHeader{{Name: "X-Probe", Value: "1"}},
+				}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts a gRPC startup probe", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				Handler: &GcpCloudRunJobProbe_Grpc{Grpc: &GcpCloudRunJobGrpcAction{Service: "my.Worker"}},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects a probe without a handler", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{PeriodSeconds: proto.Int32(10)}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects timeout exceeding period", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				TimeoutSeconds: proto.Int32(20),
+				PeriodSeconds:  proto.Int32(10),
+				Handler:        &GcpCloudRunJobProbe_TcpSocket{TcpSocket: &GcpCloudRunJobTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a startup window exceeding 240 seconds", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				FailureThreshold: proto.Int32(5),
+				PeriodSeconds:    proto.Int32(60),
+				Handler:          &GcpCloudRunJobProbe_TcpSocket{TcpSocket: &GcpCloudRunJobTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects a period above 240", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].StartupProbe = &GcpCloudRunJobProbe{
+				PeriodSeconds:    proto.Int32(241),
+				FailureThreshold: proto.Int32(1),
+				Handler:          &GcpCloudRunJobProbe_TcpSocket{TcpSocket: &GcpCloudRunJobTcpSocketAction{}},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects an unknown port protocol", func() {
+			spec := makeValidSpec()
+			spec.Template.Containers[0].Ports = &GcpCloudRunJobContainerPort{Name: "tcp"}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Execution tokens", func() {
+		It("accepts a start token alone", func() {
+			spec := makeValidSpec()
+			spec.StartExecutionToken = "start-once-created"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts a run token alone", func() {
+			spec := makeValidSpec()
+			spec.RunExecutionToken = "migrate-v42"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects both tokens together", func() {
+			spec := makeValidSpec()
+			spec.StartExecutionToken = "start"
+			spec.RunExecutionToken = "run"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Execution metadata and deletion policy", func() {
+		It("accepts execution labels and annotations", func() {
+			spec := makeValidSpec()
+			spec.ExecutionLabels = map[string]string{"cost-center": "1234"}
+			spec.ExecutionAnnotations = map[string]string{"external-tool/trace": "on"}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts each documented deletion_policy value", func() {
+			for _, p := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+				spec := makeValidSpec()
+				spec.DeletionPolicy = p
+				Expect(protovalidate.Validate(spec)).To(BeNil(), "deletion_policy=%s", p)
+			}
+		})
+
+		It("rejects an unknown deletion_policy", func() {
+			spec := makeValidSpec()
+			spec.DeletionPolicy = "KEEP"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+	})
+
+	Context("Mount refinements", func() {
+		It("accepts a GCS volume with mount options and a sub_path mount", func() {
+			spec := makeValidSpec()
+			spec.Template.Volumes = []*GcpCloudRunJobVolume{{
+				Name: "datalake",
+				Source: &GcpCloudRunJobVolume_Gcs{Gcs: &GcpCloudRunJobVolumeGcs{
+					Bucket:       strVal("my-bucket"),
+					ReadOnly:     true,
+					MountOptions: []string{"implicit-dirs", "only-dir=input"},
+				}},
+			}}
+			spec.Template.Containers[0].VolumeMounts = []*GcpCloudRunJobVolumeMount{{
+				Name:      "datalake",
+				MountPath: "/data",
+				SubPath:   "batch-42",
+			}}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+	})
 })

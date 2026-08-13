@@ -114,7 +114,15 @@ message AwsCloudwatchLogGroupSpec {
   // the log group (including via IaC destroy) will fail until this flag is set
   // to false. Useful for protecting production log groups from accidental
   // deletion.
-  bool deletion_protection_enabled = 5;
+  //
+  // Three states, and the difference matters for turning protection OFF: the
+  // provider attribute is Optional+Computed, so an OMITTED value keeps whatever
+  // the log group already has — only an EXPLICIT false disables protection.
+  // - unset — new groups get AWS's default (unprotected); existing groups keep
+  //   their current protection state.
+  // - true  — protection enabled.
+  // - false — protection explicitly disabled (the only way back off).
+  optional bool deletion_protection_enabled = 5;
 
   // ---------------------------------------------------------------------------
   // Metric filters
@@ -177,6 +185,39 @@ message AwsCloudwatchLogGroupSpec {
   google.protobuf.Struct field_index_policy = 9;
 
   // ---------------------------------------------------------------------------
+  // Log streams
+  // ---------------------------------------------------------------------------
+
+  // Names of log streams to pre-create inside this log group. Most log streams
+  // are created at runtime by the writing agent or AWS service and should NOT
+  // be listed here — pre-create a stream only when something depends on the
+  // stream existing before the first write (an agent configured with a fixed
+  // stream name, IAM policies scoped to specific stream ARNs, or tooling that
+  // writes with `sequenceToken` semantics).
+  //
+  // Stream names must be 1-512 characters and must not contain ':' or '*'
+  // (the CreateLogStream contract). Streams are deleted with the group.
+  repeated string log_streams = 10;
+
+  // ---------------------------------------------------------------------------
+  // Transformer
+  // ---------------------------------------------------------------------------
+
+  // Log transformer for this log group: an ordered pipeline of 1-20 processors
+  // that parses and reshapes every log event at ingestion time. The transformed
+  // form is what Logs Insights queries, metric filters, and subscription
+  // filters see (the latter two only when their `apply_on_transformed_logs` is
+  // set). One transformer per log group; supported ONLY on STANDARD class log
+  // groups (the PutTransformer contract).
+  //
+  // The first processor must be a parser (parse_json, grok, csv,
+  // parse_key_value, or one of the vended-log parsers). An account-level
+  // transformer (managed outside this resource) can also exist; when both
+  // apply, the log-group-level transformer wins and the account-level one is
+  // ignored.
+  AwsCloudwatchLogGroupTransformer transformer = 11;
+
+  // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
@@ -232,6 +273,30 @@ message AwsCloudwatchLogGroupSpec {
     message: "metric_filters and subscription_filters are not supported on INFREQUENT_ACCESS log groups — use a STANDARD class log group for filtering features"
     expression: "this.log_group_class != 'INFREQUENT_ACCESS' || (size(this.metric_filters) == 0 && size(this.subscription_filters) == 0)"
   };
+
+  // Transformers are supported only on STANDARD class log groups — the
+  // PutTransformer contract ("You can create transformers only for the log
+  // groups in the Standard log class"). Unset class defaults to STANDARD.
+  option (buf.validate.message).cel = {
+    id: "transformer_requires_standard_class"
+    message: "transformer is only supported on STANDARD class log groups — AWS rejects PutTransformer for INFREQUENT_ACCESS and DELIVERY classes"
+    expression: "!has(this.transformer) || this.log_group_class == '' || this.log_group_class == 'STANDARD'"
+  };
+
+  // Log stream names must be unique — each is keyed by name within the group.
+  option (buf.validate.message).cel = {
+    id: "log_stream_names_unique"
+    message: "each log stream name must be unique within the log group"
+    expression: "this.log_streams.unique()"
+  };
+
+  // Log stream names follow the CreateLogStream contract: 1-512 characters,
+  // no ':' (the ARN separator) and no '*' (the wildcard character).
+  option (buf.validate.message).cel = {
+    id: "log_stream_names_format"
+    message: "log stream names must be 1-512 characters and must not contain ':' or '*'"
+    expression: "this.log_streams.all(s, size(s) >= 1 && size(s) <= 512 && !s.contains(':') && !s.contains('*'))"
+  };
 }
 
 // AwsCloudwatchLogGroupMetricFilter extracts a CloudWatch metric from log
@@ -241,10 +306,12 @@ message AwsCloudwatchLogGroupSpec {
 // dashboards, and autoscaling can consume.
 message AwsCloudwatchLogGroupMetricFilter {
   // Name of the metric filter, unique within the log group. Changing the
-  // name replaces the filter.
+  // name replaces the filter. Must not contain ':' or '*' (the
+  // PutMetricFilter contract).
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.max_len = 512
+    (buf.validate.field).string.max_len = 512,
+    (buf.validate.field).string.pattern = "^[^:*]+$"
   ];
 
   // Filter pattern that selects which log events produce metric values.
@@ -256,10 +323,15 @@ message AwsCloudwatchLogGroupMetricFilter {
   // Maximum 1024 characters.
   string pattern = 2 [(buf.validate.field).string.max_len = 1024];
 
-  // When true, this filter is also applied to log events AFTER they pass
-  // through the log group's transformer (if one is configured). Leave unset
-  // for the standard behavior of filtering raw ingested events.
-  bool apply_on_transformed_logs = 3;
+  // When true, this filter matches against log events AFTER they pass through
+  // the log group's transformer (or an account-level transformer managed
+  // outside this resource). When false or unset, the filter matches raw
+  // ingested events.
+  //
+  // The provider attribute is Optional+Computed, so an omitted value keeps the
+  // filter's existing setting — only an explicit false switches an existing
+  // filter back to matching raw events.
+  optional bool apply_on_transformed_logs = 3;
 
   // The metric to publish for each matching log event. Required — a filter
   // without a transformation does nothing.
@@ -271,16 +343,20 @@ message AwsCloudwatchLogGroupMetricFilter {
 // matching log event.
 message AwsCloudwatchLogGroupMetricTransformation {
   // Name of the CloudWatch metric to publish (e.g. "ErrorCount").
+  // Must not contain ':', '*', or '$' (the MetricTransformation contract).
   string metric_name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.max_len = 255
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[^:*$]*$"
   ];
 
   // Namespace for the metric (e.g. "MyApp/Errors"). Custom namespaces keep
   // log-derived metrics separate from AWS service namespaces.
+  // Must not contain ':', '*', or '$' (the MetricTransformation contract).
   string metric_namespace = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.max_len = 255
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[^:*$]*$"
   ];
 
   // Value to publish for each matching event. Either a literal number
@@ -342,11 +418,14 @@ message AwsCloudwatchLogGroupMetricTransformation {
 // destination as they are ingested.
 message AwsCloudwatchLogGroupSubscriptionFilter {
   // Name of the subscription filter, unique within the log group. Changing
-  // the name replaces the filter.
+  // the name replaces the filter. Must not contain ':' or '*' (the
+  // PutSubscriptionFilter contract; the provider validates length only —
+  // the character rule is AWS's own).
   string name = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1,
-    (buf.validate.field).string.max_len = 512
+    (buf.validate.field).string.max_len = 512,
+    (buf.validate.field).string.pattern = "^[^:*]+$"
   ];
 
   // ARN of the destination that receives matching log events. Supported
@@ -385,14 +464,20 @@ message AwsCloudwatchLogGroupSubscriptionFilter {
   string distribution = 5;
 
   // System fields to include with each delivered log event. Supported values:
-  // "@aws.account" (the source account ID) and "@aws.region" (the source
-  // region). Useful when a central destination aggregates logs from many
-  // accounts/regions.
+  // "@aws.account" (the source account ID), "@aws.region" (the source
+  // region), and "@source.log" (the source log group and stream). Useful when
+  // a central destination aggregates logs from many accounts/regions/groups.
   repeated string emit_system_fields = 6;
 
-  // When true, this filter is also applied to log events AFTER they pass
-  // through the log group's transformer (if one is configured).
-  bool apply_on_transformed_logs = 7;
+  // When true, this filter matches and delivers log events AFTER they pass
+  // through the log group's transformer (or an account-level transformer
+  // managed outside this resource). When false or unset, the filter operates
+  // on raw ingested events.
+  //
+  // The provider attribute is Optional+Computed, so an omitted value keeps the
+  // filter's existing setting — only an explicit false switches an existing
+  // filter back to raw events.
+  optional bool apply_on_transformed_logs = 7;
 
   // distribution must be a valid value when set.
   option (buf.validate.message).cel = {
@@ -402,9 +487,650 @@ message AwsCloudwatchLogGroupSubscriptionFilter {
   };
 
   // emit_system_fields entries must be the supported system field names.
+  // "@source.log" landed in provider 6.56.0.
   option (buf.validate.message).cel = {
     id: "emit_system_fields_valid_values"
-    message: "emit_system_fields entries must be '@aws.account' or '@aws.region'"
-    expression: "this.emit_system_fields.all(f, f in ['@aws.account', '@aws.region'])"
+    message: "emit_system_fields entries must be '@aws.account', '@aws.region', or '@source.log'"
+    expression: "this.emit_system_fields.all(f, f in ['@aws.account', '@aws.region', '@source.log'])"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformer is an ordered pipeline of processors that
+// CloudWatch Logs applies to every event at ingestion time. Processors run
+// one after another in list order; each entry carries exactly ONE processor.
+//
+// Pipeline rules (the PutTransformer contract, enforced at validation time):
+// - 1 to 20 processors.
+// - The FIRST processor must be a parser: parse_json, grok, csv,
+//   parse_key_value, or one of the vended-log parsers.
+// - add_keys, copy_value, and grok may each appear at most once.
+// - parse_json, parse_key_value, and csv may each appear at most 5 times.
+// - Each vended-log parser (parse_cloudfront, parse_postgres, parse_route53,
+//   parse_to_ocsf, parse_vpc, parse_waf) may appear at most once and, when
+//   present, must be the first processor.
+message AwsCloudwatchLogGroupTransformer {
+  // The processor pipeline, applied in order. Each entry configures exactly
+  // one processor.
+  repeated AwsCloudwatchLogGroupTransformerProcessor processors = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 20
+  ];
+
+  // The first processor must be a parser — AWS rejects pipelines that start
+  // with a mutate-style processor.
+  option (buf.validate.message).cel = {
+    id: "first_processor_is_parser"
+    message: "the first processor must be a parser: parse_json, grok, csv, parse_key_value, parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, or parse_waf"
+    expression: "size(this.processors) == 0 || has(this.processors[0].parse_json) || has(this.processors[0].grok) || has(this.processors[0].csv) || has(this.processors[0].parse_key_value) || has(this.processors[0].parse_cloudfront) || has(this.processors[0].parse_postgres) || has(this.processors[0].parse_route53) || has(this.processors[0].parse_to_ocsf) || has(this.processors[0].parse_vpc) || has(this.processors[0].parse_waf)"
+  };
+
+  // add_keys, copy_value, and grok are single-use processors.
+  option (buf.validate.message).cel = {
+    id: "single_use_processors_max_once"
+    message: "add_keys, copy_value, and grok may each appear at most once per transformer"
+    expression: "size(this.processors.filter(p, has(p.add_keys))) <= 1 && size(this.processors.filter(p, has(p.copy_value))) <= 1 && size(this.processors.filter(p, has(p.grok))) <= 1"
+  };
+
+  // parse_json, parse_key_value, and csv are capped at 5 uses each.
+  option (buf.validate.message).cel = {
+    id: "configurable_parsers_max_five"
+    message: "parse_json, parse_key_value, and csv may each appear at most 5 times per transformer"
+    expression: "size(this.processors.filter(p, has(p.parse_json))) <= 5 && size(this.processors.filter(p, has(p.parse_key_value))) <= 5 && size(this.processors.filter(p, has(p.csv))) <= 5"
+  };
+
+  // Each vended-log parser may appear at most once per transformer.
+  option (buf.validate.message).cel = {
+    id: "vended_parsers_single_use"
+    message: "each vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) may appear at most once per transformer"
+    expression: "size(this.processors.filter(p, has(p.parse_cloudfront))) <= 1 && size(this.processors.filter(p, has(p.parse_postgres))) <= 1 && size(this.processors.filter(p, has(p.parse_route53))) <= 1 && size(this.processors.filter(p, has(p.parse_to_ocsf))) <= 1 && size(this.processors.filter(p, has(p.parse_vpc))) <= 1 && size(this.processors.filter(p, has(p.parse_waf))) <= 1"
+  };
+
+  // A vended-log parser, when present, must be the first processor.
+  option (buf.validate.message).cel = {
+    id: "vended_parser_must_be_first"
+    message: "a vended-log parser (parse_cloudfront, parse_postgres, parse_route53, parse_to_ocsf, parse_vpc, parse_waf) must be the first processor in the pipeline"
+    expression: "size(this.processors) == 0 || ((!this.processors.exists(p, has(p.parse_cloudfront)) || has(this.processors[0].parse_cloudfront)) && (!this.processors.exists(p, has(p.parse_postgres)) || has(this.processors[0].parse_postgres)) && (!this.processors.exists(p, has(p.parse_route53)) || has(this.processors[0].parse_route53)) && (!this.processors.exists(p, has(p.parse_to_ocsf)) || has(this.processors[0].parse_to_ocsf)) && (!this.processors.exists(p, has(p.parse_vpc)) || has(this.processors[0].parse_vpc)) && (!this.processors.exists(p, has(p.parse_waf)) || has(this.processors[0].parse_waf)))"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerProcessor is one step in a transformer
+// pipeline. Exactly ONE of the processor fields must be set — the field name
+// selects the processor type.
+message AwsCloudwatchLogGroupTransformerProcessor {
+  // Adds new key-value pairs to the log event. Single-use per transformer.
+  AwsCloudwatchLogGroupTransformerAddKeys add_keys = 1;
+
+  // Copies values from existing keys to new keys. Single-use per transformer.
+  AwsCloudwatchLogGroupTransformerCopyValue copy_value = 2;
+
+  // Parses comma-separated values into columns. Counts as a parser (may be
+  // the pipeline's first processor). Up to 5 per transformer.
+  AwsCloudwatchLogGroupTransformerCsv csv = 3;
+
+  // Converts a datetime string into a target format.
+  AwsCloudwatchLogGroupTransformerDateTimeConverter date_time_converter = 4;
+
+  // Deletes keys from the log event.
+  AwsCloudwatchLogGroupTransformerDeleteKeys delete_keys = 5;
+
+  // Parses unstructured text with a grok pattern. Counts as a parser.
+  // Single-use per transformer.
+  AwsCloudwatchLogGroupTransformerGrok grok = 6;
+
+  // Converts a list of key-value objects into a map.
+  AwsCloudwatchLogGroupTransformerListToMap list_to_map = 7;
+
+  // Converts the values of the given keys to lowercase.
+  AwsCloudwatchLogGroupTransformerWithKeys lower_case_string = 8;
+
+  // Moves values from one key to another.
+  AwsCloudwatchLogGroupTransformerMoveKeys move_keys = 9;
+
+  // Parses CloudFront vended access logs into JSON fields. Must be the first
+  // processor when present; single-use per transformer.
+  AwsCloudwatchLogGroupTransformerVendedLogParser parse_cloudfront = 10;
+
+  // Parses JSON-format log events. Counts as a parser. Up to 5 per
+  // transformer.
+  AwsCloudwatchLogGroupTransformerParseJson parse_json = 11;
+
+  // Parses a field into key-value pairs. Counts as a parser. Up to 5 per
+  // transformer.
+  AwsCloudwatchLogGroupTransformerParseKeyValue parse_key_value = 12;
+
+  // Parses RDS for PostgreSQL vended logs into JSON fields. Must be the first
+  // processor when present; single-use per transformer.
+  AwsCloudwatchLogGroupTransformerVendedLogParser parse_postgres = 13;
+
+  // Parses Route 53 vended logs into JSON fields. Must be the first processor
+  // when present; single-use per transformer.
+  AwsCloudwatchLogGroupTransformerVendedLogParser parse_route53 = 14;
+
+  // Converts log events into Open Cybersecurity Schema Framework (OCSF)
+  // events. Must be the first processor when present; single-use per
+  // transformer.
+  AwsCloudwatchLogGroupTransformerParseToOcsf parse_to_ocsf = 15;
+
+  // Parses Amazon VPC flow logs into JSON fields. Must be the first processor
+  // when present; single-use per transformer.
+  AwsCloudwatchLogGroupTransformerVendedLogParser parse_vpc = 16;
+
+  // Parses AWS WAF vended logs into JSON fields. Must be the first processor
+  // when present; single-use per transformer.
+  AwsCloudwatchLogGroupTransformerVendedLogParser parse_waf = 17;
+
+  // Renames keys in the log event.
+  AwsCloudwatchLogGroupTransformerRenameKeys rename_keys = 18;
+
+  // Splits field values into arrays using a delimiter.
+  AwsCloudwatchLogGroupTransformerSplitString split_string = 19;
+
+  // Replaces regex matches in field values with a replacement string.
+  AwsCloudwatchLogGroupTransformerSubstituteString substitute_string = 20;
+
+  // Trims leading and trailing whitespace from the given keys' values.
+  AwsCloudwatchLogGroupTransformerWithKeys trim_string = 21;
+
+  // Converts field values to a different data type.
+  AwsCloudwatchLogGroupTransformerTypeConverter type_converter = 22;
+
+  // Converts the values of the given keys to uppercase.
+  AwsCloudwatchLogGroupTransformerWithKeys upper_case_string = 23;
+
+  // Exactly one processor type per pipeline entry — the AWS Processor object
+  // is a union.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_processor"
+    message: "exactly one processor type must be set per pipeline entry"
+    expression: "(has(this.add_keys) ? 1 : 0) + (has(this.copy_value) ? 1 : 0) + (has(this.csv) ? 1 : 0) + (has(this.date_time_converter) ? 1 : 0) + (has(this.delete_keys) ? 1 : 0) + (has(this.grok) ? 1 : 0) + (has(this.list_to_map) ? 1 : 0) + (has(this.lower_case_string) ? 1 : 0) + (has(this.move_keys) ? 1 : 0) + (has(this.parse_cloudfront) ? 1 : 0) + (has(this.parse_json) ? 1 : 0) + (has(this.parse_key_value) ? 1 : 0) + (has(this.parse_postgres) ? 1 : 0) + (has(this.parse_route53) ? 1 : 0) + (has(this.parse_to_ocsf) ? 1 : 0) + (has(this.parse_vpc) ? 1 : 0) + (has(this.parse_waf) ? 1 : 0) + (has(this.rename_keys) ? 1 : 0) + (has(this.split_string) ? 1 : 0) + (has(this.substitute_string) ? 1 : 0) + (has(this.trim_string) ? 1 : 0) + (has(this.type_converter) ? 1 : 0) + (has(this.upper_case_string) ? 1 : 0) == 1"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerAddKeys adds new key-value pairs to the
+// log event.
+message AwsCloudwatchLogGroupTransformerAddKeys {
+  // Keys to add. 1-5 entries.
+  repeated AwsCloudwatchLogGroupTransformerAddKeysEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerAddKeysEntry is one key to add.
+message AwsCloudwatchLogGroupTransformerAddKeysEntry {
+  // Key of the new entry. 1-128 characters. Use dot notation for nested
+  // fields (e.g. "metadata.environment").
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Value of the new entry. 1-256 characters.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 256
+  ];
+
+  // When true, overwrites the value if the key already exists in the log
+  // event. Defaults to false (existing values win).
+  bool overwrite_if_exists = 3;
+}
+
+// AwsCloudwatchLogGroupTransformerCopyValue copies values from existing keys
+// to new keys.
+message AwsCloudwatchLogGroupTransformerCopyValue {
+  // Values to copy. 1-5 entries.
+  repeated AwsCloudwatchLogGroupTransformerCopyValueEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerCopyValueEntry is one value copy.
+message AwsCloudwatchLogGroupTransformerCopyValueEntry {
+  // Key to copy from. 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Key to copy the value to. 1-128 characters.
+  string target = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // When true, overwrites the value if the target key already exists.
+  // Defaults to false.
+  bool overwrite_if_exists = 3;
+}
+
+// AwsCloudwatchLogGroupTransformerCsv parses comma-separated values from the
+// log event into columns.
+message AwsCloudwatchLogGroupTransformerCsv {
+  // Names for the parsed columns. When omitted, default names
+  // (column_1, column_2, ...) are used. Up to 100 names, each 1-128
+  // characters.
+  repeated string columns = 1 [(buf.validate.field).repeated.max_items = 100];
+
+  // Character separating columns in the source value. Defaults to ",".
+  // 1-2 characters.
+  string delimiter = 2 [(buf.validate.field).string.max_len = 2];
+
+  // Character used as a text qualifier for a single column of data.
+  // Defaults to '"'. Exactly 1 character.
+  string quote_character = 3 [(buf.validate.field).string.max_len = 1];
+
+  // Path to the field to parse. When omitted, the whole @message is
+  // processed. 1-128 characters.
+  string source = 4 [(buf.validate.field).string.max_len = 128];
+
+  // Column names must be 1-128 characters each.
+  option (buf.validate.message).cel = {
+    id: "csv_column_names_length"
+    message: "each csv column name must be 1-128 characters"
+    expression: "this.columns.all(c, size(c) >= 1 && size(c) <= 128)"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerDateTimeConverter converts a datetime
+// string into a target format.
+message AwsCloudwatchLogGroupTransformerDateTimeConverter {
+  // Key holding the datetime string to convert. 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Key to store the converted result in. 1-128 characters.
+  string target = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Patterns to match against the source value (Java DateTimeFormatter
+  // syntax, e.g. "dd/MMM/yyyy:HH:mm:ss" — or "epoch" for epoch timestamps).
+  // 1-5 patterns.
+  repeated string match_patterns = 3 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+
+  // Locale of the source field (e.g. "en-US"). Defaults to locale.ROOT.
+  string locale = 4;
+
+  // Time zone of the source field (e.g. "America/Los_Angeles"). Defaults
+  // to UTC.
+  string source_timezone = 5;
+
+  // Datetime format for the converted value in the target field. Defaults to
+  // "yyyy-MM-dd'T'HH:mm:ss.SSS'Z". 1-64 characters.
+  string target_format = 6 [(buf.validate.field).string.max_len = 64];
+
+  // Time zone of the target field. Defaults to UTC.
+  string target_timezone = 7;
+
+  // match_patterns entries must be non-empty.
+  option (buf.validate.message).cel = {
+    id: "date_time_match_patterns_non_empty"
+    message: "each match_patterns entry must be non-empty"
+    expression: "this.match_patterns.all(p, size(p) >= 1)"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerDeleteKeys deletes keys from the log
+// event.
+message AwsCloudwatchLogGroupTransformerDeleteKeys {
+  // Keys to delete. 1-5 keys, each non-empty.
+  repeated string with_keys = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+
+  // with_keys entries must be non-empty.
+  option (buf.validate.message).cel = {
+    id: "delete_keys_non_empty"
+    message: "each with_keys entry must be non-empty"
+    expression: "this.with_keys.all(k, size(k) >= 1)"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerGrok parses unstructured text using grok
+// pattern matching.
+message AwsCloudwatchLogGroupTransformerGrok {
+  // Grok pattern to match against the log event (e.g.
+  // "%{COMMONAPACHELOG}" or a composition of named grok patterns).
+  // 1-512 characters.
+  string match = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 512
+  ];
+
+  // Path to the field to parse. When omitted, the whole @message is
+  // processed. 1-128 characters.
+  string source = 2 [(buf.validate.field).string.max_len = 128];
+}
+
+// AwsCloudwatchLogGroupTransformerListToMap converts a list of key-value
+// objects into a map keyed by a chosen field.
+message AwsCloudwatchLogGroupTransformerListToMap {
+  // Key of the field holding the list of objects to convert.
+  // 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Field within each source object whose value becomes a key in the
+  // generated map. 1-128 characters.
+  string key = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Field within each source object whose value is placed into the map's
+  // values. When omitted, the whole source object becomes the value.
+  // 1-128 characters.
+  string value_key = 3 [(buf.validate.field).string.max_len = 128];
+
+  // Key of the field that will hold the generated map. When omitted, the
+  // map is placed under the root node. 1-128 characters.
+  string target = 4 [(buf.validate.field).string.max_len = 128];
+
+  // When true, lists of values in the generated map are flattened into
+  // single items using flattened_element.
+  bool flatten = 5;
+
+  // Which element to keep when flattening: "first" or "last". Required when
+  // flatten is true.
+  string flattened_element = 6;
+
+  // flattened_element must be a valid value when set.
+  option (buf.validate.message).cel = {
+    id: "flattened_element_valid_values"
+    message: "flattened_element must be 'first' or 'last' when set"
+    expression: "this.flattened_element == '' || this.flattened_element in ['first', 'last']"
+  };
+
+  // flatten requires flattened_element to say which element survives.
+  option (buf.validate.message).cel = {
+    id: "flatten_requires_flattened_element"
+    message: "flattened_element is required when flatten is true"
+    expression: "!this.flatten || this.flattened_element != ''"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerWithKeys applies a string operation
+// (lowercase, uppercase, or trim — selected by the processor field it sits
+// under) to the values of the given keys.
+message AwsCloudwatchLogGroupTransformerWithKeys {
+  // Keys whose values the operation applies to. 1-10 keys, each non-empty.
+  repeated string with_keys = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 10
+  ];
+
+  // with_keys entries must be non-empty.
+  option (buf.validate.message).cel = {
+    id: "with_keys_non_empty"
+    message: "each with_keys entry must be non-empty"
+    expression: "this.with_keys.all(k, size(k) >= 1)"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerMoveKeys moves values from one key to
+// another (the source key is removed).
+message AwsCloudwatchLogGroupTransformerMoveKeys {
+  // Keys to move. 1-5 entries.
+  repeated AwsCloudwatchLogGroupTransformerMoveKeysEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerMoveKeysEntry is one key move.
+message AwsCloudwatchLogGroupTransformerMoveKeysEntry {
+  // Key to move. 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Key to move the value to. 1-128 characters.
+  string target = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // When true, overwrites the value if the target key already exists.
+  // Defaults to false.
+  bool overwrite_if_exists = 3;
+}
+
+// AwsCloudwatchLogGroupTransformerVendedLogParser parses an AWS vended log
+// format (CloudFront, RDS PostgreSQL, Route 53, VPC flow logs, or AWS WAF —
+// selected by the processor field it sits under) into JSON fields.
+message AwsCloudwatchLogGroupTransformerVendedLogParser {
+  // Source field to parse. The only allowed value is "@message"; when
+  // omitted, the whole log message is processed.
+  string source = 1;
+
+  // Vended-log parsers can only read the raw message.
+  option (buf.validate.message).cel = {
+    id: "vended_parser_source_is_message"
+    message: "source must be '@message' when set — vended-log parsers can only parse the raw log message"
+    expression: "this.source == '' || this.source == '@message'"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerParseJson parses JSON-format log events
+// into fields.
+message AwsCloudwatchLogGroupTransformerParseJson {
+  // Path to the field to parse. Defaults to "@message". 1-128 characters.
+  string source = 1 [(buf.validate.field).string.max_len = 128];
+
+  // Location to put the parsed key-value pairs. When omitted, they are
+  // placed under the root node. 1-128 characters.
+  string destination = 2 [(buf.validate.field).string.max_len = 128];
+}
+
+// AwsCloudwatchLogGroupTransformerParseKeyValue parses a field into
+// key-value pairs.
+message AwsCloudwatchLogGroupTransformerParseKeyValue {
+  // Path to the field to parse. Defaults to "@message". 1-128 characters.
+  string source = 1 [(buf.validate.field).string.max_len = 128];
+
+  // Destination field for the extracted key-value pairs. 1-128 characters.
+  string destination = 2 [(buf.validate.field).string.max_len = 128];
+
+  // Delimiter between key-value pairs in the source (e.g. ";"). Defaults
+  // to "&". 1-128 characters.
+  string field_delimiter = 3 [(buf.validate.field).string.max_len = 128];
+
+  // Delimiter between the key and the value within a pair (e.g. ":").
+  // Defaults to "=". 1-128 characters.
+  string key_value_delimiter = 4 [(buf.validate.field).string.max_len = 128];
+
+  // Prefix added to all transformed keys. 1-128 characters.
+  string key_prefix = 5 [(buf.validate.field).string.max_len = 128];
+
+  // Value inserted when a pair cannot be split successfully.
+  // 1-128 characters.
+  string non_match_value = 6 [(buf.validate.field).string.max_len = 128];
+
+  // When true, overwrites the value if the destination key already exists.
+  // Defaults to false.
+  bool overwrite_if_exists = 7;
+}
+
+// AwsCloudwatchLogGroupTransformerParseToOcsf converts log events into Open
+// Cybersecurity Schema Framework (OCSF) events.
+message AwsCloudwatchLogGroupTransformerParseToOcsf {
+  // Service or process producing the log events. Valid values:
+  // "CloudTrail", "Route53Resolver", "VPCFlow", "EKSAudit", "AWSWAF".
+  string event_source = 1 [(buf.validate.field).required = true];
+
+  // OCSF schema version for the transformed events. Valid values: "V1.1",
+  // "V1.5".
+  string ocsf_version = 2 [(buf.validate.field).required = true];
+
+  // Source field to parse. The only allowed value is "@message"; when
+  // omitted, the whole log message is processed.
+  string source = 3;
+
+  // event_source must be a supported log source.
+  option (buf.validate.message).cel = {
+    id: "ocsf_event_source_valid_values"
+    message: "event_source must be one of: CloudTrail, Route53Resolver, VPCFlow, EKSAudit, AWSWAF"
+    expression: "this.event_source in ['CloudTrail', 'Route53Resolver', 'VPCFlow', 'EKSAudit', 'AWSWAF']"
+  };
+
+  // ocsf_version must be a supported schema version.
+  option (buf.validate.message).cel = {
+    id: "ocsf_version_valid_values"
+    message: "ocsf_version must be 'V1.1' or 'V1.5'"
+    expression: "this.ocsf_version in ['V1.1', 'V1.5']"
+  };
+
+  // OCSF conversion can only read the raw message.
+  option (buf.validate.message).cel = {
+    id: "ocsf_source_is_message"
+    message: "source must be '@message' when set — OCSF conversion can only parse the raw log message"
+    expression: "this.source == '' || this.source == '@message'"
+  };
+}
+
+// AwsCloudwatchLogGroupTransformerRenameKeys renames keys in the log event.
+message AwsCloudwatchLogGroupTransformerRenameKeys {
+  // Keys to rename. 1-5 entries.
+  repeated AwsCloudwatchLogGroupTransformerRenameKeysEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerRenameKeysEntry is one key rename.
+message AwsCloudwatchLogGroupTransformerRenameKeysEntry {
+  // Key to rename. 1-128 characters.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // New name for the key. 1-128 characters.
+  string rename_to = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // When true, overwrites the value if the new key name already exists.
+  // Defaults to false.
+  bool overwrite_if_exists = 3;
+}
+
+// AwsCloudwatchLogGroupTransformerSplitString splits field values into
+// arrays using a delimiter.
+message AwsCloudwatchLogGroupTransformerSplitString {
+  // Fields to split. 1-10 entries.
+  repeated AwsCloudwatchLogGroupTransformerSplitStringEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 10
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerSplitStringEntry is one field split.
+message AwsCloudwatchLogGroupTransformerSplitStringEntry {
+  // Key of the field to split. 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Separator characters to split the string on. 1-128 characters.
+  string delimiter = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerSubstituteString replaces regex matches in
+// field values with a replacement string.
+message AwsCloudwatchLogGroupTransformerSubstituteString {
+  // Fields to substitute. 1-10 entries.
+  repeated AwsCloudwatchLogGroupTransformerSubstituteStringEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 10
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerSubstituteStringEntry is one field
+// substitution.
+message AwsCloudwatchLogGroupTransformerSubstituteStringEntry {
+  // Key of the field to modify. 1-128 characters.
+  string source = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Regular expression whose matches are replaced. 1-128 characters.
+  string from = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Replacement string for each match. 1-128 characters.
+  string to = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerTypeConverter converts field values to a
+// different data type.
+message AwsCloudwatchLogGroupTransformerTypeConverter {
+  // Fields to convert. 1-5 entries.
+  repeated AwsCloudwatchLogGroupTransformerTypeConverterEntry entries = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5
+  ];
+}
+
+// AwsCloudwatchLogGroupTransformerTypeConverterEntry is one field type
+// conversion.
+message AwsCloudwatchLogGroupTransformerTypeConverterEntry {
+  // Key whose value is converted. 1-128 characters.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).string.max_len = 128
+  ];
+
+  // Type to convert the value to. Valid values: "boolean", "integer",
+  // "double", "string".
+  string type = 2 [(buf.validate.field).required = true];
+
+  // type must be a supported conversion target.
+  option (buf.validate.message).cel = {
+    id: "type_converter_valid_types"
+    message: "type must be one of: boolean, integer, double, string"
+    expression: "this.type in ['boolean', 'integer', 'double', 'string']"
   };
 }

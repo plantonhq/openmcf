@@ -117,6 +117,15 @@ func buildOpenSearchS3Config(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Config)
 			args.BufferingSize = pulumi.IntPtr(int(b.SizeInMbs))
 		}
 	}
+	// CloudWatch logging for the backup S3 leg -- distinct from the
+	// destination-level logging options.
+	if log := cfg.Logging; log != nil && log.Enabled {
+		args.CloudwatchLoggingOptions = &kinesis.FirehoseDeliveryStreamOpensearchConfigurationS3ConfigurationCloudwatchLoggingOptionsArgs{
+			Enabled:       pulumi.BoolPtr(true),
+			LogGroupName:  pulumi.StringPtr(log.LogGroupName),
+			LogStreamName: pulumi.StringPtr(log.LogStreamName),
+		}
+	}
 	return args
 }
 

@@ -205,6 +205,22 @@ message GcpGlobalForwardingRuleSpec {
     (buf.validate.field).double.lte = 100
   ];
 
+  // Deletion policy for the global forwarding rule — what happens on
+  // destroy:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the frontend is deleted; the reserved IP it served stays
+  //                reserved (its own kind's policy governs it), but traffic
+  //                to that IP stops routing the moment the rule is gone
+  //   "PREVENT" -- destroy FAILS; protects the entry point of a live load
+  //                balancer chain
+  //   "ABANDON" -- the rule is removed from management but keeps serving
+  //                traffic in GCP
+  string deletion_policy = 19 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   option (buf.validate.message).cel = {
     id: "network_requires_internal_or_psc_scheme"
     message: "network only applies to internal or Private Service Connect frontends — external load balancers live on Google's edge, not in a VPC; set load_balancing_scheme to INTERNAL_MANAGED, INTERNAL_SELF_MANAGED, or NONE, or remove network"

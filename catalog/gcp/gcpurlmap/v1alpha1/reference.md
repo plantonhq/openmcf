@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpUrlMapSpec defines a global Compute Engine URL map — the L7 routing brain
 of a global external Application Load Balancer (and of Traffic Director /
 cross-region internal ALBs). A URL map matches each request's host and path
@@ -47,10 +49,27 @@ spec:
 
   description: Routes www.example.com traffic to the web backend
 
+  # What a destroy may do: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
+
   # Exactly one top-level default target. Here: send unmatched traffic to
   # the web backend service (reference a GcpBackendService or self-link).
   defaultService:
     value: https://www.googleapis.com/compute/v1/projects/my-gcp-project-123/global/backendServices/web-backend
+
+  # A route action may accompany a plain service target when it carries
+  # only sub-policies (no weighted split): here the default route gets an
+  # edge-enforced time budget and deliberate retries.
+  defaultRouteAction:
+    timeout:
+      seconds: 15
+    retryPolicy:
+      numRetries: 2
+      retryConditions:
+        - 5xx
+        - connect-failure
+      perTryTimeout:
+        seconds: 5
 
   # Host-based fan-out: map hosts to named path matchers.
   hostRules:
@@ -102,10 +121,83 @@ spec:
 | `spec.defaultRouteAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.defaultRouteAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.defaultRouteAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.defaultRouteAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.defaultRouteAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.defaultRouteAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.defaultRouteAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.defaultCustomErrorResponsePolicy` | `GcpUrlMapCustomErrorResponsePolicy` |  |  |  |
 | `spec.defaultCustomErrorResponsePolicy.errorService` | `string \| valueFrom` |  |  | GcpBackendBucket (`status.outputs.self_link`) |
 | `spec.defaultCustomErrorResponsePolicy.errorResponseRules` | `[]GcpUrlMapCustomErrorResponseRule` |  |  |  |
@@ -141,10 +233,83 @@ spec:
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].defaultRouteAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy` | `GcpUrlMapCustomErrorResponsePolicy` |  |  |  |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorService` | `string \| valueFrom` |  |  | GcpBackendBucket (`status.outputs.self_link`) |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorResponseRules` | `[]GcpUrlMapCustomErrorResponseRule` |  |  |  |
@@ -170,10 +335,83 @@ spec:
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].routeAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect` | `GcpUrlMapUrlRedirect` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect.hostRedirect` | `string` |  |  |  |
 | `spec.pathMatchers[].pathRules[].urlRedirect.httpsRedirect` | `bool` |  |  |  |
@@ -221,10 +459,83 @@ spec:
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices` | `[]GcpUrlMapWeightedBackendService` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].weight` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction` | `GcpUrlMapHeaderAction` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd` | `[]GcpUrlMapHeaderValue` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue` | `string` | yes |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove` | `[]string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite` | `GcpUrlMapUrlRewrite` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.hostRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.pathPrefixRewrite` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].routeAction.urlRewrite.pathTemplateRewrite` | `string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.timeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy` | `GcpUrlMapRetryPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.numRetries` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.retryConditions` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy` | `GcpUrlMapRequestMirrorPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService` | `string \| valueFrom` | yes |  | GcpBackendService (`status.outputs.self_link`) |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy` | `GcpUrlMapCorsPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowCredentials` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowMethods` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOriginRegexes` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOrigins` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.disabled` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.exposeHeaders` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.corsPolicy.maxAge` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy` | `GcpUrlMapFaultInjectionPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort` | `GcpUrlMapFaultAbort` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.httpStatus` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay` | `GcpUrlMapFaultDelay` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.percentage` | `double` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy` | `GcpUrlMapCachePolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheMode` | `string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCaching` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.requestCoalescing` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy` | `GcpUrlMapCacheKeyPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString` | `bool` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters` | `[]string` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.nanos` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy` | `[]GcpUrlMapNegativeCachingPolicy` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].code` | `int32` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl` | `GcpUrlMapDuration` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds` | `int64` |  |  |  |
+| `spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos` | `int32` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect` | `GcpUrlMapUrlRedirect` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect.hostRedirect` | `string` |  |  |  |
 | `spec.pathMatchers[].routeRules[].urlRedirect.httpsRedirect` | `bool` |  |  |  |
@@ -259,6 +570,7 @@ spec:
 | `spec.tests[].headers` | `[]GcpUrlMapTestHeader` |  |  |  |
 | `spec.tests[].headers[].name` | `string` | yes |  |  |
 | `spec.tests[].headers[].value` | `string` | yes |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -403,6 +715,89 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.defaultRouteAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.defaultRouteAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -439,6 +834,527 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.defaultRouteAction.timeout
+
+`GcpUrlMapDuration`
+
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
+### spec.defaultRouteAction.timeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.timeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
+### spec.defaultRouteAction.retryPolicy.numRetries
+
+`int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.defaultRouteAction.retryPolicy.retryConditions
+
+`[]string`
+
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
+### spec.defaultRouteAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.defaultRouteAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
+### spec.defaultRouteAction.corsPolicy.allowCredentials
+
+`bool`
+
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
+### spec.defaultRouteAction.corsPolicy.allowHeaders
+
+`[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowMethods
+
+`[]string`
+
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.allowOrigins
+
+`[]string`
+
+Exact origins allowed, e.g. "https://app.example.com".
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.disabled
+
+`bool`
+
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
+### spec.defaultRouteAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.corsPolicy.maxAge
+
+`int32`
+
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
+- rule: {"int32":{"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+HTTP status returned to aborted requests (200-599).
+
+- rule: http_status must be between 200 and 599
+
+### spec.defaultRouteAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+Percentage of requests aborted (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+Delay a percentage of requests by a fixed duration before forwarding.
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+How long delayed requests are held before forwarding.
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+Percentage of requests delayed (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.defaultRouteAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
+
+### spec.defaultRouteAction.maxStreamDuration.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.maxStreamDuration.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.defaultRouteAction.cachePolicy.cacheMode
+
+`string`
+
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCaching
+
+`bool`
+
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
+### spec.defaultRouteAction.cachePolicy.requestCoalescing
+
+`bool`
+
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+Include the request host in the cache key (distinct hosts cache
+separately).
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+Include the protocol (http/https) in the cache key.
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+Cookie names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+Header names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.defaultRouteAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.defaultRouteAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
+### spec.defaultRouteAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+How long responses with this status are cached.
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.defaultCustomErrorResponsePolicy
 
@@ -613,7 +1529,9 @@ table later.
 The named path matchers host rules point at — each owns the path-level
 routing (path_rules, route_rules, and its own default). Mutable.
 
-- rule: a path matcher may set at most one of default_service, default_url_redirect, or default_route_action
+- rule: a path matcher may set at most one default target: default_service, default_url_redirect, or default_route_action with weighted_backend_services (a route action carrying only sub-policies may accompany default_service)
+- rule: default_route_action and default_url_redirect are mutually exclusive — a redirect never reaches a backend
+- rule: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path matcher's default route action
 - rule: a path matcher uses either path_rules or route_rules, not both
 
 ### spec.pathMatchers[].name
@@ -727,6 +1645,89 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].defaultRouteAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -763,6 +1764,527 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].defaultRouteAction.timeout
+
+`GcpUrlMapDuration`
+
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
+### spec.pathMatchers[].defaultRouteAction.timeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.timeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.numRetries
+
+`int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.retryConditions
+
+`[]string`
+
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
+### spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowCredentials
+
+`bool`
+
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowHeaders
+
+`[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowMethods
+
+`[]string`
+
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.allowOrigins
+
+`[]string`
+
+Exact origins allowed, e.g. "https://app.example.com".
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.disabled
+
+`bool`
+
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.corsPolicy.maxAge
+
+`int32`
+
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+HTTP status returned to aborted requests (200-599).
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+Percentage of requests aborted (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+Delay a percentage of requests by a fixed duration before forwarding.
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+How long delayed requests are held before forwarding.
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+Percentage of requests delayed (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.maxStreamDuration.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheMode
+
+`string`
+
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCaching
+
+`bool`
+
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.requestCoalescing
+
+`bool`
+
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+Include the request host in the cache key (distinct hosts cache
+separately).
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+Include the protocol (http/https) in the cache key.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+Cookie names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+Header names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+How long responses with this status are cached.
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].defaultRouteAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].defaultCustomErrorResponsePolicy
 
@@ -910,7 +2432,9 @@ Header names to strip from the response before it returns to the client.
 Longest-prefix path rules: each maps a set of path patterns to a service,
 redirect, or route action. Evaluated after route_rules.
 
-- rule: a path rule must set exactly one of service, url_redirect, or route_action
+- rule: a path rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)
+- rule: route_action and url_redirect are mutually exclusive — a redirect never reaches a backend
+- rule: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path rule's route action
 
 ### spec.pathMatchers[].pathRules[].paths
 
@@ -965,6 +2489,89 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].pathRules[].routeAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -1001,6 +2608,527 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout
+
+`GcpUrlMapDuration`
+
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.timeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.numRetries
+
+`int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.retryConditions
+
+`[]string`
+
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
+### spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowCredentials
+
+`bool`
+
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowHeaders
+
+`[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowMethods
+
+`[]string`
+
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.allowOrigins
+
+`[]string`
+
+Exact origins allowed, e.g. "https://app.example.com".
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.disabled
+
+`bool`
+
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.corsPolicy.maxAge
+
+`int32`
+
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+HTTP status returned to aborted requests (200-599).
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+Percentage of requests aborted (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+Delay a percentage of requests by a fixed duration before forwarding.
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+How long delayed requests are held before forwarding.
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+Percentage of requests delayed (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.maxStreamDuration.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheMode
+
+`string`
+
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCaching
+
+`bool`
+
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.requestCoalescing
+
+`bool`
+
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+Include the request host in the cache key (distinct hosts cache
+separately).
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+Include the protocol (http/https) in the cache key.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+Cookie names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+Header names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+How long responses with this status are cached.
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].pathRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].pathRules[].urlRedirect
 
@@ -1118,7 +3246,8 @@ Priority-ordered route rules with rich header/query/path matching.
 Evaluated before path_rules. A path matcher uses either path_rules or
 route_rules, not both.
 
-- rule: a route rule must set exactly one of service, url_redirect, or route_action
+- rule: a route rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)
+- rule: route_action and url_redirect are mutually exclusive — a redirect never reaches a backend
 
 ### spec.pathMatchers[].routeRules[].priority
 
@@ -1371,6 +3500,89 @@ of all weights in the split; 0 drains this backend from the split.
 
 - rule: {"int32":{"lte":1000,"gte":0}}
 
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction
+
+`GcpUrlMapHeaderAction`
+
+Header mutations applied ONLY to the share of traffic sent to this
+backend — e.g. tag canary responses with an identifying header so
+clients and dashboards can tell which arm served them. Applied after
+the URL-map-level and route-level header actions.
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the request before it reaches the backend.
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.requestHeadersToRemove
+
+`[]string`
+
+Header names to strip from the request before it reaches the backend.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd
+
+`[]GcpUrlMapHeaderValue`
+
+Headers to add to the response before it returns to the client.
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerName
+
+`string` · required
+
+The header name (e.g. "X-Client-Geo").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].headerValue
+
+`string` · required
+
+The header value. May use load-balancer variables (e.g. "{client_region}").
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToAdd[].replace
+
+`bool`
+
+Replace an existing header of the same name (true) or append to it
+(false).
+
+### spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].headerAction.responseHeadersToRemove
+
+`[]string`
+
+Header names to strip from the response before it returns to the client.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
 ### spec.pathMatchers[].routeRules[].routeAction.urlRewrite
 
 `GcpUrlMapUrlRewrite`
@@ -1407,6 +3619,527 @@ default and path-rule route actions. Mutually exclusive with
 path_prefix_rewrite.
 
 - rule: {"string":{"maxLen":"1024"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout
+
+`GcpUrlMapDuration`
+
+Total time budget for the request, INCLUDING all retries (from the
+first byte of the request to the last byte of the response). Pair with
+retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+the whole exchange. Unset uses the backend service's own timeout.
+Not permitted when the route targets a redirect.
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.timeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy
+
+`GcpUrlMapRetryPolicy`
+
+Retry failed requests to the backend. Which failures count is chosen
+by retry_conditions; how long each attempt may run by per_try_timeout.
+Retries consume the overall timeout's budget — they never extend it.
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.numRetries
+
+`int32`
+
+Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+still spends the route's overall timeout budget.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.retryConditions
+
+`[]string`
+
+Which failures trigger a retry. 5xx (any 5xx or no response at all),
+gateway-error (502/503/504 only), connect-failure, retriable-4xx
+(currently only 409), refused-stream, and the gRPC status conditions
+cancelled, deadline-exceeded, resource-exhausted, unavailable.
+
+- rule: each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout
+
+`GcpUrlMapDuration`
+
+Time budget for EACH retry attempt (the route's timeout bounds the
+whole exchange across attempts). Unset uses the overall timeout for
+every attempt.
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.retryPolicy.perTryTimeout.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy
+
+`GcpUrlMapRequestMirrorPolicy`
+
+Mirror every matched request to a second backend service, fire-and-
+forget (responses from the mirror are discarded; the client sees only
+the primary's response). Useful for shadow-testing a new stack with
+production traffic — the mirror backend must be sized for the full
+mirrored load.
+
+### spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService
+
+`string | valueFrom` · required
+
+The backend service receiving the mirrored copy of every matched
+request. Reference a GcpBackendService or provide a self-link
+directly. Responses from this backend are discarded.
+
+- references: GcpBackendService (`status.outputs.self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpBackendService, name: <that resource's name>, fieldPath: status.outputs.self_link}} -- a bare string does not parse
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy
+
+`GcpUrlMapCorsPolicy`
+
+Answer cross-origin (CORS) preflights and stamp CORS headers at the
+load balancer, before requests reach the backend.
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowCredentials
+
+`bool`
+
+Sets Access-Control-Allow-Credentials: allow requests carrying
+credentials (cookies, authorization headers). Default false.
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowHeaders
+
+`[]string`
+
+Headers the client may send (Access-Control-Allow-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowMethods
+
+`[]string`
+
+Methods the client may use (Access-Control-Allow-Methods), e.g.
+["GET", "POST", "OPTIONS"].
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOriginRegexes
+
+`[]string`
+
+Regular expressions matching allowed origins; a request origin is
+allowed when it matches any listed regex or exact allow_origins entry.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.allowOrigins
+
+`[]string`
+
+Exact origins allowed, e.g. "https://app.example.com".
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.disabled
+
+`bool`
+
+Disable this CORS policy without deleting its configuration (true
+turns the policy off). Default false — the policy is in effect.
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.exposeHeaders
+
+`[]string`
+
+Headers the browser may read from the response
+(Access-Control-Expose-Headers).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.corsPolicy.maxAge
+
+`int32`
+
+Seconds a browser may cache the preflight response
+(Access-Control-Max-Age).
+
+- rule: {"int32":{"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy
+
+`GcpUrlMapFaultInjectionPolicy`
+
+Deliberately inject failures (aborts with a chosen status, fixed
+delays) into a percentage of matched requests — chaos/resilience
+testing of the CLIENTS of this route. Never leave enabled on a
+production default route: the injected failures are real to callers.
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort
+
+`GcpUrlMapFaultAbort`
+
+Abort a percentage of requests with a fixed HTTP status, before they
+reach the backend.
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.httpStatus
+
+`int32`
+
+HTTP status returned to aborted requests (200-599).
+
+- rule: http_status must be between 200 and 599
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.abort.percentage
+
+`double`
+
+Percentage of requests aborted (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay
+
+`GcpUrlMapFaultDelay`
+
+Delay a percentage of requests by a fixed duration before forwarding.
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay
+
+`GcpUrlMapDuration`
+
+How long delayed requests are held before forwarding.
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.fixedDelay.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.faultInjectionPolicy.delay.percentage
+
+`double`
+
+Percentage of requests delayed (0.0-100.0).
+
+- rule: {"double":{"lte":100,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration
+
+`GcpUrlMapDuration`
+
+Upper bound on how long a STREAM on this route may stay open
+(gRPC/long-poll streams — distinct from timeout, which bounds a
+request/response exchange). Live API truth: GCP rejects this field
+unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+(Traffic Director) load-balancing scheme ("Max stream duration is
+only supported when UrlMap is used with BackendService whose Load
+Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+external application load balancers.
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.maxStreamDuration.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy
+
+`GcpUrlMapCachePolicy`
+
+Cloud CDN caching for the routes using this action — overrides the
+backend service's cdn_policy for matching traffic only. Takes effect
+only when the target backend service (or bucket) has CDN enabled;
+GCP ignores it otherwise.
+
+- rule: with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheMode
+
+`string`
+
+What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+content types and honors origin cache headers for the rest;
+USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+cacheable (TTL fields must be unset — the origin controls lifetimes);
+FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+combine with private or per-user content).
+
+- rule: cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheBypassRequestHeaderNames
+
+`[]string`
+
+Requests carrying any of these headers bypass the cache and go
+straight to the origin (e.g. a debug or authorization header).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCaching
+
+`bool`
+
+Cache negative responses (404, 410, ...) so repeated misses do not
+hammer the backends. Pair with negative_caching_policy to set
+per-status TTLs.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.requestCoalescing
+
+`bool`
+
+Collapse concurrent cache-fill requests for the same key into one
+origin fetch. Default true on GCP's side.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy
+
+`GcpUrlMapCacheKeyPolicy`
+
+What forms the cache key — trim protocol, host, query string, or
+select specific query parameters, headers, and cookies.
+
+- rule: included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.excludedQueryParameters
+
+`[]string`
+
+Query parameters EXCLUDED from the cache key (everything else is
+included). Mutually exclusive with included_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeHost
+
+`bool`
+
+Include the request host in the cache key (distinct hosts cache
+separately).
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeProtocol
+
+`bool`
+
+Include the protocol (http/https) in the cache key.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includeQueryString
+
+`bool`
+
+Include the entire query string in the cache key. When false, the
+included/excluded parameter lists refine what participates.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedCookieNames
+
+`[]string`
+
+Cookie names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedHeaderNames
+
+`[]string`
+
+Header names whose values join the cache key.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.cacheKeyPolicy.includedQueryParameters
+
+`[]string`
+
+Query parameters INCLUDED in the cache key (everything else is
+ignored). Mutually exclusive with excluded_query_parameters.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl
+
+`GcpUrlMapDuration`
+
+Max lifetime in browsers and downstream caches (sets the max-age
+clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.clientTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl
+
+`GcpUrlMapDuration`
+
+Edge-cache lifetime for responses without their own cache headers.
+Not respected with cache_mode USE_ORIGIN_HEADERS.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.defaultTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl
+
+`GcpUrlMapDuration`
+
+Upper bound on any edge-cache lifetime, capping even origin-supplied
+max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+FORCE_CACHE_ALL.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.maxTtl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale
+
+`GcpUrlMapDuration`
+
+How long stale content may still be served while revalidating in the
+background (up to 1 day).
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.serveWhileStale.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy
+
+`[]GcpUrlMapNegativeCachingPolicy`
+
+Per-status TTLs for cached negative responses; only meaningful with
+negative_caching enabled.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].code
+
+`int32`
+
+The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+
+- rule: code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl
+
+`GcpUrlMapDuration`
+
+How long responses with this status are cached.
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.seconds
+
+`int64`
+
+Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+
+- rule: {"int64":{"lte":"315576000000","gte":"0"}}
+
+### spec.pathMatchers[].routeRules[].routeAction.cachePolicy.negativeCachingPolicy[].ttl.nanos
+
+`int32`
+
+Fraction of a second at nanosecond resolution (0 to 999,999,999).
+Durations under one second use seconds = 0 and a positive nanos.
+
+- rule: {"int32":{"lte":999999999,"gte":0}}
 
 ### spec.pathMatchers[].routeRules[].urlRedirect
 
@@ -1680,10 +4413,24 @@ Header value.
 
 - rule: {"required":true}
 
+### spec.deletionPolicy
+
+`string`
+
+What `terraform destroy` (or a stack teardown) may do to the URL map.
+DELETE (the default when empty) allows deletion; PREVENT fails the
+destroy outright — the URL map and anything orchestrating its teardown
+stop there; ABANDON removes it from state without deleting it in GCP
+(the map keeps serving, unmanaged). Client-side only — never sent to
+the GCP API.
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `exactly_one_default_target`: set exactly one default target: default_service, default_url_redirect, or default_route_action (with weighted_backend_services)
 - `default_route_action_conflicts_redirect`: default_route_action and default_url_redirect are mutually exclusive
+- `default_no_path_template_rewrite`: path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in the URL map's default route action
 
 ## Outputs
 
@@ -1704,13 +4451,17 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.defaultRouteAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.defaultRouteAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.defaultCustomErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].defaultRouteAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].defaultRouteAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].defaultCustomErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].pathRules[].routeAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].pathRules[].routeAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].pathRules[].customErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].service` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].routeAction.weightedBackendServices[].backendService` | GcpBackendService | `status.outputs.self_link` |
+| `spec.pathMatchers[].routeRules[].routeAction.requestMirrorPolicy.backendService` | GcpBackendService | `status.outputs.self_link` |
 | `spec.pathMatchers[].routeRules[].customErrorResponsePolicy.errorService` | GcpBackendBucket | `status.outputs.self_link` |
 
 ## Referenced By

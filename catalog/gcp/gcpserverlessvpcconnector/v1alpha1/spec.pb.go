@@ -91,9 +91,20 @@ type GcpServerlessVpcConnectorSpec struct {
 	// ceiling: instances × per-instance throughput for the machine type.
 	// Decreasing this value forces the connector to be REPLACED (brief
 	// egress outage); increasing it applies in place.
-	MaxInstances  *int32 `protobuf:"varint,9,opt,name=max_instances,json=maxInstances,proto3,oneof" json:"max_instances,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MaxInstances *int32 `protobuf:"varint,9,opt,name=max_instances,json=maxInstances,proto3,oneof" json:"max_instances,omitempty"`
+	// Deletion policy for the connector — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the connector is deleted (GCP tears down the forwarding
+	//	             fleet, ~3-5 minutes; serverless egress through it stops)
+	//	"PREVENT" -- destroy FAILS; protects the private-egress path every
+	//	             function and service in the region may depend on
+	//	"ABANDON" -- the connector is removed from management but keeps
+	//	             forwarding traffic in GCP
+	DeletionPolicy string `protobuf:"bytes,10,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpServerlessVpcConnectorSpec) Reset() {
@@ -189,6 +200,13 @@ func (x *GcpServerlessVpcConnectorSpec) GetMaxInstances() int32 {
 	return 0
 }
 
+func (x *GcpServerlessVpcConnectorSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 // GcpServerlessVpcConnectorSubnet points the connector at an existing /28
 // subnetwork created exclusively for it. Required for Shared VPC (the
 // subnet lives in the host project); also useful when network admins want
@@ -256,7 +274,7 @@ var File_catalog_gcp_gcpserverlessvpcconnector_v1alpha1_spec_proto protoreflect.
 
 const file_catalog_gcp_gcpserverlessvpcconnector_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"9catalog/gcp/gcpserverlessvpcconnector/v1alpha1/spec.proto\x122dev.planton.gcp.gcpserverlessvpcconnector.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcc\x0e\n" +
+	"9catalog/gcp/gcpserverlessvpcconnector/v1alpha1/spec.proto\x122dev.planton.gcp.gcpserverlessvpcconnector.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8a\x10\n" +
 	"\x1dGcpServerlessVpcConnectorSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x127\n" +
@@ -268,7 +286,10 @@ const file_catalog_gcp_gcpserverlessvpcconnector_v1alpha1_spec_proto_rawDesc = "
 	"\fmachine_type\x18\a \x01(\tB9\xbaH*\xd8\x01\x01r%R\x00R\bf1-microR\be2-microR\re2-standard-4\x92\xa6\x1d\be2-microR\vmachineType\x123\n" +
 	"\rmin_instances\x18\b \x01(\x05B\t\xbaH\x06\x1a\x04\x18\t(\x02H\x00R\fminInstances\x88\x01\x01\x123\n" +
 	"\rmax_instances\x18\t \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
-	"(\x03H\x01R\fmaxInstances\x88\x01\x01:\x87\b\xbaH\x83\b\x1a\x9e\x02\n" +
+	"(\x03H\x01R\fmaxInstances\x88\x01\x01\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\n" +
+	" \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy:\x87\b\xbaH\x83\b\x1a\x9e\x02\n" +
 	"\x1cplacement.network_xor_subnet\x12xchoose exactly one placement: network (with ipCidrRange) to carve a new /28, or subnet to use an existing /28 subnetwork\x1a\x83\x01(((has(this.network.value) && this.network.value != '') || has(this.network.value_from)) ? 1 : 0) + (has(this.subnet) ? 1 : 0) == 1\x1a\x8a\x02\n" +
 	"\x1fplacement.network_requires_cidr\x12qnetwork placement carves a dedicated range out of the VPC — set ipCidrRange to an unused /28 (e.g. 10.8.0.0/28)\x1at!((has(this.network.value) && this.network.value != '') || has(this.network.value_from)) || this.ip_cidr_range != ''\x1a\xf6\x01\n" +
 	"\x1fplacement.cidr_requires_network\x12^ipCidrRange only applies to network placement — set network, or use subnet placement instead\x1asthis.ip_cidr_range == '' || ((has(this.network.value) && this.network.value != '') || has(this.network.value_from))\x1a\xd9\x01\n" +

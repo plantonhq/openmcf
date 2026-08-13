@@ -205,7 +205,10 @@ message AwsCloudwatchAlarmSpec {
   // is an ARN — typically an SNS topic ARN, but can also be an Auto Scaling
   // policy, EC2 automation action, Lambda function, or SSM OpsItem.
   //
-  // Maximum 5 actions.
+  // Maximum 5 actions — AWS's quota is 5 actions per alarm state. (The
+  // provider caps only ok_actions and insufficient_data_actions; the missing
+  // cap on alarm_actions is provider looseness — the spec holds AWS's
+  // contract.)
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef alarm_actions = 17 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
@@ -442,6 +445,41 @@ message AwsCloudwatchAlarmSpec {
     message: "maximum 5 insufficient_data_actions allowed"
     expression: "size(this.insufficient_data_actions) <= 5"
   };
+
+  // threshold and threshold_metric_id are mutually exclusive — a static
+  // threshold and an anomaly-band threshold cannot both apply. Mirrors the
+  // provider's ConflictsWith; without this rule the modules would silently
+  // prefer threshold_metric_id.
+  option (buf.validate.message).cel = {
+    id: "threshold_conflicts_with_threshold_metric_id"
+    message: "threshold and threshold_metric_id are mutually exclusive — use a static threshold or an anomaly detection band, not both"
+    expression: "this.threshold == 0.0 || this.threshold_metric_id == ''"
+  };
+
+  // Metric-query mode carries the metric definition inside each query — the
+  // simple-metric fields conflict with metric_queries at plan time (the
+  // provider's ConflictsWith on every one of them).
+  option (buf.validate.message).cel = {
+    id: "metric_queries_forbid_simple_metric_fields"
+    message: "namespace, period, statistic, extended_statistic, dimensions, and unit must not be set together with metric_queries — define them inside each query's metric instead"
+    expression: "size(this.metric_queries) == 0 || (this.namespace == '' && this.period == 0 && this.statistic == '' && this.extended_statistic == '' && size(this.dimensions) == 0 && this.unit == '')"
+  };
+
+  // extended_statistic must be a valid percentile / trimmed-statistic form
+  // (the PutMetricAlarm ExtendedStatistic contract).
+  option (buf.validate.message).cel = {
+    id: "extended_statistic_format"
+    message: "extended_statistic must be a percentile or trimmed statistic, e.g. 'p95', 'tm99', 'IQM', 'TM(10%:90%)', 'PR(:300)'"
+    expression: "this.extended_statistic == '' || this.extended_statistic.matches('^((p|tm|wm|tc|ts)((\\\\d{1,2}(\\\\.\\\\d{1,2})?)|100)|IQM|(TM|WM|PR|TC|TS)\\\\((\\\\d+(\\\\.\\\\d+)?%?)?:(\\\\d+(\\\\.\\\\d+)?%?)?\\\\))$')"
+  };
+
+  // Metric namespaces must not start with a colon (the AWS Namespace
+  // contract).
+  option (buf.validate.message).cel = {
+    id: "namespace_no_leading_colon"
+    message: "namespace must not start with a colon"
+    expression: "this.namespace == '' || !this.namespace.startsWith(':')"
+  };
 }
 
 // AwsCloudwatchAlarmMetricQuery defines a single metric query within a metric
@@ -557,6 +595,22 @@ message AwsCloudwatchAlarmMetricQueryMetric {
     id: "metric_period_valid_values"
     message: "period must be 1, 5, 10, 20, 30, or a multiple of 60"
     expression: "this.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)"
+  };
+
+  // stat must be a standard statistic or a valid percentile /
+  // trimmed-statistic form (the MetricStat contract).
+  option (buf.validate.message).cel = {
+    id: "stat_valid_format"
+    message: "stat must be a standard statistic (SampleCount, Average, Sum, Minimum, Maximum) or a percentile/trimmed statistic, e.g. 'p95', 'IQM', 'TM(10%:90%)'"
+    expression: "this.stat in ['SampleCount', 'Average', 'Sum', 'Minimum', 'Maximum'] || this.stat.matches('^((p|tm|wm|tc|ts)((\\\\d{1,2}(\\\\.\\\\d{1,2})?)|100)|IQM|(TM|WM|PR|TC|TS)\\\\((\\\\d+(\\\\.\\\\d+)?%?)?:(\\\\d+(\\\\.\\\\d+)?%?)?\\\\))$')"
+  };
+
+  // Metric namespaces must not start with a colon (the AWS Namespace
+  // contract).
+  option (buf.validate.message).cel = {
+    id: "metric_namespace_no_leading_colon"
+    message: "namespace must not start with a colon"
+    expression: "this.namespace == '' || !this.namespace.startsWith(':')"
   };
 }
 

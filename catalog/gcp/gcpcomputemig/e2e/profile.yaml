@@ -1,0 +1,39 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpcomputemig
+spec:
+  # Two scenarios: minimal (zonal, ONE fixed e2-micro on the VPC fixture
+  # — the template->manager reference link and the instance_group output
+  # on the cheapest footprint) and regional-autoscaled (the production
+  # shape: regional spread, CPU autoscaler 1-2, auto-healing from the
+  # health-check fixture, proactive surge-1 updates). Real VMs: expect
+  # boot + fleet-stabilization time; waitForInstances turns apply
+  # completion into "instances are up".
+  #
+  # WATCH (proof-lane judgment):
+  #   - Template rotation under the apply-idempotency gate: the zonal
+  #     manager's version references self_link_unique (?uniqueId=) — the
+  #     first live template roll decides the idempotency story; the
+  #     regional manager references plain self_link with rotation riding
+  #     the name_prefix change.
+  #   - Autoscaler-vs-manager settling: the manager's target_size is
+  #     autoscaler-owned in the regional lane — watch for perpetual
+  #     diffs between applies while the autoscaler holds min_replicas.
+  #   - Quota: lanes need the autoscaler's 1-2 regional e2-micro plus
+  #     the zonal instance in us-east1 (rollout surge is fixed 3 — the
+  #     regional-fixed-surge floor — but applies only during template
+  #     rolls, not the lane's initial create). Scenarios moved to
+  #     us-east1 2026-08-11 after an audit-log-verified us-central1
+  #     ZONE_RESOURCE_POOL_EXHAUSTED stockout (the session's zonal IGM
+  #     cycled create/delete for 15m); the chain is self-contained, so
+  #     region is a free variable pinned to measured capacity.
+  #   - Stateful configs, resize requests, and FLEX_START stay
+  #     offline-proven (recorded): resize requests queue against DWS
+  #     capacity that may never grant on a lane's clock, and stateful
+  #     arms need multi-apply choreography the framework does not model
+  #     yet.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 45

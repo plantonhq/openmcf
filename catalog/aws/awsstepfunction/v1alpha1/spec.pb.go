@@ -82,19 +82,45 @@ type AwsStepFunctionSpec struct {
 	// mutable state machine ARN. When false (the default), executions always run
 	// the latest saved revision.
 	Publish bool `protobuf:"varint,5,opt,name=publish,proto3" json:"publish,omitempty"`
-	// Logging configuration for execution history events. When omitted, logging
-	// is disabled (level OFF). Logging is supported for both STANDARD and EXPRESS
-	// state machines.
+	// Named aliases for the state machine. Each alias points at the version
+	// published by this deployment (requires publish: true) and exposes a
+	// stable ARN consumers can invoke while the underlying version advances
+	// on every configuration change. Aliases are keyed by name: renaming an
+	// entry replaces that alias without touching its siblings.
+	//
+	// Weighted canary routing between two specific versions is an imperative
+	// deployment-shift operation (the routing weights change DURING a
+	// rollout, not in a declarative snapshot) and is deliberately not
+	// modeled; each alias here routes 100% of traffic to the version this
+	// deployment published.
+	Aliases []*AwsStepFunctionAlias `protobuf:"bytes,9,rep,name=aliases,proto3" json:"aliases,omitempty"`
+	// Logging configuration for execution history events. When omitted, no
+	// logging configuration is sent (new state machines default to level OFF).
+	// To explicitly turn logging OFF on a state machine that previously had it
+	// on, keep this block with level: "OFF" — removing the block entirely
+	// sends nothing and the provider keeps the last applied logging state.
+	// Logging is supported for both STANDARD and EXPRESS state machines.
 	Logging *AwsStepFunctionLoggingConfig `protobuf:"bytes,6,opt,name=logging,proto3" json:"logging,omitempty"`
 	// Enable AWS X-Ray tracing for the state machine. When true, Step Functions
 	// sends trace data to X-Ray for visualizing request flows. Ensure the
 	// execution role has xray:PutTraceSegments and xray:PutTelemetryRecords
 	// permissions.
-	TracingEnabled bool `protobuf:"varint,7,opt,name=tracing_enabled,json=tracingEnabled,proto3" json:"tracing_enabled,omitempty"`
+	//
+	// Tri-state: leave unset to keep the AWS default (tracing off, and no
+	// tracing configuration is sent). Set explicitly to true or false to pin
+	// the state — an explicit false is what turns tracing OFF on a state
+	// machine that previously had it on (simply removing a true value sends
+	// nothing, and the provider keeps the last applied state).
+	TracingEnabled *bool `protobuf:"varint,7,opt,name=tracing_enabled,json=tracingEnabled,proto3,oneof" json:"tracing_enabled,omitempty"`
 	// Encryption configuration for data at rest. When omitted, AWS uses
 	// AWS-owned keys (default, no additional cost). Provide this block to
 	// use a customer-managed KMS key for encrypting state machine data,
 	// execution history, and input/output payloads.
+	//
+	// One-way in practice: once a customer-managed key has been applied,
+	// REMOVING this block does not revert the state machine to AWS-owned
+	// keys — the provider suppresses the block's removal and keeps the last
+	// applied key. Reverting requires an out-of-band update today.
 	Encryption    *AwsStepFunctionEncryptionConfig `protobuf:"bytes,8,opt,name=encryption,proto3" json:"encryption,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -165,6 +191,13 @@ func (x *AwsStepFunctionSpec) GetPublish() bool {
 	return false
 }
 
+func (x *AwsStepFunctionSpec) GetAliases() []*AwsStepFunctionAlias {
+	if x != nil {
+		return x.Aliases
+	}
+	return nil
+}
+
 func (x *AwsStepFunctionSpec) GetLogging() *AwsStepFunctionLoggingConfig {
 	if x != nil {
 		return x.Logging
@@ -173,8 +206,8 @@ func (x *AwsStepFunctionSpec) GetLogging() *AwsStepFunctionLoggingConfig {
 }
 
 func (x *AwsStepFunctionSpec) GetTracingEnabled() bool {
-	if x != nil {
-		return x.TracingEnabled
+	if x != nil && x.TracingEnabled != nil {
+		return *x.TracingEnabled
 	}
 	return false
 }
@@ -184,6 +217,65 @@ func (x *AwsStepFunctionSpec) GetEncryption() *AwsStepFunctionEncryptionConfig {
 		return x.Encryption
 	}
 	return nil
+}
+
+// AwsStepFunctionAlias defines one named alias on the state machine. The
+// alias routes 100% of traffic to the version published by this deployment
+// and its ARN is exported in stack outputs keyed by name.
+type AwsStepFunctionAlias struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Alias name. 1-80 characters matching [0-9A-Za-z_-]. The name keys the
+	// provider resource: renaming replaces this alias without touching
+	// siblings.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Optional human-readable description of the alias (up to 256 characters).
+	Description   string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsStepFunctionAlias) Reset() {
+	*x = AwsStepFunctionAlias{}
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsStepFunctionAlias) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsStepFunctionAlias) ProtoMessage() {}
+
+func (x *AwsStepFunctionAlias) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsStepFunctionAlias.ProtoReflect.Descriptor instead.
+func (*AwsStepFunctionAlias) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsStepFunctionAlias) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsStepFunctionAlias) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
 }
 
 // AwsStepFunctionLoggingConfig configures execution history logging to
@@ -214,7 +306,7 @@ type AwsStepFunctionLoggingConfig struct {
 
 func (x *AwsStepFunctionLoggingConfig) Reset() {
 	*x = AwsStepFunctionLoggingConfig{}
-	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -226,7 +318,7 @@ func (x *AwsStepFunctionLoggingConfig) String() string {
 func (*AwsStepFunctionLoggingConfig) ProtoMessage() {}
 
 func (x *AwsStepFunctionLoggingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -239,7 +331,7 @@ func (x *AwsStepFunctionLoggingConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsStepFunctionLoggingConfig.ProtoReflect.Descriptor instead.
 func (*AwsStepFunctionLoggingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsStepFunctionLoggingConfig) GetLevel() string {
@@ -286,7 +378,7 @@ type AwsStepFunctionEncryptionConfig struct {
 
 func (x *AwsStepFunctionEncryptionConfig) Reset() {
 	*x = AwsStepFunctionEncryptionConfig{}
-	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -298,7 +390,7 @@ func (x *AwsStepFunctionEncryptionConfig) String() string {
 func (*AwsStepFunctionEncryptionConfig) ProtoMessage() {}
 
 func (x *AwsStepFunctionEncryptionConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -311,7 +403,7 @@ func (x *AwsStepFunctionEncryptionConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsStepFunctionEncryptionConfig.ProtoReflect.Descriptor instead.
 func (*AwsStepFunctionEncryptionConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsStepFunctionEncryptionConfig) GetKmsKeyId() *v1.StringValueOrRef {
@@ -332,7 +424,7 @@ var File_catalog_aws_awsstepfunction_v1alpha1_spec_proto protoreflect.FileDescri
 
 const file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/aws/awsstepfunction/v1alpha1/spec.proto\x12(dev.planton.aws.awsstepfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xfd\x06\n" +
+	"/catalog/aws/awsstepfunction/v1alpha1/spec.proto\x12(dev.planton.aws.awsstepfunction.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x85\v\n" +
 	"\x13AwsStepFunctionSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x12\n" +
 	"\x04type\x18\x02 \x01(\tR\x04type\x12?\n" +
@@ -340,14 +432,22 @@ const file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDesc = "" +
 	"definition\x18\x03 \x01(\v2\x17.google.protobuf.StructB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"definition\x12u\n" +
 	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x18\n" +
-	"\apublish\x18\x05 \x01(\bR\apublish\x12`\n" +
-	"\alogging\x18\x06 \x01(\v2F.dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfigR\alogging\x12'\n" +
-	"\x0ftracing_enabled\x18\a \x01(\bR\x0etracingEnabled\x12i\n" +
+	"\apublish\x18\x05 \x01(\bR\apublish\x12X\n" +
+	"\aaliases\x18\t \x03(\v2>.dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionAliasR\aaliases\x12`\n" +
+	"\alogging\x18\x06 \x01(\v2F.dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfigR\alogging\x12,\n" +
+	"\x0ftracing_enabled\x18\a \x01(\bH\x00R\x0etracingEnabled\x88\x01\x01\x12i\n" +
 	"\n" +
 	"encryption\x18\b \x01(\v2I.dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfigR\n" +
-	"encryption:\xe8\x02\xbaH\xe4\x02\x1a{\n" +
+	"encryption:\xfd\x05\xbaH\xf9\x05\x1a{\n" +
 	"\x11type_valid_values\x12-type must be 'STANDARD' or 'EXPRESS' when set\x1a7this.type == '' || this.type in ['STANDARD', 'EXPRESS']\x1a\xe4\x01\n" +
-	")logging_destination_required_when_enabled\x12Clogging.log_destination is required when logging.level is not 'OFF'\x1ar!has(this.logging) || this.logging.level == '' || this.logging.level == 'OFF' || has(this.logging.log_destination)\"\x9b\x03\n" +
+	")logging_destination_required_when_enabled\x12Clogging.log_destination is required when logging.level is not 'OFF'\x1ar!has(this.logging) || this.logging.level == '' || this.logging.level == 'OFF' || has(this.logging.log_destination)\x1a\x8d\x01\n" +
+	"\x17aliases_require_publish\x12Haliases require publish: true (an alias routes to the published version)\x1a(this.aliases.size() == 0 || this.publish\x1aY\n" +
+	"\x12alias_names_unique\x12\x1daliases[].name must be unique\x1a$this.aliases.map(a, a.name).unique()\x1a\xa7\x01\n" +
+	"\x0frole_arn_format\x128role_arn literal value must be an IAM role ARN (arn:...)\x1aZ!has(this.role_arn) || this.role_arn.value == '' || this.role_arn.value.startsWith('arn:')B\x12\n" +
+	"\x10_tracing_enabled\"t\n" +
+	"\x14AwsStepFunctionAlias\x120\n" +
+	"\x04name\x18\x01 \x01(\tB\x1c\xbaH\x19r\x172\x15^[0-9A-Za-z_-]{1,80}$R\x04name\x12*\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\"\x9b\x03\n" +
 	"\x1cAwsStepFunctionLoggingConfig\x12\x14\n" +
 	"\x05level\x18\x01 \x01(\tR\x05level\x124\n" +
 	"\x16include_execution_data\x18\x02 \x01(\bR\x14includeExecutionData\x12\x82\x01\n" +
@@ -372,26 +472,28 @@ func file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsStepFunctionSpec)(nil),             // 0: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec
-	(*AwsStepFunctionLoggingConfig)(nil),    // 1: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig
-	(*AwsStepFunctionEncryptionConfig)(nil), // 2: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig
-	(*structpb.Struct)(nil),                 // 3: google.protobuf.Struct
-	(*v1.StringValueOrRef)(nil),             // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsStepFunctionAlias)(nil),            // 1: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionAlias
+	(*AwsStepFunctionLoggingConfig)(nil),    // 2: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig
+	(*AwsStepFunctionEncryptionConfig)(nil), // 3: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig
+	(*structpb.Struct)(nil),                 // 4: google.protobuf.Struct
+	(*v1.StringValueOrRef)(nil),             // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.definition:type_name -> google.protobuf.Struct
-	4, // 1: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.logging:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig
-	2, // 3: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.encryption:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig
-	4, // 4: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig.log_destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 5: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 0: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.definition:type_name -> google.protobuf.Struct
+	5, // 1: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1, // 2: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.aliases:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionAlias
+	2, // 3: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.logging:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig
+	3, // 4: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionSpec.encryption:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig
+	5, // 5: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionLoggingConfig.log_destination:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 6: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionEncryptionConfig.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_init() }
@@ -399,13 +501,14 @@ func file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsstepfunction_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsstepfunction_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

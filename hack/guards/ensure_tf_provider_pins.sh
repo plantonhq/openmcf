@@ -42,6 +42,7 @@ canonical_pins=(
   # by recorded decision) and pins EXACT -- a floating raw-API provider would
   # move the ARM client under every admitted kind at once.
   "azure|azapi|2.11.0"
+  "gcp|google|~> 7.43"
 )
 
 violations=()

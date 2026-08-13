@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpBigtableTableSpec defines a table inside a Cloud Bigtable instance —
 the schema-bearing, infrastructure-owned unit: column families with
 their retention (GC) policies, pre-splits for load distribution, change
@@ -56,6 +58,10 @@ spec:
   # Keep destroy possible for the hack manifest without a two-step
   # unprotect.
   deletionProtection: UNPROTECTED
+
+  # Explicit DELETE (the provider default) proves the round-trip on both
+  # the table and its per-family GC policies.
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -79,8 +85,10 @@ spec:
 | `spec.automatedBackupPolicy` | `GcpBigtableTableAutomatedBackupPolicy` |  |  |  |
 | `spec.automatedBackupPolicy.retentionPeriod` | `string` | yes |  |  |
 | `spec.automatedBackupPolicy.frequency` | `string` | yes |  |  |
+| `spec.automatedBackupPolicy.locations` | `[]string` |  |  |  |
 | `spec.deletionProtection` | `string` |  | `PROTECTED` |  |
 | `spec.rowKeySchema` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -244,6 +252,16 @@ Duration string in Go format.
 
 - rule: {"required":true,"string":{"pattern":"^([0-9]+(\\.[0-9]+)?(h|m|s|ms))+$"}}
 
+### spec.automatedBackupPolicy.locations
+
+`[]string`
+
+Cloud Bigtable zones where automated backups are ALLOWED to be
+created, each in the format "projects/{project}/locations/{zone}".
+Empty means backups may be created in all zones of the instance.
+Can only be set for tables in ENTERPRISE_PLUS instances (see the
+GcpBigtableInstance edition field).
+
 ### spec.deletionProtection
 
 `string` · optional (explicit presence)
@@ -265,6 +283,23 @@ keys decompose into typed fields for SQL queries and change
 streams). In-place update is not supported by the API: to change an
 existing schema, clear this field, apply, then set the new schema
 and apply again. Byte delimiters must be base64-encoded.
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy — what a destroy does to BOTH objects this component
+manages: the table and its per-family GC policies. Applies only once
+deletion_protection (above) is UNPROTECTED:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the table (and its data) is deleted; GC policies go
+               with it
+  "PREVENT" -- destroy FAILS; a second wall for data-bearing tables
+  "ABANDON" -- the table is removed from management but left intact
+               in Bigtable — also the escape hatch when a GC-policy
+               delete is rejected on a replicated instance
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

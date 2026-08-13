@@ -179,6 +179,8 @@ const (
 	// AwsInternetGateway is a prerequisite because a public NAT gateway can only
 	// become available once the VPC it sits in has an internet gateway attached
 	// (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+	// AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode
+	// = regional) references the VPC directly instead of a subnet.
 	CloudResourceKind_AwsNatGateway                CloudResourceKind = 1086
 	CloudResourceKind_AwsEgressOnlyInternetGateway CloudResourceKind = 1087
 	// AwsSubnet and AwsSecurityGroup are prerequisites because mount targets
@@ -1133,7 +1135,14 @@ const (
 	// renumber.
 	CloudResourceKind_AzureMongoClusterUser CloudResourceKind = 2219
 	// 3000–3999: GCP resources
-	CloudResourceKind_GcpArtifactRegistryRepo       CloudResourceKind = 3000
+	CloudResourceKind_GcpArtifactRegistryRepo CloudResourceKind = 3000
+	// The URL map is the parent a proxy cannot exist without; the classic
+	// compute certificate kinds and the SSL policy are the fixture parents the
+	// committed scenarios attach. The Certificate Manager certificate list
+	// (certificate_manager_certificates, honored only by the cross-region
+	// internal ALB) is optional composition -- a scenario that arms it declares
+	// GcpCertManagerCert via the e2e-prerequisites annotation, never a registry
+	// edge that would tax every proxy and forwarding-rule chain.
 	CloudResourceKind_GcpTargetHttpsProxy           CloudResourceKind = 3001
 	CloudResourceKind_GcpCloudFunction              CloudResourceKind = 3002
 	CloudResourceKind_GcpCloudRun                   CloudResourceKind = 3003
@@ -1215,12 +1224,60 @@ const (
 	CloudResourceKind_GcpAddress                     CloudResourceKind = 3114
 	CloudResourceKind_GcpServiceConnectionPolicy     CloudResourceKind = 3115
 	CloudResourceKind_GcpCertManagerDnsAuthorization CloudResourceKind = 3116
+	// GcpCertManagerCert is a prerequisite because a map entry binds
+	// hostnames to EXISTING certificates — the canonical map references a
+	// certificate fixture's resource name.
+	CloudResourceKind_GcpCertificateMap CloudResourceKind = 3117
 	// 3120–3129: GCP serverless overflow
 	CloudResourceKind_GcpCloudRunJob            CloudResourceKind = 3120
 	CloudResourceKind_GcpServerlessVpcConnector CloudResourceKind = 3121
 	// 3130–3139: GCP compute overflow (the 3000–3022 foundation sub-band that
 	// holds GcpComputeInstance is fully allocated)
 	CloudResourceKind_GcpComputeDisk CloudResourceKind = 3130
+	// GcpVpcNetwork is a prerequisite because the canonical group runs its
+	// fleet on a dedicated custom-mode VPC — a managed instance group's
+	// template must attach every VM to a network, and the default VPC is
+	// never assumed.
+	CloudResourceKind_GcpComputeMig CloudResourceKind = 3131
+	// 3140–3149: GCP observability & log routing
+	CloudResourceKind_GcpMonitoringNotificationChannel CloudResourceKind = 3140
+	// GcpMonitoringNotificationChannel is a prerequisite because the policy's
+	// canonical shape references a channel to notify — a policy without a
+	// delivery endpoint measures but never pages.
+	CloudResourceKind_GcpMonitoringAlertPolicy CloudResourceKind = 3141
+	CloudResourceKind_GcpMonitoringUptimeCheck CloudResourceKind = 3142
+	// GcpGcsBucket is a prerequisite because the canonical sink exports to a
+	// Cloud Storage bucket — the cheapest destination that proves the whole
+	// writer-identity grant flow.
+	CloudResourceKind_GcpLoggingSink         CloudResourceKind = 3143
+	CloudResourceKind_GcpMonitoringDashboard CloudResourceKind = 3144
+	CloudResourceKind_GcpMonitoringSlo       CloudResourceKind = 3145
+	CloudResourceKind_GcpLogBucket           CloudResourceKind = 3146
+	CloudResourceKind_GcpLogMetric           CloudResourceKind = 3147
+	// 3150–3159: GCP security & identity
+	// GcpServiceAccount is a prerequisite because the canonical secret grants
+	// secretAccessor to a workload service account — the access story the
+	// kind exists to model.
+	CloudResourceKind_GcpSecretManagerSecret    CloudResourceKind = 3150
+	CloudResourceKind_GcpIdentityPlatformConfig CloudResourceKind = 3151
+	// GcpIdentityPlatformConfig is a prerequisite because tenants exist only
+	// in projects whose Identity Platform config enables
+	// multi_tenant.allow_tenants — a tenant without the initialized,
+	// tenant-enabled project config cannot be created at all.
+	CloudResourceKind_GcpIdentityPlatformTenant CloudResourceKind = 3152
+	CloudResourceKind_GcpIamOauthClient         CloudResourceKind = 3153
+	CloudResourceKind_GcpIamDenyPolicy          CloudResourceKind = 3154
+	// 3160–3169: GCP serverless edge
+	// GcpCloudRun is a prerequisite because a domain mapping exists only to
+	// point a verified domain at a running Cloud Run service — the route it
+	// maps must already exist for the mapping to be created at all.
+	CloudResourceKind_GcpCloudRunDomainMapping CloudResourceKind = 3160
+	CloudResourceKind_GcpWorkflow              CloudResourceKind = 3161
+	// GcpCloudRun is a prerequisite because the canonical trigger routes a
+	// Pub/Sub messagePublished event to a Cloud Run service — the
+	// destination story the kind exists to model.
+	CloudResourceKind_GcpEventarcTrigger    CloudResourceKind = 3162
+	CloudResourceKind_GcpEventarcMessageBus CloudResourceKind = 3163
 	// 4000–4999: Kubernetes resources, organized in family sub-bands
 	// (4030–4069 also hosts CNI/autoscaling/DR addons; 4130–4149 hosts
 	// analytics & ML; 4190–4199 reserved for growth)
@@ -2015,9 +2072,28 @@ var (
 		3114:  "GcpAddress",
 		3115:  "GcpServiceConnectionPolicy",
 		3116:  "GcpCertManagerDnsAuthorization",
+		3117:  "GcpCertificateMap",
 		3120:  "GcpCloudRunJob",
 		3121:  "GcpServerlessVpcConnector",
 		3130:  "GcpComputeDisk",
+		3131:  "GcpComputeMig",
+		3140:  "GcpMonitoringNotificationChannel",
+		3141:  "GcpMonitoringAlertPolicy",
+		3142:  "GcpMonitoringUptimeCheck",
+		3143:  "GcpLoggingSink",
+		3144:  "GcpMonitoringDashboard",
+		3145:  "GcpMonitoringSlo",
+		3146:  "GcpLogBucket",
+		3147:  "GcpLogMetric",
+		3150:  "GcpSecretManagerSecret",
+		3151:  "GcpIdentityPlatformConfig",
+		3152:  "GcpIdentityPlatformTenant",
+		3153:  "GcpIamOauthClient",
+		3154:  "GcpIamDenyPolicy",
+		3160:  "GcpCloudRunDomainMapping",
+		3161:  "GcpWorkflow",
+		3162:  "GcpEventarcTrigger",
+		3163:  "GcpEventarcMessageBus",
 		4000:  "KubernetesNamespace",
 		4001:  "KubernetesDeployment",
 		4002:  "KubernetesStatefulSet",
@@ -2704,9 +2780,28 @@ var (
 		"GcpAddress":                                     3114,
 		"GcpServiceConnectionPolicy":                     3115,
 		"GcpCertManagerDnsAuthorization":                 3116,
+		"GcpCertificateMap":                              3117,
 		"GcpCloudRunJob":                                 3120,
 		"GcpServerlessVpcConnector":                      3121,
 		"GcpComputeDisk":                                 3130,
+		"GcpComputeMig":                                  3131,
+		"GcpMonitoringNotificationChannel":               3140,
+		"GcpMonitoringAlertPolicy":                       3141,
+		"GcpMonitoringUptimeCheck":                       3142,
+		"GcpLoggingSink":                                 3143,
+		"GcpMonitoringDashboard":                         3144,
+		"GcpMonitoringSlo":                               3145,
+		"GcpLogBucket":                                   3146,
+		"GcpLogMetric":                                   3147,
+		"GcpSecretManagerSecret":                         3150,
+		"GcpIdentityPlatformConfig":                      3151,
+		"GcpIdentityPlatformTenant":                      3152,
+		"GcpIamOauthClient":                              3153,
+		"GcpIamDenyPolicy":                               3154,
+		"GcpCloudRunDomainMapping":                       3160,
+		"GcpWorkflow":                                    3161,
+		"GcpEventarcTrigger":                             3162,
+		"GcpEventarcMessageBus":                          3163,
 		"KubernetesNamespace":                            4000,
 		"KubernetesDeployment":                           4001,
 		"KubernetesStatefulSet":                          4002,
@@ -3054,10 +3149,11 @@ type CloudResourceKindMeta struct {
 	// (e.g. "aws.planton.dev/v1alpha1" carries version "v1"). the value must match
 	// the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
 	// the name declares the compatibility channel. this is the kind's sole
-	// served version; per-version metadata blocks arrive additively if a kind
-	// ever serves multiple versions at once. enum-value options are
-	// compile-time data, so the grammar is enforced by the crkreflect
-	// registry tests rather than protovalidate.
+	// served version; per-version metadata arrives additively beside it (see
+	// deprecations), and richer blocks follow if a kind ever serves multiple
+	// versions at once. enum-value options are compile-time data, so the
+	// grammar is enforced by the crkreflect registry tests rather than
+	// protovalidate.
 	Version string `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
 	// name of the kind as written in manifests. set only when it differs from the
 	// enum value name; resolution falls back to the enum value name otherwise.
@@ -3068,7 +3164,21 @@ type CloudResourceKindMeta struct {
 	// this): resolution is keyed by name, so a duplicate would make manifests
 	// ambiguous about which kind they declare.
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// cloud-resource id-prefix
+	// cloud-resource id-prefix — the per-kind segment embedded in every
+	// resource id (cr_<id_prefix>_<ulid>) and the id's only kind
+	// discriminator: CLI argument parsing, search lookups, and kind
+	// auto-detection all resolve the kind FROM this segment, so ids stay
+	// self-describing in the surfaces that carry nothing else (logs,
+	// permission tuples, activity streams, support threads).
+	//
+	// Convention (every char rides every id for the resource's lifetime):
+	//   - lowercase letters/digits only — NEVER an underscore, which is the
+	//     id separator the parsers split on
+	//   - starts with the provider's tag (gcp/aws/azure/k8s...) so any id
+	//     attributes its provider at a glance
+	//   - at most 8 characters total; target 5-7
+	//   - unique across the whole registry — enforced mechanically (the
+	//     prefix index fails construction on a duplicate)
 	IdPrefix string `protobuf:"bytes,4,opt,name=id_prefix,json=idPrefix,proto3" json:"id_prefix,omitempty"`
 	// flag indicating whether the cloud-resource kind can be used to launch a service.
 	IsServiceKind bool `protobuf:"varint,5,opt,name=is_service_kind,json=isServiceKind,proto3" json:"is_service_kind,omitempty"`
@@ -3113,8 +3223,23 @@ type CloudResourceKindMeta struct {
 	// are the UPSTREAM CRD's group-version-kind, distinct from the Planton
 	// groupVersion returned by crkreflect.GroupVersion.
 	KubernetesManifestProjection *KubernetesManifestProjection `protobuf:"bytes,8,opt,name=kubernetes_manifest_projection,json=kubernetesManifestProjection,proto3" json:"kubernetes_manifest_projection,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// schema versions of this kind announced as deprecated. a deprecated version
+	// keeps working exactly as before -- documents authored at it are accepted
+	// and converted like any known version; deprecation is advice, never a gate,
+	// and REMOVING a version stays a separate, telemetry-gated decision. what
+	// changes is visibility: every surface that speaks versions (the discovery
+	// API, dashboards, CLI listings) announces the version as on its way out.
+	// each entry must name a version this release actually ships a schema for,
+	// must not name the served version (there would be nothing to upgrade to),
+	// and must have an authored conversion path to the served version -- the
+	// bundle conformance gate refuses dead ends, so a deprecation can never
+	// outlive its version or strand its writers. the upgrade target is never
+	// authored: it is always the kind's served version, derived, so it cannot
+	// drift. like every kind_meta field this is compile-time data enforced by
+	// the crkreflect registry tests and the bundle conformance gate.
+	Deprecations  []*CloudResourceKindVersionDeprecation `protobuf:"bytes,9,rep,name=deprecations,proto3" json:"deprecations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CloudResourceKindMeta) Reset() {
@@ -3203,6 +3328,74 @@ func (x *CloudResourceKindMeta) GetKubernetesManifestProjection() *KubernetesMan
 	return nil
 }
 
+func (x *CloudResourceKindMeta) GetDeprecations() []*CloudResourceKindVersionDeprecation {
+	if x != nil {
+		return x.Deprecations
+	}
+	return nil
+}
+
+// marks one of a kind's schema versions as deprecated. carried on
+// CloudResourceKindMeta.deprecations; see that field for the contract.
+type CloudResourceKindVersionDeprecation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// the deprecated schema version, e.g. "v1alpha1". must match the maturity
+	// grammar, resolve to a schema this release ships for the kind, and differ
+	// from the kind's served version.
+	Version string `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	// optional plain-language context appended to the derived deprecation
+	// notice. surfaces compose the base sentence ("deprecated -- upgrade to
+	// <served version>") from data; this adds the why, or a migration caveat
+	// worth a sentence. empty is legal and common.
+	Note          string `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloudResourceKindVersionDeprecation) Reset() {
+	*x = CloudResourceKindVersionDeprecation{}
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloudResourceKindVersionDeprecation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloudResourceKindVersionDeprecation) ProtoMessage() {}
+
+func (x *CloudResourceKindVersionDeprecation) ProtoReflect() protoreflect.Message {
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloudResourceKindVersionDeprecation.ProtoReflect.Descriptor instead.
+func (*CloudResourceKindVersionDeprecation) Descriptor() ([]byte, []int) {
+	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CloudResourceKindVersionDeprecation) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *CloudResourceKindVersionDeprecation) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
 // identifies the upstream Kubernetes custom resource that a CloudResourceKind
 // projects onto. carried on CloudResourceKindMeta for projection kinds only.
 type KubernetesManifestProjection struct {
@@ -3217,7 +3410,7 @@ type KubernetesManifestProjection struct {
 
 func (x *KubernetesManifestProjection) Reset() {
 	*x = KubernetesManifestProjection{}
-	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3229,7 +3422,7 @@ func (x *KubernetesManifestProjection) String() string {
 func (*KubernetesManifestProjection) ProtoMessage() {}
 
 func (x *KubernetesManifestProjection) ProtoReflect() protoreflect.Message {
-	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[1]
+	mi := &file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3242,7 +3435,7 @@ func (x *KubernetesManifestProjection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesManifestProjection.ProtoReflect.Descriptor instead.
 func (*KubernetesManifestProjection) Descriptor() ([]byte, []int) {
-	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{1}
+	return file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesManifestProjection) GetApiVersion() string {
@@ -3280,7 +3473,7 @@ var File_shared_cloudresourcekind_cloud_resource_kind_proto protoreflect.FileDes
 
 const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\n" +
-	"2shared/cloudresourcekind/cloud_resource_kind.proto\x12$dev.planton.shared.cloudresourcekind\x1a google/protobuf/descriptor.proto\x1a6shared/cloudresourcekind/cloud_resource_provider.proto\"\xf4\x03\n" +
+	"2shared/cloudresourcekind/cloud_resource_kind.proto\x12$dev.planton.shared.cloudresourcekind\x1a google/protobuf/descriptor.proto\x1a6shared/cloudresourcekind/cloud_resource_provider.proto\"\xe3\x04\n" +
 	"\x15CloudResourceKindMeta\x12W\n" +
 	"\bprovider\x18\x01 \x01(\x0e2;.dev.planton.shared.cloudresourcekind.CloudResourceProviderR\bprovider\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x12\n" +
@@ -3289,14 +3482,19 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0fis_service_kind\x18\x05 \x01(\bR\risServiceKind\x12%\n" +
 	"\x0econtainer_kind\x18\x06 \x01(\bR\rcontainerKind\x12]\n" +
 	"\rprerequisites\x18\a \x03(\x0e27.dev.planton.shared.cloudresourcekind.CloudResourceKindR\rprerequisites\x12\x88\x01\n" +
-	"\x1ekubernetes_manifest_projection\x18\b \x01(\v2B.dev.planton.shared.cloudresourcekind.KubernetesManifestProjectionR\x1ckubernetesManifestProjection\"S\n" +
+	"\x1ekubernetes_manifest_projection\x18\b \x01(\v2B.dev.planton.shared.cloudresourcekind.KubernetesManifestProjectionR\x1ckubernetesManifestProjection\x12m\n" +
+	"\fdeprecations\x18\t \x03(\v2I.dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecationR\fdeprecations\"S\n" +
+	"#CloudResourceKindVersionDeprecation\x12\x18\n" +
+	"\aversion\x18\x01 \x01(\tR\aversion\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\"S\n" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*մ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8f\xbd\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
-	"\vunspecified\x10\x00\x124\n" +
-	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
+	"\vunspecified\x10\x00\x12b\n" +
+	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
+	"\bv1alpha1\x12 superseded by the v1alpha2 shape\x127\n" +
 	"\x1bTestCloudResourceKubernetes\x10\x02\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha1\"\x04tcrk\x12,\n" +
 	"\x0eConfluentKafka\x102\x1a\x18\xa2\xf7\x04\x14\b\x10\x12\bv1alpha1\"\x06conkaf\x12*\n" +
 	"\fAtlasMongodb\x103\x1a\x18\xa2\xf7\x04\x14\b\v\x12\bv1alpha1\"\x06atlmdb\x12/\n" +
@@ -3363,8 +3561,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11AwsTransitGateway\x10\xba\b\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awstgw\x122\n" +
 	"\x14AwsGlobalAccelerator\x10\xbb\b\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsga\x12-\n" +
 	"\tAwsSubnet\x10\xbc\b\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\x05awssn0\x01:\x02\xf8\a\x125\n" +
-	"\x12AwsInternetGateway\x10\xbd\b\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsigw:\x02\xf8\a\x124\n" +
-	"\rAwsNatGateway\x10\xbe\b\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\x06awsnat:\x06\xbc\b\xb9\b\xbd\b\x12@\n" +
+	"\x12AwsInternetGateway\x10\xbd\b\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsigw:\x02\xf8\a\x126\n" +
+	"\rAwsNatGateway\x10\xbe\b\x1a\"\xa2\xf7\x04\x1e\b\f\x12\bv1alpha1\"\x06awsnat:\b\xf8\a\xbc\b\xb9\b\xbd\b\x12@\n" +
 	"\x1cAwsEgressOnlyInternetGateway\x10\xbf\b\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawseigw:\x02\xf8\a\x12;\n" +
 	"\x14AwsElasticFileSystem\x10\xc2\b\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\x06awsefs0\x01:\x04\xbc\b\xf7\a\x126\n" +
 	"\x11AwsEfsAccessPoint\x10\x88\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsefsap:\x02\xc2\b\x12;\n" +
@@ -3607,25 +3805,24 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x19AzureEventgridDomainTopic\x10\xa9\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegdt:\x02\x92\x11\x12@\n" +
 	"\x1cAzureEventgridNamespaceTopic\x10\xaa\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazegnst:\x02\x95\x11\x12:\n" +
 	"\x15AzureMongoClusterUser\x10\xab\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazmongou:\x02\xa3\x11\x12:\n" +
-	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12?\n" +
-	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a%\xa2\xf7\x04!\b\x12\x12\bv1alpha1\"\agcpthsp:\n" +
-	"\xd3\x17\xd4\x17\xa7\x18\xa8\x18\xc8\x17\x124\n" +
-	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\acldfunc:\x02\xb1\x18\x12*\n" +
-	"\vGcpCloudRun\x10\xbb\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06cldrun\x120\n" +
+	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12=\n" +
+	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a#\xa2\xf7\x04\x1f\b\x12\x12\bv1alpha1\"\agcpthsp:\b\xd3\x17\xd4\x17\xa7\x18\xa8\x18\x122\n" +
+	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gcpfn:\x02\xb1\x18\x12*\n" +
+	"\vGcpCloudRun\x10\xbb\x17\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcprun\x120\n" +
 	"\vGcpCloudSql\x10\xbc\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsql0\x01:\x02\xa9\x18\x12/\n" +
 	"\n" +
 	"GcpDnsZone\x10\xbd\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpdns0\x01:\x02\xc2\x17\x12/\n" +
-	"\fGcpGcsBucket\x10\xbe\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcsbkt:\x02\xc6\x17\x121\n" +
-	"\rGcpGkeCluster\x10\xbf\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\x03gke0\x01:\x04\xc2\x17\xc3\x17\x120\n" +
+	"\fGcpGcsBucket\x10\xbe\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpgcs:\x02\xc6\x17\x124\n" +
+	"\rGcpGkeCluster\x10\xbf\x17\x1a \xa2\xf7\x04\x1c\b\x12\x12\bv1alpha1\"\x06gcpgke0\x01:\x04\xc2\x17\xc3\x17\x120\n" +
 	"\x10GcpIamCustomRole\x10\xc0\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcprole\x12+\n" +
 	"\n" +
 	"GcpProject\x10\xc1\x17\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\x06gcpprj0\x01\x12.\n" +
 	"\rGcpVpcNetwork\x10\xc2\x17\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\x06gcpvpc0\x01\x122\n" +
-	"\rGcpSubnetwork\x10\xc3\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsnw0\x01:\x02\xc2\x17\x122\n" +
-	"\fGcpRouterNat\x10\xc4\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcprnat:\x04\xc2\x17\xaa\x18\x120\n" +
-	"\x0eGcpGkeNodePool\x10\xc5\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gkenp:\x02\xbf\x17\x12-\n" +
-	"\x11GcpServiceAccount\x10\xc6\x17\x1a\x15\xa2\xf7\x04\x11\b\x12\x12\bv1alpha1\"\x03gsa\x12@\n" +
-	"\x1dGcpGkeWorkloadIdentityBinding\x10\xc7\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gkewib:\x02\xc6\x17\x126\n" +
+	"\rGcpSubnetwork\x10\xc3\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsnw0\x01:\x02\xc2\x17\x121\n" +
+	"\fGcpRouterNat\x10\xc4\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpnat:\x04\xc2\x17\xaa\x18\x123\n" +
+	"\x0eGcpGkeNodePool\x10\xc5\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpgkenp:\x02\xbf\x17\x12/\n" +
+	"\x11GcpServiceAccount\x10\xc6\x17\x1a\x17\xa2\xf7\x04\x13\b\x12\x12\bv1alpha1\"\x05gcpsa\x12@\n" +
+	"\x1dGcpGkeWorkloadIdentityBinding\x10\xc7\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpwib:\x02\xc6\x17\x126\n" +
 	"\x12GcpCertManagerCert\x10\xc8\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpcert:\x02\xac\x18\x12:\n" +
 	"\x12GcpComputeInstance\x10\xc9\x17\x1a!\xa2\xf7\x04\x1d\b\x12\x12\bv1alpha1\"\x05gcpvm:\b\xc2\x17\xc3\x17\xc6\x17\xba\x18\x120\n" +
 	"\fGcpDnsRecord\x10\xca\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpdrec:\x02\xbd\x17\x128\n" +
@@ -3647,15 +3844,14 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12GcpSpannerDatabase\x10\xda\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpspdb0\x01:\x02\xd9\x17\x123\n" +
 	"\x13GcpBigtableInstance\x10\xdb\x17\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\x05gcpbt0\x01\x129\n" +
 	"\x16GcpMemorystoreInstance\x10\xdc\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpmsi:\x02\xab\x18\x128\n" +
-	"\x13GcpCloudSqlDatabase\x10\xdd\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpsqldb:\x02\xbc\x17\x125\n" +
-	"\x0fGcpCloudSqlUser\x10\xde\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\tgcpsqlusr:\x02\xbc\x17\x129\n" +
-	"\x12GcpAlloydbInstance\x10\xdf\x17\x1a \xa2\xf7\x04\x1c\b\x12\x12\bv1alpha1\"\n" +
-	"gcpadbinst:\x02\xd6\x17\x124\n" +
-	"\x0eGcpAlloydbUser\x10\xe0\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\tgcpadbusr:\x02\xd6\x17\x12=\n" +
+	"\x13GcpCloudSqlDatabase\x10\xdd\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpsqldb:\x02\xbc\x17\x123\n" +
+	"\x0fGcpCloudSqlUser\x10\xde\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpsqlu:\x02\xbc\x17\x126\n" +
+	"\x12GcpAlloydbInstance\x10\xdf\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpadbi:\x02\xd6\x17\x122\n" +
+	"\x0eGcpAlloydbUser\x10\xe0\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpadbu:\x02\xd6\x17\x12=\n" +
 	"\x18GcpSpannerBackupSchedule\x10\xe1\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsbs:\x04\xd9\x17\xda\x17\x125\n" +
 	"\x10GcpBigtableTable\x10\xe2\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpbttbl:\x02\xdb\x17\x12?\n" +
-	"\x1aGcpFirestoreBackupSchedule\x10\xe3\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpfstbs:\x02\xd8\x17\x127\n" +
-	"\x11GcpFirestoreIndex\x10\xe4\x17\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\tgcpfstidx:\x02\xd8\x17\x124\n" +
+	"\x1aGcpFirestoreBackupSchedule\x10\xe3\x17\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpfstbs:\x02\xd8\x17\x125\n" +
+	"\x11GcpFirestoreIndex\x10\xe4\x17\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpfsti:\x02\xd8\x17\x124\n" +
 	"\x12GcpBigQueryDataset\x10\xea\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\agcpbqds0\x01\x12=\n" +
 	"\x12GcpDataprocCluster\x10\xeb\x17\x1a$\xa2\xf7\x04 \b\x12\x12\bv1alpha1\"\x06gcpdpc:\n" +
 	"\xc2\x17\xc3\x17\xcc\x17\xc6\x17\xec\x17\x12=\n" +
@@ -3681,19 +3877,36 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x17GcpWorkloadIdentityPool\x10\x9d\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\x06gcpwip0\x01\x12C\n" +
 	"\x1fGcpWorkloadIdentityPoolProvider\x10\x9e\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpwipp:\x02\x9d\x18\x12>\n" +
 	"\x1aGcpServiceAccountIamMember\x10\x9f\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpsaim:\x02\xc6\x17\x12<\n" +
-	"\x17GcpGlobalForwardingRule\x10\xa6\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpgfr:\x04\xb9\x17\xcd\x17\x12.\n" +
-	"\fGcpSslPolicy\x10\xa7\x18\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\tgcpsslpol\x124\n" +
-	"\x11GcpSslCertificate\x10\xa8\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\n" +
-	"gcpsslcert\x12C\n" +
+	"\x17GcpGlobalForwardingRule\x10\xa6\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpgfr:\x04\xb9\x17\xcd\x17\x12,\n" +
+	"\fGcpSslPolicy\x10\xa7\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpsslp\x121\n" +
+	"\x11GcpSslCertificate\x10\xa8\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpsslc\x12C\n" +
 	"\x1eGcpServiceNetworkingConnection\x10\xa9\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpsnc:\x04\xc2\x17\xcd\x17\x120\n" +
 	"\n" +
 	"GcpAddress\x10\xaa\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpaddr:\x04\xc2\x17\xc3\x17\x12?\n" +
 	"\x1aGcpServiceConnectionPolicy\x10\xab\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\x06gcpscp:\x04\xc2\x17\xc3\x17\x12>\n" +
-	"\x1eGcpCertManagerDnsAuthorization\x10\xac\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpcmda\x120\n" +
-	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\tcldrunjob\x12B\n" +
-	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\"\xa2\xf7\x04\x1e\b\x12\x12\bv1alpha1\"\n" +
-	"gcpvpcconn:\x04\xc2\x17\xc3\x17\x12.\n" +
-	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x123\n" +
+	"\x1eGcpCertManagerDnsAuthorization\x10\xac\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpcmda\x125\n" +
+	"\x11GcpCertificateMap\x10\xad\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpcmap:\x02\xc8\x17\x12.\n" +
+	"\x0eGcpCloudRunJob\x10\xb0\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcprunj\x12?\n" +
+	"\x19GcpServerlessVpcConnector\x10\xb1\x18\x1a\x1f\xa2\xf7\x04\x1b\b\x12\x12\bv1alpha1\"\agcpvpcc:\x04\xc2\x17\xc3\x17\x12.\n" +
+	"\x0eGcpComputeDisk\x10\xba\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdisk\x120\n" +
+	"\rGcpComputeMig\x10\xbb\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpmig:\x02\xc2\x17\x12A\n" +
+	" GcpMonitoringNotificationChannel\x10\xc4\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpntfch\x12<\n" +
+	"\x18GcpMonitoringAlertPolicy\x10\xc5\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpalrt:\x02\xc4\x18\x127\n" +
+	"\x18GcpMonitoringUptimeCheck\x10\xc6\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcpupt\x122\n" +
+	"\x0eGcpLoggingSink\x10\xc7\x18\x1a\x1d\xa2\xf7\x04\x19\b\x12\x12\bv1alpha1\"\agcpsink:\x02\xbe\x17\x126\n" +
+	"\x16GcpMonitoringDashboard\x10\xc8\x18\x1a\x19\xa2\xf7\x04\x15\b\x12\x12\bv1alpha1\"\agcpdash\x12/\n" +
+	"\x10GcpMonitoringSlo\x10\xc9\x18\x1a\x18\xa2\xf7\x04\x14\b\x12\x12\bv1alpha1\"\x06gcpslo\x12-\n" +
+	"\fGcpLogBucket\x10\xca\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcplogbk\x12-\n" +
+	"\fGcpLogMetric\x10\xcb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcplogmt\x129\n" +
+	"\x16GcpSecretManagerSecret\x10\xce\x18\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpsec:\x02\xc6\x17\x12:\n" +
+	"\x19GcpIdentityPlatformConfig\x10\xcf\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpidcfg\x12>\n" +
+	"\x19GcpIdentityPlatformTenant\x10\xd0\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpidten:\x02\xcf\x18\x122\n" +
+	"\x11GcpIamOauthClient\x10\xd1\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpoauth\x121\n" +
+	"\x10GcpIamDenyPolicy\x10\xd2\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpdenyp\x12=\n" +
+	"\x18GcpCloudRunDomainMapping\x10\xd8\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcprundm:\x02\xbb\x17\x12,\n" +
+	"\vGcpWorkflow\x10\xd9\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpwflow\x127\n" +
+	"\x12GcpEventarcTrigger\x10\xda\x18\x1a\x1e\xa2\xf7\x04\x1a\b\x12\x12\bv1alpha1\"\bgcpevtrg:\x02\xbb\x17\x126\n" +
+	"\x15GcpEventarcMessageBus\x10\xdb\x18\x1a\x1a\xa2\xf7\x04\x16\b\x12\x12\bv1alpha1\"\bgcpevbus\x123\n" +
 	"\x13KubernetesNamespace\x10\xa0\x1f\x1a\x19\xa2\xf7\x04\x15\b\x13\x12\bv1alpha1\"\x05k8sns0\x01\x125\n" +
 	"\x14KubernetesDeployment\x10\xa1\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8sdpl(\x01\x126\n" +
 	"\x15KubernetesStatefulSet\x10\xa2\x1f\x1a\x1a\xa2\xf7\x04\x16\b\x13\x12\bv1alpha1\"\x06k8ssts(\x01\x121\n" +
@@ -4044,25 +4257,27 @@ func file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDescGZIP() []byt
 }
 
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_shared_cloudresourcekind_cloud_resource_kind_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_goTypes = []any{
-	(CloudResourceKind)(0),                // 0: dev.planton.shared.cloudresourcekind.CloudResourceKind
-	(*CloudResourceKindMeta)(nil),         // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
-	(*KubernetesManifestProjection)(nil),  // 2: dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
-	(CloudResourceProvider)(0),            // 3: dev.planton.shared.cloudresourcekind.CloudResourceProvider
-	(*descriptorpb.EnumValueOptions)(nil), // 4: google.protobuf.EnumValueOptions
+	(CloudResourceKind)(0),                      // 0: dev.planton.shared.cloudresourcekind.CloudResourceKind
+	(*CloudResourceKindMeta)(nil),               // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
+	(*CloudResourceKindVersionDeprecation)(nil), // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecation
+	(*KubernetesManifestProjection)(nil),        // 3: dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
+	(CloudResourceProvider)(0),                  // 4: dev.planton.shared.cloudresourcekind.CloudResourceProvider
+	(*descriptorpb.EnumValueOptions)(nil),       // 5: google.protobuf.EnumValueOptions
 }
 var file_shared_cloudresourcekind_cloud_resource_kind_proto_depIdxs = []int32{
-	3, // 0: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.provider:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceProvider
+	4, // 0: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.provider:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceProvider
 	0, // 1: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.prerequisites:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKind
-	2, // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.kubernetes_manifest_projection:type_name -> dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
-	4, // 3: dev.planton.shared.cloudresourcekind.kind_meta:extendee -> google.protobuf.EnumValueOptions
-	1, // 4: dev.planton.shared.cloudresourcekind.kind_meta:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	4, // [4:5] is the sub-list for extension type_name
-	3, // [3:4] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	3, // 2: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.kubernetes_manifest_projection:type_name -> dev.planton.shared.cloudresourcekind.KubernetesManifestProjection
+	2, // 3: dev.planton.shared.cloudresourcekind.CloudResourceKindMeta.deprecations:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindVersionDeprecation
+	5, // 4: dev.planton.shared.cloudresourcekind.kind_meta:extendee -> google.protobuf.EnumValueOptions
+	1, // 5: dev.planton.shared.cloudresourcekind.kind_meta:type_name -> dev.planton.shared.cloudresourcekind.CloudResourceKindMeta
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	5, // [5:6] is the sub-list for extension type_name
+	4, // [4:5] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_shared_cloudresourcekind_cloud_resource_kind_proto_init() }
@@ -4077,7 +4292,7 @@ func file_shared_cloudresourcekind_cloud_resource_kind_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc), len(file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   2,
+			NumMessages:   3,
 			NumExtensions: 1,
 			NumServices:   0,
 		},

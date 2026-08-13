@@ -676,6 +676,131 @@ var _ = ginkgo.Describe("GcpAlloydbClusterSpec", func() {
 		gomega.Expect(err).To(gomega.HaveOccurred())
 	})
 
+	ginkgo.It("should accept a single restore source", func() {
+		msg := minimal()
+		msg.Spec.RestoreBackupSource = &GcpAlloydbClusterRestoreBackupSource{
+			BackupName: "projects/p/locations/us-central1/backups/nightly",
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a PITR restore source with a cluster reference", func() {
+		msg := minimal()
+		msg.Spec.RestoreContinuousBackupSource = &GcpAlloydbClusterRestoreContinuousBackupSource{
+			Cluster:     svr("projects/p/locations/us-central1/clusters/source"),
+			PointInTime: "2026-08-01T12:00:00Z",
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject two restore sources", func() {
+		msg := minimal()
+		msg.Spec.RestoreBackupSource = &GcpAlloydbClusterRestoreBackupSource{
+			BackupName: "projects/p/locations/us-central1/backups/nightly",
+		}
+		msg.Spec.RestoreBackupdrPitrSource = &GcpAlloydbClusterRestoreBackupdrPitrSource{
+			DataSource:  "projects/p/locations/us-central1/backupVaults/v/dataSources/ds",
+			PointInTime: "2026-08-01T12:00:00Z",
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "at most one restore source")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should accept every cluster deletion_policy value", func() {
+		for _, v := range []string{"DEFAULT", "FORCE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject DELETE as a cluster deletion_policy (AlloyDB uses DEFAULT/FORCE)", func() {
+		msg := minimal()
+		msg.Spec.DeletionPolicy = "DELETE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept every primary-instance deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON", ""} {
+			msg := minimal()
+			msg.Spec.PrimaryInstance.DeletionPolicy = v
+			gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("should reject FORCE as a primary-instance deletion_policy", func() {
+		msg := minimal()
+		msg.Spec.PrimaryInstance.DeletionPolicy = "FORCE"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	ginkgo.It("should accept gce_zone on a ZONAL primary", func() {
+		msg := minimal()
+		msg.Spec.PrimaryInstance.AvailabilityType = "ZONAL"
+		msg.Spec.PrimaryInstance.GceZone = "us-central1-a"
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject gce_zone on a non-ZONAL primary", func() {
+		msg := minimal()
+		msg.Spec.PrimaryInstance.GceZone = "us-central1-a"
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "ZONAL")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should reject authorized networks without a public IP", func() {
+		msg := minimal()
+		msg.Spec.PrimaryInstance.AuthorizedExternalNetworks = []*GcpAlloydbClusterAuthorizedExternalNetwork{
+			{CidrRange: "203.0.113.0/24"},
+		}
+		err := validator.Validate(msg)
+		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(strings.Contains(err.Error(), "enable_public_ip")).To(gomega.BeTrue())
+	})
+
+	ginkgo.It("should accept the primary connectivity extension", func() {
+		msg := minimal()
+		msg.Spec.PrimaryInstance.EnablePublicIp = true
+		msg.Spec.PrimaryInstance.EnableOutboundPublicIp = true
+		msg.Spec.PrimaryInstance.AuthorizedExternalNetworks = []*GcpAlloydbClusterAuthorizedExternalNetwork{
+			{CidrRange: "203.0.113.0/24"},
+		}
+		msg.Spec.PrimaryInstance.Annotations = map[string]string{"team": "data"}
+		msg.Spec.PrimaryInstance.ConnectionPoolConfig = &GcpAlloydbClusterConnectionPoolConfig{
+			Enabled: true,
+			Flags:   map[string]string{"pool_mode": "transaction"},
+		}
+		msg.Spec.PrimaryInstance.AllocatedIpRangeOverride = "google-managed-services-default"
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept PSC automation on a PSC cluster's primary", func() {
+		msg := pscOnly()
+		msg.Spec.PrimaryInstance.PscInstanceConfig = &GcpAlloydbClusterPscInstanceConfig{
+			AllowedConsumerProjects: []string{"123456789"},
+			PscAutoConnections: []*GcpAlloydbClusterPscAutoConnection{{
+				ConsumerNetwork: "projects/vpc-host/global/networks/default",
+				ConsumerProject: "consumer-project",
+			}},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept dataplex, user labels, and backup labels", func() {
+		msg := minimal()
+		msg.Spec.DataplexConfig = &GcpAlloydbClusterDataplexConfig{Enabled: false}
+		msg.Spec.Labels = map[string]string{"team": "data", "env": "prod"}
+		msg.Spec.AutomatedBackupPolicy = &GcpAlloydbClusterAutomatedBackupPolicy{
+			Enabled: true,
+			Labels:  map[string]string{"backup-tier": "nightly"},
+		}
+		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
+	})
+
 	ginkgo.It("should reject missing metadata", func() {
 		msg := minimal()
 		msg.Metadata = nil

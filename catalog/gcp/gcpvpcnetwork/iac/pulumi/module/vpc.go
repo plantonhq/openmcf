@@ -2,7 +2,6 @@ package module
 
 import (
 	"github.com/pkg/errors"
-	gcpvpcnetworkv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpvpcnetwork/v1alpha1"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/compute"
 	"github.com/pulumi/pulumi-gcp/sdk/v9/go/gcp/projects"
@@ -42,9 +41,13 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		networkArgs.Project = pulumi.String(spec.ProjectId.GetValue())
 	}
 
-	if spec.GetRoutingMode() != gcpvpcnetworkv1alpha1.GcpVpcNetworkRoutingMode_REGIONAL {
-		networkArgs.RoutingMode = pulumi.StringPtr("GLOBAL")
-	}
+	// Sent explicitly on every apply (the attribute is Optional+Computed —
+	// the same class as always_compare_med below): omitting it on a
+	// GLOBAL→REGIONAL transition would silently keep GLOBAL on the live
+	// network, and the live API rejects a create whose routingConfig
+	// carries any BGP best-path field without routingMode ("Required field
+	// 'resource.routingConfig.routingMode' not specified").
+	networkArgs.RoutingMode = pulumi.String(spec.GetRoutingMode().String())
 
 	if spec.Description != "" {
 		networkArgs.Description = pulumi.StringPtr(spec.Description)
@@ -72,12 +75,24 @@ func vpc(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) (*compu
 		if bgp.Mode != "" {
 			networkArgs.BgpBestPathSelectionMode = pulumi.StringPtr(bgp.Mode)
 		}
-		if bgp.AlwaysCompareMed {
-			networkArgs.BgpAlwaysCompareMed = pulumi.BoolPtr(true)
-		}
+		// Sent explicitly (true or false) whenever the block is present: the
+		// provider attribute is Optional+Computed, so omitting it on a
+		// true→false transition would silently keep the old value on the
+		// live network.
+		networkArgs.BgpAlwaysCompareMed = pulumi.BoolPtr(bgp.AlwaysCompareMed)
 		if bgp.InterRegionCost != "" {
 			networkArgs.BgpInterRegionCost = pulumi.StringPtr(bgp.InterRegionCost)
 		}
+	}
+	// Create-time resource-manager tags (org policy / IAM conditions).
+	if len(spec.ResourceManagerTags) > 0 {
+		networkArgs.Params = &compute.NetworkParamsArgs{
+			ResourceManagerTags: pulumi.ToStringMap(spec.ResourceManagerTags),
+		}
+	}
+	// Empty defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		networkArgs.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	createdNetwork, err := compute.NewNetwork(ctx,

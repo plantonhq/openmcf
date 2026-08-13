@@ -92,6 +92,18 @@ message GcpUrlMapSpec {
   // silently breaks a path. Mutable.
   repeated GcpUrlMapTest tests = 11;
 
+  // What `terraform destroy` (or a stack teardown) may do to the URL map.
+  // DELETE (the default when empty) allows deletion; PREVENT fails the
+  // destroy outright — the URL map and anything orchestrating its teardown
+  // stop there; ABANDON removes it from state without deleting it in GCP
+  // (the map keeps serving, unmanaged). Client-side only — never sent to
+  // the GCP API.
+  string deletion_policy = 12 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+
   option (buf.validate.message).cel = {
     id: "exactly_one_default_target"
     message: "set exactly one default target: default_service, default_url_redirect, or default_route_action (with weighted_backend_services)"
@@ -102,6 +114,12 @@ message GcpUrlMapSpec {
     id: "default_route_action_conflicts_redirect"
     message: "default_route_action and default_url_redirect are mutually exclusive"
     expression: "!(has(this.default_route_action) && has(this.default_url_redirect))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "default_no_path_template_rewrite"
+    message: "path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in the URL map's default route action"
+    expression: "!has(this.default_route_action) || !has(this.default_route_action.url_rewrite) || this.default_route_action.url_rewrite.path_template_rewrite == ''"
   };
 }
 
@@ -178,21 +196,18 @@ message GcpUrlMapHeaderValue {
   bool replace = 3;
 }
 
-// A routing action: weight traffic across backends and/or rewrite the request
-// before forwarding. Used as the default action and inside path rules and
-// route rules.
+// A routing action: the full per-route traffic-management surface. Weight
+// traffic across backends, rewrite the request, bound its time budget, retry
+// failures, mirror it, answer CORS preflights, inject faults for resilience
+// testing, and control CDN caching — all scoped to the routes that use this
+// action. Used as the URL map's default action, a path matcher's default
+// action, and inside path rules and route rules.
 //
-// NOTE: the provider's route_action also carries advanced per-route
-// traffic-management sub-policies — timeout, retry_policy,
-// request_mirror_policy, cors_policy, fault_injection_policy, and
-// max_stream_duration. These are Traffic Director / mesh-advanced controls that
-// overlap the backend service's own resilience settings (circuit breakers,
-// outlier detection, timeouts) and are rarely used on a standard external
-// Application Load Balancer. They are a deliberate, documented coverage
-// boundary: this kind models the routing-defining parts of route_action
-// (weighted splits and rewrites) and leaves the mesh-advanced sub-policies for
-// a focused follow-up. Adding them is purely additive (new nested messages),
-// so no consumer breaks when they land.
+// A route action is a valid TARGET only through weighted_backend_services;
+// the other sub-policies may accompany a plain service target (e.g. a
+// path rule with `service` plus a route_action carrying only retry_policy
+// and timeout). Route-scoped policies here override the backend service's
+// own resilience/CDN settings for matching traffic only.
 message GcpUrlMapRouteAction {
   // Split traffic across multiple backend services by weight — the mechanism
   // for weighted canary and blue/green rollouts. The weights are relative; a
@@ -201,6 +216,51 @@ message GcpUrlMapRouteAction {
 
   // Rewrite the host and/or path before forwarding to the backend.
   GcpUrlMapUrlRewrite url_rewrite = 2;
+
+  // Total time budget for the request, INCLUDING all retries (from the
+  // first byte of the request to the last byte of the response). Pair with
+  // retry_policy.per_try_timeout: per-try bounds one attempt, this bounds
+  // the whole exchange. Unset uses the backend service's own timeout.
+  // Not permitted when the route targets a redirect.
+  GcpUrlMapDuration timeout = 3;
+
+  // Retry failed requests to the backend. Which failures count is chosen
+  // by retry_conditions; how long each attempt may run by per_try_timeout.
+  // Retries consume the overall timeout's budget — they never extend it.
+  GcpUrlMapRetryPolicy retry_policy = 4;
+
+  // Mirror every matched request to a second backend service, fire-and-
+  // forget (responses from the mirror are discarded; the client sees only
+  // the primary's response). Useful for shadow-testing a new stack with
+  // production traffic — the mirror backend must be sized for the full
+  // mirrored load.
+  GcpUrlMapRequestMirrorPolicy request_mirror_policy = 5;
+
+  // Answer cross-origin (CORS) preflights and stamp CORS headers at the
+  // load balancer, before requests reach the backend.
+  GcpUrlMapCorsPolicy cors_policy = 6;
+
+  // Deliberately inject failures (aborts with a chosen status, fixed
+  // delays) into a percentage of matched requests — chaos/resilience
+  // testing of the CLIENTS of this route. Never leave enabled on a
+  // production default route: the injected failures are real to callers.
+  GcpUrlMapFaultInjectionPolicy fault_injection_policy = 7;
+
+  // Upper bound on how long a STREAM on this route may stay open
+  // (gRPC/long-poll streams — distinct from timeout, which bounds a
+  // request/response exchange). Live API truth: GCP rejects this field
+  // unless the URL map's backend service uses the INTERNAL_SELF_MANAGED
+  // (Traffic Director) load-balancing scheme ("Max stream duration is
+  // only supported when UrlMap is used with BackendService whose Load
+  // Balancing Scheme is INTERNAL_SELF_MANAGED") — leave it unset on
+  // external application load balancers.
+  GcpUrlMapDuration max_stream_duration = 8;
+
+  // Cloud CDN caching for the routes using this action — overrides the
+  // backend service's cdn_policy for matching traffic only. Takes effect
+  // only when the target backend service (or bucket) has CDN enabled;
+  // GCP ignores it otherwise.
+  GcpUrlMapCachePolicy cache_policy = 9;
 }
 
 // One weighted backend in a traffic split.
@@ -219,6 +279,12 @@ message GcpUrlMapWeightedBackendService {
     (buf.validate.field).int32.gte = 0,
     (buf.validate.field).int32.lte = 1000
   ];
+
+  // Header mutations applied ONLY to the share of traffic sent to this
+  // backend — e.g. tag canary responses with an identifying header so
+  // clients and dashboards can tell which arm served them. Applied after
+  // the URL-map-level and route-level header actions.
+  GcpUrlMapHeaderAction header_action = 3;
 }
 
 // URL rewrite before forwarding to the backend.
@@ -242,6 +308,244 @@ message GcpUrlMapUrlRewrite {
     message: "path_prefix_rewrite and path_template_rewrite are mutually exclusive — set at most one"
     expression: "this.path_prefix_rewrite == '' || this.path_template_rewrite == ''"
   };
+}
+
+// A span of time at nanosecond resolution — GCP's Duration shape, used for
+// route timeouts, retry budgets, stream limits, and CDN cache lifetimes.
+message GcpUrlMapDuration {
+  // Whole seconds (0 to 315,576,000,000 — GCP's int64 Duration bound).
+  int64 seconds = 1 [
+    (buf.validate.field).int64.gte = 0,
+    (buf.validate.field).int64.lte = 315576000000
+  ];
+
+  // Fraction of a second at nanosecond resolution (0 to 999,999,999).
+  // Durations under one second use seconds = 0 and a positive nanos.
+  int32 nanos = 2 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 999999999
+  ];
+}
+
+// Retry policy for a route: which failures are retried, how many times, and
+// how long each attempt may run.
+message GcpUrlMapRetryPolicy {
+  // Number of allowed retries (GCP defaults to 1 when unset/0). Each retry
+  // still spends the route's overall timeout budget.
+  int32 num_retries = 1 [(buf.validate.field).int32.gte = 0];
+
+  // Which failures trigger a retry. 5xx (any 5xx or no response at all),
+  // gateway-error (502/503/504 only), connect-failure, retriable-4xx
+  // (currently only 409), refused-stream, and the gRPC status conditions
+  // cancelled, deadline-exceeded, resource-exhausted, unavailable.
+  repeated string retry_conditions = 2 [(buf.validate.field).cel = {
+    id: "valid_retry_conditions"
+    message: "each retry condition must be one of: 5xx, gateway-error, connect-failure, retriable-4xx, refused-stream, cancelled, deadline-exceeded, resource-exhausted, unavailable"
+    expression: "this.all(c, c in ['5xx', 'gateway-error', 'connect-failure', 'retriable-4xx', 'refused-stream', 'cancelled', 'deadline-exceeded', 'resource-exhausted', 'unavailable'])"
+  }];
+
+  // Time budget for EACH retry attempt (the route's timeout bounds the
+  // whole exchange across attempts). Unset uses the overall timeout for
+  // every attempt.
+  GcpUrlMapDuration per_try_timeout = 3;
+}
+
+// Mirror matched requests to a second backend service, fire-and-forget.
+message GcpUrlMapRequestMirrorPolicy {
+  // The backend service receiving the mirrored copy of every matched
+  // request. Reference a GcpBackendService or provide a self-link
+  // directly. Responses from this backend are discarded.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef backend_service = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpBackendService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.self_link"
+  ];
+}
+
+// Cross-origin resource sharing (CORS) handled at the load balancer: the
+// browser's preflight is answered and response headers are stamped without
+// the request reaching the backend.
+message GcpUrlMapCorsPolicy {
+  // Sets Access-Control-Allow-Credentials: allow requests carrying
+  // credentials (cookies, authorization headers). Default false.
+  bool allow_credentials = 1;
+
+  // Headers the client may send (Access-Control-Allow-Headers).
+  repeated string allow_headers = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Methods the client may use (Access-Control-Allow-Methods), e.g.
+  // ["GET", "POST", "OPTIONS"].
+  repeated string allow_methods = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Regular expressions matching allowed origins; a request origin is
+  // allowed when it matches any listed regex or exact allow_origins entry.
+  repeated string allow_origin_regexes = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Exact origins allowed, e.g. "https://app.example.com".
+  repeated string allow_origins = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Disable this CORS policy without deleting its configuration (true
+  // turns the policy off). Default false — the policy is in effect.
+  bool disabled = 6;
+
+  // Headers the browser may read from the response
+  // (Access-Control-Expose-Headers).
+  repeated string expose_headers = 7 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Seconds a browser may cache the preflight response
+  // (Access-Control-Max-Age).
+  int32 max_age = 8 [(buf.validate.field).int32.gte = 0];
+}
+
+// Deliberate failure injection for resilience testing of this route's
+// clients. Percentages are evaluated per request; both arms may be active
+// at once (delay first, then abort decision).
+message GcpUrlMapFaultInjectionPolicy {
+  // Abort a percentage of requests with a fixed HTTP status, before they
+  // reach the backend.
+  GcpUrlMapFaultAbort abort = 1;
+
+  // Delay a percentage of requests by a fixed duration before forwarding.
+  GcpUrlMapFaultDelay delay = 2;
+}
+
+// The abort arm of fault injection.
+message GcpUrlMapFaultAbort {
+  // HTTP status returned to aborted requests (200-599).
+  int32 http_status = 1 [(buf.validate.field).cel = {
+    id: "valid_fault_http_status"
+    message: "http_status must be between 200 and 599"
+    expression: "this == 0 || (this >= 200 && this <= 599)"
+  }];
+
+  // Percentage of requests aborted (0.0-100.0).
+  double percentage = 2 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 100
+  ];
+}
+
+// The delay arm of fault injection.
+message GcpUrlMapFaultDelay {
+  // How long delayed requests are held before forwarding.
+  GcpUrlMapDuration fixed_delay = 1;
+
+  // Percentage of requests delayed (0.0-100.0).
+  double percentage = 2 [
+    (buf.validate.field).double.gte = 0,
+    (buf.validate.field).double.lte = 100
+  ];
+}
+
+// Cloud CDN cache behavior for the routes using this action. TTLs are only
+// respected in cache modes that use them; GCP applies its own defaults for
+// any field left unset (cache_mode CACHE_ALL_STATIC, client/default TTL
+// 3600s, max TTL 86400s). Takes effect only when the target backend has
+// CDN enabled.
+message GcpUrlMapCachePolicy {
+  // What gets cached. CACHE_ALL_STATIC (the GCP default) caches static
+  // content types and honors origin cache headers for the rest;
+  // USE_ORIGIN_HEADERS caches only what the backends explicitly mark
+  // cacheable (TTL fields must be unset — the origin controls lifetimes);
+  // FORCE_CACHE_ALL caches everything, ignoring origin headers (never
+  // combine with private or per-user content).
+  string cache_mode = 1 [(buf.validate.field).cel = {
+    id: "valid_cache_mode"
+    message: "cache_mode must be CACHE_ALL_STATIC, USE_ORIGIN_HEADERS, or FORCE_CACHE_ALL"
+    expression: "this == '' || this in ['CACHE_ALL_STATIC', 'USE_ORIGIN_HEADERS', 'FORCE_CACHE_ALL']"
+  }];
+
+  // Requests carrying any of these headers bypass the cache and go
+  // straight to the origin (e.g. a debug or authorization header).
+  repeated string cache_bypass_request_header_names = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Cache negative responses (404, 410, ...) so repeated misses do not
+  // hammer the backends. Pair with negative_caching_policy to set
+  // per-status TTLs.
+  bool negative_caching = 3;
+
+  // Collapse concurrent cache-fill requests for the same key into one
+  // origin fetch. Default true on GCP's side.
+  bool request_coalescing = 4;
+
+  // What forms the cache key — trim protocol, host, query string, or
+  // select specific query parameters, headers, and cookies.
+  GcpUrlMapCacheKeyPolicy cache_key_policy = 5;
+
+  // Max lifetime in browsers and downstream caches (sets the max-age
+  // clients see). Not respected with cache_mode USE_ORIGIN_HEADERS.
+  GcpUrlMapDuration client_ttl = 6;
+
+  // Edge-cache lifetime for responses without their own cache headers.
+  // Not respected with cache_mode USE_ORIGIN_HEADERS.
+  GcpUrlMapDuration default_ttl = 7;
+
+  // Upper bound on any edge-cache lifetime, capping even origin-supplied
+  // max-age. Not respected with cache_mode USE_ORIGIN_HEADERS or
+  // FORCE_CACHE_ALL.
+  GcpUrlMapDuration max_ttl = 8;
+
+  // How long stale content may still be served while revalidating in the
+  // background (up to 1 day).
+  GcpUrlMapDuration serve_while_stale = 9;
+
+  // Per-status TTLs for cached negative responses; only meaningful with
+  // negative_caching enabled.
+  repeated GcpUrlMapNegativeCachingPolicy negative_caching_policy = 10;
+
+  option (buf.validate.message).cel = {
+    id: "origin_headers_mode_owns_ttls"
+    message: "with cache_mode USE_ORIGIN_HEADERS the origin's headers control lifetimes — remove client_ttl, default_ttl, and max_ttl (GCP would silently ignore them)"
+    expression: "this.cache_mode != 'USE_ORIGIN_HEADERS' || (!has(this.client_ttl) && !has(this.default_ttl) && !has(this.max_ttl))"
+  };
+}
+
+// What forms the CDN cache key for routes using this cache policy.
+message GcpUrlMapCacheKeyPolicy {
+  // Query parameters EXCLUDED from the cache key (everything else is
+  // included). Mutually exclusive with included_query_parameters.
+  repeated string excluded_query_parameters = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Include the request host in the cache key (distinct hosts cache
+  // separately).
+  bool include_host = 2;
+
+  // Include the protocol (http/https) in the cache key.
+  bool include_protocol = 3;
+
+  // Include the entire query string in the cache key. When false, the
+  // included/excluded parameter lists refine what participates.
+  bool include_query_string = 4;
+
+  // Cookie names whose values join the cache key.
+  repeated string included_cookie_names = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Header names whose values join the cache key.
+  repeated string included_header_names = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Query parameters INCLUDED in the cache key (everything else is
+  // ignored). Mutually exclusive with excluded_query_parameters.
+  repeated string included_query_parameters = 7 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  option (buf.validate.message).cel = {
+    id: "query_params_include_or_exclude"
+    message: "included_query_parameters and excluded_query_parameters are mutually exclusive — set at most one list"
+    expression: "size(this.included_query_parameters) == 0 || size(this.excluded_query_parameters) == 0"
+  };
+}
+
+// Cache lifetime for one negative (error) response status.
+message GcpUrlMapNegativeCachingPolicy {
+  // The HTTP status code this TTL applies to. GCP accepts only 300, 301,
+  // 302, 307, 308, 404, 405, 410, 421, 451, and 501, each at most once.
+  int32 code = 1 [(buf.validate.field).cel = {
+    id: "valid_negative_caching_code"
+    message: "code must be one of 300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501"
+    expression: "this == 0 || this in [300, 301, 302, 307, 308, 404, 405, 410, 421, 451, 501]"
+  }];
+
+  // How long responses with this status are cached.
+  GcpUrlMapDuration ttl = 2;
 }
 
 // A custom error response policy: serve error pages from a backend bucket for
@@ -347,8 +651,20 @@ message GcpUrlMapPathMatcher {
 
   option (buf.validate.message).cel = {
     id: "path_matcher_default_target_at_most_one"
-    message: "a path matcher may set at most one of default_service, default_url_redirect, or default_route_action"
-    expression: "(has(this.default_service) ? 1 : 0) + (has(this.default_url_redirect) ? 1 : 0) + (has(this.default_route_action) ? 1 : 0) <= 1"
+    message: "a path matcher may set at most one default target: default_service, default_url_redirect, or default_route_action with weighted_backend_services (a route action carrying only sub-policies may accompany default_service)"
+    expression: "(has(this.default_service) ? 1 : 0) + (has(this.default_url_redirect) ? 1 : 0) + (has(this.default_route_action) && size(this.default_route_action.weighted_backend_services) > 0 ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "path_matcher_route_action_conflicts_redirect"
+    message: "default_route_action and default_url_redirect are mutually exclusive — a redirect never reaches a backend"
+    expression: "!(has(this.default_route_action) && has(this.default_url_redirect))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "path_matcher_no_path_template_rewrite"
+    message: "path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path matcher's default route action"
+    expression: "!has(this.default_route_action) || !has(this.default_route_action.url_rewrite) || this.default_route_action.url_rewrite.path_template_rewrite == ''"
   };
 
   option (buf.validate.message).cel = {
@@ -383,8 +699,20 @@ message GcpUrlMapPathRule {
 
   option (buf.validate.message).cel = {
     id: "path_rule_target_exactly_one"
-    message: "a path rule must set exactly one of service, url_redirect, or route_action"
-    expression: "(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) ? 1 : 0) == 1"
+    message: "a path rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)"
+    expression: "(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) && size(this.route_action.weighted_backend_services) > 0 ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "path_rule_route_action_conflicts_redirect"
+    message: "route_action and url_redirect are mutually exclusive — a redirect never reaches a backend"
+    expression: "!(has(this.route_action) && has(this.url_redirect))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "path_rule_no_path_template_rewrite"
+    message: "path_template_rewrite is honored only inside a route rule's route_action — GCP rejects it in a path rule's route action"
+    expression: "!has(this.route_action) || !has(this.route_action.url_rewrite) || this.route_action.url_rewrite.path_template_rewrite == ''"
   };
 }
 
@@ -423,8 +751,14 @@ message GcpUrlMapRouteRule {
 
   option (buf.validate.message).cel = {
     id: "route_rule_target_exactly_one"
-    message: "a route rule must set exactly one of service, url_redirect, or route_action"
-    expression: "(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) ? 1 : 0) == 1"
+    message: "a route rule must have exactly one target: service, url_redirect, or route_action with weighted_backend_services (a route action carrying only sub-policies may accompany service)"
+    expression: "(has(this.service) ? 1 : 0) + (has(this.url_redirect) ? 1 : 0) + (has(this.route_action) && size(this.route_action.weighted_backend_services) > 0 ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "route_rule_route_action_conflicts_redirect"
+    message: "route_action and url_redirect are mutually exclusive — a redirect never reaches a backend"
+    expression: "!(has(this.route_action) && has(this.url_redirect))"
   };
 }
 

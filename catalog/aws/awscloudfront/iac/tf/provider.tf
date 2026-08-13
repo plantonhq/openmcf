@@ -8,8 +8,13 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor (v6 family baseline): everything this module renders (incl. the origin
-      # vpc_origin_config and per-behavior grpc_config blocks) predates 6.0.
+      # Feature floor 6.51.0: origin_mtls_config (origin-side mTLS) landed there.
+      # Earlier floors this module renders: cache_tag_config 6.46.0;
+      # connection_function_association + viewer_mtls_config +
+      # vpc_origin_config.owner_account_id 6.28.0; custom_origin_config.ip_address_type
+      # 6.15.0; origin.response_completion_timeout 6.13.0; anycast_ip_list_id 6.3.0.
+      # Everything else (incl. continuous-deployment policies, staging, vpc_origin_config,
+      # and per-behavior grpc_config) predates 6.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

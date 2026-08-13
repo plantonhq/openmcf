@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsNatGateway
+metadata:
+  name: regional-nat
+spec:
+  region: us-west-2
+  connectivityType: public
+  # One AWS-managed gateway spanning every AZ of the VPC -- no per-AZ gateway
+  # fleet to build, no per-AZ route table wiring to keep straight.
+  availabilityMode: regional
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: <vpc-name>
+      fieldPath: status.outputs.vpc_id

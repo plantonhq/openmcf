@@ -2,6 +2,13 @@
 # floor, scale-out ceiling, concurrency threshold) on the dependency-free
 # leaf. Named minimal.yaml so consumers composing this kind through the
 # e2e-prerequisites annotation resolve it as the install manifest.
+#
+# setAsAccountDefault is DELIBERATELY absent: claiming the account/region
+# default would repoint the shared test account's default auto scaling
+# configuration under every concurrently running lane (and AWS never
+# restores the previous holder on destroy). The designation arm is proven
+# offline via the canonical manifest's plan; its live proof needs a
+# dedicated account -- recorded deferral, never a silent skip.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerAutoScalingConfiguration
 metadata:

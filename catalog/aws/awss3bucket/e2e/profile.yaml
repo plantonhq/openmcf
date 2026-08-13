@@ -3,17 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: awss3bucket
 spec:
-  # Two scenarios, live-validated on both provisioners (deploy -> HeadBucket
-  # verify -> destroy -> verify-destroyed): the minimal walking skeleton and
-  # the full-surface bucket (versioning + KMS-with-bucket-key encryption +
-  # TLS-only policy + multi-predicate lifecycle filters + website with
-  # routing rules + EventBridge notifications + Intelligent-Tiering).
-  # Deliberately not run live: replication (needs a second versioned bucket
-  # + replication role; module surface proven offline) and Object Lock
-  # (irreversible bucket mode) -- see the full-surface scenario header.
+  # Proven 2026-08-11 (both scenarios x both engines + blind import
+  # round-trips: the full-surface lane re-imported 14 resources blind,
+  # incl. the ABAC row and the three new analytics/inventory/metric
+  # composites, with a zero-change plan -- the machine proof of the new
+  # governance arms incl. the day-zero transition and blocked SSE-C).
+  # Scenario bucket names are run-scoped (${E2E_RUN_ID}): S3's global
+  # namespace makes a committed fixed name squattable, and a deleted name
+  # can 409 CreateBucket while HeadBucket 404s (live-hit this session;
+  # the class is in e2e/README.md's AWS section).
+  # Deliberately not run live: replication and Object Lock (see the
+  # full-surface scenario header) and the S3 Metadata configuration (the
+  # provider's own create timeout is 30 minutes against this profile's
+  # 15-minute budget -- proven offline via the canonical manifest and the
+  # 04-governed-data-lake preset; a future proof lane may raise the
+  # timeout and prove it live instead).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

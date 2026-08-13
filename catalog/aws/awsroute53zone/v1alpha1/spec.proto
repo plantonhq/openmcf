@@ -70,7 +70,12 @@ message AwsRoute53ZoneSpec {
   // Enables accelerated recovery for the hosted zone: Route 53 pre-stages
   // the zone's data so control-plane changes propagate faster during
   // regional recovery events. Public zones only.
-  bool enable_accelerated_recovery = 7;
+  //
+  // Tri-state on purpose: AWS keeps the feature's CURRENT state when the
+  // field is omitted, so switching it off requires an EXPLICIT false — the
+  // provider documents that removing the argument does not disable it.
+  // Unset = leave as-is (off for new zones), true = enable, false = disable.
+  optional bool enable_accelerated_recovery = 7;
 
   // DNS query logging to CloudWatch Logs — who is querying which names, with
   // response codes. Used for security monitoring, debugging resolution
@@ -112,11 +117,12 @@ message AwsRoute53ZoneSpec {
     expression: "!this.is_private || this.delegation_set_id == ''"
   };
 
-  // Accelerated recovery only applies to public zones.
+  // Accelerated recovery only applies to public zones — any presence
+  // (even an explicit false) is dead configuration on a private zone.
   option (buf.validate.message).cel = {
     id: "accelerated_recovery_public_only"
     message: "enable_accelerated_recovery cannot be set for private zones"
-    expression: "!this.is_private || !this.enable_accelerated_recovery"
+    expression: "!this.is_private || !has(this.enable_accelerated_recovery)"
   };
 
   // Query logging is an AWS public-zone-only feature.
@@ -198,4 +204,27 @@ message AwsRoute53ZoneDnssec {
   // Name of the key-signing key inside Route 53 (3–128 characters; letters,
   // numbers, "._-"). Defaults to a name derived from the zone when omitted.
   string key_signing_key_name = 2 [(buf.validate.field).string = {pattern: "^$|^[0-9A-Za-z._-]{3,128}$"}];
+
+  // Operational status of the key-signing key: "ACTIVE" (default when
+  // omitted) or "INACTIVE". Deactivating the KSK stops Route 53 from using
+  // it to sign — the monitoring/troubleshooting lever AWS documents for
+  // investigating signing problems without tearing the DNSSEC config down.
+  // Updatable in place.
+  //
+  // Note: while signing is enabled, an INACTIVE KSK means signatures cannot
+  // refresh — deactivate only while diagnosing, or after a replacement KSK
+  // is active. AWS allows at most two KSKs per hosted zone (the rotation
+  // pair); this resource models the one steady-state KSK, so a
+  // zero-downtime rotation (create second KSK, retire the first) is
+  // performed with AWS tooling and then reconciled here by pointing
+  // kms_key_arn/key_signing_key_name at the new key.
+  string key_signing_key_status = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ACTIVE",
+        "INACTIVE"
+      ]
+    }
+  ];
 }

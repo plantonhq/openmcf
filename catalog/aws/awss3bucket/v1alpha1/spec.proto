@@ -75,6 +75,18 @@ message AwsS3BucketSpec {
   // every new object.
   bool object_lock_enabled = 3;
 
+  // Bucket namespace. Empty keeps the classic "global" namespace (bucket
+  // names unique across all AWS accounts worldwide); "account-regional"
+  // scopes the name to this account and region instead — names only need to
+  // be unique within the account+region, and the bucket is addressed through
+  // account-scoped endpoints. Chosen at creation; changing it replaces the
+  // bucket.
+  string bucket_namespace = 21 [(buf.validate.field).cel = {
+    id: "bucket_namespace_valid"
+    message: "bucket_namespace must be one of: account-regional, global"
+    expression: "this == '' || this == 'account-regional' || this == 'global'"
+  }];
+
   // ---------------------------------------------------------------------------
   // Versioning
   // ---------------------------------------------------------------------------
@@ -128,11 +140,12 @@ message AwsS3BucketSpec {
   // Canned ACL applied to the bucket. Only meaningful when `object_ownership`
   // re-enables ACLs (BucketOwnerPreferred or ObjectWriter) — enforced by
   // validation. Prefer bucket policies over ACLs; this exists for legacy
-  // integrations (e.g. "log-delivery-write" for classic log delivery).
+  // integrations (e.g. "log-delivery-write" for classic log delivery,
+  // "aws-exec-read" for EC2 AMI bundle reads).
   string acl = 8 [(buf.validate.field).cel = {
     id: "acl_valid"
-    message: "acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, log-delivery-write"
-    expression: "this == '' || this == 'private' || this == 'public-read' || this == 'public-read-write' || this == 'authenticated-read' || this == 'log-delivery-write'"
+    message: "acl must be a canned ACL: private, public-read, public-read-write, authenticated-read, aws-exec-read, log-delivery-write"
+    expression: "this == '' || this == 'private' || this == 'public-read' || this == 'public-read-write' || this == 'authenticated-read' || this == 'aws-exec-read' || this == 'log-delivery-write'"
   }];
 
   // ---------------------------------------------------------------------------
@@ -265,6 +278,59 @@ message AwsS3BucketSpec {
   // access. Only affects objects already in INTELLIGENT_TIERING (via lifecycle
   // transition or direct upload).
   repeated AwsS3BucketIntelligentTieringConfiguration intelligent_tiering_configurations = 20;
+
+  // ---------------------------------------------------------------------------
+  // Attribute-based access control (ABAC)
+  // ---------------------------------------------------------------------------
+
+  // ABAC state for the bucket. "Enabled" lets IAM policies authorize requests
+  // by comparing principal tags against the bucket's tags (attribute-based
+  // access control); "Disabled" turns it off explicitly. Empty leaves the
+  // bucket at AWS's default (disabled) without managing the setting.
+  string abac_status = 22 [(buf.validate.field).cel = {
+    id: "abac_status_valid"
+    message: "abac_status must be one of: Enabled, Disabled"
+    expression: "this == '' || this == 'Enabled' || this == 'Disabled'"
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Storage analytics, inventory, and request metrics
+  // ---------------------------------------------------------------------------
+
+  // Storage-class-analysis configurations. Each named configuration observes
+  // access patterns for a scope of objects and (optionally) exports daily
+  // findings to a bucket as CSV — the data source for choosing lifecycle
+  // transition ages. Analysis observes for at least 30 days before results
+  // stabilize.
+  repeated AwsS3BucketAnalyticsConfiguration analytics_configurations = 23;
+
+  // Inventory report configurations. Each named configuration delivers a
+  // scheduled manifest of objects and selected metadata (encryption status,
+  // replication status, object-lock state, ...) to a destination bucket —
+  // the audit backbone for large buckets where ListObjects is impractical.
+  // The destination bucket needs a policy allowing `s3.amazonaws.com` to
+  // `s3:PutObject` (AWS documents the exact statement); delivery starts
+  // within 48 hours of configuration.
+  repeated AwsS3BucketInventoryConfiguration inventory_configurations = 24;
+
+  // Request-metrics configurations. Each named configuration publishes
+  // CloudWatch request metrics (AllRequests, 4xxErrors, FirstByteLatency,
+  // ...) for a scope of objects, at CloudWatch's standard per-metric cost.
+  // Whole-bucket storage metrics are free and always on; these add
+  // request-level visibility for a prefix, tag set, or access point.
+  repeated AwsS3BucketMetricsConfiguration metrics_configurations = 25;
+
+  // ---------------------------------------------------------------------------
+  // S3 Metadata (queryable object metadata tables)
+  // ---------------------------------------------------------------------------
+
+  // S3 Metadata configuration. Maintains queryable Apache Iceberg tables of
+  // this bucket's object metadata in an AWS-managed table bucket: a journal
+  // table records every change (uploads, deletes, metadata updates) and an
+  // optional live inventory table mirrors the current object set. Query them
+  // with Athena/Spark to find objects without listing the bucket. Table
+  // storage and updates bill per S3 Tables pricing.
+  AwsS3BucketMetadataConfiguration metadata_configuration = 26;
 }
 
 // Default server-side encryption for new objects in the bucket.
@@ -301,6 +367,19 @@ message AwsS3BucketEncryption {
   // by up to 99% on KMS-encrypted buckets. Recommended whenever SSE-KMS is
   // in use; no effect under AES256.
   bool bucket_key_enabled = 3;
+
+  // Encryption types PUT requests may no longer use on this bucket.
+  // "SSE-C" blocks customer-provided-key encryption (AWS blocks SSE-C on
+  // new buckets by default since March 2026 — set this to state the posture
+  // explicitly, or to re-permit SSE-C by managing the block without it);
+  // "NONE" blocks unencrypted uploads that override the bucket default.
+  repeated string blocked_encryption_types = 4 [(buf.validate.field).repeated.items = {
+    cel: {
+      id: "blocked_encryption_type_valid"
+      message: "blocked_encryption_types entries must be one of: NONE, SSE-C"
+      expression: "this == 'NONE' || this == 'SSE-C'"
+    }
+  }];
 }
 
 // Public access guard rails for the bucket. Absence of this block means all
@@ -402,11 +481,14 @@ message AwsS3BucketLifecycleTransition {
   option (buf.validate.message).cel = {
     id: "transition_days_xor_date"
     message: "exactly one of days or date must be set"
-    expression: "(this.days > 0 && this.date == '') || (this.days == 0 && this.date != '')"
+    expression: "(has(this.days) && this.date == '') || (!has(this.days) && this.date != '')"
   };
 
   // Days after object creation to transition. Mutually exclusive with `date`.
-  int32 days = 1 [(buf.validate.field).int32.gte = 0];
+  // Presence-typed because AWS allows 0 ("transition on the upload day" —
+  // common for INTELLIGENT_TIERING/GLACIER_IR at ingest): unset means "use
+  // date instead", an explicit 0 is a real day-zero transition.
+  optional int32 days = 1 [(buf.validate.field).int32.gte = 0];
 
   // Absolute transition date in RFC3339 format (e.g. "2027-01-01T00:00:00Z").
   // Mutually exclusive with `days`.
@@ -586,10 +668,16 @@ message AwsS3BucketReplicationDestination {
   string account = 2;
 
   // Storage class for replicas. Empty keeps each source object's class.
+  // The domain mirrors AWS's PUT Bucket replication contract at provider
+  // 6.58.0: the full storage-class set including EXPRESS_ONEZONE (directory
+  // buckets), OUTPOSTS, SNOW, and FSX_ONTAP — minus FSX_OPENZFS, which AWS's
+  // own API contract states "is not an accepted value when replicating
+  // objects". OUTPOSTS/SNOW/FSX_ONTAP apply only to their matching
+  // destination bucket types; AWS validates that pairing at apply time.
   string storage_class = 3 [(buf.validate.field).cel = {
     id: "replica_storage_class_valid"
-    message: "storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY"
-    expression: "this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY'"
+    message: "storage_class must be one of: STANDARD, STANDARD_IA, ONEZONE_IA, INTELLIGENT_TIERING, GLACIER_IR, GLACIER, DEEP_ARCHIVE, REDUCED_REDUNDANCY, EXPRESS_ONEZONE, OUTPOSTS, SNOW, FSX_ONTAP"
+    expression: "this == '' || this == 'STANDARD' || this == 'STANDARD_IA' || this == 'ONEZONE_IA' || this == 'INTELLIGENT_TIERING' || this == 'GLACIER_IR' || this == 'GLACIER' || this == 'DEEP_ARCHIVE' || this == 'REDUCED_REDUNDANCY' || this == 'EXPRESS_ONEZONE' || this == 'OUTPOSTS' || this == 'SNOW' || this == 'FSX_ONTAP'"
   }];
 
   // Transfer replica ownership to the destination account (cross-account
@@ -665,8 +753,9 @@ message AwsS3BucketWebsiteRedirectAll {
 
 // One conditional website routing rule.
 message AwsS3BucketWebsiteRoutingRule {
-  // When the rule applies. At least one condition should be set; an empty
-  // condition matches every request.
+  // When the rule applies. Omit the condition entirely to apply the redirect
+  // to every request; a present-but-empty condition is rejected (AWS requires
+  // at least one condition field when the Condition element is sent).
   AwsS3BucketWebsiteRoutingRuleCondition condition = 1;
 
   // What the redirect does.
@@ -675,6 +764,15 @@ message AwsS3BucketWebsiteRoutingRule {
 
 // Condition for a website routing rule (fields AND-combine when both set).
 message AwsS3BucketWebsiteRoutingRuleCondition {
+  // AWS requires at least one field inside a Condition element ("Required
+  // when parent element Condition is specified and sibling is not") — an
+  // empty condition is MalformedXML at apply time on both engines.
+  option (buf.validate.message).cel = {
+    id: "routing_condition_at_least_one"
+    message: "a routing-rule condition must set http_error_code_returned_equals and/or key_prefix_equals (omit the condition to match every request)"
+    expression: "this.http_error_code_returned_equals != '' || this.key_prefix_equals != ''"
+  };
+
   // Apply when the response would have this HTTP error code, e.g. "404".
   string http_error_code_returned_equals = 1;
 
@@ -684,6 +782,21 @@ message AwsS3BucketWebsiteRoutingRuleCondition {
 
 // Redirect action for a website routing rule.
 message AwsS3BucketWebsiteRoutingRuleRedirect {
+  // AWS requires at least one redirect field ("Not required if one of the
+  // siblings is present" on each) — an empty Redirect element is
+  // MalformedXML at apply time on both engines.
+  option (buf.validate.message).cel = {
+    id: "routing_redirect_at_least_one"
+    message: "a routing-rule redirect must set at least one of: host_name, http_redirect_code, protocol, replace_key_prefix_with, replace_key_with"
+    expression: "this.host_name != '' || this.http_redirect_code != '' || this.protocol != '' || this.replace_key_prefix_with != '' || this.replace_key_with != ''"
+  };
+  // AWS: ReplaceKeyPrefixWith "can be present only if ReplaceKeyWith is not
+  // provided" — the two rewrite forms are mutually exclusive.
+  option (buf.validate.message).cel = {
+    id: "routing_redirect_prefix_xor_key"
+    message: "replace_key_prefix_with and replace_key_with are mutually exclusive"
+    expression: "this.replace_key_prefix_with == '' || this.replace_key_with == ''"
+  };
   // Redirect target host. Empty keeps the original host.
   string host_name = 1;
 
@@ -918,4 +1031,240 @@ message AwsS3BucketIntelligentTieringTier {
 
   // Consecutive days without access before objects move to this tier.
   int32 days = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+// One storage-class-analysis configuration. Scope predicates (prefix, tags)
+// combine with AND, mirroring the lifecycle/tiering filter convention.
+message AwsS3BucketAnalyticsConfiguration {
+  // Name of the configuration, unique within the bucket (up to 64
+  // characters per the AWS analytics-id contract).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // Key prefix scoping the analysis. Combined (AND) with filter_tags; leave
+  // both empty to analyze the whole bucket.
+  string filter_prefix = 2;
+
+  // Object tags scoping the analysis. Combined (AND) with filter_prefix.
+  map<string, string> filter_tags = 3;
+
+  // Daily CSV export of the analysis findings to a bucket. Without it the
+  // findings are only visible in the S3 console. (AWS's V_1 schema and CSV
+  // format are the only values the API accepts, so only the destination is
+  // configurable.)
+  AwsS3BucketAnalyticsExport export = 4;
+}
+
+// Destination for a storage-class-analysis daily export.
+message AwsS3BucketAnalyticsExport {
+  // Destination bucket for the CSV findings. Accepts a bucket ARN
+  // (arn:aws:s3:::name) or a reference to an AwsS3Bucket resource. The
+  // bucket must allow `s3.amazonaws.com` to `s3:PutObject` (same-account
+  // destinations get the grant via bucket policy).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // Account ID that owns the destination bucket. Empty assumes the
+  // bucket owner's account.
+  string bucket_account_id = 2;
+
+  // Key prefix for exported findings, e.g. "analytics/".
+  string prefix = 3;
+}
+
+// One inventory report configuration.
+message AwsS3BucketInventoryConfiguration {
+  // Name of the configuration, unique within the bucket (up to 64
+  // characters per the AWS inventory-id contract).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // Keep the configuration defined but stop generating reports. Unset means
+  // active (the AWS default) — the zero value never fights the provider's
+  // enabled-by-default contract.
+  bool disabled = 2;
+
+  // Which object versions the report covers: "All" (every version on
+  // versioned buckets) or "Current" (only the latest of each object).
+  string included_object_versions = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "inventory_included_versions_valid"
+      message: "included_object_versions must be one of: All, Current"
+      expression: "this == 'All' || this == 'Current'"
+    }
+  ];
+
+  // Report generation schedule.
+  string frequency = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "inventory_frequency_valid"
+      message: "frequency must be one of: Daily, Weekly"
+      expression: "this == 'Daily' || this == 'Weekly'"
+    }
+  ];
+
+  // Metadata columns to include beyond bucket/key/version. The report is the
+  // cheap way to audit encryption, replication, and object-lock posture at
+  // scale.
+  repeated string optional_fields = 5 [(buf.validate.field).repeated.items = {
+    cel: {
+      id: "inventory_optional_field_valid"
+      message: "optional_fields entries must be valid inventory fields (Size, LastModifiedDate, StorageClass, ETag, IsMultipartUploaded, ReplicationStatus, EncryptionStatus, ObjectLockRetainUntilDate, ObjectLockMode, ObjectLockLegalHoldStatus, IntelligentTieringAccessTier, BucketKeyStatus, ChecksumAlgorithm, ObjectAccessControlList, ObjectOwner, LifecycleExpirationDate)"
+      expression: "this in ['Size', 'LastModifiedDate', 'StorageClass', 'ETag', 'IsMultipartUploaded', 'ReplicationStatus', 'EncryptionStatus', 'ObjectLockRetainUntilDate', 'ObjectLockMode', 'ObjectLockLegalHoldStatus', 'IntelligentTieringAccessTier', 'BucketKeyStatus', 'ChecksumAlgorithm', 'ObjectAccessControlList', 'ObjectOwner', 'LifecycleExpirationDate']"
+    }
+  }];
+
+  // Key prefix scoping which objects the report covers. Empty covers the
+  // whole bucket.
+  string filter_prefix = 6;
+
+  // Where and how the report files are delivered.
+  AwsS3BucketInventoryDestination destination = 7 [(buf.validate.field).required = true];
+}
+
+// Delivery destination for inventory report files.
+message AwsS3BucketInventoryDestination {
+  option (buf.validate.message).cel = {
+    id: "inventory_encryption_exactly_one_arm"
+    message: "set at most one of sse_s3 or sse_kms_key_id for report encryption"
+    expression: "!(this.sse_s3 && has(this.sse_kms_key_id))"
+  };
+
+  // Destination bucket for report files. Accepts a bucket ARN
+  // (arn:aws:s3:::name) or a reference to an AwsS3Bucket resource — a bucket
+  // may deliver its inventory to itself (its own ARN is derived from the
+  // name: arn:aws:s3:::<name>). The destination must allow `s3.amazonaws.com`
+  // to `s3:PutObject` via bucket policy.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // Report file format.
+  string format = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "inventory_format_valid"
+      message: "format must be one of: CSV, ORC, Parquet"
+      expression: "this == 'CSV' || this == 'ORC' || this == 'Parquet'"
+    }
+  ];
+
+  // Account ID that owns the destination bucket. Empty assumes the bucket
+  // owner's account.
+  string account_id = 3;
+
+  // Key prefix for report files, e.g. "inventory/".
+  string prefix = 4;
+
+  // Encrypt report files with SSE-KMS using this key. Accepts a key ARN or
+  // a reference to an AwsKmsKey resource; the key policy must allow
+  // `s3.amazonaws.com` to use it. Mutually exclusive with `sse_s3`.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef sse_kms_key_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Encrypt report files with SSE-S3 (S3-managed keys). Mutually exclusive
+  // with `sse_kms_key_id`; leave both unset to deliver with the destination
+  // bucket's default encryption.
+  bool sse_s3 = 6;
+}
+
+// One CloudWatch request-metrics configuration. Scope predicates (access
+// point, prefix, tags) combine with AND; leave all empty to publish metrics
+// for every request against the bucket.
+message AwsS3BucketMetricsConfiguration {
+  // Name of the configuration, unique within the bucket (up to 64
+  // characters per the AWS metrics-id contract).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // Scope metrics to requests through this access point (access point ARN).
+  string filter_access_point_arn = 2;
+
+  // Key prefix scoping the metrics. Combined (AND) with the other predicates.
+  string filter_prefix = 3;
+
+  // Object tags scoping the metrics. Combined (AND) with the other
+  // predicates.
+  map<string, string> filter_tags = 4;
+}
+
+// S3 Metadata configuration: AWS-managed Apache Iceberg tables tracking this
+// bucket's objects. The journal table (change log) is always created and its
+// record-expiration policy is the required knob; the live inventory table is
+// opt-in. (AWS exposes the destination table bucket/namespace as read-only
+// state — they are AWS-managed, never configured.)
+message AwsS3BucketMetadataConfiguration {
+  // Maintain the live inventory table (current state of every object) in
+  // addition to the journal. Off keeps only the change journal.
+  bool inventory_table_enabled = 1;
+
+  // Encryption for the inventory table. Only meaningful while
+  // `inventory_table_enabled` is true.
+  AwsS3BucketMetadataTableEncryption inventory_table_encryption = 2;
+
+  // Expiration policy for journal-table records — the required cost control
+  // for the change log (records accrue per object change).
+  AwsS3BucketMetadataJournalRecordExpiration journal_record_expiration = 3 [(buf.validate.field).required = true];
+
+  // Encryption for the journal table.
+  AwsS3BucketMetadataTableEncryption journal_table_encryption = 4;
+}
+
+// Journal-table record expiration policy.
+message AwsS3BucketMetadataJournalRecordExpiration {
+  option (buf.validate.message).cel = {
+    id: "journal_expiration_days_when_enabled"
+    message: "days is required (7–2147483647) when expiration is enabled, and must be unset when disabled"
+    expression: "this.enabled ? this.days >= 7 : this.days == 0"
+  };
+
+  // Expire journal records after `days`. Disabled keeps records forever
+  // (stated explicitly — AWS requires the policy either way).
+  bool enabled = 1;
+
+  // Days to retain journal records (at least 7). Only set when `enabled`.
+  int32 days = 2 [(buf.validate.field).int32.gte = 0];
+}
+
+// Server-side encryption for an S3 Metadata table.
+message AwsS3BucketMetadataTableEncryption {
+  option (buf.validate.message).cel = {
+    id: "metadata_kms_key_requires_kms_algorithm"
+    message: "kms_key_arn is only used when sse_algorithm is aws:kms"
+    expression: "!has(this.kms_key_arn) || this.sse_algorithm == 'aws:kms'"
+  };
+
+  // Encryption algorithm for the table: "AES256" (S3-managed keys) or
+  // "aws:kms" (customer-managed KMS key).
+  string sse_algorithm = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "metadata_sse_algorithm_valid"
+      message: "sse_algorithm must be one of: AES256, aws:kms"
+      expression: "this == 'AES256' || this == 'aws:kms'"
+    }
+  ];
+
+  // KMS key for aws:kms encryption. Accepts a key ARN or a reference to an
+  // AwsKmsKey resource; the key policy must allow the S3 Tables maintenance
+  // principal to use it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
 }

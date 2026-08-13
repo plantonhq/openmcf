@@ -31,7 +31,7 @@ type CloudResourceMetadata struct {
 	Slug string `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
 	// id of the resource
 	Id string `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
-	// id of the organization to which the api-resource belongs to
+	// slug of the organization to which the api-resource belongs to
 	Org string `protobuf:"bytes,4,opt,name=org,proto3" json:"org,omitempty"`
 	// environment to which the resource belongs to
 	Env string `protobuf:"bytes,5,opt,name=env,proto3" json:"env,omitempty"`

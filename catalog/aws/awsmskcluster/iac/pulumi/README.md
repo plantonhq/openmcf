@@ -7,7 +7,7 @@ Pulumi module for provisioning AWS MSK (Managed Streaming for Apache Kafka) clus
 This module creates:
 - An MSK Cluster with configurable brokers, encryption, authentication, connectivity, logging, and monitoring. The referenced `securityGroupIds` (required, ≥1) attach directly to the broker network interfaces; ingress rules live on those first-class security-group nodes, never on a module-managed shadow group.
 - An inline MSK Configuration from `serverProperties` (conditional — only when the map is non-empty).
-- SCRAM secret associations (one per ARN in `scramSecretArns`) and a cluster policy (from `clusterPolicy`) — folded satellites in `module/satellites.go`.
+- SCRAM secret associations (one per ARN in `scramSecretArns`), a cluster policy (from `clusterPolicy`, serialized to JSON), and declared Kafka topics (one `msk.Topic` per `topics` entry, keyed by name, exported as the `topic_arns` map) — folded satellites in `module/satellites.go`.
 
 ## Usage
 
@@ -61,7 +61,7 @@ pulumi stack output zookeeper_connect_string_tls
 | `module/locals.go` | Locals initialization (labels, resolved target) |
 | `module/configuration.go` | Inline MSK Configuration from server_properties |
 | `module/cluster.go` | MSK Cluster resource creation |
-| `module/satellites.go` | SCRAM secret associations + cluster policy |
+| `module/satellites.go` | SCRAM secret associations + cluster policy + declared topics |
 | `module/outputs.go` | Output key constants |
 
 ## Prerequisites

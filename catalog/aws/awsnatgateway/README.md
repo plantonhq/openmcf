@@ -14,7 +14,8 @@ This resource makes the NAT gateway a first-class, independently composable buil
 ## Key Features
 
 - **Public and private connectivity**: `connectivityType: public` (Elastic IP, internet egress) or `private` (no Elastic IP, egress to peered/transit/VPN networks only).
-- **EIP by reference**: A public gateway binds a stable outbound address via `allocationId`, referencing an `AwsElasticIp` or a literal `eipalloc-` id. Never embeds an IP allocation.
+- **Zonal and regional placement**: the classic single-subnet gateway (`availabilityMode: zonal`, the default) or one AWS-managed gateway spanning every AZ of a VPC (`availabilityMode: regional` + `vpcId`), with the per-AZ layout either AWS-chosen (auto mode) or pinned explicitly via `availabilityZoneAddresses`.
+- **EIP by reference**: A zonal public gateway binds a stable outbound address via `allocationId`, referencing an `AwsElasticIp` or a literal `eipalloc-` id. Never embeds an IP allocation. Regional gateways carry per-zone allocations in `availabilityZoneAddresses` (or let AWS manage them).
 - **High-throughput options**: Additional Elastic IPs (`secondaryAllocationIds`) for public gateways or additional private IPs (`secondaryPrivateIpAddresses` / `secondaryPrivateIpAddressCount`) for private gateways, to widen the source-port range under heavy egress.
 - **Consistent tagging**: Standard resource-identity tags are applied to the gateway.
 - **Dual-engine parity**: Identical behavior and outputs from the Pulumi (Go) and Terraform (HCL) modules.
@@ -27,14 +28,15 @@ This resource makes the NAT gateway a first-class, independently composable buil
 
 ## Critical Constraints
 
-- **Connectivity type**: Required, `public` or `private`. A public gateway requires an `allocationId`; a private gateway forbids any Elastic IP and is the only kind that accepts private-IP addressing.
-- **Subnet**: Required and immutable — changing it replaces the gateway.
-- **Region**: Required, must match the subnet's region.
+- **Connectivity type**: Required, `public` or `private`. A zonal public gateway requires an `allocationId`; a private gateway forbids any Elastic IP and is the only kind that accepts private-IP addressing.
+- **Placement**: A zonal gateway requires `subnetId` (immutable — changing it replaces the gateway); a regional gateway requires `vpcId` instead and rejects every zonal-only input. Switching modes replaces the gateway.
+- **Region**: Required, must match the subnet's (or VPC's) region.
+- **Regional IAM**: Creating a regional gateway requires `ec2:DescribeAvailabilityZones` on the deploying role.
 
 ## Use Cases
 
 - **Private-subnet internet egress**: The canonical pattern — private subnets route `0.0.0.0/0` to a public NAT gateway in a public subnet for outbound access to package repos, APIs, and AWS services.
-- **High-availability egress**: One NAT gateway per availability zone, each in that zone's public subnet, so zonal failures do not sever egress.
+- **High-availability egress**: One regional NAT gateway spanning every AZ — or, in the classic form, one zonal gateway per availability zone, each in that zone's public subnet, so zonal failures do not sever egress.
 - **Private inter-network egress**: A private NAT gateway for outbound communication to other VPCs or on-premises networks without any internet exposure.
 
 ## Production Features

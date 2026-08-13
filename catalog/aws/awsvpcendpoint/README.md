@@ -42,7 +42,13 @@ architecture, and it deserves a first-class, composable node:
 - **Endpoint policy**: an IAM policy document scoping which principals
   may use the endpoint to reach which resources -- e.g. "only this
   account's buckets" on an S3 gateway endpoint, a real
-  data-exfiltration control.
+  data-exfiltration control. Authored as a structured document (the
+  catalog's uniform policy idiom), never an embedded JSON string.
+- **Private DNS is tri-state**: unset keeps AWS's default (off) AND
+  keeps an existing endpoint's current setting; `true` enables; an
+  EXPLICIT `false` is the only way to turn it back off once enabled
+  (the provider keeps the existing value whenever the argument is
+  omitted).
 - **Private DNS options**: record IP type, the S3 dual-stack
   inbound-resolver-only pattern (in-VPC traffic rides the free gateway
   endpoint while on-premises clients resolve to the interface

@@ -24,3 +24,11 @@ spec:
     - ALLOW_USER_SRP_AUTH
     - ALLOW_REFRESH_TOKEN_AUTH
   preventUserExistenceErrors: ENABLED
+  riskConfiguration:
+    accountTakeover:
+      highAction:
+        eventAction: MFA_REQUIRED
+        notify: false
+    riskException:
+      skippedIpRanges:
+        - 10.0.0.0/8

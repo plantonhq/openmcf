@@ -125,6 +125,22 @@ var _ = ginkgo.Describe("AwsLbListenerSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
+			ginkgo.It("should not return a validation error for an NLB QUIC listener", func() {
+				input := minimalValidListener()
+				input.Spec.Protocol = "QUIC"
+				input.Spec.Port = 443
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for an NLB TCP_QUIC listener", func() {
+				input := minimalValidListener()
+				input.Spec.Protocol = "TCP_QUIC"
+				input.Spec.Port = 443
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should not return a validation error for an OIDC-then-forward action chain", func() {
 				input := minimalValidListener()
 				input.Spec.Protocol = "HTTPS"
@@ -310,6 +326,18 @@ var _ = ginkgo.Describe("AwsLbListenerSpec Validation Tests", func() {
 				input.Spec.MutualAuthentication = &AwsLbListenerMutualAuthentication{
 					Mode:                          "passthrough",
 					IgnoreClientCertificateExpiry: true,
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for CA-name advertising outside verify mode", func() {
+				input := minimalValidListener()
+				input.Spec.Protocol = "HTTPS"
+				input.Spec.CertificateArn = literalRef(certArn)
+				input.Spec.MutualAuthentication = &AwsLbListenerMutualAuthentication{
+					Mode:                       "passthrough",
+					AdvertiseTrustStoreCaNames: "on",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())

@@ -206,7 +206,15 @@ func table(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*dynamo
 		args.ImportTable = importTableArgs(spec.ImportTable)
 	}
 
-	createdTable, err := dynamodb.NewTable(ctx, "table", args, pulumi.Provider(provider))
+	// Live capacity is Application Auto Scaling's to manage on provisioned
+	// tables (autoscaling.go registers targets in BOTH modes: user bounds
+	// with tracking policies, or pinned min = max from
+	// provisioned_throughput), so capacity is ignored here -- matching the
+	// Terraform module's lifecycle ignore_changes. Declared capacity
+	// changes still land: the scalable targets carry them, and AWS moves
+	// out-of-range capacity into the target's bounds by contract.
+	createdTable, err := dynamodb.NewTable(ctx, "table", args, pulumi.Provider(provider),
+		pulumi.IgnoreChanges([]string{"readCapacity", "writeCapacity"}))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create DynamoDB table")
 	}

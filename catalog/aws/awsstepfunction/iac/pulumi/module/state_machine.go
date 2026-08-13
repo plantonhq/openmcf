@@ -44,17 +44,23 @@ func stateMachine(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) e
 		Tags:    pulumi.ToStringMap(locals.AwsTags),
 	}
 
-	// X-Ray tracing is a single toggle; the role must be able to put trace
-	// segments (xray:PutTraceSegments / PutTelemetryRecords).
-	if spec.TracingEnabled {
+	// X-Ray tracing is a tri-state toggle; the role must be able to put
+	// trace segments (xray:PutTraceSegments / PutTelemetryRecords). Unset
+	// sends no block (AWS default: off); an explicit true or false sends
+	// the block -- the explicit false is what turns tracing OFF on a
+	// machine that had it on (block removal alone is suppressed by the
+	// provider and reverts nothing).
+	if spec.TracingEnabled != nil {
 		args.TracingConfiguration = &sfn.StateMachineTracingConfigurationArgs{
-			Enabled: pulumi.BoolPtr(true),
+			Enabled: pulumi.BoolPtr(*spec.TracingEnabled),
 		}
 	}
 
-	// Execution-history logging. Only rendered for a real level -- AWS treats
-	// level OFF and an absent block identically.
-	if spec.Logging != nil && spec.Logging.Level != "" && spec.Logging.Level != "OFF" {
+	// Execution-history logging. Rendered for ANY configured level,
+	// including an explicit OFF -- the OFF block is the disable send that
+	// turns logging off on a machine that had it on (an absent block is
+	// suppressed by the provider and reverts nothing).
+	if spec.Logging != nil && spec.Logging.Level != "" {
 		logArgs := &sfn.StateMachineLoggingConfigurationArgs{
 			Level:                pulumi.StringPtr(spec.Logging.Level),
 			IncludeExecutionData: pulumi.BoolPtr(spec.Logging.IncludeExecutionData),
@@ -95,6 +101,37 @@ func stateMachine(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) e
 		return errors.Wrap(err, "failed to create Step Functions state machine")
 	}
 
+	// Folded aliases: an alias's identity IS this state machine (one alias
+	// set per machine), so aliases live here rather than as their own kind.
+	// Each entry is keyed by its name -- adding, renaming, or removing one
+	// alias never touches its siblings -- and routes 100% of traffic to the
+	// version THIS deployment published (spec CEL guarantees publish: true
+	// whenever aliases exist). Weighted canary routing between two specific
+	// versions is an imperative deployment-shift operation and is
+	// deliberately not modeled.
+	aliasArns := pulumi.StringMap{}
+	for _, aliasSpec := range spec.Aliases {
+		aliasArgs := &sfn.AliasArgs{
+			Name: pulumi.StringPtr(aliasSpec.Name),
+			RoutingConfigurations: sfn.AliasRoutingConfigurationArray{
+				&sfn.AliasRoutingConfigurationArgs{
+					StateMachineVersionArn: sm.StateMachineVersionArn,
+					Weight:                 pulumi.Int(100),
+				},
+			},
+		}
+		if aliasSpec.Description != "" {
+			aliasArgs.Description = pulumi.StringPtr(aliasSpec.Description)
+		}
+		createdAlias, err := sfn.NewAlias(ctx,
+			locals.Target.Metadata.Name+"-alias-"+aliasSpec.Name,
+			aliasArgs, pulumi.Provider(provider), pulumi.Parent(sm))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create alias %s", aliasSpec.Name)
+		}
+		aliasArns[aliasSpec.Name] = createdAlias.Arn
+	}
+
 	// Export outputs matching AwsStepFunctionStackOutputs.
 	ctx.Export(OpStateMachineArn, sm.Arn)
 	ctx.Export(OpStateMachineName, sm.Name)
@@ -102,6 +139,7 @@ func stateMachine(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) e
 	ctx.Export(OpRevisionId, sm.RevisionId)
 	ctx.Export(OpStatus, sm.Status)
 	ctx.Export(OpCreationDate, sm.CreationDate)
+	ctx.Export(OpAliasArns, aliasArns)
 
 	return nil
 }

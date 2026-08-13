@@ -9,7 +9,7 @@ When a service references an observability configuration, each of its instances 
 The configuration is deliberately its own resource rather than fields on the service:
 
 - **Shared by many services** -- each service references the configuration by ARN, so a fleet adopts one tracing posture tuned in one place.
-- **Versioned by AWS** -- the trace settings are create-time immutable; changing them registers a NEW revision under the same name. The exported ARN carries the revision, so a change rolls referencing services through the resource graph.
+- **Versioned by AWS, but edits do not travel** (upstream provider gap) -- the provider's update path is tags-only and does not replace on trace changes, so editing `traceConfiguration` on an existing configuration silently changes nothing at AWS. To change tracing posture, register a NEW configuration (a new `metadata.name`) and repoint referencing services. With X-Ray as the only vendor AWS supports, the block's practical states are present or absent at creation.
 
 ## When to Use
 

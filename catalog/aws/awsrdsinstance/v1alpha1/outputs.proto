@@ -39,4 +39,14 @@ message AwsRdsInstanceStackOutputs {
 
   // The name of the DB subnet group the instance runs in.
   string db_subnet_group_name = 10;
+
+  // The name of the DB parameter group in use (module-managed from
+  // spec.parameters or the referenced existing group; empty when the
+  // engine default group applies).
+  string db_parameter_group_name = 11;
+
+  // The name of the option group in use (module-managed from
+  // spec.options or the referenced existing group; empty when the
+  // engine default group applies).
+  string option_group_name = 12;
 }

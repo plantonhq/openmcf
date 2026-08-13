@@ -78,6 +78,20 @@ var _ = ginkgo.Describe("AwsAlbSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
+			ginkgo.It("should not return a validation error for a capacity reservation", func() {
+				input := minimalValidAlb()
+				input.Spec.MinimumLoadBalancerCapacityUnits = 500
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for an IPAM-addressed ALB", func() {
+				input := minimalValidAlb()
+				input.Spec.Ipv4IpamPoolId = literalRef("ipam-pool-0123456789abcdef0")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should not return a validation error with DNS configured", func() {
 				input := minimalValidAlb()
 				input.Spec.Dns = &AwsAlbDns{
@@ -125,6 +139,13 @@ var _ = ginkgo.Describe("AwsAlbSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error for an out-of-range idle timeout", func() {
 				input := minimalValidAlb()
 				input.Spec.IdleTimeoutSeconds = 4001
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for negative capacity units", func() {
+				input := minimalValidAlb()
+				input.Spec.MinimumLoadBalancerCapacityUnits = -100
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

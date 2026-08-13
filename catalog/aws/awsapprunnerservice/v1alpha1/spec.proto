@@ -32,6 +32,9 @@ import "shared/options/options.proto";
 //   - AwsAppRunnerObservabilityConfiguration
 //     (observability_configuration_arn) enables X-Ray request tracing;
 //     omitted, tracing is off.
+// INBOUND private access is service-owned, not shared, so it is modeled
+// inline: vpc_ingress_connections publishes the service into named VPCs
+// through interface VPC endpoints (AWS PrivateLink).
 //
 // ForceNew honesty (changing these replaces the service):
 //   - kms_key_arn (the stored-source encryption key)
@@ -63,7 +66,9 @@ message AwsAppRunnerServiceSpec {
   // Override the container start command. For image_source this overrides
   // the image ENTRYPOINT/CMD; for code_source with
   // configuration_source="API" it is the command that starts the built
-  // application.
+  // application. One-way on a live service: the provider drops empty
+  // values on update, so clearing this does not restore the image's own
+  // ENTRYPOINT/CMD -- set the desired command explicitly instead.
   string start_command = 5;
 
   // Environment variables injected into every instance at runtime. Keys are
@@ -102,7 +107,9 @@ message AwsAppRunnerServiceSpec {
   // IAM role that service instances assume at runtime to call AWS APIs --
   // the role your application code uses (reading S3, writing DynamoDB,
   // resolving environment_secrets). This is NOT the image-pull role (that
-  // is image_source.access_role_arn).
+  // is image_source.access_role_arn). One-way on a live service: the
+  // provider drops empty values on update, so REMOVING the role does not
+  // detach it from a running service -- attach a replacement role instead.
   dev.planton.shared.foreignkey.v1.StringValueOrRef instance_role_arn = 10 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
@@ -113,7 +120,10 @@ message AwsAppRunnerServiceSpec {
   // Health check configuration App Runner uses to monitor instance
   // readiness; unhealthy instances are replaced automatically. When
   // omitted, App Runner performs TCP checks on the configured port with
-  // AWS defaults.
+  // AWS defaults. Removing the block from a live service stops managing
+  // the check but does not reset it -- to return to defaults, set the
+  // default values explicitly (protocol TCP, interval 5, timeout 2,
+  // thresholds 1/5).
   AwsAppRunnerServiceHealthCheck health_check = 11;
 
   // --- Companion resources (by reference) ---
@@ -123,7 +133,11 @@ message AwsAppRunnerServiceSpec {
   // default auto scaling configuration (1 min / 25 max / 100 concurrency
   // unless the account default was changed). The referenced ARN carries a
   // revision, so registering a new revision rolls this service on its next
-  // deployment.
+  // deployment. One-way on a live service: once set, REMOVING this
+  // reference does not return the service to the account default -- the
+  // provider keeps the last-applied configuration (its attribute is
+  // Optional+Computed, so removal produces no change). To move back to the
+  // default, reference the default configuration's ARN explicitly.
   dev.planton.shared.foreignkey.v1.StringValueOrRef auto_scaling_configuration_arn = 12 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsAppRunnerAutoScalingConfiguration,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configuration_arn"
@@ -141,8 +155,14 @@ message AwsAppRunnerServiceSpec {
 
   // ARN of an AwsAppRunnerObservabilityConfiguration revision. When set,
   // the service sends request traces to the configured vendor (AWS X-Ray);
-  // when omitted, tracing is off. Presence of the reference IS the enable
-  // switch -- there is no separate toggle to keep in sync.
+  // when omitted at creation, tracing is off. Presence of the reference IS
+  // the enable switch -- there is no separate toggle to keep in sync.
+  // One-way on a live service (upstream provider gap): once tracing is
+  // enabled, REMOVING this reference does not disable it -- the provider
+  // sends nothing for an absent block, so AWS keeps tracing on and the
+  // plan never converges. To genuinely disable tracing today, replace the
+  // service (or disable it in the AWS console) until the provider gains a
+  // disable path.
   dev.planton.shared.foreignkey.v1.StringValueOrRef observability_configuration_arn = 14 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsAppRunnerObservabilityConfiguration,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.configuration_arn"
@@ -152,10 +172,20 @@ message AwsAppRunnerServiceSpec {
 
   // Whether the service endpoint is publicly reachable from the internet.
   // When true (default), the service gets a public HTTPS URL. When false,
-  // the endpoint is reachable only from within VPCs that attach an App
-  // Runner VPC Ingress Connection to this service (a separate AWS resource;
-  // create it against the exported service_arn).
+  // the endpoint is reachable only from within VPCs that attach a VPC
+  // Ingress Connection to this service -- declare those below in
+  // vpc_ingress_connections.
   optional bool is_publicly_accessible = 15 [(dev.planton.shared.options.default) = "true"];
+
+  // VPC Ingress Connections for this service -- each entry publishes the
+  // service into one VPC through an interface VPC endpoint
+  // (AWS PrivateLink), so clients inside that VPC reach the service
+  // privately at the exported per-connection domain name. Pair with
+  // is_publicly_accessible: false for a service reachable ONLY from inside
+  // the named VPCs. Keyed by name: adding or removing entries updates in
+  // place; changing an entry's VPC or endpoint replaces that one
+  // connection.
+  repeated AwsAppRunnerServiceVpcIngressConnection vpc_ingress_connections = 21;
 
   // IP address type for the service endpoint.
   // "IPV4": IPv4-only (default). "DUAL_STACK": IPv4 + IPv6.
@@ -179,8 +209,13 @@ message AwsAppRunnerServiceSpec {
   // tracked branch). Disabled by default: deployments then happen only when
   // this resource is applied or a deployment is started explicitly, which
   // keeps rollouts deterministic and graph-driven. AWS supports automatic
-  // deployments only for private ECR and code repositories -- ECR Public
-  // images cannot enable this (AWS rejects the create call).
+  // deployments only for private same-account ECR and code repositories --
+  // ECR Public images cannot enable this (AWS rejects the create call).
+  // The modules always send this value explicitly: AWS's own default is
+  // conditional on the source type (on for code repos and same-account
+  // ECR, off otherwise), and the provider substitutes an unconditional
+  // "on" for any omitted value -- explicit send is the only deterministic
+  // path through both layers.
   bool auto_deployments_enabled = 18;
 
   // --- Custom domains ---
@@ -250,6 +285,9 @@ message AwsAppRunnerServiceImageSource {
   // ECR Public format: "public.ecr.aws/ALIAS/REPO:TAG"
   // This stays a literal string (not a reference) because it carries a
   // repository-plus-tag coordinate no single upstream output represents.
+  // The format rule below is AWS's own ImageIdentifier pattern (mirrored
+  // by the provider): a 12-digit-account private ECR host path, or a
+  // public.ecr.aws gallery path.
   string image_identifier = 1 [(buf.validate.field).string.min_len = 1];
 
   // Type of image repository.
@@ -281,6 +319,15 @@ message AwsAppRunnerServiceImageSource {
     message: "access_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry"
     expression: "this.image_repository_type != 'ECR' || has(this.access_role_arn)"
   };
+
+  // image_identifier must match AWS's ImageIdentifier format (the same
+  // pattern the provider enforces at plan time; the private-ECR arm is
+  // deliberately unanchored, matching AWS's own pattern verbatim).
+  option (buf.validate.message).cel = {
+    id: "valid_image_identifier"
+    message: "image_identifier must be a private ECR path (ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG) or an ECR Public Gallery path (public.ecr.aws/ALIAS/REPO:TAG)"
+    expression: "this.image_identifier.matches('([0-9]{12}\\\\.dkr\\\\.ecr\\\\.[a-z-]+-[0-9]{1,2}\\\\.amazonaws\\\\.com/.*)|(^public\\\\.ecr\\\\.aws/.+/.+)')"
+  };
 }
 
 // AwsAppRunnerServiceCodeSource configures deployment from a source code
@@ -298,7 +345,9 @@ message AwsAppRunnerServiceCodeSource {
   // Subdirectory within the repository containing the application source.
   // Defaults to the repository root. Useful for monorepos where the service
   // lives in a subfolder; with configuration_source="REPOSITORY", the
-  // apprunner.yaml is read from this directory.
+  // apprunner.yaml is read from this directory. One-way on a live service:
+  // clearing this does not return the build to the repository root (the
+  // provider keeps the last-applied value) -- set "/" explicitly instead.
   string source_directory = 3;
 
   // ARN of an App Runner connection that authorizes repository access
@@ -419,4 +468,39 @@ message AwsAppRunnerServiceCustomDomain {
   // Whether to also associate the "www." subdomain of domain_name.
   // AWS defaults this to true; meaningful mainly for apex domains.
   optional bool enable_www_subdomain = 2 [(dev.planton.shared.options.default) = "true"];
+}
+
+// AwsAppRunnerServiceVpcIngressConnection publishes the service into one VPC
+// through an interface VPC endpoint (AWS PrivateLink): clients inside that
+// VPC resolve the exported per-connection domain name and reach the service
+// without traversing the public internet. The endpoint must be an interface
+// endpoint for the App Runner requests service
+// (com.amazonaws.REGION.apprunner.requests) in the target VPC. Every value
+// is create-time immutable -- changing one replaces that connection.
+message AwsAppRunnerServiceVpcIngressConnection {
+  // Name for this VPC Ingress Connection. Must be unique across all active
+  // VPC Ingress Connections in the AWS account and region (it is the AWS
+  // resource name, not a label). App Runner family names are 4-40
+  // characters.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 4
+    max_len: 40
+  }];
+
+  // The VPC to publish the service into.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // The interface VPC endpoint in that VPC that carries the traffic. AWS
+  // requires both members -- an ingress connection cannot exist without its
+  // endpoint (the provider leaves both optional and lets the create call
+  // fail server-side; this spec enforces AWS's contract up front).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_endpoint_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpcEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_endpoint_id"
+  ];
 }

@@ -1,0 +1,16 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpglobaladdress
+spec:
+  # Standalone scenario: scenarios/minimal.yaml reserves a global EXTERNAL
+  # IPv4 anycast address with user labels armed (the merge idiom) — no
+  # prerequisites (the kind's own prerequisite.yaml serves OTHER kinds that
+  # consume a reserved VIP; the scenario name is distinct so a chained VIP
+  # and this lane never collide). deploy -> compute globalAddresses.get
+  # verify -> destroy -> verify gone, on both provisioners. Global
+  # addresses are free while attached and create in seconds.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 10

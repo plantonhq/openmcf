@@ -202,6 +202,10 @@ message AwsCognitoIdentityProviderSpec {
   // unique within the pool. Referenced by User Pool Clients in their
   // `supported_identity_providers` list.
   //
+  // For the SOCIAL provider types AWS requires the name to EQUAL the type
+  // ("Google", "Facebook", "LoginWithAmazon", "SignInWithApple") -- custom
+  // names are an OIDC/SAML feature.
+  //
   // Examples: "Google", "CorpOkta", "AzureAD-SAML"
   //
   // 1-32 UTF-8 characters. This field is ForceNew.
@@ -300,5 +304,14 @@ message AwsCognitoIdentityProviderSpec {
     id: "oidc_attributes_request_method_valid"
     message: "OIDC attributes_request_method must be 'GET' or 'POST'"
     expression: "!has(this.oidc) || this.oidc.attributes_request_method == '' || this.oidc.attributes_request_method in ['GET', 'POST']"
+  };
+
+  // AWS requires social providers to be named exactly as their type -- custom
+  // provider names are an OIDC/SAML feature (CreateIdentityProvider rejects
+  // any other name for the social types).
+  option (buf.validate.message).cel = {
+    id: "social_provider_name_matches_type"
+    message: "for social provider types the provider_name must equal the provider_type (e.g. type 'Google' requires name 'Google'); custom names are only supported for OIDC and SAML providers"
+    expression: "!(this.provider_type in ['Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple']) || this.provider_name == this.provider_type"
   };
 }

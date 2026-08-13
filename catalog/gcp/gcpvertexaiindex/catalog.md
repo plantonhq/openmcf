@@ -35,7 +35,7 @@ Open the deployment store, find **GCP Vertex AI Index**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVertexAiIndex
 metadata:
   name: catalog-embeddings

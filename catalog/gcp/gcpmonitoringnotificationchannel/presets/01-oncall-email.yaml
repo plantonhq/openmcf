@@ -1,0 +1,9 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpMonitoringNotificationChannel
+metadata:
+  name: oncall-email
+spec:
+  type: email
+  channelLabels:
+    email_address: oncall@example.com
+  description: Primary on-call email for incident notifications

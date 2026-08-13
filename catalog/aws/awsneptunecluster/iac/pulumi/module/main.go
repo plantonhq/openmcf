@@ -35,14 +35,24 @@ func Resources(ctx *pulumi.Context, stackInput *awsneptuneclusterv1alpha1.AwsNep
 		return errors.Wrap(err, "failed to create cluster parameter group")
 	}
 
+	createdInstanceParameterGroup, err := instanceParameterGroup(ctx, locals, provider)
+	if err != nil {
+		return errors.Wrap(err, "failed to create instance parameter group")
+	}
+
 	createdCluster, err := neptuneCluster(ctx, locals, provider, createdSubnetGroup, createdParameterGroup)
 	if err != nil {
 		return errors.Wrap(err, "failed to create Neptune cluster")
 	}
 
-	createdInstances, err := clusterInstances(ctx, locals, provider, createdCluster)
+	createdInstances, createdInstancesByName, err := clusterInstances(ctx, locals, provider, createdCluster, createdInstanceParameterGroup)
 	if err != nil {
 		return errors.Wrap(err, "failed to create cluster instances")
+	}
+
+	customEndpointAddresses, err := customEndpoints(ctx, locals, provider, createdCluster, createdInstancesByName)
+	if err != nil {
+		return errors.Wrap(err, "failed to create custom endpoints")
 	}
 
 	ctx.Export(OpClusterIdentifier, createdCluster.ClusterIdentifier)
@@ -64,6 +74,16 @@ func Resources(ctx *pulumi.Context, stackInput *awsneptuneclusterv1alpha1.AwsNep
 		instanceEndpoints = append(instanceEndpoints, createdInstance.Endpoint)
 	}
 	ctx.Export(OpInstanceEndpoints, instanceEndpoints)
+
+	ctx.Export(OpCustomEndpointAddresses, customEndpointAddresses)
+
+	// The module-managed instance parameter group name -- empty when
+	// instance parameters are not managed here.
+	if createdInstanceParameterGroup != nil {
+		ctx.Export(OpNeptuneInstanceParameterGroupName, createdInstanceParameterGroup.Name)
+	} else {
+		ctx.Export(OpNeptuneInstanceParameterGroupName, pulumi.String(""))
+	}
 
 	return nil
 }

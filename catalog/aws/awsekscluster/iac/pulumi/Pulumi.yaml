@@ -1,4 +1,4 @@
-name: awsekscluster-pulumi-project
+name: awsekscluster
 runtime:
   name: go
 # options:

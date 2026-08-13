@@ -1,0 +1,73 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  # Destroy-settle timer from the hashicorp/time utility provider (not an
+  # AWS resource): protects the endpoint-access delete from the
+  # workgroup's post-operation serialization window on full destroys. It
+  # carries no AWS surface to account.
+  time_sleep:
+    internal: destroy-ordering utility from the hashicorp/time provider (destroy_duration settle guarding the endpoint-access delete against the workgroup's post-operation lock window) -- no AWS surface
+
+  aws_redshiftserverless_workgroup:
+    mappings:
+      # The provider nests query parameters under config_parameter blocks
+      # with parameter_key/parameter_value member names; the spec keeps the
+      # catalog-wide name/value entry shape.
+      - spec: spec.config_parameters
+        arg: config_parameter
+      - spec: spec.config_parameters.name
+        arg: config_parameter.parameter_key
+      - spec: spec.config_parameters.value
+        arg: config_parameter.parameter_value
+    exclusions:
+      - arg: workgroup_name
+        reason: wired by the module from metadata.name -- the workgroup name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (Name plus planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_redshiftserverless_endpoint_access:
+    # One VPC endpoint per spec.endpoint_accesses entry, keyed by endpoint
+    # name.
+    specRoot: spec.endpoint_accesses
+    exclusions:
+      - arg: workgroup_name
+        reason: wired by the module to the workgroup it creates -- never user surface
+      - arg: owner_account
+        reason: the cross-account GRANTEE side (an endpoint into another account's workgroup) -- lives in the grantee's credential domain; this kind models the owner side
+      - arg: region
+        reason: wired by the module -- endpoints follow the workgroup's spec.region through the provider connection
+
+  aws_redshiftserverless_usage_limit:
+    # One limit per spec.usage_limits entry, keyed by the usage-type/period
+    # pair.
+    specRoot: spec.usage_limits
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the workgroup's own ARN -- limits always cap this workgroup
+      - arg: region
+        reason: wired by the module -- limits follow the workgroup's spec.region through the provider connection
+
+  aws_redshiftserverless_custom_domain_association:
+    # The workgroup's one custom domain (AWS's own model), folded as a
+    # singular sub-message.
+    specRoot: spec.custom_domain
+    mappings:
+      # The provider prefixes both leaves with custom_domain_; the spec's
+      # sub-message already carries that context.
+      - spec: spec.custom_domain.domain_name
+        arg: custom_domain_name
+      - spec: spec.custom_domain.certificate_arn
+        arg: custom_domain_certificate_arn
+    exclusions:
+      - arg: workgroup_name
+        reason: wired by the module to the workgroup it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the association follows the workgroup's spec.region through the provider connection

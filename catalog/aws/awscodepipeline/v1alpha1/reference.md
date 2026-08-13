@@ -33,9 +33,11 @@ are account-level resources with independent lifecycles and are excluded.
 # Full-surface offline-plan manifest. This exercises every optional block the
 # module renders -- V2 triggers with push + pull-request filters, pipeline
 # variables, per-action timeouts/regions/roles, KMS-encrypted artifact store,
-# and all three stage-condition arms (entry gate, success check, failure
-# rollback) -- so the `tofu plan` / `pulumi preview` proofs cover the whole
-# contract.
+# a Compute action with inline commands, exported variables, and file-based
+# output artifacts, all three stage-condition arms (entry gate with a
+# Commands rule, success check, failure handling with retry configuration
+# and a rule-gated condition) -- so the `tofu plan` / `pulumi preview`
+# proofs cover the whole contract.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
@@ -43,11 +45,6 @@ metadata:
   id: test-pipeline
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsCodePipeline.test-pipeline
 spec:
   region: us-west-2
   pipelineType: V2
@@ -115,6 +112,14 @@ spec:
             configuration:
               Cron: "* 9-17 ? * MON-FRI *"
               TimeZone: America/Los_Angeles
+          # A Commands rule exercises the rule-level shell-command arm.
+          - name: PreflightHealthCheck
+            ruleTypeId:
+              provider: Commands
+            commands:
+              - curl -sf https://internal.example.com/deploy-gate
+            inputArtifacts:
+              - SourceOutput
       actions:
         - name: BuildAction
           category: Build
@@ -128,6 +133,29 @@ spec:
             - BuildOutput
           configuration:
             ProjectName: my-build-project
+        # A Compute action exercises inline commands, exported variables,
+        # and file-based output artifacts (Compute actions use
+        # outputArtifactsForComputeAction INSTEAD of outputArtifacts).
+        - name: InlineChecks
+          category: Compute
+          owner: AWS
+          provider: Commands
+          version: "1"
+          runOrder: 2
+          namespace: ComputeVars
+          inputArtifacts:
+            - SourceOutput
+          commands:
+            - npm ci
+            - npm run lint
+            - export LINT_REPORT_URL=$(cat lint-report-url.txt)
+          outputVariables:
+            - LINT_REPORT_URL
+          outputArtifactsForComputeAction:
+            - name: LintReports
+              files:
+                - reports/lint.xml
+                - reports/summary.json
       onSuccess:
         rules:
           - name: VerifyNoAlarm
@@ -167,6 +195,29 @@ spec:
             FileName: imagedefinitions.json
       onFailure:
         result: ROLLBACK
+    # A retry-configured stage exercises retry_configuration plus the
+    # rule-gated on_failure condition arm.
+    - name: Smoke
+      actions:
+        - name: SmokeTest
+          category: Invoke
+          owner: AWS
+          provider: Lambda
+          version: "1"
+          configuration:
+            FunctionName: post-deploy-smoke
+      onFailure:
+        result: RETRY
+        retryConfiguration:
+          retryMode: FAILED_ACTIONS
+        condition:
+          rules:
+            - name: OnlyRetryOffHours
+              ruleTypeId:
+                provider: DeploymentWindow
+              configuration:
+                Cron: "* 0-6 ? * * *"
+                TimeZone: Etc/UTC
 ```
 
 ## Spec Fields
@@ -197,6 +248,11 @@ spec:
 | `spec.stages[].actions[].roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.stages[].actions[].runOrder` | `int32` |  |  |  |
 | `spec.stages[].actions[].timeoutInMinutes` | `int32` |  |  |  |
+| `spec.stages[].actions[].commands` | `[]string` |  |  |  |
+| `spec.stages[].actions[].outputArtifactsForComputeAction` | `[]AwsCodePipelineComputeOutputArtifact` |  |  |  |
+| `spec.stages[].actions[].outputArtifactsForComputeAction[].name` | `string` | yes |  |  |
+| `spec.stages[].actions[].outputArtifactsForComputeAction[].files` | `[]string` |  |  |  |
+| `spec.stages[].actions[].outputVariables` | `[]string` |  |  |  |
 | `spec.stages[].beforeEntry` | `AwsCodePipelineStageCondition` |  |  |  |
 | `spec.stages[].beforeEntry.result` | `string` |  |  |  |
 | `spec.stages[].beforeEntry.rules` | `[]AwsCodePipelineRule` | yes |  |  |
@@ -291,7 +347,10 @@ Example: "us-west-2", "eu-west-1"
 pipeline_type selects the pipeline version.
   V1: Legacy pipeline (no triggers, no variables, SUPERSEDED execution only)
   V2: Modern pipeline with triggers, variables, and advanced execution modes
-Default: V2 (recommended for all new pipelines).
+Default: V2 (recommended for all new pipelines). The platform materializes
+this default when the manifest is loaded; the AWS provider's own default
+is V1, so a raw module invocation that bypasses manifest loading and
+omits this field deploys a V1 pipeline.
 
 - default: `V2`
 - rule: {"string":{"in":["V1","V2"]}}
@@ -392,6 +451,8 @@ execute sequentially within the stage.
 
 - rule: {"required":true,"repeated":{"minItems":"1"}}
 - rule: timeout_in_minutes is only supported on Manual Approval actions (category Approval)
+- rule: a Compute action exports artifacts via output_artifacts_for_compute_action, not output_artifacts
+- rule: output_artifacts_for_compute_action is only supported on Compute actions; use output_artifacts
 
 ### spec.stages[].actions[].name
 
@@ -468,6 +529,9 @@ Common examples:
   Lambda:                   FunctionName, UserParameters
   Manual (approval):        CustomData, ExternalEntityLink, NotificationArn
   CloudFormation:           ActionMode, StackName, TemplatePath, RoleArn
+Keys are limited to 50 characters (AWS's action-configuration key cap).
+
+- rule: {"map":{"keys":{"string":{"minLen":"1","maxLen":"50"}}}}
 
 ### spec.stages[].actions[].inputArtifacts
 
@@ -528,9 +592,61 @@ Range: 1-999. Default: 1 (all actions parallel).
 timeout_in_minutes overrides the action type's default timeout.
 Range: 5-86400 (60 days). AWS supports this override ONLY on Manual
 Approval actions (category Approval, provider Manual) — every other
-action type is rejected at pipeline creation.
+action type is rejected at pipeline creation. (The provider validates
+only the numeric range; the Approval-only scope is AWS's own API
+contract, mirrored here as validation.)
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":86400,"gte":5}}
+
+### spec.stages[].actions[].commands
+
+`[]string`
+
+commands are shell commands run by a Compute action (category Compute,
+provider Commands) — inline CI steps without standing up a CodeBuild
+project. CodeBuild logs and permissions are used under the hood, and
+running commands bills CodeBuild compute time per execution. All
+command forms are supported except multi-line formats. Max 50 commands,
+each 1-1000 characters. AWS ignores this field on non-Compute actions.
+
+- rule: {"repeated":{"maxItems":"50","items":{"string":{"minLen":"1","maxLen":"1000"}}}}
+
+### spec.stages[].actions[].outputArtifactsForComputeAction
+
+`[]AwsCodePipelineComputeOutputArtifact`
+
+output_artifacts_for_compute_action declares the file artifacts a
+Compute action exports (Compute actions use this INSTEAD of
+output_artifacts — AWS ignores plain output artifact names on Compute
+actions and file-based artifacts on every other category).
+
+### spec.stages[].actions[].outputArtifactsForComputeAction[].name
+
+`string` · required
+
+name is the output artifact name, unique within the pipeline.
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}
+
+### spec.stages[].actions[].outputArtifactsForComputeAction[].files
+
+`[]string`
+
+files are the paths (relative to the compute working directory) to
+include in the exported artifact. Max 10 paths, each 1-128 characters.
+
+- rule: {"repeated":{"maxItems":"10","items":{"string":{"minLen":"1","maxLen":"128"}}}}
+
+### spec.stages[].actions[].outputVariables
+
+`[]string`
+
+output_variables lists variable names a Compute action exports (these
+are the CodeBuild environment variables the commands set). Downstream
+actions reference them through this action's namespace as
+#{namespace.VariableName}. Max 15 names, each 1-128 characters.
+
+- rule: {"repeated":{"maxItems":"15","items":{"string":{"minLen":"1","maxLen":"128"}}}}
 
 ### spec.stages[].beforeEntry
 
@@ -618,7 +734,10 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
+
+- rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
 ### spec.stages[].beforeEntry.rules[].commands
 
@@ -634,7 +753,10 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 
 ### spec.stages[].beforeEntry.rules[].region
 
@@ -746,7 +868,10 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
+
+- rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
 ### spec.stages[].onSuccess.rules[].commands
 
@@ -762,7 +887,10 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 
 ### spec.stages[].onSuccess.rules[].region
 
@@ -911,7 +1039,10 @@ current version when omitted.
 
 configuration contains rule-provider-specific key-value pairs (e.g.,
 DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-WaitTime; LambdaInvoke: FunctionName).
+WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+characters (AWS's rule-configuration value cap).
+
+- rule: {"map":{"values":{"string":{"minLen":"1","maxLen":"10000"}}}}
 
 ### spec.stages[].onFailure.condition.rules[].commands
 
@@ -927,7 +1058,10 @@ commands are shell commands executed by the Commands rule provider
 `[]string`
 
 input_artifacts are artifact names available to the rule (e.g., for
-Commands rules operating on build output).
+Commands rules operating on build output). Each name 1-100 characters,
+alphanumeric with underscores and hyphens.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"100","pattern":"^[a-zA-Z0-9_\\-]+$"}}}}
 
 ### spec.stages[].onFailure.condition.rules[].region
 

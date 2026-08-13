@@ -1,0 +1,45 @@
+# Autopilot GcpGkeCluster scenario: the first live coverage of the
+# Autopilot arm — GKE manages nodes (billed per pod, near-zero cost while
+# empty), with the Autopilot-only surface exercised: conversion/posture
+# policy (no standard node pools) and the managed-node settings
+# (node_pool_auto_config: network tags + kubelet hardening). Ranges are
+# GKE-managed (no ip_allocation) — the zero-planning arm. Regional by
+# requirement: Autopilot clusters are always regional.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGkeCluster
+metadata:
+  name: planton-oss-e2e-gke-autopilot
+  id: planton-oss-e2e-gke-autopilot
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpgkecluster
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral Autopilot GKE cluster created by the Planton E2E harness; safe to delete
+  # us-east1 with the whole GKE chain (2026-08-12 us-central1 GCE_STOCKOUT;
+  # the shared subnetwork fixture is regional, so all scenarios move together).
+  location: us-east1
+  network:
+    valueFrom:
+      kind: GcpVpcNetwork
+      name: planton-oss-e2e-gcpvpcnetwork-prereq
+      fieldPath: status.outputs.network_self_link
+  subnetwork:
+    valueFrom:
+      kind: GcpSubnetwork
+      name: planton-oss-e2e-gcpsnw-gke-prereq
+      fieldPath: status.outputs.subnetwork_self_link
+  enableAutopilot: true
+  autopilotPolicy:
+    noStandardNodePools: true
+  nodePoolAutoConfig:
+    networkTags:
+      - planton-e2e-autopilot
+    insecureKubeletReadonlyPortEnabled: "FALSE"
+  deletionPolicy: DELETE
+  deletionProtection: false

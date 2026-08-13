@@ -23,6 +23,34 @@ When a component has dependencies (see "Component Dependencies" below), the
 framework wraps this lifecycle with a **DEPENDENCIES-UP** phase before VALIDATE
 and a **DEPENDENCIES-DOWN** phase after VERIFY-CLN (teardown in reverse order).
 
+**IDEMPOTENCY phase (per-provider opt-in):** when a provider's E2E profile
+sets `assert_apply_idempotency: true`, every lifecycle gains an IDEMPOTENCY
+phase right after DEPLOY: the runner re-plans the just-applied configuration
+(`terraform plan -detailed-exitcode` must exit 0 / `pulumi preview
+--expect-no-changes`) and fails the lane on any pending change. A dirty
+second plan means the module and the provider disagree about applied state —
+the send-omitted-value and Optional+Computed echo defect classes, which
+users otherwise meet as a perpetual diff on every re-apply (first live
+catch: the Identity Platform config's server-materialized
+`sign_in.phone_number` block). The gate covers the component under test
+only; prerequisite fixtures belong to other kinds' contracts. Arm it per
+provider after the catalog's known no-op re-plan classes are burned down.
+
+**The gate also catches OUTPUT-ONLY drift — an exported attribute whose
+read-back form differs from its apply-time form.** `terraform plan
+-detailed-exitcode` exits 2 for a plan whose only change is `Changes to
+Outputs` (zero resource changes), and some provider attributes are stored
+as the user's input at apply but read back normalized on the first refresh
+— typically a short name flipping to the fully qualified resource path
+(twice-seen: an Eventarc trigger's `name`, a Spanner instance's `config`
+flipping to `projects/{p}/instanceConfigs/{c}`). The resource itself
+re-plans clean (the provider diff-suppresses the attribute); only the
+module OUTPUT drifts, which users meet as a perpetual "changes to outputs"
+on every re-apply. The remedy is never to silence the gate: export a
+module-derived value (built from spec/identity), or normalize the
+attribute to the form the output contract documents — in BOTH engines, so
+stack outputs stay byte-identical.
+
 ## Directory Layout
 
 ### Component E2E Structure
@@ -120,6 +148,27 @@ service networking connection chain):
   the VPC, stranding a producer-side connection record that poisons the next
   scenario's same-named prerequisite chain (its connection create silently
   attaches to the stale record and no peering ever materializes).
+  **A prerequisite whose producer release is measured in TENS OF MINUTES
+  can declare its own wider budget** via `planton.dev/e2e-teardown-attempts:
+  "N"` on its install manifest (total attempts, same 60s spacing) — the
+  global default stays tight so genuinely failed teardowns keep reporting
+  fast. Know the class boundary before reaching for it: the Cloud SQL
+  chain's connection hold, historically ~4 minutes, was live-measured
+  UNRELEASED after 43 minutes of solo-verified retries (2026-08-12) — for
+  an EPHEMERAL fixture chain that unbounded wait buys nothing, so the
+  fixture instead sets `deletionPolicy: ABANDON` on the connection: the
+  teardown succeeds instantly, the (scenario+run-scoped, never-reused) VPC
+  delete clears the consumer-side peering, and the producer record is
+  unreachable, unbillable residue GCP reaps on its own schedule — the
+  undeletable-classes zero-orphan posture, chosen at the fixture, never
+  forced on customers (the kind's own DELETE semantics stay live-proven).
+  The ghost-poisoning above was ALSO live-confirmed the same day: after a
+  budget-exhausted teardown force-deleted the VPC, the NEXT scenario's
+  same-named fresh chain deployed clean but its connection teardown failed
+  "still using" with zero producer instances ever attached — the fix is
+  scenario-scoped cloud-side names (`${E2E_SCENARIO}` beside
+  `${E2E_RUN_ID}`) on the chain's VPC and range, so no scenario ever
+  recreates a predecessor's name.
 - **Dependency deploys run `pulumi up --refresh`** ([pulumi.go](framework/runner/pulumi.go)).
   Dependency stacks are keyed by run id, so every scenario in a run reuses the
   same stack name; if an earlier scenario's teardown half-completed, stale
@@ -131,6 +180,21 @@ created it should poll briefly before declaring it absent (see the
 service-networking-connection verifier: the peering is created via the
 Service Networking API but read back through the Compute API, and that
 cross-API view is eventually consistent).
+
+**Dependency stack names are digest-capped — never truncate a stack name at a
+call site.** `GenerateStackName` caps names at 50 chars by replacing the tail
+with a short digest of the full name, because the tail is exactly where
+uniqueness lives (a multi-instance install profile's `-a`/`-b`/`-c` instance
+suffix and the run id). The live-caught failure class this kills: three
+same-kind install-profile instances whose names truncated identically shared
+ONE dependency stack, so each successive `pulumi up` silently REPLACED the
+previous instance's cloud resource — the component under test then failed
+with a stale resolved reference ("InvalidSubnet ... does not exist" moments
+after the fixture "deployed and verified"), and teardown destroyed one stack
+then burned its full retry budget on "no stack named" ghosts. That signature
+— a fixture that verified cleanly, a component create rejecting the fixture's
+id, and repeated "no stack named <truncated-name>" destroys — means stack-name
+collision, not a module defect.
 
 **Undeletable resource classes redefine "zero orphans".** Some GCP resources
 have NO delete API — KMS key rings and crypto keys are the canonical class:
@@ -197,7 +261,14 @@ record it as an E2E exclusion in the component's `e2e/profile.yaml` with the
 specific reason, and prove the surface offline instead. Fixed prerequisite
 names make this worse (a stranded subnet collides with the next run), so any
 scenario in an async-release blast radius should carry `${E2E_RUN_ID}` in its
-prerequisites' cloud-side names.
+prerequisites' cloud-side names. Probe-confirmed 2026-08-11: the hold applies
+even to an IDLE service (never scaled, deleted seconds after create) and
+equally to Cloud Functions Gen 2 (they run on Cloud Run infrastructure) — do
+not expect a short-lived fixture to dodge it, and budget beyond the old
+"1-2 hours" figure: the probe's reservation was still held at 2h35m and
+released somewhere before the 4h mark. When in doubt, the 10-minute probe
+is: scratch VPC + subnet, `gcloud run deploy --network/--subnet`, delete
+the service, attempt the subnet delete and read the error.
 
 ### Resolving `valueFrom` references in composed scenarios
 
@@ -591,19 +662,6 @@ region. True subscription-wide gates do exist (the quota-increase link
 in the ARM error is the fix) — but conclude that only after a
 probe-verified clean region also fails.
 
-Microsoft Fabric adds a TRUE offer-gate 401 to this class — the one
-401 in the family that really means "this subscription may not": a
-capacity create (any region, any SKU) answers
-`401 Unauthorized: "Unable to authorize with Azure Active Directory"`
-on subscription offer types Fabric does not support (verified on the
-sponsored test subscription with the Owner user's own token via direct
-`az rest` PUTs to `Microsoft.Fabric/capacities`, in two regions, with
-the provider registered). Distinguish it from the quota costume below
-by the body: no quota text, no region variance, and it reproduces
-outside any IaC engine. The fix is an account-level change (a
-supported offer, e.g. pay-as-you-go), never a credential or module
-fix — record the deferral and move on.
-
 App Service adds its own shape: new PAYG subscriptions carry ZERO
 Basic-tier VM quota in some regions, and the rejection is a misleading
 `401 Unauthorized` whose body says "Operation cannot be completed
@@ -854,6 +912,321 @@ schedule:
 
 To trigger manually: Actions > e2e-kubernetes > Run workflow > select branch.
 
+## AWS E2E
+
+AWS tests live under `e2e/aws/` and verify through the AWS SDK against a real
+test account. Credentials are keyless: the harness probes the AMBIENT
+credential chain (`sts:GetCallerIdentity`) — locally an AWS SSO session, in
+CI the OIDC role.
+
+```bash
+AWS_PROFILE=planton-aws-e2e go test -tags=e2e -timeout=45m -v -count=1 \
+  -run '^TestAwsIamRole_(Pulumi|Terraform)$' ./e2e/aws/...
+```
+
+**Preflight the chain the harness actually reads.** `aws sts
+get-caller-identity --profile <name>` proving a NAMED profile valid says
+nothing about the ambient chain the SDK resolves — a stale default profile
+fails the harness with `InvalidClientTokenId` minutes after the named-profile
+preflight passed. Export `AWS_PROFILE` for the test process (as above) so the
+CLI preflight, the harness, and both engines' providers all resolve the same
+identity, and preflight with that same environment.
+
+**A passing CLI preflight can still hide an expired SSO REFRESH token.** The
+CLI serves `get-caller-identity` from its cached SSO access token, but the Go
+SDK inside the harness refreshes the token itself — and when the sso-session's
+refresh token has expired, the harness fails its very first call with
+`InvalidGrantException` ("refresh cached SSO token failed") seconds after the
+CLI preflight passed on the same profile. The signature is exactly that pair:
+CLI preflight green, harness Setup red with InvalidGrantException. The fix is
+a fresh `aws sso login --sso-session <name>` (a browser approval); re-run the
+preflight afterward and start the lanes while the session is young rather
+than letting a stale login sit ahead of a multi-hour suite.
+
+**A mid-run token death is rescuable IN PLACE — do not kill a retrying
+lane.** When the refresh token dies while a lane is running (live hit
+2026-08-12: the fixture chain's Pulumi provider looped on "Failed to refresh
+cached SSO credentials" between dependency deploys), a fresh `aws sso login`
+writes a new token into the shared SSO cache and the running process's SDK
+picks it up on its next refresh — the lane recovers and proceeds without a
+restart. Trigger the login immediately and let the lane's own retries absorb
+the gap; kill and re-run only if the retries exhaust first, and expect the
+failed run's teardown to ALSO have failed on credentials — sweep its fixture
+chain before relaunching (deployed dependencies stay cloud-side when
+DEPENDENCIES-DOWN never got usable credentials).
+
+Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
+engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
+~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
+NAT gateway is the same order; an NLB scenario ~6 min per engine (create
+2-3 min, delete similar). Budget `-timeout` for scenarios × engines plus the
+import round-trip when `PLANTON_E2E_IMPORT_ROUNDTRIP=1` is set (it re-imports
+and re-plans every resource, roughly doubling a component's Terraform lane).
+
+**Server-side-only AWS contracts: budget one live probe before a module
+debugging spiral.** Some AWS create/update contracts appear in no provider
+schema, validator, or CustomizeDiff — they live only in the service (the
+Azure section's "ARM contracts exist ONLY server-side" class, AWS edition).
+First hits: on ECS Managed Instances, CreateCapacityProvider requires
+security groups in the network configuration (the provider schema marks
+them optional), and PutClusterCapacityProviders neither attaches nor
+detaches MI providers (AWS binds them to their cluster at create) yet
+rejects a PUT that merely NAMES one still in its seconds-long PROVISIONING
+window; on API Gateway custom domains, CreateApiMapping rejects HTTP-API
+mappings on rule-mode domains, and CreateRoutingRule rejects everything
+but REST-protocol targets ("Only the REST protocol type is supported" —
+that one IS in the provider's website doc, three times, while the schema
+types api_id as a plain string: read the resource's DOC page during
+design, not only its schema); on RDS, AddRoleToDBCluster/AddRoleToDBInstance
+validate that the associated role's trust policy allows rds.amazonaws.com
+to assume it and 400 InvalidParameterValue otherwise ("IAM role ARN value
+is invalid or does not include the required permissions") — a composed
+role fixture therefore needs the RDS-trusting shape (consumer-scoped
+override), and note the error names the generic AWS_ROLE_INTEGRATION
+class even when a feature_name WAS sent: the trust check runs first, so
+the message is not evidence the feature name was dropped; on Route 53,
+CreateHealthCheck rejects reserved/documentation IP addresses
+("InvalidInput: IPv4 address 192.0.2.1 is forbidden" — the RFC 5737
+TEST-NET ranges included, and DISABLED does not exempt the check), so an
+endpoint-check fixture must place its placeholder in `fqdn`, never in
+`ip_address` (AWS resolves domains at probe time and a disabled check
+never probes — the domain placeholder deploys cleanly). When a lane fails with a 4xx the offline
+gates never produced, probe the contract directly with the AWS CLI on
+throwaway resources (the default VPC makes MI-class probes fixture-free)
+before touching the module — ten minutes of probing settled both the
+defect and the correct design.
+
+**Parent-serializing control planes: conflict-sensitivity is
+PER-OPERATION — probe it, and treat a single probe success as
+non-immunity.** Redshift Serverless holds a per-workgroup operation
+lock, and the visible failure is 400 `ConflictException` ("An operation
+is running on the serverless workgroup") on a satellite operation
+seconds after the workgroup went available. Three traps inside the
+class, all live-caught in one session: (1) ordering satellite groups
+serially is NOT enough, because an operation holds the lock
+ASYNCHRONOUSLY after its call returns — a usage-limit create/delete
+returns in <1s but flips the workgroup to MODIFYING for ~15-30s
+afterward, so the "serialized" next call still conflicts; (2) the
+sensitivity is per-operation — CLI probes on throwaway resources
+(default-VPC subnets, ~$0, ten minutes) showed usage-limit create/delete
+are conflict-immune while endpoint-access create AND delete are
+conflict-sensitive; (3) a probe that PASSES once does not prove
+immunity — the endpoint DELETE passed a 2-second-gap probe and then
+failed the identical crossing in the real lane (the async window's
+onset varies); only a conflict OBSERVED proves sensitivity, and repeated
+lane greens are what prove a crossing safe. The fix shape that survived:
+conflict-sensitive creates first (on the provider-waiter-fresh idle
+parent), immune calls last, and the destroy crossing protected
+per-engine — Pulumi rides the parent's cascading, conflict-retried
+delete via `DeletedWith` (AWS cascades live endpoint accesses;
+live-probed), Terraform crosses behind a `time_sleep` destroy settle.
+The provider (v6.58.0) retries the conflict only on the workgroup's own
+delete/update — never on satellites (upstream gap, recorded). A
+provisioned Redshift cluster does NOT serialize this way (its
+satellites apply concurrently, live-proven) — never generalize the
+class across a service family without evidence.
+
+**Values that advance monotonically across same-name recreates cannot be
+pinned literally in scenarios.** Lambda never reuses version numbers for a
+function NAME — a recreated function's first publish CONTINUES the deleted
+predecessor's numbering. The dual-engine runner recreates every fixed-name
+scenario back-to-back, so an alias pinned to version "1" passes on the
+first engine (publishes 1) and 404s at CreateAlias on the second (publishes
+2): "Function not found ...:function:<name>:1". Point scenario aliases at
+"$LATEST" (deterministic regardless of history) and prove the publish arm
+through the version OUTPUT, which carries whatever number AWS actually
+assigned. The class is any property whose value depends on a name's
+history rather than the current resource.
+
+**A sibling of the same class: some services RETAIN per-resource settings
+across delete/recreate of the same name — never read a fixed-name
+scenario's echo as the service's default.** SES retains an email
+identity's feedback-forwarding value keyed by the identity NAME, surviving
+DeleteEmailIdentity and re-creation (live-verified 2026-08-12: a fresh
+name echoes FeedbackForwardingStatus=true — AWS's default — while the
+fixed e2e domain echoes false, inherited from earlier lanes whose feedback
+satellite's DESTROY reset it; the provider's satellite delete writes the
+API's unset/zero value). Two consequences: (1) an evidence claim about a
+service DEFAULT must be probed on a FRESH name (a three-call CLI probe —
+create, get, delete — settles it), because a fixed-name scenario's echo is
+history-dependent; (2) a provider whose attribute-satellite delete writes
+a zero value plants that value permanently on the name — expect
+"unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
+manager, not the service default.
+
+**A 4xx from a create call does not mean nothing was created — sweep before
+re-running.** Some AWS creates are not atomic: the service materializes the
+resource, then validates a later parameter and answers 4xx (first hit:
+CreateFunction with `publish_to` in a region where `$LATEST.PUBLISHED` has
+not rolled out — the 400 named the parameter, yet the function came up
+Active). The engine treats the create as failed, so the resource exists
+OUTSIDE engine state: the lane's own destroy cannot remove it, and the
+dual-engine runner's second engine then fails its create with a 409
+"already exist" on the fixed cloud-side name. The 400-then-409 pair across
+engines IS the signature; the recovery is deleting the half-created
+resource with the CLI before re-running — and the arm that triggered the
+rejection gets trimmed with a recorded deferral, not retried against the
+same endpoint.
+
+**Mid-rollout parameters can be ACCEPTED-BUT-INERT — a create accepting a
+new parameter is not proof the feature rolled out.** The same feature's
+second live contact (Lambda `publish_to`, us-west-2, 2026-08-13, two days
+after the rejection above): CreateFunction ACCEPTED
+`PublishTo: LATEST_PUBLISHED` with a clean 201, yet the `$LATEST.PUBLISHED`
+qualifier answered ResourceNotFoundException after publishing versions
+through BOTH the explicit publish-version path and update-code
+`--publish` — the head pointer never materialized — while UpdateFunctionCode
+still rejected the identical value with the original
+InvalidParameterValueException. Rollouts are per-OPERATION and acceptance
+is not activation. Before re-arming a deferred arm whose unblock condition
+is "the region accepts it": probe the feature's OBSERVABLE EFFECT (here,
+the qualifier resolving after a publish on a fresh throwaway function),
+never the create call's status code alone — and probe the sibling
+operations too, because a divergent reject (update rejecting what create
+accepts) is itself the mid-rollout signature.
+
+**ECS Managed Instances provider deletion can FAIL SILENTLY, and the
+cluster cannot delete until every MI provider is INACTIVE.**
+`delete-capacity-provider` answers DEPROVISIONING even when the delete is
+doomed: minutes later the provider bounces back to ACTIVE with
+`updateStatus: DELETE_FAILED` ("Cannot remove capacity provider. It is
+either part of the default strategy or has non stopped tasks") when the
+cluster's default strategy still names it. Clear the strategy first
+(`put-cluster-capacity-providers` with a strategy that does not name it),
+then delete — an unreferenced provider deprovisions in about a minute —
+and only then delete the cluster (`DeleteCluster` fails with "Cluster
+cannot be deleted while Cluster Scoped Capacity Providers are attached"
+until then). Module destroys are safe on both counts — the association
+resource (which owns the strategy) destroys before the providers, and the
+provider's delete path waits — but MANUAL sweeps (CLI probes, orphan
+cleanup) must follow that order and check `updateStatus` for
+DELETE_FAILED rather than trusting the delete call's answer. A zero-orphan
+sweep that finds an ECS cluster lingering should check its capacity
+providers' status before suspecting a failed teardown.
+
+**A committed fixed S3 bucket name is a lane time bomb — the namespace is
+global and this repo is public.** A scenario's fixed bucket name can be
+claimed by ANY AWS account (the repo publishes it), and a recently-deleted
+name can sit in a propagation window where CreateBucket answers 409
+`BucketAlreadyExists` while HeadBucket answers 404 and `list-buckets`
+proves the account owns nothing by that name (live-hit 2026-08-11: the
+awss3bucket full-surface name 409'd across retries with no visible owner).
+The signature is exactly that 404-but-409 pair; the recovery is NOT
+waiting out the window but making the class impossible: put
+`${E2E_RUN_ID}` in the scenario's metadata.name so every run's bucket name
+is globally fresh. S3 is the recorded exception to the
+names-stay-stable token guidance — its cloud identifier IS the metadata
+name (the module derives the bucket name from it) — legitimate only for
+scenarios no prerequisite chain references by name.
+
+**Fixed-name shared fixtures collide across CONCURRENT sessions on one
+account.** IAM roles are account-global and the shared install profiles
+(e.g. the 13-role `awsiamrole` prerequisite set) use fixed names by
+design, so two sessions' lanes composing the same fixture race:
+the second `CreateRole` fails 409 `EntityAlreadyExists` while the first
+session's lane holds the deployment (its teardown removes the set at
+DEPENDENCIES-DOWN). Diagnose with the role's `CreateDate` (minutes old =
+a live sibling lane, not an orphan) before deleting ANYTHING — deleting a
+concurrent lane's live fixture wrecks that lane's destroy. The recovery
+is to wait for the holder's teardown window (poll `get-role` until
+NoSuchEntity) and launch immediately; the collision recurs at most until
+the sibling session's lanes finish. Kinds that expose no creation
+timestamp (an SNS topic, say) cannot use the CreateDate test — there the
+diagnosis is process evidence: with no concurrent session holding lanes,
+an already-existing fixed-name fixture is an orphan of an earlier
+interrupted teardown; delete it by CLI and re-run.
+
+**Before diagnosing a cloud-side anomaly, rule out a SIBLING EXECUTION of
+your own lane.** A lane launch that your tooling REPORTS as failed can
+still have spawned (live hit 2026-08-12: a launcher errored on argument
+validation after forking — the "failed" lane deployed its fixture chain
+minutes later), and an interrupted supervising shell can kill a lane
+mid-DEPENDENCIES-DOWN, stranding the whole fixture chain. The signatures:
+already-exists 409s on fixed-name fixtures nothing should hold, evidence
+watchers capturing MORE resource lifecycles than your lanes explain, a
+lane log growing after its process "finished", or two `ok`/`FAIL` package
+trailers in one log file. The checks are cheap and decisive: `ps` for
+`go test`/`aws.test`, `lsof` on the lane log, and RUN-header/trailer
+counts in the log. This is the session-level "an interrupted session is
+alive until its window is CLOSED" rule at process granularity — and a
+killed-mid-teardown lane means a manual dependency-ordered sweep
+(attachment before gateway, subnets before VPC) before any relaunch.
+
+**A stale AWS CLI silently DROPS new API surface from its output — verify
+the CLI's model before diagnosing a missing field.** The CLI parses
+responses against its bundled service model and discards members it does
+not know, so evidence gathered with `aws <svc> get-*` can show a
+just-modeled field as absent while the cloud resource carries it (live
+hit 2026-08-12: `get-distribution-config` from aws-cli 2.33.24 omitted
+CloudFront's `CacheTagConfig` — same-wave `ResponseCompletionTimeout` and
+`IpAddressType` appeared fine — while the Terraform destroy-refresh read
+the header back through the provider's own SDK, proving it landed; the
+false negative briefly looked like a Pulumi-engine silent drop). Before
+treating a missing field in CLI output as a module or provider defect,
+check whether the CLI even knows it:
+`aws <svc> <create-op> --generate-cli-skeleton | grep <Field>`. When the
+model is stale, read the evidence through this repo's own pinned
+`aws-sdk-go-v2` (a `go doc` check plus a small probe) or through the
+engine's refresh diff — the same stale-local-tooling class as the
+installed `planton` binary misreporting new spec fields (use the
+working-tree CLI). **Check the OUTPUT skeleton, not just the input one**
+(`--generate-cli-skeleton output` on the describe/get op): the two halves
+of the CLI's model update independently, and a CLI that ACCEPTS a new
+field on create can still DROP it from describe output (live hit
+2026-08-12: aws-cli 2.33.24 knew `TargetControlPort` in
+`create-target-group` input while `describe-target-groups` output
+silently omitted it — the pinned elbv2 SDK read it fine).
+
+**Short-lived resources need a PRE-ARMED evidence watcher, not an
+after-the-fact probe.** Target groups, IAM objects, and other
+seconds-scale resources are deployed, verified, and destroyed faster
+than a human-in-the-loop probe can react — a mid-lane evidence capture
+attempted after noticing the deploy line typically answers NotFound
+(live hit 2026-08-12: a target group's whole lifecycle ran in ~70s and
+the first probe missed the window). Start a background poller BEFORE
+launching the lane — poll the resource's fixed cloud-side name (or its
+`planton.ai/resource-id` tag) every few seconds, capture the evidence
+calls the moment it exists, and let it idle through both engines' windows
+so each lane's instance is sampled independently. The poller doubles as
+per-engine attribution: two capture blocks with different resource IDs
+prove BOTH engines' instances carried the arm.
+
+**Destroy-ORDER claims need the engine's own log, never a poller.** A
+polling watcher cannot order two deletions that land inside one poll
+interval (live hit 2026-08-12: an event archive and its bus both went
+absent within one 5s window, leaving the archive-before-bus ordering
+unprovable from the watcher alone). Terraform's destroy log states the
+order explicitly per resource ("Destruction complete" lines); Pulumi
+guarantees child-before-parent structurally when the module parents the
+dependent resource (`pulumi.Parent`). Cite those; keep the watcher for
+per-engine attribute evidence, not sequencing.
+
+**A change-deduping watcher must RE-ARM on absence, or the second
+engine's instance is silently skipped.** Deduping captures by snapshot
+hash keeps the evidence file readable, but kinds with no status
+transitions in their describe output (a CodePipeline pipeline, a
+CodeBuild project — fully-formed on first describe, byte-identical
+across engines on a fixed name) produce ONE capture for two engines:
+the dual-engine runner destroys and recreates the same-named resource,
+and the second instance's snapshot hashes identically to the first
+(live hit 2026-08-12: the pipeline watcher captured only the Pulumi
+window; the Terraform window's evidence had to be recovered from the
+destroy-refresh in the lane log). Clear the dedupe hash whenever the
+probe answers NotFound — the absence between lanes is exactly the
+engine boundary — so each engine's instance captures even when the
+payloads match. Status-cycling kinds (caches: creating → available →
+deleting) mask this bug by hashing differently anyway; do not conclude
+from them that a watcher is correct. Two hardenings that make the class
+structurally impossible (live-proven 2026-08-12): capture RAW snapshots
+continuously and dedupe at ANALYSIS time instead of capture time — the
+raw file is cheap for a lane-length window and nothing is lost to a
+buggy live dedupe — and key the analysis on a per-instance discriminator
+rather than the config payload: `creationTime`/`CreateDate` when the
+kind reports one (a fixed-name log group's two engine windows hash
+identically but carry distinct creation times), or the AWS-generated ID
+when the kind mints one per create (health checks, Cognito clients —
+those need no re-arm at all).
+
 ## GCP E2E
 
 GCP tests live under `e2e/gcp/` and use the shared `aa_e2e` harness with
@@ -863,6 +1236,31 @@ with Application Default Credentials.
 ```bash
 E2E_GCP_PROJECT=planton-e2e go test -tags=e2e -timeout=120m -v ./e2e/gcp/...
 ```
+
+**ADC preflight must assert a NON-EMPTY token, not just exit code 0:** with a
+stale-but-present ADC file, `gcloud auth application-default print-access-token`
+can exit 0 while printing an EMPTY token (observed live on a credential file
+whose refresh token had aged out) — so `print-access-token >/dev/null && echo OK`
+false-passes and the failure surfaces minutes later inside a lane. A machine
+preflight should capture the token, assert it is non-empty, and make one live
+API call with it (e.g. GET the test project via Cloud Resource Manager). The
+harness `Setup` itself fail-fasts correctly — this trap only bites pre-session
+checks that trust the exit code.
+
+**Read-after-delete is eventually consistent on several GCP APIs — poll,
+never single-GET, in VERIFY-CLN.** Two live-caught members so far: IAM
+service accounts (a GET within seconds of a successful
+`serviceAccounts.delete` can still answer 200 from a stale replica —
+destroy succeeded, VERIFY-CLN 1.5s later still saw the account, while an
+identical cycle minutes earlier read 404 immediately) and Cloud Run
+domain mappings (the regional Knative API kept answering 200 for ~40s
+after the provider's destroy returned clean — the poll passed at 43.5s).
+Both verifiers poll for up to 90s at 10s intervals; the SA verifier
+additionally treats 403 as a recently-deleted signal alongside 404. When
+a new kind's VERIFY-CLN fails with "still exists" seconds after a clean
+destroy, probe the object manually before touching module code — if it
+is gone minutes later, the kind is a new member of this class and its
+verifier needs the poll posture, not the modules a fix.
 
 **Backend contract:** every scenario's test context must carry the run-scoped
 Pulumi file backend URL — even Terraform scenarios, because dependency
@@ -921,17 +1319,36 @@ by reference. Prove the second-instance arm with the offline converter plan
 instance) and record the exclusion, rather than pointing both references at
 one instance (semantically wrong) or hand-rolling a second install path.
 
-**Reservation-window resources need consumer-unique prerequisite names:**
-`${E2E_RUN_ID}` makes cloud-side names unique per run — but two scenario
-chains in the SAME run that install the same prerequisite profile still
-produce the same name, and for resource classes that reserve a deleted
-ID for minutes after destroy (Firestore database IDs are held ~3-5
-minutes), the second chain's create collides with the first chain's
-just-deleted ghost ("not available ... retry in N seconds"). When
-multiple consumers chain on such a prerequisite kind, give each consumer
-a consumer-scoped override whose cloud-side name embeds the consumer
-(e.g. `e2e-fsidx-db-${E2E_RUN_ID}` vs `e2e-fsbs-db-${E2E_RUN_ID}`), not
-just the run.
+**Reservation-window resources need consumer-unique AND scenario-unique
+prerequisite names:** `${E2E_RUN_ID}` makes cloud-side names unique per run
+— but two scenario chains in the SAME run that install the same
+prerequisite profile still produce the same name, and for resource classes
+that reserve a deleted ID for minutes after destroy (Firestore database
+IDs are held ~3-5 minutes), the second chain's create collides with the
+first chain's just-deleted ghost ("not available ... retry in N seconds").
+Two grains of the same trap:
+- *Multiple consumers* chaining one prerequisite kind: give each consumer a
+  consumer-scoped override whose cloud-side name embeds the consumer
+  (e.g. `e2e-fsidx-db-...` vs `e2e-fsbs-db-...`).
+- *Multiple scenarios of ONE kind*: the kind's own override redeploys per
+  scenario, so even a consumer-unique run-scoped name is deleted and
+  recreated at every scenario boundary. Embed `${E2E_SCENARIO}` (expanded
+  to the running scenario's slug) alongside the run id
+  (`e2e-fsidx-db-${E2E_SCENARIO}-${E2E_RUN_ID}`) so no name is ever
+  recreated within a run.
+
+**Same-kind dependency stacks and the 50-character bound:** dependency
+stack names carry the manifest name precisely so two instances of one kind
+get two stacks — and the name bound is enforced by a uniqueness-preserving
+truncation (`boundStackName`: readable head + stable hash of the full
+name). This is load-bearing: a plain head-truncate once collapsed a
+two-database Firestore chain onto ONE stack (the kind slug alone is 20
+characters), so the second fixture's `up` silently REPLACED the first and
+teardown destroyed the shared stack once, then failed `no stack named` on
+the other. A `no stack named` error during DEPENDENCIES-DOWN therefore has
+TWO known causes: backend state loss mid-run (see the Azure section) and —
+if two same-kind dependencies' stack names agree — a truncation collision
+in a modified stack-naming path.
 
 **Identity-derived cloud IDs need run-scoped metadata names:** when a module
 derives the cloud-side resource ID deterministically from the resource
@@ -954,6 +1371,37 @@ prerequisite deploys. `planton validate <manifest>` (with `${E2E_RUN_ID}`
 text-substituted) catches this in seconds; run it on every new scenario,
 prerequisite, and preset YAML as part of the offline gate.
 
+**Offline fixture-integrity gate (FK resolvability):** a `valueFrom` that
+names a prerequisite the chain never deploys — or an ambiguous name among
+several instances of the same kind — fails only deep into a live run (or
+worse, silently: an unresolvable ref is left untouched, and DEPLOY fails as
+a provider validation error that reads like a module defect). The gate at
+`e2e/framework/runner/fixtureintegrity.go` (`TestCatalogFixtureIntegrity`)
+replays `ResolveDependencies` + `forEachRefField` statically against every
+committed scenario, with no cloud and no credentials. It mirrors
+`lookupRefValue` one for one — including the sole-instance fallback (a
+topology-named reference still resolves when exactly one instance of the
+kind exists; that is design, not a defect). Pre-existing findings live in
+`fixture_integrity_baseline.yaml` and only ever burn down; a new finding is
+a manifest fix, never a new baseline entry. Run it with
+`go test ./e2e/framework/runner/ -run TestCatalogFixtureIntegrity`.
+
+**Inherited fixture orphans 409 the whole chain — sweep the fixture
+families, not just the kinds' own objects:** prerequisite fixtures use
+FIXED names by design (FK resolution keys off `metadata.name`), so a
+leftover fixture from ANY earlier era — a crashed run, a pre-harness
+experiment — collides with a fresh chain as `Error 409: already exists`
+at DEPENDENCIES-UP, from a run-scoped backend that has no state for it.
+Live-caught with a month-old `planton-oss-e2e-gcphc-prereq` health check
+plus its backend service and a serverless NEG: three sequential 409s,
+each surfacing only after the previous one was cleared. The fix is
+always to DELETE the leftover (a pre-existing fixture object is by
+definition unmanaged — no lane is running when a session starts), and
+the honest end-of-session sweep must enumerate every fixture FAMILY the
+session's chains deployed (for LB chains: health checks, backend
+services, NEGs, URL maps, proxies, addresses), not only the proven
+kinds' own resource classes.
+
 **Named image families are a staleness trap in scenarios:** GCP retires
 image families (the deep-learning-VM notebook families like
 `common-cpu-notebooks` no longer resolve), and a scenario pinned to one
@@ -973,6 +1421,86 @@ first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
 
+**The same class has a SERVICE-AGENT flavor:** some services also provision
+a per-project service agent asynchronously after enablement, and the first
+create can race it — Workflows rejects with 400 "Workflows service agent
+does not exist" minutes after the API itself reads ENABLED (live-caught:
+the very next scenario, 40 seconds later, passed). Alongside the API
+pre-enable, pre-provision the agent explicitly and idempotently via
+Service Usage (`POST .../v1beta1/projects/{p}/services/{api}:generateServiceIdentity`
+— also the right pre-step for Eventarc's P4SA); a failure of this shape on
+a first-ever run is environmental, never a module defect — re-run before
+touching code.
+
+**Fleet-backed managed services can fail on ZONAL CAPACITY, wearing an
+"internal error" mask:** a Serverless VPC Access connector create failed
+repeatedly with `Error code 13 ... VPC Access connector failed to get
+healthy. Please check GCE quotas, logs and org policies and recreate` while
+quotas, IAM, and org policies were all verified healthy. The truth was in
+the AUDIT LOG: every `v1.compute.instances.insert` for the connector's
+managed `aet-*` fleet failed with `ZONE_RESOURCE_POOL_EXHAUSTED` across
+us-central1-b/c/f — a GCP-side stockout of the zonal machine pools, hit for
+e2-micro AND e2-standard-4 in the same window, while the identical connector
+went READY in us-east1 minutes later. The diagnostic recipe: query Cloud
+Logging for `severity>=WARNING resource.type="gce_instance"` in the failure
+window and read the insert errors — never debug the module first. The fix
+is regional: a self-contained fixture chain (the connector's own VPC/subnet)
+moves to a quieter region; a chain shared with other kinds records the
+deferral with the stockout evidence instead. A failed connector also
+CASCADES: its dead fleet's auto-created `aet-*` firewalls and instance
+groups hold the VPC/subnetwork against deletion past the framework's
+6×60s teardown retries, so sweep connectors (state ERROR) FIRST, wait for
+GCP to reap the fleet, then delete subnets and networks.
+
+The same class has a GKE-CREATE flavor that needs no audit-log query — the
+create error itself carries `[GCE_STOCKOUT]` verbatim: a Standard cluster
+create boots TRANSIENT default-pool instances (one per zone on a regional
+cluster) even when the module removes the default pool, and the cluster
+create fails after ~35 minutes of IGM waiting ("Not all instances running
+in IGM ... [GCE_STOCKOUT] ... does not have enough resources available")
+when any zone is stocked out. A zonal cluster in the same region can pass
+minutes earlier while the regional shape fails — regional spreads across
+three zones, so ONE exhausted zone fails the whole create. The fix is the
+same regional relocation, and because clusters must be region-matched to
+their subnetwork fixture, the kind's WHOLE chain (all scenarios + the
+consumer-scoped subnetwork + the cluster install profile, including
+same-shaped copies under consuming kinds) moves together.
+
+The class also has a DATAPROC flavor, and auto-zone placement does NOT
+dodge it: with no zone pinned, Dataproc's own placement still chose the
+exhausted us-central1-a and the create failed with
+ZONE_RESOURCE_POOL_EXHAUSTED / "does not have enough resources" on
+e2-standard-2 (live-hit 2026-08-12; single-node AND multi-node shapes
+alike). Same response: relocate the kind's whole region-matched chain.
+
+**Some GCP APIs require a quota project on user-credential calls:** the
+Identity Toolkit API (Identity Platform) rejects calls made with plain
+user ADC — 403 "requires a quota project, which is not set by default" —
+and the Terraform provider sends the `X-Goog-User-Project` header ONLY
+when `user_project_override` is armed in the provider config (the ADC
+file's own `quota_project_id` is NOT honored by the provider transport;
+live-verified). Kinds whose APIs carry this requirement wire
+`user_project_override = true` in their TF provider block and build their
+Pulumi provider via `pulumigoogleprovider.GetWithUserProjectOverride` —
+a module-level, customer-facing fix, never a harness export. The typed
+verifier clients are unaffected (google.golang.org/api transports honor
+the ADC quota project).
+
+**Once-only initialization singletons need an adopt arm for every lane
+after the first:** some project singletons initialize exactly once EVER —
+Identity Platform's `initializeAuth` hard-fails a second call with 400
+"Identity Platform has already been enabled for this project"
+(live-verified), and destroy only abandons. The first live lane spends
+the project's single create; every later lane (the same engine's second
+scenario, the other engine, every prerequisite chain) must ADOPT instead.
+The catalog pattern is a spec-level `adopt_existing` switch (TF: a
+for_each-gated `import` block on the deterministic singleton ID; Pulumi:
+a conditional `pulumi.Import` resource option) with the kind's e2e
+fixtures arming it permanently once the test project is initialized —
+Pulumi's import matches because the modules only specify spec-driven
+inputs, and Terraform's config-driven import applies spec drift as an
+update in the same apply.
+
 **Typed-client gaps in the pinned Google API line:** a brand-new GCP service
 may have no typed client in the repo's pinned `google.golang.org/api`
 version (Memorystore for Valkey was first). Do not bump the shared
@@ -981,6 +1509,45 @@ ADC-authenticated plain HTTP client (`Services.RestClient`) for exactly
 this: probe the service's documented REST GET path and decode the few
 fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
+
+**Shell harnesses can DOUBLE-SPAWN a lane invocation — and an interrupted
+invocation orphans the second spawn's fixtures.** Four-times-observed
+signature: one launch produces TWO OR MORE `go test` processes with
+different run ids; the first runs to a clean PASS while the second either
+409s on the first's fixtures or — if the invocation is interrupted/killed —
+dies mid-scenario with its run-scoped chain undestroyed. The third
+observation adds two facts: it strikes WITHOUT any interrupt (a chained
+`go test ... && go test ...` command was doubled whole, both siblings ran
+to clean completion), and the collision surface includes the SHARED module
+source directories — the sibling's dependency deploy overwrote the kind's
+`stack-input.yaml` between a lane's apply and its IDEMPOTENCY preview, so
+the preview compiled against the sibling's prerequisite manifest and
+reported a bogus replace (a different cloud-side name from a run id no
+logged lane used is the tell). The fourth observation adds a SERIAL
+flavor with two new tells: a single un-chained invocation was spawned
+THREE times back-to-back (edges overlapping), and because the launch
+piped through `tee` without `-a`, each respawn TRUNCATED the log — the
+surviving file and the reported wall-clock describe only the LAST spawn,
+so the invocation looks singular unless you reconstruct from the cloud
+audit log (query the service's create/delete methods for the window and
+group by the run-id embedded in resource names; every run id beyond the
+logged one is a phantom spawn). Mitigations: launch ONE `go test`
+invocation per shell command (never chain lanes — a doubled chain
+multiplies the overlap window), and smoke-check for a sibling process
+right after launch.
+When killing a sibling spawn, kill its PROCESS GROUP (`kill -- -<pgid>`),
+not just the `go test`/test-binary PIDs: an in-flight `pulumi up` child
+survives a parent-only kill and COMPLETES its deploy minutes later,
+leaving a fully-created orphan chain (live-observed: a killed secret
+lane's surviving child finished a 20-minute Composer environment create
+with nobody left to destroy it).
+Diagnosis and recovery:
+before sweeping anything after a lane failure or interrupt, `ps` for a
+concurrent sibling process (a live sibling's "orphans" are its own
+resources mid-teardown — racing it corrupts both runs); once no process
+remains, sweep BY RUN ID — list each fixture family and delete objects
+whose names carry a run-id suffix that matches no logged lane (creation
+timestamps from the audit log date the dead spawn precisely).
 
 **Run GCP e2e batches SEQUENTIALLY — never two `go test` processes at once:**
 the GCP dependency deploys write each prerequisite's stack-input into the
@@ -1055,6 +1622,19 @@ scenario is as simple as dropping a YAML file into the component's
    `pkg/e2e/profile/discover.go` so the CI matrix regex matches it
 6. The CI workflow picks up the new component automatically from the profile
 
+> **A prerequisite-only kind still needs steps 3 and 5 to be provable.** A
+> kind consumed by other kinds' chains gets deployed and verified as a
+> FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it
+> easy to believe it is covered -- but fixture duty proves another kind's
+> lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/`
+> (`DiscoverTestScenarios` returns nil when the directory is absent, and the
+> runner then skips), the canonical `e2e/manifest.yaml` is a documented
+> example and offline-plan fixture that never runs live, and a missing
+> `Test{Kind}_{Provisioner}` pair means a `-run` filter silently matches
+> zero tests. First caught on a kind whose only live exercise for weeks was
+> as a chained VIP fixture: its profile claimed testability while no lane
+> could ever run it.
+
 ## Adding a New Provider
 
 1. Create `catalog/{provider}/aa_e2e/` with harness, verify
@@ -1104,6 +1684,23 @@ owns two responsibilities beyond wiring verifiers:
 
 ### Authoring verifiers and prerequisite fixtures
 
+- **Never call `ctx.Export` inside an `ApplyT` callback in a Pulumi module.**
+  Apply callbacks run on output-resolution goroutines, and the exports map
+  they write is the same map the SDK's end-of-program stack-output
+  marshaling reads — a data race that kills the whole program with
+  `fatal error: concurrent map read and map write`, timing-dependent and
+  therefore FLAKY (first hit: the subnetwork module's per-index
+  secondary-range exports crashed one chain deploy and passed the next,
+  identical code). A module that needs per-element export keys derives each
+  key's index space from the spec (known before the program returns) and
+  registers every export synchronously with a value DERIVED via `ApplyT`
+  (`ctx.Export(key, out.ApplyT(...))` is safe — it is the export
+  registration itself that must stay on the program goroutine). When a
+  fixture deploy dies this way mid-chain, the created cloud resource
+  usually IS recorded in the run-scoped stack state, so the next scenario's
+  `up --refresh` adopts it — but the failed scenario's own teardown can
+  strand it against the chain's parent (a VPC refusing deletion while the
+  crashed subnet exists) until a later scenario's teardown sweeps both.
 - **Never name a verifier (or any production `.go` file) with a `_test.go`
   suffix.** Go treats every file ending in `_test.go` as a test file and
   excludes it from the normal package build, so a verifier in, say,
@@ -1162,14 +1759,7 @@ owns two responsibilities beyond wiring verifiers:
   services must check the recycle bin too (`az keyvault list-deleted`), and
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
-  timeouts accordingly. Cognitive/AI services accounts are the same class with
-  their own recycle bin: sweep `az cognitiveservices account list-deleted`
-  (both engines purge on destroy by default -- a ghost means a wedged teardown,
-  and it HOLDS the account name plus its globally unique custom subdomain
-  against every future lane). Live-observed once (not reproducible): an
-  account purge can race the enclosing resource group's delete so the RG
-  survives EMPTY even though both destroys reported success -- the group
-  sweep below is the net that catches it; just delete the empty group.
+  timeouts accordingly.
 - **Some ARM resources have no true delete — destroy flips a state field and the
   object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
   An Azure Storage encryption scope is the canonical case: "delete" PATCHes

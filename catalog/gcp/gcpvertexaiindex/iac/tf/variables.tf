@@ -59,6 +59,13 @@ variable "spec" {
 
     # User labels; merged beneath the platform attribution labels.
     labels = optional(map(string), {})
+
+    # CMEK key resource path (a GcpKmsKey reference resolves to it).
+    # Empty means Google-managed encryption. Immutable (ForceNew).
+    kms_key_name = optional(string, "")
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -75,12 +82,4 @@ variable "spec" {
     condition     = var.spec.config.dimensions >= 1
     error_message = "config.dimensions must be at least 1."
   }
-}
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
 }

@@ -24,3 +24,7 @@ The **AzureDataProtectionBackupInstance** component creates a Data Protection ba
 ## Future Enhancements
 
 - Live-proven lanes for the Kubernetes, database, and Data Lake variants as their fixture chains land in the test estate.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

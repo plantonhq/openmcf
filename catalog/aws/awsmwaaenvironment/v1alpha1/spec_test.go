@@ -455,3 +455,31 @@ var _ = ginkgo.Describe("AwsMwaaEnvironmentSpec Validation Tests", func() {
 		})
 	})
 })
+
+// Coverage for the provider-mirror promotions: the third webserver access mode
+// and the maintenance-window format.
+var _ = ginkgo.Describe("AwsMwaaEnvironment value-domain promotions", func() {
+	ginkgo.It("accepts PUBLIC_AND_PRIVATE webserver access", func() {
+		input := validMinimalSpec()
+		input.Spec.WebserverAccessMode = proto.String("PUBLIC_AND_PRIVATE")
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a well-formed maintenance window", func() {
+		input := validMinimalSpec()
+		input.Spec.WeeklyMaintenanceWindowStart = "TUE:03:30"
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a malformed maintenance window", func() {
+		input := validMinimalSpec()
+		input.Spec.WeeklyMaintenanceWindowStart = "TUESDAY:3:30"
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an out-of-range maintenance hour", func() {
+		input := validMinimalSpec()
+		input.Spec.WeeklyMaintenanceWindowStart = "SUN:24:00"
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+})

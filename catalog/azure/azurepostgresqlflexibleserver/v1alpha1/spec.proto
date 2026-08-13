@@ -107,7 +107,7 @@ message AzurePostgresqlFlexibleServerSpec {
   string administrator_login = 8 [(buf.validate.field).cel = {
     id: "postgres_admin_login_reserved"
     message: "administrator_login cannot be azure_superuser, azure_pg_admin, admin, administrator, root, guest, or public, and cannot start with pg_"
-    expression: "this == '' || (!(this.lowerAscii() in ['azure_superuser', 'azure_pg_admin', 'admin', 'administrator', 'root', 'guest', 'public']) && !this.lowerAscii().startsWith('pg_'))"
+    expression: "this == '' || (!this.matches('^(?i)(azure_superuser|azure_pg_admin|admin|administrator|root|guest|public)$') && !this.matches('^(?i)pg_'))"
   }];
 
   // The administrator password (8-128 characters, from at least three of:

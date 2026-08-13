@@ -19,9 +19,24 @@ spec:
   # PROVISIONED mode with an explicit shard_count, and a
   # customer-managed KMS key -- all proven by CEL spec tests and the
   # offline gate.
+  #
+  # Live-proven on both engines after the depth closure converged two
+  # Pulumi send paths to the Terraform module's rendering
+  # (encryption_type always sent -- NONE on keyless streams -- and
+  # enforce_consumer_deletion state-pinned instead of only-when-true).
+  # The full-surface lane ran green on both engines (KMS path;
+  # Terraform's plan rendered encryption_type "KMS" +
+  # enforce_consumer_deletion true explicitly, and the literal
+  # ${aws:ResourceAccount} condition survived the tfvars escaping into
+  # the applied policy). The keyless NONE path applied cleanly against
+  # AWS via this kind's prerequisite fixture riding a consumer lane's
+  # dependency install through the same changed Pulumi module.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

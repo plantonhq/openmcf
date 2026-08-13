@@ -1,0 +1,21 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_redshiftserverless_namespace:
+    exclusions:
+      - arg: namespace_name
+        reason: wired by the module from metadata.name -- the namespace name is platform naming, never free-form spec surface
+      - arg: admin_user_password_wo
+        reason: write-only ephemeral variant of admin_user_password -- a Terraform-language ergonomics feature, not cloud surface; the spec models the durable argument and the managed-password posture
+      - arg: admin_user_password_wo_version
+        reason: version companion of the write-only password -- exists only to trigger re-sends of admin_user_password_wo
+      - arg: tags
+        reason: wired by the module from metadata (Name plus planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

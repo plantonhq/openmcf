@@ -378,18 +378,18 @@ var File_catalog_kubernetes_kubernetespoddisruptionbudget_v1alpha1_spec_proto pr
 
 const file_catalog_kubernetes_kubernetespoddisruptionbudget_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Dcatalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1/spec.proto\x12=dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x92\x11\n" +
+	"Dcatalog/kubernetes/kubernetespoddisruptionbudget/v1alpha1/spec.proto\x12=dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xca\x10\n" +
 	"!KubernetesPodDisruptionBudgetSpec\x12d\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x12\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12\x84\x01\n" +
 	"\x06labels\x18\x03 \x03(\v2l.dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1.KubernetesPodDisruptionBudgetSpec.LabelsEntryR\x06labels\x12\x93\x01\n" +
 	"\vannotations\x18\x04 \x03(\v2q.dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1.KubernetesPodDisruptionBudgetSpec.AnnotationsEntryR\vannotations\x12\x8d\x01\n" +
-	"\bselector\x18\x05 \x01(\v2i.dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1.KubernetesPodDisruptionBudgetLabelSelectorB\x06\xbaH\x03\xc8\x01\x01R\bselector\x12\xa1\x02\n" +
-	"\rmin_available\x18\x06 \x01(\tB\xfb\x01\xbaH\xf7\x01\xba\x01\xf3\x01\n" +
-	"\x1cmin_available.int_or_percent\x12Zmin_available must be an absolute number (\"2\") or a percentage between 0% and 100% (\"50%\")\x1awthis == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)R\fminAvailable\x12\xa9\x02\n" +
-	"\x0fmax_unavailable\x18\a \x01(\tB\xff\x01\xbaH\xfb\x01\xba\x01\xf7\x01\n" +
-	"\x1emax_unavailable.int_or_percent\x12\\max_unavailable must be an absolute number (\"1\") or a percentage between 0% and 100% (\"25%\")\x1awthis == '' || this.matches('^[0-9]+$') || (this.matches('^[0-9]+%$') && int(this.substring(0, this.size() - 1)) <= 100)R\x0emaxUnavailable\x12\x80\x02\n" +
+	"\bselector\x18\x05 \x01(\v2i.dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1.KubernetesPodDisruptionBudgetLabelSelectorB\x06\xbaH\x03\xc8\x01\x01R\bselector\x12\xfd\x01\n" +
+	"\rmin_available\x18\x06 \x01(\tB\xd7\x01\xbaH\xd3\x01\xba\x01\xcf\x01\n" +
+	"\x1cmin_available.int_or_percent\x12Zmin_available must be an absolute number (\"2\") or a percentage between 0% and 100% (\"50%\")\x1aSthis == '' || this.matches('^[0-9]+$') || this.matches('^([0-9]|[1-9][0-9]|100)%$')R\fminAvailable\x12\x85\x02\n" +
+	"\x0fmax_unavailable\x18\a \x01(\tB\xdb\x01\xbaH\xd7\x01\xba\x01\xd3\x01\n" +
+	"\x1emax_unavailable.int_or_percent\x12\\max_unavailable must be an absolute number (\"1\") or a percentage between 0% and 100% (\"25%\")\x1aSthis == '' || this.matches('^[0-9]+$') || this.matches('^([0-9]|[1-9][0-9]|100)%$')R\x0emaxUnavailable\x12\x80\x02\n" +
 	"\x1dunhealthy_pod_eviction_policy\x18\b \x01(\x0e2\x98\x01.dev.planton.kubernetes.kubernetespoddisruptionbudget.v1alpha1.KubernetesPodDisruptionBudgetSpec.KubernetesPodDisruptionBudgetUnhealthyPodEvictionPolicyB\x1d\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x11if_healthy_budgetH\x00R\x1aunhealthyPodEvictionPolicy\x88\x01\x01\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

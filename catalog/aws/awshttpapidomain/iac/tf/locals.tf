@@ -23,4 +23,11 @@ locals {
   api_mapping_map = {
     for m in var.spec.api_mappings : (m.api_mapping_key != "" ? m.api_mapping_key : "(root)") => m
   }
+
+  # Routing rules are addressed by priority -- unique per spec CEL (AWS
+  # itself rejects duplicate priorities), and stable: re-ordering the spec
+  # list never churns rule resources.
+  routing_rule_map = {
+    for r in var.spec.routing_rules : tostring(r.priority) => r
+  }
 }

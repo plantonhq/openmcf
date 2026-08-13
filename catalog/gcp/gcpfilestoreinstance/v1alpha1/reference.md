@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpFilestoreInstanceSpec defines the configuration for a Google Cloud
 Filestore instance.
 
@@ -55,6 +57,7 @@ spec:
   networkConfig:
     network:
       value: default
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -79,12 +82,15 @@ spec:
 | `spec.fileShare.nfsExportOptions[].squashMode` | `string` |  |  |  |
 | `spec.fileShare.nfsExportOptions[].anonUid` | `int32` |  |  |  |
 | `spec.fileShare.nfsExportOptions[].anonGid` | `int32` |  |  |  |
+| `spec.fileShare.nfsExportOptions[].network` | `string \| valueFrom` |  |  | GcpVpcNetwork (`status.outputs.network_name`) |
 | `spec.fileShare.sourceBackup` | `string` |  |  |  |
+| `spec.fileShare.sourceBackupdrBackup` | `string` |  |  |  |
 | `spec.networkConfig` | `GcpFilestoreInstanceNetworkConfig` | yes |  |  |
 | `spec.networkConfig.network` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_name`) |
 | `spec.networkConfig.connectMode` | `string` |  |  |  |
 | `spec.networkConfig.reservedIpRange` | `string` |  |  |  |
 | `spec.networkConfig.modes` | `[]string` |  |  |  |
+| `spec.networkConfig.pscEndpointProject` | `string \| valueFrom` |  |  | GcpProject (`status.outputs.project_id`) |
 | `spec.performanceConfig` | `GcpFilestoreInstancePerformanceConfig` |  |  |  |
 | `spec.performanceConfig.fixedIops` | `GcpFilestoreInstanceFixedIops` |  |  |  |
 | `spec.performanceConfig.fixedIops.maxIops` | `int32` | yes |  |  |
@@ -95,6 +101,13 @@ spec:
 | `spec.initialReplication.peerInstances` | `[]string \| valueFrom` | yes |  | GcpFilestoreInstance (`status.outputs.instance_id`) |
 | `spec.labels` | `map<string, string>` |  |  |  |
 | `spec.tags` | `map<string, string>` |  |  |  |
+| `spec.ldap` | `GcpFilestoreInstanceLdapConfig` |  |  |  |
+| `spec.ldap.domain` | `string` | yes |  |  |
+| `spec.ldap.servers` | `[]string` | yes |  |  |
+| `spec.ldap.groupsOu` | `string` |  |  |  |
+| `spec.ldap.usersOu` | `string` |  |  |  |
+| `spec.desiredReplicaState` | `string` |  | `READY` |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -198,6 +211,7 @@ Reason for enabling deletion protection. Informational only.
 File share configuration. Each Filestore instance has exactly one file share.
 
 - rule: {"required":true}
+- rule: source_backup and source_backupdr_backup are mutually exclusive; restore from a Filestore backup or a Backup and DR backup, not both
 
 ### spec.fileShare.name
 
@@ -275,6 +289,19 @@ Anonymous group ID used when squash_mode is ROOT_SQUASH.
 Defaults to 65534 (nogroup) if not specified.
 Only valid when squash_mode is ROOT_SQUASH.
 
+### spec.fileShare.nfsExportOptions[].network
+
+`string | valueFrom`
+
+Source VPC network for ip_ranges, as the network NAME — a
+GcpVpcNetwork reference resolves to it. Required by GCP for
+instances using Private Service Connect (where client IPs are not
+otherwise attributable to a network), optional for other connect
+modes.
+
+- references: GcpVpcNetwork (`status.outputs.network_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_name}} -- a bare string does not parse
+
 ### spec.fileShare.sourceBackup
 
 `string`
@@ -284,6 +311,17 @@ format projects/{project}/locations/{location}/backups/{backup}.
 The share's capacity must be at least the backup's source capacity.
 Create-time only.
 
+### spec.fileShare.sourceBackupdrBackup
+
+`string`
+
+Restore this file share from a Backup and DR Service backup, in
+the format projects/{project}/locations/{location}/
+backupVaults/{vault}/dataSources/{source}/backups/{backup}.
+The vault-based alternative to source_backup (which restores from
+Filestore's own backups); set at most one restore source.
+Create-time only.
+
 ### spec.networkConfig
 
 `GcpFilestoreInstanceNetworkConfig` · required
@@ -291,6 +329,7 @@ Create-time only.
 VPC network configuration. Each Filestore instance connects to exactly one network.
 
 - rule: {"required":true}
+- rule: psc_endpoint_project is only meaningful when connect_mode is PRIVATE_SERVICE_CONNECT
 
 ### spec.networkConfig.network
 
@@ -337,6 +376,19 @@ IP address versions the instance serves. Values: "MODE_IPV4",
 posture. Immutable after creation.
 
 - rule: {"repeated":{"maxItems":"2","unique":true,"items":{"string":{"in":["MODE_IPV4","MODE_IPV6"]}}}}
+
+### spec.networkConfig.pscEndpointProject
+
+`string | valueFrom`
+
+Consumer project in which the Private Service Connect endpoint is
+created — a project ID; a GcpProject reference resolves to it. If
+omitted, the endpoint is created in the instance's own project.
+Only meaningful when connect_mode is PRIVATE_SERVICE_CONNECT
+(enforced pre-deploy). Immutable after creation.
+
+- references: GcpProject (`status.outputs.project_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse
 
 ### spec.performanceConfig
 
@@ -425,6 +477,84 @@ Resource Manager tags bound to the instance for org-policy and IAM
 conditions. Keys in the form "tagKeys/{id}", values "tagValues/{id}".
 Create-time only.
 
+### spec.ldap
+
+`GcpFilestoreInstanceLdapConfig`
+
+LDAP directory integration for NFSv4.1 identity mapping. Requires
+protocol NFS_V4_1 — with NFSv3, identity is numeric UID/GID
+matching and no directory service applies.
+
+### spec.ldap.domain
+
+`string` · required
+
+LDAP domain name, e.g. "my-domain.com".
+
+- rule: {"required":true}
+
+### spec.ldap.servers
+
+`[]string` · required
+
+LDAP server addresses — either all DNS names (e.g.
+"ldap.example.com") or all IP addresses; GCP rejects a mix of the
+two formats.
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.ldap.groupsOu
+
+`string`
+
+Groups Organizational Unit (OU) — an optional hint that narrows
+LDAP lookups to one OU instead of querying the whole namespace
+(faster lookups on large directories).
+
+### spec.ldap.usersOu
+
+`string`
+
+Users Organizational Unit (OU) — the same lookup-narrowing hint
+for user entries.
+
+### spec.desiredReplicaState
+
+`string` · optional (explicit presence)
+
+Desired state of THIS instance's replica relationship, when the
+instance is the STANDBY side of a replication pair:
+  "READY"  (default) -- replication runs; the standby receives
+                        changes from the active peer
+  "PAUSED"           -- replication is paused (e.g. to freeze the
+                        standby at a point in time); resume by
+                        setting READY again
+Updatable in place; has no effect on an instance without a
+replica relationship.
+
+- default: `READY`
+- rule: desired_replica_state must be READY or PAUSED
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the instance — what happens when this resource
+is destroyed (evaluated only after deletion_protection_enabled
+allows the destroy at all):
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the instance and every file on its share are deleted
+  "PREVENT" -- destroy FAILS; a second, independent guard for a
+               file server whose data exists nowhere else
+  "ABANDON" -- the instance is removed from management but left
+               running (and billing) in GCP with its data intact
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
+## Validation Rules
+
+- `ldap_requires_nfs_v4_1`: ldap requires protocol NFS_V4_1 — LDAP identity mapping is not available on NFSv3
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: GcpFilestoreInstance, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -447,7 +577,9 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
+| `spec.fileShare.nfsExportOptions[].network` | GcpVpcNetwork | `status.outputs.network_name` |
 | `spec.networkConfig.network` | GcpVpcNetwork | `status.outputs.network_name` |
+| `spec.networkConfig.pscEndpointProject` | GcpProject | `status.outputs.project_id` |
 | `spec.initialReplication.peerInstances` | GcpFilestoreInstance | `status.outputs.instance_id` |
 
 ## Referenced By

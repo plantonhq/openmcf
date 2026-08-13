@@ -1,0 +1,31 @@
+# GcpComputeDisk scenario: the bootable-image shape with guest OS features
+# and the destroy-safety surface — proves image sourcing, guest_os_features,
+# an explicit deletion_policy, and the snapshot-before-destroy net (the
+# destroy phase must still verify-clean WITH the net armed; the snapshot it
+# leaves is cleaned by the harness sweep).
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeDisk
+metadata:
+  name: planton-oss-e2e-gcpdisk-features
+  id: planton-oss-e2e-gcpdisk-features
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputedisk
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  zone: us-central1-a
+  type: pd-balanced
+  image: debian-cloud/debian-12
+  guestOsFeatures:
+    - UEFI_COMPATIBLE
+    - GVNIC
+  deletionPolicy: DELETE
+  createSnapshotBeforeDestroy: true
+  snapshotBeforeDestroyPrefix: planton-e2e-final
+  labels:
+    e2e-suite: gcp

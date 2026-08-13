@@ -38,7 +38,9 @@ module "alloydb_cluster" {
 |----------|----------|-------------|
 | `metadata` | Yes | Resource metadata (name, org, env, id) |
 | `spec` | Yes | GcpAlloydbCluster specification |
-| `provider_config` | No | GCP provider configuration |
+
+Credentials are never module inputs: the runner injects them through the
+standard `GOOGLE_*` environment chain.
 
 ## Outputs
 
@@ -56,4 +58,6 @@ module "alloydb_cluster" {
 - The VPC must have Private Service Access configured before creating the cluster.
 - `cluster_name`, `location`, `network`, and `kms_key_name` are immutable after creation.
 - `primary_instance.instance_id` is immutable after creation.
-- Provider version `~> 6.0` (google) is required.
+- `deletion_protection` defaults to TRUE: destroy fails until the spec flips
+  it false and that change is applied first (deliberately two steps).
+- Provider version `~> 7.43` (google) is required.

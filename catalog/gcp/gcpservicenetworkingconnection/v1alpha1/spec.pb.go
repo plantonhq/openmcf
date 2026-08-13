@@ -84,8 +84,22 @@ type GcpServiceNetworkingConnectionSpec struct {
 	// ranges, adopting it instead of erroring. Leave false unless you are
 	// deliberately taking over a pre-existing connection.
 	UpdateOnCreationFail bool `protobuf:"varint,5,opt,name=update_on_creation_fail,json=updateOnCreationFail,proto3" json:"update_on_creation_fail,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Deletion policy for the connection — what happens when this resource
+	// is destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the peering is deleted (GCP refuses while any service
+	//	             producer still holds subnets in the reserved ranges —
+	//	             destroy the Cloud SQL / AlloyDB / Memorystore instances
+	//	             first; see the teardown note above)
+	//	"PREVENT" -- destroy FAILS; protects the private connectivity every
+	//	             producer instance on this network depends on
+	//	"ABANDON" -- the connection is removed from management but keeps
+	//	             serving private IPs in GCP — the historical workaround
+	//	             for stuck teardowns, at the cost of an unmanaged peering
+	DeletionPolicy string `protobuf:"bytes,6,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpServiceNetworkingConnectionSpec) Reset() {
@@ -153,11 +167,18 @@ func (x *GcpServiceNetworkingConnectionSpec) GetUpdateOnCreationFail() bool {
 	return false
 }
 
+func (x *GcpServiceNetworkingConnectionSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpservicenetworkingconnection_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpservicenetworkingconnection_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	">catalog/gcp/gcpservicenetworkingconnection/v1alpha1/spec.proto\x127dev.planton.gcp.gcpservicenetworkingconnection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd1\x05\n" +
+	">catalog/gcp/gcpservicenetworkingconnection/v1alpha1/spec.proto\x127dev.planton.gcp.gcpservicenetworkingconnection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8f\a\n" +
 	"\"GcpServiceNetworkingConnectionSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12}\n" +
@@ -165,7 +186,9 @@ const file_catalog_gcp_gcpservicenetworkingconnection_v1alpha1_spec_proto_rawDes
 	"\aservice\x18\x03 \x01(\tB\xcf\x01\xbaH\xa7\x01\xba\x01\xa3\x01\n" +
 	"\rvalid_service\x12Qservice must be a DNS-style service name such as servicenetworking.googleapis.com\x1a?this == '' || this.matches('^[a-z][a-z0-9-]*(\\\\.[a-z0-9-]+)+$')\x8a\xa6\x1d servicenetworking.googleapis.comR\aservice\x12\x90\x01\n" +
 	"\x17reserved_peering_ranges\x18\x04 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xcd\x17\x92\xd4a\x13status.outputs.nameR\x15reservedPeeringRanges\x125\n" +
-	"\x17update_on_creation_fail\x18\x05 \x01(\bR\x14updateOnCreationFailB\xc2\x03\n" +
+	"\x17update_on_creation_fail\x18\x05 \x01(\bR\x14updateOnCreationFail\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x06 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicyB\xc2\x03\n" +
 	";com.dev.planton.gcp.gcpservicenetworkingconnection.v1alpha1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/catalog/gcp/gcpservicenetworkingconnection/v1alpha1;gcpservicenetworkingconnectionv1alpha1\xa2\x02\x04DPGG\xaa\x027Dev.Planton.Gcp.Gcpservicenetworkingconnection.V1alpha1\xca\x027Dev\\Planton\\Gcp\\Gcpservicenetworkingconnection\\V1alpha1\xe2\x02CDev\\Planton\\Gcp\\Gcpservicenetworkingconnection\\V1alpha1\\GPBMetadata\xea\x02;Dev::Planton::Gcp::Gcpservicenetworkingconnection::V1alpha1b\x06proto3"
 
 var (

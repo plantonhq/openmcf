@@ -31,4 +31,22 @@ message AwsRoute53ZoneStackOutputs {
   // (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping
   // route53:ChangeResourceRecordSets to specific zones.
   string zone_arn = 5;
+
+  // The DS (Delegation Signer) record for the zone's key-signing key, only
+  // populated when DNSSEC signing is enabled. This is the value to register
+  // with the PARENT zone (the domain registrar) to complete the DNSSEC
+  // chain of trust — signing without it protects nobody, because resolvers
+  // have no trust anchor to validate against.
+  string ds_record = 6;
+
+  // The DNSKEY record for the zone's key-signing key (the public key in DNS
+  // record form), only populated when DNSSEC signing is enabled. Useful for
+  // out-of-band verification and for parents that take a DNSKEY instead of
+  // a DS.
+  string dnskey_record = 7;
+
+  // The key tag of the key-signing key, only populated when DNSSEC signing
+  // is enabled — the short integer identifier registrars display next to a
+  // DS record (matches the first field of ds_record).
+  string key_signing_key_tag = 8;
 }

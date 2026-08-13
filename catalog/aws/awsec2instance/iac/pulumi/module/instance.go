@@ -214,26 +214,35 @@ func instance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*ec2
 	}
 
 	// --- Purchase options ---------------------------------------------------
-	// Presence of spot_options is the Spot switch; On-Demand needs no
-	// market options at all.
-	if spec.SpotOptions != nil {
-		spotArgs := &ec2.InstanceInstanceMarketOptionsSpotOptionsArgs{}
-		if spec.SpotOptions.MaxPrice != "" {
-			spotArgs.MaxPrice = pulumi.String(spec.SpotOptions.MaxPrice)
+	// The purchase market: an explicit market_type, or presence of
+	// spot_options implying "spot" (the classic shape). On-Demand needs no
+	// market options at all. Reservation-backed markets (capacity-block,
+	// interruptible-capacity-reservation) carry no spot_options -- CEL
+	// enforces that pairing and the required reservation target.
+	if spec.MarketType != "" || spec.SpotOptions != nil {
+		marketArgs := &ec2.InstanceInstanceMarketOptionsArgs{
+			MarketType: pulumi.String("spot"),
 		}
-		if spec.SpotOptions.SpotInstanceType != "" {
-			spotArgs.SpotInstanceType = pulumi.String(spec.SpotOptions.SpotInstanceType)
+		if spec.MarketType != "" {
+			marketArgs.MarketType = pulumi.String(spec.MarketType)
 		}
-		if spec.SpotOptions.InstanceInterruptionBehavior != "" {
-			spotArgs.InstanceInterruptionBehavior = pulumi.String(spec.SpotOptions.InstanceInterruptionBehavior)
+		if spec.SpotOptions != nil {
+			spotArgs := &ec2.InstanceInstanceMarketOptionsSpotOptionsArgs{}
+			if spec.SpotOptions.MaxPrice != "" {
+				spotArgs.MaxPrice = pulumi.String(spec.SpotOptions.MaxPrice)
+			}
+			if spec.SpotOptions.SpotInstanceType != "" {
+				spotArgs.SpotInstanceType = pulumi.String(spec.SpotOptions.SpotInstanceType)
+			}
+			if spec.SpotOptions.InstanceInterruptionBehavior != "" {
+				spotArgs.InstanceInterruptionBehavior = pulumi.String(spec.SpotOptions.InstanceInterruptionBehavior)
+			}
+			if spec.SpotOptions.ValidUntil != "" {
+				spotArgs.ValidUntil = pulumi.String(spec.SpotOptions.ValidUntil)
+			}
+			marketArgs.SpotOptions = spotArgs
 		}
-		if spec.SpotOptions.ValidUntil != "" {
-			spotArgs.ValidUntil = pulumi.String(spec.SpotOptions.ValidUntil)
-		}
-		args.InstanceMarketOptions = &ec2.InstanceInstanceMarketOptionsArgs{
-			MarketType:  pulumi.String("spot"),
-			SpotOptions: spotArgs,
-		}
+		args.InstanceMarketOptions = marketArgs
 	}
 	if spec.CapacityReservation != nil {
 		reservationArgs := &ec2.InstanceCapacityReservationSpecificationArgs{}
@@ -314,6 +323,19 @@ func instance(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*ec2
 		args.UserDataReplaceOnChange = pulumi.Bool(true)
 	}
 
+	// Uniform at-creation tags for EVERY volume (incl. AMI-inherited
+	// mappings) -- the ABAC-compliant arm; mutually exclusive with the
+	// per-device tags (CEL enforces it).
+	if len(spec.VolumeTags) > 0 {
+		args.VolumeTags = pulumi.ToStringMap(spec.VolumeTags)
+	}
+
+	// Destroy-time escape hatch: lift stop/termination protection before
+	// terminating instead of failing the destroy.
+	if spec.ForceDestroy {
+		args.ForceDestroy = pulumi.Bool(true)
+	}
+
 	// Stable Pulumi resource name; the cloud identity travels in the
 	// Name tag (EC2's only name), never in Pulumi auto-naming.
 	createdInstance, err := ec2.NewInstance(ctx, "instance", args, pulumi.Provider(provider))
@@ -349,6 +371,11 @@ func rootBlockDeviceArgs(device *awsec2instancev1alpha1.AwsEc2InstanceRootBlockD
 	if device.DeleteOnTermination != nil {
 		rootArgs.DeleteOnTermination = pulumi.Bool(device.GetDeleteOnTermination())
 	}
+	// Per-volume tags apply post-creation (see the spec-level volume_tags
+	// for the at-creation alternative; the provider forbids mixing them).
+	if len(device.Tags) > 0 {
+		rootArgs.Tags = pulumi.ToStringMap(device.Tags)
+	}
 	return rootArgs
 }
 
@@ -380,6 +407,9 @@ func ebsBlockDeviceArgs(device *awsec2instancev1alpha1.AwsEc2InstanceEbsBlockDev
 	}
 	if device.DeleteOnTermination != nil {
 		deviceArgs.DeleteOnTermination = pulumi.Bool(device.GetDeleteOnTermination())
+	}
+	if len(device.Tags) > 0 {
+		deviceArgs.Tags = pulumi.ToStringMap(device.Tags)
 	}
 	return deviceArgs
 }

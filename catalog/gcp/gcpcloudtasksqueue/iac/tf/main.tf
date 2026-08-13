@@ -18,6 +18,15 @@ resource "google_cloud_tasks_queue" "this" {
   location = local.location
   project  = local.project_id
 
+  # Declarative pause/resume: the provider issues the pause or resume
+  # call whenever this differs from the queue's live state. Sent
+  # explicitly so a PAUSED -> RUNNING spec edit resumes dispatch.
+  desired_state = var.spec.desired_state != "" ? var.spec.desired_state : "RUNNING"
+
+  # DELETE (provider default) removes the queue and its backlog on
+  # destroy; PREVENT fails the destroy; ABANDON leaves the queue running.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Queue-level HTTP task settings. These OVERRIDE task-level configuration
   # at dispatch time — the pattern that lets producers enqueue bare payloads
   # while the queue owns auth and routing.

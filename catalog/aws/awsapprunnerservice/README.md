@@ -40,10 +40,11 @@ The service composes with three shared, versioned companion resources -- each it
 | `memory` | `string` | `"2048"` | Memory per instance in MB. Numeric (`"512"` .. `"12288"`) or human-readable (`"0.5 GB"` .. `"12 GB"`). Not all CPU/memory combos are valid -- the create call rejects invalid pairs. |
 | `instance_role_arn` | `StringValueOrRef` | -- | IAM role assumed by running instances to call AWS APIs (S3, DynamoDB, etc.). **Not** the role used to pull images. |
 | `health_check` | `AwsAppRunnerServiceHealthCheck` | TCP defaults | Health check configuration. See nested message below. |
-| `auto_scaling_configuration_arn` | `StringValueOrRef` | account default | ARN of an `AwsAppRunnerAutoScalingConfiguration` revision. Omitted, AWS applies the account's default configuration. |
+| `auto_scaling_configuration_arn` | `StringValueOrRef` | account default | ARN of an `AwsAppRunnerAutoScalingConfiguration` revision. Omitted, AWS applies the account's default configuration. One-way on a live service: removing the reference does NOT return to the account default (provider contract) -- reference the default's ARN explicitly instead. |
 | `vpc_connector_arn` | `StringValueOrRef` | -- | ARN of an `AwsAppRunnerVpcConnector` for outbound VPC access. Omitted, egress reaches public endpoints only. |
-| `observability_configuration_arn` | `StringValueOrRef` | -- | ARN of an `AwsAppRunnerObservabilityConfiguration`. The reference itself enables tracing. |
-| `is_publicly_accessible` | `bool` | `true` | Whether the service endpoint is publicly reachable. When `false`, the service requires a VPC Ingress Connection (created against the exported `service_arn`). |
+| `observability_configuration_arn` | `StringValueOrRef` | -- | ARN of an `AwsAppRunnerObservabilityConfiguration`. The reference itself enables tracing. One-way on a live service (upstream provider gap): removing the reference does NOT disable tracing -- disabling requires service replacement. |
+| `is_publicly_accessible` | `bool` | `true` | Whether the service endpoint is publicly reachable. When `false`, pair with `vpc_ingress_connections` -- otherwise nothing can reach the service. |
+| `vpc_ingress_connections` | `repeated AwsAppRunnerServiceVpcIngressConnection` | -- | Publish the service into VPCs through interface VPC endpoints (AWS PrivateLink), keyed by connection name. Per-connection private domain names surface in stack outputs. |
 | `ip_address_type` | `string` | `"IPV4"` | `"IPV4"` or `"DUAL_STACK"` (IPv4 + IPv6). |
 | `kms_key_arn` | `StringValueOrRef` | AWS-managed key | Customer-managed KMS key for encrypting stored source and logs. **ForceNew** -- changing this replaces the service. |
 | `auto_deployments_enabled` | `bool` | `false` | Automatically deploy when the tracked source changes (new image on the tag, new commit on the branch). Supported for private ECR and code repositories only -- **AWS rejects it for ECR_PUBLIC images** (validated at spec level). |
@@ -88,16 +89,25 @@ The service composes with three shared, versioned companion resources -- each it
 | `domain_name` | `string` | -- | The domain to associate (e.g., `app.example.com`). |
 | `enable_www_subdomain` | `bool` | `true` | Also associate the `www.` subdomain -- meaningful mainly for apex domains. |
 
+### `AwsAppRunnerServiceVpcIngressConnection`
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | `string` | yes | Connection name (4--40 chars), unique across active VPC Ingress Connections in the account/region. Entries are keyed by name; changing an entry's VPC or endpoint replaces that one connection. |
+| `vpc_id` | `StringValueOrRef` | yes | The VPC to publish the service into. |
+| `vpc_endpoint_id` | `StringValueOrRef` | yes | The interface VPC endpoint (for `com.amazonaws.REGION.apprunner.requests`) in that VPC that carries the traffic. |
+
 ## Stack outputs
 
 | Output | Description |
 | --- | --- |
-| `service_arn` | Full ARN of the App Runner service -- the join key for VPC Ingress Connections and deployment triggers. |
+| `service_arn` | Full ARN of the App Runner service -- the join key for IAM policies and deployment triggers. |
 | `service_id` | Unique identifier assigned by App Runner. |
 | `service_url` | Default HTTPS endpoint (scheme-less, e.g., `abc123.us-east-1.awsapprunner.com`). |
 | `service_name` | Service name (derived from metadata). |
 | `service_status` | Operational status at the end of deployment (`RUNNING` when serving). |
 | `custom_domains` | Per-domain DNS material: the `dns_target` to point each domain at, plus certificate-validation CNAMEs -- each composes into an `AwsRoute53DnsRecord`. |
+| `vpc_ingress_connections` | Per-connection identifiers: the private `domain_name` clients inside each connected VPC resolve, plus the connection ARN and status. |
 
 ## Prerequisites
 

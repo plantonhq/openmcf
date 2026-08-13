@@ -76,6 +76,25 @@ var _ = ginkgo.Describe("AwsRedshiftServerlessWorkgroupSpec Custom Validation Te
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts a governed workgroup with endpoints, limits, and a custom domain", func() {
+			input := validWorkgroup()
+			input.Spec.CustomDomain = &AwsRedshiftServerlessWorkgroupCustomDomain{
+				DomainName:     "warehouse.example.com",
+				CertificateArn: literal("arn:aws:acm:us-west-2:123456789012:certificate/abc"),
+			}
+			input.Spec.EndpointAccesses = []*AwsRedshiftServerlessWorkgroupEndpointAccess{
+				{EndpointName: "analytics-consumers"},
+				{EndpointName: "etl-consumers", SubnetIds: threeSubnets()},
+			}
+			input.Spec.UsageLimits = []*AwsRedshiftServerlessWorkgroupUsageLimit{
+				{UsageType: "serverless-compute", Amount: 100, Period: "daily", BreachAction: "deactivate"},
+				{UsageType: "serverless-compute", Amount: 2000, Period: "monthly"},
+				{UsageType: "cross-region-datasharing", Amount: 5},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts a disabled price-performance target alongside a fixed baseline", func() {
 			input := validWorkgroup()
 			input.Spec.BaseCapacity = 32
@@ -207,6 +226,66 @@ var _ = ginkgo.Describe("AwsRedshiftServerlessWorkgroupSpec Custom Validation Te
 		ginkgo.It("rejects a track name with invalid characters", func() {
 			input := validWorkgroup()
 			input.Spec.TrackName = "current-track"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a custom domain without a certificate", func() {
+			input := validWorkgroup()
+			input.Spec.CustomDomain = &AwsRedshiftServerlessWorkgroupCustomDomain{
+				DomainName: "warehouse.example.com",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate endpoint access names (endpoint_access_names_unique)", func() {
+			input := validWorkgroup()
+			input.Spec.EndpointAccesses = []*AwsRedshiftServerlessWorkgroupEndpointAccess{
+				{EndpointName: "analytics-consumers"},
+				{EndpointName: "analytics-consumers"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("endpoint access names must be unique"))
+		})
+
+		ginkgo.It("rejects an endpoint with no resolvable subnets (endpoint_access_subnets_resolvable)", func() {
+			input := validWorkgroup()
+			input.Spec.SubnetIds = nil
+			input.Spec.EndpointAccesses = []*AwsRedshiftServerlessWorkgroupEndpointAccess{
+				{EndpointName: "analytics-consumers"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires the workgroup to declare subnet_ids"))
+		})
+
+		ginkgo.It("rejects duplicate usage limit pairs (usage_limits_unique)", func() {
+			input := validWorkgroup()
+			input.Spec.UsageLimits = []*AwsRedshiftServerlessWorkgroupUsageLimit{
+				{UsageType: "serverless-compute", Amount: 100},
+				{UsageType: "serverless-compute", Amount: 200},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("usage_limits must be unique"))
+		})
+
+		ginkgo.It("rejects a provisioned-vocabulary breach action (deactivate, not disable)", func() {
+			input := validWorkgroup()
+			input.Spec.UsageLimits = []*AwsRedshiftServerlessWorkgroupUsageLimit{
+				{UsageType: "serverless-compute", Amount: 100, BreachAction: "disable"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a non-positive usage limit amount", func() {
+			input := validWorkgroup()
+			input.Spec.UsageLimits = []*AwsRedshiftServerlessWorkgroupUsageLimit{
+				{UsageType: "serverless-compute", Amount: 0},
+			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})

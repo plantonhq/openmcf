@@ -1,0 +1,62 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_service_account:
+    mappings:
+      # Renames: the spec says what the field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.service_account_id
+        arg: account_id
+      - spec: spec.project_id
+        arg: project
+
+  google_service_account_key:
+    # Instantiated by the presence of the user_managed_key message (one
+    # optional key per account).
+    specRoot: spec.user_managed_key
+    mappings:
+      - spec: spec.user_managed_key.algorithm
+        arg: key_algorithm
+    exclusions:
+      - arg: service_account_id
+        reason: wired by the module to the account it creates -- never user surface
+
+  google_project_iam_member:
+    # Instantiated per role in the spec's project role list. The additive
+    # member form is deliberate -- authoritative iam_binding/iam_policy
+    # forms clobber grants made elsewhere and are not modeled.
+    mappings:
+      - spec: spec.project_iam_roles
+        arg: role
+    exclusions:
+      - arg: member
+        reason: wired by the module to the service account it creates -- the grants exist to empower this identity
+      - arg: project
+        reason: wired by the module to the created account's home project, so grants stay correct when project_id fell back to the provider default
+      - arg: condition.title
+        reason: conditioned grants are first-class GcpProjectIamMember resources (referencing this account's member output), where the condition is part of the grant's identity; the role list stays a simple unconditioned convenience
+      - arg: condition.expression
+        reason: conditioned grants are first-class GcpProjectIamMember resources; see condition.title
+      - arg: condition.description
+        reason: conditioned grants are first-class GcpProjectIamMember resources; see condition.title
+
+  google_organization_iam_member:
+    # Instantiated per role in the spec's organization role list.
+    mappings:
+      - spec: spec.org_iam_roles
+        arg: role
+    exclusions:
+      - arg: member
+        reason: wired by the module to the service account it creates -- the grants exist to empower this identity
+      - arg: condition.title
+        reason: org-scope conditioned grants have no first-class kind today (recorded in the breadth dispositions); the role list stays a simple unconditioned convenience rather than silently implying condition support
+      - arg: condition.expression
+        reason: org-scope conditioned grants have no first-class kind today; see condition.title
+      - arg: condition.description
+        reason: org-scope conditioned grants have no first-class kind today; see condition.title

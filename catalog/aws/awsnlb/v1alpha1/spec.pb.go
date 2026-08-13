@@ -115,9 +115,27 @@ type AwsNlbSpec struct {
 	AccessLogs *AwsNlbAccessLogs `protobuf:"bytes,11,opt,name=access_logs,json=accessLogs,proto3" json:"access_logs,omitempty"`
 	// Optional Route53 DNS configuration. When enabled, creates alias A records
 	// pointing the specified hostnames to the NLB's DNS name.
-	Dns           *AwsNlbDns `protobuf:"bytes,12,opt,name=dns,proto3" json:"dns,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Dns *AwsNlbDns `protobuf:"bytes,12,opt,name=dns,proto3" json:"dns,omitempty"`
+	// Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+	// Pre-provisions the NLB for a known traffic level (product launches,
+	// failover targets) instead of waiting for organic scaling. Reserved
+	// capacity bills for the reservation whether used or not. Leave unset for
+	// normal on-demand scaling.
+	MinimumLoadBalancerCapacityUnits *int32 `protobuf:"varint,13,opt,name=minimum_load_balancer_capacity_units,json=minimumLoadBalancerCapacityUnits,proto3,oneof" json:"minimum_load_balancer_capacity_units,omitempty"`
+	// Number of secondary private IPv4 addresses (0-7) AWS auto-assigns to each
+	// NLB node, raising the source-port budget for very high connection counts
+	// to a single target. Provider-verified caveat: DECREASING this value
+	// replaces the load balancer (AWS cannot release secondary IPs in place) --
+	// plan capacity before setting it. Leave unset for the AWS default of 0.
+	SecondaryIpsAutoAssignedPerSubnet *int32 `protobuf:"varint,14,opt,name=secondary_ips_auto_assigned_per_subnet,json=secondaryIpsAutoAssignedPerSubnet,proto3,oneof" json:"secondary_ips_auto_assigned_per_subnet,omitempty"`
+	// Whether NLB nodes source-NAT IPv6 traffic through a /80 prefix per AZ
+	// instead of a single IPv6 address -- required for UDP listeners on a
+	// dualstack NLB (the per-address port budget cannot serve UDP flow hashing).
+	// Valid values: "on", "off". Only meaningful when ip_address_type is
+	// "dualstack".
+	EnablePrefixForIpv6SourceNat string `protobuf:"bytes,15,opt,name=enable_prefix_for_ipv6_source_nat,json=enablePrefixForIpv6SourceNat,proto3" json:"enable_prefix_for_ipv6_source_nat,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *AwsNlbSpec) Reset() {
@@ -234,6 +252,27 @@ func (x *AwsNlbSpec) GetDns() *AwsNlbDns {
 	return nil
 }
 
+func (x *AwsNlbSpec) GetMinimumLoadBalancerCapacityUnits() int32 {
+	if x != nil && x.MinimumLoadBalancerCapacityUnits != nil {
+		return *x.MinimumLoadBalancerCapacityUnits
+	}
+	return 0
+}
+
+func (x *AwsNlbSpec) GetSecondaryIpsAutoAssignedPerSubnet() int32 {
+	if x != nil && x.SecondaryIpsAutoAssignedPerSubnet != nil {
+		return *x.SecondaryIpsAutoAssignedPerSubnet
+	}
+	return 0
+}
+
+func (x *AwsNlbSpec) GetEnablePrefixForIpv6SourceNat() string {
+	if x != nil {
+		return x.EnablePrefixForIpv6SourceNat
+	}
+	return ""
+}
+
 // AwsNlbSubnetMapping maps an NLB node to a specific subnet
 // and optionally assigns a static IP address.
 //
@@ -256,8 +295,14 @@ type AwsNlbSubnetMapping struct {
 	// for internal NLBs. The address must belong to the subnet's CIDR range.
 	// When omitted, AWS assigns a private IP automatically.
 	PrivateIpv4Address string `protobuf:"bytes,3,opt,name=private_ipv4_address,json=privateIpv4Address,proto3" json:"private_ipv4_address,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Specific IPv6 address for the NLB node in this subnet, for dualstack
+	// NLBs (ip_address_type = "dualstack"). Must fall within the subnet's IPv6
+	// CIDR. When omitted, AWS assigns one automatically. Pinning it gives the
+	// IPv6 side the same static-address story allocation_id gives the IPv4
+	// side.
+	Ipv6Address   string `protobuf:"bytes,4,opt,name=ipv6_address,json=ipv6Address,proto3" json:"ipv6_address,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsNlbSubnetMapping) Reset() {
@@ -307,6 +352,13 @@ func (x *AwsNlbSubnetMapping) GetAllocationId() *v1.StringValueOrRef {
 func (x *AwsNlbSubnetMapping) GetPrivateIpv4Address() string {
 	if x != nil {
 		return x.PrivateIpv4Address
+	}
+	return ""
+}
+
+func (x *AwsNlbSubnetMapping) GetIpv6Address() string {
+	if x != nil {
+		return x.Ipv6Address
 	}
 	return ""
 }
@@ -445,7 +497,7 @@ var File_catalog_aws_awsnlb_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsnlb_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"&catalog/aws/awsnlb/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsnlb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb8\r\n" +
+	"&catalog/aws/awsnlb/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsnlb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa6\x13\n" +
 	"\n" +
 	"AwsNlbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12j\n" +
@@ -461,14 +513,22 @@ const file_catalog_aws_awsnlb_v1alpha1_spec_proto_rawDesc = "" +
 	" \x01(\tR4enforceSecurityGroupInboundRulesOnPrivateLinkTraffic\x12R\n" +
 	"\vaccess_logs\x18\v \x01(\v21.dev.planton.aws.awsnlb.v1alpha1.AwsNlbAccessLogsR\n" +
 	"accessLogs\x12<\n" +
-	"\x03dns\x18\f \x01(\v2*.dev.planton.aws.awsnlb.v1alpha1.AwsNlbDnsR\x03dns:\xb9\x06\xbaH\xb5\x06\x1a\x9c\x01\n" +
+	"\x03dns\x18\f \x01(\v2*.dev.planton.aws.awsnlb.v1alpha1.AwsNlbDnsR\x03dns\x12\\\n" +
+	"$minimum_load_balancer_capacity_units\x18\r \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x00R minimumLoadBalancerCapacityUnits\x88\x01\x01\x12a\n" +
+	"&secondary_ips_auto_assigned_per_subnet\x18\x0e \x01(\x05B\t\xbaH\x06\x1a\x04\x18\a(\x00H\x01R!secondaryIpsAutoAssignedPerSubnet\x88\x01\x01\x12G\n" +
+	"!enable_prefix_for_ipv6_source_nat\x18\x0f \x01(\tR\x1cenablePrefixForIpv6SourceNat:\xc9\t\xbaH\xc5\t\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\xf3\x02\n" +
 	"&dns_record_client_routing_policy_valid\x12\x90\x01dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity' when set\x1a\xb5\x01this.dns_record_client_routing_policy == '' || this.dns_record_client_routing_policy in ['any_availability_zone', 'availability_zone_affinity', 'partial_availability_zone_affinity']\x1a\x9d\x02\n" +
-	"\x1eprivate_link_enforcement_valid\x12[enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set\x1a\x9d\x01this.enforce_security_group_inbound_rules_on_private_link_traffic == '' || this.enforce_security_group_inbound_rules_on_private_link_traffic in ['on', 'off']\"\xc1\x02\n" +
+	"\x1eprivate_link_enforcement_valid\x12[enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set\x1a\x9d\x01this.enforce_security_group_inbound_rules_on_private_link_traffic == '' || this.enforce_security_group_inbound_rules_on_private_link_traffic in ['on', 'off']\x1a\xc9\x01\n" +
+	"\x1cipv6_source_nat_prefix_valid\x12@enable_prefix_for_ipv6_source_nat must be 'on' or 'off' when set\x1agthis.enable_prefix_for_ipv6_source_nat == '' || this.enable_prefix_for_ipv6_source_nat in ['on', 'off']\x1a\xc1\x01\n" +
+	"\"ipv6_source_nat_requires_dualstack\x12Fenable_prefix_for_ipv6_source_nat requires ip_address_type 'dualstack'\x1aSthis.enable_prefix_for_ipv6_source_nat == '' || this.ip_address_type == 'dualstack'B'\n" +
+	"%_minimum_load_balancer_capacity_unitsB)\n" +
+	"'_secondary_ips_auto_assigned_per_subnet\"\xe4\x02\n" +
 	"\x13AwsNlbSubnetMapping\x12x\n" +
 	"\tsubnet_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\bsubnetId\x12~\n" +
 	"\rallocation_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB%\x88\xd4a\xb9\b\x92\xd4a\x1cstatus.outputs.allocation_idR\fallocationId\x120\n" +
-	"\x14private_ipv4_address\x18\x03 \x01(\tR\x12privateIpv4Address\"\x9f\x01\n" +
+	"\x14private_ipv4_address\x18\x03 \x01(\tR\x12privateIpv4Address\x12!\n" +
+	"\fipv6_address\x18\x04 \x01(\tR\vipv6Address\"\x9f\x01\n" +
 	"\x10AwsNlbAccessLogs\x12s\n" +
 	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x16\n" +
 	"\x06prefix\x18\x02 \x01(\tR\x06prefix\"\xce\x01\n" +
@@ -519,6 +579,7 @@ func file_catalog_aws_awsnlb_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsnlb_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsnlb_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

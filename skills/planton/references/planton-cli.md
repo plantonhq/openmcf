@@ -5,6 +5,10 @@ deployed, what failed and why. Everything here is read-only unless marked
 otherwise. `chart build` has its own contract (`build-contract.md`); schema
 grounding has `component-grounding.md`. Machine-readable output: most
 snapshot commands take `-o json` (protobuf field names) or `-o yaml`.
+On the platform-tools arm (no CLI — see SKILL.md, "Know your instruments")
+every lookup below has a platform tool twin (`list_*`/`get_*` on charts,
+projects, pipelines, stack jobs, connections): same questions, same
+diagnosis order, tool-for-command.
 
 ## Context — whose org and environment am I in?
 

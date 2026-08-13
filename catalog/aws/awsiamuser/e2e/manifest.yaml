@@ -17,4 +17,7 @@ spec:
           Action:
             - "s3:PutObject"
           Resource: "arn:aws:s3:::demo-bucket/*"
+  # The rotation lever: flip to Inactive to suspend the key without deleting
+  # it (id and secret survive; AWS rejects requests signed with it).
+  accessKeyStatus: Active
 

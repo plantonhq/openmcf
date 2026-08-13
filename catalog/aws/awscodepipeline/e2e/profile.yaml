@@ -13,10 +13,14 @@ spec:
   #   the fixture bucket ships versioning enabled, which S3 source actions
   #   require), the CodePipeline IAM role fixture (registry prerequisite),
   #   and the CodeBuild fixture project (scenario-declared prerequisite).
-  #   QUEUED execution, a pipeline variable, a namespaced action, and
-  #   ROLLBACK failure handling prove the V2 surface. (No action timeout
-  #   override in the lane: AWS supports it only on Manual Approval
-  #   actions, and the spec CEL enforces that.)
+  #   QUEUED execution, a pipeline variable, a namespaced action, ROLLBACK
+  #   failure handling, and a Compute action (inline commands + exported
+  #   variable + file-based output artifact -- free at create time; the
+  #   commands never run because the lane's execution fails at the Source
+  #   stage) prove the V2 surface. Verify the Compute action via
+  #   GetPipeline's action declaration, not apply success alone. (No
+  #   action timeout override in the lane: AWS supports it only on Manual
+  #   Approval actions, and the spec CEL enforces that.)
   #
   # Excluded from the live lane with reasons (proven by spec tests + the
   # offline plan gate against e2e/manifest.yaml, which exercises every
@@ -37,9 +41,17 @@ spec:
   # 5m58s total (the pipeline deploy itself took 13s/10s; the composed
   # fixture chain -- roles + versioned bucket + CodeBuild project --
   # dominates both lanes).
+  #
+  # Proven 2026-08-12, both engines, all eight phases (Pulumi 8m30s /
+  # Terraform 8m46s; the pipeline deploy itself 12s/34s — the composed
+  # fixture chain dominates, as before). The Compute-action family's
+  # first live proof: us-west-2 ACCEPTED the Commands action, and
+  # GetPipeline (pinned Go SDK — the local aws-cli's output model
+  # predates the family and silently drops these members) echoed the
+  # full declaration per engine: commands, outputVariables, the
+  # file-based output artifact, runOrder 2 — with PipelineType=V2 /
+  # ExecutionMode=QUEUED via the converged pass-through send paths.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

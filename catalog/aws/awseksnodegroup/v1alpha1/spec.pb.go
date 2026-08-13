@@ -192,8 +192,13 @@ type AwsEksNodeGroupSpec struct {
 	// disruption budgets (otherwise the update fails and rolls back). Only
 	// consulted while version/release_version/launch_template change.
 	ForceUpdateVersion bool `protobuf:"varint,18,opt,name=force_update_version,json=forceUpdateVersion,proto3" json:"force_update_version,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// A pool of pre-initialized instances that cuts scale-out latency from
+	// minutes to seconds -- worth its cost exactly when boot time (AMI +
+	// bootstrap + image pulls) dominates how fast new capacity serves
+	// pods. Updates in place.
+	WarmPoolConfig *AwsEksNodeGroupWarmPoolConfig `protobuf:"bytes,19,opt,name=warm_pool_config,json=warmPoolConfig,proto3" json:"warm_pool_config,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsEksNodeGroupSpec) Reset() {
@@ -350,6 +355,13 @@ func (x *AwsEksNodeGroupSpec) GetForceUpdateVersion() bool {
 		return x.ForceUpdateVersion
 	}
 	return false
+}
+
+func (x *AwsEksNodeGroupSpec) GetWarmPoolConfig() *AwsEksNodeGroupWarmPoolConfig {
+	if x != nil {
+		return x.WarmPoolConfig
+	}
+	return nil
 }
 
 // AwsEksNodeGroupLaunchTemplate points the node group at an
@@ -772,6 +784,91 @@ func (x *AwsEksNodeGroupNodeRepairConfig) GetOverrides() []*AwsEksNodeGroupNodeR
 	return nil
 }
 
+// AwsEksNodeGroupWarmPoolConfig keeps pre-initialized nodes ready so
+// scale-out serves pods in seconds instead of minutes (the managed
+// node group's own warm pool -- EKS provisions and recycles the pooled
+// instances). Pooled instances in the Stopped state cost only their EBS
+// storage; Running pools trade full instance cost for instant capacity.
+type AwsEksNodeGroupWarmPoolConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The state pooled instances wait in: "STOPPED" (AWS default --
+	// near-zero compute cost, seconds to start), "RUNNING" (instant but
+	// full price), or "HIBERNATED" (RAM restored from disk -- fast
+	// JVM/cache warmup without running cost). Empty keeps the AWS default.
+	PoolState string `protobuf:"bytes,1,opt,name=pool_state,json=poolState,proto3" json:"pool_state,omitempty"`
+	// Minimum number of instances always kept in the pool.
+	MinSize int32 `protobuf:"varint,2,opt,name=min_size,json=minSize,proto3" json:"min_size,omitempty"`
+	// Ceiling on pool size. Unset keeps the AWS default: the gap between
+	// the group's max_size and its desired capacity (AWS represents that
+	// default internally as -1 -- it never appears here). Explicit 0 is
+	// meaningful (no prepared capacity beyond min_size), which is why this
+	// field is optional.
+	MaxGroupPreparedCapacity *int32 `protobuf:"varint,3,opt,name=max_group_prepared_capacity,json=maxGroupPreparedCapacity,proto3,oneof" json:"max_group_prepared_capacity,omitempty"`
+	// Return scaled-in instances to the pool instead of terminating them
+	// -- reuse the warm boot instead of paying for it again.
+	ReuseOnScaleIn bool `protobuf:"varint,4,opt,name=reuse_on_scale_in,json=reuseOnScaleIn,proto3" json:"reuse_on_scale_in,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) Reset() {
+	*x = AwsEksNodeGroupWarmPoolConfig{}
+	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEksNodeGroupWarmPoolConfig) ProtoMessage() {}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEksNodeGroupWarmPoolConfig.ProtoReflect.Descriptor instead.
+func (*AwsEksNodeGroupWarmPoolConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) GetPoolState() string {
+	if x != nil {
+		return x.PoolState
+	}
+	return ""
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) GetMinSize() int32 {
+	if x != nil {
+		return x.MinSize
+	}
+	return 0
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) GetMaxGroupPreparedCapacity() int32 {
+	if x != nil && x.MaxGroupPreparedCapacity != nil {
+		return *x.MaxGroupPreparedCapacity
+	}
+	return 0
+}
+
+func (x *AwsEksNodeGroupWarmPoolConfig) GetReuseOnScaleIn() bool {
+	if x != nil {
+		return x.ReuseOnScaleIn
+	}
+	return false
+}
+
 // AwsEksNodeGroupNodeRepairOverride customizes the repair action for one
 // node-monitoring condition.
 type AwsEksNodeGroupNodeRepairOverride struct {
@@ -792,7 +889,7 @@ type AwsEksNodeGroupNodeRepairOverride struct {
 
 func (x *AwsEksNodeGroupNodeRepairOverride) Reset() {
 	*x = AwsEksNodeGroupNodeRepairOverride{}
-	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -804,7 +901,7 @@ func (x *AwsEksNodeGroupNodeRepairOverride) String() string {
 func (*AwsEksNodeGroupNodeRepairOverride) ProtoMessage() {}
 
 func (x *AwsEksNodeGroupNodeRepairOverride) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[7]
+	mi := &file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -817,7 +914,7 @@ func (x *AwsEksNodeGroupNodeRepairOverride) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsEksNodeGroupNodeRepairOverride.ProtoReflect.Descriptor instead.
 func (*AwsEksNodeGroupNodeRepairOverride) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+	return file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AwsEksNodeGroupNodeRepairOverride) GetMinRepairWaitTimeMins() int32 {
@@ -852,7 +949,7 @@ var File_catalog_aws_awseksnodegroup_v1alpha1_spec_proto protoreflect.FileDescri
 
 const file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/aws/awseksnodegroup/v1alpha1/spec.proto\x12(dev.planton.aws.awseksnodegroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xeb\x18\n" +
+	"/catalog/aws/awseksnodegroup/v1alpha1/spec.proto\x12(dev.planton.aws.awseksnodegroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xde\x19\n" +
 	"\x13AwsEksNodeGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x8a\x01\n" +
 	"\fcluster_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\xb2\xa6\x1d\rjoins cluster\x88\xd4a\xef\a\x92\xd4a\x13status.outputs.nameR\vclusterName\x12\x93\x01\n" +
@@ -874,7 +971,8 @@ const file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12node_repair_config\x18\x0f \x01(\v2I.dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairConfigR\x10nodeRepairConfig\x12\x18\n" +
 	"\aversion\x18\x10 \x01(\tR\aversion\x12'\n" +
 	"\x0frelease_version\x18\x11 \x01(\tR\x0ereleaseVersion\x120\n" +
-	"\x14force_update_version\x18\x12 \x01(\bR\x12forceUpdateVersion\x1a9\n" +
+	"\x14force_update_version\x18\x12 \x01(\bR\x12forceUpdateVersion\x12q\n" +
+	"\x10warm_pool_config\x18\x13 \x01(\v2G.dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupWarmPoolConfigR\x0ewarmPoolConfig\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xde\v\xbaH\xda\v\x1a\xca\x01\n" +
@@ -919,7 +1017,15 @@ const file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1dparallel_count_xor_percentage\x12cmax_parallel_nodes_repaired_count and max_parallel_nodes_repaired_percentage are mutually exclusive\x1a_this.max_parallel_nodes_repaired_count == 0 || this.max_parallel_nodes_repaired_percentage == 0\x1a\xea\x01\n" +
 	"\x1ethreshold_count_xor_percentage\x12emax_unhealthy_node_threshold_count and max_unhealthy_node_threshold_percentage are mutually exclusive\x1aathis.max_unhealthy_node_threshold_count == 0 || this.max_unhealthy_node_threshold_percentage == 0\x1a\x85\x02\n" +
 	"\x19parallel_percentage_range\x12Imax_parallel_nodes_repaired_percentage must be between 1 and 100 when set\x1a\x9c\x01this.max_parallel_nodes_repaired_percentage == 0 || (this.max_parallel_nodes_repaired_percentage >= 1 && this.max_parallel_nodes_repaired_percentage <= 100)\x1a\x8a\x02\n" +
-	"\x1athreshold_percentage_range\x12Jmax_unhealthy_node_threshold_percentage must be between 1 and 100 when set\x1a\x9f\x01this.max_unhealthy_node_threshold_percentage == 0 || (this.max_unhealthy_node_threshold_percentage >= 1 && this.max_unhealthy_node_threshold_percentage <= 100)\"\xa5\x03\n" +
+	"\x1athreshold_percentage_range\x12Jmax_unhealthy_node_threshold_percentage must be between 1 and 100 when set\x1a\x9f\x01this.max_unhealthy_node_threshold_percentage == 0 || (this.max_unhealthy_node_threshold_percentage >= 1 && this.max_unhealthy_node_threshold_percentage <= 100)\"\xab\x03\n" +
+	"\x1dAwsEksNodeGroupWarmPoolConfig\x12\x1d\n" +
+	"\n" +
+	"pool_state\x18\x01 \x01(\tR\tpoolState\x12\"\n" +
+	"\bmin_size\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\aminSize\x12K\n" +
+	"\x1bmax_group_prepared_capacity\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x18maxGroupPreparedCapacity\x88\x01\x01\x12)\n" +
+	"\x11reuse_on_scale_in\x18\x04 \x01(\bR\x0ereuseOnScaleIn:\xae\x01\xbaH\xaa\x01\x1a\xa7\x01\n" +
+	"\x10pool_state_valid\x12Apool_state must be 'STOPPED', 'RUNNING', or 'HIBERNATED' when set\x1aPthis.pool_state == '' || this.pool_state in ['STOPPED', 'RUNNING', 'HIBERNATED']B\x1e\n" +
+	"\x1c_max_group_prepared_capacity\"\xa5\x03\n" +
 	"!AwsEksNodeGroupNodeRepairOverride\x12A\n" +
 	"\x19min_repair_wait_time_mins\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x15minRepairWaitTimeMins\x12B\n" +
 	"\x19node_monitoring_condition\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x17nodeMonitoringCondition\x12:\n" +
@@ -945,7 +1051,7 @@ func file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDescGZIP() []byte {
 }
 
 var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_goTypes = []any{
 	(AwsEksNodeGroupCapacityType)(0),          // 0: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupCapacityType
 	(*AwsEksNodeGroupSpec)(nil),               // 1: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec
@@ -955,30 +1061,32 @@ var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsEksNodeGroupTaint)(nil),              // 5: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupTaint
 	(*AwsEksNodeGroupUpdateConfig)(nil),       // 6: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupUpdateConfig
 	(*AwsEksNodeGroupNodeRepairConfig)(nil),   // 7: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairConfig
-	(*AwsEksNodeGroupNodeRepairOverride)(nil), // 8: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairOverride
-	nil,                         // 9: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.LabelsEntry
-	(*v1.StringValueOrRef)(nil), // 10: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEksNodeGroupWarmPoolConfig)(nil),     // 8: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupWarmPoolConfig
+	(*AwsEksNodeGroupNodeRepairOverride)(nil), // 9: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairOverride
+	nil,                         // 10: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.LabelsEntry
+	(*v1.StringValueOrRef)(nil), // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_depIdxs = []int32{
-	10, // 0: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 1: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.node_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 2: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 0: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.cluster_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 1: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.node_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 2: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 3: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.launch_template:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupLaunchTemplate
 	0,  // 4: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.capacity_type:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupCapacityType
 	3,  // 5: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.scaling:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupScalingConfig
 	4,  // 6: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.remote_access:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupRemoteAccess
-	9,  // 7: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.labels:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.LabelsEntry
+	10, // 7: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.labels:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.LabelsEntry
 	5,  // 8: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.taints:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupTaint
 	6,  // 9: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.update_config:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupUpdateConfig
 	7,  // 10: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.node_repair_config:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairConfig
-	10, // 11: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupLaunchTemplate.launch_template_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 12: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupRemoteAccess.source_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 13: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairConfig.overrides:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairOverride
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	8,  // 11: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupSpec.warm_pool_config:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupWarmPoolConfig
+	11, // 12: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupLaunchTemplate.launch_template_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 13: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupRemoteAccess.source_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 14: dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairConfig.overrides:type_name -> dev.planton.aws.awseksnodegroup.v1alpha1.AwsEksNodeGroupNodeRepairOverride
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_init() }
@@ -986,13 +1094,14 @@ func file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awseksnodegroup_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awseksnodegroup_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -41,6 +41,12 @@ message GcpCloudRunSpec {
     expression: "!this.gpu_zonal_redundancy_disabled || has(this.node_selector)"
   };
 
+  option (buf.validate.message).cel = {
+    id: "multi_region.requires_global_region"
+    message: "multi-region services deploy through the global endpoint — set region to \"global\" when using multi_region_settings"
+    expression: "!has(this.multi_region_settings) || this.region == 'global'"
+  };
+
   // The GCP project the service is created in. Accepts a literal project ID
   // or a reference to a GcpProject resource. If omitted, the provider's
   // default project is used.
@@ -50,11 +56,13 @@ message GcpCloudRunSpec {
   ];
 
   // Region the service is deployed in, e.g. "us-central1". Immutable.
-  // Cloud Run is regional: multi-region serving is achieved by deploying
-  // one service per region behind a global load balancer.
+  // Cloud Run services are regional; the one exception is multi-region
+  // services (multi_region_settings), which are created through the
+  // special "global" region with the actual serving regions listed in
+  // multi_region_settings.regions.
   string region = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string = {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
+    (buf.validate.field).string = {pattern: "^([a-z]+-[a-z]+[0-9]+|global)$"}
   ];
 
   // Name of the Cloud Run service in GCP. Immutable. If not specified,
@@ -228,7 +236,10 @@ message GcpCloudRunSpec {
 
   // Launch-stage gate for the service. Set BETA (or ALPHA) only when the
   // spec uses preview Cloud Run features that GCP rejects at the default
-  // GA stage; the value is a declaration, not a feature switch.
+  // GA stage; the value is a declaration, not a feature switch. The
+  // provider enum admits more values (UNIMPLEMENTED, PRELAUNCH,
+  // EARLY_ACCESS, DEPRECATED), but Cloud Run itself supports only
+  // ALPHA/BETA/GA — this list encodes the API truth, deliberately.
   string launch_stage = 25 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -251,18 +262,70 @@ message GcpCloudRunSpec {
   // set to false. Deleting a service tears down its endpoint and every
   // revision; keep this on for anything real.
   optional bool deletion_protection = 27 [(dev.planton.shared.options.default) = "true"];
+
+  // Annotations on the SERVICE object: unstructured metadata read by
+  // external tools (never queryable, never behavioral for Cloud Run
+  // itself). Keys in the `run.googleapis.com`, `cloud.googleapis.com`,
+  // `serving.knative.dev`, and `autoscaling.knative.dev` namespaces are
+  // rejected by the API. For metadata stamped on each REVISION instead,
+  // use revision_annotations.
+  map<string, string> annotations = 28;
+
+  // Labels stamped on every REVISION the template creates (visible on
+  // revision objects and in billing breakdowns), as opposed to `labels`,
+  // which lands on the service object itself. Same namespace
+  // restrictions as service labels.
+  map<string, string> revision_labels = 29;
+
+  // Annotations stamped on every REVISION the template creates, as
+  // opposed to `annotations`, which lands on the service object. Same
+  // namespace restrictions.
+  map<string, string> revision_annotations = 30;
+
+  // Deploy-from-source: have Cloud Build produce the serving image from
+  // source code (the Cloud Run functions build path) instead of deploying
+  // a prebuilt image. The built artifact deploys as the service's
+  // container image; containers[].base_image_uri pairs with
+  // enable_automatic_updates for managed base-image patching.
+  GcpCloudRunBuildConfig build_config = 31;
+
+  // Puts the service behind Identity-Aware Proxy: callers authenticate
+  // with Google identities and IAP enforces access policy before requests
+  // reach the service — Google's managed login wall, with no code changes.
+  bool iap_enabled = 32;
+
+  // Disables the default *.run.app URL, leaving the service reachable only
+  // through custom domains or the load-balancer path. Removes the
+  // often-forgotten second front door on locked-down services.
+  bool default_uri_disabled = 33;
+
+  // Disables ALL health checking (startup and liveness probes) for the
+  // revisions. An escape hatch for workloads whose serving model breaks
+  // the probe contract — not a performance optimization.
+  bool health_check_disabled = 34;
+
+  // Multi-region service: one service identity serving from several
+  // regions at once. Requires region = "global"; the actual serving
+  // regions are listed here.
+  GcpCloudRunMultiRegionSettings multi_region_settings = 35;
+
+  // What happens to the Cloud Run service when this resource is
+  // destroyed:
+  //   "" / "DELETE" -- the service is deleted (default)
+  //   "PREVENT"     -- destroy operations fail while this is set
+  //   "ABANDON"     -- the service is removed from management but left
+  //                    running in GCP
+  string deletion_policy = 36 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
 }
 
 // GcpCloudRunContainer is one container of the instance: the serving
 // container or a sidecar. Containers in one instance share the network
 // namespace (reach each other on localhost) and any mounted volumes.
 message GcpCloudRunContainer {
-  option (buf.validate.message).cel = {
-    id: "liveness_probe.no_tcp"
-    message: "Cloud Run liveness probes support HTTP and gRPC only — TCP is valid on startup probes"
-    expression: "!has(this.liveness_probe) || !has(this.liveness_probe.tcp_socket)"
-  };
-
   // Name of the container. Required when the service runs more than one
   // container (depends_on refers to these names). If omitted for a
   // single-container service, Cloud Run assigns one.
@@ -316,13 +379,14 @@ message GcpCloudRunContainer {
   // (and depends_on waiters stay blocked) until this succeeds. Supports
   // HTTP, TCP, and gRPC checks. If omitted, Cloud Run performs a default
   // TCP check on the container port.
-  GcpCloudRunProbe startup_probe = 10;
+  GcpCloudRunStartupProbe startup_probe = 10;
 
   // Probe that monitors a running instance: on failure_threshold
   // consecutive failures the container is restarted. Supports HTTP and
-  // gRPC checks (TCP is startup-only). If omitted, instances are never
+  // gRPC checks only — the message has no TCP arm because Cloud Run
+  // rejects TCP liveness probes. If omitted, instances are never
   // health-restarted.
-  GcpCloudRunProbe liveness_probe = 11;
+  GcpCloudRunLivenessProbe liveness_probe = 11;
 
   // Names of containers this one waits for: this container starts only
   // after the listed containers pass their startup probes. The mechanism
@@ -337,6 +401,20 @@ message GcpCloudRunContainer {
       }
     }
   ];
+
+  // Base image for automatic base-image updates on source-deployed
+  // services (see spec.build_config): Google patches the OS/runtime
+  // layers of the running image without a redeploy. A serverless
+  // runtimes image URI, e.g.
+  // "us-central1-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/nodejs24".
+  string base_image_uri = 13;
+
+  // Probe that gates whether this container receives traffic: instances
+  // whose readiness check fails are pulled from serving without being
+  // restarted (unlike liveness, which restarts). Supports HTTP and gRPC
+  // checks only, and unlike the other probes has no initial delay — it
+  // starts with the container and runs for the instance's lifetime.
+  GcpCloudRunReadinessProbe readiness_probe = 14;
 }
 
 // GcpCloudRunEnvVar is one environment variable: a literal value or a
@@ -436,12 +514,21 @@ message GcpCloudRunContainerResources {
   bool startup_cpu_boost = 4;
 }
 
-// GcpCloudRunProbe is a startup or liveness check against one container.
-message GcpCloudRunProbe {
+// GcpCloudRunStartupProbe gates instance start. Deliberately its own
+// message: startup is the one probe type Cloud Run accepts a TCP check
+// on, and the only one whose whole window (failure_threshold ×
+// period_seconds) is capped at 240 seconds.
+message GcpCloudRunStartupProbe {
   option (buf.validate.message).cel = {
     id: "probe.timeout_lte_period"
     message: "probe timeout_seconds cannot exceed period_seconds"
     expression: "!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_seconds"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "startup_probe.window_max_240"
+    message: "the startup window (failure_threshold × period_seconds, defaults 3 × 10) cannot exceed 240 seconds"
+    expression: "(has(this.failure_threshold) ? this.failure_threshold : 3) * (has(this.period_seconds) ? this.period_seconds : 10) <= 240"
   };
 
   // Seconds to wait after container start before the first probe (0-240).
@@ -457,15 +544,15 @@ message GcpCloudRunProbe {
     lte: 240
   }];
 
-  // Seconds between probe attempts (1-240; GCP default 10).
+  // Seconds between probe attempts (1-240; GCP default 10). Bounded
+  // further by the 240-second startup window.
   optional int32 period_seconds = 3 [(buf.validate.field).int32 = {
     gte: 1
     lte: 240
   }];
 
-  // Consecutive failures after which the probe is considered failed (GCP
-  // default 3). For startup probes the instance is killed; for liveness
-  // probes the container is restarted.
+  // Consecutive failures after which startup is considered failed and the
+  // instance is killed (GCP default 3).
   optional int32 failure_threshold = 4 [(buf.validate.field).int32.gte = 1];
 
   // The check to perform.
@@ -475,12 +562,61 @@ message GcpCloudRunProbe {
     // HTTP GET against a path on the container; 2xx is success.
     GcpCloudRunHttpGetAction http_get = 5;
 
-    // TCP connect to a port; a successful connection is success.
-    // Startup probes only — Cloud Run rejects TCP liveness probes.
+    // TCP connect to a port; a successful connection is success. Startup
+    // is the only probe type Cloud Run accepts TCP on.
     GcpCloudRunTcpSocketAction tcp_socket = 6;
 
     // Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
     GcpCloudRunGrpcAction grpc = 7;
+  }
+}
+
+// GcpCloudRunLivenessProbe monitors a running instance: on
+// failure_threshold consecutive failures the container is restarted.
+// Deliberately its own message: Cloud Run rejects TCP liveness probes, so
+// the shape carries no TCP arm, and liveness alone gets the API's wider
+// 3600-second timing ceiling.
+message GcpCloudRunLivenessProbe {
+  option (buf.validate.message).cel = {
+    id: "probe.timeout_lte_period"
+    message: "probe timeout_seconds cannot exceed period_seconds"
+    expression: "!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_seconds"
+  };
+
+  // Seconds to wait after container start before the first probe
+  // (0-3600).
+  optional int32 initial_delay_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // Seconds after which a single probe attempt times out (1-3600; GCP
+  // default 1). Must not exceed period_seconds.
+  optional int32 timeout_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 3600
+  }];
+
+  // Seconds between probe attempts (1-3600; GCP default 10).
+  optional int32 period_seconds = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 3600
+  }];
+
+  // Consecutive failures after which the container is restarted (GCP
+  // default 3).
+  optional int32 failure_threshold = 4 [(buf.validate.field).int32.gte = 1];
+
+  // The check to perform. HTTP and gRPC only — Cloud Run rejects TCP
+  // liveness probes.
+  oneof handler {
+    option (buf.validate.oneof).required = true;
+
+    // HTTP GET against a path on the container; 2xx is success.
+    GcpCloudRunHttpGetAction http_get = 5;
+
+    // Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
+    GcpCloudRunGrpcAction grpc = 6;
   }
 }
 
@@ -536,6 +672,69 @@ message GcpCloudRunGrpcAction {
   // Service name passed to the health check, letting one server report
   // per-service health. If empty, overall server health is checked.
   string service = 2;
+}
+
+// GcpCloudRunReadinessProbe gates whether a container receives traffic:
+// a failing instance is pulled from serving (and re-added when it
+// recovers) without being restarted. Deliberately a different shape from
+// startup/liveness probes — the API gives readiness no initial delay and
+// no TCP handler. There is no success threshold: the GA API's probe
+// message carries no such field (verified live against the v2 discovery
+// document — the control plane silently drops the value the Terraform
+// provider models, leaving a perpetual re-plan diff), so re-admission
+// after recovery is single-success by API design.
+message GcpCloudRunReadinessProbe {
+  option (buf.validate.message).cel = {
+    id: "readiness_probe.timeout_lte_period"
+    message: "probe timeout_seconds cannot exceed period_seconds"
+    expression: "!has(this.timeout_seconds) || !has(this.period_seconds) || this.timeout_seconds <= this.period_seconds"
+  };
+
+  // Seconds after which a single probe attempt times out (GCP default 1).
+  // Must not exceed period_seconds.
+  optional int32 timeout_seconds = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 3600
+  }];
+
+  // Seconds between probe attempts (GCP default 10).
+  optional int32 period_seconds = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 3600
+  }];
+
+  // Consecutive failures after which the instance is pulled from serving
+  // (GCP default 3). The instance is NOT restarted — that is the liveness
+  // probe's job.
+  optional int32 failure_threshold = 3 [(buf.validate.field).int32.gte = 1];
+
+  // The check to perform. HTTP and gRPC only — readiness has no TCP arm.
+  oneof handler {
+    option (buf.validate.oneof).required = true;
+
+    // HTTP GET against a path on the container; 2xx is success.
+    GcpCloudRunReadinessHttpGetAction http_get = 4;
+
+    // Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
+    GcpCloudRunGrpcAction grpc = 5;
+  }
+}
+
+// GcpCloudRunReadinessHttpGetAction is the HTTP GET check of a readiness
+// probe. Unlike startup/liveness HTTP checks, readiness requests carry no
+// custom headers — the API does not accept them here.
+message GcpCloudRunReadinessHttpGetAction {
+  // Path to probe, e.g. "/ready". Defaults to "/".
+  string path = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^/.*$"
+  ];
+
+  // Port to probe. If unset, the container's serving port is used.
+  optional int32 port = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 65535
+  }];
 }
 
 // GcpCloudRunVolume is a named volume with exactly one source. Mount it
@@ -670,6 +869,12 @@ message GcpCloudRunVolumeGcs {
   // Mount read-only. Recommended unless the service genuinely writes —
   // concurrent writers through FUSE are easy to get wrong.
   bool read_only = 2;
+
+  // Flags passed to the gcsfuse command mounting this volume, without
+  // leading dashes (e.g. "implicit-dirs", "only-dir=media",
+  // "file-cache-max-size-mb=512"). The tuning surface for FUSE caching
+  // and directory semantics.
+  repeated string mount_options = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
 }
 
 // GcpCloudRunVolumeNfs mounts an NFS share (e.g. a Filestore instance).
@@ -704,6 +909,11 @@ message GcpCloudRunVolumeMount {
     (buf.validate.field).required = true,
     (buf.validate.field).string.pattern = "^/.*$"
   ];
+
+  // Path WITHIN the volume to mount instead of its root — e.g. mount only
+  // one secret item or one bucket directory. Relative path; empty mounts
+  // the volume root.
+  string sub_path = 3;
 }
 
 // GcpCloudRunRevisionScaling bounds how many instances one revision runs.
@@ -754,6 +964,12 @@ message GcpCloudRunServiceScaling {
   // (unlike scaling.min_instance_count, which is per revision). Useful
   // during gradual rollouts so warm capacity follows the traffic split.
   optional int32 min_instance_count = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Service-level maximum across ALL revisions combined — the total-cost
+  // circuit breaker during rollouts, when two revisions serve at once and
+  // per-revision caps (scaling.max_instance_count) would otherwise double
+  // the worst case.
+  optional int32 max_instance_count = 4 [(buf.validate.field).int32.gte = 1];
 }
 
 // GcpCloudRunTrafficTarget assigns a share of traffic (and/or a tag) to a
@@ -908,6 +1124,63 @@ message GcpCloudRunBinaryAuthorization {
 
   // Justification recorded when a break-glass deploy bypasses the policy.
   string breakglass_justification = 3;
+}
+
+// GcpCloudRunBuildConfig deploys the service FROM SOURCE: Cloud Build
+// compiles the code (the Cloud Run functions build path) and the built
+// artifact becomes the serving image. The alternative to shipping a
+// prebuilt container image.
+message GcpCloudRunBuildConfig {
+  // Cloud Storage URI of the source code to build, e.g.
+  // "gs://my-bucket/source.zip". Uploading source is the caller's job;
+  // this field tells the build where it lives.
+  string source_location = 1;
+
+  // Name of the function (as defined in the source code) to execute.
+  // Defaults to the resource name suffix; the API falls back to a
+  // function named "function" when the named one is not found.
+  string function_target = 2;
+
+  // Artifact Registry URI where the built image is stored, e.g.
+  // "us-docker.pkg.dev/project/repo/image".
+  string image_uri = 3;
+
+  // Base image used to build the function — a serverless runtimes image
+  // (see containers[].base_image_uri for the serving-side pairing).
+  string base_image = 4;
+
+  // Whether the function receives automatic base-image updates: Google
+  // patches OS/runtime layers of the deployed image without a redeploy.
+  bool enable_automatic_updates = 5;
+
+  // Build-time environment variables visible to the build process (NOT
+  // to the running service — runtime env lives on the containers).
+  map<string, string> environment_variables = 6;
+
+  // Cloud Build Custom Worker Pool to run the build in, as
+  // "projects/{project}/locations/{region}/workerPools/{workerPool}".
+  // For builds that must run inside a private network perimeter.
+  string worker_pool = 7;
+
+  // Service account the BUILD runs as, in the full resource form
+  // "projects/{projectId}/serviceAccounts/{email}" (note: not a bare
+  // email — this is the build-time identity, distinct from the runtime
+  // service_account).
+  string service_account = 8;
+}
+
+// GcpCloudRunMultiRegionSettings turns the service into one identity
+// serving from several regions at once (spec.region must be "global").
+message GcpCloudRunMultiRegionSettings {
+  // The regions the multi-region service deploys to, e.g.
+  // ["us-central1", "europe-west1"].
+  repeated string regions = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    unique: true
+    items: {
+      string: {pattern: "^[a-z]+-[a-z]+[0-9]+$"}
+    }
+  }];
 }
 
 // GcpCloudRunIngress controls which network paths may reach the service.

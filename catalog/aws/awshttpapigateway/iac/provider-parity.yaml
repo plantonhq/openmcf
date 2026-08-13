@@ -1,0 +1,153 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The recurring reason class here: the module fixes protocol_type to "HTTP",
+# so every WebSocket-only argument is deliberately outside this kind's
+# surface -- WebSocket APIs are a separate protocol surface (their own
+# route/response model) and would be their own component.
+
+resources:
+  aws_apigatewayv2_api:
+    mappings:
+      # "version" is ambiguous at the spec root; the spec names the concept.
+      - spec: spec.api_version
+        arg: version
+      # The spec carries the unit in the name.
+      - spec: spec.cors_configuration.max_age_seconds
+        arg: cors_configuration.max_age
+    exclusions:
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      - arg: protocol_type
+        reason: wired by the module to "HTTP" -- the kind's identity; WebSocket APIs are a separate protocol surface and would be their own component
+      - arg: api_key_selection_expression
+        reason: WebSocket-only surface (API key selection applies to WebSocket APIs; HTTP APIs authorize via JWT/IAM/Lambda authorizers) -- deliberately unmodeled on this HTTP-only kind
+      - arg: route_selection_expression
+        reason: HTTP APIs accept only the default "$request.method $request.path" -- a custom selection expression is WebSocket-only surface, so there is no configuration decision to surface
+      - arg: body
+        reason: OpenAPI-import workflow -- conflicts with the declarative routes fold (two owners for the same routes); deliberately unmodeled, revisit on concrete pull
+      - arg: fail_on_warnings
+        reason: companion knob of the OpenAPI body import (see body) -- meaningless without it
+      - arg: route_key
+        reason: quick-create shorthand -- produces an AWS-managed route/stage/integration that cannot be managed declaratively; the folded routes cover the same outcome honestly
+      - arg: target
+        reason: quick-create shorthand (see route_key)
+      - arg: credentials_arn
+        reason: quick-create shorthand (see route_key); per-integration credentials are modeled on spec.routes.integration.credentials_arn
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_apigatewayv2_stage:
+    # The kind folds exactly one stage; its arguments match under the spec's
+    # stage block.
+    specRoot: spec.stage
+    mappings:
+      # The provider suffixes the block name with _settings; the spec keeps
+      # the shorter concept name. Leaves match exactly below.
+      - spec: spec.stage.access_log
+        arg: access_log_settings
+      # The spec splits the provider's default_route_settings block into its
+      # two real concepts: default throttling and the detailed-metrics
+      # default.
+      - spec: spec.stage.default_throttle.burst_limit
+        arg: default_route_settings.throttling_burst_limit
+      - spec: spec.stage.default_throttle.rate_limit
+        arg: default_route_settings.throttling_rate_limit
+      - spec: spec.stage.detailed_metrics_enabled
+        arg: default_route_settings.detailed_metrics_enabled
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the API it creates -- the stage lives on its API, never user surface
+      - arg: region
+        reason: wired by the module to the API's region -- the stage lives where its API lives, never user surface
+      - arg: client_certificate_id
+        reason: WebSocket-only surface (client certificates are not supported on HTTP APIs) -- deliberately unmodeled on this HTTP-only kind
+      - arg: deployment_id
+        reason: pinning an explicit deployment contradicts the declarative model -- the kind deploys via auto_deploy (spec.stage.auto_deploy); deliberately unmodeled
+      - arg: default_route_settings.data_trace_enabled
+        reason: WebSocket-only knob, silently ignored by AWS for HTTP APIs -- modeling it would be dishonest surface
+      - arg: default_route_settings.logging_level
+        reason: WebSocket-only knob, silently ignored by AWS for HTTP APIs -- modeling it would be dishonest surface
+      - arg: route_settings.data_trace_enabled
+        reason: WebSocket-only knob, silently ignored by AWS for HTTP APIs -- modeling it would be dishonest surface
+      - arg: route_settings.logging_level
+        reason: WebSocket-only knob, silently ignored by AWS for HTTP APIs -- modeling it would be dishonest surface
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_apigatewayv2_route:
+    # Instantiated per spec.routes entry.
+    specRoot: spec.routes
+    mappings:
+      # Routes reference authorizers by NAME in the spec (clean separation;
+      # the id does not exist until apply); the module resolves the name to
+      # the created authorizer's id.
+      - spec: spec.routes.authorizer_name
+        arg: authorizer_id
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the API it creates -- a route lives on its API, never user surface
+      - arg: region
+        reason: wired by the module to the API's region -- a route lives where its API lives, never user surface
+      - arg: target
+        reason: wired by the module from the route's folded integration ("integrations/<id>") -- the spec expresses the target as spec.routes.integration, never a raw target string
+      - arg: api_key_required
+        reason: WebSocket-only surface (API keys are a WebSocket/REST feature; HTTP APIs authorize via JWT/IAM/Lambda authorizers) -- deliberately unmodeled on this HTTP-only kind
+      - arg: model_selection_expression
+        reason: WebSocket-only surface (request models/selection expressions have no HTTP-API concept) -- deliberately unmodeled on this HTTP-only kind
+      - arg: request_models
+        reason: WebSocket-only surface (see model_selection_expression)
+      - arg: request_parameter.request_parameter_key
+        reason: WebSocket-only surface (route-level request parameter requirements have no HTTP-API concept) -- deliberately unmodeled on this HTTP-only kind
+      - arg: request_parameter.required
+        reason: WebSocket-only surface (see request_parameter.request_parameter_key)
+      - arg: route_response_selection_expression
+        reason: WebSocket-only surface (route responses have no HTTP-API concept) -- deliberately unmodeled on this HTTP-only kind
+
+  aws_apigatewayv2_integration:
+    # Instantiated per deduplicated spec.routes.integration value (routes
+    # sharing an identical integration share one resource).
+    specRoot: spec.routes.integration
+    mappings:
+      # The spec flattens the provider's single-leaf tls_config block.
+      - spec: spec.routes.integration.tls_server_name_to_verify
+        arg: tls_config.server_name_to_verify
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the API it creates -- an integration lives on its API, never user surface
+      - arg: region
+        reason: wired by the module to the API's region -- an integration lives where its API lives, never user surface
+      - arg: content_handling_strategy
+        reason: WebSocket-only surface (binary/text conversion applies to WebSocket integrations) -- deliberately unmodeled on this HTTP-only kind
+      - arg: passthrough_behavior
+        reason: WebSocket-only surface (template passthrough applies to WebSocket integrations) -- deliberately unmodeled on this HTTP-only kind
+      - arg: request_templates
+        reason: WebSocket-only surface (mapping templates have no HTTP-API concept; HTTP APIs transform via request_parameters) -- deliberately unmodeled on this HTTP-only kind
+      - arg: template_selection_expression
+        reason: WebSocket-only surface (see request_templates)
+
+  aws_apigatewayv2_authorizer:
+    # Instantiated per spec.authorizers entry.
+    specRoot: spec.authorizers
+    mappings:
+      # The spec drops the provider's authorizer_ prefix inside the
+      # authorizer block and carries the unit instead.
+      - spec: spec.authorizers.result_ttl_seconds
+        arg: authorizer_result_ttl_in_seconds
+      # The spec pluralizes the repeated audience list.
+      - spec: spec.authorizers.jwt_configuration.audiences
+        arg: jwt_configuration.audience
+    exclusions:
+      - arg: api_id
+        reason: wired by the module to the API it creates -- an authorizer lives on its API, never user surface
+      - arg: region
+        reason: wired by the module to the API's region -- an authorizer lives where its API lives, never user surface

@@ -40,8 +40,48 @@ func logging(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, webAcl
 		})
 	}
 
+	if loggingSpec.RedactMethod {
+		redactedFields = append(redactedFields, &wafv2.WebAclLoggingConfigurationRedactedFieldArgs{
+			Method: &wafv2.WebAclLoggingConfigurationRedactedFieldMethodArgs{},
+		})
+	}
+
 	if len(redactedFields) > 0 {
 		args.RedactedFields = redactedFields
+	}
+
+	// Log filtering: keep or drop records by the action WAF applied or by
+	// labels on the request. Each spec condition carries exactly one of
+	// action / label_name (spec CEL), so each renders as a one-armed
+	// condition block.
+	if filterSpec := loggingSpec.Filter; filterSpec != nil {
+		var filters wafv2.WebAclLoggingConfigurationLoggingFilterFilterArray
+		for _, filterRule := range filterSpec.Filters {
+			var conditions wafv2.WebAclLoggingConfigurationLoggingFilterFilterConditionArray
+			for _, condition := range filterRule.Conditions {
+				conditionArgs := &wafv2.WebAclLoggingConfigurationLoggingFilterFilterConditionArgs{}
+				if condition.Action != "" {
+					conditionArgs.ActionCondition = &wafv2.WebAclLoggingConfigurationLoggingFilterFilterConditionActionConditionArgs{
+						Action: pulumi.String(condition.Action),
+					}
+				}
+				if condition.LabelName != "" {
+					conditionArgs.LabelNameCondition = &wafv2.WebAclLoggingConfigurationLoggingFilterFilterConditionLabelNameConditionArgs{
+						LabelName: pulumi.String(condition.LabelName),
+					}
+				}
+				conditions = append(conditions, conditionArgs)
+			}
+			filters = append(filters, &wafv2.WebAclLoggingConfigurationLoggingFilterFilterArgs{
+				Behavior:    pulumi.String(filterRule.Behavior),
+				Requirement: pulumi.String(filterRule.Requirement),
+				Conditions:  conditions,
+			})
+		}
+		args.LoggingFilter = &wafv2.WebAclLoggingConfigurationLoggingFilterArgs{
+			DefaultBehavior: pulumi.String(filterSpec.DefaultBehavior),
+			Filters:         filters,
+		}
 	}
 
 	_, err := wafv2.NewWebAclLoggingConfiguration(

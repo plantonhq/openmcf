@@ -7,10 +7,20 @@ spec:
   # a public endpoint (~2m) before the deploy itself (up to 45m, undeploy
   # up to 20m). A batch run for both engines needs >=360m. Automatic
   # sizing at min 1 replica keeps the serving cost floor minimal for the
-  # deploy window.
+  # deploy window. (2026-08-13 measured: deploy 35-41m per engine,
+  # undeploy seconds at min-replica automatic sizing.)
+  #
+  # Live-proven 2026-08-13 both engines under the apply-idempotency gate
+  # — deletion_policy DELETE verified as UNDEPLOY semantics (destroy
+  # removes the deployment from the endpoint's deployedIndexes; the
+  # index itself survives through its own lifecycle). Offline-proven-only
+  # arms with unblock conditions: dedicated_resources (a dedicated
+  # serving pool bills for the full deploy window — the automatic
+  # min-replica shape proves the module contract), reserved_ip_ranges
+  # and auth_config (need the peered/private endpoint fixtures the
+  # public chain deliberately avoids), and deployment_group (needs a
+  # second deployment group to prove isolation meaningfully).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 240

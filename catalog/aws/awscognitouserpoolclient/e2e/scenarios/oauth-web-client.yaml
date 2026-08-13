@@ -51,9 +51,12 @@ spec:
     accessToken: minutes
     idToken: minutes
     refreshToken: days
+  # Explicit 0 pins immediate retirement of rotated-out tokens -- the
+  # previously-inexpressible tri-state arm (unset would leave the choice to
+  # AWS; this proves the explicit-zero send path on both engines).
   refreshTokenRotation:
     feature: ENABLED
-    retryGracePeriodSeconds: 30
+    retryGracePeriodSeconds: 0
   enableTokenRevocation: true
   preventUserExistenceErrors: ENABLED
   readAttributes:

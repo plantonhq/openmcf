@@ -24,3 +24,7 @@ The **AzureAiFoundry** component creates an Azure AI Foundry hub -- the shared f
 ## Future Enhancements
 
 - Hub connection resources (external data sources/models) as azurerm models them.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

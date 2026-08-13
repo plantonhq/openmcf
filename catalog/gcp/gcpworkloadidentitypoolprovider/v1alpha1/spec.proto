@@ -112,6 +112,21 @@ message GcpWorkloadIdentityPoolProviderSpec {
     GcpWorkloadIdentityPoolProviderX509 x509 = 12;
   }
 
+  // Deletion policy for the provider — what happens when this resource is
+  // destroyed:
+  //   ""        -- same as "DELETE" (provider default)
+  //   "DELETE"  -- the provider is deleted (starts the ~30-day soft-delete
+  //                clock and blocks the ID from reuse until it expires)
+  //   "PREVENT" -- destroy FAILS; protects the keyless-auth path every
+  //                pipeline federating through this issuer depends on
+  //   "ABANDON" -- the provider is removed from management but keeps
+  //                exchanging tokens in GCP
+  string deletion_policy = 13 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
   option (buf.validate.message).cel = {
     id: "oidc_requires_subject_mapping"
     message: "OIDC providers must map google.subject in attribute_mapping (e.g. {\"google.subject\": \"assertion.sub\"}) — GCP rejects the provider without it"

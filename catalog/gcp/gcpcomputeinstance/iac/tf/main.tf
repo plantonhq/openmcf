@@ -47,6 +47,11 @@ resource "google_compute_instance" "this" {
   allow_stopping_for_update  = var.spec.allow_stopping_for_update
   key_revocation_action_type = local.key_revocation_action_type
 
+  # Destroy behavior: null follows the provider default (DELETE);
+  # PREVENT fails the destroy; ABANDON forgets the VM but leaves it
+  # running in GCP.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   resource_policies = length(var.spec.resource_policies) > 0 ? var.spec.resource_policies : null
 
   metadata                = length(local.final_metadata) > 0 ? local.final_metadata : null
@@ -57,10 +62,18 @@ resource "google_compute_instance" "this" {
   # fresh disk through initialize_params. size/type default server-side
   # when null (image size, pd-standard family default).
   boot_disk {
-    auto_delete       = var.spec.boot_disk.auto_delete != null ? var.spec.boot_disk.auto_delete : true
-    device_name       = var.spec.boot_disk.device_name != "" ? var.spec.boot_disk.device_name : null
-    kms_key_self_link = var.spec.boot_disk.kms_key != "" ? var.spec.boot_disk.kms_key : null
-    source            = var.spec.boot_disk.source_disk != "" ? var.spec.boot_disk.source_disk : null
+    auto_delete                     = var.spec.boot_disk.auto_delete != null ? var.spec.boot_disk.auto_delete : true
+    device_name                     = var.spec.boot_disk.device_name != "" ? var.spec.boot_disk.device_name : null
+    kms_key_self_link               = var.spec.boot_disk.kms_key != "" ? var.spec.boot_disk.kms_key : null
+    disk_encryption_service_account = var.spec.boot_disk.kms_key_service_account != "" ? var.spec.boot_disk.kms_key_service_account : null
+    source                          = var.spec.boot_disk.source_disk != "" ? var.spec.boot_disk.source_disk : null
+    mode                            = var.spec.boot_disk.mode != "" ? var.spec.boot_disk.mode : null
+    # Google-advice-only lever — sent only when explicitly set, so the
+    # API's auto-selected interface never produces a diff.
+    interface = var.spec.boot_disk.interface != "" ? var.spec.boot_disk.interface : null
+    # Regional-disk takeover; forcing a zonal disk is an API error.
+    force_attach      = var.spec.boot_disk.force_attach ? true : null
+    guest_os_features = length(var.spec.boot_disk.guest_os_features) > 0 ? var.spec.boot_disk.guest_os_features : null
 
     dynamic "initialize_params" {
       for_each = var.spec.boot_disk.source_disk == "" ? [1] : []
@@ -76,6 +89,29 @@ resource "google_compute_instance" "this" {
         enable_confidential_compute = var.spec.boot_disk.enable_confidential_compute ? true : null
         resource_policies           = length(var.spec.boot_disk.resource_policies) > 0 ? var.spec.boot_disk.resource_policies : null
         storage_pool                = var.spec.boot_disk.storage_pool != "" ? var.spec.boot_disk.storage_pool : null
+        # Exactly two zones (one the instance's own) converts the boot
+        # disk to a regional disk — enforced pre-deploy by the spec.
+        replica_zones = length(var.spec.boot_disk.replica_zones) > 0 ? var.spec.boot_disk.replica_zones : null
+        # Create-time only; not returned by the API.
+        resource_manager_tags = length(var.spec.boot_disk.resource_manager_tags) > 0 ? var.spec.boot_disk.resource_manager_tags : null
+
+        # CMEK decryption of an encrypted source image/snapshot. CSEK
+        # raw-key arms are deliberately not modeled (secure-by-default).
+        dynamic "source_image_encryption_key" {
+          for_each = var.spec.boot_disk.source_image_encryption != null ? [var.spec.boot_disk.source_image_encryption] : []
+          content {
+            kms_key_self_link       = source_image_encryption_key.value.kms_key
+            kms_key_service_account = source_image_encryption_key.value.kms_key_service_account != "" ? source_image_encryption_key.value.kms_key_service_account : null
+          }
+        }
+
+        dynamic "source_snapshot_encryption_key" {
+          for_each = var.spec.boot_disk.source_snapshot_encryption != null ? [var.spec.boot_disk.source_snapshot_encryption] : []
+          content {
+            kms_key_self_link       = source_snapshot_encryption_key.value.kms_key
+            kms_key_service_account = source_snapshot_encryption_key.value.kms_key_service_account != "" ? source_snapshot_encryption_key.value.kms_key_service_account : null
+          }
+        }
       }
     }
   }
@@ -85,10 +121,13 @@ resource "google_compute_instance" "this" {
   dynamic "attached_disk" {
     for_each = var.spec.attached_disks
     content {
-      source            = attached_disk.value.source
-      device_name       = attached_disk.value.device_name != "" ? attached_disk.value.device_name : null
-      mode              = attached_disk.value.mode != "" ? attached_disk.value.mode : null
-      kms_key_self_link = attached_disk.value.kms_key != "" ? attached_disk.value.kms_key : null
+      source                          = attached_disk.value.source
+      device_name                     = attached_disk.value.device_name != "" ? attached_disk.value.device_name : null
+      mode                            = attached_disk.value.mode != "" ? attached_disk.value.mode : null
+      kms_key_self_link               = attached_disk.value.kms_key != "" ? attached_disk.value.kms_key : null
+      disk_encryption_service_account = attached_disk.value.kms_key_service_account != "" ? attached_disk.value.kms_key_service_account : null
+      # Regional-disk takeover; forcing a zonal disk is an API error.
+      force_attach = attached_disk.value.force_attach ? true : null
     }
   }
 
@@ -108,10 +147,20 @@ resource "google_compute_instance" "this" {
       network            = network_interface.value.network != "" ? network_interface.value.network : null
       subnetwork         = network_interface.value.subnetwork != "" ? network_interface.value.subnetwork : null
       subnetwork_project = network_interface.value.subnetwork_project != "" ? network_interface.value.subnetwork_project : null
+      # PSC consumer interface — legal on its own with no
+      # network/subnetwork (the spec's CEL mirrors that rule).
+      network_attachment = network_interface.value.network_attachment != "" ? network_interface.value.network_attachment : null
       network_ip         = network_interface.value.network_ip != "" ? network_interface.value.network_ip : null
       stack_type         = network_interface.value.stack_type != "" ? network_interface.value.stack_type : null
       nic_type           = network_interface.value.nic_type != "" ? network_interface.value.nic_type : null
       queue_count        = network_interface.value.queue_count
+      # VLAN tag marks a dynamic sub-interface (2-255).
+      vlan       = network_interface.value.vlan
+      igmp_query = network_interface.value.igmp_query != "" ? network_interface.value.igmp_query : null
+      # Static internal IPv6 — requires an IPv6-enabled stack_type and
+      # subnetwork; unset lets GCP assign from the subnetwork range.
+      ipv6_address                = network_interface.value.ipv6_address != "" ? network_interface.value.ipv6_address : null
+      internal_ipv6_prefix_length = network_interface.value.internal_ipv6_prefix_length
 
       # Presence of an access_config grants an ephemeral or static
       # external IPv4; absence keeps the VM private (pair with Cloud NAT).
@@ -129,6 +178,11 @@ resource "google_compute_instance" "this" {
         content {
           network_tier           = ipv6_access_config.value.network_tier
           public_ptr_domain_name = ipv6_access_config.value.public_ptr_domain_name != "" ? ipv6_access_config.value.public_ptr_domain_name : null
+          # Unset lets GCP assign the external range; these three are
+          # ForceNew — pinning or renaming replaces the VM.
+          external_ipv6               = ipv6_access_config.value.external_ipv6 != "" ? ipv6_access_config.value.external_ipv6 : null
+          external_ipv6_prefix_length = ipv6_access_config.value.external_ipv6_prefix_length != "" ? ipv6_access_config.value.external_ipv6_prefix_length : null
+          name                        = ipv6_access_config.value.name != "" ? ipv6_access_config.value.name : null
         }
       }
 
@@ -266,6 +320,16 @@ resource "google_compute_instance" "this" {
     for_each = length(var.spec.resource_manager_tags) > 0 ? [var.spec.resource_manager_tags] : []
     content {
       resource_manager_tags = params.value
+    }
+  }
+
+  # Instance-level CMEK (memory and other instance state) — distinct
+  # from the per-disk keys. CSEK raw keys are deliberately not modeled.
+  dynamic "instance_encryption_key" {
+    for_each = var.spec.instance_encryption_key != null ? [var.spec.instance_encryption_key] : []
+    content {
+      kms_key_self_link       = instance_encryption_key.value.kms_key
+      kms_key_service_account = instance_encryption_key.value.kms_key_service_account != "" ? instance_encryption_key.value.kms_key_service_account : null
     }
   }
 

@@ -1,0 +1,127 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_opensearch_domain:
+    mappings:
+      # Encryption at rest: the spec flattens the two-leaf block.
+      - spec: spec.encrypt_at_rest_enabled
+        arg: encrypt_at_rest.enabled
+      - spec: spec.kms_key_id
+        arg: encrypt_at_rest.kms_key_id
+      # Node-to-node encryption: single-leaf block, flattened.
+      - spec: spec.node_to_node_encryption_enabled
+        arg: node_to_node_encryption.enabled
+      # Snapshot hour: single-leaf block, flattened.
+      - spec: spec.automated_snapshot_start_hour
+        arg: snapshot_options.automated_snapshot_start_hour
+      # Auto software updates: single-leaf block, flattened.
+      - spec: spec.auto_software_update_enabled
+        arg: software_update_options.auto_software_update_enabled
+      # Deployment strategy: single-leaf block, flattened.
+      - spec: spec.deployment_strategy
+        arg: deployment_strategy_options.deployment_strategy
+      # Zone awareness count: single-leaf nested block, flattened beside
+      # its enable flag.
+      - spec: spec.cluster_config.availability_zone_count
+        arg: cluster_config.zone_awareness_config.availability_zone_count
+      # Cold storage: single-leaf block, flattened.
+      - spec: spec.cluster_config.cold_storage_enabled
+        arg: cluster_config.cold_storage_options.enabled
+      # Coordinator node pools: the spec flattens the node_config wrapper
+      # to one honest object per pool.
+      - spec: spec.cluster_config.node_options.enabled
+        arg: cluster_config.node_options.node_config.enabled
+      - spec: spec.cluster_config.node_options.instance_type
+        arg: cluster_config.node_options.node_config.type
+      - spec: spec.cluster_config.node_options.count
+        arg: cluster_config.node_options.node_config.count
+      # FGAC master user: the spec flattens the master_user_options
+      # wrapper.
+      - spec: spec.advanced_security_options.master_user_arn
+        arg: advanced_security_options.master_user_options.master_user_arn
+      - spec: spec.advanced_security_options.master_user_name
+        arg: advanced_security_options.master_user_options.master_user_name
+      - spec: spec.advanced_security_options.master_user_password
+        arg: advanced_security_options.master_user_options.master_user_password
+      # Auto-Tune schedules: the spec pluralizes the repeated list and
+      # flattens the duration block to hours (the unit enum carries
+      # exactly one value -- see the exclusion below).
+      - spec: spec.auto_tune_options.maintenance_schedules.start_at
+        arg: auto_tune_options.maintenance_schedule.start_at
+      - spec: spec.auto_tune_options.maintenance_schedules.cron_expression_for_recurrence
+        arg: auto_tune_options.maintenance_schedule.cron_expression_for_recurrence
+      - spec: spec.auto_tune_options.maintenance_schedules.duration_hours
+        arg: auto_tune_options.maintenance_schedule.duration.value
+      # Off-peak window start: the spec flattens the two-deep
+      # window_start_time nesting.
+      - spec: spec.off_peak_window_options.window_start_hour
+        arg: off_peak_window_options.off_peak_window.window_start_time.hours
+      - spec: spec.off_peak_window_options.window_start_minute
+        arg: off_peak_window_options.off_peak_window.window_start_time.minutes
+      # AI/ML capabilities: the spec flattens each single-field wrapper.
+      - spec: spec.aiml_options.natural_language_query_generation_desired_state
+        arg: aiml_options.natural_language_query_generation_options.desired_state
+      - spec: spec.aiml_options.s3_vectors_engine_enabled
+        arg: aiml_options.s3_vectors_engine.enabled
+      - spec: spec.aiml_options.serverless_vector_acceleration_enabled
+        arg: aiml_options.serverless_vector_acceleration.enabled
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: domain_name
+        reason: derived from metadata.name (3-28 lowercase chars, create-time-immutable) -- never free-form user surface
+      # Single-value domain.
+      - arg: auto_tune_options.maintenance_schedule.duration.unit
+        reason: the provider's TimeUnit enum carries exactly one value ("HOURS") -- hardcoded by both modules; the spec models the duration as duration_hours
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_opensearch_domain_saml_options:
+    # One satellite per domain: SAML sign-in for Dashboards, enabled by
+    # spec.saml_options presence (removal destroys the resource, which
+    # disables SAML through the provider's delete).
+    specRoot: spec.saml_options
+    mappings:
+      # The spec flattens the idp wrapper.
+      - spec: spec.saml_options.idp_entity_id
+        arg: saml_options.idp.entity_id
+      - spec: spec.saml_options.idp_metadata_content
+        arg: saml_options.idp.metadata_content
+      - spec: spec.saml_options.master_backend_role
+        arg: saml_options.master_backend_role
+      - spec: spec.saml_options.master_user_name
+        arg: saml_options.master_user_name
+      - spec: spec.saml_options.roles_key
+        arg: saml_options.roles_key
+      - spec: spec.saml_options.subject_key
+        arg: saml_options.subject_key
+      - spec: spec.saml_options.session_timeout_minutes
+        arg: saml_options.session_timeout_minutes
+    exclusions:
+      - arg: domain_name
+        reason: module-shaped plumbing -- always this domain's own name (SAML options are a folded domain setting)
+      - arg: saml_options.enabled
+        reason: block presence is the enable switch (spec.saml_options); both modules hardcode true -- removing the block destroys the resource, which disables SAML
+      - arg: region
+        reason: wired by the module -- the satellite follows the domain's spec.region through the provider connection
+
+  aws_opensearch_authorize_vpc_endpoint_access:
+    # One grant per listed account: the grantor side of cross-account
+    # OpenSearch-managed VPC endpoints.
+    specRoot: spec.authorized_vpc_endpoint_access_accounts
+    mappings:
+      - spec: spec.authorized_vpc_endpoint_access_accounts
+        arg: account
+    exclusions:
+      - arg: domain_name
+        reason: module-shaped plumbing -- always this domain's own name (the grant is a folded domain setting)
+      - arg: region
+        reason: wired by the module -- the satellite follows the domain's spec.region through the provider connection

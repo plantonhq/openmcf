@@ -58,6 +58,8 @@ This creates a serverless NEG in `us-central1` pointing at the Cloud Run service
 
 For a SERVERLESS NEG set exactly one of `cloudRun` / `cloudFunction` / `appEngine`; each serverless block needs either its target (`service`/`function`) or a `urlMask`.
 
+`deletionPolicy` controls what destroy does: `DELETE` (default) removes the NEG — GCP refuses while a backend service still references it, so create the replacement before destroying the original; `PREVENT` fails the destroy outright; `ABANDON` leaves the NEG in GCP unmanaged.
+
 ### Fields
 
 | Field | Type | Default | Description |

@@ -2,6 +2,13 @@
 # Carries named pod/service secondary ranges so the private-cluster scenario
 # can exercise planned-range ip_allocation; the minimal scenario rides the
 # same subnetwork but lets GKE create its own managed ranges.
+#
+# Region us-east1 (2026-08-12): a regional cluster create in us-central1
+# failed on GCE_STOCKOUT for its transient default-pool instances
+# (us-central1-b and -f "does not have enough resources available") — the
+# recurring us-central1 zonal-capacity class documented in e2e/README.md.
+# The whole GKE chain lives here so clusters and their subnetwork stay
+# region-matched.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSubnetwork
 metadata:
@@ -23,7 +30,7 @@ spec:
       name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-gke-subnet
-  region: us-central1
+  region: us-east1
   ipCidrRange: 10.210.0.0/20
   privateIpGoogleAccess: true
   secondaryIpRanges:

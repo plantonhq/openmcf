@@ -16,9 +16,12 @@ spec:
   # scenario: KMS/KMS_DSSE encryption (needs a KMS-key prerequisite; the
   # AES256 default proves the same encryption block wiring) — proven by CEL
   # spec tests and the offline gate.
+  #
+  # pending_proof: the depth closure modeled the archive storage-class tier
+  # (transition action + archive retention clock), converged the engines'
+  # lifecycle-policy JSON documents (Terraform no longer emits a null
+  # description member), and dropped the Terraform-only Name tag; the
+  # previous green run predates this surface.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 10

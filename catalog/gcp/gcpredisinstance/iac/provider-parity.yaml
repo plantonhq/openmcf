@@ -1,0 +1,46 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# google provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  google_redis_instance:
+    mappings:
+      # Renames: the spec says what each field IS, where the provider
+      # inherits terser API names.
+      - spec: spec.instance_name
+        arg: name
+      - spec: spec.project_id
+        arg: project
+      # The spec flattens the provider's
+      # maintenance_policy -> weekly_maintenance_window -> start_time
+      # nesting into one maintenance_window message: a weekly window is
+      # one concept (day + hour + minute + what the policy is for), not
+      # three layers of API structure.
+      - spec: spec.maintenance_window.description
+        arg: maintenance_policy.description
+      - spec: spec.maintenance_window.day
+        arg: maintenance_policy.weekly_maintenance_window.day
+      - spec: spec.maintenance_window.hour
+        arg: maintenance_policy.weekly_maintenance_window.start_time.hours
+      - spec: spec.maintenance_window.minute
+        arg: maintenance_policy.weekly_maintenance_window.start_time.minutes
+    exclusions:
+      # Sub-minute precision on a fixed 1-hour maintenance window serves
+      # no configuration purpose: GCP schedules maintenance to the
+      # minute at most, and the provider passes seconds/nanos through to
+      # a TimeOfDay message whose finer fields the service ignores. The
+      # spec models the window start to the minute.
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.seconds
+        reason: sub-minute precision on a 1-hour maintenance window is meaningless; the spec models the start to the minute
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.nanos
+        reason: sub-second precision on a 1-hour maintenance window is meaningless; the spec models the start to the minute
+
+  google_project_service:
+    internal: >-
+      API enablement plumbing -- the module enables redis.googleapis.com
+      with fixed arguments (disable_on_destroy false so destroying one
+      instance never disables the API project-wide); not spec surface.

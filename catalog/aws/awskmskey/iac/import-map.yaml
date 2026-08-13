@@ -22,3 +22,12 @@ spec:
         KMS console -> Customer managed keys -> <key> -> Aliases (each
         alias, including the "alias/" prefix), or
         `aws kms list-aliases --key-id <key-id>` (AliasName).
+    - name: grant_id
+      derivations:
+        # Grant IDs are AWS-generated (the position key on the module's
+        # for_each is config-time identity, never the ID), so the module
+        # exports them as the grant_ids map keyed by the same position.
+        - from_stack_output_keyed_by_address: grant_ids
+      where_to_find: >-
+        `aws kms list-grants --key-id <key-id>` (each grant's GrantId; the
+        optional Name column carries the spec entry's friendly name).

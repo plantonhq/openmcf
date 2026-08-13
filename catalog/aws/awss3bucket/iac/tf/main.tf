@@ -18,6 +18,11 @@ resource "aws_s3_bucket" "this" {
   # object-lock satellite below.
   object_lock_enabled = var.spec.object_lock_enabled
 
+  # Namespace is create-time identity like the name itself: unset keeps the
+  # classic global namespace; "account-regional" scopes the name to this
+  # account+region. Changing it replaces the bucket.
+  bucket_namespace = var.spec.bucket_namespace != "" ? var.spec.bucket_namespace : null
+
   tags = local.aws_tags
 }
 
@@ -55,6 +60,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
     # Bucket keys cut SSE-KMS request costs by up to 99%; harmless under
     # AES256 where AWS ignores the flag.
     bucket_key_enabled = var.spec.encryption.bucket_key_enabled
+
+    # Encryption types PUTs may no longer use (e.g. "SSE-C"); sent only when
+    # the manifest states a posture so unset keeps AWS's own default.
+    blocked_encryption_types = length(var.spec.encryption.blocked_encryption_types) > 0 ? var.spec.encryption.blocked_encryption_types : null
   }
 }
 
@@ -152,9 +161,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
       dynamic "transition" {
         for_each = rule.value.transitions
         content {
-          # CEL enforces exactly-one of days/date; days uses > 0 as presence
-          # because the generated contract zero-fills unset numbers.
-          days          = transition.value.days > 0 ? transition.value.days : null
+          # days is presence-typed in the contract (null when unset), so an
+          # explicit 0 — AWS's "transition on the upload day" — passes
+          # through; CEL enforces exactly-one of days/date.
+          days          = transition.value.days
           date          = transition.value.date != "" ? transition.value.date : null
           storage_class = transition.value.storage_class
         }
@@ -506,6 +516,168 @@ resource "aws_s3_bucket_intelligent_tiering_configuration" "this" {
     content {
       access_tier = tiering.value.access_tier
       days        = tiering.value.days
+    }
+  }
+}
+
+# --- ABAC (attribute-based access control) ---------------------------------------
+# Managed only when the spec states a posture: unset leaves the bucket at
+# AWS's default (disabled) without creating the satellite.
+resource "aws_s3_bucket_abac" "this" {
+  count = var.spec.abac_status != "" ? 1 : 0
+
+  bucket = aws_s3_bucket.this.id
+
+  abac_status {
+    status = var.spec.abac_status
+  }
+}
+
+# --- Storage-class-analysis configurations -----------------------------------------
+# Many-per-bucket satellite keyed by name, mirroring intelligent tiering.
+# AWS's storage-class-analysis export accepts only its V_1 schema and CSV
+# format, so those provider arguments are left to their defaults and only the
+# destination is user surface.
+resource "aws_s3_bucket_analytics_configuration" "this" {
+  for_each = local.analytics_configurations
+
+  bucket = aws_s3_bucket.this.id
+  name   = each.value.name
+
+  dynamic "filter" {
+    for_each = (each.value.filter_prefix != "" || length(each.value.filter_tags) > 0) ? [1] : []
+    content {
+      prefix = each.value.filter_prefix != "" ? each.value.filter_prefix : null
+      tags   = length(each.value.filter_tags) > 0 ? each.value.filter_tags : null
+    }
+  }
+
+  dynamic "storage_class_analysis" {
+    for_each = each.value.export != null ? [each.value.export] : []
+    content {
+      data_export {
+        destination {
+          s3_bucket_destination {
+            bucket_arn        = storage_class_analysis.value.bucket_arn
+            bucket_account_id = storage_class_analysis.value.bucket_account_id != "" ? storage_class_analysis.value.bucket_account_id : null
+            prefix            = storage_class_analysis.value.prefix != "" ? storage_class_analysis.value.prefix : null
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- Inventory report configurations ------------------------------------------------
+# Many-per-bucket satellite keyed by name. `enabled` is always sent (AWS's
+# InventoryConfiguration requires the IsEnabled member either way), derived
+# from the spec's `disabled` so an unset spec matches AWS's active default.
+resource "aws_s3_bucket_inventory" "this" {
+  for_each = local.inventory_configurations
+
+  bucket = aws_s3_bucket.this.id
+  name   = each.value.name
+
+  enabled                  = !each.value.disabled
+  included_object_versions = each.value.included_object_versions
+
+  optional_fields = length(each.value.optional_fields) > 0 ? each.value.optional_fields : null
+
+  schedule {
+    frequency = each.value.frequency
+  }
+
+  dynamic "filter" {
+    for_each = each.value.filter_prefix != "" ? [each.value.filter_prefix] : []
+    content {
+      prefix = filter.value
+    }
+  }
+
+  destination {
+    bucket {
+      bucket_arn = each.value.destination.bucket_arn
+      format     = each.value.destination.format
+      account_id = each.value.destination.account_id != "" ? each.value.destination.account_id : null
+      prefix     = each.value.destination.prefix != "" ? each.value.destination.prefix : null
+
+      # CEL guarantees at most one encryption arm; the block is emitted only
+      # when an arm is actually chosen (an empty encryption block would send
+      # an empty API struct).
+      dynamic "encryption" {
+        for_each = (each.value.destination.sse_s3 || each.value.destination.sse_kms_key_id != "") ? [1] : []
+        content {
+          dynamic "sse_kms" {
+            for_each = each.value.destination.sse_kms_key_id != "" ? [each.value.destination.sse_kms_key_id] : []
+            content {
+              key_id = sse_kms.value
+            }
+          }
+          dynamic "sse_s3" {
+            for_each = each.value.destination.sse_s3 ? [1] : []
+            content {}
+          }
+        }
+      }
+    }
+  }
+}
+
+# --- CloudWatch request-metrics configurations ---------------------------------------
+# Many-per-bucket satellite keyed by name. No filter block means metrics for
+# every request against the bucket.
+resource "aws_s3_bucket_metric" "this" {
+  for_each = local.metrics_configurations
+
+  bucket = aws_s3_bucket.this.id
+  name   = each.value.name
+
+  dynamic "filter" {
+    for_each = (each.value.filter_access_point_arn != "" || each.value.filter_prefix != "" || length(each.value.filter_tags) > 0) ? [1] : []
+    content {
+      access_point = each.value.filter_access_point_arn != "" ? each.value.filter_access_point_arn : null
+      prefix       = each.value.filter_prefix != "" ? each.value.filter_prefix : null
+      tags         = length(each.value.filter_tags) > 0 ? each.value.filter_tags : null
+    }
+  }
+}
+
+# --- S3 Metadata (queryable metadata tables) ------------------------------------------
+# The provider requires both table blocks: the journal table's expiration
+# policy and the inventory table's state are stated explicitly either way.
+# The destination table bucket/namespace are AWS-managed read-only state.
+resource "aws_s3_bucket_metadata_configuration" "this" {
+  count = var.spec.metadata_configuration != null ? 1 : 0
+
+  bucket = aws_s3_bucket.this.id
+
+  metadata_configuration {
+    inventory_table_configuration {
+      configuration_state = var.spec.metadata_configuration.inventory_table_enabled ? "ENABLED" : "DISABLED"
+
+      dynamic "encryption_configuration" {
+        for_each = var.spec.metadata_configuration.inventory_table_encryption != null ? [var.spec.metadata_configuration.inventory_table_encryption] : []
+        content {
+          sse_algorithm = encryption_configuration.value.sse_algorithm
+          kms_key_arn   = encryption_configuration.value.kms_key_arn != "" ? encryption_configuration.value.kms_key_arn : null
+        }
+      }
+    }
+
+    journal_table_configuration {
+      record_expiration {
+        expiration = var.spec.metadata_configuration.journal_record_expiration.enabled ? "ENABLED" : "DISABLED"
+        # days is only legal alongside ENABLED (CEL keeps it 0 when disabled).
+        days = var.spec.metadata_configuration.journal_record_expiration.days > 0 ? var.spec.metadata_configuration.journal_record_expiration.days : null
+      }
+
+      dynamic "encryption_configuration" {
+        for_each = var.spec.metadata_configuration.journal_table_encryption != null ? [var.spec.metadata_configuration.journal_table_encryption] : []
+        content {
+          sse_algorithm = encryption_configuration.value.sse_algorithm
+          kms_key_arn   = encryption_configuration.value.kms_key_arn != "" ? encryption_configuration.value.kms_key_arn : null
+        }
+      }
     }
   }
 }

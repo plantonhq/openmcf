@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpVertexAiIndexEndpointSpec defines a Vertex AI Vector Search index
 endpoint — the serving surface that deployed indexes answer
 nearest-neighbor queries through. The endpoint owns connectivity and
@@ -47,6 +49,7 @@ spec:
   displayName: Test Index Endpoint
   description: Serving surface for the test vector index
   publicEndpointEnabled: true
+  deletionPolicy: DELETE
   labels:
     team: ml-platform
     cost-center: research
@@ -65,7 +68,12 @@ spec:
 | `spec.privateServiceConnectConfig` | `GcpVertexAiIndexEndpointPrivateServiceConnectConfig` |  |  |  |
 | `spec.privateServiceConnectConfig.enablePrivateServiceConnect` | `bool` |  |  |  |
 | `spec.privateServiceConnectConfig.projectAllowlist` | `[]string` |  |  |  |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs` | `[]GcpVertexAiIndexEndpointPscAutomationConfig` |  |  |  |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | `string \| valueFrom` | yes |  | GcpVpcNetwork (`status.outputs.network_self_link`) |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | `string \| valueFrom` | yes |  | GcpProject (`status.outputs.project_id`) |
 | `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.kmsKeyName` | `string \| valueFrom` |  |  | GcpKmsKey (`status.outputs.key_id`) |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -139,6 +147,8 @@ Private Service Connect configuration. When present, consumers
 reach deployed indexes through a PSC service attachment. Mutually
 exclusive with public_endpoint_enabled and network. Immutable.
 
+- rule: psc_automation_configs is not honored on index endpoints — the Vertex AI API accepts the create but silently drops the configs (nothing is stored and no consumer-side endpoint is ever provisioned); use project_allowlist with consumer-managed forwarding rules instead
+
 ### spec.privateServiceConnectConfig.enablePrivateServiceConnect
 
 `bool`
@@ -157,6 +167,48 @@ Projects allowed to create forwarding rules targeting this
 endpoint's service attachment. Each entry is a GCP project ID or
 project number. Immutable.
 
+### spec.privateServiceConnectConfig.pscAutomationConfigs
+
+`[]GcpVertexAiIndexEndpointPscAutomationConfig`
+
+PSC endpoints Vertex AI creates automatically in consumer
+projects/networks (instead of consumers wiring forwarding rules by
+hand). The provider models this field on index endpoints, but the
+live API does NOT honor it there: a create carrying automation
+configs succeeds while the stored endpoint omits them and no
+consumer-side endpoint is ever provisioned (API-verified against a
+live index endpoint; the provider documents the field as used by
+online inference endpoints only). Because the PSC block is
+immutable, that silent drop would surface to users as a perpetual
+replacement diff on every re-plan — so this field is refused by
+validation until Google extends automation to vector search. Use
+project_allowlist with consumer-managed forwarding rules. Immutable.
+
+### spec.privateServiceConnectConfig.pscAutomationConfigs[].network
+
+`string | valueFrom` · required
+
+VPC network where the PSC endpoint is created, as the full
+relative resource name projects/{project}/global/networks/{name}
+(the format the Vertex AI API requires) — a GcpVpcNetwork
+reference's self-link output is normalized to that form by both
+IaC modules. Immutable.
+
+- references: GcpVpcNetwork (`status.outputs.network_self_link`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpVpcNetwork, name: <that resource's name>, fieldPath: status.outputs.network_self_link}} -- a bare string does not parse
+
+### spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId
+
+`string | valueFrom` · required
+
+Project in which the PSC endpoint (forwarding rule) is created —
+a project ID; a GcpProject reference resolves to it. Immutable.
+
+- references: GcpProject (`status.outputs.project_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpProject, name: <that resource's name>, fieldPath: status.outputs.project_id}} -- a bare string does not parse
+
 ### spec.labels
 
 `map<string, string>`
@@ -167,6 +219,38 @@ must follow GCP label rules: lowercase letters, digits,
 underscores, and dashes, at most 63 characters. Merged with the
 platform's attribution labels; on key conflicts the platform
 labels win. Mutable in place.
+
+### spec.kmsKeyName
+
+`string | valueFrom`
+
+Cloud KMS key for customer-managed encryption at rest (CMEK) of
+data on the endpoint's serving replicas, as the full key resource
+path
+projects/{project}/locations/{location}/keyRings/{ring}/cryptoKeys/{key}
+— a GcpKmsKey reference resolves to it. The key must live in the
+same region as the endpoint, and the Vertex AI service agent needs
+roles/cloudkms.cryptoKeyEncrypterDecrypter on it. If omitted, data
+is encrypted with Google-managed keys. Immutable after creation.
+
+- references: GcpKmsKey (`status.outputs.key_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: GcpKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_id}} -- a bare string does not parse
+
+### spec.deletionPolicy
+
+`string`
+
+Deletion policy for the index endpoint — what happens when this
+resource is destroyed:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the endpoint is deleted; every index deployed onto
+               it stops serving
+  "PREVENT" -- destroy FAILS; a guard for the serving surface all
+               of this endpoint's deployed indexes depend on
+  "ABANDON" -- the endpoint is removed from management but left
+               standing (and billing for its replicas) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Validation Rules
 
@@ -194,6 +278,9 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.projectId` | GcpProject | `status.outputs.project_id` |
 | `spec.network` | GcpVpcNetwork | `status.outputs.network_self_link` |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].network` | GcpVpcNetwork | `status.outputs.network_self_link` |
+| `spec.privateServiceConnectConfig.pscAutomationConfigs[].projectId` | GcpProject | `status.outputs.project_id` |
+| `spec.kmsKeyName` | GcpKmsKey | `status.outputs.key_id` |
 
 ## Referenced By
 

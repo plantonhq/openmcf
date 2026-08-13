@@ -48,5 +48,7 @@ resource "google_vpc_access_connector" "main" {
   min_instances = var.spec.min_instances
   max_instances = var.spec.max_instances
 
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.vpcaccess_api]
 }

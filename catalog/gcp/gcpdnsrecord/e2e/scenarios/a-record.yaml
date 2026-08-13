@@ -25,3 +25,6 @@ spec:
   values:
     - value: "203.0.113.10"
   ttlSeconds: 300
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

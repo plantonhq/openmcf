@@ -47,8 +47,38 @@ func firestoreIndex(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 		if field.VectorConfig != nil {
 			fieldArgs.VectorConfig = &firestore.IndexFieldVectorConfigArgs{
 				Dimension: pulumi.IntPtr(int(field.VectorConfig.Dimension)),
-				Flat:      &firestore.IndexFieldVectorConfigFlatArgs{},
+				// Flat is the only vector index layout GCP offers today; the
+				// module pins it so every vector field is expressible without
+				// a spec knob that has exactly one legal value.
+				Flat: &firestore.IndexFieldVectorConfigFlatArgs{},
 			}
+		}
+		// Firestore Enterprise search surface (requires an ENTERPRISE-edition
+		// database; text search pairs with api_scope MONGODB_COMPATIBLE_API).
+		if field.SearchConfig != nil {
+			searchConfigArgs := &firestore.IndexFieldSearchConfigArgs{}
+			if field.SearchConfig.TextSpec != nil {
+				indexSpecs := firestore.IndexFieldSearchConfigTextSpecIndexSpecArray{}
+				for _, indexSpec := range field.SearchConfig.TextSpec.IndexSpecs {
+					indexSpecArgs := &firestore.IndexFieldSearchConfigTextSpecIndexSpecArgs{}
+					if indexSpec.IndexType != "" {
+						indexSpecArgs.IndexType = pulumi.StringPtr(indexSpec.IndexType)
+					}
+					if indexSpec.MatchType != "" {
+						indexSpecArgs.MatchType = pulumi.StringPtr(indexSpec.MatchType)
+					}
+					indexSpecs = append(indexSpecs, indexSpecArgs)
+				}
+				searchConfigArgs.TextSpec = &firestore.IndexFieldSearchConfigTextSpecArgs{
+					IndexSpecs: indexSpecs,
+				}
+			}
+			if field.SearchConfig.GeoSpec != nil {
+				searchConfigArgs.GeoSpec = &firestore.IndexFieldSearchConfigGeoSpecArgs{
+					GeoJsonIndexingDisabled: pulumi.Bool(field.SearchConfig.GeoSpec.GeoJsonIndexingDisabled),
+				}
+			}
+			fieldArgs.SearchConfig = searchConfigArgs
 		}
 		fields = append(fields, fieldArgs)
 	}
@@ -56,6 +86,31 @@ func firestoreIndex(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provid
 	args := &firestore.IndexArgs{
 		Collection: pulumi.String(spec.Collection),
 		Fields:     fields,
+	}
+
+	// MongoDB-style array indexing; only legal under MONGODB_COMPATIBLE_API
+	// (spec CEL enforces the pairing). False stays unset so plans stay clean
+	// on older indexes.
+	if spec.Multikey {
+		args.Multikey = pulumi.BoolPtr(true)
+	}
+
+	// Uniqueness enforcement across documents.
+	if spec.Unique {
+		args.Unique = pulumi.BoolPtr(true)
+	}
+
+	// Client-side: return once creation is REQUESTED; the background build
+	// continues and the index serves queries only when it completes.
+	if spec.SkipWait {
+		args.SkipWait = pulumi.BoolPtr(true)
+	}
+
+	// Destroy-time guard: PREVENT fails the destroy; ABANDON unmanages the
+	// index without deleting it. Unset falls back to the provider default
+	// (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.StringPtr(spec.DeletionPolicy)
 	}
 
 	// Honor the spec contract: an empty project_id falls back to the

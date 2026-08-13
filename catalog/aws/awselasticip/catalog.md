@@ -57,13 +57,22 @@ These are the most important decisions when configuring an Elastic IP. Explore t
 
 **Network border group** -- Set `networkBorderGroup` to scope the EIP to a specific AWS Local Zone or Wavelength zone instead of the default regional scope. Required when associating the EIP with resources in edge locations. This field is also ForceNew.
 
-**Immutability** -- All optional spec fields (`publicIpv4Pool`, `address`, `networkBorderGroup`) trigger resource replacement when changed. Treat an allocated Elastic IP as immutable -- any configuration change allocates a new IP address.
+**IPAM pool** -- Set `ipamPoolId` to allocate the address from an Amazon VPC IPAM public pool, so the allocation is planned and audited against centrally managed address space. Combine with `address` to recover a specific address the pool holds. ForceNew.
+
+**Instance / ENI attachment** -- Point the address at its target from the EIP side: `instance` (an AwsEc2Instance reference) or `networkInterface` (the precise per-ENI form), optionally pinning `associateWithPrivateIp` on multi-IP targets. At most one target may be set -- AWS associates an address with exactly one thing. These update in place: changing the target re-associates the same address.
+
+**Reverse DNS** -- Set `reverseDnsDomainName` for workloads that send mail from the address. AWS validates SERVER-SIDE that a forward A record for the domain already resolves to the EIP before granting the PTR record: create the EIP, point DNS at its `public_ip`, then set this field on a follow-up apply.
+
+**Mutability** -- The allocation-shaping fields (`publicIpv4Pool`, `address`, `networkBorderGroup`, `ipamPoolId`) trigger resource replacement when changed -- a NEW public address. The association fields and `reverseDnsDomainName` update in place.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-This component has no foreign key dependencies.
+| Reference | Kind | Purpose |
+|-----------|------|---------|
+| `spec.instance` | AwsEc2Instance | The instance the address attaches to (`instance_id` output) |
+| `spec.networkInterface` | AwsEc2Instance | The instance's primary ENI, for the precise attachment form (`primary_network_interface_id` output; literal `eni-...` ids also work) |
 
 ### What This Component Provides
 
@@ -75,6 +84,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `public_ip` | Static public IPv4 address | DNS A records, firewall allowlists, application configuration |
 | `arn` | Amazon Resource Name of the EIP | IAM policies, resource-level permissions |
 | `public_dns` | Public DNS hostname (e.g., ec2-1-2-3-4.compute-1.amazonaws.com) | DNS CNAME records, reverse-lookup verification |
+| `association_id` | Association ID (eipassoc-...) when the spec attaches the address | Attachment evidence, troubleshooting |
+| `ptr_record` | Granted reverse DNS record when `reverseDnsDomainName` is set | Mail-deliverability verification |
 
 The `allocation_id` is the primary output consumed by downstream resources. Network Load Balancers reference it in `subnetMappings` to bind a static IP per subnet. NAT Gateways reference it to provide a stable outbound IP for private subnets.
 
@@ -86,6 +97,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **BYOIP pool allocation** -- An Elastic IP from a customer-owned IP range, useful for maintaining IP reputation (e.g., email servers) or meeting contractual requirements for specific IP addresses. Start from the **BYOIP Pool** preset.
 
+**Instance-attached address** -- A stable public IP for a pet instance (bastion, license server), declared on the EIP side because the instance API cannot pull an address itself. Start from the **Instance-Attached** preset.
+
 ## Works With
 
-This component operates independently and does not reference other components.
+Consumers that take an allocation (AwsNlb subnet mappings, AwsNatGateway) reference this component's `allocation_id` output. In the other direction, this component references AwsEc2Instance outputs to attach the address to an instance or its primary network interface.

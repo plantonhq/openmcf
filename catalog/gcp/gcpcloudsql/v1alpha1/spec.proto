@@ -90,8 +90,26 @@ message GcpCloudSqlSpec {
 
   option (buf.validate.message).cel = {
     id: "active_directory_requires_sqlserver"
-    message: "active_directory_domain applies to SQL Server instances only"
-    expression: "this.active_directory_domain == '' || this.database_engine == 'SQLSERVER'"
+    message: "active_directory applies to SQL Server instances only"
+    expression: "!has(this.active_directory) || this.database_engine == 'SQLSERVER'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "entra_id_requires_sqlserver"
+    message: "entra_id applies to SQL Server instances only"
+    expression: "!has(this.entra_id) || this.database_engine == 'SQLSERVER'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "read_pool_requires_read_pool_instance"
+    message: "node_count and read_pool_auto_scale apply to read pools only — set instance_type to READ_POOL_INSTANCE"
+    expression: "(!has(this.node_count) && !has(this.read_pool_auto_scale)) || this.instance_type == 'READ_POOL_INSTANCE'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "final_backup_description_requires_enabled"
+    message: "final_backup.description applies only when final_backup.enabled is true"
+    expression: "!has(this.final_backup) || this.final_backup.description == '' || this.final_backup.enabled"
   };
 
   option (buf.validate.message).cel = {
@@ -275,9 +293,11 @@ message GcpCloudSqlSpec {
   // SQL Server only: SQLServer Audit — writes audit files to a GCS bucket.
   GcpCloudSqlSqlServerAuditConfig sql_server_audit_config = 24;
 
-  // SQL Server only: domain of the Managed Microsoft AD the instance joins
-  // for Windows authentication, e.g. "ad.example.com".
-  string active_directory_domain = 25;
+  // SQL Server only: the Active Directory the instance joins for Windows
+  // authentication — a Managed Microsoft AD domain or (with mode
+  // CUSTOMER_MANAGED_ACTIVE_DIRECTORY) a self-managed AD reached through
+  // the listed domain controllers.
+  GcpCloudSqlActiveDirectoryConfig active_directory = 25;
 
   // Connection-path enforcement. REQUIRED rejects all direct connections,
   // admitting only Cloud SQL connectors / Auth Proxy traffic (which is
@@ -325,8 +345,9 @@ message GcpCloudSqlSpec {
   // Accepts the primary's instance name or a reference to a GcpCloudSql
   // resource. Immutable — an existing primary cannot be converted in place.
   // The primary must have automated backups enabled (and binary logs on
-  // MySQL). Replica promotion (detaching a replica into a standalone
-  // primary) is an operational action performed outside IaC.
+  // MySQL). To promote a replica into a standalone primary, set
+  // instance_type to CLOUD_SQL_INSTANCE and clear this field and
+  // replica_configuration in the same change (the instance restarts).
   dev.planton.shared.foreignkey.v1.StringValueOrRef master_instance_name = 33 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpCloudSql,
     (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
@@ -348,6 +369,103 @@ message GcpCloudSqlSpec {
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {min_len: 8}
   ];
+
+  // Engine-side teardown behavior. "DELETE" (default) destroys the
+  // instance; "PREVENT" fails any plan that would destroy it; "ABANDON"
+  // removes it from IaC management while leaving it running in GCP.
+  // Distinct from deletion_protection (which blocks the destroy) — ABANDON
+  // is the lever for handing an instance over to out-of-band management.
+  string deletion_policy = 36 [(buf.validate.field).cel = {
+    id: "valid_deletion_policy"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+    message: "deletion_policy must be one of: DELETE, PREVENT, ABANDON"
+  }];
+
+  // The instance's role. Usually derived by GCP (primary vs replica);
+  // set explicitly for two workflows: READ_POOL_INSTANCE turns the
+  // resource into a read pool (with node_count / read_pool_auto_scale),
+  // and CLOUD_SQL_INSTANCE promotes an existing read replica into a
+  // standalone primary (clear master_instance_name and
+  // replica_configuration in the same change).
+  string instance_type = 37 [(buf.validate.field).cel = {
+    id: "instance_type_valid"
+    message: "instance_type must be empty, CLOUD_SQL_INSTANCE, READ_REPLICA_INSTANCE, READ_POOL_INSTANCE, or ON_PREMISES_INSTANCE"
+    expression: "this == '' || this in ['CLOUD_SQL_INSTANCE', 'READ_REPLICA_INSTANCE', 'READ_POOL_INSTANCE', 'ON_PREMISES_INSTANCE']"
+  }];
+
+  // Read pools only: number of nodes serving reads behind the pool's
+  // single endpoint. Read-only while read_pool_auto_scale is enabled (the
+  // autoscaler owns it).
+  optional int32 node_count = 38 [(buf.validate.field).int32.gte = 1];
+
+  // Read pools only: automatic node-count scaling between min and max
+  // bounds, driven by target metrics.
+  GcpCloudSqlReadPoolAutoScale read_pool_auto_scale = 39;
+
+  // Creates this instance as a CLONE of another instance — a full copy of
+  // its data at a point in time. A create-time source: changing it on an
+  // existing instance triggers a new clone operation.
+  GcpCloudSqlClone clone = 40;
+
+  // Restores a specific backup run into this instance. An imperative
+  // restore trigger expressed declaratively: adding or changing the block
+  // runs the restore after the instance exists.
+  GcpCloudSqlRestoreBackupContext restore_backup_context = 41;
+
+  // Restores this instance from a Backup and DR datasource to a point in
+  // time. Like restore_backup_context, adding or changing the block
+  // triggers the restore.
+  GcpCloudSqlPointInTimeRestoreContext point_in_time_restore_context = 42;
+
+  // Restores from a Backup and DR backup (the backup's full resource
+  // name). The backup must be in active state. Adding or changing this
+  // triggers the restore.
+  string backupdr_backup = 43;
+
+  // Pins the instance's maintenance (patch) version. Cannot be set at
+  // creation; updating it restarts the instance. Values older than the
+  // running version are ignored by the API.
+  string maintenance_version = 44;
+
+  // Declares the instance's read replicas by name from the primary's side.
+  // Most compositions leave this to GCP (replicas declare their primary
+  // via master_instance_name instead).
+  repeated string replica_names = 45 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+
+  // MySQL/PostgreSQL disaster recovery: names this primary's DR replica
+  // ("project:instance" or plain instance name), enabling switchover /
+  // replica failover between regions.
+  string failover_dr_replica_name = 46;
+
+  // MySQL 8.0 only: opts the instance into automatic minor-version
+  // upgrades. The database_version must be an eligible MYSQL_8_0 minor.
+  bool auto_upgrade_enabled = 47;
+
+  // Whether the ExecuteSql API may connect to this instance.
+  // DISALLOW_DATA_API (default) rejects it; ALLOW_DATA_API admits it —
+  // on private-IP instances this allows authorized users to reach the
+  // instance from the public internet through the API.
+  string data_api_access = 48 [(buf.validate.field).cel = {
+    id: "data_api_access_valid"
+    message: "data_api_access must be empty, ALLOW_DATA_API, or DISALLOW_DATA_API"
+    expression: "this == '' || this in ['ALLOW_DATA_API', 'DISALLOW_DATA_API']"
+  }];
+
+  // A final backup taken automatically when the instance is deleted — the
+  // safety net that survives the teardown itself.
+  GcpCloudSqlFinalBackup final_backup = 49;
+
+  // SQL Server only: Microsoft Entra ID (Azure AD) authentication for the
+  // instance.
+  GcpCloudSqlEntraIdConfig entra_id = 50;
 }
 
 // GcpCloudSqlDisk defines the instance's data disk.
@@ -356,6 +474,12 @@ message GcpCloudSqlDisk {
     id: "hyperdisk_min_size"
     message: "HYPERDISK_BALANCED disks require size_gb of at least 20"
     expression: "this.type != 'HYPERDISK_BALANCED' || (has(this.size_gb) && this.size_gb >= 20)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "provisioned_performance_requires_hyperdisk"
+    message: "provisioned_iops and provisioned_throughput apply to HYPERDISK_BALANCED disks only"
+    expression: "(!has(this.provisioned_iops) && !has(this.provisioned_throughput)) || this.type == 'HYPERDISK_BALANCED'"
   };
 
   // Disk type: PD_SSD (default, general purpose), PD_HDD (cheaper, slower —
@@ -388,6 +512,14 @@ message GcpCloudSqlDisk {
   // stops a runaway workload from growing a disk — and a bill — without
   // bound.
   optional int32 auto_resize_limit = 4 [(buf.validate.field).int32.gte = 0];
+
+  // HYPERDISK_BALANCED only: provisioned I/O operations per second for the
+  // data disk — the IOPS dial decoupled from disk size.
+  optional int64 provisioned_iops = 5 [(buf.validate.field).int64.gte = 1];
+
+  // HYPERDISK_BALANCED only: provisioned throughput in MiB/s for the data
+  // disk — the bandwidth dial decoupled from disk size.
+  optional int64 provisioned_throughput = 6 [(buf.validate.field).int64.gte = 1];
 }
 
 // GcpCloudSqlNetwork defines how the instance is reachable: public IPv4,
@@ -434,6 +566,12 @@ message GcpCloudSqlNetwork {
     id: "custom_sans_require_customer_cas"
     message: "custom_subject_alternative_names apply only when server_ca_mode is CUSTOMER_MANAGED_CAS_CA"
     expression: "size(this.custom_subject_alternative_names) == 0 || this.server_ca_mode == 'CUSTOMER_MANAGED_CAS_CA'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "cert_rotation_requires_cas_ca"
+    message: "server_certificate_rotation_mode AUTOMATIC_ROTATION_DURING_MAINTENANCE requires server_ca_mode GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA"
+    expression: "this.server_certificate_rotation_mode != 'AUTOMATIC_ROTATION_DURING_MAINTENANCE' || this.server_ca_mode in ['GOOGLE_MANAGED_CAS_CA', 'CUSTOMER_MANAGED_CAS_CA']"
   };
 
   // The VPC network for private IP connectivity, in
@@ -511,6 +649,16 @@ message GcpCloudSqlNetwork {
   // connectivity WITHOUT VPC peering. The PSC alternative to
   // private_network.
   GcpCloudSqlPscConfig psc = 10;
+
+  // Controls automatic rotation of the server certificate.
+  // NO_AUTOMATIC_ROTATION (default) or
+  // AUTOMATIC_ROTATION_DURING_MAINTENANCE (requires a CA Service
+  // server_ca_mode: GOOGLE_MANAGED_CAS_CA or CUSTOMER_MANAGED_CAS_CA).
+  string server_certificate_rotation_mode = 11 [(buf.validate.field).cel = {
+    id: "cert_rotation_mode_valid"
+    message: "server_certificate_rotation_mode must be empty, NO_AUTOMATIC_ROTATION, or AUTOMATIC_ROTATION_DURING_MAINTENANCE"
+    expression: "this == '' || this in ['NO_AUTOMATIC_ROTATION', 'AUTOMATIC_ROTATION_DURING_MAINTENANCE']"
+  }];
 }
 
 // GcpCloudSqlAuthorizedNetwork is one CIDR range allowed to connect directly
@@ -535,7 +683,7 @@ message GcpCloudSqlPscConfig {
   option (buf.validate.message).cel = {
     id: "psc_fields_require_enabled"
     message: "PSC settings apply only when psc.enabled is true"
-    expression: "this.enabled || (size(this.allowed_consumer_projects) == 0 && this.network_attachment_uri == '' && size(this.auto_connections) == 0)"
+    expression: "this.enabled || (size(this.allowed_consumer_projects) == 0 && this.network_attachment_uri == '' && size(this.auto_connections) == 0 && !this.auto_dns_enabled && !this.write_endpoint_dns_enabled)"
   };
 
   // Whether PSC connectivity is enabled for this instance. Immutable.
@@ -560,6 +708,15 @@ message GcpCloudSqlPscConfig {
   // PSC endpoints GCP creates automatically in the listed consumer
   // networks — endpoint provisioning without consumer-side IaC.
   repeated GcpCloudSqlPscAutoConnection auto_connections = 4;
+
+  // Automatically create DNS records for the PSC endpoints in the
+  // consumer networks — clients resolve the instance by name instead of
+  // tracking endpoint IPs.
+  bool auto_dns_enabled = 5;
+
+  // Enterprise Plus only: also create a DNS record for the PSA write
+  // endpoint, so clients follow the primary across switchovers by name.
+  bool write_endpoint_dns_enabled = 6;
 }
 
 // GcpCloudSqlPscAutoConnection is one automatically created PSC endpoint in
@@ -631,6 +788,14 @@ message GcpCloudSqlBackup {
   // Number of daily backups retained (default 7). Older backups are pruned
   // automatically.
   optional int32 retained_backups = 7 [(buf.validate.field).int32.gte = 1];
+
+  // The unit retained_backups counts in. COUNT (the default and the only
+  // unit the API defines) retains that many most-recent backups.
+  string retention_unit = 8 [(buf.validate.field).cel = {
+    id: "retention_unit_valid"
+    message: "retention_unit must be empty or COUNT"
+    expression: "this == '' || this == 'COUNT'"
+  }];
 }
 
 // GcpCloudSqlMaintenanceWindow is the weekly one-hour window in which GCP may
@@ -714,6 +879,10 @@ message GcpCloudSqlInsightsConfig {
     gte: 0
     lte: 20
   }];
+
+  // Enhanced Query Insights: longer retention and finer-grained query
+  // telemetry than the standard tier.
+  bool enhanced_query_insights_enabled = 6;
 }
 
 // GcpCloudSqlPasswordValidationPolicy enforces password rules for built-in
@@ -841,4 +1010,214 @@ message GcpCloudSqlReplicaConfiguration {
   // Whether to verify the external source's server certificate against
   // ca_certificate (MySQL only).
   bool verify_server_certificate = 12;
+}
+
+// GcpCloudSqlActiveDirectoryConfig joins a SQL Server instance to an Active
+// Directory for Windows authentication.
+message GcpCloudSqlActiveDirectoryConfig {
+  option (buf.validate.message).cel = {
+    id: "customer_managed_ad_fields"
+    message: "dns_servers, admin_credential_secret_name, and organizational_unit apply to CUSTOMER_MANAGED_ACTIVE_DIRECTORY mode only"
+    expression: "this.mode == 'CUSTOMER_MANAGED_ACTIVE_DIRECTORY' || (size(this.dns_servers) == 0 && this.admin_credential_secret_name == '' && this.organizational_unit == '')"
+  };
+
+  // The AD domain to join, e.g. "ad.example.com". With the default
+  // (managed) mode this is a Managed Microsoft AD domain in the project.
+  string domain = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // MANAGED_ACTIVE_DIRECTORY (default) joins a Managed Microsoft AD
+  // domain; CUSTOMER_MANAGED_ACTIVE_DIRECTORY joins a self-managed AD
+  // bootstrapped through dns_servers and the admin credential.
+  string mode = 2 [(buf.validate.field).cel = {
+    id: "ad_mode_valid"
+    message: "mode must be empty, MANAGED_ACTIVE_DIRECTORY, or CUSTOMER_MANAGED_ACTIVE_DIRECTORY"
+    expression: "this == '' || this in ['MANAGED_ACTIVE_DIRECTORY', 'CUSTOMER_MANAGED_ACTIVE_DIRECTORY']"
+  }];
+
+  // Customer-managed AD only: domain controller IPv4 addresses used to
+  // bootstrap the join.
+  repeated string dns_servers = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {pattern: "^([0-9]{1,3}\\.){3}[0-9]{1,3}$"}
+      }
+    }
+  ];
+
+  // Customer-managed AD only: the Secret Manager secret
+  // (projects/{project}/secrets/{secret}) holding the AD administrator
+  // credential used to join the domain. A secret NAME, not the credential
+  // itself.
+  string admin_credential_secret_name = 4;
+
+  // Customer-managed AD only: the organizational unit distinguished name
+  // (full hierarchical path) the instance's computer account joins under.
+  string organizational_unit = 5;
+}
+
+// GcpCloudSqlEntraIdConfig enables Microsoft Entra ID (Azure AD)
+// authentication on a SQL Server instance. Both fields must be set together.
+message GcpCloudSqlEntraIdConfig {
+  // The Entra ID application (client) ID.
+  string application_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // The Entra ID tenant (directory) ID.
+  string tenant_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+}
+
+// GcpCloudSqlFinalBackup configures the backup taken automatically when the
+// instance is deleted.
+message GcpCloudSqlFinalBackup {
+  // Whether a final backup is taken on delete.
+  bool enabled = 1;
+
+  // Days the final backup is retained.
+  optional int32 retention_days = 2 [(buf.validate.field).int32.gte = 1];
+
+  // Description recorded on the final backup.
+  string description = 3;
+}
+
+// GcpCloudSqlReadPoolAutoScale automatically sizes a read pool's node count
+// between bounds, driven by target metrics.
+message GcpCloudSqlReadPoolAutoScale {
+  option (buf.validate.message).cel = {
+    id: "read_pool_bounds_ordered"
+    message: "max_node_count must be greater than or equal to min_node_count"
+    expression: "!has(this.min_node_count) || !has(this.max_node_count) || this.max_node_count >= this.min_node_count"
+  };
+
+  // Whether auto scaling is active. While enabled, node_count is owned by
+  // the autoscaler and read-only.
+  bool enabled = 1;
+
+  // Lower bound of pool nodes; scale-in never goes below it.
+  optional int32 min_node_count = 2 [(buf.validate.field).int32.gte = 1];
+
+  // Upper bound of pool nodes; scale-out never exceeds it.
+  optional int32 max_node_count = 3 [(buf.validate.field).int32.gte = 1];
+
+  // Disables scale-in entirely: the pool only ever grows automatically.
+  bool disable_scale_in = 4;
+
+  // Cooldown in seconds after a scale-in before another may run.
+  optional int32 scale_in_cooldown_seconds = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Cooldown in seconds after a scale-out before another may run.
+  optional int32 scale_out_cooldown_seconds = 6 [(buf.validate.field).int32.gte = 0];
+
+  // Metrics the autoscaler steers by; nodes are added or removed to hold
+  // each metric at its target value.
+  repeated GcpCloudSqlReadPoolTargetMetric target_metrics = 7;
+}
+
+// GcpCloudSqlReadPoolTargetMetric is one metric target the read pool
+// autoscaler holds.
+message GcpCloudSqlReadPoolTargetMetric {
+  // Metric name, e.g. a CPU utilization metric.
+  string metric = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Target value for the metric.
+  double target_value = 2;
+}
+
+// GcpCloudSqlClone creates the instance as a full copy of another instance's
+// data, optionally at a point in time.
+message GcpCloudSqlClone {
+  // Name of the source instance to clone.
+  string source_instance_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Project of the source instance, for cross-project clones. Defaults to
+  // this instance's project.
+  string source_project = 2;
+
+  // RFC 3339 timestamp to clone from (point-in-time clone). Requires PITR
+  // (or binary logs on MySQL) on the source.
+  string point_in_time = 3;
+
+  // PostgreSQL point-in-time clones only: the zone the clone lands in.
+  // Defaults to the source's zone.
+  string preferred_zone = 4;
+
+  // SQL Server point-in-time clones only: clone just the named databases.
+  // Empty clones all databases.
+  repeated string database_names = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated = {
+      unique: true
+      items: {
+        string: {min_len: 1}
+      }
+    }
+  ];
+
+  // Private-IP clones: the allocated IP range name (RFC 1035) the clone's
+  // private IP is drawn from.
+  string allocated_ip_range = 6;
+
+  // Cloning a DELETED instance: the RFC 3339 timestamp of the source's
+  // deletion.
+  string source_instance_deletion_time = 7;
+}
+
+// GcpCloudSqlRestoreBackupContext restores a specific backup run into this
+// instance. Declaratively expressed but imperative in effect: adding or
+// changing the block triggers the restore.
+message GcpCloudSqlRestoreBackupContext {
+  // The backup run ID to restore.
+  int64 backup_run_id = 1 [(buf.validate.field).int64.gte = 1];
+
+  // The instance the backup was taken from. Defaults to this instance.
+  string instance_id = 2;
+
+  // The full project ID of the source instance.
+  string project = 3;
+}
+
+// GcpCloudSqlPointInTimeRestoreContext restores this instance from a Backup
+// and DR datasource to a point in time. Adding or changing the block
+// triggers the restore.
+message GcpCloudSqlPointInTimeRestoreContext {
+  // The Backup and DR datasource URI to restore from.
+  string datasource = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // RFC 3339 timestamp to restore to.
+  string point_in_time = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {min_len: 1}
+  ];
+
+  // Name of the target instance receiving the restore.
+  string target_instance = 3;
+
+  // Region of the target instance, e.g. "us-central1".
+  string region = 4;
+
+  // The zone the restored instance lands in. Defaults to the source
+  // primary's zone.
+  string preferred_zone = 5;
+
+  // Private-IP restores: the allocated IP range name (RFC 1035) the
+  // restored instance's private IP is drawn from.
+  string allocated_ip_range = 6;
 }

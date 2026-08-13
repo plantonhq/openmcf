@@ -26,3 +26,5 @@ spec:
     dockerPublicRepository: DOCKER_HUB
   labels:
     e2e-suite: gcp
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

@@ -58,8 +58,10 @@ This creates the pool, ready for a GcpWorkloadIdentityPoolProvider to attach the
 | `description` | `string` | `""` | What this pool federates and who owns it. Max 256 chars. Mutable. |
 | `disabled` | `bool` | `false` | Kill switch: a disabled pool rejects all token exchanges; re-enabling restores access. Mutable. |
 | `mode` | `string` | `FEDERATION_ONLY` | `FEDERATION_ONLY` (keyless federation) or `TRUST_DOMAIN` (managed workload identities; such pools cannot hold providers). Immutable. |
-| `inlineCertificateIssuanceConfig` | `object` | — | mTLS workload-certificate issuance for TRUST_DOMAIN pools: region→CA-pool map, key algorithm, lifetime, rotation window. |
-| `inlineTrustConfig` | `object` | — | Additional trust domains (PEM trust anchors per foreign domain) whose certificates this pool's trust domain accepts. |
+| `inlineCertificateIssuanceConfig` | `object` | — | mTLS workload-certificate issuance for TRUST_DOMAIN pools: exactly one CA source — region→CA-pool map (`caPools`) or the GCP-provisioned default (`useDefaultSharedCa`) — plus key algorithm, lifetime, rotation window. |
+| `inlineTrustConfig` | `object` | — | Additional trust domains (PEM trust anchors per foreign domain) whose certificates this pool's trust domain accepts; each bundle can also trust the GCP shared CA roots (`trustDefaultSharedCa`, additive to its required anchors). |
+| `attestationRules` | `list` | `[]` | Which Google Cloud workloads may receive a managed identity from this pool (full resource names, wildcard-capable; max 50). Applied through a second API call after pool create — a failed apply can leave a pool without its rules; re-apply converges. Mutable. |
+| `deletionPolicy` | `string` | `DELETE` | Destroy behavior: `DELETE` soft-deletes the pool (restorable ~30 days, ID reserved), `PREVENT` fails the destroy, `ABANDON` unmanages while the pool keeps federating. Mutable. |
 
 ## Why Pools Are First-Class
 
@@ -92,7 +94,7 @@ See [`iac/tf/README.md`](iac/tf/README.md) for Terraform-specific deployment ins
 - **Immutability**: `workloadIdentityPoolId`, `projectId`, and `mode` are ForceNew — changing any of them destroys and recreates the pool, invalidating every principal built from the old pool name. (The API rejects `mode` updates outright, even though a plan may show one.)
 - **Soft delete without undelete-on-create**: GCP retains deleted pools for ~30 days, during which the pool ID cannot be reused — and unlike custom roles, creating a pool with a soft-deleted ID fails rather than undeleting it. Treat pool IDs as long-lived; prefer `disabled: true` over deletion for temporary shutoffs.
 - **Providers are separate resources**: issuer configuration (OIDC/AWS/SAML/X.509, attribute mappings, conditions) lives on GcpWorkloadIdentityPoolProvider, one per issuer.
-- **Managed workload identities**: `TRUST_DOMAIN` pools additionally support namespaces and managed identities (SPIFFE-style workload identity). Those sub-resources are deliberately not modeled — they serve the managed-identity niche rather than keyless federation; the pool-side knobs (`mode`, certificate issuance, trust config) are modeled so the pool spec stays honest.
+- **Managed workload identities**: `TRUST_DOMAIN` pools additionally support namespaces and managed identities (SPIFFE-style workload identity). Those are separate resources with their own lifecycles; the pool-side surface — `mode`, attestation rules, certificate issuance (own CA pools or the GCP shared CA), and trust config — is fully modeled so the pool spec stays honest.
 
 ## Related Components
 

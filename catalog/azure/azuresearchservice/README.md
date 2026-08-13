@@ -25,3 +25,7 @@ The **AzureSearchService** component creates an Azure AI Search service -- the m
 ## Future Enhancements
 
 - Index/indexer management is data-plane (not ARM) -- stays with application tooling by design.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

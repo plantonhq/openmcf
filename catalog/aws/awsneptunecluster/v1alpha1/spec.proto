@@ -69,7 +69,10 @@ message AwsNeptuneClusterSpec {
 
   // The port the cluster accepts connections on. 0 keeps the AWS
   // default (8182 -- the Neptune convention). Create-time only --
-  // changing the port replaces the cluster.
+  // changing the port replaces the cluster. Both engines also pin the
+  // cluster's port on every instance resource so instance state always
+  // converges with the cluster (instances have no port of their own --
+  // they listen on the cluster's).
   int32 port = 6 [
     (buf.validate.field).int32.gte = 0,
     (buf.validate.field).int32.lte = 65535
@@ -110,10 +113,13 @@ message AwsNeptuneClusterSpec {
   // scales independently within these bounds.
   AwsNeptuneClusterServerlessV2Scaling serverless_v2_scaling = 10;
 
-  // Encrypt cluster storage at rest. Strongly recommended -- and
-  // create-time only: an unencrypted cluster cannot be encrypted later
-  // (requires a snapshot-restore migration).
-  bool storage_encrypted = 11 [(dev.planton.shared.options.recommended_default) = "true"];
+  // Encrypt cluster storage at rest. Defaults to TRUE (secure by
+  // default) -- and create-time only: an unencrypted cluster cannot be
+  // encrypted later (requires a snapshot-restore migration). Set an
+  // explicit false only where encryption cannot apply: restoring an
+  // UNENCRYPTED snapshot, or joining a global cluster whose primary is
+  // unencrypted (encryption must match the source in both cases).
+  optional bool storage_encrypted = 11 [(dev.planton.shared.options.default) = "true"];
 
   // The KMS key for storage encryption when storage_encrypted is true.
   // Empty uses the AWS-managed aws/rds key. Reference an AwsKmsKey
@@ -126,6 +132,9 @@ message AwsNeptuneClusterSpec {
   // Require SigV4-signed requests from IAM identities to query the
   // database -- Neptune's only credential mechanism (there is no master
   // username/password). Off relies purely on network reachability.
+  // (The AWS default is off; an explicit false at create time is
+  // indistinguishable from omitting it -- the provider only sends the
+  // flag on later changes.)
   bool iam_database_authentication_enabled = 13;
 
   // IAM roles the cluster assumes for engine features that reach into
@@ -167,12 +176,20 @@ message AwsNeptuneClusterSpec {
 
   // Skip the final snapshot when the cluster is deleted. When false
   // (the safe default), final_snapshot_identifier must be set -- AWS
-  // refuses to delete without knowing the snapshot name.
+  // refuses to delete without knowing the snapshot name. Also forwarded
+  // to each cluster instance's delete (instance-level final snapshots
+  // do not apply to cluster members, but the flag keeps teardown intent
+  // consistent).
   bool skip_final_snapshot = 19;
 
   // The name for the final snapshot taken on deletion. Required when
-  // skip_final_snapshot is false.
-  string final_snapshot_identifier = 20;
+  // skip_final_snapshot is false. Letters, digits, and hyphens; no
+  // double or trailing hyphen (the provider validates this at plan
+  // time).
+  string final_snapshot_identifier = 20 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[A-Za-z0-9]([A-Za-z0-9]|-[A-Za-z0-9])*$"
+  ];
 
   // Refuse deletion of the cluster while enabled. Turn this on for
   // anything holding data you cannot recreate -- deletion then requires
@@ -193,11 +210,16 @@ message AwsNeptuneClusterSpec {
   // Promote by clearing the field.
   string replication_source_identifier = 24;
 
-  // Join a Neptune global database: the identifier of the
-  // aws_neptune_global_cluster this cluster participates in. The first
-  // cluster joined becomes the global writer; clusters added afterwards
-  // become read-only secondaries.
-  string global_cluster_identifier = 25;
+  // Join a Neptune global database: the identifier of the global
+  // cluster this cluster participates in. The first cluster joined
+  // becomes the global writer; clusters added afterwards become
+  // read-only secondaries. Letter-first; letters, digits, and hyphens;
+  // no double or trailing hyphen.
+  string global_cluster_identifier = 25 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255,
+    (buf.validate.field).string.pattern = "^[A-Za-z]([A-Za-z0-9]|-[A-Za-z0-9])*$"
+  ];
 
   // The name of an existing cluster parameter group to use. Mutually
   // exclusive with `parameters` -- either bring your own group or let
@@ -218,13 +240,31 @@ message AwsNeptuneClusterSpec {
 
   // Apply modifications immediately instead of waiting for the next
   // maintenance window. Immediate changes can interrupt connections;
-  // deferred changes wait quietly. AWS defaults to deferred.
+  // deferred changes wait quietly. AWS defaults to deferred. Applies to
+  // cluster-scope changes AND to instance-scope changes (class resizes,
+  // per-instance windows, parameter group switches) -- both engines
+  // forward it to every cluster instance.
   bool apply_immediately = 29;
 
   // Permit engine_version changes that cross a major version. Off (the
   // default) guards against an accidental major upgrade hidden in a
   // version bump.
   bool allow_major_version_upgrade = 30;
+
+  // Custom cluster endpoints: stable DNS names over chosen subsets of
+  // the cluster's instances (e.g. an analytics endpoint fronting only
+  // the big readers). Each entry is managed as its own provider
+  // resource keyed by `name`, so endpoints come and go without touching
+  // the cluster. Per-endpoint addresses are exported in the
+  // custom_endpoint_addresses output keyed by name.
+  repeated AwsNeptuneClusterCustomEndpoint custom_endpoints = 31;
+
+  // DB (instance-level) engine parameters, managed as a dedicated
+  // instance parameter group owned by this cluster and applied to every
+  // instance that does not bring its own group (the group is glue -- a
+  // named parameter list -- so it stays folded, mirroring `parameters`).
+  // Mutually exclusive with neptune_instance_parameter_group_name.
+  repeated AwsNeptuneClusterParameter instance_parameters = 32;
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -283,6 +323,30 @@ message AwsNeptuneClusterSpec {
     message: "allow_major_version_upgrade requires neptune_instance_parameter_group_name -- AWS applies it to the cluster's instances during the major version upgrade"
     expression: "!this.allow_major_version_upgrade || this.neptune_instance_parameter_group_name != ''"
   };
+
+  option (buf.validate.message).cel = {
+    id: "own_instance_parameters_xor_existing_group"
+    message: "instance_parameters and neptune_instance_parameter_group_name are mutually exclusive -- manage the instance parameter group here or bring an existing one"
+    expression: "this.neptune_instance_parameter_group_name == '' || this.instance_parameters.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "instance_parameters_require_engine_version"
+    message: "inline instance_parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine"
+    expression: "this.instance_parameters.size() == 0 || this.engine_version != ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "custom_endpoint_names_unique"
+    message: "custom_endpoints[].name must be unique -- names key the provider resources"
+    expression: "this.custom_endpoints.map(e, e.name).unique()"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "custom_endpoint_members_exist"
+    message: "custom_endpoints member lists must name entries of spec.instances"
+    expression: "this.custom_endpoints.all(e, e.static_members.all(m, this.instances.exists(i, i.name == m)) && e.excluded_members.all(m, this.instances.exists(i, i.name == m)))"
+  };
 }
 
 // AwsNeptuneClusterInstance is one DB instance inside the cluster -- the
@@ -296,7 +360,7 @@ message AwsNeptuneClusterInstance {
   // (the others are untouched). Required.
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[a-z][a-z0-9-]*$"
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9]|-[a-z0-9])*$"
   ];
 
   // The instance class: a provisioned class like "db.r6g.large", or
@@ -381,14 +445,59 @@ message AwsNeptuneClusterParameter {
   // The parameter value. Required.
   string value = 2 [(buf.validate.field).required = true];
 
-  // When the change lands: "immediate" (AWS default -- dynamic
-  // parameters apply now) or "pending-reboot" (static parameters wait
-  // for the next instance reboot).
+  // When the change lands: "immediate" (dynamic parameters apply now)
+  // or "pending-reboot" (static parameters wait for the next instance
+  // reboot). Empty defers to the provider default, which is
+  // "pending-reboot" at the pinned provider version -- set "immediate"
+  // explicitly when a dynamic parameter should land right away.
   string apply_method = 3;
 
   option (buf.validate.message).cel = {
     id: "apply_method_valid"
     message: "apply_method must be 'immediate' or 'pending-reboot' when set"
     expression: "this.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']"
+  };
+}
+
+// AwsNeptuneClusterCustomEndpoint is one custom cluster endpoint -- a
+// stable DNS name over a chosen subset of the cluster's instances.
+message AwsNeptuneClusterCustomEndpoint {
+  // Endpoint name, unique within the cluster (lowercase letters,
+  // digits, hyphens; starts with a letter, no double or trailing
+  // hyphen). Becomes the DNS-visible endpoint identifier and the key
+  // both IaC engines manage the provider resource by -- renaming an
+  // entry replaces that endpoint (the cluster is untouched). Required.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9]|-[a-z0-9])*$"
+  ];
+
+  // Which instances the endpoint fronts: "READER" (reader instances
+  // only), "WRITER" (the writer), or "ANY" (all instances). Required.
+  string endpoint_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "READER",
+        "WRITER",
+        "ANY"
+      ]
+    }
+  ];
+
+  // Pin the endpoint to exactly these instances, by their
+  // spec.instances entry names. Mutually exclusive with
+  // excluded_members. Both empty fronts every instance of the
+  // endpoint's type.
+  repeated string static_members = 3;
+
+  // Front every instance of the endpoint's type EXCEPT these, by their
+  // spec.instances entry names. Mutually exclusive with static_members.
+  repeated string excluded_members = 4;
+
+  option (buf.validate.message).cel = {
+    id: "static_xor_excluded"
+    message: "static_members and excluded_members are mutually exclusive -- pin the member set or subtract from it, not both"
+    expression: "this.static_members.size() == 0 || this.excluded_members.size() == 0"
   };
 }

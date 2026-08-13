@@ -10,9 +10,26 @@ spec:
   # batch runs need a generous timeout (>=120m for both engines).
   # deploy -> ACTIVE + discovery-endpoint verify -> destroy -> verify
   # gone, on both provisioners.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (deploy ~7m, destroy ~11m per engine; service-connectivity chain
+  # reverse-destroyed clean). The lane's FIRST run caught an API truth:
+  # the maintenance window start time supports WHOLE HOURS ONLY (400
+  # "Invalid start time, only hours are supported" on a minute-carrying
+  # window, both engines) — the spec's minute field was removed and the
+  # exclusion recorded in iac/provider-parity.yaml.
+  #
+  # OFFLINE-PROVEN ARMS (deferrals with unblock conditions):
+  #   - server_ca_mode CUSTOMER_MANAGED_CAS_CA + server_ca_pool: needs a
+  #     CA Service pool in-region (real cost + undeletable-material
+  #     class). Unblock: a lane that owns a CA Service pool fixture.
+  #   - maintenance_version: update-only (the API rejects it at create);
+  #     needs an existing instance plus an available target version.
+  #     Unblock: an update-arm lane on a live instance.
+  #   - psc_auto_connections / DR composition / seed sources: composed
+  #     multi-instance shapes beyond the minimal scenario's scope,
+  #     offline-rendered.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 120

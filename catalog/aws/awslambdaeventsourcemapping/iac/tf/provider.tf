@@ -8,9 +8,9 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor: the newest surface this module renders is the Kafka
-      # schema_registry_config block, added to aws_lambda_event_source_mapping
-      # in provider 6.16.0.
+      # Feature floor: the newest surface this module renders is
+      # provisioned_poller_config.poller_group_name (6.28.0); the Kafka
+      # schema_registry_config block it also renders arrived in 6.16.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

@@ -4,11 +4,12 @@ metadata:
   name: gcpcomputedisk
 spec:
   # Disk creates are fast (seconds). The leaf scenario proves the empty
-  # data-volume shape with label parity; the disk's role as an attachment
-  # target is proven live by the compute instance's features scenario.
+  # data-volume shape with label parity; the features scenario proves the
+  # bootable-image shape with guest OS features plus the destroy-safety
+  # surface (deletion_policy, snapshot-before-destroy — its final snapshot
+  # must be swept). The disk's role as an attachment target is proven live
+  # by the compute instance's features scenario.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

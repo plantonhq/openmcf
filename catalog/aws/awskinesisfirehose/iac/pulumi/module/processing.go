@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"strconv"
 
 	awskinesisfirehose "github.com/plantonhq/planton/catalog/aws/awskinesisfirehose/v1alpha1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/kinesis"
@@ -47,13 +48,21 @@ func normalizeProcessors(processing *awskinesisfirehose.AwsKinesisFirehoseProces
 				{Name: "LambdaArn", Value: p.Lambda.LambdaArn.GetValue()},
 			}
 			if p.Lambda.BufferSizeInMbs > 0 {
-				params = append(params, processorParameter{Name: "BufferSizeInMBs", Value: fmt.Sprintf("%d", p.Lambda.BufferSizeInMbs)})
+				// Fractional sizes are AWS-legal (0.2-3 MiB); format without a
+				// forced decimal so whole numbers render as "3", not "3.0".
+				params = append(params, processorParameter{Name: "BufferSizeInMBs", Value: strconv.FormatFloat(p.Lambda.BufferSizeInMbs, 'f', -1, 64)})
 			}
 			if p.Lambda.BufferIntervalInSeconds > 0 {
 				params = append(params, processorParameter{Name: "BufferIntervalInSeconds", Value: fmt.Sprintf("%d", p.Lambda.BufferIntervalInSeconds)})
 			}
 			if p.Lambda.NumberOfRetries > 0 {
 				params = append(params, processorParameter{Name: "NumberOfRetries", Value: fmt.Sprintf("%d", p.Lambda.NumberOfRetries)})
+			}
+			// Only sent when set: AWS defaults RoleArn to the delivery role
+			// and the provider drops default-valued parameters from state, so
+			// sending the delivery role itself would cause perpetual diffs.
+			if p.Lambda.RoleArn.GetValue() != "" {
+				params = append(params, processorParameter{Name: "RoleArn", Value: p.Lambda.RoleArn.GetValue()})
 			}
 			normalized = append(normalized, normalizedProcessor{Type: "Lambda", Parameters: params})
 

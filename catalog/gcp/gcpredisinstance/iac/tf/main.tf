@@ -66,9 +66,20 @@ resource "google_redis_instance" "this" {
 
   labels = local.final_labels
 
+  # Destroy guard, sent explicitly from the spec (default true) so destroy
+  # behavior is identical on both engines: omitting it would leave the
+  # decision to whatever happens to be in Terraform state.
+  deletion_protection = var.spec.deletion_protection
+
+  # Client-side destroy behavior: DELETE (default), PREVENT, or ABANDON.
+  # Sent only when set so the provider default stays in charge otherwise.
+  # Evaluated only after deletion_protection allows the destroy at all.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   dynamic "maintenance_policy" {
     for_each = var.spec.maintenance_window != null ? [var.spec.maintenance_window] : []
     content {
+      description = maintenance_policy.value.description != "" ? maintenance_policy.value.description : null
       weekly_maintenance_window {
         day = maintenance_policy.value.day
         start_time {

@@ -24,6 +24,9 @@ resource "google_certificate_manager_certificate" "certificate" {
   scope       = var.spec.scope != "" ? var.spec.scope : null
   labels      = length(local.final_labels) > 0 ? local.final_labels : null
 
+  # Empty defers to the provider default (DELETE).
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   depends_on = [google_project_service.certificatemanager_api]
 
   dynamic "managed" {

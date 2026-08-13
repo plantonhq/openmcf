@@ -68,9 +68,11 @@ resources:
         arg: name                   # subtree, so entries stay
       - spec: spec.lifecycle_rules  # O(divergences), never O(fields)
         arg: lifecycle_rule
-    exclusions:                     # deliberately unmodeled, reason mandatory
+    exclusions:                     # deliberately unmodeled, reason mandatory;
       - arg: lifecycle_rule.condition.send_age_if_zero
         reason: derived by the module from the optional field's presence
+      - arg: legacy_inline_block    # an exclusion may name a block: one
+        reason: fixed by the module # judgment covers its whole subtree
   google_storage_bucket_iam_member:
     specRoot: spec.iam_members      # secondary resource: the spec subtree
     exclusions:                     # that instantiates it
@@ -88,11 +90,31 @@ specExclusions:                     # spec fields with no provider counterpart
 ```
 
 Spec references use the census's `spec.`-rooted proto-name dot paths (the
-same path grammar as `pkg/secretcoverage`). Manifest entries referencing
-surface that no longer exists (after a pin bump or spec change) are
-findings, not warnings — after a pin bump those failures ARE the migration
-work list. Malformed manifests fail hard at load: judgment half-read is
-worse than judgment absent.
+same path grammar as `pkg/secretcoverage`). Mappings are many-to-many in
+both directions: one spec map field may be realized by several arguments
+(the name/value idiom — record one mapping per argument), and one
+map-typed argument may realize several spec fields (the FAN-IN idiom —
+record one mapping per spec field on the same arg; the argument counts
+once, every mapped field is covered in reverse). Manifest entries
+referencing surface that no longer exists (after a pin bump or spec
+change) are findings, not warnings — after a pin bump those failures ARE
+the migration work list. Malformed manifests fail hard at load: judgment
+half-read is worse than judgment absent.
+
+**Externally specified resources.** `external` is `internal`'s mirror: where
+internal says "module plumbing below the spec", external says "the kind's
+primary surface, whose contract is pinned OUTSIDE every loaded provider
+schema" — a raw-API resource (e.g. azapi's `azapi_resource`) admitted per
+kind by a recorded decision naming an exact `type@api-version`. No argument
+walk is possible (there is no schema to walk), and a kind consuming only
+external/internal resources runs no reverse spec walk either: its spec's
+depth is accounted against the external contract, where the admission
+records it. The judgment ratchets toward native support: the moment a
+loaded schema serves the resource at the pin, the external entry becomes a
+staleness finding — the exit-to-native migration's mechanical reminder. A
+kind mixing schema-served and external resources keeps the reverse walk;
+its external-fed spec fields carry `specExclusions` naming the external
+resource.
 
 **Externally specified resources.** `external` is `internal`'s mirror: where
 internal says "module plumbing below the spec", external says "the kind's

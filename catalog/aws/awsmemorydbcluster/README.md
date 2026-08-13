@@ -138,7 +138,11 @@ MemoryDB always encrypts data at rest. The `kmsKeyArn` field optionally provides
 | `maintenanceWindow` | `string` | AWS-assigned | Weekly window (e.g., `"sun:05:00-sun:06:00"`). |
 | `snapshotRetentionLimit` | `int32` | `0` | Days to retain snapshots (0–35). 0 disables. |
 | `snapshotWindow` | `string` | AWS-assigned | Daily snapshot window (e.g., `"05:00-09:00"`). |
-| `finalSnapshotName` | `string` | — | Final snapshot name on deletion. |
+| `finalSnapshotName` | `string` | — | Final snapshot name on deletion (1–255 lowercase alphanumeric/hyphen, no consecutive or trailing hyphens). |
+
+Both windows are one-way once applied: removing the field keeps the current
+window rather than reverting to an AWS-assigned one — change a window by
+naming the new one explicitly.
 
 ### Restore from Snapshot
 

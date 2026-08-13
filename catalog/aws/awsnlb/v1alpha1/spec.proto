@@ -115,6 +115,30 @@ message AwsNlbSpec {
   // pointing the specified hostnames to the NLB's DNS name.
   AwsNlbDns dns = 12;
 
+  // Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+  // Pre-provisions the NLB for a known traffic level (product launches,
+  // failover targets) instead of waiting for organic scaling. Reserved
+  // capacity bills for the reservation whether used or not. Leave unset for
+  // normal on-demand scaling.
+  optional int32 minimum_load_balancer_capacity_units = 13 [(buf.validate.field).int32.gte = 1];
+
+  // Number of secondary private IPv4 addresses (0-7) AWS auto-assigns to each
+  // NLB node, raising the source-port budget for very high connection counts
+  // to a single target. Provider-verified caveat: DECREASING this value
+  // replaces the load balancer (AWS cannot release secondary IPs in place) --
+  // plan capacity before setting it. Leave unset for the AWS default of 0.
+  optional int32 secondary_ips_auto_assigned_per_subnet = 14 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 7
+  }];
+
+  // Whether NLB nodes source-NAT IPv6 traffic through a /80 prefix per AZ
+  // instead of a single IPv6 address -- required for UDP listeners on a
+  // dualstack NLB (the per-address port budget cannot serve UDP flow hashing).
+  // Valid values: "on", "off". Only meaningful when ip_address_type is
+  // "dualstack".
+  string enable_prefix_for_ipv6_source_nat = 15;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -135,6 +159,19 @@ message AwsNlbSpec {
     id: "private_link_enforcement_valid"
     message: "enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set"
     expression: "this.enforce_security_group_inbound_rules_on_private_link_traffic == '' || this.enforce_security_group_inbound_rules_on_private_link_traffic in ['on', 'off']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "ipv6_source_nat_prefix_valid"
+    message: "enable_prefix_for_ipv6_source_nat must be 'on' or 'off' when set"
+    expression: "this.enable_prefix_for_ipv6_source_nat == '' || this.enable_prefix_for_ipv6_source_nat in ['on', 'off']"
+  };
+
+  // The IPv6 source-NAT prefix is dualstack-only surface.
+  option (buf.validate.message).cel = {
+    id: "ipv6_source_nat_requires_dualstack"
+    message: "enable_prefix_for_ipv6_source_nat requires ip_address_type 'dualstack'"
+    expression: "this.enable_prefix_for_ipv6_source_nat == '' || this.ip_address_type == 'dualstack'"
   };
 }
 
@@ -168,6 +205,13 @@ message AwsNlbSubnetMapping {
   // for internal NLBs. The address must belong to the subnet's CIDR range.
   // When omitted, AWS assigns a private IP automatically.
   string private_ipv4_address = 3;
+
+  // Specific IPv6 address for the NLB node in this subnet, for dualstack
+  // NLBs (ip_address_type = "dualstack"). Must fall within the subnet's IPv6
+  // CIDR. When omitted, AWS assigns one automatically. Pinning it gives the
+  // IPv6 side the same static-address story allocation_id gives the IPv4
+  // side.
+  string ipv6_address = 4;
 }
 
 // AwsNlbAccessLogs points the NLB's access logs at an S3 bucket. The bucket

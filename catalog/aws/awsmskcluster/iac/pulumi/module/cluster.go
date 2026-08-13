@@ -77,6 +77,13 @@ func cluster(
 
 	// Encryption. encryption_info is create-time: the at-rest KMS key and
 	// in-cluster TLS cannot be changed after creation.
+	//
+	// The presence gates below are effectively always-true for platform
+	// manifests: the spec materializes client_broker_encryption="TLS" and
+	// in_cluster_encryption=true as defaults, so this block is always sent --
+	// matching the Terraform module's unconditional encryption_info rendering.
+	// The gates remain as structural guards for a spec with the defaults
+	// stripped, where omitting the block equally yields the provider defaults.
 	encryptionInTransit := &msk.ClusterEncryptionInfoEncryptionInTransitArgs{}
 	hasEncryptionInTransit := false
 
@@ -104,18 +111,21 @@ func cluster(
 		args.EncryptionInfo = encryptionArgs
 	}
 
-	// Authentication
+	// Authentication. The block is attached whenever the spec carries the
+	// authentication message, and `unauthenticated` is state-pinned
+	// (always sent, true or false) -- both matching the Terraform module
+	// check-for-check.
 	if spec.Authentication != nil {
 		auth := spec.Authentication
-		authArgs := &msk.ClusterClientAuthenticationArgs{}
-		hasAuth := false
+		authArgs := &msk.ClusterClientAuthenticationArgs{
+			Unauthenticated: pulumi.Bool(auth.Unauthenticated),
+		}
 
 		if auth.SaslIamEnabled || auth.SaslScramEnabled {
 			authArgs.Sasl = &msk.ClusterClientAuthenticationSaslArgs{
 				Iam:   pulumi.Bool(auth.SaslIamEnabled),
 				Scram: pulumi.Bool(auth.SaslScramEnabled),
 			}
-			hasAuth = true
 		}
 
 		if auth.TlsEnabled {
@@ -128,17 +138,9 @@ func cluster(
 				tlsArgs.CertificateAuthorityArns = caArns
 			}
 			authArgs.Tls = tlsArgs
-			hasAuth = true
 		}
 
-		if auth.Unauthenticated {
-			authArgs.Unauthenticated = pulumi.Bool(true)
-			hasAuth = true
-		}
-
-		if hasAuth {
-			args.ClientAuthentication = authArgs
-		}
+		args.ClientAuthentication = authArgs
 	}
 
 	// Configuration: the module-managed configuration (from server_properties)

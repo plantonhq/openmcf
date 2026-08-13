@@ -7,6 +7,9 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: durability (Valkey 9 per-shard write-acknowledgement
+      # modes) landed in provider 6.51.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

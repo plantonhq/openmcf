@@ -21,3 +21,7 @@ The **AzureAiFoundryProject** component creates an Azure AI Foundry project -- t
 ## Future Enhancements
 
 - Project connection resources (external data sources/models) as azurerm models them.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -95,9 +95,20 @@ type GcpWorkloadIdentityPoolProviderSpec struct {
 	//	*GcpWorkloadIdentityPoolProviderSpec_Oidc
 	//	*GcpWorkloadIdentityPoolProviderSpec_Saml
 	//	*GcpWorkloadIdentityPoolProviderSpec_X509
-	Issuer        isGcpWorkloadIdentityPoolProviderSpec_Issuer `protobuf_oneof:"issuer"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Issuer isGcpWorkloadIdentityPoolProviderSpec_Issuer `protobuf_oneof:"issuer"`
+	// Deletion policy for the provider — what happens when this resource is
+	// destroyed:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the provider is deleted (starts the ~30-day soft-delete
+	//	             clock and blocks the ID from reuse until it expires)
+	//	"PREVENT" -- destroy FAILS; protects the keyless-auth path every
+	//	             pipeline federating through this issuer depends on
+	//	"ABANDON" -- the provider is removed from management but keeps
+	//	             exchanging tokens in GCP
+	DeletionPolicy string `protobuf:"bytes,13,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpWorkloadIdentityPoolProviderSpec) Reset() {
@@ -227,6 +238,13 @@ func (x *GcpWorkloadIdentityPoolProviderSpec) GetX509() *GcpWorkloadIdentityPool
 		}
 	}
 	return nil
+}
+
+func (x *GcpWorkloadIdentityPoolProviderSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
 }
 
 type isGcpWorkloadIdentityPoolProviderSpec_Issuer interface {
@@ -635,7 +653,7 @@ var File_catalog_gcp_gcpworkloadidentitypoolprovider_v1alpha1_spec_proto protore
 
 const file_catalog_gcp_gcpworkloadidentitypoolprovider_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?catalog/gcp/gcpworkloadidentitypoolprovider/v1alpha1/spec.proto\x128dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xba\r\n" +
+	"?catalog/gcp/gcpworkloadidentitypoolprovider/v1alpha1/spec.proto\x128dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf8\x0e\n" +
 	"#GcpWorkloadIdentityPoolProviderSpec\x12\xa6\x01\n" +
 	"\x19workload_identity_pool_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB7\xbaH\x03\xc8\x01\x01\x88\xd4a\x9d\x18\x92\xd4a(status.outputs.workload_identity_pool_idR\x16workloadIdentityPoolId\x12\x80\x02\n" +
 	"\"workload_identity_pool_provider_id\x18\x02 \x01(\tB\xb3\x01\xbaH\xaf\x01\xba\x01\x93\x01\n" +
@@ -651,7 +669,9 @@ const file_catalog_gcp_gcpworkloadidentitypoolprovider_v1alpha1_spec_proto_rawDe
 	"\x04oidc\x18\n" +
 	" \x01(\v2].dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderOidcH\x00R\x04oidc\x12s\n" +
 	"\x04saml\x18\v \x01(\v2].dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderSamlH\x00R\x04saml\x12s\n" +
-	"\x04x509\x18\f \x01(\v2].dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderX509H\x00R\x04x509\x1aC\n" +
+	"\x04x509\x18\f \x01(\v2].dev.planton.gcp.gcpworkloadidentitypoolprovider.v1alpha1.GcpWorkloadIdentityPoolProviderX509H\x00R\x04x509\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\r \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aC\n" +
 	"\x15AttributeMappingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf6\x01\xbaH\xf2\x01\x1a\xef\x01\n" +

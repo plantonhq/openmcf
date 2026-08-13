@@ -1,0 +1,25 @@
+# Generates the catalog-schemas artifact's JSON documents: one
+# pkg/catalogschema ProtoFile per catalog .proto, emitted into build/ (never
+# committed) and zipped by `make build-catalog-schemas`. The input is this
+# repository itself -- the release ships its own catalog's schema projection,
+# so consumers vendor it instead of re-deriving it from a clone.
+#
+# Managed mode mirrors what downstream stub generation resolves for
+# go_package: the projected `option go_package` line in each document states
+# the canonical import path, not whatever a local override happens to be.
+version: v2
+
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: github.com/plantonhq/planton
+
+plugins:
+  - local: protoc-gen-catalog-schema
+    out: build/catalog-schemas
+
+inputs:
+  - directory: .
+    paths:
+      - catalog

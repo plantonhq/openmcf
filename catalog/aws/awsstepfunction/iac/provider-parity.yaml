@@ -1,0 +1,59 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sfn_state_machine:
+    mappings:
+      # The spec names the observability blocks for what they configure;
+      # the provider suffixes "_configuration".
+      - spec: spec.logging.level
+        arg: logging_configuration.level
+      - spec: spec.logging.include_execution_data
+        arg: logging_configuration.include_execution_data
+      - spec: spec.logging.log_destination
+        arg: logging_configuration.log_destination
+      - spec: spec.tracing_enabled
+        arg: tracing_configuration.enabled
+      - spec: spec.encryption.kms_key_id
+        arg: encryption_configuration.kms_key_id
+      - spec: spec.encryption.kms_data_key_reuse_period_seconds
+        arg: encryption_configuration.kms_data_key_reuse_period_seconds
+    exclusions:
+      # The spec models exactly one honest encryption shape: a block with a
+      # key means CUSTOMER_MANAGED_KMS_KEY (the modules send the type as a
+      # constant); AWS_OWNED_KEY is block absence -- AWS's own default.
+      - arg: encryption_configuration.type
+        reason: derived by both modules from spec.encryption presence (CUSTOMER_MANAGED_KMS_KEY with a key, AWS_OWNED_KEY as block absence) -- a spec field would carry one legal value per shape
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (1-80 chars of [0-9A-Za-z_-]) -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sfn_alias:
+    mappings:
+      # Folded aliases: repeated spec.aliases entries render one alias
+      # resource each, keyed by name.
+      - spec: spec.aliases.name
+        arg: name
+      - spec: spec.aliases.description
+        arg: description
+    exclusions:
+      # Each alias routes 100% of traffic to the version THIS deployment
+      # published -- the module wires the machine's own published-version
+      # ARN. Weighted canary routing between two specific versions is an
+      # imperative deployment-shift operation, deliberately not modeled.
+      - arg: routing_configuration.state_machine_version_arn
+        reason: module-shaped plumbing -- wired to the state machine's own published version ARN (spec CEL requires publish); cross-version routing is an imperative deployment shift, not declarative surface
+      - arg: routing_configuration.weight
+        reason: module-shaped plumbing -- always 100 (single-version routing); split weights only exist mid-deployment-shift, which is not declarative surface

@@ -1,0 +1,67 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSecretManagerSecret
+metadata:
+  name: my-sample-secret
+spec:
+  # GCP project that owns the secret.
+  # Omit to use the provider's default project.
+  projectId:
+    value: my-gcp-project-123
+
+  # The secret ID; omit to default to metadata.name. Immutable.
+  secretId: my-sample-secret
+
+  # Leave region empty for a GLOBAL secret (replication control below);
+  # set it for a REGIONAL secret whose payloads never leave the region.
+
+  # GLOBAL secrets only. Omit entirely for automatic replication (the
+  # right default when no residency regime applies); shown here for the
+  # complete surface.
+  replication:
+    auto: {}
+
+  # The first payload, stored as version 1 — one manifest yields a
+  # READABLE secret. In charts, wire data via valueFrom from a producing
+  # resource's sensitive output instead of a literal.
+  initialVersion:
+    data:
+      value: super-secret-value
+    enabled: true
+    # What destroying THIS resource does to version 1:
+    # DELETE (default) / DISABLE (recoverable) / ABANDON.
+    deletionPolicy: DELETE
+
+  # Secret-SCOPED additive grants — the access story: each consuming
+  # workload's service account gets secretAccessor on exactly this
+  # secret, never a project-wide role.
+  iamMembers:
+    - role: roles/secretmanager.secretAccessor
+      member:
+        valueFrom:
+          kind: GcpServiceAccount
+          # The service-account kind's PUBLISHED prerequisite fixture.
+          name: planton-oss-e2e-gsa-prereq
+          fieldPath: status.outputs.member
+
+  # Friendly alias -> version number; re-point consumers atomically.
+  versionAliases:
+    current: "1"
+
+  # Delayed version destruction (>= 86400s): destroy first disables,
+  # restore window applies. Whole-secret deletion ignores this.
+  versionDestroyTtl: 86400s
+
+  # User metadata labels, merged with Planton's platform labels.
+  labels:
+    team: platform
+
+  # Freeform non-identifying metadata (not queryable in filters).
+  annotations:
+    owner: platform-team
+
+  # Engine-side destroy guard, evaluated BEFORE deletionPolicy.
+  deletionProtection: false
+
+  # What a destroy does to the whole secret: DELETE (default — every
+  # version destroyed, unrecoverable), PREVENT, or ABANDON.
+  deletionPolicy: DELETE

@@ -22,4 +22,9 @@ message AwsIamUserStackOutputs {
 
   // user_id is the stable unique ID of the IAM user.
   string user_id = 6;
+
+  // access_key_status is the access key's status (Active/Inactive) as the
+  // provider reports it after apply -- the rotation-lever position,
+  // verifiable against ListAccessKeys. Empty when no access key was created.
+  string access_key_status = 7;
 }

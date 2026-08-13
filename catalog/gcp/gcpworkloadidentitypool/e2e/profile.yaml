@@ -9,9 +9,13 @@ spec:
   # NOT reusable while soft-deleted (no undelete-on-create), so the scenario's
   # pool ID carries the ${E2E_RUN_ID} token — every run and every engine gets
   # a fresh identifier and never collides with a prior run's ghost.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface (deletionPolicy DELETE re-planned clean;
+  # FEDERATION_ONLY minimal shape). Offline-proven-only arms: attestation
+  # rules and the inline certificate/trust configs (managed-identity trust
+  # domains need a TRUST_DOMAIN-mode pool and real workload resource names).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

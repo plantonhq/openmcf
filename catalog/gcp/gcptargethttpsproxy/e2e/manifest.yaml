@@ -30,3 +30,7 @@ spec:
 
   # QUIC (HTTP/3) negotiation: NONE lets Google decide.
   quicOverride: NONE
+
+  # DELETE keeps destroys real; PREVENT belongs on production TLS
+  # frontends.
+  deletionPolicy: DELETE

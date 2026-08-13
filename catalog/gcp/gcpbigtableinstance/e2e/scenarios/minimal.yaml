@@ -4,7 +4,9 @@
 # the resolved test project. The cloud-side instance name carries
 # ${E2E_RUN_ID}; deletion protection is explicitly disabled so the
 # ephemeral create -> verify -> destroy cycle can tear down without a
-# two-step disable.
+# two-step disable. edition is armed EXPLICITLY at the provider's own
+# default (ENTERPRISE) to prove the explicit-send round-trip — the
+# canonical manifest carries the same arm but never runs live.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
@@ -22,6 +24,8 @@ metadata:
 spec:
   instanceName: e2e-bt-${E2E_RUN_ID}
   deletionProtection: false
+  deletionPolicy: DELETE
+  edition: ENTERPRISE
   clusters:
     - clusterId: e2e-btc-${E2E_RUN_ID}
       zone: us-central1-a

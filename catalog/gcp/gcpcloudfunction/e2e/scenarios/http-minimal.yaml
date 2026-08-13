@@ -5,6 +5,8 @@
 # omitted (ambient project). Function names are project-scoped with no
 # soft-delete reservation; the cloud-side name still carries ${E2E_RUN_ID}
 # so an orphaned run never blocks the next one.
+# 2026-08-11: region moved us-central1 → us-east1 with the whole function
+# chain (us-central1 e2 zonal stockout — see the connector prerequisite).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudFunction
 metadata:
@@ -20,7 +22,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  region: us-east1
   functionName: e2e-fn-http-${E2E_RUN_ID}
   description: Ephemeral function created by the Planton E2E harness; safe to delete
   buildConfig:
@@ -40,3 +42,5 @@ spec:
     allowUnauthenticated: true
   trigger:
     triggerType: HTTP
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE

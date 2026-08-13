@@ -164,7 +164,33 @@ var _ = ginkgo.Describe("GcpAddressSpec", func() {
 		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
 	})
 
+	ginkgo.It("should accept user labels", func() {
+		target := minimalExternal()
+		target.Spec.Labels = map[string]string{"team": "platform"}
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept a BYOIP ip_collection PDP reference", func() {
+		target := minimalExternal()
+		target.Spec.IpCollection = "projects/my-proj/regions/us-central1/publicDelegatedPrefixes/my-pdp"
+		gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("should accept each deletion_policy value", func() {
+		for _, v := range []string{"DELETE", "PREVENT", "ABANDON"} {
+			target := minimalExternal()
+			target.Spec.DeletionPolicy = v
+			gomega.Expect(validator.Validate(target)).To(gomega.Succeed())
+		}
+	})
+
 	// ──────────────── Negative Cases ────────────────
+
+	ginkgo.It("should reject an invalid deletion_policy", func() {
+		target := minimalExternal()
+		target.Spec.DeletionPolicy = "KEEP"
+		gomega.Expect(validator.Validate(target)).ToNot(gomega.Succeed())
+	})
 
 	ginkgo.It("should reject when address_name is missing", func() {
 		target := minimalExternal()

@@ -14,7 +14,7 @@ import (
 // never moves with production resource shapes. The two testdata fixture
 // charts additionally exercise the pipeline against real provider kinds.
 
-const testChartYaml = `apiVersion: infra-hub.planton.ai/v1
+const testChartYaml = `apiVersion: infra-hub.planton.ai/v1alpha1
 kind: InfraChart
 metadata:
   name: Test Chart

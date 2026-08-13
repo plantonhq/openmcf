@@ -4,7 +4,8 @@ metadata:
   name: my-production-ecr-repo
 spec:
   region: <aws-region>
-  repositoryName: <repository-name>
+  # Replace with your repository's registry path.
+  repositoryName: team-blue/checkout-service
   # Release tags are frozen forever; "latest" stays movable for convenience.
   imageTagMutability: IMMUTABLE_WITH_EXCLUSION
   imageTagMutabilityExclusionFilters:

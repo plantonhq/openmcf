@@ -1,0 +1,82 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ec2_client_vpn_endpoint:
+    mappings:
+      # The spec's block PRESENCE is the switch for the three option blocks
+      # (both modules always materialize them with the explicit
+      # enabled/enforced state so removal genuinely disables); the payload
+      # members map by name below.
+      - spec: spec.client_login_banner.banner_text
+        arg: client_login_banner_options.banner_text
+      - spec: spec.connection_log.cloudwatch_log_group
+        arg: connection_log_options.cloudwatch_log_group
+      - spec: spec.connection_log.cloudwatch_log_stream
+        arg: connection_log_options.cloudwatch_log_stream
+      # A single hardening dial: the spec's bool renders as the block's one
+      # member.
+      - spec: spec.client_route_enforcement_enabled
+        arg: client_route_enforcement_options.enforced
+      # The spec's bool renders as the provider's enabled/disabled enum.
+      - spec: spec.self_service_portal_enabled
+        arg: self_service_portal
+    exclusions:
+      # Presence-derived switches: the spec has no separate boolean for a
+      # manifest to contradict -- the block's presence IS the intent, and
+      # both modules send the explicit state in both directions.
+      - arg: client_connect_options.enabled
+        reason: derived from spec.client_connect_options block presence -- both modules always send the explicit state (absence transmits enabled=false, healing the provider's Optional+Computed un-disable trap)
+      - arg: client_login_banner_options.enabled
+        reason: derived from spec.client_login_banner block presence -- both modules always send the explicit state
+      - arg: connection_log_options.enabled
+        reason: derived from spec.connection_log block presence -- the provider requires the block either way, so absence maps to enabled=false
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys; Client VPN endpoints have no name argument of their own) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_ec2_client_vpn_network_association:
+    # One association per spec.subnet_ids entry, keyed by subnet ID so
+    # adding an AZ never disturbs the others.
+    specRoot: spec.subnet_ids
+    mappings:
+      # The repeated spec entry IS the association's one real input.
+      - spec: spec.subnet_ids
+        arg: subnet_id
+    exclusions:
+      - arg: region
+        reason: wired by the module -- satellites follow the endpoint's spec.region through the provider connection
+      - arg: client_vpn_endpoint_id
+        reason: module-shaped plumbing -- always this endpoint's own ID (associations are folded sub-resources)
+
+  aws_ec2_client_vpn_authorization_rule:
+    # One rule per spec.authorization_rules entry (rules add/remove in
+    # place; the composite key never collides -- access_group_id is
+    # comma-free by CEL, mirroring the provider's ID separator).
+    specRoot: spec.authorization_rules
+    exclusions:
+      - arg: region
+        reason: wired by the module -- satellites follow the endpoint's spec.region through the provider connection
+      - arg: client_vpn_endpoint_id
+        reason: module-shaped plumbing -- always this endpoint's own ID (rules are folded sub-resources)
+
+  aws_ec2_client_vpn_route:
+    # One route per spec.routes entry.
+    specRoot: spec.routes
+    mappings:
+      # The spec names the subnet for what it is (a reference to one of the
+      # endpoint's associated subnets); the provider prefixes the VPC scope.
+      - spec: spec.routes.target_subnet_id
+        arg: target_vpc_subnet_id
+    exclusions:
+      - arg: region
+        reason: wired by the module -- satellites follow the endpoint's spec.region through the provider connection
+      - arg: client_vpn_endpoint_id
+        reason: module-shaped plumbing -- always this endpoint's own ID (routes are folded sub-resources)

@@ -1257,7 +1257,7 @@ var File_catalog_kubernetes_kuberneteskarpenterec2nodeclass_v1alpha1_spec_proto 
 
 const file_catalog_kubernetes_kuberneteskarpenterec2nodeclass_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/kubernetes/kuberneteskarpenterec2nodeclass/v1alpha1/spec.proto\x12?dev.planton.kubernetes.kuberneteskarpenterec2nodeclass.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\x95=\n" +
+	"Fcatalog/kubernetes/kuberneteskarpenterec2nodeclass/v1alpha1/spec.proto\x12?dev.planton.kubernetes.kuberneteskarpenterec2nodeclass.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\x90=\n" +
 	"#KubernetesKarpenterEc2NodeClassSpec\x12\xc5\t\n" +
 	"\x12ami_selector_terms\x18\x01 \x03(\v2o.dev.planton.kubernetes.kuberneteskarpenterec2nodeclass.v1alpha1.KubernetesKarpenterEc2NodeClassAmiSelectorTermB\xa5\b\xbaH\xa1\b\xba\x01\xaf\x02\n" +
 	"$spec.ami_terms.at_least_one_selector\x12Seach AMI selector term needs at least one of alias, id, name, ssm_parameter or tags\x1a\xb1\x01this.all(x, (has(x.alias) && x.alias != '') || (has(x.id) && x.id != '') || (has(x.name) && x.name != '') || (has(x.ssm_parameter) && x.ssm_parameter != '') || size(x.tags) > 0)\xba\x01\x97\x02\n" +
@@ -1302,19 +1302,19 @@ const file_catalog_kubernetes_kuberneteskarpenterec2nodeclass_v1alpha1_spec_prot
 	"\tuser_data\x18\x15 \x01(\tR\buserData\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xf0\x06\xbaH\xec\x06\x1a\x9e\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xeb\x06\xbaH\xe7\x06\x1a\x9e\x02\n" +
 	"\x1espec.role_xor_instance_profile\x12\x97\x01exactly one of role or instance_profile must be set — role lets Karpenter manage the instance profile (recommended); instance_profile brings your own\x1ab(has(this.role) && this.role != '') != (has(this.instance_profile) && this.instance_profile != '')\x1a\xfd\x01\n" +
-	"&spec.ami_family_required_without_alias\x12^ami_family is required when no AMI selector term uses an alias (the family cannot be inferred)\x1asthis.ami_selector_terms.exists(x, has(x.alias) && x.alias != '') || (has(this.ami_family) && this.ami_family != '')\x1a\xc8\x02\n" +
-	"\x1dspec.ami_family_matches_alias\x12\\when an alias term is used, ami_family may only be set to the alias's own family or 'Custom'\x1a\xc8\x01!has(this.ami_family) || this.ami_family == '' || this.ami_selector_terms.all(x, !has(x.alias) || x.alias == '' || this.ami_family == 'Custom' || this.ami_family.lowerAscii() == x.alias.split('@')[0])B\r\n" +
+	"&spec.ami_family_required_without_alias\x12^ami_family is required when no AMI selector term uses an alias (the family cannot be inferred)\x1asthis.ami_selector_terms.exists(x, has(x.alias) && x.alias != '') || (has(this.ami_family) && this.ami_family != '')\x1a\xc3\x02\n" +
+	"\x1dspec.ami_family_matches_alias\x12\\when an alias term is used, ami_family may only be set to the alias's own family or 'Custom'\x1a\xc3\x01!has(this.ami_family) || this.ami_family == '' || this.ami_selector_terms.all(x, !has(x.alias) || x.alias == '' || this.ami_family == 'Custom' || x.alias.matches('^(?i)' + this.ami_family + '@'))B\r\n" +
 	"\v_ami_familyB\a\n" +
 	"\x05_roleB\x13\n" +
 	"\x11_instance_profileB\x1e\n" +
 	"\x1c_associate_public_ip_addressB\x18\n" +
 	"\x16_instance_store_policyB\x12\n" +
-	"\x10_ip_prefix_count\"\xb5\b\n" +
-	".KubernetesKarpenterEc2NodeClassAmiSelectorTerm\x12\xef\x03\n" +
-	"\x05alias\x18\x01 \x01(\tB\xd3\x03\xbaH\xcf\x03\xba\x01\xc7\x03\n" +
-	"\x1aspec.ami_term.alias_format\x12\x9e\x01alias must match 'family@version' with family one of al2, al2023, bottlerocket, windows2019, windows2022, windows2025 (Windows families only support 'latest')\x1a\x87\x02this == '' || (this.matches('^[a-zA-Z0-9]+@.+$') && this.split('@')[0] in ['al2', 'al2023', 'bottlerocket', 'windows2019', 'windows2022', 'windows2025'] && (!(this.split('@')[0] in ['windows2019', 'windows2022', 'windows2025']) || this.split('@')[1] == 'latest'))r\x02\x18\x1eH\x00R\x05alias\x88\x01\x01\x12+\n" +
+	"\x10_ip_prefix_count\"\xab\a\n" +
+	".KubernetesKarpenterEc2NodeClassAmiSelectorTerm\x12\xe5\x02\n" +
+	"\x05alias\x18\x01 \x01(\tB\xc9\x02\xbaH\xc5\x02\xba\x01\xbd\x02\n" +
+	"\x1aspec.ami_term.alias_format\x12\x9e\x01alias must match 'family@version' with family one of al2, al2023, bottlerocket, windows2019, windows2022, windows2025 (Windows families only support 'latest')\x1a~this == '' || this.matches('^(al2|al2023|bottlerocket)@.+$') || this.matches('^(windows2019|windows2022|windows2025)@latest$')r\x02\x18\x1eH\x00R\x05alias\x88\x01\x01\x12+\n" +
 	"\x02id\x18\x02 \x01(\tB\x16\xbaH\x13r\x112\x0f^ami-[0-9a-z]+$H\x01R\x02id\x88\x01\x01\x12\x17\n" +
 	"\x04name\x18\x03 \x01(\tH\x02R\x04name\x88\x01\x01\x12\x19\n" +
 	"\x05owner\x18\x04 \x01(\tH\x03R\x05owner\x88\x01\x01\x12(\n" +

@@ -1,3 +1,8 @@
+# Canonical validated example: a zip-backed function exercising the full
+# modern surface -- versioning with the $LATEST.PUBLISHED head, an alias
+# with a qualified function URL and qualified satellites, per-qualifier
+# scaling bounds, and the Managed Instances / durable-execution /
+# per-tenant-isolation platform arms.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
@@ -11,6 +16,7 @@ spec:
     bucket:
       value: my-bucket
     key: lambda/hello.zip
+  codeSha256: "q0Wep3z1sTImroLBJKcRuBIfqkKing9UVePUFmSpjKQ="
   runtime: nodejs22.x
   handler: index.handler
   architecture: x86_64
@@ -18,3 +24,39 @@ spec:
   timeoutSeconds: 10
   environment:
     EXAMPLE: "true"
+  publish: true
+  publishTo: LATEST_PUBLISHED
+  managedInstances:
+    capacityProviderArn: arn:aws:lambda:us-west-2:123456789012:capacity-provider:steady-fleet
+    memoryGibPerVcpu: 4
+    maxConcurrencyPerEnvironment: 8
+  durableConfig:
+    executionTimeoutSeconds: 86400
+    retentionPeriodDays: 30
+  tenantIsolationMode: PER_TENANT
+  aliases:
+    - name: live
+      functionVersion: "1"
+  functionUrl:
+    authorizationType: AWS_IAM
+    qualifier: live
+  invokePermissions:
+    - statementId: allow-url-account-callers
+      principal: "123456789012"
+      action: lambda:InvokeFunctionUrl
+      functionUrlAuthType: AWS_IAM
+      invokedViaFunctionUrl: true
+      qualifier: live
+    - statementId: allow-alexa-skill
+      principal: alexa-appkit.amazon.com
+      eventSourceToken: amzn1.ask.skill.12345678-1234-1234-1234-123456789012
+  asyncInvokeConfig:
+    maximumRetryAttempts: 1
+    qualifier: live
+  runtimeManagement:
+    updateRuntimeOn: FunctionUpdate
+    qualifier: live
+  scalingConfigs:
+    - qualifier: "$LATEST.PUBLISHED"
+      minExecutionEnvironments: 1
+      maxExecutionEnvironments: 20

@@ -44,10 +44,13 @@ variable "spec" {
     # ACTIVE | BACKUP — only for REGIONAL_MANAGED_PROXY subnets.
     role = optional(string, "")
 
-    # Secondary IPv4 ranges for alias IPs (GKE pods/services).
+    # Secondary IPv4 ranges for alias IPs (GKE pods/services). Each range's
+    # CIDR comes from exactly one of ip_cidr_range or reserved_internal_range
+    # (spec-enforced).
     secondary_ip_ranges = optional(list(object({
-      range_name    = string
-      ip_cidr_range = string
+      range_name              = string
+      ip_cidr_range           = optional(string, "")
+      reserved_internal_range = optional(string, "")
     })))
 
     # Let VMs without external IPs reach Google APIs internally.
@@ -82,6 +85,29 @@ variable "spec" {
       metadata_fields      = optional(list(string), [])
       filter_expr          = optional(string, "")
     }))
+
+    # Source the primary CIDR from a Network Connectivity internal range
+    # (alternative to ip_cidr_range). Immutable.
+    reserved_internal_range = optional(string, "")
+
+    # Pin a specific internal IPv6 prefix (INTERNAL access type only).
+    # Immutable.
+    internal_ipv6_prefix = optional(string, "")
+
+    # BYOIP: PublicDelegatedPrefix the subnet's IPv6 space is drawn from
+    # (dual-stack / IPv6-only subnets only).
+    ip_collection = optional(string, "")
+
+    # Resource Manager tags bound at create time (tagKeys/... ->
+    # tagValues/...). Changing them replaces the subnetwork.
+    resource_manager_tags = optional(map(string), {})
+
+    # ARP subnet-mask resolution mode for appliance/NFV subnets. Immutable.
+    resolve_subnet_mask = optional(string, "")
+
+    # What happens to the subnetwork in GCP on destroy:
+    # DELETE (provider default), PREVENT, or ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -97,8 +123,8 @@ variable "spec" {
   # HCL's || does not short-circuit — nullable optionals are guarded with
   # coalesce/try so a null stack_type cannot crash validation.
   validation {
-    condition     = coalesce(var.spec.stack_type, "IPV4_ONLY") == "IPV6_ONLY" ? var.spec.ip_cidr_range == "" : var.spec.ip_cidr_range != ""
-    error_message = "ip_cidr_range is required (only IPV6_ONLY subnets omit it)."
+    condition     = coalesce(var.spec.stack_type, "IPV4_ONLY") == "IPV6_ONLY" ? var.spec.ip_cidr_range == "" : (var.spec.ip_cidr_range != "" || var.spec.reserved_internal_range != "")
+    error_message = "set ip_cidr_range or reserved_internal_range (only IPV6_ONLY subnets omit both)."
   }
 
   validation {

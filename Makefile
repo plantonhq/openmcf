@@ -141,6 +141,15 @@ protos: buf-lint buf-fmt proto-tools
 	@printf '# gazelle:ignore\njava_library(\n    name = "java",\n    srcs = glob(["**/*.java"]),\n    visibility = ["//visibility:public"],\n    deps = [\n        "@maven//:build_buf_protovalidate",\n        "@maven//:com_google_guava_guava",\n        "@maven//:com_google_protobuf_protobuf_java",\n        "@maven//:io_grpc_grpc_api",\n        "@maven//:io_grpc_grpc_protobuf",\n        "@maven//:io_grpc_grpc_stub",\n        "@maven//:javax_annotation_javax_annotation_api",\n    ],\n)\n' > generated/stubs/java/BUILD.bazel
 	@echo "Verifying generated Java stubs compile..."
 	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //generated/stubs/java:java
+	# Rule-engine conformance gate: every CEL validation rule must COMPILE on
+	# protovalidate-java (the platform control plane's engine, and the
+	# strictest of the consumer engines). Walks every message descriptor --
+	# rules compile lazily per validated type, so anything narrower silently
+	# skips nested types (a rule the Java engine could not evaluate once
+	# shipped in a release and emptied every fresh local instance's chart
+	# catalog). See hack/javagate/ProtovalidateConformanceGate.java.
+	@echo "Verifying every CEL rule compiles on protovalidate-java..."
+	${BAZEL} test ${BAZEL_REMOTE_FLAGS} //hack/javagate:protovalidate_conformance_gate
 	${BAZEL} run //:gazelle
 
 .PHONY: build-optional-linter-plugin
@@ -150,6 +159,9 @@ build-optional-linter-plugin:
 
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
+	# --disable-symlinks keeps local runs immune to the bazel-* convenience
+	# symlinks (bazel run //:gazelle recreates them), whose tree duplication
+	# otherwise fails the module compile with duplicate-symbol errors.
 	buf lint --disable-symlinks
 
 .PHONY: buf-breaking
@@ -222,6 +234,29 @@ build-catalog-bundle:
 verify-catalog-bundle:
 	go run ./pkg/catalogbundle/cli verify --bundle build/catalog-bundle.zip
 
+.PHONY: build-catalog-schema-plugin
+build-catalog-schema-plugin:
+	go build -o $(shell go env GOPATH)/bin/protoc-gen-catalog-schema ./pkg/catalogschema/protoc-gen-catalog-schema
+
+# Builds the catalog-schemas artifact -- one JSON schema document per catalog
+# .proto (the pkg/catalogschema published contract, authored source included),
+# for consoles and tools that render API contracts without compiling protos.
+# The tree is regenerated wholesale into build/ (never committed) and zipped
+# deterministically. See pkg/catalogschema/types.go for the contract.
+.PHONY: build-catalog-schemas
+build-catalog-schemas: build-catalog-schema-plugin
+	rm -rf build/catalog-schemas
+	buf generate --template buf.gen.catalog-schema.yaml
+	go run ./pkg/catalogschema/cli package --dir build/catalog-schemas --out build/catalog-schemas.zip
+
+# Verifies the built schema artifact: every user-facing registry kind's four
+# contract documents are present at its declared version, nothing from the
+# _test provider ships, and every document reads back under the published
+# contract. An artifact that fails must never ship.
+.PHONY: verify-catalog-schemas
+verify-catalog-schemas:
+	go run ./pkg/catalogschema/cli verify --zip build/catalog-schemas.zip
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go
@@ -235,6 +270,9 @@ generate-kubernetes-types:
 # `planton explain` serves offline. Generated protobuf code strips comments,
 # so the prose is distilled from a descriptor image built with source info.
 # Deterministic: unchanged protos regenerate a byte-identical artifact.
+# If `buf build` fails with "symbol already defined at bazel-<repo>/...",
+# stale Bazel output symlinks at the repo root are leaking a duplicate
+# proto tree into the module walk -- delete the bazel-* symlinks and rerun.
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build
@@ -259,9 +297,10 @@ generate-proto-docs:
 generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
-		--provider 'google=hashicorp/google@~> 7.0' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.0' \
-		--provider 'azurerm=hashicorp/azurerm@5.0.0'
+		--provider 'google=hashicorp/google@~> 7.43' \
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
+		--provider 'azurerm=hashicorp/azurerm@5.0.0' \
+		--provider 'aws=hashicorp/aws@~> 6.58'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this
@@ -278,8 +317,14 @@ generate-provider-parity-report:
 # on every other kind's schema, so there is deliberately no way to scope a
 # run. Deterministic: unchanged schemas regenerate byte-identical files
 # (enforced by the drift test in pkg/explain/refgen).
+#
+# Depends on generate-proto-docs: the pages' comment PROSE renders from the
+# embedded pkg/protodocs index (the protobuf runtime strips comments), so
+# regenerating references against a stale index silently reprints old field
+# documentation even though the schema tables update. Chaining the two is
+# cheap and idempotent — both regens are byte-deterministic.
 .PHONY: generate-reference
-generate-reference:
+generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 .PHONY: build-go
@@ -353,10 +398,6 @@ release-buf:
 next-version:  ## show what the next version would be
 	@python3 tools/ci/release/next_version.py $(bump)
 
-.PHONY: snapshot
-snapshot: deps  ## build a local snapshot using GoReleaser
-	goreleaser release --snapshot --clean --skip=publish
-
 .PHONY: release
 release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: patch). Override with version=vX.Y.Z
 	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
@@ -379,19 +420,6 @@ run-docs:
 .PHONY: build-docs
 build-docs:
 	$(MAKE) -C docs build
-
-# ── website (site/) ────────────────────────────────────────────────────────────
-.PHONY: run-site
-run-site:
-	$(MAKE) -C site dev
-
-.PHONY: build-site
-build-site:
-	$(MAKE) -C site build
-
-.PHONY: preview-site
-preview-site:
-	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies

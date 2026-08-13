@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudRunJobSpec defines a Cloud Run job (`google_cloud_run_v2_job`) —
 a run-to-completion container workload that executes a fixed number of
 parallel tasks and exits. Unlike a Cloud Run service (request-serving,
@@ -14,16 +16,21 @@ a task template once, then each run (an "execution") stamps out
 task_count tasks with up to parallelism running concurrently.
 
 Jobs share the same container/volume/VPC vocabulary as GcpCloudRun but
-deliberately omit serving concerns — no ingress, no traffic, no probes.
-Trigger executions with `gcloud run jobs execute`, Cloud Scheduler, or
-Eventarc; this resource owns the job definition, not individual runs.
+omit serving concerns — no ingress, no traffic, no liveness/readiness
+probes (a startup probe IS supported: it gates task start, and a task
+that never passes it is shut down and retried). Trigger executions with
+`gcloud run jobs execute`, Cloud Scheduler, Eventarc, or declaratively
+at deploy time via start_execution_token / run_execution_token; this
+resource owns the job definition, not individual runs.
 
 ## Example
 
 ```yaml
 # Development manifest for GcpCloudRunJob — exercises batch semantics
-# (multi-task parallelism, secret env, Cloud SQL volume, direct VPC egress)
-# for offline plan verification.
+# (multi-task parallelism, secret env, Cloud SQL and GCS volumes with a
+# sub_path mount, a TCP startup probe against the declared port, execution
+# metadata, a run-on-deploy token, direct VPC egress, and the teardown
+# policy) for offline plan verification.
 #
 # Usage: planton tofu plan --manifest catalog/gcp/gcpcloudrunjob/e2e/manifest.yaml
 apiVersion: gcp.planton.dev/v1alpha1
@@ -38,6 +45,10 @@ spec:
   jobName: hack-etl
   labels:
     team: platform
+  executionLabels:
+    cost-center: "1234"
+  executionAnnotations:
+    external-tool/trace: enabled
   template:
     containers:
       - name: worker
@@ -55,11 +66,27 @@ spec:
         volumeMounts:
           - name: cloudsql
             mountPath: /cloudsql
+          - name: datalake
+            mountPath: /data
+            subPath: batch-input
+        ports:
+          containerPort: 8080
+        startupProbe:
+          periodSeconds: 2
+          failureThreshold: 3
+          tcpSocket: {}
     volumes:
       - name: cloudsql
         cloudSqlInstance:
           instances:
             - value: my-project:us-central1:hack-db
+      - name: datalake
+        gcs:
+          bucket:
+            value: hack-datalake-bucket
+          readOnly: true
+          mountOptions:
+            - implicit-dirs
     timeoutSeconds: 1800
     maxRetries: 2
     vpcAccess:
@@ -72,7 +99,9 @@ spec:
     executionEnvironment: EXECUTION_ENVIRONMENT_GEN2
   taskCount: 5
   parallelism: 2
+  startExecutionToken: hack-run-once
   deletionProtection: false
+  deletionPolicy: DELETE
 ```
 
 ## Spec Fields
@@ -102,8 +131,28 @@ spec:
 | `spec.template.containers[].volumeMounts` | `[]GcpCloudRunJobVolumeMount` |  |  |  |
 | `spec.template.containers[].volumeMounts[].name` | `string` | yes |  |  |
 | `spec.template.containers[].volumeMounts[].mountPath` | `string` | yes |  |  |
+| `spec.template.containers[].volumeMounts[].subPath` | `string` |  |  |  |
 | `spec.template.containers[].workingDir` | `string` |  |  |  |
 | `spec.template.containers[].dependsOn` | `[]string` |  |  |  |
+| `spec.template.containers[].ports` | `GcpCloudRunJobContainerPort` |  |  |  |
+| `spec.template.containers[].ports.containerPort` | `int32` |  |  |  |
+| `spec.template.containers[].ports.name` | `string` |  |  |  |
+| `spec.template.containers[].startupProbe` | `GcpCloudRunJobProbe` |  |  |  |
+| `spec.template.containers[].startupProbe.initialDelaySeconds` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.timeoutSeconds` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.periodSeconds` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.failureThreshold` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.httpGet` | `GcpCloudRunJobHttpGetAction` |  |  |  |
+| `spec.template.containers[].startupProbe.httpGet.path` | `string` |  |  |  |
+| `spec.template.containers[].startupProbe.httpGet.port` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.httpGet.httpHeaders` | `[]GcpCloudRunJobHttpHeader` |  |  |  |
+| `spec.template.containers[].startupProbe.httpGet.httpHeaders[].name` | `string` | yes |  |  |
+| `spec.template.containers[].startupProbe.httpGet.httpHeaders[].value` | `string` |  |  |  |
+| `spec.template.containers[].startupProbe.tcpSocket` | `GcpCloudRunJobTcpSocketAction` |  |  |  |
+| `spec.template.containers[].startupProbe.tcpSocket.port` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.grpc` | `GcpCloudRunJobGrpcAction` |  |  |  |
+| `spec.template.containers[].startupProbe.grpc.port` | `int32` |  |  |  |
+| `spec.template.containers[].startupProbe.grpc.service` | `string` |  |  |  |
 | `spec.template.volumes` | `[]GcpCloudRunJobVolume` |  |  |  |
 | `spec.template.volumes[].name` | `string` | yes |  |  |
 | `spec.template.volumes[].cloudSqlInstance` | `GcpCloudRunJobVolumeCloudSql` |  |  |  |
@@ -121,6 +170,7 @@ spec:
 | `spec.template.volumes[].gcs` | `GcpCloudRunJobVolumeGcs` |  |  |  |
 | `spec.template.volumes[].gcs.bucket` | `string \| valueFrom` | yes |  | GcpGcsBucket (`status.outputs.bucket_id`) |
 | `spec.template.volumes[].gcs.readOnly` | `bool` |  |  |  |
+| `spec.template.volumes[].gcs.mountOptions` | `[]string` |  |  |  |
 | `spec.template.volumes[].nfs` | `GcpCloudRunJobVolumeNfs` |  |  |  |
 | `spec.template.volumes[].nfs.server` | `string` | yes |  |  |
 | `spec.template.volumes[].nfs.path` | `string` | yes |  |  |
@@ -148,6 +198,11 @@ spec:
 | `spec.binaryAuthorization.breakglassJustification` | `string` |  |  |  |
 | `spec.gpuZonalRedundancyDisabled` | `bool` |  |  |  |
 | `spec.deletionProtection` | `bool` |  | `true` |  |
+| `spec.executionLabels` | `map<string, string>` |  |  |  |
+| `spec.executionAnnotations` | `map<string, string>` |  |  |  |
+| `spec.startExecutionToken` | `string` |  |  |  |
+| `spec.runExecutionToken` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -214,6 +269,7 @@ worker; additional containers are sidecars sharing the task's network
 namespace (localhost) and volumes. Use depends_on for startup ordering.
 
 - rule: {"repeated":{"minItems":"1"}}
+- rule: the startup window (failure_threshold × period_seconds, defaults 3 × 10) cannot exceed 240 seconds
 
 ### spec.template.containers[].name
 
@@ -334,6 +390,14 @@ Absolute path in the container. Cloud SQL volumes must mount at "/cloudsql".
 
 - rule: {"required":true,"string":{"pattern":"^/.*$"}}
 
+### spec.template.containers[].volumeMounts[].subPath
+
+`string`
+
+Path WITHIN the volume to mount instead of its root — e.g. mount only
+one secret item or one bucket directory. Relative path; empty mounts
+the volume root.
+
 ### spec.template.containers[].workingDir
 
 `string`
@@ -347,6 +411,157 @@ Working directory for the entrypoint.
 Names of containers this one waits for before starting.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
+
+### spec.template.containers[].ports
+
+`GcpCloudRunJobContainerPort`
+
+The port this container listens on — for jobs this exists to give
+probes a target (there is no request traffic). If unset and a probe
+needs a port, the probe names one explicitly.
+
+### spec.template.containers[].ports.containerPort
+
+`int32` · optional (explicit presence)
+
+Port number the container listens on.
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.template.containers[].ports.name
+
+`string`
+
+Protocol selector: "http1" (default) or "h2c".
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["","http1","h2c"]}}
+
+### spec.template.containers[].startupProbe
+
+`GcpCloudRunJobProbe`
+
+Probe that gates task start: the task's work does not begin (and
+depends_on waiters stay blocked) until this succeeds; a container
+that never passes is shut down and the task retried per max_retries.
+Supports HTTP, TCP, and gRPC checks — the ONLY probe type jobs have
+(no liveness/readiness; those are serving concerns).
+
+- rule: probe timeout_seconds cannot exceed period_seconds
+
+### spec.template.containers[].startupProbe.initialDelaySeconds
+
+`int32` · optional (explicit presence)
+
+Seconds to wait after container start before the first probe (0-240).
+
+- rule: {"int32":{"lte":240,"gte":0}}
+
+### spec.template.containers[].startupProbe.timeoutSeconds
+
+`int32` · optional (explicit presence)
+
+Seconds after which a single probe attempt times out (1-240; GCP
+default 1). Must not exceed period_seconds.
+
+- rule: {"int32":{"lte":240,"gte":1}}
+
+### spec.template.containers[].startupProbe.periodSeconds
+
+`int32` · optional (explicit presence)
+
+Seconds between probe attempts (1-240; GCP default 10).
+
+- rule: {"int32":{"lte":240,"gte":1}}
+
+### spec.template.containers[].startupProbe.failureThreshold
+
+`int32` · optional (explicit presence)
+
+Consecutive failures after which the startup probe fails and the
+container is shut down (GCP default 3).
+
+- rule: {"int32":{"gte":1}}
+
+### spec.template.containers[].startupProbe.httpGet
+
+`GcpCloudRunJobHttpGetAction`
+
+HTTP GET against a path on the container; 2xx is success. The job
+code must expose the health endpoint itself.
+
+### spec.template.containers[].startupProbe.httpGet.path
+
+`string`
+
+Path to probe, e.g. "/healthz". Defaults to "/".
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^/.*$"}}
+
+### spec.template.containers[].startupProbe.httpGet.port
+
+`int32` · optional (explicit presence)
+
+Port to probe. If unset, the container's declared port is used.
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.template.containers[].startupProbe.httpGet.httpHeaders
+
+`[]GcpCloudRunJobHttpHeader`
+
+Custom headers sent with the probe request.
+
+### spec.template.containers[].startupProbe.httpGet.httpHeaders[].name
+
+`string` · required
+
+Header name.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.template.containers[].startupProbe.httpGet.httpHeaders[].value
+
+`string`
+
+Header value.
+
+### spec.template.containers[].startupProbe.tcpSocket
+
+`GcpCloudRunJobTcpSocketAction`
+
+TCP connect to a port; a successful connection is success. The
+simplest probe — no code changes needed beyond listening.
+
+### spec.template.containers[].startupProbe.tcpSocket.port
+
+`int32` · optional (explicit presence)
+
+Port to connect to. If unset, the container's declared port is used.
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.template.containers[].startupProbe.grpc
+
+`GcpCloudRunJobGrpcAction`
+
+Standard gRPC health-check protocol (grpc.health.v1.Health/Check),
+which the job code must implement.
+
+### spec.template.containers[].startupProbe.grpc.port
+
+`int32` · optional (explicit presence)
+
+Port the gRPC health service listens on. If unset, the container's
+declared port is used.
+
+- rule: {"int32":{"lte":65535,"gte":1}}
+
+### spec.template.containers[].startupProbe.grpc.service
+
+`string`
+
+Service name passed to the health check. If empty, overall server
+health is checked.
 
 ### spec.template.volumes
 
@@ -474,6 +689,16 @@ The bucket to mount. Accepts a literal name or a GcpGcsBucket reference.
 `bool`
 
 Mount read-only.
+
+### spec.template.volumes[].gcs.mountOptions
+
+`[]string`
+
+Flags passed to the gcsfuse command mounting this volume, without
+leading dashes (e.g. "implicit-dirs", "only-dir=media",
+"file-cache-max-size-mb=512").
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.template.volumes[].nfs
 
@@ -661,6 +886,9 @@ possible for that run.
 
 Launch-stage gate for preview Cloud Run features. Set BETA (or ALPHA)
 only when the spec uses features GCP rejects at the default GA stage.
+The provider enum admits more values (UNIMPLEMENTED, PRELAUNCH,
+EARLY_ACCESS, DEPRECATED), but Cloud Run itself supports only
+ALPHA/BETA/GA — this list encodes the API truth, deliberately.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["","ALPHA","BETA","GA"]}}
 
@@ -710,10 +938,65 @@ Prevents the job from being destroyed while true. Defaults to true
 
 - default: `true`
 
+### spec.executionLabels
+
+`map<string, string>`
+
+Labels stamped on every EXECUTION the job creates (visible on
+execution objects and in billing breakdowns), as opposed to `labels`,
+which lands on the job object itself. Same namespace restrictions as
+job labels.
+
+### spec.executionAnnotations
+
+`map<string, string>`
+
+Annotations stamped on every EXECUTION the job creates, as opposed to
+`annotations`, which lands on the job object. Same namespace
+restrictions.
+
+### spec.startExecutionToken
+
+`string`
+
+Declarative run-on-deploy: a unique suffix string that triggers a new
+execution when the job is created or updated, with the job counted
+READY as soon as the execution successfully STARTS. Changing the
+token on a later update triggers another run. The combined length of
+job name and token must stay under 63 characters. Set at most one of
+the two token fields.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63"}}
+
+### spec.runExecutionToken
+
+`string`
+
+Declarative run-on-deploy like start_execution_token, but the job is
+counted READY only when the triggered execution successfully
+COMPLETES — deploy-and-verify semantics for migrations and one-shot
+setup work. The combined length of job name and token must stay under
+63 characters. Set at most one of the two token fields.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63"}}
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the Cloud Run job when this resource is destroyed:
+  "" / "DELETE" -- the job is deleted (default)
+  "PREVENT"     -- destroy operations fail while this is set
+  "ABANDON"     -- the job is removed from management but left
+                   running in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `gpu.redundancy_requires_accelerator`: gpu_zonal_redundancy_disabled only applies to GPU jobs — set template.node_selector.accelerator
 - `parallelism_lte_task_count`: parallelism cannot exceed task_count when both are set
+- `execution_token.start_xor_run`: start_execution_token and run_execution_token conflict — a deploy triggers at most one kind of execution
 
 ## Outputs
 

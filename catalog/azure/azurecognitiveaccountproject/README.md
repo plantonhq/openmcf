@@ -23,3 +23,7 @@ The **AzureCognitiveAccountProject** component deploys an AI Foundry project ont
 ## Future Enhancements
 
 - Project-scoped connections once the account connections surface lands (deferred with the account's connections arm).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

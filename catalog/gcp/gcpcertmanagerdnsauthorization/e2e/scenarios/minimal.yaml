@@ -19,3 +19,6 @@ spec:
   description: Ephemeral DNS authorization for Planton OSS E2E
   labels:
     e2e-suite: gcp
+  # Explicit DELETE (the provider default) proves the deletion_policy
+  # round-trip: create accepts it and re-plans stay diff-free.
+  deletionPolicy: DELETE

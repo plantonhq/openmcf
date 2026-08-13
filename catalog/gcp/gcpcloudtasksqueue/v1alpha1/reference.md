@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpCloudTasksQueueSpec defines the configuration for a GCP Cloud Tasks queue.
 
 Cloud Tasks is a fully managed service for executing, dispatching, and
@@ -29,9 +31,15 @@ Important behavioral notes:
 
   - Cloud Tasks queues do NOT support GCP labels.
 
-  - Pause/resume (the API's queue state) is a runtime operation, not part
-    of this declarative surface. Use the gcloud CLI or the Cloud Tasks API
-    to pause or resume dispatch on a provisioned queue.
+  - Pause/resume is declarative here: editing desired_state and applying
+    pauses or resumes the queue. But the provider tracks the field as a
+    config-only (virtual) value — it never reads the queue's live dispatch
+    state back into it — so an out-of-band gcloud pause is INVISIBLE to an
+    apply whose desired_state did not change (live-verified: the apply
+    plans zero changes and the queue stays paused). To recover a queue
+    paused out-of-band, either resume it out-of-band or flip the spec
+    PAUSED → apply → RUNNING → apply (the value must change for the
+    provider to issue the resume call).
 
   - Rate limits and retry config have GCP-computed defaults when not specified.
     For most workloads, the defaults are reasonable starting points.
@@ -58,6 +66,11 @@ spec:
     maxDoublings: 16
   stackdriverLoggingConfig:
     samplingRatio: 0.1
+  # Destroy really destroys in E2E: the live lanes prove the full lifecycle.
+  deletionPolicy: DELETE
+  # Explicit dispatch state: the queue runs (and the module reconciles the
+  # value on every apply -- pause/resume is declarative).
+  desiredState: RUNNING
 ```
 
 ## Spec Fields
@@ -100,6 +113,8 @@ spec:
 | `spec.retryConfig.maxDoublings` | `int32` |  |  |  |
 | `spec.stackdriverLoggingConfig` | `GcpCloudTasksQueueLoggingConfig` |  |  |  |
 | `spec.stackdriverLoggingConfig.samplingRatio` | `double` |  |  |  |
+| `spec.desiredState` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -156,9 +171,11 @@ routing at the queue level, then enqueue tasks with just a request body.
 HTTP method override for all tasks in this queue.
 When specified, overrides the method on individual tasks.
 Note: if set to GET, the task body is ignored at execution time.
-Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS".
+Valid values: "POST", "GET", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS",
+or the API's explicit "HTTP_METHOD_UNSPECIFIED" sentinel (equivalent to
+leaving the override unset).
 
-- rule: http_method must be one of: POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS
+- rule: http_method must be one of: HTTP_METHOD_UNSPECIFIED, POST, GET, HEAD, PUT, DELETE, PATCH, OPTIONS
 
 ### spec.httpTarget.headerOverrides
 
@@ -412,6 +429,42 @@ Fraction of operations to log. Must be between 0.0 and 1.0 inclusive.
 0.0 means no logging (default), 1.0 means log every dispatch operation.
 
 - rule: sampling_ratio must be between 0.0 and 1.0 inclusive
+
+### spec.desiredState
+
+`string`
+
+Dispatch state the queue is held in:
+  ""        -- same as "RUNNING" (the provider default)
+  "RUNNING" -- tasks are dispatched to their targets
+  "PAUSED"  -- tasks accumulate in the queue but none are dispatched —
+               the safe holding state during target maintenance or
+               incident response
+Declarative for spec-driven transitions: editing this value and
+applying pauses/resumes the queue (live-verified both directions).
+NOT drift-correcting: the provider treats this as a config-only
+(virtual) field and never reads the live dispatch state back, so an
+out-of-band gcloud pause survives applies whose spec value is
+unchanged. Recover by resuming out-of-band, or by flipping this field
+PAUSED → apply → RUNNING → apply so the value change triggers the
+provider's resume call.
+
+- rule: desired_state must be RUNNING or PAUSED
+
+### spec.deletionPolicy
+
+`string`
+
+What destroying this resource does to the queue:
+  ""        -- same as "DELETE" (provider default)
+  "DELETE"  -- the queue and every task still in it are deleted; the
+               queue's ID is reserved by the API for up to 7 days
+  "PREVENT" -- destroy FAILS; protects a queue whose backlog must not
+               be lost
+  "ABANDON" -- the queue is removed from management but keeps running
+               (and dispatching) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
 
 ## Outputs
 

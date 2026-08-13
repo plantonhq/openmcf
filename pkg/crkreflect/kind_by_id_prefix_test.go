@@ -21,7 +21,7 @@ func TestKindByIdPrefix(t *testing.T) {
 		},
 		{
 			name:     "GCP GKE Cluster",
-			idPrefix: "gke",
+			idPrefix: "gcpgke",
 			want:     cloudresourcekind.CloudResourceKind_GcpGkeCluster,
 			wantErr:  false,
 		},

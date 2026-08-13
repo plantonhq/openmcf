@@ -115,6 +115,7 @@ An optional human-readable description of the role's purpose, shown in
 the IAM console. Updatable in place. Maximum 1000 characters; AWS rejects
 typographic ("curly") quotes here, so stick to plain ASCII quoting.
 
+- rule: description must not contain typographic (curly) quote characters -- AWS rejects them; use plain ASCII quotes
 - rule: {"string":{"maxLen":"1000"}}
 
 ### spec.path
@@ -331,11 +332,14 @@ Fields on other kinds that can point at this resource:
 | AwsCodePipeline | `spec.stages[].onSuccess.rules[].roleArn` | `status.outputs.role_arn` |
 | AwsCodePipeline | `spec.stages[].onFailure.condition.rules[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
+| AwsCognitoUserPool | `spec.userGroups[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.serviceConnect.services[].tls.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.volumeConfiguration.managedEbsVolume.roleArn` | `status.outputs.role_arn` |
+| AwsEcsService | `spec.vpcLatticeConfigurations[].roleArn` | `status.outputs.role_arn` |
 | AwsEcsTaskDefinition | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsEcsTaskDefinition | `spec.taskRole` | `status.outputs.role_arn` |
 | AwsEksAccessEntry | `spec.principalArn` | `status.outputs.role_arn` |
@@ -354,38 +358,53 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.mskSource.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.s3Backup.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.extendedS3.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.dataFormatConversion.schema.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearch.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearch.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.opensearch.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearch.vpcConfig.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearchServerless.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearchServerless.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.opensearchServerless.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.opensearchServerless.vpcConfig.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.httpEndpoint.secretsManager.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.httpEndpoint.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.httpEndpoint.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.httpEndpoint.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.redshift.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.redshift.secretsManager.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.redshift.s3Config.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.redshift.s3Backup.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.redshift.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.splunk.secretsManager.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.splunk.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.splunk.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.snowflake.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.snowflake.secretsManager.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.snowflake.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.snowflake.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.iceberg.roleArn` | `status.outputs.role_arn` |
 | AwsKinesisFirehose | `spec.iceberg.s3Config.roleArn` | `status.outputs.role_arn` |
+| AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.roleArn` | `status.outputs.role_arn` |
+| AwsKmsKey | `spec.grants[].granteePrincipal` | `status.outputs.role_arn` |
+| AwsKmsKey | `spec.grants[].retiringPrincipal` | `status.outputs.role_arn` |
 | AwsLambda | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsMwaaEnvironment | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsNeptuneCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.advancedSecurityOptions.masterUserArn` | `status.outputs.role_arn` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.roleArn` | `status.outputs.role_arn` |
 | AwsPlantonRunner | `spec.taskRole` | `status.outputs.role_arn` |
-| AwsRdsCluster | `spec.iamRoles` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.instances[].monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.iamRoles[].role` | `status.outputs.role_arn` |
 | AwsRdsCluster | `spec.monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsCluster | `spec.s3Import.ingestionRole` | `status.outputs.role_arn` |
 | AwsRdsInstance | `spec.monitoringRoleArn` | `status.outputs.role_arn` |
+| AwsRdsInstance | `spec.s3Import.ingestionRole` | `status.outputs.role_arn` |
+| AwsRdsInstance | `spec.iamRoles[].role` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftCluster | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
+| AwsRedshiftCluster | `spec.scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
 | AwsS3Bucket | `spec.replication.roleArn` | `status.outputs.role_arn` |
@@ -399,6 +418,12 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.rStudioServerProDomainSettings.domainExecutionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `status.outputs.role_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
 | AwsSnsSubscription | `spec.subscriptionRoleArn` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.application.successFeedbackRole` | `status.outputs.role_arn` |

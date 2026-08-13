@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsRoute53ZoneSpec(t *testing.T) {
@@ -42,7 +43,14 @@ var _ = ginkgo.Describe("AwsRoute53ZoneSpec validations", func() {
 	ginkgo.It("accepts a public zone with comment, force_destroy, and accelerated recovery", func() {
 		spec.Comment = "production apex zone - platform team"
 		spec.ForceDestroy = true
-		spec.EnableAcceleratedRecovery = true
+		spec.EnableAcceleratedRecovery = proto.Bool(true)
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts an explicit-false accelerated recovery on a public zone", func() {
+		// The disable path: AWS keeps the feature on unless an explicit false
+		// is sent, so false is a real configuration, not a zero value.
+		spec.EnableAcceleratedRecovery = proto.Bool(false)
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
 	})
 
@@ -115,7 +123,18 @@ var _ = ginkgo.Describe("AwsRoute53ZoneSpec validations", func() {
 		spec.VpcAssociations = []*AwsRoute53ZoneVpcAssociation{
 			{VpcId: strRef("vpc-0123456789abcdef0")},
 		}
-		spec.EnableAcceleratedRecovery = true
+		spec.EnableAcceleratedRecovery = proto.Bool(true)
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects even explicit-false accelerated recovery on a private zone", func() {
+		// Presence is the config: any value is dead configuration where the
+		// feature cannot exist.
+		spec.IsPrivate = true
+		spec.VpcAssociations = []*AwsRoute53ZoneVpcAssociation{
+			{VpcId: strRef("vpc-0123456789abcdef0")},
+		}
+		spec.EnableAcceleratedRecovery = proto.Bool(false)
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
@@ -159,6 +178,24 @@ var _ = ginkgo.Describe("AwsRoute53ZoneSpec validations", func() {
 		spec.Dnssec = &AwsRoute53ZoneDnssec{
 			KmsKeyArn:         strRef("arn:aws:kms:us-east-1:123456789012:key/abc"),
 			KeySigningKeyName: "bad name!",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts both key-signing-key statuses", func() {
+		for _, status := range []string{"ACTIVE", "INACTIVE"} {
+			spec.Dnssec = &AwsRoute53ZoneDnssec{
+				KmsKeyArn:           strRef("arn:aws:kms:us-east-1:123456789012:key/abc"),
+				KeySigningKeyStatus: status,
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed(), "status %q should be valid", status)
+		}
+	})
+
+	ginkgo.It("rejects an unknown key-signing-key status", func() {
+		spec.Dnssec = &AwsRoute53ZoneDnssec{
+			KmsKeyArn:           strRef("arn:aws:kms:us-east-1:123456789012:key/abc"),
+			KeySigningKeyStatus: "Disabled",
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})

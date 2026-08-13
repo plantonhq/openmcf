@@ -30,11 +30,13 @@ const (
 // created, updated, and destroyed alongside the infrastructure that consumes
 // it.
 //
-// Each entry in `objects` is one `aws_s3_object`-equivalent upload: the object
-// key, its content (inline UTF-8 text or base64-encoded binary), and the full
-// per-object HTTP/storage surface (content headers, user metadata, storage
-// class, encryption override, checksum, Object Lock retention, canned ACL,
-// tags).
+// Each entry in `objects` is one managed object: the object key, its source
+// (inline UTF-8 text, base64-encoded binary, or a server-side COPY of an
+// existing S3 object), and the full per-object HTTP/storage surface (content
+// headers, user metadata, storage class, encryption override, checksum,
+// Object Lock retention, canned ACL, tags). Content-sourced entries render as
+// `aws_s3_object`; copy-sourced entries render as `aws_s3_object_copy` — the
+// data never travels through the deploy host either way.
 //
 // Division of responsibility with AwsS3Bucket — read this before reaching for
 // the per-object security knobs:
@@ -49,7 +51,8 @@ const (
 //
 // Key behaviors:
 //   - `key` is the object's identity. Changing a key replaces that object
-//     (delete + create); changing only content updates it in place.
+//     (delete + create); changing only content updates it in place. A
+//     copy-sourced object re-copies in place when its copy settings change.
 //   - On a versioning-enabled bucket, destroying an object removes ALL of its
 //     versions.
 //   - Object Lock fields require the BUCKET to have been created with Object
@@ -146,15 +149,16 @@ type AwsS3Object struct {
 	// identity in this set. Changing the key replaces the object.
 	// Examples: "config/app.json", "assets/logo.png", "data/seed.csv"
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
-	// The content source for the object. Exactly one must be specified.
+	// The source for the object. Exactly one must be specified.
 	// For content that lives in files at deploy time (build artifacts, large
-	// archives), stage it through a pipeline into the bucket instead — this
-	// component is for content that belongs IN the manifest.
+	// archives), stage it into a bucket through a pipeline and use `copy_from`
+	// — inline arms are for content that belongs IN the manifest.
 	//
 	// Types that are valid to be assigned to Source:
 	//
 	//	*AwsS3Object_Content
 	//	*AwsS3Object_ContentBase64
+	//	*AwsS3Object_CopyFrom
 	Source isAwsS3Object_Source `protobuf_oneof:"source"`
 	// The MIME content type stored with the object and returned as the
 	// Content-Type header on every GET. Set it correctly for anything a
@@ -345,6 +349,15 @@ func (x *AwsS3Object) GetContentBase64() string {
 	return ""
 }
 
+func (x *AwsS3Object) GetCopyFrom() *AwsS3ObjectCopyFrom {
+	if x != nil {
+		if x, ok := x.Source.(*AwsS3Object_CopyFrom); ok {
+			return x.CopyFrom
+		}
+	}
+	return nil
+}
+
 func (x *AwsS3Object) GetContentType() string {
 	if x != nil && x.ContentType != nil {
 		return *x.ContentType
@@ -488,9 +501,175 @@ type AwsS3Object_ContentBase64 struct {
 	ContentBase64 string `protobuf:"bytes,3,opt,name=content_base64,json=contentBase64,proto3,oneof"`
 }
 
+type AwsS3Object_CopyFrom struct {
+	// Server-side copy of an existing S3 object (any size — the bytes move
+	// inside S3, never through the deploy host). Suitable for promoting
+	// build artifacts between buckets, seeding environments from a golden
+	// bucket, or re-homing objects with new placement/encryption. The copy
+	// is taken at deploy time; it does not track later changes to the
+	// source object.
+	CopyFrom *AwsS3ObjectCopyFrom `protobuf:"bytes,22,opt,name=copy_from,json=copyFrom,proto3,oneof"`
+}
+
 func (*AwsS3Object_Content) isAwsS3Object_Source() {}
 
 func (*AwsS3Object_ContentBase64) isAwsS3Object_Source() {}
+
+func (*AwsS3Object_CopyFrom) isAwsS3Object_Source() {}
+
+// AwsS3ObjectCopyFrom identifies an existing S3 object to copy server-side
+// into this set's bucket, plus the copy-time controls S3's CopyObject API
+// offers. The destination object's placement surface (storage class,
+// encryption, checksum, Object Lock, ACL, tags) comes from the owning
+// AwsS3Object entry's ordinary fields and applies to the COPY — the set's
+// identity tags are always written to the copy (the tagging directive is
+// REPLACE), while the source object's user metadata and content headers are
+// preserved unless `replace_metadata` is set.
+//
+// A version-pinned source (copying one specific version of a versioned
+// object) is NOT expressible: the pinned provider URL-escapes the entire
+// copy source string, so a `?versionId=` selector never survives the
+// request. Copies always take the source's current version.
+type AwsS3ObjectCopyFrom struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The bucket holding the source object.
+	// Can be a literal bucket name or a reference to an AwsS3Bucket component
+	// (resolved from status.outputs.bucket_id). The literal arm also accepts
+	// an S3 access-point ARN (`arn:aws:s3:<region>:<account>:accesspoint/
+	// <name>`) for sources reached through an access point. The deploying
+	// principal needs s3:GetObject on the source.
+	SourceBucket *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=source_bucket,json=sourceBucket,proto3" json:"source_bucket,omitempty"`
+	// The key of the source object within `source_bucket`.
+	// Example: "releases/v1.2.3/app.zip"
+	SourceKey string `protobuf:"bytes,2,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	// Replace the destination object's user metadata and content headers
+	// instead of preserving the source's (S3's REPLACE metadata directive).
+	// When true, the owning object's `metadata`, `content_type`,
+	// `cache_control`, `content_encoding`, `content_disposition`,
+	// `content_language`, and `website_redirect` are written to the copy;
+	// when false (the default) those fields must stay unset and the copy
+	// keeps everything the source object carried.
+	ReplaceMetadata bool `protobuf:"varint,3,opt,name=replace_metadata,json=replaceMetadata,proto3" json:"replace_metadata,omitempty"`
+	// Copy only if the source object's current ETag matches this value
+	// (a precondition evaluated by S3 at copy time; a failed precondition
+	// fails the deploy). Guards promotions against a source that changed
+	// since the ETag was recorded.
+	CopyIfMatch string `protobuf:"bytes,4,opt,name=copy_if_match,json=copyIfMatch,proto3" json:"copy_if_match,omitempty"`
+	// Copy only if the source object's current ETag does NOT match this
+	// value.
+	CopyIfNoneMatch string `protobuf:"bytes,5,opt,name=copy_if_none_match,json=copyIfNoneMatch,proto3" json:"copy_if_none_match,omitempty"`
+	// Copy only if the source object was modified after this RFC 3339
+	// timestamp (e.g. "2026-08-01T00:00:00Z").
+	CopyIfModifiedSince string `protobuf:"bytes,6,opt,name=copy_if_modified_since,json=copyIfModifiedSince,proto3" json:"copy_if_modified_since,omitempty"`
+	// Copy only if the source object has NOT been modified since this RFC
+	// 3339 timestamp.
+	CopyIfUnmodifiedSince string `protobuf:"bytes,7,opt,name=copy_if_unmodified_since,json=copyIfUnmodifiedSince,proto3" json:"copy_if_unmodified_since,omitempty"`
+	// The Expires header stored with the copied object, as an RFC 3339
+	// timestamp — the date after which the content is considered stale by
+	// caches. Only the copy path offers this header (the provider's
+	// content-object resource carries no expires argument).
+	Expires string `protobuf:"bytes,8,opt,name=expires,proto3" json:"expires,omitempty"`
+	// Confirms the copier pays request and data-transfer costs when the
+	// SOURCE bucket is a Requester Pays bucket. The only accepted value is
+	// "requester" — S3 rejects copies from Requester Pays buckets without
+	// this acknowledgment.
+	RequestPayer  string `protobuf:"bytes,9,opt,name=request_payer,json=requestPayer,proto3" json:"request_payer,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsS3ObjectCopyFrom) Reset() {
+	*x = AwsS3ObjectCopyFrom{}
+	mi := &file_catalog_aws_awss3objectset_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsS3ObjectCopyFrom) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsS3ObjectCopyFrom) ProtoMessage() {}
+
+func (x *AwsS3ObjectCopyFrom) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awss3objectset_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsS3ObjectCopyFrom.ProtoReflect.Descriptor instead.
+func (*AwsS3ObjectCopyFrom) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsS3ObjectCopyFrom) GetSourceBucket() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceBucket
+	}
+	return nil
+}
+
+func (x *AwsS3ObjectCopyFrom) GetSourceKey() string {
+	if x != nil {
+		return x.SourceKey
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetReplaceMetadata() bool {
+	if x != nil {
+		return x.ReplaceMetadata
+	}
+	return false
+}
+
+func (x *AwsS3ObjectCopyFrom) GetCopyIfMatch() string {
+	if x != nil {
+		return x.CopyIfMatch
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetCopyIfNoneMatch() string {
+	if x != nil {
+		return x.CopyIfNoneMatch
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetCopyIfModifiedSince() string {
+	if x != nil {
+		return x.CopyIfModifiedSince
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetCopyIfUnmodifiedSince() string {
+	if x != nil {
+		return x.CopyIfUnmodifiedSince
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetExpires() string {
+	if x != nil {
+		return x.Expires
+	}
+	return ""
+}
+
+func (x *AwsS3ObjectCopyFrom) GetRequestPayer() string {
+	if x != nil {
+		return x.RequestPayer
+	}
+	return ""
+}
 
 var File_catalog_aws_awss3objectset_v1alpha1_spec_proto protoreflect.FileDescriptor
 
@@ -504,11 +683,12 @@ const file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04tags\x18\x04 \x03(\v2E.dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfa\x1b\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xa4!\n" +
 	"\vAwsS3Object\x12\x19\n" +
 	"\x03key\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x03key\x12\x1a\n" +
 	"\acontent\x18\x02 \x01(\tH\x00R\acontent\x12'\n" +
-	"\x0econtent_base64\x18\x03 \x01(\tH\x00R\rcontentBase64\x12D\n" +
+	"\x0econtent_base64\x18\x03 \x01(\tH\x00R\rcontentBase64\x12[\n" +
+	"\tcopy_from\x18\x16 \x01(\v2<.dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectCopyFromH\x00R\bcopyFrom\x12D\n" +
 	"\fcontent_type\x18\x04 \x01(\tB\x1c\x8a\xa6\x1d\x18application/octet-streamH\x01R\vcontentType\x88\x01\x01\x12#\n" +
 	"\rcache_control\x18\x05 \x01(\tR\fcacheControl\x12)\n" +
 	"\x10content_encoding\x18\x06 \x01(\tR\x0fcontentEncoding\x12/\n" +
@@ -541,13 +721,30 @@ const file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd7\x04\xbaH\xd3\x04\x1a\xba\x01\n" +
-	"\x16object.source.required\x12:Exactly one of content or content_base64 must be specified\x1ad(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '')\x1a\xb2\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa4\t\xbaH\xa0\t\x1a\xdd\x01\n" +
+	"\x16object.source.required\x12FExactly one of content, content_base64, or copy_from must be specified\x1a{(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '') || has(this.copy_from)\x1a\xa7\x04\n" +
+	",object.copy.headers_require_replace_metadata\x12\x82\x02metadata and header fields (cache_control, content_encoding, content_disposition, content_language, website_redirect) on a copy-sourced object require copy_from.replace_metadata: true — a COPY-directive copy preserves the source's metadata and ignores them\x1a\xf1\x01!has(this.copy_from) || this.copy_from.replace_metadata || (this.metadata.size() == 0 && this.cache_control == '' && this.content_encoding == '' && this.content_disposition == '' && this.content_language == '' && this.website_redirect == '')\x1a\xb2\x01\n" +
 	"\x1aobject.object_lock.pairing\x12Gobject_lock_mode and object_lock_retain_until_date must be set together\x1aK(this.object_lock_mode == '') == (this.object_lock_retain_until_date == '')\x1a\xde\x01\n" +
 	"\x1fobject.kms_key.requires_kms_sse\x12Mkms_key requires server_side_encryption to be unset, aws:kms, or aws:kms:dsse\x1al!has(this.kms_key) || this.server_side_encryption == '' || this.server_side_encryption.startsWith('aws:kms')B\b\n" +
 	"\x06sourceB\x0f\n" +
 	"\r_content_typeB\x15\n" +
-	"\x13_bucket_key_enabledB\xd2\x02\n" +
+	"\x13_bucket_key_enabled\"\x8c\n" +
+	"\n" +
+	"\x13AwsS3ObjectCopyFrom\x12\x80\x01\n" +
+	"\rsource_bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\fsourceBucket\x12&\n" +
+	"\n" +
+	"source_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tsourceKey\x12)\n" +
+	"\x10replace_metadata\x18\x03 \x01(\bR\x0freplaceMetadata\x12\"\n" +
+	"\rcopy_if_match\x18\x04 \x01(\tR\vcopyIfMatch\x12+\n" +
+	"\x12copy_if_none_match\x18\x05 \x01(\tR\x0fcopyIfNoneMatch\x12\xa2\x02\n" +
+	"\x16copy_if_modified_since\x18\x06 \x01(\tB\xec\x01\xbaH\xe8\x01\xba\x01\xe4\x01\n" +
+	"'copy_from.copy_if_modified_since.format\x12Ocopy_if_modified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x13copyIfModifiedSince\x12\xaa\x02\n" +
+	"\x18copy_if_unmodified_since\x18\a \x01(\tB\xf0\x01\xbaH\xec\x01\xba\x01\xe8\x01\n" +
+	")copy_from.copy_if_unmodified_since.format\x12Qcopy_if_unmodified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x15copyIfUnmodifiedSince\x12\xe9\x01\n" +
+	"\aexpires\x18\b \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01\xc6\x01\n" +
+	"\x18copy_from.expires.format\x12@expires must be an RFC 3339 timestamp, e.g. 2027-01-01T00:00:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\aexpires\x12\x8f\x01\n" +
+	"\rrequest_payer\x18\t \x01(\tBj\xbaHg\xba\x01d\n" +
+	"\x17copy_from.request_payer\x12&request_payer accepts only \"requester\"\x1a!this == '' || this == 'requester'R\frequestPayerB\xd2\x02\n" +
 	"+com.dev.planton.aws.awss3objectset.v1alpha1B\tSpecProtoP\x01ZWgithub.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1;awss3objectsetv1alpha1\xa2\x02\x04DPAA\xaa\x02'Dev.Planton.Aws.Awss3objectset.V1alpha1\xca\x02'Dev\\Planton\\Aws\\Awss3objectset\\V1alpha1\xe2\x023Dev\\Planton\\Aws\\Awss3objectset\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Aws::Awss3objectset::V1alpha1b\x06proto3"
 
 var (
@@ -562,27 +759,30 @@ func file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awss3objectset_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_catalog_aws_awss3objectset_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_aws_awss3objectset_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsS3ObjectSetSpec)(nil),  // 0: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec
 	(*AwsS3Object)(nil),         // 1: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object
-	nil,                         // 2: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.TagsEntry
-	nil,                         // 3: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.MetadataEntry
-	nil,                         // 4: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.TagsEntry
-	(*v1.StringValueOrRef)(nil), // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsS3ObjectCopyFrom)(nil), // 2: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectCopyFrom
+	nil,                         // 3: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.TagsEntry
+	nil,                         // 4: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.MetadataEntry
+	nil,                         // 5: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awss3objectset_v1alpha1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // 0: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.objects:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object
-	2, // 2: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.tags:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.TagsEntry
-	3, // 3: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.metadata:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.MetadataEntry
-	5, // 4: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 5: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.tags:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.TagsEntry
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	3, // 2: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.tags:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectSetSpec.TagsEntry
+	2, // 3: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.copy_from:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectCopyFrom
+	4, // 4: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.metadata:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.MetadataEntry
+	6, // 5: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 6: dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.tags:type_name -> dev.planton.aws.awss3objectset.v1alpha1.AwsS3Object.TagsEntry
+	6, // 7: dev.planton.aws.awss3objectset.v1alpha1.AwsS3ObjectCopyFrom.source_bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awss3objectset_v1alpha1_spec_proto_init() }
@@ -593,6 +793,7 @@ func file_catalog_aws_awss3objectset_v1alpha1_spec_proto_init() {
 	file_catalog_aws_awss3objectset_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{
 		(*AwsS3Object_Content)(nil),
 		(*AwsS3Object_ContentBase64)(nil),
+		(*AwsS3Object_CopyFrom)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -600,7 +801,7 @@ func file_catalog_aws_awss3objectset_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awss3objectset_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

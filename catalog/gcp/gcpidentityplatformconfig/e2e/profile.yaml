@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: gcpidentityplatformconfig
+spec:
+  # PROVEN live 4/4 lanes (both scenarios x both engines), IDEMPOTENCY
+  # clean. The test project's Identity Platform is PERMANENTLY
+  # initialized (the designed keeper — no de-initialize exists; destroy
+  # abandons; the sweep records the readable config as the expected
+  # state). LIVE-VERIFIED: re-initialization hard-fails with 400
+  # "Identity Platform has already been enabled for this project", which
+  # drove the spec's adopt_existing design — every fixture here arms it,
+  # and each lane IMPORTS the singleton then applies its spec as an
+  # update. The create/initializeAuth arm was proven ONCE, on Terraform,
+  # by this project's single initialization (2026-08-10); the Pulumi
+  # create arm is the same bridged provider call and can never run on
+  # this project again — re-provable only on a fresh never-initialized
+  # project. Two more live truths landed: the Identity Toolkit API
+  # requires a quota project on user-ADC calls (both modules arm
+  # user_project_override), and the API always echoes the email +
+  # phone_number sign-in policies in its read-back (both modules render
+  # them explicitly whenever sign_in is present).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 15

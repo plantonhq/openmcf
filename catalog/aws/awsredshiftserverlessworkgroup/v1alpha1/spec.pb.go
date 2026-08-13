@@ -110,7 +110,21 @@ type AwsRedshiftServerlessWorkgroupSpec struct {
 	// default -- the latest certified release) or "trailing" (one
 	// certified release behind); AWS also accepts named preview tracks.
 	// Empty keeps the AWS default.
-	TrackName     string `protobuf:"bytes,12,opt,name=track_name,json=trackName,proto3" json:"track_name,omitempty"`
+	TrackName string `protobuf:"bytes,12,opt,name=track_name,json=trackName,proto3" json:"track_name,omitempty"`
+	// A custom DNS name for the workgroup's endpoint, fronted by an ACM
+	// certificate (one custom domain per workgroup -- AWS's own model).
+	// You own the CNAME record pointing the domain at the workgroup
+	// endpoint; AWS serves TLS for it from the certificate.
+	CustomDomain *AwsRedshiftServerlessWorkgroupCustomDomain `protobuf:"bytes,13,opt,name=custom_domain,json=customDomain,proto3" json:"custom_domain,omitempty"`
+	// VPC endpoints exposing this workgroup inside other subnets --
+	// same-account cross-VPC access without peering. Each entry keys one
+	// managed endpoint; its private address and port are exported per
+	// endpoint on the outputs contract.
+	EndpointAccesses []*AwsRedshiftServerlessWorkgroupEndpointAccess `protobuf:"bytes,14,rep,name=endpoint_accesses,json=endpointAccesses,proto3" json:"endpoint_accesses,omitempty"`
+	// Usage limits capping this workgroup's consumption -- RPU-hours of
+	// serverless compute or terabytes of cross-region datasharing
+	// transfer -- each with a breach action from logging to deactivation.
+	UsageLimits   []*AwsRedshiftServerlessWorkgroupUsageLimit `protobuf:"bytes,15,rep,name=usage_limits,json=usageLimits,proto3" json:"usage_limits,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -227,6 +241,27 @@ func (x *AwsRedshiftServerlessWorkgroupSpec) GetTrackName() string {
 		return x.TrackName
 	}
 	return ""
+}
+
+func (x *AwsRedshiftServerlessWorkgroupSpec) GetCustomDomain() *AwsRedshiftServerlessWorkgroupCustomDomain {
+	if x != nil {
+		return x.CustomDomain
+	}
+	return nil
+}
+
+func (x *AwsRedshiftServerlessWorkgroupSpec) GetEndpointAccesses() []*AwsRedshiftServerlessWorkgroupEndpointAccess {
+	if x != nil {
+		return x.EndpointAccesses
+	}
+	return nil
+}
+
+func (x *AwsRedshiftServerlessWorkgroupSpec) GetUsageLimits() []*AwsRedshiftServerlessWorkgroupUsageLimit {
+	if x != nil {
+		return x.UsageLimits
+	}
+	return nil
 }
 
 // AwsRedshiftServerlessWorkgroupPricePerformanceTarget lets AWS choose
@@ -346,11 +381,232 @@ func (x *AwsRedshiftServerlessWorkgroupConfigParameter) GetValue() string {
 	return ""
 }
 
+// AwsRedshiftServerlessWorkgroupCustomDomain fronts the workgroup's
+// endpoint with a custom DNS name and an ACM certificate. AWS keeps one
+// custom domain per workgroup; the CNAME record pointing the domain at
+// the workgroup endpoint stays yours to manage.
+type AwsRedshiftServerlessWorkgroupCustomDomain struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The custom domain name (e.g. "warehouse.example.com"), 1-253
+	// characters. Changing it replaces the association.
+	DomainName string `protobuf:"bytes,1,opt,name=domain_name,json=domainName,proto3" json:"domain_name,omitempty"`
+	// The ACM certificate that serves TLS for the domain -- it must
+	// cover the domain name and live in the workgroup's region.
+	// Reference an AwsCertManagerCert cert_arn output or pass a literal
+	// certificate ARN.
+	CertificateArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=certificate_arn,json=certificateArn,proto3" json:"certificate_arn,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftServerlessWorkgroupCustomDomain) Reset() {
+	*x = AwsRedshiftServerlessWorkgroupCustomDomain{}
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftServerlessWorkgroupCustomDomain) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftServerlessWorkgroupCustomDomain) ProtoMessage() {}
+
+func (x *AwsRedshiftServerlessWorkgroupCustomDomain) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftServerlessWorkgroupCustomDomain.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftServerlessWorkgroupCustomDomain) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsRedshiftServerlessWorkgroupCustomDomain) GetDomainName() string {
+	if x != nil {
+		return x.DomainName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftServerlessWorkgroupCustomDomain) GetCertificateArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.CertificateArn
+	}
+	return nil
+}
+
+// AwsRedshiftServerlessWorkgroupEndpointAccess is one VPC endpoint
+// exposing this workgroup inside other subnets -- same-account
+// cross-VPC access without peering. The endpoint's private address and
+// port are exported per endpoint on the outputs contract.
+type AwsRedshiftServerlessWorkgroupEndpointAccess struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The endpoint's name: 1-30 characters, unique within the workgroup.
+	// Changing it replaces the endpoint.
+	EndpointName string `protobuf:"bytes,1,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
+	// Subnets the endpoint's network interfaces land in -- typically the
+	// CONSUMING VPC's subnets. Empty reuses the workgroup's own
+	// subnet_ids (which must then be set -- CEL-enforced). Reference
+	// AwsSubnet subnet_id outputs or pass literal subnet IDs. Changing
+	// the list replaces the endpoint.
+	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
+	// Security groups attached to the endpoint's network interfaces.
+	// Empty uses the VPC's default security group. Reference
+	// AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+	VpcSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=vpc_security_group_ids,json=vpcSecurityGroupIds,proto3" json:"vpc_security_group_ids,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) Reset() {
+	*x = AwsRedshiftServerlessWorkgroupEndpointAccess{}
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftServerlessWorkgroupEndpointAccess) ProtoMessage() {}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftServerlessWorkgroupEndpointAccess.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftServerlessWorkgroupEndpointAccess) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) GetEndpointName() string {
+	if x != nil {
+		return x.EndpointName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) GetSubnetIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.SubnetIds
+	}
+	return nil
+}
+
+func (x *AwsRedshiftServerlessWorkgroupEndpointAccess) GetVpcSecurityGroupIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcSecurityGroupIds
+	}
+	return nil
+}
+
+// AwsRedshiftServerlessWorkgroupUsageLimit caps one dimension of this
+// workgroup's consumption in a given period, with a configurable breach
+// action.
+type AwsRedshiftServerlessWorkgroupUsageLimit struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the limit measures: "serverless-compute" (RPU-hours of
+	// compute) or "cross-region-datasharing" (terabytes transferred to
+	// consumers in other regions). Required.
+	UsageType string `protobuf:"bytes,1,opt,name=usage_type,json=usageType,proto3" json:"usage_type,omitempty"`
+	// The limit amount: RPU-hours for "serverless-compute", terabytes
+	// for "cross-region-datasharing". Must be positive.
+	Amount int64 `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The period the amount applies to: "daily", "weekly", or "monthly".
+	// Empty keeps the AWS default (monthly). A weekly period begins on
+	// Sunday. Changing it replaces the limit.
+	Period string `protobuf:"bytes,3,opt,name=period,proto3" json:"period,omitempty"`
+	// What Redshift Serverless does when the limit is breached: "log"
+	// writes an event to the system table, "emit-metric" additionally
+	// publishes a CloudWatch metric, "deactivate" turns queries off
+	// until the period resets. Empty keeps the AWS default (log). Note
+	// the serverless action vocabulary differs from provisioned
+	// clusters' ("deactivate", not "disable").
+	BreachAction  string `protobuf:"bytes,4,opt,name=breach_action,json=breachAction,proto3" json:"breach_action,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) Reset() {
+	*x = AwsRedshiftServerlessWorkgroupUsageLimit{}
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftServerlessWorkgroupUsageLimit) ProtoMessage() {}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftServerlessWorkgroupUsageLimit.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftServerlessWorkgroupUsageLimit) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) GetUsageType() string {
+	if x != nil {
+		return x.UsageType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) GetPeriod() string {
+	if x != nil {
+		return x.Period
+	}
+	return ""
+}
+
+func (x *AwsRedshiftServerlessWorkgroupUsageLimit) GetBreachAction() string {
+	if x != nil {
+		return x.BreachAction
+	}
+	return ""
+}
+
 var File_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	">catalog/aws/awsredshiftserverlessworkgroup/v1alpha1/spec.proto\x127dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc9\x12\n" +
+	">catalog/aws/awsredshiftserverlessworkgroup/v1alpha1/spec.proto\x127dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xdd\x1a\n" +
 	"\"AwsRedshiftServerlessWorkgroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x87\x01\n" +
 	"\x0enamespace_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\x95\b\x92\xd4a\x1dstatus.outputs.namespace_nameR\rnamespaceName\x12#\n" +
@@ -366,22 +622,42 @@ const file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDes
 	" \x01(\x05R\x04port\x12\x93\x01\n" +
 	"\x11config_parameters\x18\v \x03(\v2f.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupConfigParameterR\x10configParameters\x12;\n" +
 	"\n" +
-	"track_name\x18\f \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14\x18\x80\x022\x0f^[a-zA-Z0-9_]+$R\ttrackName:\xb7\n" +
-	"\xbaH\xb3\n" +
-	"\x1a\xb1\x02\n" +
+	"track_name\x18\f \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14\x18\x80\x022\x0f^[a-zA-Z0-9_]+$R\ttrackName\x12\x88\x01\n" +
+	"\rcustom_domain\x18\r \x01(\v2c.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupCustomDomainR\fcustomDomain\x12\x92\x01\n" +
+	"\x11endpoint_accesses\x18\x0e \x03(\v2e.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupEndpointAccessR\x10endpointAccesses\x12\x84\x01\n" +
+	"\fusage_limits\x18\x0f \x03(\v2a.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupUsageLimitR\vusageLimits:\xa4\x0f\xbaH\xa0\x0f\x1a\xb1\x02\n" +
 	"#base_capacity_xor_price_performance\x12\x9e\x01base_capacity cannot be set when price_performance_target is enabled -- either fix the baseline yourself or let AWS pick it against the price-performance dial\x1ai!(has(this.price_performance_target) && this.price_performance_target.enabled && this.base_capacity != 0)\x1ax\n" +
 	"\x16base_capacity_positive\x12Ebase_capacity cannot be negative -- 0 keeps the AWS default (128 RPU)\x1a\x17this.base_capacity >= 0\x1a\x7f\n" +
 	"\x15max_capacity_positive\x12Nmax_capacity cannot be negative -- 0 leaves scaling uncapped (the AWS default)\x1a\x16this.max_capacity >= 0\x1a\xec\x01\n" +
 	"\x18max_capacity_covers_base\x12rmax_capacity must be at least base_capacity -- a ceiling below the baseline leaves the workgroup nothing to run on\x1a\\this.max_capacity == 0 || this.base_capacity == 0 || this.max_capacity >= this.base_capacity\x1a\x91\x02\n" +
 	"\x16subnets_span_three_azs\x12\xba\x01provide at least three subnet_ids (in three distinct availability zones) -- Redshift Serverless refuses a workgroup with fewer; leave the list empty only to use the account's default VPC\x1a:this.subnet_ids.size() == 0 || this.subnet_ids.size() >= 3\x1a\xfe\x01\n" +
-	"\x19port_in_serverless_ranges\x12yport must be within 5431-5455 or 8191-8215 -- the only ranges Redshift Serverless accepts; 0 keeps the AWS default (5439)\x1afthis.port == 0 || (this.port >= 5431 && this.port <= 5455) || (this.port >= 8191 && this.port <= 8215)\"z\n" +
+	"\x19port_in_serverless_ranges\x12yport must be within 5431-5455 or 8191-8215 -- the only ranges Redshift Serverless accepts; 0 keeps the AWS default (5439)\x1afthis.port == 0 || (this.port >= 5431 && this.port <= 5455) || (this.port >= 8191 && this.port <= 8215)\x1a}\n" +
+	"\x1cendpoint_access_names_unique\x12$endpoint access names must be unique\x1a7this.endpoint_accesses.map(e, e.endpoint_name).unique()\x1a\xe6\x01\n" +
+	"\"endpoint_access_subnets_resolvable\x12jan endpoint access without its own subnet_ids requires the workgroup to declare subnet_ids to fall back on\x1aTthis.endpoint_accesses.all(e, e.subnet_ids.size() > 0 || this.subnet_ids.size() > 0)\x1a\x82\x02\n" +
+	"\x13usage_limits_unique\x12\x89\x01usage_limits must be unique per (usage_type, period) -- AWS allows one limit per usage type and period, and an empty period means monthly\x1a_this.usage_limits.map(l, l.usage_type + '/' + (l.period == '' ? 'monthly' : l.period)).unique()\"z\n" +
 	"4AwsRedshiftServerlessWorkgroupPricePerformanceTarget\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12(\n" +
 	"\x05level\x18\x02 \x01(\x05B\x12\xbaH\x0f\xd8\x01\x01\x1a\n" +
 	"0\x010\x19020K0dR\x05level\"\xd7\x03\n" +
 	"-AwsRedshiftServerlessWorkgroupConfigParameter\x12\x87\x03\n" +
 	"\x04name\x18\x01 \x01(\tB\xf2\x02\xbaH\xee\x02\xc8\x01\x01r\xe8\x02R\aauto_mvR\tdatestyleR enable_case_sensitive_identifierR\x1cenable_user_activity_loggingR\vquery_groupR\vsearch_pathR\x12max_query_cpu_timeR\x15max_query_blocks_readR\x12max_scan_row_countR\x18max_query_execution_timeR\x14max_query_queue_timeR\x1bmax_query_cpu_usage_percentR\x1dmax_query_temp_blocks_to_diskR\x12max_join_row_countR\x1emax_nested_loop_join_row_countR\vrequire_sslR\fuse_fips_sslR\x04name\x12\x1c\n" +
-	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\xc2\x03\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xe0\x01\n" +
+	"*AwsRedshiftServerlessWorkgroupCustomDomain\x12,\n" +
+	"\vdomain_name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xfd\x01R\n" +
+	"domainName\x12\x83\x01\n" +
+	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\"\xec\x02\n" +
+	",AwsRedshiftServerlessWorkgroupEndpointAccess\x121\n" +
+	"\rendpoint_name\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18\x1eR\fendpointName\x12t\n" +
+	"\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x92\x01\n" +
+	"\x16vpc_security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x13vpcSecurityGroupIds\"\xa9\x02\n" +
+	"(AwsRedshiftServerlessWorkgroupUsageLimit\x12U\n" +
+	"\n" +
+	"usage_type\x18\x01 \x01(\tB6\xbaH3\xc8\x01\x01r.R\x12serverless-computeR\x18cross-region-datasharingR\tusageType\x12\x1f\n" +
+	"\x06amount\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x128\n" +
+	"\x06period\x18\x03 \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x05dailyR\x06weeklyR\amonthlyR\x06period\x12K\n" +
+	"\rbreach_action\x18\x04 \x01(\tB&\xbaH#\xd8\x01\x01r\x1eR\x03logR\vemit-metricR\n" +
+	"deactivateR\fbreachActionB\xc2\x03\n" +
 	";com.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1B\tSpecProtoP\x01Zwgithub.com/plantonhq/planton/catalog/aws/awsredshiftserverlessworkgroup/v1alpha1;awsredshiftserverlessworkgroupv1alpha1\xa2\x02\x04DPAA\xaa\x027Dev.Planton.Aws.Awsredshiftserverlessworkgroup.V1alpha1\xca\x027Dev\\Planton\\Aws\\Awsredshiftserverlessworkgroup\\V1alpha1\xe2\x02CDev\\Planton\\Aws\\Awsredshiftserverlessworkgroup\\V1alpha1\\GPBMetadata\xea\x02;Dev::Planton::Aws::Awsredshiftserverlessworkgroup::V1alpha1b\x06proto3"
 
 var (
@@ -396,24 +672,33 @@ func file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDesc
 	return file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsRedshiftServerlessWorkgroupSpec)(nil),                   // 0: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec
 	(*AwsRedshiftServerlessWorkgroupPricePerformanceTarget)(nil), // 1: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupPricePerformanceTarget
 	(*AwsRedshiftServerlessWorkgroupConfigParameter)(nil),        // 2: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupConfigParameter
-	(*v1.StringValueOrRef)(nil),                                  // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRedshiftServerlessWorkgroupCustomDomain)(nil),           // 3: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupCustomDomain
+	(*AwsRedshiftServerlessWorkgroupEndpointAccess)(nil),         // 4: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupEndpointAccess
+	(*AwsRedshiftServerlessWorkgroupUsageLimit)(nil),             // 5: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupUsageLimit
+	(*v1.StringValueOrRef)(nil),                                  // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.namespace_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.price_performance_target:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupPricePerformanceTarget
-	3, // 2: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 3: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 4: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.config_parameters:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupConfigParameter
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	6,  // 0: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.namespace_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 1: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.price_performance_target:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupPricePerformanceTarget
+	6,  // 2: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 3: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 4: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.config_parameters:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupConfigParameter
+	3,  // 5: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.custom_domain:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupCustomDomain
+	4,  // 6: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.endpoint_accesses:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupEndpointAccess
+	5,  // 7: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupSpec.usage_limits:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupUsageLimit
+	6,  // 8: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupCustomDomain.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 9: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupEndpointAccess.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 10: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupEndpointAccess.vpc_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_init() }
@@ -427,7 +712,7 @@ func file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_init() 
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

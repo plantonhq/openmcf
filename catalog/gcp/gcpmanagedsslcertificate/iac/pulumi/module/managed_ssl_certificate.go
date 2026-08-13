@@ -64,6 +64,11 @@ func managedSslCertificate(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp
 		args.Description = pulumi.String(spec.Description)
 	}
 
+	// Unset defers to the provider default (DELETE).
+	if spec.DeletionPolicy != "" {
+		args.DeletionPolicy = pulumi.String(spec.DeletionPolicy)
+	}
+
 	createdCert, err := compute.NewManagedSslCertificate(ctx, "managed-ssl-certificate", args,
 		pulumi.Provider(gcpProvider), pulumi.DependsOn([]pulumi.Resource{createdProjectService}))
 	if err != nil {

@@ -185,9 +185,9 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 	})
 
 	Context("boot_disk fields", func() {
-		It("accepts size bounds", func() {
+		It("accepts size bounds (API floor is 1 GB)", func() {
 			spec := makeValidSpec()
-			spec.BootDisk.SizeGb = 10
+			spec.BootDisk.SizeGb = 1
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 			spec.BootDisk.SizeGb = 65536
 			Expect(protovalidate.Validate(spec)).To(BeNil())
@@ -195,7 +195,7 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 
 		It("rejects sizes outside bounds", func() {
 			spec := makeValidSpec()
-			spec.BootDisk.SizeGb = 9
+			spec.BootDisk.SizeGb = -1
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 			spec.BootDisk.SizeGb = 65537
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
@@ -234,6 +234,88 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			spec.BootDisk.ResourcePolicies = []string{"policy-a", "policy-b"}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
+
+		It("validates mode and interface values", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.Mode = "READ_ONLY"
+			spec.BootDisk.Interface = "NVME"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.BootDisk.Mode = "WRITE_ONLY"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+			spec.BootDisk.Mode = ""
+			spec.BootDisk.Interface = "IDE"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts guest OS features and force_attach", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.GuestOsFeatures = []string{"UEFI_COMPATIBLE", "GVNIC"}
+			spec.BootDisk.ForceAttach = true
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("requires exactly two replica zones when set (CEL)", func() {
+			spec := makeValidSpec()
+			// Regional boot disks are legal only from a snapshot source —
+			// GCP rejects creating one from an image (live-verified 400).
+			spec.BootDisk.Image = ""
+			spec.BootDisk.SourceSnapshot = "projects/my-project/global/snapshots/base-snap"
+			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b"}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.BootDisk.ReplicaZones = []string{"us-central1-a"}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b", "us-central1-c"}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects replica zones on an image-sourced boot disk (CEL)", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b"}
+			err := protovalidate.Validate(spec)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("replica_zones requires a source_snapshot"))
+		})
+
+		It("accepts boot-disk resource manager tags and a kms service account", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.KmsKey = refVal("boot-key", "status.outputs.key_id")
+			spec.BootDisk.KmsKeyServiceAccount = "cmek-agent@p.iam.gserviceaccount.com"
+			spec.BootDisk.ResourceManagerTags = map[string]string{"tagKeys/123": "tagValues/456"}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("accepts source_image_encryption together with image (CEL)", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.SourceImageEncryption = &GcpComputeInstanceSourceEncryption{
+				KmsKey: refVal("image-key", "status.outputs.key_id"),
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects source_image_encryption without image (CEL)", func() {
+			spec := makeValidSpec()
+			spec.BootDisk = &GcpComputeInstanceBootDisk{
+				SourceSnapshot: "my-snapshot",
+				SourceImageEncryption: &GcpComputeInstanceSourceEncryption{
+					KmsKey: strVal("projects/p/locations/l/keyRings/r/cryptoKeys/k"),
+				},
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects source_snapshot_encryption without source_snapshot (CEL)", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.SourceSnapshotEncryption = &GcpComputeInstanceSourceEncryption{
+				KmsKey: strVal("projects/p/locations/l/keyRings/r/cryptoKeys/k"),
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("requires kms_key inside a source encryption block", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.SourceImageEncryption = &GcpComputeInstanceSourceEncryption{}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
 	})
 
 	Context("attached_disks", func() {
@@ -269,6 +351,19 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
+
+		It("accepts a CMEK service account and force_attach", func() {
+			spec := makeValidSpec()
+			spec.AttachedDisks = []*GcpComputeInstanceAttachedDisk{
+				{
+					Source:               refVal("data-disk", "status.outputs.self_link"),
+					KmsKey:               refVal("data-key", "status.outputs.key_id"),
+					KmsKeyServiceAccount: "cmek-agent@p.iam.gserviceaccount.com",
+					ForceAttach:          true,
+				},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
 	})
 
 	Context("scratch_disks", func() {
@@ -300,9 +395,49 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 	})
 
 	Context("network_interfaces", func() {
-		It("rejects an interface with neither network nor subnetwork (CEL)", func() {
+		It("rejects an interface with no attachment point (CEL)", func() {
 			spec := makeValidSpec()
 			spec.NetworkInterfaces = []*GcpComputeInstanceNetworkInterface{{}}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts a PSC attachment-only interface (CEL)", func() {
+			spec := makeValidSpec()
+			spec.NetworkInterfaces = []*GcpComputeInstanceNetworkInterface{
+				{NetworkAttachment: "projects/123/regions/us-central1/networkAttachments/psc-a"},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("enforces vlan bounds on dynamic interfaces", func() {
+			spec := makeValidSpec()
+			spec.NetworkInterfaces[0].Vlan = i32(2)
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.NetworkInterfaces[0].Vlan = i32(255)
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.NetworkInterfaces[0].Vlan = i32(1)
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+			spec.NetworkInterfaces[0].Vlan = i32(256)
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("validates igmp_query values", func() {
+			spec := makeValidSpec()
+			spec.NetworkInterfaces[0].IgmpQuery = "IGMP_QUERY_V2"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.NetworkInterfaces[0].IgmpQuery = "IGMP_QUERY_DISABLED"
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.NetworkInterfaces[0].IgmpQuery = "IGMP_QUERY_V3"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts internal IPv6 addressing and enforces prefix bounds", func() {
+			spec := makeValidSpec()
+			spec.NetworkInterfaces[0].StackType = "IPV4_IPV6"
+			spec.NetworkInterfaces[0].Ipv6Address = "2600:1900:4000:1::"
+			spec.NetworkInterfaces[0].InternalIpv6PrefixLength = i32(96)
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.NetworkInterfaces[0].InternalIpv6PrefixLength = i32(129)
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 
@@ -364,6 +499,20 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			spec := makeValidSpec()
 			spec.NetworkInterfaces[0].AliasIpRanges = []*GcpComputeInstanceAliasIpRange{{}}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts a pinned static external IPv6 access config", func() {
+			spec := makeValidSpec()
+			spec.NetworkInterfaces[0].StackType = "IPV4_IPV6"
+			spec.NetworkInterfaces[0].Ipv6AccessConfigs = []*GcpComputeInstanceIpv6AccessConfig{
+				{
+					NetworkTier:              "PREMIUM",
+					ExternalIpv6:             "2600:1900:4000:1::",
+					ExternalIpv6PrefixLength: "96",
+					Name:                     "External IPv6",
+				},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 	})
 
@@ -431,7 +580,7 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 		})
 
-		It("rejects a termination action without SPOT (CEL)", func() {
+		It("rejects a termination action on a plain standard VM (CEL)", func() {
 			spec := makeValidSpec()
 			spec.Scheduling = &GcpComputeInstanceScheduling{
 				InstanceTerminationAction: "STOP",
@@ -439,9 +588,79 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 
+		It("accepts a termination action on a timed-run standard VM (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				InstanceTerminationAction: "STOP",
+				MaxRunDurationSeconds:     i64(7200),
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
 		It("rejects an invalid provisioning model", func() {
 			spec := makeValidSpec()
 			spec.Scheduling = &GcpComputeInstanceScheduling{ProvisioningModel: "FLEX"}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts a FLEX_START configuration", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel:         "FLEX_START",
+				InstanceTerminationAction: "DELETE",
+				MaxRunDurationSeconds:     i64(3600),
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects FLEX_START without max_run_duration_seconds (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel: "FLEX_START",
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects FLEX_START with automatic_restart true (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel:     "FLEX_START",
+				MaxRunDurationSeconds: i64(3600),
+				AutomaticRestart:      boolPtr(true),
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects FLEX_START with a STOP termination action (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel:         "FLEX_START",
+				MaxRunDurationSeconds:     i64(3600),
+				InstanceTerminationAction: "STOP",
+			}
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts RESERVATION_BOUND with a specific reservation (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel: "RESERVATION_BOUND",
+			}
+			spec.ReservationAffinity = &GcpComputeInstanceReservationAffinity{
+				Type: "SPECIFIC_RESERVATION",
+				SpecificReservation: &GcpComputeInstanceSpecificReservation{
+					Key:    "compute.googleapis.com/reservation-name",
+					Values: []string{"my-reservation"},
+				},
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+		})
+
+		It("rejects RESERVATION_BOUND without a specific reservation (CEL)", func() {
+			spec := makeValidSpec()
+			spec.Scheduling = &GcpComputeInstanceScheduling{
+				ProvisioningModel: "RESERVATION_BOUND",
+			}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 
@@ -659,6 +878,27 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 			spec.KeyRevocationActionType = "STOP"
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 			spec.KeyRevocationActionType = "DELETE"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("validates deletion_policy values", func() {
+			spec := makeValidSpec()
+			for _, valid := range []string{"", "DELETE", "PREVENT", "ABANDON"} {
+				spec.DeletionPolicy = valid
+				Expect(protovalidate.Validate(spec)).To(BeNil())
+			}
+			spec.DeletionPolicy = "RETAIN"
+			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("accepts an instance-level CMEK key and requires kms_key inside it", func() {
+			spec := makeValidSpec()
+			spec.InstanceEncryptionKey = &GcpComputeInstanceEncryptionKey{
+				KmsKey:               refVal("vm-key", "status.outputs.key_id"),
+				KmsKeyServiceAccount: "cmek-agent@p.iam.gserviceaccount.com",
+			}
+			Expect(protovalidate.Validate(spec)).To(BeNil())
+			spec.InstanceEncryptionKey = &GcpComputeInstanceEncryptionKey{}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 		})
 

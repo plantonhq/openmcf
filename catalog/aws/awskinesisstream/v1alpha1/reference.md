@@ -35,14 +35,6 @@ apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: test-stream
-  org: test-org
-  env: dev
-  id: test-stream-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsKinesisStream.test-stream
 spec:
   region: us-west-2
   streamMode: ON_DEMAND
@@ -168,6 +160,7 @@ Valid values (one or more):
 - "WriteProvisionedThroughputExceeded" -- throttled write requests
 - "ReadProvisionedThroughputExceeded" -- throttled read requests
 - "IteratorAgeMilliseconds" -- consumer lag per shard
+- "ALL" -- shorthand that enables every shard-level metric above
 
 Enhanced metrics incur additional CloudWatch cost per metric per shard.
 Leave empty to use stream-level metrics only (no additional cost).

@@ -8,6 +8,8 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsVpcEndpointSpec(t *testing.T) {
@@ -59,7 +61,7 @@ func minimalInterfaceEndpoint() *AwsVpcEndpoint {
 				literalRef("subnet-0a1b2c3d4e5f67890"),
 				literalRef("subnet-0f9e8d7c6b5a43210"),
 			},
-			PrivateDnsEnabled: true,
+			PrivateDnsEnabled: proto.Bool(true),
 		},
 	}
 }
@@ -77,9 +79,20 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 			ginkgo.It("should accept an explicit Gateway type with a policy document", func() {
 				input := minimalGatewayEndpoint()
 				input.Spec.EndpointType = "Gateway"
-				input.Spec.Policy = `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"*"}]}`
-				err := protovalidate.Validate(input)
+				policy, err := structpb.NewStruct(map[string]any{
+					"Version": "2012-10-17",
+					"Statement": []any{
+						map[string]any{
+							"Effect":    "Allow",
+							"Principal": "*",
+							"Action":    "s3:GetObject",
+							"Resource":  "*",
+						},
+					},
+				})
 				gomega.Expect(err).To(gomega.BeNil())
+				input.Spec.Policy = policy
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
 
 			ginkgo.It("should accept a gateway endpoint with no route tables (attach later)", func() {
@@ -119,9 +132,16 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 
 			ginkgo.It("should accept a cross-region interface endpoint", func() {
 				input := minimalInterfaceEndpoint()
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				input.Spec.ServiceRegion = "us-east-1"
 				input.Spec.ServiceName = "com.amazonaws.us-east-1.sts"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should accept an explicit-false private DNS on an interface endpoint (the disable path)", func() {
+				input := minimalInterfaceEndpoint()
+				input.Spec.PrivateDnsEnabled = proto.Bool(false)
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -143,7 +163,7 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 				input.Spec.EndpointType = "Resource"
 				input.Spec.ServiceName = ""
 				input.Spec.ResourceConfigurationArn = "arn:aws:vpc-lattice:us-west-2:123456789012:resourceconfiguration/rcfg-0a1b2c3d4e5f67890"
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -153,7 +173,7 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 				input.Spec.EndpointType = "ServiceNetwork"
 				input.Spec.ServiceName = ""
 				input.Spec.ServiceNetworkArn = "arn:aws:vpc-lattice:us-west-2:123456789012:servicenetwork/sn-0a1b2c3d4e5f67890"
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				input.Spec.DnsOptions = &AwsVpcEndpointDnsOptions{
 					PrivateDnsPreference:       "SPECIFIED_DOMAINS_ONLY",
 					PrivateDnsSpecifiedDomains: []string{"internal.example.com"},
@@ -165,7 +185,7 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 			ginkgo.It("should accept auto_accept for same-account PrivateLink services", func() {
 				input := minimalInterfaceEndpoint()
 				input.Spec.ServiceName = "com.amazonaws.vpce.us-west-2.vpce-svc-0a1b2c3d4e5f67890"
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				input.Spec.AutoAccept = true
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -249,7 +269,24 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 
 			ginkgo.It("should reject private DNS on a gateway endpoint", func() {
 				input := minimalGatewayEndpoint()
-				input.Spec.PrivateDnsEnabled = true
+				input.Spec.PrivateDnsEnabled = proto.Bool(true)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject an explicit-false private DNS on a gateway endpoint (presence matters)", func() {
+				input := minimalGatewayEndpoint()
+				input.Spec.PrivateDnsEnabled = proto.Bool(false)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject inbound-resolver-only DNS without private DNS enabled", func() {
+				input := minimalInterfaceEndpoint()
+				input.Spec.PrivateDnsEnabled = nil
+				input.Spec.DnsOptions = &AwsVpcEndpointDnsOptions{
+					PrivateDnsOnlyForInboundResolverEndpoint: true,
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
@@ -257,7 +294,7 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 			ginkgo.It("should reject security groups on a GatewayLoadBalancer endpoint", func() {
 				input := minimalInterfaceEndpoint()
 				input.Spec.EndpointType = "GatewayLoadBalancer"
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
 					literalRef("sg-0a1b2c3d4e5f67890"),
 				}
@@ -268,7 +305,7 @@ var _ = ginkgo.Describe("AwsVpcEndpointSpec Validation Tests", func() {
 			ginkgo.It("should reject a cross-region target on a non-Interface endpoint", func() {
 				input := minimalInterfaceEndpoint()
 				input.Spec.EndpointType = "GatewayLoadBalancer"
-				input.Spec.PrivateDnsEnabled = false
+				input.Spec.PrivateDnsEnabled = nil
 				input.Spec.ServiceRegion = "us-east-1"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())

@@ -8,10 +8,11 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor (v6 family baseline): the job-definition surface (containerProperties
-      # incl. runtimePlatform and ephemeralStorage, deregister_on_new_revision)
-      # is stable before the v6 line; the floor keeps the Batch family on
-      # one provider generation.
+      # Feature floor (6.29.0): the job-definition surface (containerProperties
+      # incl. runtimePlatform and ephemeralStorage, deregister_on_new_revision,
+      # and the typed eks_properties block) is stable before the v6 line
+      # EXCEPT eks_properties' security_context.allow_privilege_escalation,
+      # which the provider added in 6.29.0 (2026-01-28).
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

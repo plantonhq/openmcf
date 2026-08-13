@@ -1,3 +1,9 @@
+# Canonical validated example: an SQS worker mapping with per-record
+# failure reporting, both billable CloudWatch metrics, and a per-mapping
+# concurrency throttle (the ceiling is the function's own concurrency --
+# values above the former 1,000 cap are valid). The Kafka-only arms
+# (provisioned pollers with a shared poller group, schema registry) live
+# in the msk-shared-pollers preset, which the offline plans also exercise.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambdaEventSourceMapping
 metadata:
@@ -5,8 +11,12 @@ metadata:
 spec:
   region: us-west-2
   functionArn:
-    value: "<lambda-function-arn>"
+    value: arn:aws:lambda:us-west-2:123456789012:function:orders-worker
   eventSourceArn:
-    value: "<sqs-queue-arn>"
+    value: arn:aws:sqs:us-west-2:123456789012:orders-queue
   functionResponseTypes:
     - ReportBatchItemFailures
+  metrics:
+    - EventCount
+    - ErrorCount
+  scalingMaxConcurrency: 2500

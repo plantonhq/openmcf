@@ -7,7 +7,7 @@ Deploys a GCP service account with optional JSON key generation and configurable
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Service Account** -- a `serviceaccount.Account` in the specified GCP project with the given account ID and display name
-- **Service Account Key** -- created only when `createKey` is `true`; generates a JSON private key exported as base64-encoded output for use in external systems
+- **Service Account Key** -- created only when the `userManagedKey` block is present; either generates a private key (exported base64) shaped by algorithm/format fields, or registers your own uploaded public key
 - **Project IAM Bindings** -- one `projects.IAMMember` per entry in `projectIamRoles`, granting the specified role to the service account in the target project
 - **Organization IAM Bindings** -- created only when `orgIamRoles` is non-empty and `orgId` is set; one `organizations.IAMMember` per entry, granting the specified role at the organization level
 
@@ -75,7 +75,7 @@ The InfraPipeline resolves the dependency graph, deploys the project first, then
 
 These are the most important decisions when configuring a service account. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Key generation** -- Set `createKey` to `true` to generate a JSON private key for use in CI/CD pipelines or external systems. Leave it unset (the default) for Workload Identity or other keyless authentication patterns. Exported keys are a security risk -- prefer keyless authentication when possible.
+**Key management** -- Add a `userManagedKey` block to create a key for CI/CD pipelines or external systems; omit it (the default) for Workload Identity or other keyless authentication patterns. An empty block generates the classic 2048-bit RSA JSON key; `keepers` gives declarative rotation (bump a value, the key is replaced); `publicKeyData` uploads your own public key so the private half never leaves your custody; `deletionPolicy: PREVENT` guards against accidental destroys. Exported keys are a security risk -- prefer keyless authentication when possible.
 
 **Project IAM roles** -- `projectIamRoles` lists roles granted at the project level: predefined roles (e.g., `roles/logging.logWriter`) or a custom role's fully-qualified name (`projects/<project>/roles/<role_id>` -- a GcpIamCustomRole's `name` output is exactly this value). Follow the least-privilege principle -- grant only the roles the workload needs. Each role creates a separate IAM member binding. For grants other teams manage independently (or grants needing IAM Conditions), compose GcpProjectIamMember resources against this account's `member` output instead.
 
@@ -105,7 +105,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `member` | IAM member string (`serviceAccount:{email}`) | Feeds directly into GcpProjectIamMember / GcpServiceAccountIamMember `member` fields |
 | `unique_id` | Stable numeric ID, never reused across delete/recreate | Audit log correlation, principal pinning |
 | `name` | Full resource name (`projects/{project}/serviceAccounts/{email}`) | A GcpServiceAccountIamMember's `service_account_id` -- grants ON this account |
-| `key_base64` | Base64-encoded JSON key (present only when `createKey` is true) | CI/CD secret stores, external system authentication |
+| `key_base64` | Base64-encoded private key (generate flow only; empty for keyless and uploaded-key accounts) | CI/CD secret stores, external system authentication |
 
 ## Common Patterns
 

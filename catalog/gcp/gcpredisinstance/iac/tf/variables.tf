@@ -82,6 +82,8 @@ variable "spec" {
       day    = string
       hour   = optional(number, 0)
       minute = optional(number, 0)
+      # Human-readable description of the policy (max 512 characters).
+      description = optional(string, "")
     }), null)
 
     # Self-service maintenance version — set to a newer available version
@@ -105,5 +107,23 @@ variable "spec" {
     # CMEK key resource id; arrives as a plain string after ref resolution.
     # Immutable.
     customer_managed_key = optional(string, "")
+
+    # User labels, merged beneath the platform attribution labels
+    # (see locals.tf).
+    labels = optional(map(string), {})
+
+    # Destroy guard. The spec defaults this to true (Planton middleware
+    # materializes the default), and the module sends it explicitly so
+    # destroy behavior is identical on both engines.
+    deletion_protection = optional(bool, true)
+
+    # Deletion policy: "", "DELETE" (default), "PREVENT" (destroy fails),
+    # or "ABANDON" (remove from management, leave running in GCP).
+    deletion_policy = optional(string, "")
   })
+
+  validation {
+    condition     = contains(["", "DELETE", "PREVENT", "ABANDON"], var.spec.deletion_policy)
+    error_message = "deletion_policy must be one of: DELETE, PREVENT, ABANDON."
+  }
 }

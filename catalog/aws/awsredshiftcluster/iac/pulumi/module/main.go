@@ -50,11 +50,38 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftclusterv1alpha1.AwsRe
 		return errors.Wrap(err, "failed to configure snapshot copy")
 	}
 
+	if err := snapshotScheduleAssociation(ctx, locals, provider, createdCluster); err != nil {
+		return errors.Wrap(err, "failed to associate snapshot schedule")
+	}
+
+	createdUsageLimitIds, err := usageLimits(ctx, locals, provider, createdCluster)
+	if err != nil {
+		return errors.Wrap(err, "failed to create usage limits")
+	}
+
+	if err := scheduledActions(ctx, locals, provider, createdCluster); err != nil {
+		return errors.Wrap(err, "failed to create scheduled actions")
+	}
+
+	createdEndpointAddresses, err := endpointAccesses(ctx, locals, provider, createdCluster)
+	if err != nil {
+		return errors.Wrap(err, "failed to create endpoint accesses")
+	}
+
+	if err := endpointAuthorizations(ctx, locals, provider, createdCluster); err != nil {
+		return errors.Wrap(err, "failed to create endpoint authorizations")
+	}
+
 	ctx.Export(OpClusterIdentifier, createdCluster.ClusterIdentifier)
 	ctx.Export(OpClusterArn, createdCluster.Arn)
 	ctx.Export(OpClusterNamespaceArn, createdCluster.ClusterNamespaceArn)
 	ctx.Export(OpEndpoint, createdCluster.Endpoint)
 	ctx.Export(OpDnsName, createdCluster.DnsName)
+
+	// Empty when the spec omitted database_name: AWS creates its
+	// documented default initial database ("dev") but DescribeClusters
+	// echoes no name back, so the attribute stays unset (live-verified
+	// on both engines).
 	ctx.Export(OpDatabaseName, createdCluster.DatabaseName)
 	ctx.Export(OpPort, createdCluster.Port)
 
@@ -68,6 +95,12 @@ func Resources(ctx *pulumi.Context, stackInput *awsredshiftclusterv1alpha1.AwsRe
 	// manage_master_password is on; the attribute resolves to "" otherwise,
 	// so the output shape is stable across both password strategies.
 	ctx.Export(OpMasterPasswordSecretArn, createdCluster.MasterPasswordSecretArn)
+
+	// Per-satellite maps: endpoint addresses and AWS-generated usage-limit
+	// IDs, keyed identically on both engines (imports and out-of-band CLI
+	// operations address entries by these keys).
+	ctx.Export(OpEndpointAccessAddresses, createdEndpointAddresses)
+	ctx.Export(OpUsageLimitIds, createdUsageLimitIds)
 
 	return nil
 }

@@ -1,4 +1,4 @@
-name: awsgluecatalogdatabase-pulumi-project
+name: awsgluecatalogdatabase
 runtime:
   name: go
 # options:

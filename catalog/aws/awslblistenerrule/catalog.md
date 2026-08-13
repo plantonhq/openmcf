@@ -78,7 +78,7 @@ These are the most important decisions when configuring a rule. Explore the full
 
 **Priority is the evaluation order** -- 1–50000, unique per listener, lower first, first match wins. Priority 0 lets AWS append after the current highest — safe for non-overlapping routes, but rules that shadow each other (/api/* alongside /*) need explicit priorities.
 
-**Conditions AND across blocks, OR within** -- 1–5 blocks per rule, each matching exactly one thing (host, path, header, method, query string, or source IP); a request must satisfy all blocks, and the values inside one block are alternatives. Wildcards (* and ?) cover most needs; regex patterns require enabling regex matching on the load balancer.
+**Conditions AND across blocks, OR within** -- 1–5 blocks per rule, each matching exactly one thing (host, path, header, method, query string, or source IP); a request must satisfy all blocks, and the values inside one block are alternatives. Wildcards (* and ?) cover most needs; regex patterns require enabling regex matching on the load balancer — an attribute the Terraform provider does not expose, so enable it via the AWS console or CLI.
 
 **Actions mirror the listener's model** -- authentication actions (Cognito, OIDC, JWT validation) may front the terminal action, and every chain ends in exactly one forward, redirect, or fixed response. Weighted forwards enable route-scoped canaries. The OIDC client secret is a managed secret reference, resolved just-in-time.
 

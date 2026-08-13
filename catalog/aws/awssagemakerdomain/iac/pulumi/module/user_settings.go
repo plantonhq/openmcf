@@ -11,7 +11,7 @@ import (
 // present; the SDK models every nesting path as its own Go type, so the
 // repeated default_resource_spec / custom_images / idle_settings shapes are
 // converted per app type below (the spec shares one message across them).
-func buildDefaultUserSettings(dus *awssagemakerdomainv1alpha1.AwsSagemakerDomainDefaultUserSettings) *sagemaker.DomainDefaultUserSettingsArgs {
+func buildDefaultUserSettings(dus *awssagemakerdomainv1alpha1.AwsSagemakerDomainUserSettings) *sagemaker.DomainDefaultUserSettingsArgs {
 	settings := &sagemaker.DomainDefaultUserSettingsArgs{
 		ExecutionRole: pulumi.String(dus.ExecutionRoleArn.GetValue()),
 	}
@@ -252,14 +252,16 @@ func buildUserJupyterLabAppSettings(jl *awssagemakerdomainv1alpha1.AwsSagemakerD
 
 	// The spec folds idle_settings directly under the app settings and makes
 	// block presence the enable switch; the SDK nests them inside a
-	// single-purpose app_lifecycle_management wrapper with an explicit
-	// ENABLED flag, both reconstructed here. All three timeouts are required
+	// single-purpose app_lifecycle_management wrapper, both reconstructed
+	// here. lifecycle_management defaults to ENABLED when the block is
+	// present; an explicit DISABLED keeps the timeouts as published
+	// guardrails without enforcing auto-shutdown. All three timeouts are required
 	// by the live API whenever the block is sent (absent members transmit as
 	// 0 and AWS rejects them), so they pass through unconditionally.
 	if idle := jl.IdleSettings; idle != nil {
 		jlArgs.AppLifecycleManagement = &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsAppLifecycleManagementArgs{
 			IdleSettings: &sagemaker.DomainDefaultUserSettingsJupyterLabAppSettingsAppLifecycleManagementIdleSettingsArgs{
-				LifecycleManagement:     pulumi.String("ENABLED"),
+				LifecycleManagement:     pulumi.String(lifecycleManagement(idle)),
 				IdleTimeoutInMinutes:    pulumi.IntPtr(int(idle.IdleTimeoutInMinutes)),
 				MinIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MinIdleTimeoutInMinutes)),
 				MaxIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MaxIdleTimeoutInMinutes)),
@@ -423,7 +425,7 @@ func buildUserCodeEditorAppSettings(ce *awssagemakerdomainv1alpha1.AwsSagemakerD
 	if idle := ce.IdleSettings; idle != nil {
 		ceArgs.AppLifecycleManagement = &sagemaker.DomainDefaultUserSettingsCodeEditorAppSettingsAppLifecycleManagementArgs{
 			IdleSettings: &sagemaker.DomainDefaultUserSettingsCodeEditorAppSettingsAppLifecycleManagementIdleSettingsArgs{
-				LifecycleManagement:     pulumi.String("ENABLED"),
+				LifecycleManagement:     pulumi.String(lifecycleManagement(idle)),
 				IdleTimeoutInMinutes:    pulumi.IntPtr(int(idle.IdleTimeoutInMinutes)),
 				MinIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MinIdleTimeoutInMinutes)),
 				MaxIdleTimeoutInMinutes: pulumi.IntPtr(int(idle.MaxIdleTimeoutInMinutes)),
@@ -523,4 +525,14 @@ func buildCanvasAppSettings(canvas *awssagemakerdomainv1alpha1.AwsSagemakerDomai
 	}
 
 	return canvasArgs
+}
+
+// lifecycleManagement resolves the idle block's enforcement switch:
+// ENABLED when unset (block presence keeps meaning "on"), explicit
+// DISABLED expressible for the guardrails-only state.
+func lifecycleManagement(idle *awssagemakerdomainv1alpha1.AwsSagemakerDomainIdleSettings) string {
+	if idle.LifecycleManagement != nil {
+		return idle.GetLifecycleManagement()
+	}
+	return "ENABLED"
 }

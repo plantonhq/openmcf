@@ -64,6 +64,9 @@ variable "spec" {
       allowed_issuers = optional(list(string), [])
       audiences       = optional(list(string), [])
     }), null)
+
+    # Client-side destroy behavior: DELETE (default), PREVENT, ABANDON.
+    deletion_policy = optional(string, "")
   })
 
   validation {
@@ -85,12 +88,4 @@ variable "spec" {
     condition     = var.spec.index_endpoint != ""
     error_message = "index_endpoint is required."
   }
-}
-
-variable "provider_config" {
-  description = "GCP provider configuration"
-  type = object({
-    service_account_key = optional(string, "")
-  })
-  default = { service_account_key = "" }
 }

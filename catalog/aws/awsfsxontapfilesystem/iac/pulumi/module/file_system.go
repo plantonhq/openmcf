@@ -67,8 +67,12 @@ func fileSystem(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*f
 	// The provider requires PreferredSubnetId for every deployment type,
 	// while the decision only exists for multi-AZ — the spec requires it
 	// there and forbids it for single-AZ, where it derives deterministically
-	// from the only subnet (the Terraform module derives the same way).
-	if spec.PreferredSubnetId != nil && spec.PreferredSubnetId.GetValue() != "" {
+	// from the only subnet. The branch keys on the DEPLOYMENT TYPE (exactly
+	// like the Terraform module's is_multi_az local), never on whether the
+	// field happens to be populated, so both engines derive from the same
+	// input on every path.
+	isMultiAz := spec.GetDeploymentType() == "MULTI_AZ_1" || spec.GetDeploymentType() == "MULTI_AZ_2"
+	if isMultiAz {
 		args.PreferredSubnetId = pulumi.String(spec.PreferredSubnetId.GetValue())
 	} else {
 		args.PreferredSubnetId = pulumi.String(spec.SubnetIds[0].GetValue())

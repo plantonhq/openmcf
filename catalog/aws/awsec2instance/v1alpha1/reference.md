@@ -52,6 +52,10 @@ spec:
     volumeSizeGb: 30
     volumeType: gp3
     encrypted: true
+  volumeTags: # uniform at-creation tags on EVERY volume (ABAC-compliant); per-device tags are the post-creation alternative
+    cost-center: platform
+  disableApiTermination: true # protect the pet from fat-fingered deletion
+  forceDestroy: true # ...while keeping teardown declarative: destroy lifts the protection itself
   userData: |
     #!/bin/bash
     echo "hello from ${HOSTNAME}" > /etc/motd
@@ -76,7 +80,7 @@ spec:
 | `spec.privateIp` | `string` |  |  |  |
 | `spec.secondaryPrivateIps` | `[]string` |  |  |  |
 | `spec.associatePublicIpAddress` | `bool` |  |  |  |
-| `spec.sourceDestCheck` | `bool` |  | `true` |  |
+| `spec.sourceDestCheck` | `bool` |  |  |  |
 | `spec.ipv6AddressCount` | `int32` |  |  |  |
 | `spec.ipv6Addresses` | `[]string` |  |  |  |
 | `spec.enablePrimaryIpv6` | `bool` |  |  |  |
@@ -98,6 +102,7 @@ spec:
 | `spec.rootBlockDevice.encrypted` | `bool` |  |  |  |
 | `spec.rootBlockDevice.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.rootBlockDevice.deleteOnTermination` | `bool` |  |  |  |
+| `spec.rootBlockDevice.tags` | `map<string, string>` |  |  |  |
 | `spec.ebsBlockDevices` | `[]AwsEc2InstanceEbsBlockDevice` |  |  |  |
 | `spec.ebsBlockDevices[].deviceName` | `string` | yes |  |  |
 | `spec.ebsBlockDevices[].volumeSizeGb` | `int32` |  |  |  |
@@ -108,10 +113,12 @@ spec:
 | `spec.ebsBlockDevices[].kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.ebsBlockDevices[].snapshotId` | `string` |  |  |  |
 | `spec.ebsBlockDevices[].deleteOnTermination` | `bool` |  |  |  |
+| `spec.ebsBlockDevices[].tags` | `map<string, string>` |  |  |  |
 | `spec.ephemeralBlockDevices` | `[]AwsEc2InstanceEphemeralBlockDevice` |  |  |  |
 | `spec.ephemeralBlockDevices[].deviceName` | `string` | yes |  |  |
 | `spec.ephemeralBlockDevices[].virtualName` | `string` |  |  |  |
 | `spec.ephemeralBlockDevices[].noDevice` | `bool` |  |  |  |
+| `spec.volumeTags` | `map<string, string>` |  |  |  |
 | `spec.ebsOptimized` | `bool` |  |  |  |
 | `spec.metadataOptions` | `AwsEc2InstanceMetadataOptions` |  |  |  |
 | `spec.metadataOptions.httpEndpoint` | `string` |  |  |  |
@@ -126,6 +133,7 @@ spec:
 | `spec.cpuOptions.amdSevSnp` | `string` |  |  |  |
 | `spec.cpuOptions.nestedVirtualization` | `string` |  |  |  |
 | `spec.cpuCredits` | `string` |  |  |  |
+| `spec.marketType` | `string` |  |  |  |
 | `spec.spotOptions` | `AwsEc2InstanceSpotOptions` |  |  |  |
 | `spec.spotOptions.maxPrice` | `string` |  |  |  |
 | `spec.spotOptions.spotInstanceType` | `string` |  |  |  |
@@ -149,6 +157,7 @@ spec:
 | `spec.instanceInitiatedShutdownBehavior` | `string` |  |  |  |
 | `spec.disableApiStop` | `bool` |  |  |  |
 | `spec.disableApiTermination` | `bool` |  |  |  |
+| `spec.forceDestroy` | `bool` |  |  |  |
 | `spec.userData` | `string` |  |  |  |
 | `spec.userDataBase64` | `string` |  |  |  |
 | `spec.userDataReplaceOnChange` | `bool` |  |  |  |
@@ -181,7 +190,9 @@ semantics).
 The EC2 instance type (e.g. "t4g.nano", "m7g.large", "c5.xlarge")
 determining vCPU count, memory, and network/EBS bandwidth. Required
 unless launch_template supplies one. Changing the type stops and
-restarts the instance in place (EBS-backed instances only).
+restarts the instance in place (EBS-backed instances only) -- UNLESS
+the old and new types share no CPU architecture (x86 -> ARM), which
+replaces the instance.
 
 ### spec.launchTemplate
 
@@ -193,6 +204,7 @@ value for this instance -- the template is the org's golden baseline,
 the inline fields are this pet's deviations.
 
 - rule: identify the launch template by id or by name, not both
+- rule: identify the launch template by id or by name
 
 ### spec.launchTemplate.id
 
@@ -220,7 +232,9 @@ The template version to launch from: a version number ("12"),
 "$Latest" (track every new version -- each publish restarts the
 instance), or "$Default" (AWS default when unset; both Planton launch
 template modules promote each new version to default, so this tracks
-the template's releases).
+the template's releases). Changing this to a version the instance is
+not already running REPLACES the instance -- the provider verifies
+against the live instance's actual template version.
 
 ### spec.instanceProfile
 
@@ -312,13 +326,15 @@ instance. Note AWS now bills every public IPv4 address.
 
 `bool` · optional (explicit presence)
 
-Source/destination checking on the primary interface. AWS default:
-true. Set false ONLY for instances that forward traffic they neither
-originated nor terminate -- NAT instances, software routers, VPN
-appliances -- otherwise the network silently drops their forwarded
-packets.
-
-- default: `true`
+Source/destination checking on the primary interface. Optional
+tri-state: unset keeps AWS's default (true -- checking on); an
+explicit false is the forwarding posture for instances that carry
+traffic they neither originated nor terminate (NAT instances,
+software routers, VPN appliances) -- without it the network silently
+drops their forwarded packets. Leave unset when attaching a
+pre-provisioned primary ENI: the provider rejects the combination
+(the ENI carries its own source/dest-check setting), and setting the
+field on the ENI's kind is the right home for that posture.
 
 ### spec.ipv6AddressCount
 
@@ -437,7 +453,7 @@ and delete-on-termination are updatable in place; flipping encryption
 requires replacement.
 
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
-- rule: throughput_mibps must be between 125 and 1000 when set
+- rule: throughput_mibps must be between 125 and 2000 when set
 - rule: throughput_mibps only applies to gp3 volumes
 - rule: iops only applies to gp3, io1, and io2 volumes
 
@@ -468,7 +484,9 @@ Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3"
 
 `int32`
 
-Throughput in MiB/s, 125-1000. "gp3" only (baseline 125 without it).
+Throughput in MiB/s, 125-2000. "gp3" only (baseline 125 without it;
+above 1000 requires a matching iops floor per the gp3 ratio rules AWS
+enforces at the API).
 
 ### spec.rootBlockDevice.encrypted
 
@@ -498,6 +516,15 @@ Delete the root volume when the instance terminates. AWS default:
 true. Optional so an explicit false ("keep the boot disk for
 forensics/reuse") is distinguishable from unset.
 
+### spec.rootBlockDevice.tags
+
+`map<string, string>`
+
+Tags on the root volume itself. Applied AFTER instance creation by a
+separate tagging call -- incompatible with ABAC/SCP policies that
+require tags at creation time (use the spec-level volume_tags for
+those). Mutually exclusive with volume_tags. Updatable in place.
+
 ### spec.ebsBlockDevices
 
 `[]AwsEc2InstanceEbsBlockDevice`
@@ -508,7 +535,7 @@ mapping replaces the instance -- attach post-launch volumes as
 separate resources when independent lifecycles matter.
 
 - rule: volume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard
-- rule: throughput_mibps must be between 125 and 1000 when set
+- rule: throughput_mibps must be between 125 and 2000 when set
 - rule: throughput_mibps only applies to gp3 volumes
 - rule: iops only applies to gp3, io1, and io2 volumes
 - rule: provide volume_size_gb, or a snapshot_id that defines the size
@@ -545,7 +572,7 @@ Provisioned IOPS. Required for "io1"/"io2"; optional for "gp3".
 
 `int32`
 
-Throughput in MiB/s, 125-1000. "gp3" only.
+Throughput in MiB/s, 125-2000. "gp3" only.
 
 ### spec.ebsBlockDevices[].encrypted
 
@@ -576,6 +603,15 @@ volume) instead of empty.
 
 Delete the volume when the instance terminates. AWS default: true.
 Set an explicit false to keep the data volume after termination.
+
+### spec.ebsBlockDevices[].tags
+
+`map<string, string>`
+
+Tags on this volume. Applied AFTER instance creation by a separate
+tagging call -- incompatible with ABAC/SCP policies that require tags
+at creation time (use the spec-level volume_tags for those).
+Mutually exclusive with volume_tags. Updatable in place.
 
 ### spec.ephemeralBlockDevices
 
@@ -608,6 +644,18 @@ An instance-store virtual device name ("ephemeral0", "ephemeral1",
 
 Suppress a device the AMI would otherwise attach -- the way to DROP
 an AMI-baked mapping. Mutually exclusive with virtual_name.
+
+### spec.volumeTags
+
+`map<string, string>`
+
+Tags applied uniformly to EVERY EBS volume at instance creation --
+including volumes the AMI's block-device mapping creates that are not
+declared here. Because they ride the launch call itself, these satisfy
+ABAC/SCP policies that require tags at creation time. Mutually
+exclusive with per-device tags (root_block_device.tags /
+ebs_block_devices[].tags), which allow per-volume values but are
+applied AFTER creation by a separate tagging call. Updatable in place.
 
 ### spec.ebsOptimized
 
@@ -733,6 +781,22 @@ Credit option for burstable (T-family) instance types: "standard"
 for the excess). AWS default: "unlimited" for recent T families.
 Ignored for non-burstable types. Updatable in place.
 
+### spec.marketType
+
+`string`
+
+The instance's purchase market. Unset = On-Demand (with spot_options
+present implying "spot" for that classic shape). "spot" pairs with
+spot_options; "capacity-block" launches into a pre-purchased ML
+Capacity Block (target the block's reservation via
+capacity_reservation -- required); "interruptible-capacity-reservation"
+launches into an interruptible Capacity Reservation (target required).
+The AwsLaunchTemplate sibling carries only spot/capacity-block -- the
+interruptible market is instance-level surface at the pinned provider.
+ForceNew: the purchase option is fixed at launch. Note: the provider
+keeps capacity-block in state after launch (a re-plan shows no diff --
+the 6.53.0 perpetual-diff fix).
+
 ### spec.spotOptions
 
 `AwsEc2InstanceSpotOptions`
@@ -741,8 +805,9 @@ Request Spot capacity instead of On-Demand -- for interruption-
 tolerant standalone workloads (a build agent, a batch box). The
 instance can be reclaimed by AWS with two minutes' notice; pair with
 instance_interruption_behavior "stop"/"hibernate" (persistent
-requests) to survive reclaims. ForceNew: the purchase option is
-fixed at launch.
+requests) to survive reclaims. Presence implies market_type "spot"
+when that field is unset. ForceNew: the purchase option is fixed at
+launch.
 
 - rule: spot_instance_type must be 'one-time' or 'persistent' when set
 - rule: instance_interruption_behavior must be 'terminate', 'stop', or 'hibernate' when set
@@ -793,18 +858,21 @@ consume a reservation), or a specific reservation / reservation
 group. Capacity reservations are how latency-critical or
 failover-critical instances guarantee capacity in an AZ.
 
-- rule: preference must be 'open' or 'none' when set
+- rule: preference must be 'open', 'none', or 'capacity-reservations-only' when set
 - rule: set preference, or target a specific reservation/group, not both
 - rule: capacity_reservation_id and capacity_reservation_resource_group_arn are mutually exclusive
+- rule: set preference, or target a specific reservation/group
 
 ### spec.capacityReservation.preference
 
 `string`
 
 Reservation preference: "open" (consume a matching reservation when
-one exists -- AWS's default behavior) or "none" (never consume a
-reservation, even when one matches). Mutually exclusive with the
-specific-target fields.
+one exists -- AWS's default behavior), "none" (never consume a
+reservation, even when one matches), or "capacity-reservations-only"
+(launch ONLY into a matching reservation -- the launch fails when
+none matches, guaranteeing reserved capacity is what runs). Mutually
+exclusive with the specific-target fields.
 
 ### spec.capacityReservation.capacityReservationId
 
@@ -935,6 +1003,17 @@ protection) -- the classic guard against fat-fingered deletion of a
 stateful pet. Updatable in place; the module's destroy flips it off
 first only if you remove the protection from the spec.
 
+### spec.forceDestroy
+
+`bool`
+
+Allow destroy to proceed even while disable_api_termination /
+disable_api_stop are true: the engine lifts the protections itself
+before terminating, instead of failing the destroy. The declarative
+escape hatch for tearing down a protected pet without first editing
+its spec. Imported instances always start with this false regardless
+of the live value (the provider cannot read it back).
+
 ### spec.userData
 
 `string`
@@ -972,13 +1051,20 @@ worse than a new one.
 - `ami_or_launch_template`: provide ami, or reference a launch_template that supplies the image
 - `instance_type_or_launch_template`: provide instance_type, or reference a launch_template that supplies the type
 - `ami_format`: ami must be an AMI ID beginning with 'ami-'
-- `primary_eni_excludes_inline_networking`: when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, and associate_public_ip_address
+- `primary_eni_excludes_inline_networking`: when primary_network_interface_id is set, the ENI defines networking -- clear subnet_id, security_group_ids, private_ip, secondary_private_ips, the IPv6 fields, associate_public_ip_address, and source_dest_check
 - `ipv6_count_xor_addresses`: ipv6_address_count and ipv6_addresses are mutually exclusive
+- `private_ip_format`: private_ip must be an IPv4 address (e.g. 10.0.1.5)
+- `secondary_private_ips_format`: every secondary_private_ips entry must be an IPv4 address
+- `ipv6_addresses_format`: every ipv6_addresses entry must be an IPv6 address
 - `cpu_credits_valid`: cpu_credits must be 'standard' or 'unlimited' when set
 - `enclave_incompatible_with_hibernation`: enclave_enabled and hibernation_enabled cannot both be true
 - `auto_recovery_valid`: auto_recovery must be 'default' or 'disabled' when set
 - `shutdown_behavior_valid`: instance_initiated_shutdown_behavior must be 'stop' or 'terminate' when set
 - `user_data_xor_base64`: user_data and user_data_base64 are mutually exclusive
+- `market_type_valid`: market_type must be 'spot', 'capacity-block', or 'interruptible-capacity-reservation' when set
+- `spot_options_require_spot_market`: spot_options only applies to the 'spot' market (leave market_type unset or 'spot')
+- `reservation_market_requires_target`: market_type 'capacity-block' / 'interruptible-capacity-reservation' requires capacity_reservation with capacity_reservation_id or capacity_reservation_resource_group_arn
+- `volume_tags_xor_per_device_tags`: volume_tags and per-device tags (root_block_device.tags / ebs_block_devices[].tags) are mutually exclusive
 
 ## Outputs
 
@@ -1016,6 +1102,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsElasticIp | `spec.instance` | `status.outputs.instance_id` |
+| AwsElasticIp | `spec.networkInterface` | `status.outputs.primary_network_interface_id` |
 | AwsLbTargetGroup | `spec.targets[].targetId` | `status.outputs.instance_id` |
 
 ## See Also

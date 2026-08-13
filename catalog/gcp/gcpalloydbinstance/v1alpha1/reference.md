@@ -6,6 +6,8 @@
 
 **apiVersion**: `gcp.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 GcpAlloydbInstanceSpec defines an AlloyDB instance (`google_alloydb_instance`)
 attached to an existing cluster.
 
@@ -28,9 +30,9 @@ spec:
   instanceId: orders-read-pool
   instanceType: READ_POOL
   cpuCount: 2
+  # availabilityType stays empty on read pools — derived from nodeCount.
   readPoolConfig:
     nodeCount: 2
-  availabilityType: REGIONAL
   requireConnectors: true
   sslMode: ENCRYPTED_ONLY
 ```
@@ -69,6 +71,14 @@ spec:
 | `spec.pscInstanceConfig.pscAutoConnections[].consumerProject` | `string` |  |  |  |
 | `spec.pscInstanceConfig.pscInterfaceConfigs` | `[]GcpAlloydbInstancePscInterfaceConfig` |  |  |  |
 | `spec.pscInstanceConfig.pscInterfaceConfigs[].networkAttachmentResource` | `string` |  |  |  |
+| `spec.labels` | `map<string, string>` |  |  |  |
+| `spec.annotations` | `map<string, string>` |  |  |  |
+| `spec.gceZone` | `string` |  |  |  |
+| `spec.connectionPoolConfig` | `GcpAlloydbInstanceConnectionPoolConfig` |  |  |  |
+| `spec.connectionPoolConfig.enabled` | `bool` |  |  |  |
+| `spec.connectionPoolConfig.flags` | `map<string, string>` |  |  |  |
+| `spec.allocatedIpRangeOverride` | `string` |  |  |  |
+| `spec.deletionPolicy` | `string` |  |  |  |
 
 ## Field Details
 
@@ -142,10 +152,15 @@ Read capacity — number of nodes in the read pool instance.
 
 `string`
 
-ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-pools with 2+ nodes can be REGIONAL.
+ZONAL or REGIONAL placement for PRIMARY/SECONDARY instances. GCP
+defaults to REGIONAL when unset. Must stay empty on READ_POOL
+instances: read-pool availability is DERIVED from node_count (1 node =
+ZONAL, 2+ nodes = REGIONAL spread across zones) and the AlloyDB API
+does not store a sent value — the stored object omits the field, so
+any explicit value produces a perpetual re-plan diff (live-verified
+against a single-node pool at google@7.43.0).
 
-- rule: availability_type must be ZONAL or REGIONAL
+- rule: availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED
 
 ### spec.databaseFlags
 
@@ -217,10 +232,8 @@ posture); NEVER stops it. Flipping ALWAYS→NEVER→ALWAYS is the
 stop/start lever — a stopped instance keeps its configuration and
 storage but serves nothing and stops billing for compute. Mind the
 ordering restrictions (stop read pools before the primary).
-NOTE: managed connection pooling is deliberately not modeled — the
-released google provider does not expose it for AlloyDB instances.
 
-- rule: activation_policy must be ALWAYS or NEVER
+- rule: activation_policy must be ALWAYS, NEVER, or ACTIVATION_POLICY_UNSPECIFIED
 
 ### spec.enablePublicIp
 
@@ -288,12 +301,87 @@ PSC interfaces for outbound connectivity (0 or 1 supported by AlloyDB).
 
 Network attachment resource in the consumer project.
 
+### spec.labels
+
+`map<string, string>`
+
+User-defined labels on the instance (cost attribution, team ownership,
+environment tagging). Merged with the platform's attribution labels;
+on key conflicts the platform labels win. Mutable in place.
+
+### spec.annotations
+
+`map<string, string>`
+
+Unstructured metadata stored on the instance (annotations, not labels —
+not used for billing filtering). Mutable in place.
+
+### spec.gceZone
+
+`string`
+
+Pin a ZONAL instance to a specific Compute Engine zone (e.g.
+"us-central1-a"). Only valid when availability_type is ZONAL — GCP
+rejects it on REGIONAL instances; leave empty to let GCP pick a zone
+with available capacity. Mutable: changing it live-migrates the
+instance to the new zone.
+
+### spec.connectionPoolConfig
+
+`GcpAlloydbInstanceConnectionPoolConfig`
+
+AlloyDB managed connection pooling (built-in pooler). Mutable in place.
+
+### spec.connectionPoolConfig.enabled
+
+`bool`
+
+Turn managed connection pooling on or off. Mutable in place.
+
+### spec.connectionPoolConfig.flags
+
+`map<string, string>`
+
+Pooler flags, keyed by flag name WITHOUT the "connection-pooling-"
+prefix and with underscores instead of dashes (GCP's documented
+convention for this provider surface): e.g. the flag
+"connection-pooling-pool-mode" is set as key "pool_mode". Only
+applied while enabled is true.
+
+### spec.allocatedIpRangeOverride
+
+`string`
+
+Draw this instance's private IPs from a specific Private Service
+Access allocated range (RFC 1035 name, e.g.
+"google-managed-services-default") instead of the range the parent
+cluster uses. Immutable: changing it destroys and recreates the
+instance.
+
+- rule: allocated_ip_range_override must be an RFC 1035 range name (1-63 chars: [a-z]([-a-z0-9]*[a-z0-9])?)
+
+### spec.deletionPolicy
+
+`string`
+
+What happens to the instance in GCP when this resource is destroyed.
+  "DELETE"  -- (GCP's default when unset) the instance is deleted;
+               the parent cluster and its data survive
+  "PREVENT" -- destroy FAILS; protects serving capacity applications
+               still connect to
+  "ABANDON" -- the instance is removed from management but keeps
+               running (and billing) in GCP
+
+- rule: deletion_policy must be one of: DELETE, PREVENT, ABANDON
+
 ## Validation Rules
 
 - `machine_config_mutual_exclusion`: only one of cpu_count or machine_type may be set
 - `read_pool_requires_node_count`: READ_POOL instances require read_pool_config.node_count >= 1
 - `read_pool_config_only_for_read_pool`: read_pool_config applies to READ_POOL instances only
 - `authorized_networks_require_public_ip`: authorized_external_networks requires enable_public_ip
+- `availability_type_not_for_read_pool`: availability_type applies to PRIMARY/SECONDARY instances only — read-pool availability is derived from node_count (1 node = ZONAL, 2+ nodes = REGIONAL) and the API does not store a sent value
+- `gce_zone_requires_zonal`: gce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)
 
 ## Outputs
 

@@ -31,6 +31,7 @@ func initializeLocals(ctx *pulumi.Context, in *awssqsqueuev1alpha1.AwsSqsQueueSt
 	locals.QueueName = queueName
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.Target.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.Target.Metadata.Org,
 		awstagkeys.Environment:  locals.Target.Metadata.Env,

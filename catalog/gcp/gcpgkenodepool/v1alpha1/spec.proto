@@ -28,6 +28,12 @@ message GcpGkeNodePoolSpec {
     expression: "!has(this.initial_node_count) || has(this.autoscaling)"
   };
 
+  option (buf.validate.message).cel = {
+    id: "name_xor_name_prefix"
+    message: "set node_pool_name or name_prefix, not both — a prefixed pool gets its full name from GKE"
+    expression: "!(this.node_pool_name != '' && this.name_prefix != '')"
+  };
+
   // The GCP project the node pool is created in. Must be the parent
   // cluster's project — node pools cannot live in a different project than
   // their cluster. Accepts a literal project ID or a reference to a
@@ -67,6 +73,16 @@ message GcpGkeNodePoolSpec {
   string node_pool_name = 4 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,38}[a-z0-9])?$"
+  ];
+
+  // Prefix for a GENERATED pool name — GKE appends a random suffix, so
+  // every replacement pool gets a fresh unique name (the
+  // create-before-destroy pattern for pools that must be swapped without
+  // a name collision). Mutually exclusive with node_pool_name; when both
+  // are empty, node_pool_name defaults to metadata.name. Immutable.
+  string name_prefix = 17 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-z]([a-z0-9-]{0,36})?$"
   ];
 
   // Zones this pool's nodes run in, e.g. ["us-central1-a", "us-central1-b"].
@@ -150,6 +166,60 @@ message GcpGkeNodePoolSpec {
   // If omitted entirely, GKE defaults apply (e2-medium, 100 GB pd-balanced,
   // Container-Optimized OS, Compute Engine default service account).
   GcpGkeNodePoolNodeConfig node_config = 16;
+
+  // Destroy-time stance of the IaC engines toward the pool itself:
+  // DELETE (default) destroys it, PREVENT fails any plan that would
+  // destroy it, ABANDON removes it from state and leaves the pool
+  // running in GCP. This is an engine-side control, not a GKE API field.
+  string deletion_policy = 18 [(buf.validate.field).cel = {
+    id: "deletion_policy_valid"
+    message: "deletion_policy must be empty, DELETE, PREVENT, or ABANDON"
+    expression: "this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']"
+  }];
+
+  // Skips the per-pool Instance Group Manager queries that reconcile the
+  // observed node count on every plan — a quota/performance optimization
+  // for very large pools. While true, node-count drift is invisible to
+  // plans and the instance_group_urls outputs go stale. The engines
+  // already never fight the autoscaler over node_count; this additionally
+  // silences the read-side queries.
+  bool ignore_node_count_changes = 19;
+
+  // How nodes drain when the POOL ITSELF is deleted or replaced: grace
+  // periods and whether PodDisruptionBudgets are honored during the
+  // teardown. Distinct from upgrade_settings, which paces upgrades of a
+  // pool that continues to exist. NOTE: customized node drain requires
+  // project-level enablement from GCP support — on a project without it,
+  // the API rejects the create with "customized node drain timeout is not
+  // enabled for this project, please contact your account manager or open
+  // a support case to enable it".
+  GcpGkeNodePoolNodeDrainConfig node_drain_config = 20;
+}
+
+// GcpGkeNodePoolNodeDrainConfig controls draining behavior when the pool
+// is deleted or replaced. The feature is allowlist-gated per project: GCP
+// support must enable "customized node drain timeout" before the API
+// accepts a pool carrying this block.
+message GcpGkeNodePoolNodeDrainConfig {
+  // Grace period each node gets to finish draining before it is removed,
+  // seconds format, e.g. "300s".
+  string grace_termination_duration = 1 [(buf.validate.field).cel = {
+    id: "grace_termination_format"
+    message: "grace_termination_duration must be a seconds-format duration like \"300s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // How long the drain waits on a blocking PodDisruptionBudget before
+  // proceeding anyway, seconds format, e.g. "3600s".
+  string pdb_timeout_duration = 2 [(buf.validate.field).cel = {
+    id: "pdb_timeout_format"
+    message: "pdb_timeout_duration must be a seconds-format duration like \"3600s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // Honor PodDisruptionBudgets while the pool is being deleted (bounded
+  // by pdb_timeout_duration) instead of evicting immediately.
+  optional bool respect_pdb_during_node_pool_deletion = 3;
 }
 
 // GcpGkeNodePoolAutoscaling bounds cluster-autoscaler management of the
@@ -361,6 +431,71 @@ message GcpGkeNodePoolNetworkConfig {
   // doubles the pod range slice per node). Only relevant with a dedicated
   // pod range. Immutable.
   bool pod_cidr_overprovision_disabled = 6;
+
+  // Places this pool's nodes on a DIFFERENT subnetwork than the cluster's
+  // default node subnetwork (same VPC). Accepts a subnetwork self link or
+  // a reference to a GcpSubnetwork resource. Immutable. Used to give pools
+  // their own address planning or firewall scope.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Accelerator network profile for the pool (e.g. RDMA-capable profiles
+  // on GPU supercomputer shapes). GKE validates the profile against the
+  // machine family at apply. Immutable.
+  string accelerator_network_profile = 8;
+
+  // Additional node network interfaces (multi-networking): each entry
+  // attaches every node to one more VPC network/subnetwork. Requires the
+  // cluster's enable_multi_networking. Immutable.
+  repeated GcpGkeNodePoolAdditionalNodeNetwork additional_node_networks = 9;
+
+  // Additional pod ranges (multi-networking): each entry makes a
+  // secondary range on a subnetwork available to this pool's pods beyond
+  // the primary pod range. Requires the cluster's
+  // enable_multi_networking. Immutable.
+  repeated GcpGkeNodePoolAdditionalPodNetwork additional_pod_networks = 10;
+}
+
+// GcpGkeNodePoolAdditionalNodeNetwork attaches one extra network
+// interface to every node in the pool.
+message GcpGkeNodePoolAdditionalNodeNetwork {
+  // The VPC network to attach. Accepts a network name/self link or a
+  // reference to a GcpVpcNetwork resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef network = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpVpcNetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.network_self_link"
+  ];
+
+  // The subnetwork on that network the interface draws its IP from.
+  // Accepts a name/self link or a reference to a GcpSubnetwork resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+}
+
+// GcpGkeNodePoolAdditionalPodNetwork exposes one more secondary range to
+// this pool's pods.
+message GcpGkeNodePoolAdditionalPodNetwork {
+  // The subnetwork holding the secondary range. Accepts a name/self link
+  // or a reference to a GcpSubnetwork resource.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnetwork = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = GcpSubnetwork,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnetwork_self_link"
+  ];
+
+  // Name of the secondary range on that subnetwork used for pod IPs.
+  string secondary_pod_range = 2 [(buf.validate.field).required = true];
+
+  // Maximum pods per node drawing from this range (8-256).
+  optional int32 max_pods_per_node = 3 [(buf.validate.field).int32 = {
+    gte: 8
+    lte: 256
+  }];
 }
 
 // GcpGkeNodePoolNodeConfig is the VM configuration every node in the pool
@@ -567,6 +702,277 @@ message GcpGkeNodePoolNodeConfig {
     message: "max_run_duration must be a seconds-format duration like \"3600s\""
     expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
   }];
+
+  // Confidential storage on the node disks (hardware-encrypted at the
+  // storage layer; pairs with confidential_nodes for end-to-end
+  // confidentiality). Requires a supporting machine family and hyperdisk
+  // boot disks. Immutable.
+  bool enable_confidential_storage = 33;
+
+  // Encryption mode for local SSDs: STANDARD_ENCRYPTION (Google-managed)
+  // or EPHEMERAL_KEY_ENCRYPTION (per-node ephemeral keys destroyed with
+  // the node — local data is unrecoverable after preemption/deletion).
+  // Immutable.
+  string local_ssd_encryption_mode = 34 [(buf.validate.field).cel = {
+    id: "local_ssd_encryption_mode_valid"
+    message: "local_ssd_encryption_mode must be empty, STANDARD_ENCRYPTION, or EPHEMERAL_KEY_ENCRYPTION"
+    expression: "this == '' || this in ['STANDARD_ENCRYPTION', 'EPHEMERAL_KEY_ENCRYPTION']"
+  }];
+
+  // GPUDirect strategy for multi-GPU/multi-node communication (e.g.
+  // "GPUDIRECT_TCPX", "GPUDIRECT_TCPXO", "GPUDIRECT_RDMA"). GKE validates
+  // the strategy against the machine family and GPU type at apply; the
+  // provider passes the value through case-insensitively.
+  string gpudirect_strategy = 35;
+
+  // Sole-tenant node group to schedule this pool's nodes onto (nodes on
+  // dedicated physical servers you already provisioned). Prefer
+  // sole_tenant_config's affinity form for flexible matching. Immutable.
+  string node_group = 36;
+
+  // Hyperdisk storage pools the node boot disks are provisioned in —
+  // pre-purchased pooled capacity/IOPS shared across disks. Full resource
+  // paths. Immutable.
+  repeated string storage_pools = 37 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Resource Manager tags bound to the node VMs (org-policy/firewall
+  // tags, distinct from network tags and labels), as
+  // {"tagKeys/123": "tagValues/456"} pairs. Mutable.
+  map<string, string> resource_manager_tags = 38;
+
+  // Advanced machine features: SMT control, nested virtualization, and
+  // the performance monitoring unit. Immutable.
+  GcpGkeNodePoolAdvancedMachineFeatures advanced_machine_features = 39;
+
+  // Boot disk shape as a first-class block — required for hyperdisk
+  // tuning (provisioned IOPS/throughput). When set, its disk_type/size
+  // take precedence over the flat disk_type/disk_size_gb fields.
+  GcpGkeNodePoolBootDisk boot_disk = 40;
+
+  // Custom node OS image family, overriding the stock image_type image.
+  // Both fields must point at an image built for GKE nodes. Immutable.
+  GcpGkeNodePoolNodeImage node_image = 41;
+
+  // Sole-tenant scheduling: affinity rules selecting the sole-tenant node
+  // groups this pool's nodes run on, plus a dedicated-vCPU floor.
+  // Immutable.
+  GcpGkeNodePoolSoleTenantConfig sole_tenant_config = 42;
+
+  // GKE Sandbox: runs every pod in this pool inside gVisor (user-space
+  // kernel isolation) — for untrusted/multi-tenant workloads. The only
+  // value is "GVISOR". GKE taints sandbox pools automatically. Immutable.
+  string sandbox_type = 43 [(buf.validate.field).cel = {
+    id: "sandbox_type_valid"
+    message: "sandbox_type must be empty or GVISOR"
+    expression: "this == '' || this == 'GVISOR'"
+  }];
+
+  // Windows Server version for WINDOWS_LTSC_CONTAINERD pools:
+  // OS_VERSION_LTSC2019 or OS_VERSION_LTSC2022. Immutable.
+  string windows_os_version = 44 [(buf.validate.field).cel = {
+    id: "windows_os_version_valid"
+    message: "windows_os_version must be empty, OS_VERSION_LTSC2019, or OS_VERSION_LTSC2022"
+    expression: "this == '' || this in ['OS_VERSION_LTSC2019', 'OS_VERSION_LTSC2022']"
+  }];
+
+  // Host maintenance cadence for the underlying physical hosts:
+  // AS_NEEDED (default) or PERIODIC (predictable windows — required by
+  // some GPU/TPU shapes). Immutable.
+  string host_maintenance_interval = 45 [(buf.validate.field).cel = {
+    id: "host_maintenance_interval_valid"
+    message: "host_maintenance_interval must be empty, AS_NEEDED, or PERIODIC"
+    expression: "this == '' || this in ['AS_NEEDED', 'PERIODIC']"
+  }];
+
+  // How GKE taints nodes based on CPU architecture: ARM applies the
+  // kubernetes.io/arch taint to Arm nodes (the default protection that
+  // keeps amd64-only workloads off T2A/Axion pools); NONE disables that
+  // automatic taint.
+  string architecture_taint_behavior = 46 [(buf.validate.field).cel = {
+    id: "architecture_taint_behavior_valid"
+    message: "architecture_taint_behavior must be empty, NONE, or ARM"
+    expression: "this == '' || this in ['NONE', 'ARM']"
+  }];
+
+  // containerd runtime configuration: private registry access (custom CA
+  // domains), per-registry host overrides (mirrors, auth, headers), and
+  // writable cgroups.
+  GcpGkeNodePoolContainerdConfig containerd_config = 47;
+}
+
+// GcpGkeNodePoolAdvancedMachineFeatures tunes CPU-level machine features.
+message GcpGkeNodePoolAdvancedMachineFeatures {
+  // Threads per physical core: 1 disables SMT (licensing or
+  // side-channel isolation), 2 keeps it on. Only 1 or 2 are meaningful.
+  int64 threads_per_core = 1 [(buf.validate.field).int64 = {
+    gte: 1
+    lte: 2
+  }];
+
+  // Nested virtualization on the nodes (running VMs inside pods, e.g.
+  // KubeVirt). Requires Haswell-or-newer non-shared-core machine types.
+  optional bool enable_nested_virtualization = 2;
+
+  // Performance monitoring unit exposure: ARCHITECTURAL (basic counters),
+  // STANDARD (most counters), or ENHANCED (all counters) — for profiling
+  // workloads that read hardware counters.
+  string performance_monitoring_unit = 3 [(buf.validate.field).cel = {
+    id: "pmu_valid"
+    message: "performance_monitoring_unit must be empty, ARCHITECTURAL, STANDARD, or ENHANCED"
+    expression: "this == '' || this in ['ARCHITECTURAL', 'STANDARD', 'ENHANCED']"
+  }];
+}
+
+// GcpGkeNodePoolBootDisk shapes the node boot disk, including hyperdisk
+// provisioning knobs the flat disk fields cannot express.
+message GcpGkeNodePoolBootDisk {
+  // Boot disk type (pd-standard, pd-balanced, pd-ssd,
+  // hyperdisk-balanced...). Hyperdisk types unlock provisioned_iops /
+  // provisioned_throughput below.
+  string disk_type = 1 [(buf.validate.field).cel = {
+    id: "boot_disk_type_valid"
+    message: "disk_type must be empty, pd-standard, pd-balanced, pd-ssd, hyperdisk-balanced, hyperdisk-extreme, or hyperdisk-throughput"
+    expression: "this == '' || this in ['pd-standard', 'pd-balanced', 'pd-ssd', 'hyperdisk-balanced', 'hyperdisk-extreme', 'hyperdisk-throughput']"
+  }];
+
+  // Boot disk size in GB (min 10).
+  optional int64 size_gb = 2 [(buf.validate.field).int64.gte = 10];
+
+  // Provisioned IOPS — hyperdisk types that support IOPS provisioning
+  // only.
+  optional int64 provisioned_iops = 3 [(buf.validate.field).int64.gte = 1];
+
+  // Provisioned throughput in MiB/s — hyperdisk types that support
+  // throughput provisioning only.
+  optional int64 provisioned_throughput = 4 [(buf.validate.field).int64.gte = 1];
+}
+
+// GcpGkeNodePoolNodeImage points nodes at a custom OS image.
+message GcpGkeNodePoolNodeImage {
+  // Image family or full image name to boot nodes from.
+  string image = 1 [(buf.validate.field).required = true];
+
+  // Project hosting the image. Empty means the pool's own project.
+  string image_project = 2;
+}
+
+// GcpGkeNodePoolSoleTenantConfig schedules nodes onto sole-tenant node
+// groups via affinity rules.
+message GcpGkeNodePoolSoleTenantConfig {
+  // Affinity rules matching sole-tenant node groups. At least one rule
+  // selects the groups (e.g. key "compute.googleapis.com/node-group-name",
+  // operator IN, values [group name]).
+  repeated GcpGkeNodePoolSoleTenantAffinity node_affinities = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Minimum dedicated vCPUs per node reserved for this pool's workloads
+  // on the shared physical host.
+  optional int32 min_node_cpus = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+// GcpGkeNodePoolSoleTenantAffinity is one sole-tenant matching rule.
+message GcpGkeNodePoolSoleTenantAffinity {
+  // Affinity label key, e.g. "compute.googleapis.com/node-group-name".
+  string key = 1 [(buf.validate.field).required = true];
+
+  // IN selects hosts matching values; NOT_IN avoids them.
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "IN",
+        "NOT_IN"
+      ]
+    }
+  ];
+
+  // Values matched against the key.
+  repeated string values = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// GcpGkeNodePoolContainerdConfig tunes the containerd runtime.
+message GcpGkeNodePoolContainerdConfig {
+  // Trust custom certificate authorities for specific registry domains —
+  // required for private registries with self-signed/internal CAs.
+  GcpGkeNodePoolPrivateRegistryAccess private_registry_access = 1;
+
+  // Per-registry host overrides: mirrors, capabilities, dial timeouts,
+  // client certificates, and custom headers, in containerd hosts.toml
+  // semantics.
+  repeated GcpGkeNodePoolRegistryHost registry_hosts = 2;
+
+  // Writable cgroup filesystem inside containers — for workloads that
+  // manage their own sub-cgroups (nested container runtimes, some JVMs).
+  optional bool writable_cgroups_enabled = 3;
+}
+
+// GcpGkeNodePoolPrivateRegistryAccess trusts private-CA registries.
+message GcpGkeNodePoolPrivateRegistryAccess {
+  // Master toggle for private registry access configuration.
+  bool enabled = 1;
+
+  // Per-domain CA trust: each entry names registry FQDNs and the Secret
+  // Manager secret holding the CA certificate for them.
+  repeated GcpGkeNodePoolRegistryCaDomain certificate_authority_domains = 2;
+}
+
+// GcpGkeNodePoolRegistryCaDomain trusts one CA for a set of registry
+// domains.
+message GcpGkeNodePoolRegistryCaDomain {
+  // Registry FQDNs this CA vouches for, e.g. ["registry.internal:5000"].
+  repeated string fqdns = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Secret Manager secret URI holding the CA certificate, in the form
+  // "projects/{project}/secrets/{secret}/versions/{version}".
+  string gcp_secret_manager_certificate_uri = 2 [(buf.validate.field).required = true];
+}
+
+// GcpGkeNodePoolRegistryHost overrides containerd behavior for one
+// registry server.
+message GcpGkeNodePoolRegistryHost {
+  // The registry server the overrides apply to, e.g. "docker.io" or
+  // "registry.internal:5000".
+  string server = 1 [(buf.validate.field).required = true];
+
+  // Host endpoints serving this registry (mirrors first, in order).
+  repeated GcpGkeNodePoolRegistryHostEndpoint hosts = 2;
+}
+
+// GcpGkeNodePoolRegistryHostEndpoint is one endpoint (mirror) entry for a
+// registry server.
+message GcpGkeNodePoolRegistryHostEndpoint {
+  // Endpoint URL, e.g. "https://mirror.internal".
+  string host = 1 [(buf.validate.field).required = true];
+
+  // Operations this endpoint can serve — typically "pull" and
+  // "resolve" (containerd hosts.toml capability names). GKE validates
+  // the values at apply.
+  repeated string capabilities = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).repeated.unique = true
+  ];
+
+  // Dial timeout for this endpoint, e.g. "10s".
+  string dial_timeout = 3;
+
+  // Path override on the endpoint host (registry served under a
+  // non-standard path).
+  optional bool override_path = 4;
+
+  // Secret Manager secret URI for the CA certificate to trust for this
+  // endpoint.
+  string ca_secret_uri = 5;
+
+  // Secret Manager secret URI for the client TLS certificate presented to
+  // this endpoint.
+  string client_cert_secret_uri = 6;
+
+  // Secret Manager secret URI for the client TLS key presented to this
+  // endpoint.
+  string client_key_secret_uri = 7;
+
+  // Custom HTTP headers sent to this endpoint, e.g. authorization
+  // headers for pull-through caches.
+  map<string, string> headers = 8;
 }
 
 // GcpGkeNodePoolTaint is a Kubernetes taint applied to every node in the
@@ -691,14 +1097,18 @@ message GcpGkeNodePoolReservationAffinity {
   };
 
   // NO_RESERVATION opts out; ANY_RESERVATION consumes any matching
-  // reservation; SPECIFIC_RESERVATION targets one by name.
+  // reservation; SPECIFIC_RESERVATION targets one by name;
+  // ANY_RESERVATION_THEN_FAIL consumes matching reservations and fails
+  // scale-up (instead of falling back to on-demand) when none is
+  // available.
   string consume_reservation_type = 1 [
     (buf.validate.field).required = true,
     (buf.validate.field).string = {
       in: [
         "NO_RESERVATION",
         "ANY_RESERVATION",
-        "SPECIFIC_RESERVATION"
+        "SPECIFIC_RESERVATION",
+        "ANY_RESERVATION_THEN_FAIL"
       ]
     }
   ];
@@ -785,6 +1195,200 @@ message GcpGkeNodePoolKubeletConfig {
     gte: 10
     lte: 85
   }];
+
+  // Minimum age an unused image must reach before GC may remove it,
+  // seconds format, e.g. "120s".
+  string image_minimum_gc_age = 11 [(buf.validate.field).cel = {
+    id: "image_min_gc_age_format"
+    message: "image_minimum_gc_age must be a seconds-format duration like \"120s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // Maximum age an unused image may reach before GC removes it regardless
+  // of disk pressure, seconds format, e.g. "86400s".
+  string image_maximum_gc_age = 12 [(buf.validate.field).cel = {
+    id: "image_max_gc_age_format"
+    message: "image_maximum_gc_age must be a seconds-format duration like \"86400s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+
+  // Sysctl patterns pods may set as unsafe sysctls (e.g. "net.*",
+  // "kernel.shm*") — gate carefully: unsafe sysctls affect the whole
+  // node, not just the pod that sets them.
+  repeated string allowed_unsafe_sysctls = 13 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Maximum seconds the kubelet grants a pod to terminate during
+  // soft-eviction (caps the pod's own grace period in that path).
+  optional int64 eviction_max_pod_grace_period_seconds = 14 [(buf.validate.field).int64.gte = 0];
+
+  // Kill only the offending process instead of the whole container on
+  // OOM — for containers running multiple processes where one leaking
+  // process should not take down its siblings.
+  optional bool single_process_oom_kill = 15;
+
+  // Soft eviction thresholds: the kubelet starts graceful pod eviction
+  // when a signal stays past its threshold for the paired grace period.
+  GcpGkeNodePoolEvictionSignals eviction_soft = 16;
+
+  // Grace periods paired with eviction_soft: how long a signal must stay
+  // past its threshold before eviction starts (durations like "90s").
+  GcpGkeNodePoolEvictionGracePeriods eviction_soft_grace_period = 17;
+
+  // Minimum amounts reclaimed per eviction: prevents thrashing by making
+  // each eviction free at least this much of the signal's resource.
+  GcpGkeNodePoolEvictionMinimumReclaim eviction_minimum_reclaim = 18;
+
+  // Caps the exponential backoff for restarting crashed containers —
+  // lower caps recover crash-looping containers faster at the cost of
+  // more restart churn.
+  GcpGkeNodePoolCrashLoopBackOff crash_loop_back_off = 19;
+
+  // Kubernetes Memory Manager policy: Static reserves exclusive NUMA
+  // memory for Guaranteed-QoS pods; None (default) does not.
+  GcpGkeNodePoolMemoryManager memory_manager = 20;
+
+  // Kubernetes Topology Manager: aligns CPU, memory, and device (GPU)
+  // NUMA placement per pod or per container — for latency-critical and
+  // HPC workloads that suffer on cross-NUMA access.
+  GcpGkeNodePoolTopologyManager topology_manager = 21;
+}
+
+// GcpGkeNodePoolEvictionSignals holds per-signal soft-eviction thresholds.
+// Each value is an absolute quantity ("100Mi") or percentage ("10%").
+message GcpGkeNodePoolEvictionSignals {
+  // Threshold for memory.available.
+  string memory_available = 1;
+
+  // Threshold for nodefs.available (the filesystem backing pod volumes
+  // and logs).
+  string nodefs_available = 2;
+
+  // Threshold for nodefs.inodesFree.
+  string nodefs_inodes_free = 3;
+
+  // Threshold for imagefs.available (the filesystem backing container
+  // images and writable layers).
+  string imagefs_available = 4;
+
+  // Threshold for imagefs.inodesFree.
+  string imagefs_inodes_free = 5;
+
+  // Threshold for pid.available.
+  string pid_available = 6;
+}
+
+// GcpGkeNodePoolEvictionGracePeriods pairs a grace period with each soft
+// eviction signal. Values are durations like "90s".
+message GcpGkeNodePoolEvictionGracePeriods {
+  // Grace period for memory.available.
+  string memory_available = 1;
+
+  // Grace period for nodefs.available.
+  string nodefs_available = 2;
+
+  // Grace period for nodefs.inodesFree.
+  string nodefs_inodes_free = 3;
+
+  // Grace period for imagefs.available.
+  string imagefs_available = 4;
+
+  // Grace period for imagefs.inodesFree.
+  string imagefs_inodes_free = 5;
+
+  // Grace period for pid.available.
+  string pid_available = 6;
+}
+
+// GcpGkeNodePoolEvictionMinimumReclaim sets per-signal minimum reclaim
+// amounts. Unlike the soft-eviction thresholds (which accept absolute
+// quantities OR percentages), GKE accepts ONLY percentages here — the API
+// rejects quantities at create with 'invalid percentage "100Mi", must end
+// with "%"'. Values are percentage strings like "10%".
+message GcpGkeNodePoolEvictionMinimumReclaim {
+  // Minimum reclaim for memory.available, percentage like "10%".
+  string memory_available = 1 [(buf.validate.field).cel = {
+    id: "reclaim_memory_pct"
+    message: "eviction_minimum_reclaim.memory_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+
+  // Minimum reclaim for nodefs.available, percentage like "10%".
+  string nodefs_available = 2 [(buf.validate.field).cel = {
+    id: "reclaim_nodefs_pct"
+    message: "eviction_minimum_reclaim.nodefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+
+  // Minimum reclaim for nodefs.inodesFree, percentage like "10%".
+  string nodefs_inodes_free = 3 [(buf.validate.field).cel = {
+    id: "reclaim_nodefs_inodes_pct"
+    message: "eviction_minimum_reclaim.nodefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+
+  // Minimum reclaim for imagefs.available, percentage like "10%".
+  string imagefs_available = 4 [(buf.validate.field).cel = {
+    id: "reclaim_imagefs_pct"
+    message: "eviction_minimum_reclaim.imagefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+
+  // Minimum reclaim for imagefs.inodesFree, percentage like "10%".
+  string imagefs_inodes_free = 5 [(buf.validate.field).cel = {
+    id: "reclaim_imagefs_inodes_pct"
+    message: "eviction_minimum_reclaim.imagefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+
+  // Minimum reclaim for pid.available, percentage like "10%".
+  string pid_available = 6 [(buf.validate.field).cel = {
+    id: "reclaim_pid_pct"
+    message: "eviction_minimum_reclaim.pid_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
+}
+
+// GcpGkeNodePoolCrashLoopBackOff caps container-restart backoff.
+message GcpGkeNodePoolCrashLoopBackOff {
+  // Maximum backoff delay between restarts of a crashing container,
+  // seconds format (e.g. "300s"; kubelet default caps at 300s).
+  string max_container_restart_period = 1 [(buf.validate.field).cel = {
+    id: "max_restart_period_format"
+    message: "max_container_restart_period must be a seconds-format duration like \"300s\""
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')"
+  }];
+}
+
+// GcpGkeNodePoolMemoryManager selects the kubelet Memory Manager policy.
+message GcpGkeNodePoolMemoryManager {
+  // "Static" reserves exclusive NUMA-aligned memory for Guaranteed-QoS
+  // pods; "None" disables the manager. Capitalized, per the kubelet's
+  // own policy names.
+  string policy = 1 [(buf.validate.field).cel = {
+    id: "memory_manager_policy_valid"
+    message: "policy must be empty, None, or Static"
+    expression: "this == '' || this in ['None', 'Static']"
+  }];
+}
+
+// GcpGkeNodePoolTopologyManager aligns NUMA placement of CPU, memory, and
+// devices.
+message GcpGkeNodePoolTopologyManager {
+  // Alignment policy: none (default), best-effort, restricted, or
+  // single-numa-node (strictest — pods failing alignment are rejected).
+  string policy = 1 [(buf.validate.field).cel = {
+    id: "topology_manager_policy_valid"
+    message: "policy must be empty, none, best-effort, restricted, or single-numa-node"
+    expression: "this == '' || this in ['none', 'best-effort', 'restricted', 'single-numa-node']"
+  }];
+
+  // Alignment scope: container (default; each container aligned
+  // independently) or pod (all containers of a pod share one alignment).
+  string scope = 2 [(buf.validate.field).cel = {
+    id: "topology_manager_scope_valid"
+    message: "scope must be empty, container, or pod"
+    expression: "this == '' || this in ['container', 'pod']"
+  }];
 }
 
 // GcpGkeNodePoolLinuxNodeConfig tunes the node OS.
@@ -804,6 +1408,101 @@ message GcpGkeNodePoolLinuxNodeConfig {
 
   // Hugepage pre-allocation for DPDK/database workloads.
   GcpGkeNodePoolHugepagesConfig hugepages_config = 3;
+
+  // Kernel transparent hugepage mode for anonymous memory:
+  // ALWAYS, MADVISE (only regions that request it), or NEVER.
+  string transparent_hugepage_enabled = 4 [(buf.validate.field).cel = {
+    id: "thp_enabled_valid"
+    message: "transparent_hugepage_enabled must be empty, TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS, TRANSPARENT_HUGEPAGE_ENABLED_MADVISE, TRANSPARENT_HUGEPAGE_ENABLED_NEVER, or TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED"
+    expression: "this == '' || this in ['TRANSPARENT_HUGEPAGE_ENABLED_ALWAYS', 'TRANSPARENT_HUGEPAGE_ENABLED_MADVISE', 'TRANSPARENT_HUGEPAGE_ENABLED_NEVER', 'TRANSPARENT_HUGEPAGE_ENABLED_UNSPECIFIED']"
+  }];
+
+  // Kernel defrag behavior when allocating transparent hugepages:
+  // ALWAYS (stall to reclaim), DEFER (kick background reclaim),
+  // DEFER_WITH_MADVISE, MADVISE, or NEVER.
+  string transparent_hugepage_defrag = 5 [(buf.validate.field).cel = {
+    id: "thp_defrag_valid"
+    message: "transparent_hugepage_defrag must be empty, TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER, TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE, TRANSPARENT_HUGEPAGE_DEFRAG_NEVER, or TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED"
+    expression: "this == '' || this in ['TRANSPARENT_HUGEPAGE_DEFRAG_ALWAYS', 'TRANSPARENT_HUGEPAGE_DEFRAG_DEFER', 'TRANSPARENT_HUGEPAGE_DEFRAG_DEFER_WITH_MADVISE', 'TRANSPARENT_HUGEPAGE_DEFRAG_MADVISE', 'TRANSPARENT_HUGEPAGE_DEFRAG_NEVER', 'TRANSPARENT_HUGEPAGE_DEFRAG_UNSPECIFIED']"
+  }];
+
+  // Signed-kernel-module enforcement: ENFORCE_SIGNED_MODULES rejects
+  // unsigned module loads (the hardened posture);
+  // DO_NOT_ENFORCE_SIGNED_MODULES allows them.
+  string node_kernel_module_loading_policy = 6 [(buf.validate.field).cel = {
+    id: "kernel_module_policy_valid"
+    message: "node_kernel_module_loading_policy must be empty, POLICY_UNSPECIFIED, ENFORCE_SIGNED_MODULES, or DO_NOT_ENFORCE_SIGNED_MODULES"
+    expression: "this == '' || this in ['POLICY_UNSPECIFIED', 'ENFORCE_SIGNED_MODULES', 'DO_NOT_ENFORCE_SIGNED_MODULES']"
+  }];
+
+  // PTP/KVM paravirtual clock sync for sub-millisecond time accuracy —
+  // for workloads needing precise cross-node timestamps (trading,
+  // distributed tracing at fine granularity).
+  optional bool enable_ptp_kvm_time_sync = 7;
+
+  // Swap on the nodes (Kubernetes swap support): sizing profile plus
+  // encryption. Swap trades OOM kills for latency under memory pressure;
+  // pair with kubelet eviction tuning.
+  GcpGkeNodePoolSwapConfig swap_config = 8;
+}
+
+// GcpGkeNodePoolSwapConfig provisions and encrypts node swap space.
+// Size swap with AT MOST ONE profile: boot-disk, dedicated local SSDs,
+// or a slice of the ephemeral local SSDs (none lets GKE choose its
+// default sizing).
+message GcpGkeNodePoolSwapConfig {
+  option (buf.validate.message).cel = {
+    id: "at_most_one_swap_profile"
+    message: "size swap with at most one profile: boot_disk_profile, dedicated_local_ssd_profile, or ephemeral_local_ssd_profile"
+    expression: "(has(this.boot_disk_profile) ? 1 : 0) + (has(this.dedicated_local_ssd_profile) ? 1 : 0) + (has(this.ephemeral_local_ssd_profile) ? 1 : 0) <= 1"
+  };
+
+  // Whether swap is enabled on the nodes.
+  optional bool enabled = 1;
+
+  // Swap carved from the boot disk.
+  GcpGkeNodePoolSwapSizing boot_disk_profile = 2;
+
+  // Swap on local SSDs dedicated entirely to swap.
+  GcpGkeNodePoolSwapDedicatedSsd dedicated_local_ssd_profile = 3;
+
+  // Swap carved from the ephemeral-storage local SSDs.
+  GcpGkeNodePoolSwapSizing ephemeral_local_ssd_profile = 4;
+
+  // Swap encryption (on by default; disabling trades confidentiality for
+  // a little throughput).
+  GcpGkeNodePoolSwapEncryption encryption_config = 5;
+}
+
+// GcpGkeNodePoolSwapSizing sizes swap as absolute GiB or a percentage of
+// the backing storage.
+message GcpGkeNodePoolSwapSizing {
+  option (buf.validate.message).cel = {
+    id: "swap_size_gib_xor_percent"
+    message: "set swap_size_gib or swap_size_percent, not both"
+    expression: "!(has(this.swap_size_gib) && has(this.swap_size_percent))"
+  };
+
+  // Absolute swap size in GiB.
+  optional int64 swap_size_gib = 1 [(buf.validate.field).int64.gte = 1];
+
+  // Swap size as a percentage of the backing storage (1-100).
+  optional int32 swap_size_percent = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+}
+
+// GcpGkeNodePoolSwapDedicatedSsd dedicates whole local SSDs to swap.
+message GcpGkeNodePoolSwapDedicatedSsd {
+  // Number of local SSDs dedicated to swap.
+  optional int64 disk_count = 1 [(buf.validate.field).int64.gte = 1];
+}
+
+// GcpGkeNodePoolSwapEncryption controls swap encryption.
+message GcpGkeNodePoolSwapEncryption {
+  // Set true to DISABLE swap encryption (encrypted by default).
+  optional bool disabled = 1;
 }
 
 // GcpGkeNodePoolHugepagesConfig pre-allocates hugepages on every node.

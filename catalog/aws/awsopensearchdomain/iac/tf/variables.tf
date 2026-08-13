@@ -43,9 +43,9 @@ variable "spec" {
       iops = optional(number, 0)
       throughput = optional(number, 0)
     })
-    encrypt_at_rest_enabled = optional(bool, false)
+    encrypt_at_rest_enabled = optional(bool)
     kms_key_id = optional(string, "")
-    node_to_node_encryption_enabled = optional(bool, false)
+    node_to_node_encryption_enabled = optional(bool)
     vpc_options = optional(object({
       subnet_ids = optional(list(string), [])
       security_group_ids = optional(list(string), [])
@@ -96,7 +96,7 @@ variable "spec" {
     }))
     automated_snapshot_start_hour = optional(number)
     off_peak_window_options = optional(object({
-      enabled = optional(bool, false)
+      enabled = optional(bool)
       window_start_hour = optional(number)
       window_start_minute = optional(number)
     }))
@@ -115,5 +115,15 @@ variable "spec" {
       roles_key = optional(string, "")
       subject_key = optional(string, "")
     }))
+    saml_options = optional(object({
+      idp_entity_id = string
+      idp_metadata_content = string
+      master_backend_role = optional(string, "")
+      master_user_name = optional(string, "")
+      roles_key = optional(string, "")
+      subject_key = optional(string, "")
+      session_timeout_minutes = optional(number, 0)
+    }))
+    authorized_vpc_endpoint_access_accounts = optional(list(string), [])
   })
 }

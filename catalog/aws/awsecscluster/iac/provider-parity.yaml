@@ -1,0 +1,80 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ecs_cluster:
+    mappings:
+      # The provider nests both posture blocks under one configuration
+      # wrapper; the spec surfaces each at the top level. Matching resumes
+      # exactly below the mapped subtrees.
+      - arg: configuration.execute_command_configuration
+        spec: spec.execute_command_configuration
+      - arg: configuration.managed_storage_configuration
+        spec: spec.managed_storage_configuration
+      - arg: service_connect_defaults.namespace
+        spec: spec.service_connect_namespace_arn
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the cluster name
+      # The generic name/value settings block has exactly one documented
+      # setting (containerInsights); the spec models it as the typed
+      # container_insights field the module renders into the block.
+      - arg: setting.name
+        reason: rendered from spec.container_insights (containerInsights is the settings block's only documented setting)
+      - arg: setting.value
+        reason: rendered from spec.container_insights (containerInsights is the settings block's only documented setting)
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_ecs_capacity_provider:
+    # One resource type, two folded regimes: ASG-backed entries
+    # (spec.ec2_capacity_providers) and ECS Managed Instances entries
+    # (spec.managed_instances_capacity_providers). Each provider block maps
+    # to its list; single-field provider sub-blocks flatten to one spec
+    # field each.
+    mappings:
+      - arg: auto_scaling_group_provider
+        spec: spec.ec2_capacity_providers
+      - arg: auto_scaling_group_provider.managed_scaling.instance_warmup_period
+        spec: spec.ec2_capacity_providers.managed_scaling.instance_warmup_period_seconds
+      - arg: managed_instances_provider
+        spec: spec.managed_instances_capacity_providers
+      - arg: managed_instances_provider.infrastructure_optimization.scale_in_after
+        spec: spec.managed_instances_capacity_providers.scale_in_after_seconds
+      - arg: managed_instances_provider.instance_launch_template.local_storage_configuration.use_local_storage
+        spec: spec.managed_instances_capacity_providers.instance_launch_template.use_local_storage
+      - arg: managed_instances_provider.instance_launch_template.storage_configuration.storage_size_gib
+        spec: spec.managed_instances_capacity_providers.instance_launch_template.storage_size_gib
+      # One name argument serves both folded lists; the ec2 list carries
+      # the mapping and the managed-instances twin is judged under
+      # specExclusions.
+      - arg: name
+        spec: spec.ec2_capacity_providers.name
+    exclusions:
+      - arg: cluster
+        reason: wired by the module to the cluster it creates (the AWS API requires the pairing for managed-instances providers) -- never user surface
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_ecs_cluster_capacity_providers:
+    # The single whole-set PUT associating the Fargate built-ins and every
+    # folded provider name with the cluster; capacity_providers and the
+    # default strategy exact-match their spec fields.
+    exclusions:
+      - arg: cluster_name
+        reason: wired by the module to the cluster it creates -- never user surface
+
+specExclusions:
+  - field: spec.container_insights
+    reason: renders the provider's generic setting name/value block (containerInsights is its only documented setting)
+  - field: spec.managed_instances_capacity_providers.name
+    reason: fills the same aws_ecs_capacity_provider.name argument as ec2_capacity_providers.name -- one argument, two folded lists; the judgment lives on the mapping

@@ -1,0 +1,51 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudwatch_event_rule:
+    mappings:
+      # The spec carries the pattern as a structured object (natural to
+      # author in YAML); the module serializes it to the provider's JSON
+      # string argument.
+      - arg: event_pattern
+        spec: spec.event_pattern
+    exclusions:
+      - arg: name
+        reason: the rule name comes from metadata.name -- platform identity, never free-form spec surface
+      - arg: name_prefix
+        reason: covered alternative to name -- metadata.name provides deterministic naming, so prefix-generated names have no configuration role
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_cloudwatch_event_target:
+    # Instantiated per spec.targets entry: one target resource routes matched
+    # events to one destination, with at most one service-typed parameter
+    # block (CEL-enforced).
+    specRoot: spec.targets
+    mappings:
+      # The EventBridge target_id IS the entry's name -- the per-name key
+      # each target materializes under in both engines.
+      - arg: target_id
+        spec: spec.targets.name
+      # One teardown-forcing decision governs the rule and its targets:
+      # the rule-level spec flag also forces RemoveTargets on destroy.
+      - arg: force_destroy
+        spec: spec.force_destroy
+      # The provider names the block singular; the spec keeps the plural
+      # its repeated shape reads naturally as. Leaves match exactly below.
+      - arg: ecs_target.placement_constraint
+        spec: spec.targets.ecs_target.placement_constraints
+    exclusions:
+      - arg: rule
+        reason: wired by the module to the rule it creates -- a target lives on its rule, never user surface
+      - arg: event_bus_name
+        reason: wired by the module to the rule's own bus -- a target must live on the bus its rule matches events from, never independent user surface
+      - arg: region
+        reason: wired by the module to the rule's region -- a target lives where its rule lives, never user surface

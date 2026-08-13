@@ -1,0 +1,4 @@
+name: gcpmonitoringslo-pulumi-project
+runtime:
+  name: go
+description: Planton GcpMonitoringSlo Pulumi module

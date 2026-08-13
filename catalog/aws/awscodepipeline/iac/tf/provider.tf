@@ -10,10 +10,12 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor 6.0.0: the whole V2 surface this module renders (pipeline_type,
+      # Feature floor 6.57.1: the Compute-action surface (stage.action
+      # commands, output_variables, output_artifacts_for_compute_action)
+      # lands there. Everything else this module renders (pipeline_type,
       # execution_mode, triggers with file-path filters, per-action
-      # timeout_in_minutes, and stage conditions with rules) landed on the
-      # 5.x line (<= 5.93.0), so any 6.x release carries it.
+      # timeout_in_minutes, stage conditions with rules) landed on the
+      # 5.x line (<= 5.93.0).
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

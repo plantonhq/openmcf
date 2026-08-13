@@ -1,13 +1,18 @@
 package module
 
 import (
+	"strconv"
+
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
+
 	awss3objectsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Locals struct {
 	AwsS3ObjectSet *awss3objectsetv1alpha1.AwsS3ObjectSet
-	Labels         map[string]string
+	AwsTags        map[string]string
 }
 
 func initializeLocals(ctx *pulumi.Context, stackInput *awss3objectsetv1alpha1.AwsS3ObjectSetStackInput) *Locals {
@@ -17,21 +22,19 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awss3objectsetv1alpha1.Aw
 
 	target := locals.AwsS3ObjectSet
 
-	// Resource-identity tags follow the catalog convention; user labels merge
-	// in first so they can never override the identity keys. Every object in
-	// the set carries them (S3 object tags), attributing each object back to
-	// the owning set for auditing and orphan cleanup — the same key set the
-	// Terraform module emits, keeping cross-engine tag parity.
-	locals.Labels = map[string]string{}
-	for k, v := range target.Metadata.Labels {
-		locals.Labels[k] = v
+	// Resource-identity tags match the Terraform module key-for-key (the
+	// canonical six-key identity map — user labels never merge into cloud
+	// tags). Every object in the set carries them (S3 object tags),
+	// attributing each object back to the owning set for auditing and orphan
+	// cleanup.
+	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         target.Metadata.Name,
+		awstagkeys.Resource:     strconv.FormatBool(true),
+		awstagkeys.Organization: target.Metadata.Org,
+		awstagkeys.Environment:  target.Metadata.Env,
+		awstagkeys.ResourceKind: cloudresourcekind.CloudResourceKind_AwsS3ObjectSet.String(),
+		awstagkeys.ResourceId:   target.Metadata.Id,
 	}
-	locals.Labels["Name"] = target.Metadata.Name
-	locals.Labels["planton.ai/resource"] = "true"
-	locals.Labels["planton.ai/organization"] = target.Metadata.Org
-	locals.Labels["planton.ai/environment"] = target.Metadata.Env
-	locals.Labels["planton.ai/resource-kind"] = "AwsS3ObjectSet"
-	locals.Labels["planton.ai/resource-id"] = target.Metadata.Id
 
 	return locals
 }

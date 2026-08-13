@@ -35,5 +35,5 @@ make destroy # Tear down resources
 - If `project_id` is empty, the job lands in the provider's default project
 - The `paused` field creates the job in PAUSED state; omitting it creates ENABLED
 - Body fields are passed through as-is (expected to be base64-encoded by the user)
-- The bridged provider's client-side `deletion_policy` is pinned to `DELETE` — see
-  the PARITY comment in `cloud_scheduler_job.go`
+- The `deletion_policy` spec field (DELETE / PREVENT / ABANDON, provider default
+  DELETE) is sent only when set — wired identically to the Terraform module

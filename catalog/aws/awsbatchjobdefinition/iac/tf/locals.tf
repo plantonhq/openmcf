@@ -10,10 +10,12 @@ locals {
     "planton.ai/resource-id"   = var.metadata.id
   }
 
+  # Null on the EKS arm -- every containerProperties local below guards
+  # itself against it (or is try()-safe throughout).
   container = var.spec.container
 
   # ---------------------------------------------------------------------
-  # containerProperties document.
+  # containerProperties document (the ECS-based container arm).
   #
   # The provider takes containerProperties as an opaque JSON string and
   # compares it semantically, so the one requirement beyond correctness is
@@ -22,12 +24,19 @@ locals {
   # names, absent optionals ABSENT (never null -- merge() of conditional
   # maps, since jsonencode renders null attributes), and map-derived lists
   # sorted by name for determinism.
+  #
+  # The EKS arm needs none of this: eks_properties is a TYPED provider
+  # block, rendered directly in main.tf.
   # ---------------------------------------------------------------------
 
   # Sizing goes through resourceRequirements (the modern shape; the
   # top-level vcpus/memory API fields are deprecated). Values are API
   # strings.
-  resource_requirements = concat(
+  #
+  # Each container-dereferencing local carries its own null guard: named
+  # locals are separate graph nodes Terraform evaluates eagerly, so the
+  # arm conditional in main.tf does not shield them on the EKS arm.
+  resource_requirements = local.container == null ? [] : concat(
     [
       { type = "VCPU", value = tostring(local.container.vcpus) },
       { type = "MEMORY", value = tostring(local.container.memory_mib) },
@@ -35,7 +44,7 @@ locals {
     local.container.gpus > 0 ? [{ type = "GPU", value = tostring(local.container.gpus) }] : [],
   )
 
-  volumes = [
+  volumes = local.container == null ? [] : [
     for volume in local.container.volumes : merge(
       { name = volume.name },
       volume.efs != null ? {
@@ -89,7 +98,7 @@ locals {
     } : {},
   )
 
-  container_properties = merge(
+  container_properties = local.container == null ? null : merge(
     {
       image                = local.container.image
       resourceRequirements = local.resource_requirements

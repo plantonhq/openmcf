@@ -26,6 +26,7 @@ This preset deploys a single-node BASIC tier Redis instance — the smallest, ch
 - **BASIC tier, 1 GiB** — one node, no failover; a restart or maintenance event flushes the cache
 - **VPC by reference** — `authorizedNetwork` resolves the `GcpVpcNetwork` node's self link, so the cache lands on the same network as its consumers
 - **Direct peering** (the default `connectMode`) — the simplest connectivity; GCP picks an unused /29 automatically
+- **`deletionProtection: false`** — a dev cache comes and goes with its stack; the spec default is `true`, so allowing destroy is an explicit choice
 
 ## Placeholders to Replace
 

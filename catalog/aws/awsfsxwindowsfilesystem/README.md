@@ -48,7 +48,7 @@ This component provisions the FSx for Windows file system, its network interface
 | `deployment_type` | string | No | `SINGLE_AZ_1`, `SINGLE_AZ_2` (default), or `MULTI_AZ_1`. **ForceNew**. |
 | `storage_capacity_gib` | int32 | Conditional | Storage in GiB. SSD: 32–65536. HDD: 2000–65536. Required unless restoring from `backup_id`. Can increase but never decrease. |
 | `storage_type` | string | No | `SSD` (default) or `HDD`. **ForceNew**. HDD only with SINGLE_AZ_2 or MULTI_AZ_1. |
-| `throughput_capacity` | int32 | **Yes** | MB/s. Valid: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288. Can be changed after creation. |
+| `throughput_capacity` | int32 | **Yes** | MB/s. Valid: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288. Can be changed after creation. Known provider defect at the current pin: the provider's validation list carries a typo (12228 for 12288), so the 12288 tier fails plan-time validation until a provider release fixes it. |
 | `subnet_ids` | []StringValueOrRef | **Yes** | Subnet IDs. Exactly one for SINGLE_AZ, exactly two for MULTI_AZ_1. **ForceNew**. |
 | `preferred_subnet_id` | StringValueOrRef | Conditional | Active file server subnet. Required for MULTI_AZ_1 (invalid otherwise). Must be in `subnet_ids`. **ForceNew**. |
 | `security_group_ids` | []StringValueOrRef | No | Security groups for the ENIs (up to 50). **ForceNew**. |

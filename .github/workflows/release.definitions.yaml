@@ -38,7 +38,7 @@
 #     s3://downloads-dot-planton-dot-dev-bucket/definitions/stable/version.txt \
 #     --endpoint-url "$CLOUDFLARE_R2_ENDPOINT" --content-type text/plain
 #
-# Called by: .github/workflows/release.yaml (after CLI release creates the release)
+# Called by: .github/workflows/release.yaml (after its github-release job creates the release)
 # =============================================================================
 
 name: release.definitions

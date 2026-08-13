@@ -164,8 +164,10 @@ type AwsAutoScalingGroupSpec struct {
 	InstanceMaintenancePolicy *AwsAutoScalingGroupInstanceMaintenancePolicy `protobuf:"bytes,24,opt,name=instance_maintenance_policy,json=instanceMaintenancePolicy,proto3" json:"instance_maintenance_policy,omitempty"`
 	// How capacity distributes across availability zones:
 	// "balanced-best-effort" (AWS default -- launch in another zone when
-	// one is impaired) or "balanced-only" (strict balance; launches wait
-	// for the impaired zone).
+	// one is impaired), "balanced-only" (strict balance; launches wait
+	// for the impaired zone), or "reservations-then-balanced" (fill
+	// targeted Capacity Reservations first, then balance -- pairs with
+	// capacity_reservation).
 	CapacityDistributionStrategy string `protobuf:"bytes,25,opt,name=capacity_distribution_strategy,json=capacityDistributionStrategy,proto3" json:"capacity_distribution_strategy,omitempty"`
 	// Delete the group without waiting for instances to terminate
 	// gracefully. Reach for it only when tearing down a wedged group --
@@ -191,8 +193,45 @@ type AwsAutoScalingGroupSpec struct {
 	// SNS notifications for fleet lifecycle events -- the simplest way to
 	// observe launches, terminations, and their failures.
 	Notifications *AwsAutoScalingGroupNotifications `protobuf:"bytes,31,opt,name=notifications,proto3" json:"notifications,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Launch into EC2 Capacity Reservations -- guaranteed capacity a
+	// reserved fleet has already paid for. Leave unset for the AWS
+	// default behavior (use an open reservation when one matches).
+	CapacityReservation *AwsAutoScalingGroupCapacityReservation `protobuf:"bytes,32,opt,name=capacity_reservation,json=capacityReservation,proto3" json:"capacity_reservation,omitempty"`
+	// Traffic sources this group registers its instances with -- the
+	// generalized successor to load-balancer attachment that also covers
+	// VPC Lattice target groups. For ALB/NLB target groups prefer
+	// target_groups (typed references); use this for VPC Lattice (no
+	// Planton kind yet -- pass the target group ARN) or Classic ELBs.
+	// Mutually exclusive with target_groups (the provider rejects the
+	// combination).
+	TrafficSources []*AwsAutoScalingGroupTrafficSource `protobuf:"bytes,33,rep,name=traffic_sources,json=trafficSources,proto3" json:"traffic_sources,omitempty"`
+	// What happens to instances whose TERMINATING lifecycle hook ends in
+	// ABANDON -- terminate anyway (AWS default) or retain the instance
+	// for debugging. Only meaningful with a terminating-transition
+	// lifecycle hook.
+	InstanceLifecyclePolicy *AwsAutoScalingGroupInstanceLifecyclePolicy `protobuf:"bytes,34,opt,name=instance_lifecycle_policy,json=instanceLifecyclePolicy,proto3" json:"instance_lifecycle_policy,omitempty"`
+	// Keep IaC applies moving while a scaling activity is failing: read
+	// the group state without waiting on the failed activity. For groups
+	// whose scaling errors are handled by their own alarms rather than
+	// the deploy pipeline.
+	IgnoreFailedScalingActivities bool `protobuf:"varint,35,opt,name=ignore_failed_scaling_activities,json=ignoreFailedScalingActivities,proto3" json:"ignore_failed_scaling_activities,omitempty"`
+	// When force_delete tears the group down, also force-delete its warm
+	// pool without draining the pooled instances.
+	ForceDeleteWarmPool bool `protobuf:"varint,36,opt,name=force_delete_warm_pool,json=forceDeleteWarmPool,proto3" json:"force_delete_warm_pool,omitempty"`
+	// Minimum number of instances that must pass ELB health checks
+	// before a CREATE is considered successful. Requires an attached
+	// load balancer (target_groups or traffic_sources) and health checks
+	// that can pass during the wait. An engine-behavior wait (both
+	// engines honor it identically), not an AWS API field -- like
+	// wait_for_capacity_timeout.
+	MinElbCapacity int32 `protobuf:"varint,37,opt,name=min_elb_capacity,json=minElbCapacity,proto3" json:"min_elb_capacity,omitempty"`
+	// Exact number of ELB-healthy instances to wait for on create AND
+	// every update (min_elb_capacity waits on create only). Takes
+	// precedence over min_elb_capacity when both are set. An
+	// engine-behavior wait, not an AWS API field.
+	WaitForElbCapacity int32 `protobuf:"varint,38,opt,name=wait_for_elb_capacity,json=waitForElbCapacity,proto3" json:"wait_for_elb_capacity,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *AwsAutoScalingGroupSpec) Reset() {
@@ -440,6 +479,55 @@ func (x *AwsAutoScalingGroupSpec) GetNotifications() *AwsAutoScalingGroupNotific
 		return x.Notifications
 	}
 	return nil
+}
+
+func (x *AwsAutoScalingGroupSpec) GetCapacityReservation() *AwsAutoScalingGroupCapacityReservation {
+	if x != nil {
+		return x.CapacityReservation
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupSpec) GetTrafficSources() []*AwsAutoScalingGroupTrafficSource {
+	if x != nil {
+		return x.TrafficSources
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupSpec) GetInstanceLifecyclePolicy() *AwsAutoScalingGroupInstanceLifecyclePolicy {
+	if x != nil {
+		return x.InstanceLifecyclePolicy
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupSpec) GetIgnoreFailedScalingActivities() bool {
+	if x != nil {
+		return x.IgnoreFailedScalingActivities
+	}
+	return false
+}
+
+func (x *AwsAutoScalingGroupSpec) GetForceDeleteWarmPool() bool {
+	if x != nil {
+		return x.ForceDeleteWarmPool
+	}
+	return false
+}
+
+func (x *AwsAutoScalingGroupSpec) GetMinElbCapacity() int32 {
+	if x != nil {
+		return x.MinElbCapacity
+	}
+	return 0
+}
+
+func (x *AwsAutoScalingGroupSpec) GetWaitForElbCapacity() int32 {
+	if x != nil {
+		return x.WaitForElbCapacity
+	}
+	return 0
 }
 
 // AwsAutoScalingGroupLaunchTemplateRef points at the launch template (and
@@ -1506,6 +1594,200 @@ func (x *AwsAutoScalingGroupInstanceMaintenancePolicy) GetMaxHealthyPercentage()
 	return 0
 }
 
+// AwsAutoScalingGroupCapacityReservation launches the group's instances
+// into EC2 Capacity Reservations -- pre-purchased, guaranteed capacity.
+// Target specific reservations (or reservation resource groups) for a
+// reserved fleet, or set only the preference to shape how the group uses
+// reservations it happens to match.
+type AwsAutoScalingGroupCapacityReservation struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How launches use reservations:
+	//   - "default": AWS account default (open reservations match
+	//     automatically).
+	//   - "capacity-reservations-only": launch ONLY into the targeted
+	//     reservations -- fail rather than fall back to on-demand pool
+	//     capacity.
+	//   - "capacity-reservations-first": try the reservations, fall back
+	//     to regular capacity when exhausted.
+	//   - "none": never consume reservations, even matching open ones.
+	Preference string `protobuf:"bytes,1,opt,name=preference,proto3" json:"preference,omitempty"`
+	// Specific Capacity Reservation IDs to launch into (e.g. "cr-...").
+	// Mutually exclusive with capacity_reservation_resource_group_arns.
+	CapacityReservationIds []string `protobuf:"bytes,2,rep,name=capacity_reservation_ids,json=capacityReservationIds,proto3" json:"capacity_reservation_ids,omitempty"`
+	// Resource-group ARNs that collect Capacity Reservations -- target
+	// the group instead of chasing individual reservation IDs. Mutually
+	// exclusive with capacity_reservation_ids.
+	CapacityReservationResourceGroupArns []string `protobuf:"bytes,3,rep,name=capacity_reservation_resource_group_arns,json=capacityReservationResourceGroupArns,proto3" json:"capacity_reservation_resource_group_arns,omitempty"`
+	unknownFields                        protoimpl.UnknownFields
+	sizeCache                            protoimpl.SizeCache
+}
+
+func (x *AwsAutoScalingGroupCapacityReservation) Reset() {
+	*x = AwsAutoScalingGroupCapacityReservation{}
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAutoScalingGroupCapacityReservation) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAutoScalingGroupCapacityReservation) ProtoMessage() {}
+
+func (x *AwsAutoScalingGroupCapacityReservation) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAutoScalingGroupCapacityReservation.ProtoReflect.Descriptor instead.
+func (*AwsAutoScalingGroupCapacityReservation) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AwsAutoScalingGroupCapacityReservation) GetPreference() string {
+	if x != nil {
+		return x.Preference
+	}
+	return ""
+}
+
+func (x *AwsAutoScalingGroupCapacityReservation) GetCapacityReservationIds() []string {
+	if x != nil {
+		return x.CapacityReservationIds
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupCapacityReservation) GetCapacityReservationResourceGroupArns() []string {
+	if x != nil {
+		return x.CapacityReservationResourceGroupArns
+	}
+	return nil
+}
+
+// AwsAutoScalingGroupTrafficSource registers the group's instances with
+// one traffic source -- the generalized attachment model covering VPC
+// Lattice target groups and Classic ELBs alongside ALB/NLB target groups
+// (which the typed target_groups field handles better).
+type AwsAutoScalingGroupTrafficSource struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What identifies the source: a VPC Lattice target group ARN, an
+	// ALB/NLB target group ARN, or a Classic ELB name. Reference another
+	// resource's output or pass the literal value.
+	Identifier *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=identifier,proto3" json:"identifier,omitempty"`
+	// The source type: "vpc-lattice", "elbv2" (ALB/NLB target group), or
+	// "elb" (Classic). AWS infers it from the identifier when unset --
+	// set it explicitly for Classic ELB names, which look like plain
+	// strings.
+	Type          string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsAutoScalingGroupTrafficSource) Reset() {
+	*x = AwsAutoScalingGroupTrafficSource{}
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAutoScalingGroupTrafficSource) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAutoScalingGroupTrafficSource) ProtoMessage() {}
+
+func (x *AwsAutoScalingGroupTrafficSource) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAutoScalingGroupTrafficSource.ProtoReflect.Descriptor instead.
+func (*AwsAutoScalingGroupTrafficSource) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AwsAutoScalingGroupTrafficSource) GetIdentifier() *v1.StringValueOrRef {
+	if x != nil {
+		return x.Identifier
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupTrafficSource) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+// AwsAutoScalingGroupInstanceLifecyclePolicy shapes what happens to
+// instances at lifecycle-policy decision points. Today AWS exposes one
+// trigger: the fate of an instance whose TERMINATING lifecycle hook
+// timed out into ABANDON.
+type AwsAutoScalingGroupInstanceLifecyclePolicy struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When a terminating instance's lifecycle hook ends in ABANDON:
+	// "terminate" (AWS default -- proceed with termination) or "retain"
+	// (keep the instance out of the group but running, for post-mortem
+	// debugging of whatever made the hook fail).
+	TerminateHookAbandon string `protobuf:"bytes,1,opt,name=terminate_hook_abandon,json=terminateHookAbandon,proto3" json:"terminate_hook_abandon,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AwsAutoScalingGroupInstanceLifecyclePolicy) Reset() {
+	*x = AwsAutoScalingGroupInstanceLifecyclePolicy{}
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAutoScalingGroupInstanceLifecyclePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAutoScalingGroupInstanceLifecyclePolicy) ProtoMessage() {}
+
+func (x *AwsAutoScalingGroupInstanceLifecyclePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAutoScalingGroupInstanceLifecyclePolicy.ProtoReflect.Descriptor instead.
+func (*AwsAutoScalingGroupInstanceLifecyclePolicy) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AwsAutoScalingGroupInstanceLifecyclePolicy) GetTerminateHookAbandon() string {
+	if x != nil {
+		return x.TerminateHookAbandon
+	}
+	return ""
+}
+
 // AwsAutoScalingGroupScalingPolicy attaches one scaling behavior to the
 // group. policy_type decides which configuration block applies -- exactly
 // one must be set, matching the type.
@@ -1533,13 +1815,18 @@ type AwsAutoScalingGroupScalingPolicy struct {
 	SimpleScaling *AwsAutoScalingGroupSimpleScalingConfig `protobuf:"bytes,6,opt,name=simple_scaling,json=simpleScaling,proto3" json:"simple_scaling,omitempty"`
 	// Configuration for "PredictiveScaling".
 	PredictiveScaling *AwsAutoScalingGroupPredictiveScalingConfig `protobuf:"bytes,7,opt,name=predictive_scaling,json=predictiveScaling,proto3" json:"predictive_scaling,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Suspend this policy without deleting it: the policy and its
+	// CloudWatch alarms stay configured but stop acting on the group.
+	// The pause button for incident response or load tests -- deleting
+	// the policy instead would discard alarm history and forecast state.
+	Disabled      bool `protobuf:"varint,8,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsAutoScalingGroupScalingPolicy) Reset() {
 	*x = AwsAutoScalingGroupScalingPolicy{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1551,7 +1838,7 @@ func (x *AwsAutoScalingGroupScalingPolicy) String() string {
 func (*AwsAutoScalingGroupScalingPolicy) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupScalingPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1564,7 +1851,7 @@ func (x *AwsAutoScalingGroupScalingPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsAutoScalingGroupScalingPolicy.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupScalingPolicy) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsAutoScalingGroupScalingPolicy) GetName() string {
@@ -1616,6 +1903,13 @@ func (x *AwsAutoScalingGroupScalingPolicy) GetPredictiveScaling() *AwsAutoScalin
 	return nil
 }
 
+func (x *AwsAutoScalingGroupScalingPolicy) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
 // AwsAutoScalingGroupTargetTrackingConfig holds a metric at a target value
 // -- the thermostat model. AWS creates and manages the underlying
 // CloudWatch alarms.
@@ -1646,7 +1940,7 @@ type AwsAutoScalingGroupTargetTrackingConfig struct {
 
 func (x *AwsAutoScalingGroupTargetTrackingConfig) Reset() {
 	*x = AwsAutoScalingGroupTargetTrackingConfig{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1658,7 +1952,7 @@ func (x *AwsAutoScalingGroupTargetTrackingConfig) String() string {
 func (*AwsAutoScalingGroupTargetTrackingConfig) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupTargetTrackingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1671,7 +1965,7 @@ func (x *AwsAutoScalingGroupTargetTrackingConfig) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsAutoScalingGroupTargetTrackingConfig.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupTargetTrackingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AwsAutoScalingGroupTargetTrackingConfig) GetTargetValue() float64 {
@@ -1739,7 +2033,7 @@ type AwsAutoScalingGroupCustomizedMetric struct {
 
 func (x *AwsAutoScalingGroupCustomizedMetric) Reset() {
 	*x = AwsAutoScalingGroupCustomizedMetric{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1751,7 +2045,7 @@ func (x *AwsAutoScalingGroupCustomizedMetric) String() string {
 func (*AwsAutoScalingGroupCustomizedMetric) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupCustomizedMetric) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1764,7 +2058,7 @@ func (x *AwsAutoScalingGroupCustomizedMetric) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsAutoScalingGroupCustomizedMetric.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupCustomizedMetric) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *AwsAutoScalingGroupCustomizedMetric) GetMetricName() string {
@@ -1830,7 +2124,7 @@ type AwsAutoScalingGroupMetricDimension struct {
 
 func (x *AwsAutoScalingGroupMetricDimension) Reset() {
 	*x = AwsAutoScalingGroupMetricDimension{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1842,7 +2136,7 @@ func (x *AwsAutoScalingGroupMetricDimension) String() string {
 func (*AwsAutoScalingGroupMetricDimension) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupMetricDimension) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1855,7 +2149,7 @@ func (x *AwsAutoScalingGroupMetricDimension) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsAutoScalingGroupMetricDimension.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupMetricDimension) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AwsAutoScalingGroupMetricDimension) GetName() string {
@@ -1897,7 +2191,7 @@ type AwsAutoScalingGroupMetricDataQuery struct {
 
 func (x *AwsAutoScalingGroupMetricDataQuery) Reset() {
 	*x = AwsAutoScalingGroupMetricDataQuery{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1909,7 +2203,7 @@ func (x *AwsAutoScalingGroupMetricDataQuery) String() string {
 func (*AwsAutoScalingGroupMetricDataQuery) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupMetricDataQuery) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1922,7 +2216,7 @@ func (x *AwsAutoScalingGroupMetricDataQuery) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsAutoScalingGroupMetricDataQuery.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupMetricDataQuery) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AwsAutoScalingGroupMetricDataQuery) GetId() string {
@@ -1982,7 +2276,7 @@ type AwsAutoScalingGroupMetricStat struct {
 
 func (x *AwsAutoScalingGroupMetricStat) Reset() {
 	*x = AwsAutoScalingGroupMetricStat{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1994,7 +2288,7 @@ func (x *AwsAutoScalingGroupMetricStat) String() string {
 func (*AwsAutoScalingGroupMetricStat) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupMetricStat) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2007,7 +2301,7 @@ func (x *AwsAutoScalingGroupMetricStat) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsAutoScalingGroupMetricStat.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupMetricStat) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AwsAutoScalingGroupMetricStat) GetMetricName() string {
@@ -2080,7 +2374,7 @@ type AwsAutoScalingGroupStepScalingConfig struct {
 
 func (x *AwsAutoScalingGroupStepScalingConfig) Reset() {
 	*x = AwsAutoScalingGroupStepScalingConfig{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2092,7 +2386,7 @@ func (x *AwsAutoScalingGroupStepScalingConfig) String() string {
 func (*AwsAutoScalingGroupStepScalingConfig) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupStepScalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2105,7 +2399,7 @@ func (x *AwsAutoScalingGroupStepScalingConfig) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AwsAutoScalingGroupStepScalingConfig.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupStepScalingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AwsAutoScalingGroupStepScalingConfig) GetAdjustmentType() string {
@@ -2156,7 +2450,7 @@ type AwsAutoScalingGroupStepAdjustment struct {
 
 func (x *AwsAutoScalingGroupStepAdjustment) Reset() {
 	*x = AwsAutoScalingGroupStepAdjustment{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2168,7 +2462,7 @@ func (x *AwsAutoScalingGroupStepAdjustment) String() string {
 func (*AwsAutoScalingGroupStepAdjustment) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupStepAdjustment) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2475,7 @@ func (x *AwsAutoScalingGroupStepAdjustment) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsAutoScalingGroupStepAdjustment.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupStepAdjustment) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AwsAutoScalingGroupStepAdjustment) GetScalingAdjustment() int32 {
@@ -2228,7 +2522,7 @@ type AwsAutoScalingGroupSimpleScalingConfig struct {
 
 func (x *AwsAutoScalingGroupSimpleScalingConfig) Reset() {
 	*x = AwsAutoScalingGroupSimpleScalingConfig{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2240,7 +2534,7 @@ func (x *AwsAutoScalingGroupSimpleScalingConfig) String() string {
 func (*AwsAutoScalingGroupSimpleScalingConfig) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupSimpleScalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2253,7 +2547,7 @@ func (x *AwsAutoScalingGroupSimpleScalingConfig) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsAutoScalingGroupSimpleScalingConfig.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupSimpleScalingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AwsAutoScalingGroupSimpleScalingConfig) GetAdjustmentType() string {
@@ -2285,17 +2579,20 @@ func (x *AwsAutoScalingGroupSimpleScalingConfig) GetMinAdjustmentMagnitude() int
 }
 
 // AwsAutoScalingGroupPredictiveScalingConfig forecasts load from history
-// (daily/weekly patterns) and pre-provisions capacity ahead of it.
-// Custom metric-data-query specifications are deliberately not modeled --
-// the predefined metric pairs cover the real predictive use cases; ask
-// for the customized form if a workload genuinely needs it.
+// (daily/weekly patterns) and pre-provisions capacity ahead of it. The
+// metrics come in three forms, most to least common: one predefined PAIR
+// (load + scaling in a single name), SPLIT predefined load and scaling
+// metrics chosen independently, or fully CUSTOMIZED metric-math query
+// sets for workloads whose load signal is not a built-in group metric.
 type AwsAutoScalingGroupPredictiveScalingConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The value to hold the scaling metric at (e.g. 60.0 for 60% CPU).
 	// Required.
 	TargetValue float64 `protobuf:"fixed64,1,opt,name=target_value,json=targetValue,proto3" json:"target_value,omitempty"`
-	// The load/scaling metric pair to forecast: "ASGCPUUtilization",
-	// "ASGNetworkIn", "ASGNetworkOut", or "ALBRequestCount". Required.
+	// The predefined load/scaling metric PAIR to forecast:
+	// "ASGCPUUtilization", "ASGNetworkIn", "ASGNetworkOut", or
+	// "ALBRequestCount". The one-liner for the common cases -- mutually
+	// exclusive with the split and customized metric fields below.
 	PredefinedMetricPairType string `protobuf:"bytes,2,opt,name=predefined_metric_pair_type,json=predefinedMetricPairType,proto3" json:"predefined_metric_pair_type,omitempty"`
 	// Identifies the ALB target group when the metric pair is
 	// "ALBRequestCount" (load balancer arn_suffix + "/" + target group
@@ -2314,13 +2611,36 @@ type AwsAutoScalingGroupPredictiveScalingConfig struct {
 	// Percentage buffer above forecasted capacity when
 	// max_capacity_breach_behavior is "IncreaseMaxCapacity", 0-100.
 	MaxCapacityBuffer int32 `protobuf:"varint,7,opt,name=max_capacity_buffer,json=maxCapacityBuffer,proto3" json:"max_capacity_buffer,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// SPLIT form, load side: the predefined TOTAL metric the forecast is
+	// trained on ("ASGTotalCPUUtilization", "ASGTotalNetworkIn",
+	// "ASGTotalNetworkOut", "ALBTargetGroupRequestCount"). Pair with
+	// predefined_scaling_metric (or customized_scaling_metric_queries).
+	PredefinedLoadMetric *AwsAutoScalingGroupPredictiveScalingPredefinedMetric `protobuf:"bytes,8,opt,name=predefined_load_metric,json=predefinedLoadMetric,proto3" json:"predefined_load_metric,omitempty"`
+	// SPLIT form, scaling side: the predefined AVERAGE metric capacity is
+	// sized against ("ASGAverageCPUUtilization", "ASGAverageNetworkIn",
+	// "ASGAverageNetworkOut", "ALBRequestCountPerTarget").
+	PredefinedScalingMetric *AwsAutoScalingGroupPredictiveScalingPredefinedMetric `protobuf:"bytes,9,opt,name=predefined_scaling_metric,json=predefinedScalingMetric,proto3" json:"predefined_scaling_metric,omitempty"`
+	// CUSTOMIZED form, load side: a metric-math query set (up to 10
+	// entries, exactly one returning data) producing the total-load
+	// signal the forecast is trained on. Mutually exclusive with
+	// predefined_load_metric.
+	CustomizedLoadMetricQueries []*AwsAutoScalingGroupMetricDataQuery `protobuf:"bytes,10,rep,name=customized_load_metric_queries,json=customizedLoadMetricQueries,proto3" json:"customized_load_metric_queries,omitempty"`
+	// CUSTOMIZED form, scaling side: a metric-math query set producing
+	// the per-instance utilization signal capacity is sized against.
+	// Mutually exclusive with predefined_scaling_metric.
+	CustomizedScalingMetricQueries []*AwsAutoScalingGroupMetricDataQuery `protobuf:"bytes,11,rep,name=customized_scaling_metric_queries,json=customizedScalingMetricQueries,proto3" json:"customized_scaling_metric_queries,omitempty"`
+	// CUSTOMIZED form, capacity side: a metric-math query set reporting
+	// the group's current capacity -- needed only when the scaling metric
+	// is a custom signal whose relationship to instance count AWS cannot
+	// infer.
+	CustomizedCapacityMetricQueries []*AwsAutoScalingGroupMetricDataQuery `protobuf:"bytes,12,rep,name=customized_capacity_metric_queries,json=customizedCapacityMetricQueries,proto3" json:"customized_capacity_metric_queries,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *AwsAutoScalingGroupPredictiveScalingConfig) Reset() {
 	*x = AwsAutoScalingGroupPredictiveScalingConfig{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2332,7 +2652,7 @@ func (x *AwsAutoScalingGroupPredictiveScalingConfig) String() string {
 func (*AwsAutoScalingGroupPredictiveScalingConfig) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupPredictiveScalingConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2345,7 +2665,7 @@ func (x *AwsAutoScalingGroupPredictiveScalingConfig) ProtoReflect() protoreflect
 
 // Deprecated: Use AwsAutoScalingGroupPredictiveScalingConfig.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupPredictiveScalingConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetTargetValue() float64 {
@@ -2397,6 +2717,100 @@ func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetMaxCapacityBuffer() int3
 	return 0
 }
 
+func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetPredefinedLoadMetric() *AwsAutoScalingGroupPredictiveScalingPredefinedMetric {
+	if x != nil {
+		return x.PredefinedLoadMetric
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetPredefinedScalingMetric() *AwsAutoScalingGroupPredictiveScalingPredefinedMetric {
+	if x != nil {
+		return x.PredefinedScalingMetric
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetCustomizedLoadMetricQueries() []*AwsAutoScalingGroupMetricDataQuery {
+	if x != nil {
+		return x.CustomizedLoadMetricQueries
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetCustomizedScalingMetricQueries() []*AwsAutoScalingGroupMetricDataQuery {
+	if x != nil {
+		return x.CustomizedScalingMetricQueries
+	}
+	return nil
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingConfig) GetCustomizedCapacityMetricQueries() []*AwsAutoScalingGroupMetricDataQuery {
+	if x != nil {
+		return x.CustomizedCapacityMetricQueries
+	}
+	return nil
+}
+
+// AwsAutoScalingGroupPredictiveScalingPredefinedMetric names one
+// predefined metric for the split form of predictive scaling. The valid
+// metric_type values differ by position -- TOTAL metrics on the load
+// side, AVERAGE metrics on the scaling side (validated on the parent).
+type AwsAutoScalingGroupPredictiveScalingPredefinedMetric struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The predefined metric name. Required.
+	MetricType string `protobuf:"bytes,1,opt,name=metric_type,json=metricType,proto3" json:"metric_type,omitempty"`
+	// Identifies the ALB target group for the ALB-based metric types
+	// (load balancer arn_suffix + "/" + target group arn_suffix).
+	ResourceLabel string `protobuf:"bytes,2,opt,name=resource_label,json=resourceLabel,proto3" json:"resource_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingPredefinedMetric) Reset() {
+	*x = AwsAutoScalingGroupPredictiveScalingPredefinedMetric{}
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingPredefinedMetric) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsAutoScalingGroupPredictiveScalingPredefinedMetric) ProtoMessage() {}
+
+func (x *AwsAutoScalingGroupPredictiveScalingPredefinedMetric) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsAutoScalingGroupPredictiveScalingPredefinedMetric.ProtoReflect.Descriptor instead.
+func (*AwsAutoScalingGroupPredictiveScalingPredefinedMetric) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingPredefinedMetric) GetMetricType() string {
+	if x != nil {
+		return x.MetricType
+	}
+	return ""
+}
+
+func (x *AwsAutoScalingGroupPredictiveScalingPredefinedMetric) GetResourceLabel() string {
+	if x != nil {
+		return x.ResourceLabel
+	}
+	return ""
+}
+
 // AwsAutoScalingGroupScheduledAction changes capacity on a schedule --
 // recurring (cron) or one-shot (start_time only).
 type AwsAutoScalingGroupScheduledAction struct {
@@ -2429,7 +2843,7 @@ type AwsAutoScalingGroupScheduledAction struct {
 
 func (x *AwsAutoScalingGroupScheduledAction) Reset() {
 	*x = AwsAutoScalingGroupScheduledAction{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2441,7 +2855,7 @@ func (x *AwsAutoScalingGroupScheduledAction) String() string {
 func (*AwsAutoScalingGroupScheduledAction) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupScheduledAction) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2454,7 +2868,7 @@ func (x *AwsAutoScalingGroupScheduledAction) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsAutoScalingGroupScheduledAction.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupScheduledAction) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *AwsAutoScalingGroupScheduledAction) GetName() string {
@@ -2543,13 +2957,22 @@ type AwsAutoScalingGroupLifecycleHook struct {
 	// Free-form JSON delivered with every notification -- routing context
 	// for the consumer.
 	NotificationMetadata string `protobuf:"bytes,7,opt,name=notification_metadata,json=notificationMetadata,proto3" json:"notification_metadata,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Attach this hook atomically AT GROUP CREATION instead of as a
+	// separate post-creation resource. Without it, instances the group
+	// launches in the seconds before the standalone hook attaches slip
+	// through unhooked -- set it on launch-transition hooks that must
+	// catch the very first instance. Trade-off: AWS makes creation-time
+	// hooks immutable, so any change to a flagged hook REPLACES the whole
+	// group; leave it off (the default) for hooks that need in-place
+	// updates.
+	ApplyAtLaunch bool `protobuf:"varint,8,opt,name=apply_at_launch,json=applyAtLaunch,proto3" json:"apply_at_launch,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsAutoScalingGroupLifecycleHook) Reset() {
 	*x = AwsAutoScalingGroupLifecycleHook{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2561,7 +2984,7 @@ func (x *AwsAutoScalingGroupLifecycleHook) String() string {
 func (*AwsAutoScalingGroupLifecycleHook) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupLifecycleHook) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2574,7 +2997,7 @@ func (x *AwsAutoScalingGroupLifecycleHook) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsAutoScalingGroupLifecycleHook.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupLifecycleHook) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *AwsAutoScalingGroupLifecycleHook) GetName() string {
@@ -2626,6 +3049,13 @@ func (x *AwsAutoScalingGroupLifecycleHook) GetNotificationMetadata() string {
 	return ""
 }
 
+func (x *AwsAutoScalingGroupLifecycleHook) GetApplyAtLaunch() bool {
+	if x != nil {
+		return x.ApplyAtLaunch
+	}
+	return false
+}
+
 // AwsAutoScalingGroupNotifications wires fleet lifecycle events to an SNS
 // topic.
 type AwsAutoScalingGroupNotifications struct {
@@ -2645,7 +3075,7 @@ type AwsAutoScalingGroupNotifications struct {
 
 func (x *AwsAutoScalingGroupNotifications) Reset() {
 	*x = AwsAutoScalingGroupNotifications{}
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2657,7 +3087,7 @@ func (x *AwsAutoScalingGroupNotifications) String() string {
 func (*AwsAutoScalingGroupNotifications) ProtoMessage() {}
 
 func (x *AwsAutoScalingGroupNotifications) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2670,7 +3100,7 @@ func (x *AwsAutoScalingGroupNotifications) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsAutoScalingGroupNotifications.ProtoReflect.Descriptor instead.
 func (*AwsAutoScalingGroupNotifications) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AwsAutoScalingGroupNotifications) GetTopic() *v1.StringValueOrRef {
@@ -2691,7 +3121,7 @@ var File_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsautoscalinggroup/v1alpha1/spec.proto\x12,dev.planton.aws.awsautoscalinggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x84!\n" +
+	"3catalog/aws/awsautoscalinggroup/v1alpha1/spec.proto\x12,dev.planton.aws.awsautoscalinggroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x92(\n" +
 	"\x17AwsAutoScalingGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
 	"\asubnets\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\asubnets\x12{\n" +
@@ -2724,14 +3154,22 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10scaling_policies\x18\x1c \x03(\v2N.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicyR\x0fscalingPolicies\x12}\n" +
 	"\x11scheduled_actions\x18\x1d \x03(\v2P.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScheduledActionR\x10scheduledActions\x12w\n" +
 	"\x0flifecycle_hooks\x18\x1e \x03(\v2N.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHookR\x0elifecycleHooks\x12t\n" +
-	"\rnotifications\x18\x1f \x01(\v2N.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotificationsR\rnotifications:\xf4\r\xbaH\xf0\r\x1a\xaa\x01\n" +
+	"\rnotifications\x18\x1f \x01(\v2N.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotificationsR\rnotifications\x12\x87\x01\n" +
+	"\x14capacity_reservation\x18  \x01(\v2T.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCapacityReservationR\x13capacityReservation\x12w\n" +
+	"\x0ftraffic_sources\x18! \x03(\v2N.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTrafficSourceR\x0etrafficSources\x12\x94\x01\n" +
+	"\x19instance_lifecycle_policy\x18\" \x01(\v2X.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceLifecyclePolicyR\x17instanceLifecyclePolicy\x12G\n" +
+	" ignore_failed_scaling_activities\x18# \x01(\bR\x1dignoreFailedScalingActivities\x123\n" +
+	"\x16force_delete_warm_pool\x18$ \x01(\bR\x13forceDeleteWarmPool\x121\n" +
+	"\x10min_elb_capacity\x18% \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0eminElbCapacity\x12:\n" +
+	"\x15wait_for_elb_capacity\x18& \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x12waitForElbCapacity:\xfb\x0f\xbaH\xf7\x0f\x1a\xc6\x01\n" +
+	"!traffic_sources_xor_target_groups\x12_traffic_sources and target_groups are mutually exclusive -- the provider rejects declaring both\x1a@size(this.traffic_sources) == 0 || size(this.target_groups) == 0\x1a\xaa\x01\n" +
 	"#launch_template_xor_mixed_instances\x12Dexactly one of launch_template or mixed_instances_policy must be set\x1a=has(this.launch_template) != has(this.mixed_instances_policy)\x1ak\n" +
 	"\x15max_size_gte_min_size\x122max_size must be greater than or equal to min_size\x1a\x1ethis.max_size >= this.min_size\x1a\xca\x01\n" +
 	"\x15desired_within_bounds\x12?desired_capacity must be between min_size and max_size when set\x1apthis.desired_capacity == 0 || (this.desired_capacity >= this.min_size && this.desired_capacity <= this.max_size)\x1a\xc9\x01\n" +
 	"\x1bdesired_capacity_type_valid\x12Gdesired_capacity_type must be 'units', 'vcpu', or 'memory-mib' when set\x1aathis.desired_capacity_type == '' || this.desired_capacity_type in ['units', 'vcpu', 'memory-mib']\x1a\x96\x01\n" +
 	"\x17health_check_type_valid\x121health_check_type must be 'EC2' or 'ELB' when set\x1aHthis.health_check_type == '' || this.health_check_type in ['EC2', 'ELB']\x1a\x8d\x02\n" +
-	"\x1bmax_instance_lifetime_range\x12amax_instance_lifetime_seconds must be 0 (disabled) or between 86400 (1 day) and 31536000 (1 year)\x1a\x8a\x01this.max_instance_lifetime_seconds == 0 || (this.max_instance_lifetime_seconds >= 86400 && this.max_instance_lifetime_seconds <= 31536000)\x1a\x80\x02\n" +
-	"$capacity_distribution_strategy_valid\x12Ycapacity_distribution_strategy must be 'balanced-only' or 'balanced-best-effort' when set\x1a}this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort']\x1a\x8e\x03\n" +
+	"\x1bmax_instance_lifetime_range\x12amax_instance_lifetime_seconds must be 0 (disabled) or between 86400 (1 day) and 31536000 (1 year)\x1a\x8a\x01this.max_instance_lifetime_seconds == 0 || (this.max_instance_lifetime_seconds >= 86400 && this.max_instance_lifetime_seconds <= 31536000)\x1a\xbe\x02\n" +
+	"$capacity_distribution_strategy_valid\x12xcapacity_distribution_strategy must be 'balanced-only', 'balanced-best-effort', or 'reservations-then-balanced' when set\x1a\x9b\x01this.capacity_distribution_strategy == '' || this.capacity_distribution_strategy in ['balanced-only', 'balanced-best-effort', 'reservations-then-balanced']\x1a\x8e\x03\n" +
 	"\x19suspended_processes_valid\x12\xad\x01each suspended process must be one of: Launch, Terminate, AddToLoadBalancer, AlarmNotification, AZRebalance, HealthCheck, InstanceRefresh, ReplaceUnhealthy, ScheduledActions\x1a\xc0\x01this.suspended_processes.all(p, p in ['Launch', 'Terminate', 'AddToLoadBalancer', 'AlarmNotification', 'AZRebalance', 'HealthCheck', 'InstanceRefresh', 'ReplaceUnhealthy', 'ScheduledActions'])\"\xd5\x01\n" +
 	"$AwsAutoScalingGroupLaunchTemplateRef\x12\x92\x01\n" +
 	"\x12launch_template_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x03\xc8\x01\x01\x88\xd4a\x8a\b\x92\xd4a!status.outputs.launch_template_idR\x10launchTemplateId\x12\x18\n" +
@@ -2836,7 +3274,25 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	",AwsAutoScalingGroupInstanceMaintenancePolicy\x12?\n" +
 	"\x16min_healthy_percentage\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18d(\x00R\x14minHealthyPercentage\x12@\n" +
 	"\x16max_healthy_percentage\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xc8\x01(dR\x14maxHealthyPercentage\"\xdf\f\n" +
+	"\xbaH\a\x1a\x05\x18\xc8\x01(dR\x14maxHealthyPercentage\"\xb7\x05\n" +
+	"&AwsAutoScalingGroupCapacityReservation\x12\x1e\n" +
+	"\n" +
+	"preference\x18\x01 \x01(\tR\n" +
+	"preference\x128\n" +
+	"\x18capacity_reservation_ids\x18\x02 \x03(\tR\x16capacityReservationIds\x12V\n" +
+	"(capacity_reservation_resource_group_arns\x18\x03 \x03(\tR$capacityReservationResourceGroupArns:\xda\x03\xbaH\xd6\x03\x1a\xf3\x01\n" +
+	"\x10preference_valid\x12apreference must be one of: default, capacity-reservations-only, capacity-reservations-first, none\x1a|this.preference == '' || this.preference in ['default', 'capacity-reservations-only', 'capacity-reservations-first', 'none']\x1a\xdd\x01\n" +
+	"\x17ids_xor_resource_groups\x12\\capacity_reservation_ids and capacity_reservation_resource_group_arns are mutually exclusive\x1adsize(this.capacity_reservation_ids) == 0 || size(this.capacity_reservation_resource_group_arns) == 0\"\xa1\x02\n" +
+	" AwsAutoScalingGroupTrafficSource\x12Z\n" +
+	"\n" +
+	"identifier\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"identifier\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type:\x8c\x01\xbaH\x88\x01\x1a\x85\x01\n" +
+	"\n" +
+	"type_valid\x126type must be 'elb', 'elbv2', or 'vpc-lattice' when set\x1a?this.type == '' || this.type in ['elb', 'elbv2', 'vpc-lattice']\"\xa8\x02\n" +
+	"*AwsAutoScalingGroupInstanceLifecyclePolicy\x124\n" +
+	"\x16terminate_hook_abandon\x18\x01 \x01(\tR\x14terminateHookAbandon:\xc3\x01\xbaH\xbf\x01\x1a\xbc\x01\n" +
+	"\x1cterminate_hook_abandon_valid\x12?terminate_hook_abandon must be 'retain' or 'terminate' when set\x1a[this.terminate_hook_abandon == '' || this.terminate_hook_abandon in ['retain', 'terminate']\"\xfb\f\n" +
 	" AwsAutoScalingGroupScalingPolicy\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12'\n" +
 	"\vpolicy_type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
@@ -2845,7 +3301,8 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0ftarget_tracking\x18\x04 \x01(\v2U.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfigR\x0etargetTracking\x12u\n" +
 	"\fstep_scaling\x18\x05 \x01(\v2R.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfigR\vstepScaling\x12{\n" +
 	"\x0esimple_scaling\x18\x06 \x01(\v2T.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSimpleScalingConfigR\rsimpleScaling\x12\x87\x01\n" +
-	"\x12predictive_scaling\x18\a \x01(\v2X.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfigR\x11predictiveScaling:\xac\a\xbaH\xa8\a\x1a\xdc\x01\n" +
+	"\x12predictive_scaling\x18\a \x01(\v2X.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfigR\x11predictiveScaling\x12\x1a\n" +
+	"\bdisabled\x18\b \x01(\bR\bdisabled:\xac\a\xbaH\xa8\a\x1a\xdc\x01\n" +
 	"\x11policy_type_valid\x12cpolicy_type must be 'TargetTrackingScaling', 'StepScaling', 'SimpleScaling', or 'PredictiveScaling'\x1abthis.policy_type in ['TargetTrackingScaling', 'StepScaling', 'SimpleScaling', 'PredictiveScaling']\x1a\xbb\x01\n" +
 	"\x1ctarget_tracking_matches_type\x12Otarget_tracking must be set exactly when policy_type is 'TargetTrackingScaling'\x1aJhas(this.target_tracking) == (this.policy_type == 'TargetTrackingScaling')\x1a\x9e\x01\n" +
 	"\x19step_scaling_matches_type\x12Bstep_scaling must be set exactly when policy_type is 'StepScaling'\x1a=has(this.step_scaling) == (this.policy_type == 'StepScaling')\x1a\xa8\x01\n" +
@@ -2918,22 +3375,42 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10cooldown_seconds\x18\x03 \x01(\x05R\x0fcooldownSeconds\x128\n" +
 	"\x18min_adjustment_magnitude\x18\x04 \x01(\x05R\x16minAdjustmentMagnitude:\x8f\x03\xbaH\x8b\x03\x1a\xcc\x01\n" +
 	"\x15adjustment_type_valid\x12Yadjustment_type must be 'ChangeInCapacity', 'ExactCapacity', or 'PercentChangeInCapacity'\x1aXthis.adjustment_type in ['ChangeInCapacity', 'ExactCapacity', 'PercentChangeInCapacity']\x1a\xb9\x01\n" +
-	"\x1dadjustment_nonzero_for_deltas\x12Oscaling_adjustment of 0 is only meaningful with adjustment_type 'ExactCapacity'\x1aGthis.adjustment_type == 'ExactCapacity' || this.scaling_adjustment != 0\"\xe3\n" +
-	"\n" +
+	"\x1dadjustment_nonzero_for_deltas\x12Oscaling_adjustment of 0 is only meaningful with adjustment_type 'ExactCapacity'\x1aGthis.adjustment_type == 'ExactCapacity' || this.scaling_adjustment != 0\"\xc6%\n" +
 	"*AwsAutoScalingGroupPredictiveScalingConfig\x12)\n" +
-	"\ftarget_value\x18\x01 \x01(\x01B\x06\xbaH\x03\xc8\x01\x01R\vtargetValue\x12E\n" +
-	"\x1bpredefined_metric_pair_type\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x18predefinedMetricPairType\x12%\n" +
+	"\ftarget_value\x18\x01 \x01(\x01B\x06\xbaH\x03\xc8\x01\x01R\vtargetValue\x12=\n" +
+	"\x1bpredefined_metric_pair_type\x18\x02 \x01(\tR\x18predefinedMetricPairType\x12%\n" +
 	"\x0eresource_label\x18\x03 \x01(\tR\rresourceLabel\x12\x12\n" +
 	"\x04mode\x18\x04 \x01(\tR\x04mode\x12C\n" +
 	"\x1escheduling_buffer_time_seconds\x18\x05 \x01(\x05R\x1bschedulingBufferTimeSeconds\x12?\n" +
 	"\x1cmax_capacity_breach_behavior\x18\x06 \x01(\tR\x19maxCapacityBreachBehavior\x12.\n" +
-	"\x13max_capacity_buffer\x18\a \x01(\x05R\x11maxCapacityBuffer:\xd1\a\xbaH\xcd\a\x1a\xef\x01\n" +
-	"\x11metric_pair_valid\x12kpredefined_metric_pair_type must be one of: ASGCPUUtilization, ASGNetworkIn, ASGNetworkOut, ALBRequestCount\x1amthis.predefined_metric_pair_type in ['ASGCPUUtilization', 'ASGNetworkIn', 'ASGNetworkOut', 'ALBRequestCount']\x1a\x8e\x01\n" +
+	"\x13max_capacity_buffer\x18\a \x01(\x05R\x11maxCapacityBuffer\x12\x98\x01\n" +
+	"\x16predefined_load_metric\x18\b \x01(\v2b.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingPredefinedMetricR\x14predefinedLoadMetric\x12\x9e\x01\n" +
+	"\x19predefined_scaling_metric\x18\t \x01(\v2b.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingPredefinedMetricR\x17predefinedScalingMetric\x12\x9f\x01\n" +
+	"\x1ecustomized_load_metric_queries\x18\n" +
+	" \x03(\v2P.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQueryB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x1bcustomizedLoadMetricQueries\x12\xa5\x01\n" +
+	"!customized_scaling_metric_queries\x18\v \x03(\v2P.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQueryB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x1ecustomizedScalingMetricQueries\x12\xa7\x01\n" +
+	"\"customized_capacity_metric_queries\x18\f \x03(\v2P.dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQueryB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x1fcustomizedCapacityMetricQueries:\x8c\x1c\xbaH\x88\x1c\x1a\x9a\x02\n" +
+	"\x11metric_pair_valid\x12kpredefined_metric_pair_type must be one of: ASGCPUUtilization, ASGNetworkIn, ASGNetworkOut, ALBRequestCount\x1a\x97\x01this.predefined_metric_pair_type == '' || this.predefined_metric_pair_type in ['ASGCPUUtilization', 'ASGNetworkIn', 'ASGNetworkOut', 'ALBRequestCount']\x1a\xb4\x03\n" +
+	"\"pair_excludes_split_and_customized\x12ypredefined_metric_pair_type is the all-in-one form -- it cannot combine with split predefined or customized metric fields\x1a\x92\x02this.predefined_metric_pair_type == '' || (!has(this.predefined_load_metric) && !has(this.predefined_scaling_metric) && size(this.customized_load_metric_queries) == 0 && size(this.customized_scaling_metric_queries) == 0 && size(this.customized_capacity_metric_queries) == 0)\x1a\xa0\x02\n" +
+	"\x1bone_scaling_metric_required\x12}predictive scaling needs a scaling metric: a predefined pair, predefined_scaling_metric, or customized_scaling_metric_queries\x1a\x81\x01this.predefined_metric_pair_type != '' || has(this.predefined_scaling_metric) || size(this.customized_scaling_metric_queries) > 0\x1a\xbd\x01\n" +
+	"\x14one_load_metric_form\x12Ppredefined_load_metric and customized_load_metric_queries are mutually exclusive\x1aS!has(this.predefined_load_metric) || size(this.customized_load_metric_queries) == 0\x1a\xcc\x01\n" +
+	"\x17one_scaling_metric_form\x12Vpredefined_scaling_metric and customized_scaling_metric_queries are mutually exclusive\x1aY!has(this.predefined_scaling_metric) || size(this.customized_scaling_metric_queries) == 0\x1a\xf9\x01\n" +
+	"(capacity_queries_exclude_predefined_load\x12tcustomized_capacity_metric_queries cannot combine with predefined_load_metric (the provider rejects the combination)\x1aWsize(this.customized_capacity_metric_queries) == 0 || !has(this.predefined_load_metric)\x1a\xdd\x02\n" +
+	"\x16load_metric_type_valid\x12\x8c\x01predefined_load_metric.metric_type must be one of: ASGTotalCPUUtilization, ASGTotalNetworkIn, ASGTotalNetworkOut, ALBTargetGroupRequestCount\x1a\xb3\x01!has(this.predefined_load_metric) || this.predefined_load_metric.metric_type in ['ASGTotalCPUUtilization', 'ASGTotalNetworkIn', 'ASGTotalNetworkOut', 'ALBTargetGroupRequestCount']\x1a\xf1\x02\n" +
+	"\x19scaling_metric_type_valid\x12\x93\x01predefined_scaling_metric.metric_type must be one of: ASGAverageCPUUtilization, ASGAverageNetworkIn, ASGAverageNetworkOut, ALBRequestCountPerTarget\x1a\xbd\x01!has(this.predefined_scaling_metric) || this.predefined_scaling_metric.metric_type in ['ASGAverageCPUUtilization', 'ASGAverageNetworkIn', 'ASGAverageNetworkOut', 'ALBRequestCountPerTarget']\x1a\xd4\x03\n" +
+	"\x1fno_period_on_predictive_queries\x12smetric_stat.period_seconds is not part of the predictive-scaling API -- leave it unset on predictive metric queries\x1a\xbb\x02this.customized_load_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0) && this.customized_scaling_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0) && this.customized_capacity_metric_queries.all(q, !has(q.metric_stat) || q.metric_stat.period_seconds == 0)\x1a\x8e\x01\n" +
 	"\n" +
 	"mode_valid\x12:mode must be 'ForecastOnly' or 'ForecastAndScale' when set\x1aDthis.mode == '' || this.mode in ['ForecastOnly', 'ForecastAndScale']\x1a\xef\x01\n" +
 	"\x15breach_behavior_valid\x12Ymax_capacity_breach_behavior must be 'HonorMaxCapacity' or 'IncreaseMaxCapacity' when set\x1a{this.max_capacity_breach_behavior == '' || this.max_capacity_breach_behavior in ['HonorMaxCapacity', 'IncreaseMaxCapacity']\x1a\xd4\x01\n" +
 	"\x18buffer_only_for_increase\x12[max_capacity_buffer only applies when max_capacity_breach_behavior is 'IncreaseMaxCapacity'\x1a[this.max_capacity_buffer == 0 || this.max_capacity_breach_behavior == 'IncreaseMaxCapacity'\x1a\x7f\n" +
-	"\fbuffer_range\x12-max_capacity_buffer must be between 0 and 100\x1a@this.max_capacity_buffer >= 0 && this.max_capacity_buffer <= 100\"\xb6\x05\n" +
+	"\fbuffer_range\x12-max_capacity_buffer must be between 0 and 100\x1a@this.max_capacity_buffer >= 0 && this.max_capacity_buffer <= 100\"\x86\x01\n" +
+	"4AwsAutoScalingGroupPredictiveScalingPredefinedMetric\x12'\n" +
+	"\vmetric_type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"metricType\x12%\n" +
+	"\x0eresource_label\x18\x02 \x01(\tR\rresourceLabel\"\xb6\x05\n" +
 	"\"AwsAutoScalingGroupScheduledAction\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1e\n" +
 	"\n" +
@@ -2950,7 +3427,7 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18recurrence_or_start_time\x12La scheduled action needs a recurrence (recurring) or a start_time (one-shot)\x1a.this.recurrence != '' || this.start_time != ''B\v\n" +
 	"\t_min_sizeB\v\n" +
 	"\t_max_sizeB\x13\n" +
-	"\x11_desired_capacity\"\x86\t\n" +
+	"\x11_desired_capacity\"\xae\t\n" +
 	" AwsAutoScalingGroupLifecycleHook\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x129\n" +
 	"\x14lifecycle_transition\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13lifecycleTransition\x12%\n" +
@@ -2958,7 +3435,8 @@ const file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19heartbeat_timeout_seconds\x18\x04 \x01(\x05R\x17heartbeatTimeoutSeconds\x12\x8d\x01\n" +
 	"\x17notification_target_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x82\b\x92\xd4a\x18status.outputs.topic_arnR\x15notificationTargetArn\x12o\n" +
 	"\brole_arn\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x123\n" +
-	"\x15notification_metadata\x18\a \x01(\tR\x14notificationMetadata:\xf1\x04\xbaH\xed\x04\x1a\xf6\x01\n" +
+	"\x15notification_metadata\x18\a \x01(\tR\x14notificationMetadata\x12&\n" +
+	"\x0fapply_at_launch\x18\b \x01(\bR\rapplyAtLaunch:\xf1\x04\xbaH\xed\x04\x1a\xf6\x01\n" +
 	"\x1alifecycle_transition_valid\x12klifecycle_transition must be 'autoscaling:EC2_INSTANCE_LAUNCHING' or 'autoscaling:EC2_INSTANCE_TERMINATING'\x1akthis.lifecycle_transition in ['autoscaling:EC2_INSTANCE_LAUNCHING', 'autoscaling:EC2_INSTANCE_TERMINATING']\x1a\x9c\x01\n" +
 	"\x14default_result_valid\x127default_result must be 'ABANDON' or 'CONTINUE' when set\x1aKthis.default_result == '' || this.default_result in ['ABANDON', 'CONTINUE']\x1a\xd2\x01\n" +
 	"\x17heartbeat_timeout_range\x12>heartbeat_timeout_seconds must be between 30 and 7200 when set\x1awthis.heartbeat_timeout_seconds == 0 || (this.heartbeat_timeout_seconds >= 30 && this.heartbeat_timeout_seconds <= 7200)\"\xd6\x04\n" +
@@ -2981,82 +3459,95 @@ func file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsAutoScalingGroupSpec)(nil),                       // 0: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec
-	(*AwsAutoScalingGroupLaunchTemplateRef)(nil),          // 1: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
-	(*AwsAutoScalingGroupMixedInstancesPolicy)(nil),       // 2: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy
-	(*AwsAutoScalingGroupMixedInstancesOverride)(nil),     // 3: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride
-	(*AwsAutoScalingGroupInstancesDistribution)(nil),      // 4: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstancesDistribution
-	(*AwsAutoScalingGroupInstanceRequirements)(nil),       // 5: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements
-	(*AwsAutoScalingGroupIntRange)(nil),                   // 6: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	(*AwsAutoScalingGroupDoubleRange)(nil),                // 7: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
-	(*AwsAutoScalingGroupInstanceRefresh)(nil),            // 8: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefresh
-	(*AwsAutoScalingGroupInstanceRefreshPreferences)(nil), // 9: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences
-	(*AwsAutoScalingGroupWarmPool)(nil),                   // 10: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupWarmPool
-	(*AwsAutoScalingGroupInstanceMaintenancePolicy)(nil),  // 11: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceMaintenancePolicy
-	(*AwsAutoScalingGroupScalingPolicy)(nil),              // 12: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy
-	(*AwsAutoScalingGroupTargetTrackingConfig)(nil),       // 13: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig
-	(*AwsAutoScalingGroupCustomizedMetric)(nil),           // 14: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric
-	(*AwsAutoScalingGroupMetricDimension)(nil),            // 15: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
-	(*AwsAutoScalingGroupMetricDataQuery)(nil),            // 16: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
-	(*AwsAutoScalingGroupMetricStat)(nil),                 // 17: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat
-	(*AwsAutoScalingGroupStepScalingConfig)(nil),          // 18: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig
-	(*AwsAutoScalingGroupStepAdjustment)(nil),             // 19: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepAdjustment
-	(*AwsAutoScalingGroupSimpleScalingConfig)(nil),        // 20: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSimpleScalingConfig
-	(*AwsAutoScalingGroupPredictiveScalingConfig)(nil),    // 21: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig
-	(*AwsAutoScalingGroupScheduledAction)(nil),            // 22: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScheduledAction
-	(*AwsAutoScalingGroupLifecycleHook)(nil),              // 23: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook
-	(*AwsAutoScalingGroupNotifications)(nil),              // 24: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications
-	(*v1.StringValueOrRef)(nil),                           // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsAutoScalingGroupSpec)(nil),                              // 0: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec
+	(*AwsAutoScalingGroupLaunchTemplateRef)(nil),                 // 1: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
+	(*AwsAutoScalingGroupMixedInstancesPolicy)(nil),              // 2: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy
+	(*AwsAutoScalingGroupMixedInstancesOverride)(nil),            // 3: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride
+	(*AwsAutoScalingGroupInstancesDistribution)(nil),             // 4: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstancesDistribution
+	(*AwsAutoScalingGroupInstanceRequirements)(nil),              // 5: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements
+	(*AwsAutoScalingGroupIntRange)(nil),                          // 6: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	(*AwsAutoScalingGroupDoubleRange)(nil),                       // 7: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
+	(*AwsAutoScalingGroupInstanceRefresh)(nil),                   // 8: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefresh
+	(*AwsAutoScalingGroupInstanceRefreshPreferences)(nil),        // 9: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences
+	(*AwsAutoScalingGroupWarmPool)(nil),                          // 10: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupWarmPool
+	(*AwsAutoScalingGroupInstanceMaintenancePolicy)(nil),         // 11: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceMaintenancePolicy
+	(*AwsAutoScalingGroupCapacityReservation)(nil),               // 12: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCapacityReservation
+	(*AwsAutoScalingGroupTrafficSource)(nil),                     // 13: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTrafficSource
+	(*AwsAutoScalingGroupInstanceLifecyclePolicy)(nil),           // 14: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceLifecyclePolicy
+	(*AwsAutoScalingGroupScalingPolicy)(nil),                     // 15: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy
+	(*AwsAutoScalingGroupTargetTrackingConfig)(nil),              // 16: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig
+	(*AwsAutoScalingGroupCustomizedMetric)(nil),                  // 17: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric
+	(*AwsAutoScalingGroupMetricDimension)(nil),                   // 18: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
+	(*AwsAutoScalingGroupMetricDataQuery)(nil),                   // 19: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
+	(*AwsAutoScalingGroupMetricStat)(nil),                        // 20: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat
+	(*AwsAutoScalingGroupStepScalingConfig)(nil),                 // 21: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig
+	(*AwsAutoScalingGroupStepAdjustment)(nil),                    // 22: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepAdjustment
+	(*AwsAutoScalingGroupSimpleScalingConfig)(nil),               // 23: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSimpleScalingConfig
+	(*AwsAutoScalingGroupPredictiveScalingConfig)(nil),           // 24: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig
+	(*AwsAutoScalingGroupPredictiveScalingPredefinedMetric)(nil), // 25: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingPredefinedMetric
+	(*AwsAutoScalingGroupScheduledAction)(nil),                   // 26: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScheduledAction
+	(*AwsAutoScalingGroupLifecycleHook)(nil),                     // 27: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook
+	(*AwsAutoScalingGroupNotifications)(nil),                     // 28: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications
+	(*v1.StringValueOrRef)(nil),                                  // 29: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_depIdxs = []int32{
-	25, // 0: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 0: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.launch_template:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
 	2,  // 2: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.mixed_instances_policy:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy
-	25, // 3: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.target_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 3: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.target_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	8,  // 4: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.instance_refresh:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefresh
 	10, // 5: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.warm_pool:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupWarmPool
 	11, // 6: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.instance_maintenance_policy:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceMaintenancePolicy
-	12, // 7: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.scaling_policies:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy
-	22, // 8: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.scheduled_actions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScheduledAction
-	23, // 9: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.lifecycle_hooks:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook
-	24, // 10: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.notifications:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications
-	25, // 11: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef.launch_template_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1,  // 12: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.launch_template:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
-	3,  // 13: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.overrides:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride
-	4,  // 14: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.instances_distribution:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstancesDistribution
-	1,  // 15: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride.launch_template:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
-	5,  // 16: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride.instance_requirements:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements
-	6,  // 17: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.memory_mib:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	6,  // 18: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.vcpu_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	7,  // 19: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.total_local_storage_gb:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
-	7,  // 20: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.memory_gib_per_vcpu:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
-	6,  // 21: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.network_interface_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	7,  // 22: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.network_bandwidth_gbps:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
-	6,  // 23: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.baseline_ebs_bandwidth_mbps:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	6,  // 24: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.accelerator_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	6,  // 25: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.accelerator_total_memory_mib:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
-	9,  // 26: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefresh.preferences:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences
-	25, // 27: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences.alarms:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 28: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.target_tracking:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig
-	18, // 29: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.step_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig
-	20, // 30: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.simple_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSimpleScalingConfig
-	21, // 31: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.predictive_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig
-	14, // 32: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig.customized_metric:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric
-	15, // 33: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric.dimensions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
-	16, // 34: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric.metrics:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
-	17, // 35: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery.metric_stat:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat
-	15, // 36: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat.dimensions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
-	19, // 37: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig.step_adjustments:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepAdjustment
-	25, // 38: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook.notification_target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 39: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 40: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications.topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	41, // [41:41] is the sub-list for method output_type
-	41, // [41:41] is the sub-list for method input_type
-	41, // [41:41] is the sub-list for extension type_name
-	41, // [41:41] is the sub-list for extension extendee
-	0,  // [0:41] is the sub-list for field type_name
+	15, // 7: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.scaling_policies:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy
+	26, // 8: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.scheduled_actions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScheduledAction
+	27, // 9: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.lifecycle_hooks:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook
+	28, // 10: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.notifications:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications
+	12, // 11: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.capacity_reservation:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCapacityReservation
+	13, // 12: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.traffic_sources:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTrafficSource
+	14, // 13: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSpec.instance_lifecycle_policy:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceLifecyclePolicy
+	29, // 14: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef.launch_template_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 15: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.launch_template:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
+	3,  // 16: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.overrides:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride
+	4,  // 17: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesPolicy.instances_distribution:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstancesDistribution
+	1,  // 18: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride.launch_template:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLaunchTemplateRef
+	5,  // 19: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMixedInstancesOverride.instance_requirements:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements
+	6,  // 20: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.memory_mib:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	6,  // 21: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.vcpu_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	7,  // 22: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.total_local_storage_gb:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
+	7,  // 23: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.memory_gib_per_vcpu:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
+	6,  // 24: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.network_interface_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	7,  // 25: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.network_bandwidth_gbps:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupDoubleRange
+	6,  // 26: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.baseline_ebs_bandwidth_mbps:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	6,  // 27: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.accelerator_count:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	6,  // 28: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRequirements.accelerator_total_memory_mib:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupIntRange
+	9,  // 29: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefresh.preferences:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences
+	29, // 30: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupInstanceRefreshPreferences.alarms:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 31: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTrafficSource.identifier:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 32: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.target_tracking:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig
+	21, // 33: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.step_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig
+	23, // 34: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.simple_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupSimpleScalingConfig
+	24, // 35: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupScalingPolicy.predictive_scaling:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig
+	17, // 36: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupTargetTrackingConfig.customized_metric:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric
+	18, // 37: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric.dimensions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
+	19, // 38: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupCustomizedMetric.metrics:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
+	20, // 39: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery.metric_stat:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat
+	18, // 40: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricStat.dimensions:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDimension
+	22, // 41: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepScalingConfig.step_adjustments:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupStepAdjustment
+	25, // 42: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig.predefined_load_metric:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingPredefinedMetric
+	25, // 43: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig.predefined_scaling_metric:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingPredefinedMetric
+	19, // 44: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig.customized_load_metric_queries:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
+	19, // 45: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig.customized_scaling_metric_queries:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
+	19, // 46: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupPredictiveScalingConfig.customized_capacity_metric_queries:type_name -> dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupMetricDataQuery
+	29, // 47: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook.notification_target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 48: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupLifecycleHook.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	29, // 49: dev.planton.aws.awsautoscalinggroup.v1alpha1.AwsAutoScalingGroupNotifications.topic:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_init() }
@@ -3067,15 +3558,15 @@ func file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_init() {
 	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[4].OneofWrappers = []any{}
 	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
 	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[10].OneofWrappers = []any{}
-	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[16].OneofWrappers = []any{}
-	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[22].OneofWrappers = []any{}
+	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_msgTypes[26].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsautoscalinggroup_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

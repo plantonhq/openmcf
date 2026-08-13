@@ -35,3 +35,6 @@ spec:
           name: planton-oss-e2e-gcpsnw-scp-prereq
           fieldPath: status.outputs.subnetwork_self_link
     limit: 5
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

@@ -1,0 +1,4 @@
+name: gcpcloudrundomainmapping-pulumi-project
+runtime:
+  name: go
+description: Planton GcpCloudRunDomainMapping Pulumi module

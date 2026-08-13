@@ -1,0 +1,33 @@
+# GcpGlobalAddress scenario: a plain EXTERNAL IPv4 global reservation — the
+# global LB frontend (VIP) shape. project_id is deliberately omitted: the
+# module falls back to the provider's default project, which the E2E harness
+# exports as GOOGLE_PROJECT from the resolved test project. Global address
+# names are project-scoped and hard-delete with no reservation window, so a
+# fixed name is safe across runs; it is distinct from the kind's install
+# profile (`planton-oss-e2e-gcpgip-prereq`) so a forwarding-rule chain and
+# this scenario can never collide. User labels arm the merge idiom (platform
+# labels win on key conflicts) — the kind's one mutable surface.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpGlobalAddress
+metadata:
+  name: planton-oss-e2e-gcpgip-smoke
+  id: planton-oss-e2e-gcpgip-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpglobaladdress
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  description: Ephemeral global address created by the Planton E2E harness; safe to delete
+  addressName: planton-oss-e2e-gcpgip-smoke
+  addressType: EXTERNAL
+  ipVersion: IPV4
+  labels:
+    team: platform
+
+  # Ephemeral test fixture: fully delete on destroy.
+  deletionPolicy: DELETE

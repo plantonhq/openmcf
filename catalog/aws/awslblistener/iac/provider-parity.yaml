@@ -1,0 +1,90 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lb_listener:
+    mappings:
+      # Repeated-message fields are plural per proto style; provider blocks
+      # are singular. Exact matching resumes below the mapped subtree.
+      - spec: spec.default_actions
+        arg: default_action
+      - spec: spec.default_actions.forward.target_groups
+        arg: default_action.forward.target_group
+      - spec: spec.default_actions.jwt_validation.additional_claims
+        arg: default_action.jwt_validation.additional_claim
+      # The spec carries the unit suffix the provider leaves implicit.
+      - spec: spec.default_actions.forward.stickiness.duration_seconds
+        arg: default_action.forward.stickiness.duration
+      - spec: spec.default_actions.authenticate_cognito.session_timeout_seconds
+        arg: default_action.authenticate_cognito.session_timeout
+      - spec: spec.default_actions.authenticate_oidc.session_timeout_seconds
+        arg: default_action.authenticate_oidc.session_timeout
+      # The provider's 19 flat routing_http_* attributes are grouped under
+      # one spec message: request-header injection and response-header
+      # overrides are one concept ("the headers the listener touches"), and
+      # the spec drops the transport prefixes the flat names repeat.
+      - spec: spec.http_headers.request.mtls_clientcert_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_header_name
+      - spec: spec.http_headers.request.mtls_clientcert_issuer_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_issuer_header_name
+      - spec: spec.http_headers.request.mtls_clientcert_leaf_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_leaf_header_name
+      - spec: spec.http_headers.request.mtls_clientcert_serial_number_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name
+      - spec: spec.http_headers.request.mtls_clientcert_subject_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_subject_header_name
+      - spec: spec.http_headers.request.mtls_clientcert_validity_header_name
+        arg: routing_http_request_x_amzn_mtls_clientcert_validity_header_name
+      - spec: spec.http_headers.request.tls_cipher_suite_header_name
+        arg: routing_http_request_x_amzn_tls_cipher_suite_header_name
+      - spec: spec.http_headers.request.tls_version_header_name
+        arg: routing_http_request_x_amzn_tls_version_header_name
+      - spec: spec.http_headers.response.access_control_allow_credentials
+        arg: routing_http_response_access_control_allow_credentials_header_value
+      - spec: spec.http_headers.response.access_control_allow_headers
+        arg: routing_http_response_access_control_allow_headers_header_value
+      - spec: spec.http_headers.response.access_control_allow_methods
+        arg: routing_http_response_access_control_allow_methods_header_value
+      - spec: spec.http_headers.response.access_control_allow_origin
+        arg: routing_http_response_access_control_allow_origin_header_value
+      - spec: spec.http_headers.response.access_control_expose_headers
+        arg: routing_http_response_access_control_expose_headers_header_value
+      - spec: spec.http_headers.response.access_control_max_age
+        arg: routing_http_response_access_control_max_age_header_value
+      - spec: spec.http_headers.response.content_security_policy
+        arg: routing_http_response_content_security_policy_header_value
+      - spec: spec.http_headers.response.server_enabled
+        arg: routing_http_response_server_enabled
+      - spec: spec.http_headers.response.strict_transport_security
+        arg: routing_http_response_strict_transport_security_header_value
+      - spec: spec.http_headers.response.x_content_type_options
+        arg: routing_http_response_x_content_type_options_header_value
+      - spec: spec.http_headers.response.x_frame_options
+        arg: routing_http_response_x_frame_options_header_value
+    exclusions:
+      # Covered-alternative shorthand.
+      - arg: default_action.target_group_arn
+        reason: single-target shorthand for the forward block -- the spec models the general form (default_actions.forward.target_groups), which expresses the same routing plus weights and stickiness
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_lb_listener_certificate:
+    # Instantiated per spec.additional_certificate_arns entry: additional SNI
+    # certificates folded into the listener because an attachment is pure
+    # glue with no referenceable identity of its own (recorded on the spec
+    # field). The explicit mapping prevents a false exact-match against the
+    # listener's own default certificate_arn field.
+    mappings:
+      - spec: spec.additional_certificate_arns
+        arg: certificate_arn
+    exclusions:
+      - arg: listener_arn
+        reason: wired by the module to the listener it creates -- never user surface

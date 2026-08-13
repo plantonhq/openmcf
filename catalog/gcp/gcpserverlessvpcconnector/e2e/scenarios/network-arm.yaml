@@ -19,7 +19,11 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1 deliberately: the connector fleet's shared-core zonal pools in
+  # us-central1 stock out recurrently (ZONE_RESOURCE_POOL_EXHAUSTED, observed
+  # live 2026-08-11 for both supported machine classes); this chain is
+  # self-contained, so its region tracks capacity reliability.
+  region: us-east1
   connectorName: e2e-conn-${E2E_RUN_ID}
   network:
     valueFrom:
@@ -30,3 +34,6 @@ spec:
   machineType: e2-micro
   minInstances: 2
   maxInstances: 3
+  # Explicit DELETE keeps the destroy real and proves the no-op-diff
+  # behavior of the new arm.
+  deletionPolicy: DELETE

@@ -68,6 +68,9 @@ This reserves a static external IPv4 address in `us-central1` that you can attac
 | `prefixLength` | `int32` | — | CIDR prefix length (8-29) for peering/interconnect ranges. |
 | `purpose` | `string` | `""` | INTERNAL purpose: `GCE_ENDPOINT`, `SHARED_LOADBALANCER_VIP`, `VPC_PEERING`, `IPSEC_INTERCONNECT`, or `DNS_RESOLVER`. |
 | `ipv6EndpointType` | `string` | `""` | `VM` or `NETLB` — external IPv6 endpoint type. |
+| `labels` | `map<string,string>` | `{}` | User labels, merged with the platform labels (platform wins on key conflicts). The one mutable surface. |
+| `ipCollection` | `string` | `""` | BYOIP source: a PublicDelegatedPrefix URL for EXTERNAL addresses. |
+| `deletionPolicy` | `string` | `DELETE` | What destroy does: `DELETE`, `PREVENT` (refuse), or `ABANDON` (keep the IP reserved, drop from management). |
 
 ### Validation Rules
 
@@ -101,12 +104,6 @@ See [`iac/tf/README.md`](iac/tf/README.md).
 - **ForceNew**: All fields except labels are ForceNew. Any change destroys and recreates the address — a recreated EXTERNAL address gets a new IP.
 - **Regional vs global**: This component models `google_compute_address` (regional). For global-scope addresses (HTTP(S) LB frontends, global VPC peering ranges, PSC), use [GcpGlobalAddress](/docs/catalog/gcp/gcpglobaladdress).
 - **PRIVATE_SERVICE_CONNECT is global-only**: use GcpGlobalAddress for PSC endpoints.
-
-### Deliberately not modeled (recorded reasons)
-
-| Excluded Feature | Why |
-|---|---|
-| `ip_collection` | BYOIP (Bring Your Own IP) via Public Delegated Prefixes is a specialized enterprise workflow; defer until a concrete consumer need appears. |
 
 ## Related Components
 

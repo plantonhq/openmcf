@@ -284,6 +284,13 @@ var _ = ginkgo.Describe("AwsIamRoleSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
+			ginkgo.It("should return a validation error when description contains typographic quotes", func() {
+				input := minimalValidRole()
+				input.Spec.Description = "Role for the “analytics” pipeline"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
 			ginkgo.It("should return a validation error when path does not begin and end with '/'", func() {
 				input := minimalValidRole()
 				input.Spec.Path = "service-roles"

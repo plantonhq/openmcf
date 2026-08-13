@@ -13,14 +13,16 @@ spec:
       name: segmented-hub
       fieldPath: status.outputs.transit_gateway_id
   associations:
-    - valueFrom:
-        kind: AwsTransitGatewayVpcAttachment
-        name: prod-vpc-attachment
-        fieldPath: status.outputs.attachment_id
-    - valueFrom:
-        kind: AwsTransitGatewayVpcAttachment
-        name: dev-vpc-attachment
-        fieldPath: status.outputs.attachment_id
+    - attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: prod-vpc-attachment
+          fieldPath: status.outputs.attachment_id
+    - attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: dev-vpc-attachment
+          fieldPath: status.outputs.attachment_id
   routes:
     - destinationCidrBlock: 0.0.0.0/0
       attachmentId:

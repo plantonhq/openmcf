@@ -108,7 +108,7 @@ message AzureCosmosdbMongoCollectionSpec {
   option (buf.validate.message).cel = {
     id: "cosmosdb_mongo_coll_id_index_required"
     message: "indexes must include an index on the '_id' key -- Azure rejects a Mongo collection without it"
-    expression: "this.indexes.exists(i, i.keys.exists(k, k.lowerAscii() == '_id'))"
+    expression: "this.indexes.exists(i, i.keys.exists(k, k.matches('^(?i)_id$')))"
   };
 }
 

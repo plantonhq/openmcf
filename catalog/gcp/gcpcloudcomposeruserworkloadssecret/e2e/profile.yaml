@@ -8,7 +8,5 @@ spec:
   # engines needs >=240m. The Secret itself creates/destroys in seconds.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 240

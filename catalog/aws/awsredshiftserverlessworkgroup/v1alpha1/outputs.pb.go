@@ -37,9 +37,23 @@ type AwsRedshiftServerlessWorkgroupStackOutputs struct {
 	// The DNS hostname SQL clients connect to.
 	EndpointAddress string `protobuf:"bytes,4,opt,name=endpoint_address,json=endpointAddress,proto3" json:"endpoint_address,omitempty"`
 	// The port the workgroup accepts connections on.
-	Port          int32 `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Port int32 `protobuf:"varint,5,opt,name=port,proto3" json:"port,omitempty"`
+	// The private DNS addresses of the workgroup's VPC endpoints, keyed
+	// by endpoint name (spec.endpoint_accesses entries) -- what consumers
+	// inside the endpoint's VPC put in connection strings.
+	EndpointAccessAddresses map[string]string `protobuf:"bytes,6,rep,name=endpoint_access_addresses,json=endpointAccessAddresses,proto3" json:"endpoint_access_addresses,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The AWS-generated usage-limit IDs, keyed exactly as the module keys
+	// each limit: "<usage_type>/<period>", with an unset period rendered
+	// as "monthly" (the AWS default). These are the handles
+	// `aws redshift-serverless delete-usage-limit` and state import take;
+	// AWS generates them at creation time.
+	UsageLimitIds map[string]string `protobuf:"bytes,7,rep,name=usage_limit_ids,json=usageLimitIds,proto3" json:"usage_limit_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// When the custom domain's ACM certificate expires (RFC 3339) --
+	// empty without a custom domain. Renewals through ACM update it in
+	// place.
+	CustomDomainCertificateExpiryTime string `protobuf:"bytes,8,opt,name=custom_domain_certificate_expiry_time,json=customDomainCertificateExpiryTime,proto3" json:"custom_domain_certificate_expiry_time,omitempty"`
+	unknownFields                     protoimpl.UnknownFields
+	sizeCache                         protoimpl.SizeCache
 }
 
 func (x *AwsRedshiftServerlessWorkgroupStackOutputs) Reset() {
@@ -107,17 +121,47 @@ func (x *AwsRedshiftServerlessWorkgroupStackOutputs) GetPort() int32 {
 	return 0
 }
 
+func (x *AwsRedshiftServerlessWorkgroupStackOutputs) GetEndpointAccessAddresses() map[string]string {
+	if x != nil {
+		return x.EndpointAccessAddresses
+	}
+	return nil
+}
+
+func (x *AwsRedshiftServerlessWorkgroupStackOutputs) GetUsageLimitIds() map[string]string {
+	if x != nil {
+		return x.UsageLimitIds
+	}
+	return nil
+}
+
+func (x *AwsRedshiftServerlessWorkgroupStackOutputs) GetCustomDomainCertificateExpiryTime() string {
+	if x != nil {
+		return x.CustomDomainCertificateExpiryTime
+	}
+	return ""
+}
+
 var File_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Acatalog/aws/awsredshiftserverlessworkgroup/v1alpha1/outputs.proto\x127dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1\"\xc7\x01\n" +
+	"Acatalog/aws/awsredshiftserverlessworkgroup/v1alpha1/outputs.proto\x127dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1\"\x88\x06\n" +
 	"*AwsRedshiftServerlessWorkgroupStackOutputs\x12%\n" +
 	"\x0eworkgroup_name\x18\x01 \x01(\tR\rworkgroupName\x12!\n" +
 	"\fworkgroup_id\x18\x02 \x01(\tR\vworkgroupId\x12\x10\n" +
 	"\x03arn\x18\x03 \x01(\tR\x03arn\x12)\n" +
 	"\x10endpoint_address\x18\x04 \x01(\tR\x0fendpointAddress\x12\x12\n" +
-	"\x04port\x18\x05 \x01(\x05R\x04portB\xc5\x03\n" +
+	"\x04port\x18\x05 \x01(\x05R\x04port\x12\xbd\x01\n" +
+	"\x19endpoint_access_addresses\x18\x06 \x03(\v2\x80\x01.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.EndpointAccessAddressesEntryR\x17endpointAccessAddresses\x12\x9e\x01\n" +
+	"\x0fusage_limit_ids\x18\a \x03(\v2v.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.UsageLimitIdsEntryR\rusageLimitIds\x12P\n" +
+	"%custom_domain_certificate_expiry_time\x18\b \x01(\tR!customDomainCertificateExpiryTime\x1aJ\n" +
+	"\x1cEndpointAccessAddressesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
+	"\x12UsageLimitIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xc5\x03\n" +
 	";com.dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1B\fOutputsProtoP\x01Zwgithub.com/plantonhq/planton/catalog/aws/awsredshiftserverlessworkgroup/v1alpha1;awsredshiftserverlessworkgroupv1alpha1\xa2\x02\x04DPAA\xaa\x027Dev.Planton.Aws.Awsredshiftserverlessworkgroup.V1alpha1\xca\x027Dev\\Planton\\Aws\\Awsredshiftserverlessworkgroup\\V1alpha1\xe2\x02CDev\\Planton\\Aws\\Awsredshiftserverlessworkgroup\\V1alpha1\\GPBMetadata\xea\x02;Dev::Planton::Aws::Awsredshiftserverlessworkgroup::V1alpha1b\x06proto3"
 
 var (
@@ -132,16 +176,20 @@ func file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_rawD
 	return file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsRedshiftServerlessWorkgroupStackOutputs)(nil), // 0: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs
+	nil, // 1: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.EndpointAccessAddressesEntry
+	nil, // 2: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.UsageLimitIdsEntry
 }
 var file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.endpoint_access_addresses:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.EndpointAccessAddressesEntry
+	2, // 1: dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.usage_limit_ids:type_name -> dev.planton.aws.awsredshiftserverlessworkgroup.v1alpha1.AwsRedshiftServerlessWorkgroupStackOutputs.UsageLimitIdsEntry
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_init() }
@@ -155,7 +203,7 @@ func file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_init
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsredshiftserverlessworkgroup_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,53 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_codepipeline:
+    mappings:
+      # The provider names repeated blocks in the singular; the spec uses
+      # the catalog's plural list convention. Leaves bind by name beneath
+      # each subtree; renamed leaves follow explicitly.
+      - spec: spec.artifact_stores
+        arg: artifact_store
+      - spec: spec.artifact_stores.encryption_key_id
+        arg: artifact_store.encryption_key.id
+      - spec: spec.stages
+        arg: stage
+      - spec: spec.stages.actions
+        arg: stage.action
+      - spec: spec.triggers
+        arg: trigger
+      - spec: spec.variables
+        arg: variable
+
+      # Stage conditions: the provider wraps every before_entry/on_success
+      # gate in a single-use condition block; the spec IS the condition
+      # (result + rules), so the wrapper flattens away. on_failure carries
+      # its condition beside result/retry_configuration in both shapes.
+      - spec: spec.stages.before_entry
+        arg: stage.before_entry.condition
+      - spec: spec.stages.before_entry.rules
+        arg: stage.before_entry.condition.rule
+      - spec: spec.stages.on_success
+        arg: stage.on_success.condition
+      - spec: spec.stages.on_success.rules
+        arg: stage.on_success.condition.rule
+      - spec: spec.stages.on_failure.condition.rules
+        arg: stage.on_failure.condition.rule
+
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- pipeline names are create-time-immutable identity, never mutable spec surface
+      - arg: artifact_store.type
+        reason: single-value domain -- S3 is the only artifact-store type the provider accepts; the module wires the constant
+      - arg: artifact_store.encryption_key.type
+        reason: single-value domain -- KMS is the only encryption-key type the provider accepts; the module wires the constant
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

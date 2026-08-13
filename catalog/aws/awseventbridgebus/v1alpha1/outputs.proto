@@ -14,4 +14,19 @@ message AwsEventBridgeBusStackOutputs {
   // The Amazon Resource Name (ARN) of the event bus. Used for IAM policies,
   // cross-account event delivery, and as a reference in other resources.
   string bus_arn = 2;
+
+  // The archives declared in spec.archives — one entry per archive, exposing
+  // the identifiers replay operations (EventBridge StartReplay) and IAM
+  // policies need.
+  repeated AwsEventBridgeBusArchiveOutput archives = 3;
+}
+
+// AwsEventBridgeBusArchiveOutput is one archive's observable identity.
+message AwsEventBridgeBusArchiveOutput {
+  // The archive's spec.archives entry name.
+  string name = 1;
+
+  // The Amazon Resource Name (ARN) of the archive. StartReplay calls and
+  // IAM policies reference the archive by this ARN.
+  string arn = 2;
 }

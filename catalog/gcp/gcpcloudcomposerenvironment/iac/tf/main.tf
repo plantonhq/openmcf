@@ -24,6 +24,12 @@ resource "google_composer_environment" "environment" {
   project = local.project_id
   labels  = local.final_labels
 
+  # Client-side destroy behavior: DELETE (default), PREVENT (destroy
+  # fails), or ABANDON (drop from state, keep the environment — and its
+  # meaningful idle bill — running in GCP). The auto-created DAG bucket
+  # survives a DELETE either way.
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
+
   # Existing bucket for DAGs/plugins/data instead of the auto-created one.
   dynamic "storage_config" {
     for_each = var.spec.storage_bucket != "" ? [1] : []

@@ -63,8 +63,9 @@ type GcpSubnetworkSpec struct {
 	// Primary IPv4 CIDR range (e.g. "10.10.0.0/20"). Must not overlap any
 	// other range in the VPC. Mutable in ONE direction: the range can be
 	// expanded in place (e.g. /20 → /18), but shrinking it forces destroy and
-	// recreate — plan for growth up front. Leave empty only for IPV6_ONLY
-	// subnets, which carry no IPv4 range.
+	// recreate — plan for growth up front. Leave empty for IPV6_ONLY subnets
+	// (which carry no IPv4 range) or when reserved_internal_range supplies
+	// the CIDR from a Network Connectivity internal range.
 	IpCidrRange string `protobuf:"bytes,5,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
 	// What this subnet carries and which workloads should use it — write it
 	// for the operator doing IP planning later.
@@ -130,9 +131,52 @@ type GcpSubnetworkSpec struct {
 	// monitoring, forensics, and cost analysis, delivered to Cloud Logging.
 	// Unset means flow logs are OFF. Logging every flow at full sampling on a
 	// busy subnet is expensive — tune flow_sampling and filter_expr.
-	LogConfig     *GcpSubnetworkLogConfig `protobuf:"bytes,17,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	LogConfig *GcpSubnetworkLogConfig `protobuf:"bytes,17,opt,name=log_config,json=logConfig,proto3" json:"log_config,omitempty"`
+	// Source the primary CIDR from a pre-planned Network Connectivity
+	// internal range instead of typing a literal ip_cidr_range: the value is
+	// the range's resource path prefixed with the API host, e.g.
+	// "networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+	// The range's CIDR becomes the subnet's primary range — the enterprise
+	// path for centrally allocated IP plans. Immutable: changing it destroys
+	// and recreates the subnetwork.
+	ReservedInternalRange string `protobuf:"bytes,18,opt,name=reserved_internal_range,json=reservedInternalRange,proto3" json:"reserved_internal_range,omitempty"`
+	// For INTERNAL IPv6 subnets: pin a specific internal IPv6 prefix (ULA)
+	// instead of letting Google allocate one from the VPC's internal IPv6
+	// range. Immutable: the prefix cannot change after creation.
+	InternalIpv6Prefix string `protobuf:"bytes,19,opt,name=internal_ipv6_prefix,json=internalIpv6Prefix,proto3" json:"internal_ipv6_prefix,omitempty"`
+	// BYOIP for IPv6: resource path of a PublicDelegatedPrefix (a sub-PDP in
+	// EXTERNAL_IPV6_SUBNETWORK_CREATION or INTERNAL_IPV6_SUBNETWORK_CREATION
+	// mode) the subnet's IPv6 space is drawn from, e.g.
+	// "projects/{project}/regions/{region}/publicDelegatedPrefixes/{name}".
+	// Only meaningful on dual-stack or IPv6-only subnets. Mutable.
+	IpCollection string `protobuf:"bytes,20,opt,name=ip_collection,json=ipCollection,proto3" json:"ip_collection,omitempty"`
+	// Resource Manager tags bound to the subnetwork at create time, for
+	// org-policy conditions and IAM scoping. Keys are "tagKeys/{tag_key_id}"
+	// and values "tagValues/{tag_value_id}" (IDs, not short names). Changing
+	// tags REPLACES the subnetwork (the provider sends them through a
+	// create-only params block) -- plan tag changes deliberately.
+	ResourceManagerTags map[string]string `protobuf:"bytes,21,rep,name=resource_manager_tags,json=resourceManagerTags,proto3" json:"resource_manager_tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// How VMs in this subnet resolve the subnet mask in ARP responses —
+	// relevant for appliance/NFV subnets whose workloads inspect ARP.
+	// ARP_ALL_RANGES answers for every range in the subnet;
+	// ARP_PRIMARY_RANGE answers only for the primary range;
+	// the ARP_BROADCAST_* modes answer with the broadcast-domain mask
+	// (WITH_LEARNING additionally learns from observed traffic). Leave unset
+	// for GCP's default behavior. Immutable: changing it recreates the
+	// subnetwork.
+	ResolveSubnetMask string `protobuf:"bytes,22,opt,name=resolve_subnet_mask,json=resolveSubnetMask,proto3" json:"resolve_subnet_mask,omitempty"`
+	// What happens to the subnetwork in GCP when this resource is destroyed.
+	//
+	//	"DELETE"  -- (GCP's default when unset) the subnet is deleted; GCP
+	//	             rejects the delete while any VM, connector, or proxy
+	//	             still holds an address in it
+	//	"PREVENT" -- destroy FAILS; protects the address space workloads
+	//	             and peers may still route to
+	//	"ABANDON" -- the subnet is removed from management but stays in GCP
+	//	             (free at rest; its CIDR stays claimed in the VPC)
+	DeletionPolicy string `protobuf:"bytes,23,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpSubnetworkSpec) Reset() {
@@ -284,6 +328,48 @@ func (x *GcpSubnetworkSpec) GetLogConfig() *GcpSubnetworkLogConfig {
 	return nil
 }
 
+func (x *GcpSubnetworkSpec) GetReservedInternalRange() string {
+	if x != nil {
+		return x.ReservedInternalRange
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetInternalIpv6Prefix() string {
+	if x != nil {
+		return x.InternalIpv6Prefix
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetIpCollection() string {
+	if x != nil {
+		return x.IpCollection
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetResourceManagerTags() map[string]string {
+	if x != nil {
+		return x.ResourceManagerTags
+	}
+	return nil
+}
+
+func (x *GcpSubnetworkSpec) GetResolveSubnetMask() string {
+	if x != nil {
+		return x.ResolveSubnetMask
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 // One secondary (alias) IPv4 range.
 type GcpSubnetworkSecondaryRange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -293,10 +379,16 @@ type GcpSubnetworkSecondaryRange struct {
 	RangeName string `protobuf:"bytes,1,opt,name=range_name,json=rangeName,proto3" json:"range_name,omitempty"`
 	// IPv4 CIDR of this secondary range. Must not overlap any other range in
 	// the VPC. Size for the consumer: GKE pod ranges are commonly /14-/18,
-	// service ranges /20.
-	IpCidrRange   string `protobuf:"bytes,2,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// service ranges /20. Alternative to reserved_internal_range.
+	IpCidrRange string `protobuf:"bytes,2,opt,name=ip_cidr_range,json=ipCidrRange,proto3" json:"ip_cidr_range,omitempty"`
+	// Source this secondary range's CIDR from a pre-planned Network
+	// Connectivity internal range instead of a literal ip_cidr_range, e.g.
+	// "networkconnectivity.googleapis.com/projects/{project}/locations/global/internalRanges/{name}".
+	// Alternative to ip_cidr_range; unlike the subnet's primary range this
+	// is mutable in place.
+	ReservedInternalRange string `protobuf:"bytes,3,opt,name=reserved_internal_range,json=reservedInternalRange,proto3" json:"reserved_internal_range,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *GcpSubnetworkSecondaryRange) Reset() {
@@ -339,6 +431,13 @@ func (x *GcpSubnetworkSecondaryRange) GetRangeName() string {
 func (x *GcpSubnetworkSecondaryRange) GetIpCidrRange() string {
 	if x != nil {
 		return x.IpCidrRange
+	}
+	return ""
+}
+
+func (x *GcpSubnetworkSecondaryRange) GetReservedInternalRange() string {
+	if x != nil {
+		return x.ReservedInternalRange
 	}
 	return ""
 }
@@ -439,7 +538,7 @@ var File_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/gcp/gcpsubnetwork/v1alpha1/spec.proto\x12&dev.planton.gcp.gcpsubnetwork.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x91\x19\n" +
+	"-catalog/gcp/gcpsubnetwork/v1alpha1/spec.proto\x12&dev.planton.gcp.gcpsubnetwork.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb8%\n" +
 	"\x11GcpSubnetworkSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\x87\x01\n" +
@@ -468,18 +567,35 @@ const file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDesc = "" +
 	" allow_subnet_cidr_routes_overlap\x18\x0f \x01(\bR\x1callowSubnetCidrRoutesOverlap\x12E\n" +
 	" send_secondary_ip_range_if_empty\x18\x10 \x01(\bR\x1bsendSecondaryIpRangeIfEmpty\x12]\n" +
 	"\n" +
-	"log_config\x18\x11 \x01(\v2>.dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkLogConfigR\tlogConfig:\xfb\x06\xbaH\xf7\x06\x1a\xd2\x01\n" +
-	"$ipv4_range_required_unless_ipv6_only\x12:ip_cidr_range is required (only IPV6_ONLY subnets omit it)\x1an(has(this.stack_type) && this.stack_type == 'IPV6_ONLY') ? this.ip_cidr_range == '' : this.ip_cidr_range != ''\x1a\xd8\x01\n" +
+	"log_config\x18\x11 \x01(\v2>.dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkLogConfigR\tlogConfig\x126\n" +
+	"\x17reserved_internal_range\x18\x12 \x01(\tR\x15reservedInternalRange\x120\n" +
+	"\x14internal_ipv6_prefix\x18\x13 \x01(\tR\x12internalIpv6Prefix\x12#\n" +
+	"\rip_collection\x18\x14 \x01(\tR\fipCollection\x12\x86\x01\n" +
+	"\x15resource_manager_tags\x18\x15 \x03(\v2R.dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.ResourceManagerTagsEntryR\x13resourceManagerTags\x12\xf2\x02\n" +
+	"\x13resolve_subnet_mask\x18\x16 \x01(\tB\xc1\x02\xbaH\xbd\x02\xba\x01\xb9\x02\n" +
+	"\x19valid_resolve_subnet_mask\x12\x8f\x01resolve_subnet_mask must be one of ARP_ALL_RANGES, ARP_PRIMARY_RANGE, ARP_BROADCAST_PRIMARY_RANGE, or ARP_BROADCAST_PRIMARY_RANGE_WITH_LEARNING\x1a\x89\x01this == '' || this in ['ARP_ALL_RANGES', 'ARP_PRIMARY_RANGE', 'ARP_BROADCAST_PRIMARY_RANGE', 'ARP_BROADCAST_PRIMARY_RANGE_WITH_LEARNING']R\x11resolveSubnetMask\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x17 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1aF\n" +
+	"\x18ResourceManagerTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8f\f\xbaH\x8b\f\x1a\x90\x02\n" +
+	"$ipv4_range_required_unless_ipv6_only\x12Oset ip_cidr_range or reserved_internal_range (only IPV6_ONLY subnets omit both)\x1a\x96\x01(has(this.stack_type) && this.stack_type == 'IPV6_ONLY') ? this.ip_cidr_range == '' : (this.ip_cidr_range != '' || this.reserved_internal_range != '')\x1a\xca\x01\n" +
+	"\x1bprimary_range_single_source\x12kip_cidr_range and reserved_internal_range are alternative sources for the primary range — set at most one\x1a>this.ip_cidr_range == '' || this.reserved_internal_range == ''\x1a\xc4\x01\n" +
+	"-internal_ipv6_prefix_requires_internal_access\x12Kinternal_ipv6_prefix only applies to subnets with ipv6_access_type INTERNAL\x1aFthis.internal_ipv6_prefix == '' || this.ipv6_access_type == 'INTERNAL'\x1a\xbf\x01\n" +
+	"!ip_collection_requires_ipv6_stack\x12Dip_collection (BYOIP) only applies to IPV4_IPV6 or IPV6_ONLY subnets\x1aTthis.ip_collection == '' || (has(this.stack_type) && this.stack_type != 'IPV4_ONLY')\x1a\xd8\x01\n" +
 	"#role_requires_managed_proxy_purpose\x12]role is only valid on REGIONAL_MANAGED_PROXY subnets — remove it or set purpose accordingly\x1aRthis.role == '' || (has(this.purpose) && this.purpose == 'REGIONAL_MANAGED_PROXY')\x1a\xfd\x01\n" +
 	"\x1fipv6_access_requires_ipv6_stack\x12cipv6_access_type is required for IPV4_IPV6 and IPV6_ONLY subnets, and must be omitted for IPV4_ONLY\x1au(!has(this.stack_type) || this.stack_type == 'IPV4_ONLY') ? this.ipv6_access_type == '' : this.ipv6_access_type != ''\x1a\xc4\x01\n" +
 	"-external_ipv6_prefix_requires_external_access\x12Kexternal_ipv6_prefix only applies to subnets with ipv6_access_type EXTERNAL\x1aFthis.external_ipv6_prefix == '' || this.ipv6_access_type == 'EXTERNAL'B\n" +
 	"\n" +
 	"\b_purposeB\r\n" +
-	"\v_stack_type\"\xb0\x01\n" +
+	"\v_stack_type\"\xb1\x04\n" +
 	"\x1bGcpSubnetworkSecondaryRange\x12I\n" +
 	"\n" +
-	"range_name\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x01\x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\trangeName\x12F\n" +
-	"\rip_cidr_range\x18\x02 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a2\x18^\\d+\\.\\d+\\.\\d+\\.\\d+/\\d+$R\vipCidrRange\"\x9f\b\n" +
+	"range_name\x18\x01 \x01(\tB*\xbaH'\xc8\x01\x01r\"\x10\x01\x18?2\x1c^[a-z]([-a-z0-9]*[a-z0-9])?$R\trangeName\x12\xc2\x01\n" +
+	"\rip_cidr_range\x18\x02 \x01(\tB\x9d\x01\xbaH\x99\x01\xba\x01\x95\x01\n" +
+	"\x1dvalid_secondary_ip_cidr_range\x124ip_cidr_range must be an IPv4 CIDR like 10.16.0.0/14\x1a>this == '' || this.matches('^\\\\d+\\\\.\\\\d+\\\\.\\\\d+\\\\.\\\\d+/\\\\d+$')R\vipCidrRange\x126\n" +
+	"\x17reserved_internal_range\x18\x03 \x01(\tR\x15reservedInternalRange:\xc9\x01\xbaH\xc5\x01\x1a\xc2\x01\n" +
+	"\x1bsecondary_range_cidr_source\x12_each secondary range needs exactly one CIDR source — ip_cidr_range or reserved_internal_range\x1aB(this.ip_cidr_range != '') != (this.reserved_internal_range != '')\"\x9f\b\n" +
 	"\x16GcpSubnetworkLogConfig\x12\xf3\x02\n" +
 	"\x14aggregation_interval\x18\x01 \x01(\tB\xba\x02\xbaH\xa4\x02\xba\x01\xa0\x02\n" +
 	"\x1avalid_aggregation_interval\x12\x88\x01aggregation_interval must be one of INTERVAL_5_SEC, INTERVAL_30_SEC, INTERVAL_1_MIN, INTERVAL_5_MIN, INTERVAL_10_MIN, or INTERVAL_15_MIN\x1awthis in ['INTERVAL_5_SEC', 'INTERVAL_30_SEC', 'INTERVAL_1_MIN', 'INTERVAL_5_MIN', 'INTERVAL_10_MIN', 'INTERVAL_15_MIN']\x8a\xa6\x1d\x0eINTERVAL_5_SECH\x00R\x13aggregationInterval\x88\x01\x01\x12H\n" +
@@ -507,23 +623,25 @@ func file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_goTypes = []any{
 	(*GcpSubnetworkSpec)(nil),           // 0: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec
 	(*GcpSubnetworkSecondaryRange)(nil), // 1: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSecondaryRange
 	(*GcpSubnetworkLogConfig)(nil),      // 2: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkLogConfig
-	(*v1.StringValueOrRef)(nil),         // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	nil,                                 // 3: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.ResourceManagerTagsEntry
+	(*v1.StringValueOrRef)(nil),         // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 1: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 0: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.project_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 1: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.vpc_self_link:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 2: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.secondary_ip_ranges:type_name -> dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSecondaryRange
 	2, // 3: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.log_config:type_name -> dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkLogConfig
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	3, // 4: dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.resource_manager_tags:type_name -> dev.planton.gcp.gcpsubnetwork.v1alpha1.GcpSubnetworkSpec.ResourceManagerTagsEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_init() }
@@ -539,7 +657,7 @@ func file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDesc), len(file_catalog_gcp_gcpsubnetwork_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

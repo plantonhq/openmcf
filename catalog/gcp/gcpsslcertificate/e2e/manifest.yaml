@@ -15,6 +15,9 @@ spec:
   # What this certificate secures — shown in the GCP console.
   description: Hack-manifest self-managed certificate for module smoke tests
 
+  # What a destroy does: DELETE (default), PREVENT, or ABANDON.
+  deletionPolicy: DELETE
+
   # THROWAWAY self-signed test material (CN=e2e-test.invalid, trusted by
   # nothing, generated solely for offline plans and module smoke tests).
   # Replace BOTH blocks with your real chain and key for any real use.

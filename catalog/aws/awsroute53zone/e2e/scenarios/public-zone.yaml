@@ -5,6 +5,12 @@
 # its subdomains ("reserved by AWS", proven live), while .test names are
 # accepted and can never resolve publicly. force_destroy guards teardown,
 # and the comment proves the metadata surface round-trips.
+#
+# enableAcceleratedRecovery is an EXPLICIT false: the field is tri-state
+# (AWS keeps the feature's current state when it is absent and needs an
+# explicit false to switch it off), and a fresh zone is off by default —
+# so this arm proves the explicit-false send path renders and applies
+# cleanly at zero cost, without ever engaging the billed feature.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
@@ -23,3 +29,4 @@ spec:
   region: us-west-2
   comment: planton e2e public zone
   forceDestroy: true
+  enableAcceleratedRecovery: false

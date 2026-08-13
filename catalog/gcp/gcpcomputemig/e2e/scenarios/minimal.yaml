@@ -1,0 +1,44 @@
+# Minimal GcpComputeMig scenario: the simplest honest fleet — a zonal
+# group of ONE e2-micro VM on the E2E VPC fixture, fixed size, no
+# autoscaler. Proves the template -> group-manager reference link (the
+# self_link_unique wiring) and the instance_group output on the cheapest
+# possible footprint.
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpComputeMig
+metadata:
+  name: planton-oss-e2e-gcpmig-minimal
+  id: planton-oss-e2e-gcpmig-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: gcpcomputemig
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # us-east1: us-central1 zonal e2-micro pools answered
+  # ZONE_RESOURCE_POOL_EXHAUSTED on 2026-08-11 (audit-log verified; the
+  # same stockout class hit the VPC-connector fleets there on
+  # 2026-08-10). The MIG chain is fully self-contained (own AUTO-mode
+  # VPC), so its region is a free variable — pinned to measured
+  # capacity reliability.
+  zone: us-east1-b
+  template:
+    machineType: e2-micro
+    disks:
+      - boot: true
+        sourceImage: debian-cloud/debian-12
+    networkInterfaces:
+      # Private VM on the fixture VPC (auto-mode) — no external IP.
+      - network:
+          valueFrom:
+            kind: GcpVpcNetwork
+            name: planton-oss-e2e-gcpvpcnetwork-prereq
+            fieldPath: status.outputs.network_self_link
+  targetSize: 1
+  # Wait until the instance is actually up — turns "the group exists"
+  # into "the fleet is serving" for the verifier.
+  waitForInstances: true
+  deletionPolicy: DELETE

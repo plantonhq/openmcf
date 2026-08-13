@@ -47,3 +47,13 @@ output "db_subnet_group_name" {
   description = "The DB subnet group the instance runs in (managed here or referenced)."
   value       = try(coalesce(aws_db_instance.this.db_subnet_group_name, ""), "")
 }
+
+output "db_parameter_group_name" {
+  description = "The DB parameter group in use (managed inline group, referenced group, or empty for the engine default)."
+  value       = try(coalesce(aws_db_instance.this.parameter_group_name, ""), "")
+}
+
+output "option_group_name" {
+  description = "The option group in use (managed inline group, referenced group, or empty for the engine default)."
+  value       = try(coalesce(aws_db_instance.this.option_group_name, ""), "")
+}

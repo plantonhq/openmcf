@@ -16,7 +16,8 @@ spec:
   dockerSettings:
     enableDockerAccess: ENABLED
     vpcOnlyTrustedAccounts:
-      - "<aws-account-id>"
+      # Replace with your trusted account id (exactly 12 digits).
+      - "123456789012"
   defaultUserSettings:
     executionRoleArn:
       value: "<sagemaker-execution-role-arn>"

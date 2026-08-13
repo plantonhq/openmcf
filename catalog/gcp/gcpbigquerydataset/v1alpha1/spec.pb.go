@@ -694,8 +694,21 @@ type GcpBigQueryDatasetSpec struct {
 	// Open-source catalog (Hive Metastore compatibility) metadata, letting
 	// engines like Spark address this dataset as a Hive database.
 	ExternalCatalogOptions *GcpBigQueryDatasetExternalCatalogOptions `protobuf:"bytes,18,opt,name=external_catalog_options,json=externalCatalogOptions,proto3" json:"external_catalog_options,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// What destroying this resource does to the dataset. Works alongside
+	// delete_contents_on_destroy (which decides whether a NON-EMPTY dataset
+	// may be removed); this switch decides whether removal is attempted at
+	// all:
+	//
+	//	""        -- same as "DELETE" (provider default)
+	//	"DELETE"  -- the dataset is deleted (GCP refuses while tables remain
+	//	             unless delete_contents_on_destroy is true)
+	//	"PREVENT" -- destroy FAILS; protects a dataset other projects'
+	//	             queries and authorized views depend on
+	//	"ABANDON" -- the dataset is removed from management but keeps
+	//	             serving queries in GCP
+	DeletionPolicy string `protobuf:"bytes,19,opt,name=deletion_policy,json=deletionPolicy,proto3" json:"deletion_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *GcpBigQueryDatasetSpec) Reset() {
@@ -854,6 +867,13 @@ func (x *GcpBigQueryDatasetSpec) GetExternalCatalogOptions() *GcpBigQueryDataset
 	return nil
 }
 
+func (x *GcpBigQueryDatasetSpec) GetDeletionPolicy() string {
+	if x != nil {
+		return x.DeletionPolicy
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpbigquerydataset_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpbigquerydataset_v1alpha1_spec_proto_rawDesc = "" +
@@ -913,7 +933,7 @@ const file_catalog_gcp_gcpbigquerydataset_v1alpha1_spec_proto_rawDesc = "" +
 	"parameters\x1a=\n" +
 	"\x0fParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xdb\x0f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x99\x11\n" +
 	"\x16GcpBigQueryDatasetSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12;\n" +
@@ -939,7 +959,9 @@ const file_catalog_gcp_gcpbigquerydataset_v1alpha1_spec_proto_rawDesc = "" +
 	"kmsKeyName\x12b\n" +
 	"\x06access\x18\x10 \x03(\v2J.dev.planton.gcp.gcpbigquerydataset.v1alpha1.GcpBigQueryDatasetAccessEntryR\x06access\x12\x95\x01\n" +
 	"\x1aexternal_dataset_reference\x18\x11 \x01(\v2W.dev.planton.gcp.gcpbigquerydataset.v1alpha1.GcpBigQueryDatasetExternalDatasetReferenceR\x18externalDatasetReference\x12\x8f\x01\n" +
-	"\x18external_catalog_options\x18\x12 \x01(\v2U.dev.planton.gcp.gcpbigquerydataset.v1alpha1.GcpBigQueryDatasetExternalCatalogOptionsR\x16externalCatalogOptions\x1a9\n" +
+	"\x18external_catalog_options\x18\x12 \x01(\v2U.dev.planton.gcp.gcpbigquerydataset.v1alpha1.GcpBigQueryDatasetExternalCatalogOptionsR\x16externalCatalogOptions\x12\xbb\x01\n" +
+	"\x0fdeletion_policy\x18\x13 \x01(\tB\x91\x01\xbaH\x8d\x01\xba\x01\x89\x01\n" +
+	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +

@@ -1,10 +1,12 @@
 # GcpDataprocCluster scenario: a single-node cluster (the sandbox shape —
-# master only, zero workers via the dataproc:dataproc.allow.zero.workers
-# property) on the prerequisite subnetwork. project_id is deliberately
-# omitted (ambient project). The cloud-side cluster name carries
-# ${E2E_RUN_ID}; nodes keep external IPs so the subnetwork needs no
-# Private Google Access. Component Gateway is on — its endpoints are part
-# of the posture the verifier can rely on being assembled.
+# master only, declared through the first-class clusterType: SINGLE_NODE
+# selector rather than the legacy allow.zero.workers property) on the
+# prerequisite subnetwork. project_id is deliberately omitted (ambient
+# project). The cloud-side cluster name carries ${E2E_RUN_ID}; nodes keep
+# external IPs so the subnetwork needs no Private Google Access.
+# Component Gateway is on — its endpoints are part of the posture the
+# verifier can rely on being assembled. The explicit DELETE teardown
+# policy must be a no-op against the provider default on re-plan.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpDataprocCluster
 metadata:
@@ -20,11 +22,16 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1 with the whole Dataproc chain (2026-08-12 us-central1
+  # ZONE_RESOURCE_POOL_EXHAUSTED on e2-standard-2 — Dataproc's auto-zone
+  # placement still chose the exhausted us-central1-a).
+  region: us-east1
   clusterName: e2e-dpc-${E2E_RUN_ID}
   labels:
     team: data-platform
+  deletionPolicy: DELETE
   clusterConfig:
+    clusterType: SINGLE_NODE
     gceConfig:
       subnetwork:
         valueFrom:
@@ -45,9 +52,6 @@ spec:
       diskConfig:
         bootDiskSizeGb: 50
         bootDiskType: pd-balanced
-    softwareConfig:
-      properties:
-        "dataproc:dataproc.allow.zero.workers": "true"
     endpointConfig:
       enableHttpPortAccess: true
     lifecycleConfig:

@@ -31,6 +31,11 @@ resource "google_compute_subnetwork" "main" {
   description   = var.spec.description
   ip_cidr_range = local.ip_cidr_range
 
+  # Alternative primary-CIDR source: a centrally allocated Network
+  # Connectivity internal range (exactly one of the two is set,
+  # spec-enforced).
+  reserved_internal_range = var.spec.reserved_internal_range != "" ? var.spec.reserved_internal_range : null
+
   purpose = local.purpose
   role    = local.role
 
@@ -44,6 +49,16 @@ resource "google_compute_subnetwork" "main" {
   ipv6_access_type     = local.ipv6_access_type
   external_ipv6_prefix = local.external_ipv6_prefix
 
+  # INTERNAL counterpart of external_ipv6_prefix: pin a ULA prefix instead
+  # of letting Google allocate one from the VPC's internal IPv6 range.
+  internal_ipv6_prefix = var.spec.internal_ipv6_prefix != "" ? var.spec.internal_ipv6_prefix : null
+
+  # BYOIP: draw the subnet's IPv6 space from a PublicDelegatedPrefix.
+  ip_collection = var.spec.ip_collection != "" ? var.spec.ip_collection : null
+
+  # ARP subnet-mask resolution for appliance/NFV subnets.
+  resolve_subnet_mask = var.spec.resolve_subnet_mask != "" ? var.spec.resolve_subnet_mask : null
+
   # Deliberate address-space reclaims only: subnet routes still win over the
   # overlapping peer/on-prem routes this permits.
   allow_subnet_cidr_routes_overlap = coalesce(var.spec.allow_subnet_cidr_routes_overlap, false)
@@ -53,14 +68,28 @@ resource "google_compute_subnetwork" "main" {
   send_secondary_ip_range_if_empty = coalesce(var.spec.send_secondary_ip_range_if_empty, false)
 
   # Secondary (alias) ranges — the mechanism GKE uses for pod/service IPs.
-  # Consumers select a range by its name (e.g. ip_allocation_policy).
+  # Consumers select a range by its name (e.g. ip_allocation_policy). Each
+  # range's CIDR comes from exactly one of a literal CIDR or a reserved
+  # internal range (spec-enforced).
   dynamic "secondary_ip_range" {
     for_each = local.secondary_ip_ranges
     content {
-      range_name    = secondary_ip_range.value.range_name
-      ip_cidr_range = secondary_ip_range.value.ip_cidr_range
+      range_name              = secondary_ip_range.value.range_name
+      ip_cidr_range           = secondary_ip_range.value.ip_cidr_range != "" ? secondary_ip_range.value.ip_cidr_range : null
+      reserved_internal_range = secondary_ip_range.value.reserved_internal_range != "" ? secondary_ip_range.value.reserved_internal_range : null
     }
   }
+
+  # Create-time Resource Manager tag bindings; the params block is
+  # create-only, so tag changes replace the subnetwork.
+  dynamic "params" {
+    for_each = length(var.spec.resource_manager_tags) > 0 ? [1] : []
+    content {
+      resource_manager_tags = var.spec.resource_manager_tags
+    }
+  }
+
+  deletion_policy = var.spec.deletion_policy != "" ? var.spec.deletion_policy : null
 
   # VPC Flow Logs: presence of the block enables logging. Defaults mirror
   # the API's own (5s aggregation, 50% sampling, all metadata) so an empty

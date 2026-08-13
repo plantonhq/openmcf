@@ -1,0 +1,71 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sesv2_configuration_set:
+    mappings:
+      # The provider wraps single leaves in single-purpose blocks; the spec
+      # carries them flat (reputation, sending, suppression).
+      - spec: spec.reputation_metrics_enabled
+        arg: reputation_options.reputation_metrics_enabled
+      - spec: spec.sending_enabled
+        arg: sending_options.sending_enabled
+      - spec: spec.suppressed_reasons
+        arg: suppression_options.suppressed_reasons
+      # VDM: the provider nests one leaf per dashboard/guardian block; the
+      # spec's vdm_options carries both as booleans (the modules render
+      # AWS's ENABLED/DISABLED strings).
+      - spec: spec.vdm_options.engagement_metrics_enabled
+        arg: vdm_options.dashboard_options.engagement_metrics
+      - spec: spec.vdm_options.optimized_shared_delivery_enabled
+        arg: vdm_options.guardian_options.optimized_shared_delivery
+    exclusions:
+      - arg: configuration_set_name
+        reason: wired by the module from metadata.name -- the platform names resources through metadata, never a spec field
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sesv2_configuration_set_event_destination:
+    # One destination per spec.event_destinations entry, keyed by name; the
+    # provider wraps every argument in an event_destination block the spec
+    # does not mirror.
+    specRoot: spec.event_destinations
+    mappings:
+      - spec: spec.event_destinations.name
+        arg: event_destination_name
+      - spec: spec.event_destinations.enabled
+        arg: event_destination.enabled
+      - spec: spec.event_destinations.matching_event_types
+        arg: event_destination.matching_event_types
+      # CloudWatch: the spec names the block cloud_watch and its dimension
+      # leaves without the provider's dimension_/default_dimension_ prefixes.
+      - spec: spec.event_destinations.cloud_watch.dimensions.name
+        arg: event_destination.cloud_watch_destination.dimension_configuration.dimension_name
+      - spec: spec.event_destinations.cloud_watch.dimensions.value_source
+        arg: event_destination.cloud_watch_destination.dimension_configuration.dimension_value_source
+      - spec: spec.event_destinations.cloud_watch.dimensions.default_value
+        arg: event_destination.cloud_watch_destination.dimension_configuration.default_dimension_value
+      # The four ARN-target arms: the spec carries chart-wirable refs (bus,
+      # topic, firehose pair) or a literal ARN (pinpoint).
+      - spec: spec.event_destinations.event_bus
+        arg: event_destination.event_bridge_destination.event_bus_arn
+      - spec: spec.event_destinations.firehose.delivery_stream
+        arg: event_destination.kinesis_firehose_destination.delivery_stream_arn
+      - spec: spec.event_destinations.firehose.iam_role
+        arg: event_destination.kinesis_firehose_destination.iam_role_arn
+      - spec: spec.event_destinations.sns_topic
+        arg: event_destination.sns_destination.topic_arn
+      - spec: spec.event_destinations.pinpoint_application_arn
+        arg: event_destination.pinpoint_destination.application_arn
+    exclusions:
+      - arg: configuration_set_name
+        reason: wired by the module to the configuration set it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- destinations follow the configuration set's spec.region through the provider connection
