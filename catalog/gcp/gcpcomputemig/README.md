@@ -56,3 +56,7 @@ Pulumi SDK; re-evaluated on SDK upgrades), and the template
   doors, standby economics, quota)
 - `v1alpha1/reference.md` — the generated spec reference
 - `iac/pulumi/README.md`, `iac/tf/README.md` — module internals
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

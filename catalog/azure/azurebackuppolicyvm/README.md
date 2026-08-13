@@ -24,3 +24,7 @@ The **AzureBackupPolicyVm** component creates an Azure Backup policy for IaaS vi
 ## Future Enhancements
 
 - The file-share backup policy kind extends the same retention grammar to Azure Files as its contract lands in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

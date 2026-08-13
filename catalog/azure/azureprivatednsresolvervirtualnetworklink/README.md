@@ -23,3 +23,7 @@ The **AzurePrivateDnsResolverVirtualNetworkLink** component deploys the attachme
 ## Future Enhancements
 
 - The same-region service rule (a link's network must be in the ruleset's region) stays documentation until cross-resource facts can be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -23,3 +23,7 @@ The **AzureBastionHost** component deploys Azure Bastion -- the managed jump ser
 ## Future Enhancements
 
 - The `AzureBastionSubnet` name contract stays documentation until references can be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

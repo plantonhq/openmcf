@@ -68,3 +68,7 @@ Every bucket variant ADOPTS an existing bucket when `bucketId` matches — that 
 - **GcpLogMetric** -- bucket-scoped metrics count entries as they land here
 - **GcpKmsKey** -- supplies the CMEK key
 - **GcpBigQueryDataset** -- the linked dataset appears beside your other datasets, read-only
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

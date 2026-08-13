@@ -24,3 +24,7 @@ The **AzureRecoveryServicesVault** component creates a Recovery Services vault -
 ## Future Enhancements
 
 - File-share backup policy and protection kinds complete the classic Backup story as their contracts land in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

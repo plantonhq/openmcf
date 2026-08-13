@@ -23,3 +23,7 @@ The **AzureDataProtectionResourceGuard** component creates a Data Protection Res
 ## Future Enhancements
 
 - Typed guard references on the vault kinds tighten as the family's proof lanes complete.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

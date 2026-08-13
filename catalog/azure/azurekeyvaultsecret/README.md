@@ -23,3 +23,7 @@ The **AzureKeyVaultSecret** component stores a secret -- a password, API key, co
 ## Future Enhancements
 
 - The value's source references widen as more credential-emitting components land in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
