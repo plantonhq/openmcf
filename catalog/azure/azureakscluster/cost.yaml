@@ -1,0 +1,77 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azureakscluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Virtual Machines
+      sku_meter: node pool VM hours
+      pricing_unit: hours
+      description: The default (system) node pool's VMs bill hourly from creation -- at least the fixed node_count or the autoscaling floor is always running. Additional pools are separate AzureAksNodePool resources.
+    - service_name: Storage
+      sku_meter: node OS disk storage
+      pricing_unit: disk-months
+      description: Each node carries a managed OS disk billed per disk tier per month (AKS defaults to 128 GiB -- a P10 -- when os_disk_size_gb is unset), unless os_disk_type selects EPHEMERAL.
+    - service_name: Load Balancer
+      sku_meter: included load balancer rules
+      pricing_unit: hours
+      description: With the default outbound_type (LOAD_BALANCER), AKS provisions a Standard Load Balancer whose rule bundle bills hourly from creation.
+    - service_name: Virtual Network
+      sku_meter: standard static public IP
+      pricing_unit: IP-hours
+      description: The load balancer's managed outbound public IP bills hourly (one by default; managed_outbound_ip_count scales it).
+  cost_drivers:
+    - field_path: default_node_pool.vm_size
+      sku_meter: node pool VM hours
+      pricing_unit: hours
+      impact: The VM SKU sets the per-node hourly rate -- the dominant term in the cluster's own bill. Every node in the default pool bills this rate around the clock.
+    - field_path: default_node_pool.node_count
+      sku_meter: node pool VM hours
+      pricing_unit: hours
+      impact: With autoscaling off, exactly this many nodes bill continuously.
+    - field_path: default_node_pool.auto_scaling_enabled
+      sku_meter: node pool VM hours
+      pricing_unit: hours
+      impact: With autoscaling on, min_count sets the floor that always bills and max_count bounds the worst-case hourly spend.
+    - field_path: sku_tier
+      sku_meter: cluster management fee
+      pricing_unit: hours
+      impact: FREE bills nothing for the control plane (no uptime SLA); STANDARD adds an hourly per-cluster fee for the financially backed SLA; PREMIUM costs six times STANDARD and adds long-term support.
+    - field_path: default_node_pool.os_disk_size_gb
+      sku_meter: node OS disk storage
+      pricing_unit: disk-months
+      impact: Sets each node's managed OS disk size, priced at managed-disk tier boundaries (128 GiB lands on a P10); unset means the AKS default of 128 GiB.
+    - field_path: default_node_pool.os_disk_type
+      sku_meter: node OS disk storage
+      impact: EPHEMERAL places the OS disk on the VM's local storage at no charge (where the VM size supports it); MANAGED bills a persistent disk per node.
+    - field_path: network_profile.outbound_type
+      sku_meter: outbound path selection
+      impact: LOAD_BALANCER (the default) bills Standard Load Balancer rules plus a managed public IP; MANAGED_NAT_GATEWAY bills NAT gateway hours and data instead; USER_DEFINED_ROUTING bills nothing here but requires your own egress path.
+    - field_path: network_profile.load_balancer_profile.managed_outbound_ip_count
+      sku_meter: standard static public IP
+      pricing_unit: IP-hours
+      impact: Each managed outbound IP bills hourly; raise it only when SNAT port exhaustion demands more addresses.
+    - field_path: oms_agent
+      sku_meter: Log Analytics ingestion
+      pricing_unit: GB
+      impact: Container Insights streams container logs and metrics to the workspace, billed per GB ingested -- often the largest observability line on busy clusters.
+    - field_path: microsoft_defender
+      sku_meter: Defender for Containers plan
+      impact: Enabling Defender attaches the paid Defender for Containers plan, billed per vCPU of protected clusters per month.
+    - field_path: ingress_application_gateway
+      sku_meter: Application Gateway hours and capacity units
+      impact: AGIC drives an Application Gateway that bills its own hourly fee and capacity units -- a separate always-on appliance when a subnet_cidr or subnet_id asks the addon to create one.
+    - field_path: aci_connector_linux
+      sku_meter: container group vCPU and memory duration
+      impact: Virtual nodes run pods on Azure Container Instances, billed per second of vCPU and memory -- burst capacity priced above equivalent VM capacity.
+  free_tier: The FREE sku_tier bills nothing for cluster management -- suitable for development and small clusters, with no financially backed uptime SLA.
+  estimate_exclusions:
+    - Log Analytics ingestion and Defender for Containers charges depend on workload volume
+    - load balancer data processed and network egress are traffic-dependent
+    - additional node pools are separate AzureAksNodePool resources with their own cost profiles
+    - spot pricing, reservations, and savings plans change VM rates
+  notes: "The default node pool is the dominant certain cost -- its VMs and OS disks bill around the clock. VM rates vary significantly by region and SKU; managed-disk prices step at tier boundaries (P10 at 128 GiB) rather than scaling linearly."

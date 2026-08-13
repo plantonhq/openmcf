@@ -278,6 +278,8 @@ catalog/gcp/gcpcertmanagercert/
         └── README.md
 ```
 
+Two central homes at the catalog root complement the per-component files: `catalog/_compliance/` holds the control catalog and framework crosswalks that every `controls.yaml` references, and `catalog/_pricing/estimates/` holds per-preset monthly cost estimates priced from each component's `cost.yaml` at published list prices — prices are volatile, so they live in one refreshable tree instead of beside 676 components. Estimates carry their arithmetic openly (quantity, unit price, source URL, retrieval date per line) and the `lint.catalog-data` gate re-computes every figure.
+
 ---
 
 ### 3. Protobuf API Definitions

@@ -94,6 +94,7 @@ func TestCheck_HermeticFixture(t *testing.T) {
 	write("catalog/aws/notakinddir/spec.proto")               // -> unregistered-component-dir
 	write("catalog/stray-file.txt")                           // -> unexpected-entry (catalog root)
 	write("catalog/_compliance/controls-catalog.yaml")        // ignored: non-component home at the catalog root
+	write("catalog/_pricing/estimates/awss3bucket.yaml")      // ignored: non-component home at the catalog root
 
 	violations, err := Check(root)
 	if err != nil {
@@ -140,6 +141,7 @@ func TestCheck_HermeticFixture(t *testing.T) {
 		"catalog/aws/awss3bucket/v1alpha1/api.proto:unexpected-entry",
 		"catalog/aws/awss3bucket/iac/provider-parity.yaml:unexpected-entry",
 		"catalog/_compliance:unregistered-component-dir",
+		"catalog/_pricing:unregistered-component-dir",
 	} {
 		if got[wrong] {
 			t.Errorf("violation %s must not fire on the well-formed part", wrong)

@@ -1,0 +1,69 @@
+# Per-preset monthly cost estimates at published list prices. Every line
+# cites the provider pricing page and retrieval date of its unit price; the
+# catalog-data conformance gate re-computes all arithmetic and binds every
+# priced meter to the component's cost.yaml. Schema:
+# finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpgkecluster
+spec:
+  presets:
+    - preset: 01-private-standard
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Google Kubernetes Engine
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate (identical for zonal and regional clusters)
+          list_unit_price: "0.10"
+          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - node compute -- this Standard-mode cluster runs its workloads on separate GcpGkeNodePool resources with their own estimates
+        - Cloud Logging ingestion for the enabled system and workload log components
+        - network egress and Cloud NAT for the private nodes
+      notes: A REGIONAL cluster never receives the GKE free-tier credit, so the management fee always bills in full.
+    - preset: 02-autopilot
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Google Kubernetes Engine
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.10"
+          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - Autopilot pod charges -- running pods bill per second for the vCPU, memory, and ephemeral storage they request, entirely workload-dependent
+        - Cloud Logging ingestion and network egress
+      notes: The GKE free tier credits $74.40 per month per billing account and applies to Autopilot clusters -- the account's first Autopilot or zonal cluster effectively pays no management fee. List total shown without the credit.
+    - preset: 03-dev-zonal
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Google Kubernetes Engine
+          sku_meter: cluster management fee
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+          list_unit_price: "0.10"
+          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          retrieved_on: "2026-08-14"
+          list_cost: "73.0000"
+      total_list_cost: "73.0000"
+      exclusions:
+        - node compute -- separate GcpGkeNodePool resources
+        - Cloud Logging ingestion and network egress
+      notes: The GKE free tier credits $74.40 per month per billing account and applies to zonal clusters -- the account's first zonal or Autopilot cluster effectively pays no management fee. List total shown without the credit.

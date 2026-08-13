@@ -55,6 +55,8 @@ Generated Go stubs (`*.pb.go`) and Bazel `BUILD.bazel` files sit alongside the p
 
 The three data files carry their own contracts, enforced by a second CI gate (`lint.catalog-data.yaml`): `cost.yaml` and `controls.yaml` may only reference spec fields that exist on the served contract, `controls.yaml` must examine every control in the central control catalog (`catalog/_compliance/controls-catalog.yaml`), and every permission entry in `iac/permissions.yaml` states whether it was derived from module sources or proven by live runs. The schemas live at `finops/componentcostprofile/v1`, `compliance/componentcontrolprofile/v1`, and `iac/componentpermissions/v1`; `catalog/aws/awsalb` and `catalog/aws/awsdynamodb` are reference examples.
 
+A component's presets can additionally carry monthly cost estimates at published list prices, authored centrally at `catalog/_pricing/estimates/<component>.yaml` (schema `finops/componentcostestimate/v1`) — central because prices churn on their own cadence, one refreshable tree instead of edits across every component. Estimates are held to the strictest contract in the catalog: every line item's meter must be declared by the component's `cost.yaml`, every unit price must cite its provider pricing page and retrieval date, and the same CI gate re-computes every multiplication and total exactly — an estimate whose arithmetic doesn't hold cannot merge. Components that consume cluster capacity instead of cloud SKUs (Kubernetes workloads) state a capacity footprint instead of dollars.
+
 ## Naming Conventions
 
 | Element | Convention | Example |

@@ -1,0 +1,25 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azureakscluster
+spec:
+  azure:
+    groups:
+      - purpose: ManageCluster
+        actions:
+          - Microsoft.ContainerService/managedClusters/read
+          - Microsoft.ContainerService/managedClusters/write
+          - Microsoft.ContainerService/managedClusters/delete
+          - Microsoft.ContainerService/managedClusters/listClusterUserCredential/action
+        provenance: derived
+        notes: Covers azurerm_kubernetes_cluster -- create, refresh, in-place updates, and destroy on the resource group, plus the credential listing the provider performs to export kube_config outputs. Held via Azure Kubernetes Service Contributor, Contributor, or Owner on the resource group. Prerequisite grants belong to the CLUSTER identity, not the runner -- a BYO subnet needs the cluster identity to hold Network Contributor on the subnet, and a BYO private DNS zone needs Private DNS Zone Contributor, both composed via AzureRoleAssignment.
+      - purpose: ReadResourceGroup
+        actions:
+          - Microsoft.Resources/subscriptions/resourceGroups/read
+        provenance: derived
+        notes: The provider resolves the target resource group before creating the cluster in it.

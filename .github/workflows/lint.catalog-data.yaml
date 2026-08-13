@@ -9,11 +9,15 @@
 # field path that no longer resolves against the served contract, or ships
 # a permission entry without provenance or structural validity. Also guards
 # the central control catalog and framework crosswalks themselves
-# (catalog/_compliance/).
+# (catalog/_compliance/) and the per-preset cost estimates
+# (catalog/_pricing/estimates/): every estimate's arithmetic is re-computed
+# exactly, every priced meter must be declared by its component's
+# cost.yaml, and every unit price must cite its source and retrieval date.
 #
 # Enrollment is file presence -- every discovered sidecar is checked, no
-# allowlist. See pkg/finops/costprofile, pkg/compliance/controlcatalog,
-# pkg/compliance/controlprofile, pkg/iac/permissions.
+# allowlist. See pkg/finops/costprofile, pkg/finops/costestimate,
+# pkg/compliance/controlcatalog, pkg/compliance/controlprofile,
+# pkg/iac/permissions.
 # =============================================================================
 
 name: lint.catalog-data

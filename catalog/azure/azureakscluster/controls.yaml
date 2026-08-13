@@ -1,0 +1,100 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azureakscluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure encrypts managed disks and the cluster's control-plane storage at rest with platform-managed keys on every cluster; no configuration is required.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: disk_encryption_set_id
+      evidence:
+        type: spec_default
+        reference: Unset means platform-managed keys; pointing disk_encryption_set_id at a disk encryption set encrypts node OS disks and persistent volumes with the customer-managed key behind it.
+      notes: key_management_service extends CMK to Kubernetes Secrets in etcd through a Key Vault key, and default_node_pool.host_encryption_enabled adds encryption at the VM host. No preset enables CMK.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Kubernetes API endpoint serves TLS only, and AKS secures node-to-control-plane communication over encrypted tunnels on every cluster; neither can be disabled.
+    - control_id: no-public-access
+      status: configurable
+      field_path: private_cluster_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (public API endpoint); true places the API server behind a private endpoint reachable only from connected networks.
+      notes: The 02-private preset enables it. private_cluster_public_fqdn_enabled and private_dns_zone_id shape name resolution for the private endpoint.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: api_server_access_profile.authorized_ip_ranges
+      evidence:
+        type: spec_default
+        reference: Unset leaves the public API endpoint reachable from any source IP (subject to TLS and Entra ID auth); declaring authorized_ip_ranges restricts API access to exactly the listed CIDRs.
+      notes: The 03-hardened-enterprise preset restricts the endpoint to an example admin CIDR. Mutually irrelevant with private clusters, which have no public endpoint to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The cluster's API endpoint is protected by TLS, Entra ID, and IP restrictions rather than a WAF; request filtering for workloads belongs to the application gateways or front doors provisioned in front of them (separate kinds).
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: role_based_access_control_enabled defaults to true, activating Kubernetes RBAC on the cluster; disabling requires an explicit opt-out at creation.
+      notes: azure_active_directory_role_based_access_control binds RBAC to Entra ID identities, and azure_rbac_enabled moves authorization into Azure role assignments -- the 03-hardened-enterprise preset enables both.
+    - control_id: workload-identity
+      status: configurable
+      field_path: workload_identity_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true installs the workload identity webhook so pods exchange Kubernetes service account tokens for Entra ID tokens through the cluster's OIDC issuer (oidc_issuer_enabled defaults to true, and the spec validation refuses workload identity without it).
+      notes: All three presets enable it. The federation itself is completed by AzureFederatedIdentityCredential resources consuming the cluster's issuer URL.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: local_account_disabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; true disables the cluster's local admin accounts so every credential path goes through Entra ID, and the spec validation refuses it unless Entra ID RBAC is configured.
+      notes: The 03-hardened-enterprise preset enables it. The modules never model the legacy service-principal credential block at all -- cluster identity is managed identity only. run_command_enabled=false additionally closes the az aks command invoke side door.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure Activity Log records every management-plane operation on the cluster (create, update, scale, delete, credential listing) at the subscription level; it cannot be disabled.
+      notes: Kubernetes API server audit logs are deeper and opt-in -- they ship to a Log Analytics workspace through Azure diagnostic settings, configured outside this spec.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: oms_agent
+      evidence:
+        type: spec_default
+        reference: Unset means no Container Insights; setting oms_agent.log_analytics_workspace_id deploys the monitoring agent and streams container logs and metrics to the workspace.
+      notes: The 01-standard and 03-hardened-enterprise presets enable it. monitor_metrics adds managed Prometheus scraping, and microsoft_defender streams runtime threat signals to the same workspace.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: The cluster stores no user data of its own -- workload and volume backup (AKS Backup) is provisioned through the backup extension and a Backup vault, separate resources. The cluster configuration itself is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component to retain (see backup-recovery); retention is a property of the separately provisioned Backup vault policies.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: default_node_pool.zones
+      evidence:
+        type: spec_default
+        reference: Unset places nodes without zone pinning; listing zones ("1","2","3") spreads the default pool's nodes across availability zones.
+      notes: All three presets spread across zones 1-3. The control plane's uptime SLA comes from sku_tier STANDARD or PREMIUM, which all presets select.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: AKS exposes no native deletion-protection flag on the cluster resource; protection is applied through Azure management locks on the resource or resource group, provisioned separately.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The modules default node_os_upgrade_channel to NodeImage, so node OS images receive Azure-managed security patch rollouts even when the spec is silent.
+      notes: Control-plane version upgrades stay deliberate -- automatic_upgrade_channel opts into PATCH/STABLE/RAPID channels, and maintenance_window_* fields bound when any upgrade may run.

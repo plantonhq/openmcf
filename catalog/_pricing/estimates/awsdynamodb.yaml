@@ -1,0 +1,93 @@
+# Per-preset monthly cost estimates at published list prices. Every line
+# cites the provider pricing page and retrieval date of its unit price; the
+# catalog-data conformance gate re-computes all arithmetic and binds every
+# priced meter to the component's cost.yaml. Schema:
+# finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsdynamodb
+spec:
+  presets:
+    - preset: 01-on-demand-simple
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - per-request read/write charges are traffic-dependent (PAY_PER_REQUEST bills only what runs)
+        - storage consumed grows with the data the application writes
+        - point-in-time recovery bills per GB-month of table data
+      notes: On-demand capacity mode has zero idle cost -- an empty, unused table bills nothing at manifest time.
+    - preset: 02-provisioned-production
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon DynamoDB
+          sku_meter: provisioned write capacity
+          pricing_unit: WCU-hours
+          pricing_quantity: "25550"
+          quantity_basis: table 25 WCU + GSI gsi1 10 WCU = 35 WCU x 730 hours
+          list_unit_price: "0.00065"
+          price_source: https://aws.amazon.com/dynamodb/pricing/provisioned/
+          retrieved_on: "2026-08-14"
+          list_cost: "16.6075"
+        - service_name: Amazon DynamoDB
+          sku_meter: provisioned read capacity
+          pricing_unit: RCU-hours
+          pricing_quantity: "25550"
+          quantity_basis: table 25 RCU + GSI gsi1 10 RCU = 35 RCU x 730 hours
+          list_unit_price: "0.00013"
+          price_source: https://aws.amazon.com/dynamodb/pricing/provisioned/
+          retrieved_on: "2026-08-14"
+          list_cost: "3.3215"
+      total_list_cost: "19.9290"
+      exclusions:
+        - storage consumed (GB-month) grows with the data the application writes
+        - point-in-time recovery bills per GB-month of table data
+        - KMS request charges for the customer-managed key path
+        - CloudWatch Contributor Insights rules bill per matched event
+      notes: List-price semantics -- the account-level free tier (25 RCU and 25 WCU always free per region) is not netted out.
+    - preset: 03-global-table
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - per-request read/write charges are traffic-dependent
+        - every write is also billed as a replicated write to the replica region
+        - storage is consumed twice (table and replica), growing with application data
+        - cross-region replication data transfer
+        - point-in-time recovery bills per GB-month in both regions
+        - stream consumers bill stream read request units
+      notes: On-demand mode keeps idle cost at zero, but the replica doubles every usage-driven dimension the moment traffic starts.
+    - preset: 04-provisioned-autoscaled
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon DynamoDB
+          sku_meter: provisioned write capacity
+          pricing_unit: WCU-hours
+          pricing_quantity: "3650"
+          quantity_basis: autoscaling write floor (min_capacity 5 WCU) x 730 hours -- the capacity that always bills
+          list_unit_price: "0.00065"
+          price_source: https://aws.amazon.com/dynamodb/pricing/provisioned/
+          retrieved_on: "2026-08-14"
+          list_cost: "2.3725"
+        - service_name: Amazon DynamoDB
+          sku_meter: provisioned read capacity
+          pricing_unit: RCU-hours
+          pricing_quantity: "3650"
+          quantity_basis: autoscaling read floor (min_capacity 5 RCU) x 730 hours -- the capacity that always bills
+          list_unit_price: "0.00013"
+          price_source: https://aws.amazon.com/dynamodb/pricing/provisioned/
+          retrieved_on: "2026-08-14"
+          list_cost: "0.4745"
+      total_list_cost: "2.8470"
+      exclusions:
+        - autoscaled capacity above the floor is traffic-dependent (ceilings 100 RCU / 50 WCU bound it)
+        - the scheduled action raises the read floor to 20 RCU on weekday business hours, above this base-floor estimate
+        - storage consumed and point-in-time recovery grow with application data
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. Worst-case provisioned spend at the ceilings (100 RCU / 50 WCU) is about $33.22 per month, roughly 12x the floor.

@@ -26,9 +26,11 @@
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
 //
 // Two prefix conventions coexist deliberately: underscore dirs at the catalog
-// root (_docs/, _patterns/, _compliance/) hold non-component content Go
-// tooling must ignore (_compliance/ carries the authored control catalog and
-// framework crosswalks the per-component controls.yaml files reference),
+// root (_docs/, _patterns/, _compliance/, _pricing/) hold non-component
+// content Go tooling must ignore (_compliance/ carries the authored control
+// catalog and framework crosswalks the per-component controls.yaml files
+// reference; _pricing/ carries the per-preset cost estimates priced from the
+// components' cost.yaml profiles at published list prices),
 // while aa_-prefixed dirs inside providers (aa_e2e/, aa_eval/, aa_import/)
 // hold provider infrastructure that CONTAINS buildable Go -- Go tooling skips
 // underscore dirs entirely, so Go-bearing infrastructure cannot use one.
@@ -162,12 +164,12 @@ func Check(repoRoot string) ([]Violation, error) {
 		return nil, err
 	}
 	for _, p := range providers {
-		if p.Name() == "_docs" || p.Name() == "_patterns" || p.Name() == "_compliance" {
+		if p.Name() == "_docs" || p.Name() == "_patterns" || p.Name() == "_compliance" || p.Name() == "_pricing" {
 			continue // non-component homes at the catalog root
 		}
 		if !p.IsDir() {
 			add(filepath.Join("catalog", p.Name()), RuleUnexpectedEntry,
-				"the catalog root holds only provider directories (and _docs/, _patterns/, _compliance/)")
+				"the catalog root holds only provider directories (and _docs/, _patterns/, _compliance/, _pricing/)")
 			continue
 		}
 		providerRel := filepath.Join("catalog", p.Name())

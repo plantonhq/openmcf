@@ -562,9 +562,6 @@ violations:
   - catalog/azure/azureaifoundryproject/iac:missing-permissions
   - catalog/azure/azureaifoundryproject:missing-control-profile
   - catalog/azure/azureaifoundryproject:missing-cost-profile
-  - catalog/azure/azureakscluster/iac:missing-permissions
-  - catalog/azure/azureakscluster:missing-control-profile
-  - catalog/azure/azureakscluster:missing-cost-profile
   - catalog/azure/azureaksnodepool/iac:missing-permissions
   - catalog/azure/azureaksnodepool:missing-control-profile
   - catalog/azure/azureaksnodepool:missing-cost-profile
@@ -1456,9 +1453,6 @@ violations:
   - catalog/gcp/gcpgcsbucket/iac:missing-permissions
   - catalog/gcp/gcpgcsbucket:missing-control-profile
   - catalog/gcp/gcpgcsbucket:missing-cost-profile
-  - catalog/gcp/gcpgkecluster/iac:missing-permissions
-  - catalog/gcp/gcpgkecluster:missing-control-profile
-  - catalog/gcp/gcpgkecluster:missing-cost-profile
   - catalog/gcp/gcpgkenodepool/iac:missing-permissions
   - catalog/gcp/gcpgkenodepool:missing-control-profile
   - catalog/gcp/gcpgkenodepool:missing-cost-profile
@@ -1963,9 +1957,6 @@ violations:
   - catalog/kubernetes/kubernetespoddisruptionbudget/iac:missing-permissions
   - catalog/kubernetes/kubernetespoddisruptionbudget:missing-control-profile
   - catalog/kubernetes/kubernetespoddisruptionbudget:missing-cost-profile
-  - catalog/kubernetes/kubernetespostgres/iac:missing-permissions
-  - catalog/kubernetes/kubernetespostgres:missing-control-profile
-  - catalog/kubernetes/kubernetespostgres:missing-cost-profile
   - catalog/kubernetes/kubernetespriorityclass/iac:missing-permissions
   - catalog/kubernetes/kubernetespriorityclass:missing-control-profile
   - catalog/kubernetes/kubernetespriorityclass:missing-cost-profile
