@@ -1,0 +1,43 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# spec.control_plane_firewall_allowed_ips is deliberately NOT mapped to the
+# provider's control_plane_firewall block: the Terraform module's current
+# wiring for it does not match the provider's schema at the pin, so
+# recording the mapping would claim coverage the module does not deliver.
+# Both sides stay on the checker's work list until the kind's firewall
+# wiring is rebuilt.
+resources:
+  digitalocean_kubernetes_cluster:
+    mappings:
+      - spec: spec.cluster_name
+        arg: name
+      - spec: spec.kubernetes_version
+        arg: version
+      # The VPC reference is a StringValueOrRef FK to the DigitalOceanVpc
+      # kind.
+      - spec: spec.vpc
+        arg: vpc_uuid
+      - spec: spec.highly_available
+        arg: ha
+      # The spec inverts the provider default: surge upgrades are on unless
+      # disabled, so the module maps disable_surge_upgrade = !surge_upgrade.
+      - spec: spec.disable_surge_upgrade
+        arg: surge_upgrade
+      # The spec's single "day=HH:MM" string feeds the policy's start_time;
+      # the block's day leaf is an honest gap until the kind's depth wave
+      # models the window properly.
+      - spec: spec.maintenance_window
+        arg: maintenance_policy.start_time
+      # The spec nests the cluster's inline default pool; its leaves mirror
+      # the provider's node_pool block.
+      - spec: spec.default_node_pool
+        arg: node_pool
+    exclusions:
+      - arg: node_pool.name
+        reason: synthesized by the module from the cluster's name -- the inline default pool has no independent identity of its own

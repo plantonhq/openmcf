@@ -34,6 +34,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
@@ -68,12 +69,12 @@ func DiscoverEnrollments(repoRoot string) ([]Enrollment, error) {
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s", page)
 		}
-		if dir := filepath.Base(filepath.Dir(page)); dir != providerName {
-			return nil, errors.Errorf("%s: embedded provider %q does not match its directory %q", page, providerName, dir)
-		}
 		provider, err := providerFromName(providerName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s", page)
+		}
+		if dir := filepath.Base(filepath.Dir(page)); dir != crkreflect.ProviderDirName(provider) {
+			return nil, errors.Errorf("%s: embedded provider %q does not match its directory %q", page, providerName, dir)
 		}
 		enrollments = append(enrollments, Enrollment{Provider: provider, GASchema: gaSchema})
 	}

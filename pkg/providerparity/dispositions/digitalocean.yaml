@@ -1,0 +1,219 @@
+# Breadth dispositions ledger for the digitalocean (GA) provider -- the
+# recorded judgment for GA resources the computed classes do not cover. Two
+# classes never appear here because they are computed: modeled (the module
+# census proves consumption) and iam-covered (the *_iam_member/binding/policy
+# pattern); schema-flagged deprecations are computed too, and the checker
+# fails a ledger entry that shadows any computed class.
+#
+# Entries record judgment, one disposition per resource, reason mandatory:
+#   composed            -- covered by fields of an existing kind (name it)
+#   model-planned       -- covered by a planned kind not built yet: a kind
+#                          of its own, or a planned kind (or planned
+#                          composition) it folds into; flips to modeled or
+#                          composed when the kind ships
+#   deferred            -- deliberately not offered, with the reason
+#   excluded-deprecated -- deprecated/superseded in docs but not flagged in
+#                          the schema
+#
+# A GA resource with no computed class and no entry here is a finding; the
+# not-yet-judged remainder is carried loudly in baseline.yaml and burns down
+# as judgments are recorded.
+#
+# The anchor-resource convention: when several resources fold into one
+# planned kind, exactly ONE (the anchor) is model-planned and names the
+# kind; every other resource in the fold is composed with the target named.
+# The invariant: model-planned entries == planned new kinds, exactly.
+provider: digitalocean
+resources:
+  - resource: digitalocean_byoip_prefix
+    disposition: deferred
+    reason: "bring-your-own-IP needs an out-of-band provisioning workflow (signed request, DigitalOcean-side verification, later advertisement) and serves a small compliance-driven audience -- deferred until the workflow can be represented honestly"
+  - resource: digitalocean_cdn
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanCdn kind (CDN endpoint fronting a Spaces bucket origin, certificate reference for custom domains)"
+  - resource: digitalocean_container_registries
+    disposition: composed
+    reason: "the plural resource is the newer multi-registry API for the same product surface; DigitalOceanContainerRegistry absorbs it as an implementation upgrade rather than a second registry kind"
+  - resource: digitalocean_custom_image
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanCustomImage kind (imported images are first-class and referenced by droplets and autoscale pools)"
+  - resource: digitalocean_database_advanced_mysql_config
+    disposition: composed
+    reason: "extended per-cluster MySQL settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_advanced_postgresql_config
+    disposition: composed
+    reason: "extended per-cluster PostgreSQL settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_connection_pool
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseConnectionPool kind (PgBouncer pools have their own endpoint and are referenced by workloads; FK cluster, db, user)"
+  - resource: digitalocean_database_db
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseDb kind (logical databases are many-per-cluster and created/dropped independently of the cluster; FK cluster)"
+  - resource: digitalocean_database_firewall
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseFirewall kind (trusted-source rules churn on a different cadence and often under different ownership than the cluster; FK cluster, rule values reference droplets/Kubernetes clusters/apps)"
+  - resource: digitalocean_database_kafka_config
+    disposition: composed
+    reason: "per-cluster Kafka broker settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_kafka_schema_registry
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseKafkaSchema kind (despite the resource name, each instance manages one registered schema -- many-per-cluster rows managed independently, like topics; FK cluster)"
+  - resource: digitalocean_database_kafka_topic
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseKafkaTopic kind (topics are many-per-cluster with independent lifecycle and per-topic config; FK cluster)"
+  - resource: digitalocean_database_logsink_opensearch
+    disposition: model-planned
+    reason: "anchor of a planned DigitalOceanDatabaseLogsink kind modeling ship-cluster-logs-somewhere with a oneof destination config (FK cluster; optionally a Planton-managed OpenSearch cluster)"
+  - resource: digitalocean_database_logsink_rsyslog
+    disposition: composed
+    reason: "same ship-cluster-logs concept as the opensearch logsink, different transport; folds into the planned DigitalOceanDatabaseLogsink kind's oneof destination rather than duplicating the kind"
+  - resource: digitalocean_database_mongodb_config
+    disposition: composed
+    reason: "per-cluster MongoDB settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_mysql_config
+    disposition: composed
+    reason: "per-cluster MySQL settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_online_migration
+    disposition: deferred
+    reason: "action-style virtual resource (start/stop a replication job that runs up to two weeks), not durable declarative state -- gated on an action/workflow surface"
+  - resource: digitalocean_database_opensearch_config
+    disposition: composed
+    reason: "per-cluster OpenSearch settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_postgresql_config
+    disposition: composed
+    reason: "per-cluster PostgreSQL settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_redis_config
+    disposition: composed
+    reason: "per-cluster Redis/Caching settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_database_replica
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseReplica kind (a replica has its own endpoint, size, and region -- an independent lifecycle that apps reference directly; FK cluster)"
+  - resource: digitalocean_database_user
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDatabaseUser kind (many-per-cluster with independent create/rotate/delete lifecycle; referenced by application configs; FK cluster)"
+  - resource: digitalocean_database_valkey_config
+    disposition: composed
+    reason: "per-cluster Valkey settings singleton -- exactly one per cluster, lifecycle identical to the parent; folds into DigitalOceanDatabaseCluster as per-engine settings"
+  - resource: digitalocean_dedicated_inference
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDedicatedInference kind (GPU-backed inference endpoints with model deployments and accelerator scaling -- first-class, referenceable infrastructure; FK project)"
+  - resource: digitalocean_dedicated_inference_token
+    disposition: composed
+    reason: "access tokens are many-per-endpoint credential rows tightly coupled to the endpoint they authorize; folds into the planned DigitalOceanDedicatedInference kind"
+  - resource: digitalocean_droplet_autoscale
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanDropletAutoscalePool kind (a pool with its own scaling config and lifecycle -- the closest thing DigitalOcean has to a managed instance group; FK vpc, ssh keys, project)"
+  - resource: digitalocean_droplet_snapshot
+    disposition: deferred
+    reason: "a point-in-time capture is operationally an action, not durable declared state -- gated with volume_snapshot on an action/snapshot-policy surface"
+  - resource: digitalocean_floating_ip
+    disposition: excluded-deprecated
+    reason: "docs-deprecated in favor of reserved_ip (the schema DeprecationMessage is commented out in provider code, so the checker cannot compute it)"
+  - resource: digitalocean_floating_ip_assignment
+    disposition: excluded-deprecated
+    reason: "docs-deprecated in favor of reserved_ip_assignment (the schema DeprecationMessage is commented out in provider code, so the checker cannot compute it)"
+  - resource: digitalocean_gradientai_agent
+    disposition: deferred
+    reason: "core object of the GradientAI family, deferred wholesale: the provider surface is visibly immature (copy-paste description bugs in its own schemas, churning release to release) -- revisit as one wave when it settles"
+  - resource: digitalocean_gradientai_agent_knowledge_base_attachment
+    disposition: deferred
+    reason: "attachment row of a deferred parent -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_gradientai_agent_route
+    disposition: deferred
+    reason: "agent-to-agent routing rows whose schema carries placeholder-grade descriptions -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_gradientai_custom_model
+    disposition: deferred
+    reason: "depends on the deferred agent surface -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_gradientai_function
+    disposition: deferred
+    reason: "agent function attachment, deferred with its parent -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_gradientai_indexing_job_cancel
+    disposition: deferred
+    reason: "action-style (cancel a running indexing job) -- would be deferred even in a mature family; the GradientAI family is deferred wholesale besides"
+  - resource: digitalocean_gradientai_knowledge_base
+    disposition: deferred
+    reason: "likely second anchor when the GradientAI family matures; deferred with the family today on documented provider immaturity"
+  - resource: digitalocean_gradientai_knowledge_base_data_source
+    disposition: deferred
+    reason: "data-source rows of a deferred parent -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_gradientai_openai_api_key
+    disposition: deferred
+    reason: "credential row for a deferred family -- the GradientAI family is deferred wholesale on documented provider immaturity"
+  - resource: digitalocean_monitor_alert
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanMonitorAlert kind (standalone alert policy over infrastructure metrics with its own lifecycle and notification config; FK droplets or tag-based targeting)"
+  - resource: digitalocean_nfs
+    disposition: model-planned
+    reason: "anchor of a planned DigitalOceanNfs kind (the share is the parent object with size, performance tier, and primary VPC; FK vpc)"
+  - resource: digitalocean_nfs_access_point
+    disposition: composed
+    reason: "export paths and access policies are many-per-share config rows, meaningless without the share; folds into the planned DigitalOceanNfs kind"
+  - resource: digitalocean_nfs_attachment
+    disposition: composed
+    reason: "additional-VPC attachments are membership rows on the share; folds into the planned DigitalOceanNfs kind"
+  - resource: digitalocean_nfs_snapshot
+    disposition: deferred
+    reason: "point-in-time capture, action-style -- same reasoning as droplet and volume snapshots; gated on an action/snapshot-policy surface"
+  - resource: digitalocean_partner_attachment
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanPartnerAttachment kind (GA but specialist private connectivity via Megaport-class providers with BGP config; first-class because nothing else could honestly absorb it; FK VPCs)"
+  - resource: digitalocean_project
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanProject kind (the account's organizational container; nearly every other resource can carry a project reference, so this kind unlocks FK fields across the catalog)"
+  - resource: digitalocean_project_resources
+    disposition: composed
+    reason: "membership assignment rows (URN lists) with no meaning outside the project; the planned DigitalOceanProject kind carries the membership list, and Planton-managed resources prefer declaring their own project FK"
+  - resource: digitalocean_reserved_ip
+    disposition: model-planned
+    reason: "anchor of a planned DigitalOceanReservedIp kind carrying an IP version field and an optional droplet attachment (the v4/v6 and create/assign splits are provider-API artifacts, not distinct product concepts; FK droplet, project)"
+  - resource: digitalocean_reserved_ip_assignment
+    disposition: composed
+    reason: "attach/detach is a nullable droplet FK on the planned DigitalOceanReservedIp kind, not a separate object"
+  - resource: digitalocean_reserved_ipv6
+    disposition: composed
+    reason: "same reserved-IP concept, v6 flavor; a separate kind would be a bundled duplicate -- folds into the planned DigitalOceanReservedIp kind"
+  - resource: digitalocean_reserved_ipv6_assignment
+    disposition: composed
+    reason: "same reasoning as the v4 assignment -- a nullable droplet FK on the planned DigitalOceanReservedIp kind"
+  - resource: digitalocean_spaces_bucket_cors_configuration
+    disposition: composed
+    reason: "per-bucket CORS settings singleton, lifecycle identical to the bucket; folds into DigitalOceanBucket"
+  - resource: digitalocean_spaces_bucket_logging
+    disposition: composed
+    reason: "per-bucket logging target singleton; folds into DigitalOceanBucket"
+  - resource: digitalocean_spaces_bucket_object
+    disposition: deferred
+    reason: "uploading object content is data-plane work, not infrastructure; a declarative kind for file contents is marginal and invites abuse as a deployment mechanism"
+  - resource: digitalocean_spaces_bucket_policy
+    disposition: composed
+    reason: "one policy document per bucket, settings-of-parent; folds into DigitalOceanBucket"
+  - resource: digitalocean_spaces_key
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanSpacesKey kind (access keys have independent create/rotate lifecycles and are the credential workloads actually reference; FK buckets via per-bucket grants)"
+  - resource: digitalocean_ssh_key
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanSshKey kind (independent lifecycle, referenced by droplets and autoscale pools; a hard prerequisite for droplet-centric workflows)"
+  - resource: digitalocean_tag
+    disposition: deferred
+    reason: "DigitalOcean creates tags implicitly when any resource declares them; a standalone name-reservation kind is marginal -- revisit if tag-targeted references (firewalls, load balancers, monitor alerts) prove to need a first-class handle"
+  - resource: digitalocean_uptime_alert
+    disposition: composed
+    reason: "alerts are many-per-check rows that cannot exist without the check and are always managed alongside it; the planned DigitalOceanUptimeCheck kind carries an alerts list"
+  - resource: digitalocean_uptime_check
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanUptimeCheck kind (a check on an external endpoint is the parent object, referenced by its alerts)"
+  - resource: digitalocean_vector_database
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanVectorDatabase kind (Weaviate-powered managed cluster, managed independently from standard database clusters; FK project, vpc)"
+  - resource: digitalocean_volume_attachment
+    disposition: composed
+    reason: "attachment is a nullable droplet FK on DigitalOceanVolume (the droplet kind's volume_ids covers it today); attach/detach is a field change, not a separate object lifecycle worth a kind"
+  - resource: digitalocean_volume_snapshot
+    disposition: deferred
+    reason: "point-in-time capture, action-style -- gated with droplet_snapshot on an action/snapshot-policy surface"
+  - resource: digitalocean_vpc_nat_gateway
+    disposition: deferred
+    reason: "the provider docs mark it currently in Private Preview -- gated on GA; product value is high, promote to P1 the moment the gate lifts"
+  - resource: digitalocean_vpc_peering
+    disposition: model-planned
+    reason: "judged as a planned DigitalOceanVpcPeering kind (peerings connect two first-class VPCs and have their own lifecycle; FK two VPCs)"

@@ -8,7 +8,9 @@ resource "digitalocean_spaces_bucket" "main" {
   # Access control (private or public-read)
   acl = local.acl
 
-  # Versioning configuration
+  # Versioning configuration. Once enabled, Spaces versioning cannot be
+  # disabled -- only suspended -- so flipping versioning_enabled back to
+  # false suspends versioning rather than removing it.
   dynamic "versioning" {
     for_each = var.spec.versioning_enabled ? [1] : []
 
@@ -20,17 +22,6 @@ resource "digitalocean_spaces_bucket" "main" {
   # Force destroy for development/testing
   # WARNING: If true, bucket will be deleted even if it contains objects
   force_destroy = false
-
-  lifecycle {
-    # Prevent accidental deletion of production buckets
-    prevent_destroy = false
-
-    # Versioning cannot be disabled once enabled
-    precondition {
-      condition     = true
-      error_message = "Note: Versioning cannot be disabled once enabled, only suspended"
-    }
-  }
 }
 
 # Optional: Create Spaces bucket CORS configuration

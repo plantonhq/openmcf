@@ -1,0 +1,109 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# digitalocean provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider models App Platform as one resource whose argument tree
+# lives under its own spec block (so every argument path below starts with
+# spec.). The kind models ONE component per app, discriminated by
+# service_type, so each spec field wires into whichever component family
+# (service / worker / job) the discriminator selects -- one mapping per
+# argument, the recorded many-to-many idiom. The module-fixed arguments
+# (registry_type DOCR, job kind PRE_DEPLOY, domain type PRIMARY, env
+# scope/type, the synthesized autoscaling cpu percent) are deliberately NOT
+# excluded: they are real user surface the provider offers, so they stay on
+# the checker's work list for the kind's depth wave.
+resources:
+  digitalocean_app:
+    mappings:
+      # App-level identity: the kind's one component names the app itself.
+      - spec: spec.service_name
+        arg: spec.name
+      - spec: spec.region
+        arg: spec.region
+      # --- service component (service_type = web_service) ---
+      - spec: spec.service_name
+        arg: spec.service.name
+      - spec: spec.instance_count
+        arg: spec.service.instance_count
+      - spec: spec.instance_size_slug
+        arg: spec.service.instance_size_slug
+      - spec: spec.git_source.repo_url
+        arg: spec.service.git.repo_clone_url
+      - spec: spec.git_source.branch
+        arg: spec.service.git.branch
+      - spec: spec.git_source.build_command
+        arg: spec.service.build_command
+      - spec: spec.git_source.run_command
+        arg: spec.service.run_command
+      - spec: spec.image_source.registry
+        arg: spec.service.image.registry
+      - spec: spec.image_source.repository
+        arg: spec.service.image.repository
+      - spec: spec.image_source.tag
+        arg: spec.service.image.tag
+      # The env map realizes the provider's key/value pairs (the name/value
+      # idiom -- one mapping per argument).
+      - spec: spec.env
+        arg: spec.service.env.key
+      - spec: spec.env
+        arg: spec.service.env.value
+      - spec: spec.min_instance_count
+        arg: spec.service.autoscaling.min_instance_count
+      - spec: spec.max_instance_count
+        arg: spec.service.autoscaling.max_instance_count
+      # --- worker component (service_type = worker) ---
+      - spec: spec.service_name
+        arg: spec.worker.name
+      - spec: spec.instance_count
+        arg: spec.worker.instance_count
+      - spec: spec.instance_size_slug
+        arg: spec.worker.instance_size_slug
+      - spec: spec.git_source.repo_url
+        arg: spec.worker.git.repo_clone_url
+      - spec: spec.git_source.branch
+        arg: spec.worker.git.branch
+      - spec: spec.git_source.run_command
+        arg: spec.worker.run_command
+      - spec: spec.image_source.registry
+        arg: spec.worker.image.registry
+      - spec: spec.image_source.repository
+        arg: spec.worker.image.repository
+      - spec: spec.image_source.tag
+        arg: spec.worker.image.tag
+      - spec: spec.env
+        arg: spec.worker.env.key
+      - spec: spec.env
+        arg: spec.worker.env.value
+      # --- job component (service_type = job) ---
+      - spec: spec.service_name
+        arg: spec.job.name
+      - spec: spec.instance_size_slug
+        arg: spec.job.instance_size_slug
+      - spec: spec.git_source.repo_url
+        arg: spec.job.git.repo_clone_url
+      - spec: spec.git_source.branch
+        arg: spec.job.git.branch
+      - spec: spec.git_source.run_command
+        arg: spec.job.run_command
+      - spec: spec.image_source.registry
+        arg: spec.job.image.registry
+      - spec: spec.image_source.repository
+        arg: spec.job.image.repository
+      - spec: spec.image_source.tag
+        arg: spec.job.image.tag
+      - spec: spec.env
+        arg: spec.job.env.key
+      - spec: spec.env
+        arg: spec.job.env.value
+      # --- custom domain ---
+      - spec: spec.custom_domain
+        arg: spec.domain.name
+specExclusions:
+  - field: spec.service_type
+    reason: discriminator selecting which component family the module renders -- the provider expresses the choice as which block exists, never as an argument
+  - field: spec.enable_autoscale
+    reason: presence toggle for the service's autoscaling block -- the provider signals autoscaling by the block's existence, never by an argument
