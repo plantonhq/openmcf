@@ -51,8 +51,13 @@ Beyond rules, the spec models:
 
 - **CAPTCHA/challenge immunity** — `captcha_config`, `challenge_config` for token replay windows
 - **Association config** — per-resource body inspection size limits (ALB, AppSync, Cognito, Verified Access)
-- **Data protection** — field-level masking for logged or inspected data
-- **Logging** — single bundled logging configuration with redacted fields
+- **Data protection** — field-level masking for logged or inspected data; a
+  `SINGLE_*` protection without `field_keys` protects ALL keys of that type
+- **Logging** — single bundled logging configuration (AWS allows exactly one
+  destination per web ACL) with full field redaction (headers, URI path,
+  query string, method) and keep/drop log filtering by applied action or
+  request label — e.g. keep only BLOCK and COUNT records to cut logging
+  cost on high-traffic ACLs
 - **Custom response bodies** — reusable templates for block actions
 
 ## Prerequisites

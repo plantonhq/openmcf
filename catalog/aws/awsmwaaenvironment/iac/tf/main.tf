@@ -60,7 +60,11 @@ resource "aws_mwaa_environment" "this" {
   worker_replacement_strategy = var.spec.worker_replacement_strategy != "" ? var.spec.worker_replacement_strategy : null
 
   # Per-module log delivery to CloudWatch. Each of the five Airflow components
-  # is independently switchable with its own level.
+  # is independently switchable with its own level. log_level is guarded like
+  # every other optional string: the empty string is a present-and-known
+  # config value that the provider's enum validation REJECTS at plan time
+  # (Pulumi omits it identically), so an omitted level must reach the
+  # provider as null and let AWS pick its default.
   dynamic "logging_configuration" {
     for_each = var.spec.logging_configuration != null ? [var.spec.logging_configuration] : []
     content {
@@ -68,7 +72,7 @@ resource "aws_mwaa_environment" "this" {
         for_each = logging_configuration.value.dag_processing_logs != null ? [logging_configuration.value.dag_processing_logs] : []
         content {
           enabled   = dag_processing_logs.value.enabled
-          log_level = dag_processing_logs.value.log_level
+          log_level = dag_processing_logs.value.log_level != "" ? dag_processing_logs.value.log_level : null
         }
       }
 
@@ -76,7 +80,7 @@ resource "aws_mwaa_environment" "this" {
         for_each = logging_configuration.value.scheduler_logs != null ? [logging_configuration.value.scheduler_logs] : []
         content {
           enabled   = scheduler_logs.value.enabled
-          log_level = scheduler_logs.value.log_level
+          log_level = scheduler_logs.value.log_level != "" ? scheduler_logs.value.log_level : null
         }
       }
 
@@ -84,7 +88,7 @@ resource "aws_mwaa_environment" "this" {
         for_each = logging_configuration.value.task_logs != null ? [logging_configuration.value.task_logs] : []
         content {
           enabled   = task_logs.value.enabled
-          log_level = task_logs.value.log_level
+          log_level = task_logs.value.log_level != "" ? task_logs.value.log_level : null
         }
       }
 
@@ -92,7 +96,7 @@ resource "aws_mwaa_environment" "this" {
         for_each = logging_configuration.value.webserver_logs != null ? [logging_configuration.value.webserver_logs] : []
         content {
           enabled   = webserver_logs.value.enabled
-          log_level = webserver_logs.value.log_level
+          log_level = webserver_logs.value.log_level != "" ? webserver_logs.value.log_level : null
         }
       }
 
@@ -100,7 +104,7 @@ resource "aws_mwaa_environment" "this" {
         for_each = logging_configuration.value.worker_logs != null ? [logging_configuration.value.worker_logs] : []
         content {
           enabled   = worker_logs.value.enabled
-          log_level = worker_logs.value.log_level
+          log_level = worker_logs.value.log_level != "" ? worker_logs.value.log_level : null
         }
       }
     }

@@ -1,0 +1,40 @@
+# Minimal AzureBackupProtectedFileShare scenario: protect the fixture
+# file share with the file-share policy's smoke, on the fixture vault.
+# The storage account wires THROUGH the fixture REGISTRATION
+# (planton-oss-e2e-azure-fixture-bcsa echoes the account's ARM ID) --
+# the reference carries both the value and the deploy-order edge, so
+# the registration exists before the provider's Inquire pass discovers
+# the share. The registry prerequisites chain everything: registration
+# (-> vault -> resource group; -> storage account), the policy (its
+# minimal smoke doubles as install manifest), and the fixture share
+# (-> the SAME storage account, deduplicated).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupProtectedFileShare
+metadata:
+  name: planton-oss-e2e-azurebackupprotectedfileshare-smoke
+  id: planton-oss-e2e-azurebackupprotectedfileshare-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebackupprotectedfileshare
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  recoveryVaultName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rsv
+  sourceStorageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-bcsa
+  sourceFileShareName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-share
+  backupPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-azurebackuppolicyfileshare-smoke

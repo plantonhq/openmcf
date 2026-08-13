@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaifoundryproject.v1alpha1;
+
+// **AzureAiFoundryProjectStackOutputs** captures the outputs of
+// provisioning an Azure AI Foundry project.
+message AzureAiFoundryProjectStackOutputs {
+  // The Azure Resource Manager ID of the project (projects are ARM
+  // workspaces, like their hub).
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.MachineLearningServices/workspaces/{name}
+  string ai_foundry_project_id = 1;
+
+  // The name of the project.
+  string ai_foundry_project_name = 2;
+
+  // The project's immutable GUID (distinct from the ARM ID) -- what
+  // Foundry SDKs and data-plane calls identify the project by.
+  string project_guid = 3;
+
+  // The principal (object) ID of the project's system-assigned
+  // identity, when one is enabled -- what per-team grants bind to.
+  string system_assigned_identity_principal_id = 4;
+}

@@ -26,3 +26,9 @@ spec:
   stickiness:
     type: lb_cookie
     cookieDurationSeconds: 3600
+  # ALB Target Optimizer: the agent port on each target. Create-time config
+  # on a group that never registers targets here -- the QUIC-family arms
+  # (protocol QUIC/TCP_QUIC, flow-hash stickiness, quic_server_id) live in
+  # the 04-quic-passthrough preset because protocol is one create-only field
+  # and this fixture proves the ALB family.
+  targetControlPort: 9999

@@ -10,7 +10,7 @@ import "shared/foreignkey/v1/foreign_key.proto";
 // managed by AWS: there are no brokers, instance types, storage volumes, or
 // Kafka version to declare -- AWS scales compute and storage automatically and
 // bills per throughput and storage consumed. The whole declaration is WHERE
-// the cluster lives (subnets + security groups) and the rest is AWS's.
+// the cluster lives (one or more VPC placements) and the rest is AWS's.
 //
 // Two properties shape this spec:
 //
@@ -23,31 +23,46 @@ import "shared/foreignkey/v1/foreign_key.proto";
 //      access. Both IaC modules enable it unconditionally, so it is not a
 //      field here -- there is nothing to choose.
 //
-// Network ingress is composed, never embedded: the cluster attaches the
-// referenced security_group_ids directly, and the ingress rule that opens the
-// SASL/IAM port (9098) lives on those first-class AwsSecurityGroup nodes.
+// Network ingress is composed, never embedded: the cluster attaches each
+// placement's referenced security_group_ids directly, and the ingress rule
+// that opens the SASL/IAM port (9098) lives on those first-class
+// AwsSecurityGroup nodes.
 message AwsMskServerlessClusterSpec {
   // The AWS region where the resource will be created.
   // Example: "us-west-2", "eu-west-1"
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
+  // vpc_configs are the VPC placements for the cluster -- AWS provisions
+  // client-facing network interfaces in EACH declared VPC, so applications in
+  // every listed VPC connect privately without peering or PrivateLink setup.
+  // One entry (the common shape) places the cluster in a single VPC;
+  // additional entries extend private access to more VPCs in the same
+  // account and region.
+  // ForceNew: adding, removing, or changing a placement forces cluster
+  // replacement.
+  repeated AwsMskServerlessClusterVpcConfig vpc_configs = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsMskServerlessClusterVpcConfig is one VPC placement for the serverless
+// cluster: which subnets host the client-facing network interfaces in that
+// VPC, and which security groups guard them.
+message AwsMskServerlessClusterVpcConfig {
   // subnet_ids are the VPC subnets where the cluster places its network
   // interfaces. Provide subnets in at least two Availability Zones for
-  // production use; clients connect through these ENIs.
-  // ForceNew: changing subnets forces cluster replacement.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+  // production use; clients connect through these ENIs. All subnets in one
+  // entry must belong to the same VPC.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
     (buf.validate.field).repeated.min_items = 1,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
   ];
 
-  // security_group_ids are the security groups ATTACHED to the cluster
-  // network interfaces -- they define what can reach the brokers. The ingress
-  // rule for the SASL/IAM listener port (9098) belongs on these referenced
-  // AwsSecurityGroup nodes. Maximum 5. If omitted, AWS attaches the VPC's
-  // default security group.
-  // ForceNew: adding or removing entries after creation forces replacement.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+  // security_group_ids are the security groups ATTACHED to this placement's
+  // network interfaces -- they define what can reach the brokers from this
+  // VPC. The ingress rule for the SASL/IAM listener port (9098) belongs on
+  // these referenced AwsSecurityGroup nodes. Maximum 5. If omitted, AWS
+  // attaches the VPC's default security group.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
     (buf.validate.field).repeated.max_items = 5,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"

@@ -1,0 +1,38 @@
+# Minimal AzureExpressRoutePort scenario: a 10 Gbps Dot1Q metered port
+# (the smallest Direct step) with one issued authorization and links
+# left administratively DISABLED (no cross-connect exists behind the
+# lane). The port bills its full monthly rate from creation -- pro-rated
+# cents-to-dollars for a lane-length life -- so keep its life short.
+# ENROLLMENT BOUNDARY: subscriptions may need Microsoft enrollment for
+# ExpressRoute Direct; if ARM rejects the create with an
+# authorization-class error, that outcome IS the lane's proof point
+# (record the deferral with the unblock condition) -- never debug it as
+# a module defect.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRoutePort
+metadata:
+  name: planton-oss-e2e-azureexpressrouteport-smoke
+  id: planton-oss-e2e-azureexpressrouteport-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressrouteport
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-erport-smoke
+  peeringLocation: "Equinix-Ashburn-DC2"
+  bandwidthInGbps: 10
+  encapsulation: DOT1Q
+  authorizations:
+    - name: smoke-authorization
+  tags:
+    e2e-suite: azure
+    purpose: smoke

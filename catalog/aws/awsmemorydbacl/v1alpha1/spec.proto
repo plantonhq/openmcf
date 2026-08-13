@@ -41,7 +41,10 @@ message AwsMemorydbAclSpec {
   // AwsMemorydbUser exports as `status.outputs.user_name`). Membership
   // updates in place; the ACL is the single place an application's cluster
   // access is granted or revoked. May be empty — a cluster attached to an
-  // empty ACL simply accepts no authenticated connections.
+  // empty ACL simply accepts no authenticated connections. Deleting a user
+  // removes it from every ACL server-side automatically; the provider
+  // reconciles that, so dropping an already-deleted member from this list
+  // is a clean no-op, never an error.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef user_names = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsMemorydbUser,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_name"

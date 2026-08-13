@@ -116,6 +116,9 @@ type AwsWafWebAclSpec struct {
 	// Domains to accept in web request tokens for CAPTCHA and Challenge actions.
 	// Required when using CAPTCHA/Challenge with multiple domains that share
 	// the same Web ACL. When omitted, tokens are scoped to the request domain.
+	// Each entry is a domain name (1-253 characters; letters, digits, dots,
+	// hyphens, slashes). Public suffixes (e.g. "co.uk", "gov.au") are rejected
+	// by AWS.
 	TokenDomains []string `protobuf:"bytes,8,rep,name=token_domains,json=tokenDomains,proto3" json:"token_domains,omitempty"`
 	// How long a client's successful CAPTCHA solve remains valid, web-ACL-wide
 	// (immunity time in seconds, 60–259,200; AWS default 300). Rules can
@@ -362,8 +365,11 @@ type AwsWafWebAclRule struct {
 	// 1-128 characters, must be unique within the Web ACL.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Evaluation priority. Lower numbers are evaluated first. Must be unique
-	// across all rules in the Web ACL. Range: 0-2147483647.
-	Priority int32 `protobuf:"varint,2,opt,name=priority,proto3" json:"priority,omitempty"`
+	// across all rules in the Web ACL. Range: 0-2147483647. Priority 0 is
+	// legal (AWS-console-generated ACLs commonly start at 0) — the field is
+	// presence-typed exactly so 0 can be expressed while the field stays
+	// required.
+	Priority *int32 `protobuf:"varint,2,opt,name=priority,proto3,oneof" json:"priority,omitempty"`
 	// The match condition for this rule — exactly one statement type must be
 	// set inside (see AwsWafWebAclStatement for the full statement language,
 	// including AND/OR/NOT composition and the custom_statement escape hatch).
@@ -394,7 +400,9 @@ type AwsWafWebAclRule struct {
 	CustomRequestHeaders []*AwsWafWebAclCustomHeader `protobuf:"bytes,7,rep,name=custom_request_headers,json=customRequestHeaders,proto3" json:"custom_request_headers,omitempty"`
 	// Labels added to requests that match this rule. Labels are key-value pairs
 	// (namespace:name format) that can be matched by label_match statements in
-	// subsequent rules, enabling multi-stage rule evaluation.
+	// subsequent rules, enabling multi-stage rule evaluation. Each label is
+	// 1-1024 characters of letters, digits, hyphen, underscore, and ':'
+	// namespace separators (the WAF label syntax).
 	RuleLabels []string `protobuf:"bytes,8,rep,name=rule_labels,json=ruleLabels,proto3" json:"rule_labels,omitempty"`
 	// CloudWatch metrics configuration for this rule. When omitted, the IaC
 	// module applies sensible defaults:
@@ -453,8 +461,8 @@ func (x *AwsWafWebAclRule) GetName() string {
 }
 
 func (x *AwsWafWebAclRule) GetPriority() int32 {
-	if x != nil {
-		return x.Priority
+	if x != nil && x.Priority != nil {
+		return *x.Priority
 	}
 	return 0
 }
@@ -1414,6 +1422,9 @@ type AwsWafWebAclAtpConfig struct {
 	// only requests to this path.
 	LoginPath string `protobuf:"bytes,1,opt,name=login_path,json=loginPath,proto3" json:"login_path,omitempty"`
 	// Treat login_path as a regular expression instead of a literal path.
+	// AWS's default is false, and the AWS API types this as a plain (non-
+	// nullable) boolean — absence and false are identical on the wire, so a
+	// plain bool models it exactly.
 	EnableRegexInPath bool `protobuf:"varint,2,opt,name=enable_regex_in_path,json=enableRegexInPath,proto3" json:"enable_regex_in_path,omitempty"`
 	// How to find the username and password in the login request.
 	RequestInspection *AwsWafWebAclAtpRequestInspection `protobuf:"bytes,3,opt,name=request_inspection,json=requestInspection,proto3" json:"request_inspection,omitempty"`
@@ -1557,6 +1568,9 @@ type AwsWafWebAclAcfpConfig struct {
 	// The path of the page presenting the sign-up form (e.g. "/register").
 	RegistrationPagePath string `protobuf:"bytes,2,opt,name=registration_page_path,json=registrationPagePath,proto3" json:"registration_page_path,omitempty"`
 	// Treat the paths as regular expressions instead of literal paths.
+	// AWS's default is false, and the AWS API types this as a plain (non-
+	// nullable) boolean — absence and false are identical on the wire, so a
+	// plain bool models it exactly.
 	EnableRegexInPath bool `protobuf:"varint,3,opt,name=enable_regex_in_path,json=enableRegexInPath,proto3" json:"enable_regex_in_path,omitempty"`
 	// How to find the sign-up fields in the account-creation request.
 	RequestInspection *AwsWafWebAclAcfpRequestInspection `protobuf:"bytes,4,opt,name=request_inspection,json=requestInspection,proto3" json:"request_inspection,omitempty"`
@@ -2893,8 +2907,8 @@ func (x *AwsWafWebAclFingerprintKey) GetFallbackBehavior() string {
 // - Apply different rules based on geographic region
 type AwsWafWebAclGeoMatchStatement struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ISO 3166-1 alpha-2 country codes to match against.
-	// Examples: "US", "CA", "GB", "DE", "JP", "AU".
+	// ISO 3166-1 alpha-2 country codes to match against (two uppercase
+	// letters). Examples: "US", "CA", "GB", "DE", "JP", "AU".
 	//
 	// At least one country code is required.
 	CountryCodes []string `protobuf:"bytes,1,rep,name=country_codes,json=countryCodes,proto3" json:"country_codes,omitempty"`
@@ -3448,7 +3462,9 @@ type AwsWafWebAclLabelMatchStatement struct {
 	// label whose namespace prefix matches key).
 	Scope string `protobuf:"bytes,1,opt,name=scope,proto3" json:"scope,omitempty"`
 	// The label (for scope LABEL, e.g. "awswaf:111122223333:rulegroup:testRules:label:testLabel")
-	// or namespace prefix ending in ':' (for scope NAMESPACE).
+	// or namespace prefix ending in ':' (for scope NAMESPACE). 1-1024
+	// characters of letters, digits, hyphen, underscore, and ':' (the WAF
+	// label syntax).
 	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4530,7 +4546,8 @@ type AwsWafWebAclVisibilityConfig struct {
 	// Default: true (applied by IaC module when omitted).
 	SampledRequestsEnabled bool `protobuf:"varint,2,opt,name=sampled_requests_enabled,json=sampledRequestsEnabled,proto3" json:"sampled_requests_enabled,omitempty"`
 	// CloudWatch metric name for this Web ACL or rule. Must be unique within
-	// the Web ACL's rules.
+	// the Web ACL's rules. 1-128 characters: letters, digits, hyphen,
+	// underscore only; "All" and "Default_Action" are reserved by WAF.
 	// Default: resource name (Web ACL) or rule name (applied by IaC module).
 	MetricName    string `protobuf:"bytes,3,opt,name=metric_name,json=metricName,proto3" json:"metric_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -4779,8 +4796,11 @@ type AwsWafWebAclDataProtection struct {
 	// "SINGLE_QUERY_ARGUMENT", "QUERY_STRING", or "BODY".
 	FieldType string `protobuf:"bytes,1,opt,name=field_type,json=fieldType,proto3" json:"field_type,omitempty"`
 	// The specific keys to protect for the SINGLE_* field types (header names,
-	// cookie names, query-argument names; up to 100). Not applicable to
-	// QUERY_STRING/BODY (which protect the whole component).
+	// cookie names, query-argument names; up to 100, each 1-64 characters).
+	// OMITTING keys for a SINGLE_* type protects ALL keys of that type (the
+	// AWS contract: "If you don't specify any key, then all keys for the
+	// field type are protected"). Not applicable to QUERY_STRING/BODY (which
+	// protect the whole component).
 	FieldKeys []string `protobuf:"bytes,2,rep,name=field_keys,json=fieldKeys,proto3" json:"field_keys,omitempty"`
 	// How to mask: "SUBSTITUTION" (replace with a fixed placeholder) or
 	// "HASH" (replace with a one-way hash, preserving correlate-ability).
@@ -4932,9 +4952,13 @@ func (x *AwsWafWebAclCustomResponse) GetResponseHeaders() []*AwsWafWebAclCustomH
 // (returned in block responses).
 type AwsWafWebAclCustomHeader struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// HTTP header name (case-insensitive).
+	// HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+	// and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+	// with "x-amzn-waf-" on the wire (name "sample" arrives as
+	// "x-amzn-waf-sample") to avoid clobbering existing request headers;
+	// response headers are sent under the name as given.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// HTTP header value.
+	// HTTP header value. 1-255 characters.
 	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4992,7 +5016,8 @@ func (x *AwsWafWebAclCustomHeader) GetValue() string {
 type AwsWafWebAclCustomResponseBody struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Unique key used to reference this response body from custom_response
-	// configurations. Must be unique within the Web ACL.
+	// configurations. Must be unique within the Web ACL. 1-128 characters:
+	// letters, digits, underscore, hyphen.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// The response body content (HTML, plain text, or JSON). Max 10,240 bytes.
 	Content string `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
@@ -5075,11 +5100,17 @@ type AwsWafWebAclLoggingConfig struct {
 	//
 	// The destination resource name must start with "aws-waf-logs-".
 	//
+	// Deliberately singular: AWS allows exactly one logging destination per
+	// web ACL (the Terraform provider's log_destination_configs argument
+	// nominally accepts up to 100 entries, but the service contract — SDK:
+	// "You can associate one logging destination to a web ACL" — is one).
+	//
 	// No default_kind is set because the destination can be any of three
 	// different resource types.
 	DestinationArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=destination_arn,json=destinationArn,proto3" json:"destination_arn,omitempty"`
-	// HTTP header names to redact from logs. Redacted headers appear as
-	// "REDACTED" in log entries instead of their actual values.
+	// HTTP header names to redact from logs (each 1-64 characters). Redacted
+	// headers appear as "REDACTED" in log entries instead of their actual
+	// values.
 	//
 	// Common headers to redact: "Authorization", "Cookie", "X-Api-Key".
 	RedactedHeaderNames []string `protobuf:"bytes,2,rep,name=redacted_header_names,json=redactedHeaderNames,proto3" json:"redacted_header_names,omitempty"`
@@ -5089,8 +5120,17 @@ type AwsWafWebAclLoggingConfig struct {
 	// Redact the query string from log entries. When true, query string
 	// parameters appear as "REDACTED" in logs.
 	RedactQueryString bool `protobuf:"varint,4,opt,name=redact_query_string,json=redactQueryString,proto3" json:"redact_query_string,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Redact the HTTP method from log entries. When true, the method appears
+	// as "REDACTED" in logs. (Method, query string, URI path, and single
+	// headers are the only components AWS supports redacting.)
+	RedactMethod bool `protobuf:"varint,5,opt,name=redact_method,json=redactMethod,proto3" json:"redact_method,omitempty"`
+	// Optional log filtering: keep or drop log records by the action WAF
+	// applied or by labels on the request, instead of logging every inspected
+	// request. Typical use: keep only BLOCK and COUNT records to cut logging
+	// cost on high-traffic ACLs.
+	Filter        *AwsWafWebAclLoggingFilterConfig `protobuf:"bytes,6,opt,name=filter,proto3" json:"filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsWafWebAclLoggingConfig) Reset() {
@@ -5151,11 +5191,211 @@ func (x *AwsWafWebAclLoggingConfig) GetRedactQueryString() bool {
 	return false
 }
 
+func (x *AwsWafWebAclLoggingConfig) GetRedactMethod() bool {
+	if x != nil {
+		return x.RedactMethod
+	}
+	return false
+}
+
+func (x *AwsWafWebAclLoggingConfig) GetFilter() *AwsWafWebAclLoggingFilterConfig {
+	if x != nil {
+		return x.Filter
+	}
+	return nil
+}
+
+// AwsWafWebAclLoggingFilterConfig routes each request's log record through
+// the filters: the first matching filter's behavior (keep/drop) applies, and
+// records matching no filter get default_behavior.
+type AwsWafWebAclLoggingFilterConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What happens to log records that match NONE of the filters:
+	// "KEEP" (log them) or "DROP" (discard them).
+	DefaultBehavior string `protobuf:"bytes,1,opt,name=default_behavior,json=defaultBehavior,proto3" json:"default_behavior,omitempty"`
+	// The filters, each with its own keep/drop behavior. At least one.
+	Filters       []*AwsWafWebAclLoggingFilter `protobuf:"bytes,2,rep,name=filters,proto3" json:"filters,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsWafWebAclLoggingFilterConfig) Reset() {
+	*x = AwsWafWebAclLoggingFilterConfig{}
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsWafWebAclLoggingFilterConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsWafWebAclLoggingFilterConfig) ProtoMessage() {}
+
+func (x *AwsWafWebAclLoggingFilterConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsWafWebAclLoggingFilterConfig.ProtoReflect.Descriptor instead.
+func (*AwsWafWebAclLoggingFilterConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *AwsWafWebAclLoggingFilterConfig) GetDefaultBehavior() string {
+	if x != nil {
+		return x.DefaultBehavior
+	}
+	return ""
+}
+
+func (x *AwsWafWebAclLoggingFilterConfig) GetFilters() []*AwsWafWebAclLoggingFilter {
+	if x != nil {
+		return x.Filters
+	}
+	return nil
+}
+
+// AwsWafWebAclLoggingFilter is one keep-or-drop routing rule for log
+// records.
+type AwsWafWebAclLoggingFilter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What happens to log records matching this filter: "KEEP" or "DROP".
+	Behavior string `protobuf:"bytes,1,opt,name=behavior,proto3" json:"behavior,omitempty"`
+	// How the conditions combine: "MEETS_ALL" (every condition must match)
+	// or "MEETS_ANY" (at least one condition matches).
+	Requirement string `protobuf:"bytes,2,opt,name=requirement,proto3" json:"requirement,omitempty"`
+	// The match conditions. At least one.
+	Conditions    []*AwsWafWebAclLoggingFilterCondition `protobuf:"bytes,3,rep,name=conditions,proto3" json:"conditions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsWafWebAclLoggingFilter) Reset() {
+	*x = AwsWafWebAclLoggingFilter{}
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsWafWebAclLoggingFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsWafWebAclLoggingFilter) ProtoMessage() {}
+
+func (x *AwsWafWebAclLoggingFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsWafWebAclLoggingFilter.ProtoReflect.Descriptor instead.
+func (*AwsWafWebAclLoggingFilter) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *AwsWafWebAclLoggingFilter) GetBehavior() string {
+	if x != nil {
+		return x.Behavior
+	}
+	return ""
+}
+
+func (x *AwsWafWebAclLoggingFilter) GetRequirement() string {
+	if x != nil {
+		return x.Requirement
+	}
+	return ""
+}
+
+func (x *AwsWafWebAclLoggingFilter) GetConditions() []*AwsWafWebAclLoggingFilterCondition {
+	if x != nil {
+		return x.Conditions
+	}
+	return nil
+}
+
+// AwsWafWebAclLoggingFilterCondition is a single match condition for a
+// logging filter — exactly one of action / label_name per condition (add
+// more conditions to combine them).
+type AwsWafWebAclLoggingFilterCondition struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Match log records by the action WAF applied to the request:
+	// "ALLOW", "BLOCK", "COUNT", "CAPTCHA", "CHALLENGE",
+	// "EXCLUDED_AS_COUNT" (rules overridden to count — the tuning-noise
+	// filter), or "MONETIZE" (marketplace rule groups only).
+	Action string `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	// Match log records carrying this label. Must be the FULLY QUALIFIED
+	// label name including the prefix, e.g.
+	// "awswaf:managed:aws:bot-control:bot:category:monitoring".
+	LabelName     string `protobuf:"bytes,2,opt,name=label_name,json=labelName,proto3" json:"label_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsWafWebAclLoggingFilterCondition) Reset() {
+	*x = AwsWafWebAclLoggingFilterCondition{}
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsWafWebAclLoggingFilterCondition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsWafWebAclLoggingFilterCondition) ProtoMessage() {}
+
+func (x *AwsWafWebAclLoggingFilterCondition) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsWafWebAclLoggingFilterCondition.ProtoReflect.Descriptor instead.
+func (*AwsWafWebAclLoggingFilterCondition) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *AwsWafWebAclLoggingFilterCondition) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *AwsWafWebAclLoggingFilterCondition) GetLabelName() string {
+	if x != nil {
+		return x.LabelName
+	}
+	return ""
+}
+
 var File_catalog_aws_awswafwebacl_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	",catalog/aws/awswafwebacl/v1alpha1/spec.proto\x12%dev.planton.aws.awswafwebacl.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x86\x0e\n" +
+	",catalog/aws/awswafwebacl/v1alpha1/spec.proto\x12%dev.planton.aws.awswafwebacl.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa4\x0e\n" +
 	"\x10AwsWafWebAclSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1c\n" +
 	"\x05scope\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05scope\x12o\n" +
@@ -5164,8 +5404,8 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13description_charset\x12\x85\x01description may only contain letters, digits, whitespace, and _+=:#@/-,. (no parentheses), and must be at least 3 characters when set\x1aNthis == '' || this.matches('^[\\\\w+=:#@/,.-][\\\\w+=:#@/,.\\\\s-]+[\\\\w+=:#@/,.-]$')r\x03\x18\x80\x02R\vdescription\x12M\n" +
 	"\x05rules\x18\x05 \x03(\v27.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclRuleR\x05rules\x12p\n" +
 	"\x11visibility_config\x18\x06 \x01(\v2C.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclVisibilityConfigR\x10visibilityConfig\x12{\n" +
-	"\x16custom_response_bodies\x18\a \x03(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomResponseBodyR\x14customResponseBodies\x12m\n" +
-	"\rtoken_domains\x18\b \x03(\tBH\xaa\xa6\x1dDDomain names for CAPTCHA/Challenge token scoping, not secret values.R\ftokenDomains\x12l\n" +
+	"\x16custom_response_bodies\x18\a \x03(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomResponseBodyR\x14customResponseBodies\x12\x8a\x01\n" +
+	"\rtoken_domains\x18\b \x03(\tBe\xbaH\x1a\x92\x01\x17\"\x15r\x13\x10\x01\x18\xfd\x012\f^[\\w\\.\\-/]+$\xaa\xa6\x1dDDomain names for CAPTCHA/Challenge token scoping, not secret values.R\ftokenDomains\x12l\n" +
 	"\x0ecaptcha_config\x18\t \x01(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclImmunityTimeConfigR\rcaptchaConfig\x12p\n" +
 	"\x10challenge_config\x18\n" +
 	" \x01(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclImmunityTimeConfigR\x0fchallengeConfig\x12s\n" +
@@ -5180,17 +5420,18 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16custom_request_headers\x18\x03 \x03(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeaderR\x14customRequestHeaders:\xb1\x03\xbaH\xad\x03\x1a]\n" +
 	"\x19default_action_type_valid\x12\x1ftype must be 'allow' or 'block'\x1a\x1fthis.type in ['allow', 'block']\x1a\x97\x01\n" +
 	"\x1ecustom_response_only_for_block\x12Acustom_response is only valid when default action type is 'block'\x1a2!has(this.custom_response) || this.type == 'block'\x1a\xb1\x01\n" +
-	"%custom_request_headers_only_for_allow\x12Hcustom_request_headers is only valid when default action type is 'allow'\x1a>size(this.custom_request_headers) == 0 || this.type == 'allow'\"\xa3\x0f\n" +
+	"%custom_request_headers_only_for_allow\x12Hcustom_request_headers is only valid when default action type is 'allow'\x1a>size(this.custom_request_headers) == 0 || this.type == 'allow'\"\xde\x0f\n" +
 	"\x10AwsWafWebAclRule\x12!\n" +
 	"\x04name\x18\x01 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04name\x12\"\n" +
-	"\bpriority\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bpriority\x12b\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x01R\x04name\x12+\n" +
+	"\bpriority\x18\x02 \x01(\x05B\n" +
+	"\xbaH\a\xc8\x01\x01\x1a\x02(\x00H\x00R\bpriority\x88\x01\x01\x12b\n" +
 	"\tstatement\x18\x03 \x01(\v2<.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatementB\x06\xbaH\x03\xc8\x01\x01R\tstatement\x12\x16\n" +
 	"\x06action\x18\x04 \x01(\tR\x06action\x12'\n" +
 	"\x0foverride_action\x18\x05 \x01(\tR\x0eoverrideAction\x12j\n" +
 	"\x0fcustom_response\x18\x06 \x01(\v2A.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomResponseR\x0ecustomResponse\x12u\n" +
-	"\x16custom_request_headers\x18\a \x03(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeaderR\x14customRequestHeaders\x12\x1f\n" +
-	"\vrule_labels\x18\b \x03(\tR\n" +
+	"\x16custom_request_headers\x18\a \x03(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeaderR\x14customRequestHeaders\x12D\n" +
+	"\vrule_labels\x18\b \x03(\tB#\xbaH \x92\x01\x1d\"\x1br\x19\x10\x01\x18\x80\b2\x12^[0-9A-Za-z_\\-:]+$R\n" +
 	"ruleLabels\x12p\n" +
 	"\x11visibility_config\x18\t \x01(\v2C.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclVisibilityConfigR\x10visibilityConfig\x12l\n" +
 	"\x0ecaptcha_config\x18\n" +
@@ -5200,7 +5441,8 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1arule_override_action_valid\x122override_action must be 'count' or 'none' when set\x1aGthis.override_action == '' || this.override_action in ['count', 'none']\x1a\xa4\x02\n" +
 	"#group_rule_requires_override_action\x12Wmanaged_rule_group and rule_group_reference rules must use override_action (not action)\x1a\xa3\x01!has(this.statement) || (!has(this.statement.managed_rule_group) && !has(this.statement.rule_group_reference)) || (this.override_action != '' && this.action == '')\x1a\xb1\x02\n" +
 	"\x1amatch_rule_requires_action\x12qmatch rules (everything except managed_rule_group and rule_group_reference) must use action (not override_action)\x1a\x9f\x01!has(this.statement) || has(this.statement.managed_rule_group) || has(this.statement.rule_group_reference) || (this.action != '' && this.override_action == '')\x1a\x91\x01\n" +
-	"#rule_custom_response_only_for_block\x124custom_response is only valid when action is 'block'\x1a4!has(this.custom_response) || this.action == 'block'\"\xed\x0e\n" +
+	"#rule_custom_response_only_for_block\x124custom_response is only valid when action is 'block'\x1a4!has(this.custom_response) || this.action == 'block'B\v\n" +
+	"\t_priority\"\xed\x0e\n" +
 	"\x15AwsWafWebAclStatement\x12|\n" +
 	"\x12managed_rule_group\x18\x01 \x01(\v2L.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclManagedRuleGroupStatementH\x00R\x10managedRuleGroup\x12f\n" +
 	"\n" +
@@ -5374,9 +5616,10 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\tnamespace\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\tnamespace\"d\n" +
 	"\x1aAwsWafWebAclFingerprintKey\x12F\n" +
-	"\x11fallback_behavior\x18\x01 \x01(\tB\x19\xbaH\x16\xc8\x01\x01r\x11R\x05MATCHR\bNO_MATCHR\x10fallbackBehavior\"\xc7\x01\n" +
-	"\x1dAwsWafWebAclGeoMatchStatement\x120\n" +
-	"\rcountry_codes\x18\x01 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\fcountryCodes\x12t\n" +
+	"\x11fallback_behavior\x18\x01 \x01(\tB\x19\xbaH\x16\xc8\x01\x01r\x11R\x05MATCHR\bNO_MATCHR\x10fallbackBehavior\"\xd7\x01\n" +
+	"\x1dAwsWafWebAclGeoMatchStatement\x12@\n" +
+	"\rcountry_codes\x18\x01 \x03(\tB\x1b\xbaH\x18\xc8\x01\x01\x92\x01\x12\b\x01\"\x0er\f2\n" +
+	"^[A-Z]{2}$R\fcountryCodes\x12t\n" +
 	"\x13forwarded_ip_config\x18\x02 \x01(\v2D.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclForwardedIpConfigR\x11forwardedIpConfig\"\x8b\x02\n" +
 	"#AwsWafWebAclIpSetReferenceStatement\x12n\n" +
 	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\x89\t\x92\xd4a\x19status.outputs.ip_set_arnR\x03arn\x12t\n" +
@@ -5409,11 +5652,10 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\fregex_string\x18\x01 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80\x04R\vregexString\x12m\n" +
 	"\x0efield_to_match\x18\x02 \x01(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclFieldToMatchB\x06\xbaH\x03\xc8\x01\x01R\ffieldToMatch\x12\x82\x01\n" +
-	"\x14text_transformations\x18\x03 \x03(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTextTransformationB\b\xbaH\x05\x92\x01\x02\b\x01R\x13textTransformations\"t\n" +
+	"\x14text_transformations\x18\x03 \x03(\v2E.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTextTransformationB\b\xbaH\x05\x92\x01\x02\b\x01R\x13textTransformations\"\x88\x01\n" +
 	"\x1fAwsWafWebAclLabelMatchStatement\x120\n" +
-	"\x05scope\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12R\x05LABELR\tNAMESPACER\x05scope\x12\x1f\n" +
-	"\x03key\x18\x02 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x80\bR\x03key\"\xbc\x01\n" +
+	"\x05scope\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12R\x05LABELR\tNAMESPACER\x05scope\x123\n" +
+	"\x03key\x18\x02 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19\x10\x01\x18\x80\b2\x12^[0-9A-Za-z_\\-:]+$R\x03key\"\xbc\x01\n" +
 	"\x1dAwsWafWebAclAsnMatchStatement\x12%\n" +
 	"\basn_list\x18\x01 \x03(\rB\n" +
 	"\xbaH\a\x92\x01\x04\b\x01\x10dR\aasnList\x12t\n" +
@@ -5484,11 +5726,12 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11fallback_behavior\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x10fallbackBehavior\x12\x1a\n" +
 	"\bposition\x18\x03 \x01(\tR\bposition:\x8b\x02\xbaH\x87\x02\x1a{\n" +
 	"\x17fallback_behavior_valid\x12/fallback_behavior must be 'MATCH' or 'NO_MATCH'\x1a/this.fallback_behavior in ['MATCH', 'NO_MATCH']\x1a\x87\x01\n" +
-	"\x0eposition_valid\x123position must be 'FIRST', 'LAST', or 'ANY' when set\x1a@this.position == '' || this.position in ['FIRST', 'LAST', 'ANY']\"\xb7\x01\n" +
+	"\x0eposition_valid\x123position must be 'FIRST', 'LAST', or 'ANY' when set\x1a@this.position == '' || this.position in ['FIRST', 'LAST', 'ANY']\"\xab\x03\n" +
 	"\x1cAwsWafWebAclVisibilityConfig\x12<\n" +
 	"\x1acloudwatch_metrics_enabled\x18\x01 \x01(\bR\x18cloudwatchMetricsEnabled\x128\n" +
-	"\x18sampled_requests_enabled\x18\x02 \x01(\bR\x16sampledRequestsEnabled\x12\x1f\n" +
-	"\vmetric_name\x18\x03 \x01(\tR\n" +
+	"\x18sampled_requests_enabled\x18\x02 \x01(\bR\x16sampledRequestsEnabled\x12\x92\x02\n" +
+	"\vmetric_name\x18\x03 \x01(\tB\xf0\x01\xbaH\xec\x01\xba\x01\xe8\x01\n" +
+	"\x11metric_name_valid\x12smetric_name must be 1-128 characters of A-Za-z0-9_- and must not be the reserved 'All' or 'Default_Action' when set\x1a^this == '' || (this.matches('^[A-Za-z0-9_-]{1,128}$') && !(this in ['All', 'Default_Action']))R\n" +
 	"metricName\"\\\n" +
 	"\x1eAwsWafWebAclImmunityTimeConfig\x12:\n" +
 	"\x11immunity_time_sec\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\x80\xe9\x0f(<R\x0fimmunityTimeSec\"\xf0\t\n" +
@@ -5505,37 +5748,53 @@ const file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10body_limit_valid\x12Mthe request body limit must be 'KB_16', 'KB_32', 'KB_48', or 'KB_64' when set\x1a:this == '' || this in ['KB_16', 'KB_32', 'KB_48', 'KB_64']R&verifiedAccessInstanceRequestBodyLimit\"\x9c\x01\n" +
 	" AwsWafWebAclDataProtectionConfig\x12x\n" +
 	"\x10data_protections\x18\x01 \x03(\v2A.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclDataProtectionB\n" +
-	"\xbaH\a\x92\x01\x04\b\x01\x10\x1aR\x0fdataProtections\"\xec\x04\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\x1aR\x0fdataProtections\"\xf9\x04\n" +
 	"\x1aAwsWafWebAclDataProtection\x12p\n" +
 	"\n" +
-	"field_type\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rIR\rSINGLE_HEADERR\rSINGLE_COOKIER\x15SINGLE_QUERY_ARGUMENTR\fQUERY_STRINGR\x04BODYR\tfieldType\x12'\n" +
+	"field_type\x18\x01 \x01(\tBQ\xbaHN\xc8\x01\x01rIR\rSINGLE_HEADERR\rSINGLE_COOKIER\x15SINGLE_QUERY_ARGUMENTR\fQUERY_STRINGR\x04BODYR\tfieldType\x12/\n" +
 	"\n" +
-	"field_keys\x18\x02 \x03(\tB\b\xbaH\x05\x92\x01\x02\x10dR\tfieldKeys\x124\n" +
+	"field_keys\x18\x02 \x03(\tB\x10\xbaH\r\x92\x01\n" +
+	"\x10d\"\x06r\x04\x10\x01\x18@R\tfieldKeys\x124\n" +
 	"\x06action\x18\x03 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\fSUBSTITUTIONR\x04HASHR\x06action\x12;\n" +
 	"\x1aexclude_rule_match_details\x18\x04 \x01(\bR\x17excludeRuleMatchDetails\x12;\n" +
-	"\x1aexclude_rate_based_details\x18\x05 \x01(\bR\x17excludeRateBasedDetails:\x82\x02\xbaH\xfe\x01\x1a\xfb\x01\n" +
-	"\x12field_keys_pairing\x12tfield_keys is required for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT and must be empty for QUERY_STRING/BODY\x1ao(this.field_type in ['SINGLE_HEADER', 'SINGLE_COOKIE', 'SINGLE_QUERY_ARGUMENT']) == (size(this.field_keys) > 0)\"\xf6\x01\n" +
+	"\x1aexclude_rate_based_details\x18\x05 \x01(\bR\x17excludeRateBasedDetails:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
+	"\x10field_keys_scope\x12~field_keys is only valid for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT (omit it to protect all keys of the field type)\x1alsize(this.field_keys) == 0 || this.field_type in ['SINGLE_HEADER', 'SINGLE_COOKIE', 'SINGLE_QUERY_ARGUMENT']\"\xf6\x01\n" +
 	"\x1aAwsWafWebAclCustomResponse\x123\n" +
 	"\rresponse_code\x18\x01 \x01(\x05B\x0e\xbaH\v\xc8\x01\x01\x1a\x06\x18\xd8\x04(\xc8\x01R\fresponseCode\x127\n" +
 	"\x18custom_response_body_key\x18\x02 \x01(\tR\x15customResponseBodyKey\x12j\n" +
-	"\x10response_headers\x18\x03 \x03(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeaderR\x0fresponseHeaders\"\\\n" +
-	"\x18AwsWafWebAclCustomHeader\x12\x1e\n" +
-	"\x04name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04name\x12 \n" +
-	"\x05value\x18\x02 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x05value\"\xbd\x02\n" +
-	"\x1eAwsWafWebAclCustomResponseBody\x12\x1c\n" +
-	"\x03key\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x03key\x12'\n" +
+	"\x10response_headers\x18\x03 \x03(\v2?.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeaderR\x0fresponseHeaders\"u\n" +
+	"\x18AwsWafWebAclCustomHeader\x124\n" +
+	"\x04name\x18\x01 \x01(\tB \xbaH\x1d\xc8\x01\x01r\x18\x10\x01\x18@2\x12^[0-9A-Za-z_$.-]+$R\x04name\x12#\n" +
+	"\x05value\x18\x02 \x01(\tB\r\xbaH\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\xff\x01R\x05value\"\xcb\x02\n" +
+	"\x1eAwsWafWebAclCustomResponseBody\x12*\n" +
+	"\x03key\x18\x01 \x01(\tB\x18\xbaH\x15\xc8\x01\x01r\x10\x10\x01\x18\x80\x012\t^[\\w\\-]+$R\x03key\x12'\n" +
 	"\acontent\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\x80PR\acontent\x12)\n" +
 	"\fcontent_type\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vcontentType:\xa8\x01\xbaH\xa4\x01\x1a\xa1\x01\n" +
-	"\x12content_type_valid\x12Econtent_type must be 'TEXT_PLAIN', 'TEXT_HTML', or 'APPLICATION_JSON'\x1aDthis.content_type in ['TEXT_PLAIN', 'TEXT_HTML', 'APPLICATION_JSON']\"\x8c\x02\n" +
+	"\x12content_type_valid\x12Econtent_type must be 'TEXT_PLAIN', 'TEXT_HTML', or 'APPLICATION_JSON'\x1aDthis.content_type in ['TEXT_PLAIN', 'TEXT_HTML', 'APPLICATION_JSON']\"\xa1\x03\n" +
 	"\x19AwsWafWebAclLoggingConfig\x12c\n" +
-	"\x0fdestination_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x0edestinationArn\x122\n" +
-	"\x15redacted_header_names\x18\x02 \x03(\tR\x13redactedHeaderNames\x12&\n" +
+	"\x0fdestination_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x0edestinationArn\x12B\n" +
+	"\x15redacted_header_names\x18\x02 \x03(\tB\x0e\xbaH\v\x92\x01\b\"\x06r\x04\x10\x01\x18@R\x13redactedHeaderNames\x12&\n" +
 	"\x0fredact_uri_path\x18\x03 \x01(\bR\rredactUriPath\x12.\n" +
-	"\x13redact_query_string\x18\x04 \x01(\bR\x11redactQueryStringB\xc4\x02\n" +
+	"\x13redact_query_string\x18\x04 \x01(\bR\x11redactQueryString\x12#\n" +
+	"\rredact_method\x18\x05 \x01(\bR\fredactMethod\x12^\n" +
+	"\x06filter\x18\x06 \x01(\v2F.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterConfigR\x06filter\"\xc8\x01\n" +
+	"\x1fAwsWafWebAclLoggingFilterConfig\x12?\n" +
+	"\x10default_behavior\x18\x01 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x04KEEPR\x04DROPR\x0fdefaultBehavior\x12d\n" +
+	"\afilters\x18\x02 \x03(\v2@.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterB\b\xbaH\x05\x92\x01\x02\b\x01R\afilters\"\x84\x02\n" +
+	"\x19AwsWafWebAclLoggingFilter\x120\n" +
+	"\bbehavior\x18\x01 \x01(\tB\x14\xbaH\x11\xc8\x01\x01r\fR\x04KEEPR\x04DROPR\bbehavior\x12@\n" +
+	"\vrequirement\x18\x02 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16R\tMEETS_ALLR\tMEETS_ANYR\vrequirement\x12s\n" +
+	"\n" +
+	"conditions\x18\x03 \x03(\v2I.dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterConditionB\b\xbaH\x05\x92\x01\x02\b\x01R\n" +
+	"conditions\"\xe8\x03\n" +
+	"\"AwsWafWebAclLoggingFilterCondition\x12\x91\x02\n" +
+	"\x06action\x18\x01 \x01(\tB\xf8\x01\xbaH\xf4\x01\xba\x01\xf0\x01\n" +
+	"\x13filter_action_valid\x12maction must be 'ALLOW', 'BLOCK', 'COUNT', 'CAPTCHA', 'CHALLENGE', 'EXCLUDED_AS_COUNT', or 'MONETIZE' when set\x1ajthis == '' || this in ['ALLOW', 'BLOCK', 'COUNT', 'CAPTCHA', 'CHALLENGE', 'EXCLUDED_AS_COUNT', 'MONETIZE']R\x06action\x12'\n" +
+	"\n" +
+	"label_name\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\tlabelName:\x84\x01\xbaH\x80\x01\x1a~\n" +
+	"\x15exactly_one_condition\x125set exactly one of action or label_name per condition\x1a.(this.action != '') != (this.label_name != '')B\xc4\x02\n" +
 	")com.dev.planton.aws.awswafwebacl.v1alpha1B\tSpecProtoP\x01ZSgithub.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1;awswafwebaclv1alpha1\xa2\x02\x04DPAA\xaa\x02%Dev.Planton.Aws.Awswafwebacl.V1alpha1\xca\x02%Dev\\Planton\\Aws\\Awswafwebacl\\V1alpha1\xe2\x021Dev\\Planton\\Aws\\Awswafwebacl\\V1alpha1\\GPBMetadata\xea\x02)Dev::Planton::Aws::Awswafwebacl::V1alpha1b\x06proto3"
 
 var (
@@ -5550,7 +5809,7 @@ func file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
+var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsWafWebAclSpec)(nil),                              // 0: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclSpec
 	(*AwsWafWebAclDefaultAction)(nil),                     // 1: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclDefaultAction
@@ -5614,8 +5873,11 @@ var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsWafWebAclCustomHeader)(nil),                      // 59: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeader
 	(*AwsWafWebAclCustomResponseBody)(nil),                // 60: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomResponseBody
 	(*AwsWafWebAclLoggingConfig)(nil),                     // 61: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingConfig
-	(*structpb.Struct)(nil),                               // 62: google.protobuf.Struct
-	(*v1.StringValueOrRef)(nil),                           // 63: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsWafWebAclLoggingFilterConfig)(nil),               // 62: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterConfig
+	(*AwsWafWebAclLoggingFilter)(nil),                     // 63: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilter
+	(*AwsWafWebAclLoggingFilterCondition)(nil),            // 64: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterCondition
+	(*structpb.Struct)(nil),                               // 65: google.protobuf.Struct
+	(*v1.StringValueOrRef)(nil),                           // 66: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_depIdxs = []int32{
 	1,   // 0: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclSpec.default_action:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclDefaultAction
@@ -5651,7 +5913,7 @@ var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_depIdxs = []int32{
 	4,   // 30: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement.and_statement:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclAndStatement
 	5,   // 31: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement.or_statement:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclOrStatement
 	6,   // 32: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement.not_statement:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclNotStatement
-	62,  // 33: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement.custom_statement:type_name -> google.protobuf.Struct
+	65,  // 33: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement.custom_statement:type_name -> google.protobuf.Struct
 	3,   // 34: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclAndStatement.statements:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement
 	3,   // 35: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclOrStatement.statements:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement
 	3,   // 36: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclNotStatement.statement:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclStatement
@@ -5693,9 +5955,9 @@ var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_depIdxs = []int32{
 	51,  // 72: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclKeyWithTransformations.text_transformations:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTextTransformation
 	51,  // 73: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTransformationsOnlyKey.text_transformations:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTextTransformation
 	52,  // 74: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclGeoMatchStatement.forwarded_ip_config:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclForwardedIpConfig
-	63,  // 75: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclIpSetReferenceStatement.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	66,  // 75: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclIpSetReferenceStatement.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	52,  // 76: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclIpSetReferenceStatement.forwarded_ip_config:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclForwardedIpConfig
-	63,  // 77: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclRegexPatternSetReferenceStatement.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	66,  // 77: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclRegexPatternSetReferenceStatement.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	41,  // 78: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclRegexPatternSetReferenceStatement.field_to_match:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclFieldToMatch
 	51,  // 79: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclRegexPatternSetReferenceStatement.text_transformations:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclTextTransformation
 	41,  // 80: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclByteMatchStatement.field_to_match:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclFieldToMatch
@@ -5723,12 +5985,15 @@ var file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_depIdxs = []int32{
 	47,  // 102: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCookiesMatch.match_pattern:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclNamePattern
 	57,  // 103: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclDataProtectionConfig.data_protections:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclDataProtection
 	59,  // 104: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomResponse.response_headers:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclCustomHeader
-	63,  // 105: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingConfig.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	106, // [106:106] is the sub-list for method output_type
-	106, // [106:106] is the sub-list for method input_type
-	106, // [106:106] is the sub-list for extension type_name
-	106, // [106:106] is the sub-list for extension extendee
-	0,   // [0:106] is the sub-list for field type_name
+	66,  // 105: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingConfig.destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	62,  // 106: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingConfig.filter:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterConfig
+	63,  // 107: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterConfig.filters:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilter
+	64,  // 108: dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilter.conditions:type_name -> dev.planton.aws.awswafwebacl.v1alpha1.AwsWafWebAclLoggingFilterCondition
+	109, // [109:109] is the sub-list for method output_type
+	109, // [109:109] is the sub-list for method input_type
+	109, // [109:109] is the sub-list for extension type_name
+	109, // [109:109] is the sub-list for extension extendee
+	0,   // [0:109] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_init() }
@@ -5736,6 +6001,7 @@ func file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awswafwebacl_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{
 		(*AwsWafWebAclStatement_ManagedRuleGroup)(nil),
 		(*AwsWafWebAclStatement_RateBased)(nil),
@@ -5792,7 +6058,7 @@ func file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awswafwebacl_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   62,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

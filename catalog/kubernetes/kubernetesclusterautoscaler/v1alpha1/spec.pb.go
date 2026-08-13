@@ -1631,10 +1631,10 @@ const file_catalog_kubernetes_kubernetesclusterautoscaler_v1alpha1_spec_proto_ra
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\"\n" +
 	"\bmin_size\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\aminSize\x12\"\n" +
 	"\bmax_size\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\amaxSize:c\xbaH`\x1a^\n" +
-	"\x1bspec.node_group.min_lte_max\x12\x1fmin_size cannot exceed max_size\x1a\x1ethis.min_size <= this.max_size\"\xef\b\n" +
-	"\"KubernetesClusterAutoscalerScaling\x12\xa7\x02\n" +
-	"\bexpander\x18\x01 \x01(\tB\x8a\x02\xbaH\x86\x02\xba\x01\x82\x02\n" +
-	"\x1aspec.scaling.expander_enum\x12texpander must be a comma-separated list drawn from 'random', 'most-pods', 'least-waste', 'price', 'priority', 'grpc'\x1anthis == '' || this.split(',').all(e, e in ['random', 'most-pods', 'least-waste', 'price', 'priority', 'grpc'])R\bexpander\x12=\n" +
+	"\x1bspec.node_group.min_lte_max\x12\x1fmin_size cannot exceed max_size\x1a\x1ethis.min_size <= this.max_size\"\x8a\t\n" +
+	"\"KubernetesClusterAutoscalerScaling\x12\xc2\x02\n" +
+	"\bexpander\x18\x01 \x01(\tB\xa5\x02\xbaH\xa1\x02\xba\x01\x9d\x02\n" +
+	"\x1aspec.scaling.expander_enum\x12texpander must be a comma-separated list drawn from 'random', 'most-pods', 'least-waste', 'price', 'priority', 'grpc'\x1a\x88\x01this == '' || this.matches('^(random|most-pods|least-waste|price|priority|grpc)(,(random|most-pods|least-waste|price|priority|grpc))*$')R\bexpander\x12=\n" +
 	"\x1bbalance_similar_node_groups\x18\x02 \x01(\bR\x18balanceSimilarNodeGroups\x12\x80\x01\n" +
 	"\n" +
 	"scale_down\x18\x03 \x01(\v2a.dev.planton.kubernetes.kubernetesclusterautoscaler.v1alpha1.KubernetesClusterAutoscalerScaleDownR\tscaleDown\x12\xb6\x01\n" +

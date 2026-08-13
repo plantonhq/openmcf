@@ -599,6 +599,138 @@ var _ = ginkgo.Describe("AwsAppRunnerService Validation Tests", func() {
 	})
 
 	// =====================================================================
+	// VPC INGRESS CONNECTIONS
+	// =====================================================================
+	ginkgo.Describe("VPC Ingress Connections", func() {
+
+		ginkgo.It("should accept an ingress connection with literal VPC and endpoint ids", func() {
+			spec := minimalImageSpec()
+			spec.IsPubliclyAccessible = boolPtr(false)
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:          "my-svc-private",
+					VpcId:         stringValueOrRefLiteral("vpc-0abc123def456"),
+					VpcEndpointId: stringValueOrRefLiteral("vpce-0abc123def456"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an ingress connection wired by reference", func() {
+			spec := minimalImageSpec()
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:          "my-svc-private",
+					VpcId:         stringValueOrRefFrom(cloudresourcekind.CloudResourceKind_AwsVpc, "dev", "main-vpc"),
+					VpcEndpointId: stringValueOrRefFrom(cloudresourcekind.CloudResourceKind_AwsVpcEndpoint, "dev", "apprunner-endpoint"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when the connection name is shorter than 4 characters", func() {
+			spec := minimalImageSpec()
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:          "abc",
+					VpcId:         stringValueOrRefLiteral("vpc-0abc123def456"),
+					VpcEndpointId: stringValueOrRefLiteral("vpce-0abc123def456"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when the connection name exceeds 40 characters", func() {
+			spec := minimalImageSpec()
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:          "this-connection-name-is-way-too-long-for-aws",
+					VpcId:         stringValueOrRefLiteral("vpc-0abc123def456"),
+					VpcEndpointId: stringValueOrRefLiteral("vpce-0abc123def456"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when vpc_id is missing", func() {
+			spec := minimalImageSpec()
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:          "my-svc-private",
+					VpcEndpointId: stringValueOrRefLiteral("vpce-0abc123def456"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when vpc_endpoint_id is missing", func() {
+			spec := minimalImageSpec()
+			spec.VpcIngressConnections = []*AwsAppRunnerServiceVpcIngressConnection{
+				{
+					Name:  "my-svc-private",
+					VpcId: stringValueOrRefLiteral("vpc-0abc123def456"),
+				},
+			}
+			err := protovalidate.Validate(validEnvelope(spec))
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// =====================================================================
+	// IMAGE IDENTIFIER FORMAT
+	// =====================================================================
+	ginkgo.Describe("Image identifier format", func() {
+
+		ginkgo.It("should accept a private ECR image path", func() {
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+				ImageSource: &AwsAppRunnerServiceImageSource{
+					ImageIdentifier:     "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:v1.0",
+					ImageRepositoryType: "ECR",
+					AccessRoleArn:       stringValueOrRefLiteral("arn:aws:iam::123456789012:role/apprunner-ecr-access"),
+				},
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an ECR Public Gallery image path", func() {
+			input := validEnvelope(minimalImageSpec())
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail for a bare Docker Hub image name", func() {
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+				ImageSource: &AwsAppRunnerServiceImageSource{
+					ImageIdentifier:     "nginx:latest",
+					ImageRepositoryType: "ECR_PUBLIC",
+				},
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail for a non-ECR registry host", func() {
+			input := validEnvelope(&AwsAppRunnerServiceSpec{
+				Region: "us-west-2",
+				ImageSource: &AwsAppRunnerServiceImageSource{
+					ImageIdentifier:     "docker.io/library/nginx:latest",
+					ImageRepositoryType: "ECR_PUBLIC",
+				},
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// =====================================================================
 	// API ENVELOPE TESTS
 	// =====================================================================
 	ginkgo.Describe("API Envelope", func() {

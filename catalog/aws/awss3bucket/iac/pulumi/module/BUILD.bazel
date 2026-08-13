@@ -4,6 +4,7 @@ go_library(
     name = "module",
     srcs = [
         "bucket.go",
+        "insights.go",
         "lifecycle.go",
         "locals.go",
         "main.go",

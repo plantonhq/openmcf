@@ -65,3 +65,22 @@ spec:
                 textTransformations:
                   - priority: 0
                     type: URL_DECODE
+  # Request logging with the full redaction surface and a keep-only-enforcement
+  # filter: BLOCK and COUNT records are kept, everything else is dropped.
+  logging:
+    destinationArn:
+      value: arn:aws:logs:us-west-2:111122223333:log-group:aws-waf-logs-test-waf-acl
+    redactedHeaderNames:
+      - authorization
+      - cookie
+    redactUriPath: true
+    redactQueryString: true
+    redactMethod: true
+    filter:
+      defaultBehavior: DROP
+      filters:
+        - behavior: KEEP
+          requirement: MEETS_ANY
+          conditions:
+            - action: BLOCK
+            - action: COUNT

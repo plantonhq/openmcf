@@ -43,9 +43,6 @@ metadata:
   env: dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsBatchComputeEnvironment.test-batch
 spec:
   region: us-west-2
   computeResources:
@@ -190,7 +187,10 @@ latency-sensitive queues.
 The initial vCPU target at environment creation. EC2/SPOT only. AWS
 Batch continuously adjusts the actual desired capacity between
 min_vcpus and max_vcpus based on queue demand, so treat this as a
-starting point, not a setpoint.
+starting point, not a setpoint. An explicit 0 is indistinguishable
+from unset all the way down (the provider cannot send a zero here at
+create or update) -- to keep an idle environment at zero instances,
+set min_vcpus to 0 and let Batch scale in.
 
 ### spec.computeResources.subnetIds
 
@@ -393,9 +393,8 @@ Planton applies to the compute environment resource.
 Attach this compute environment to an EKS cluster so Batch schedules
 jobs as Kubernetes pods instead of ECS tasks. CREATE-TIME ONLY: both
 fields replace the environment when changed. The referenced cluster must
-exist before the environment is created, and Batch-on-EKS job workloads
-are registered outside this graph (the AwsBatchJobDefinition kind models
-ECS-based container jobs).
+exist before the environment is created. The workload half of this
+pairing is an AwsBatchJobDefinition with its eks arm set.
 
 ### spec.eksConfiguration.eksClusterArn
 
@@ -425,7 +424,12 @@ environment is created.
 How infrastructure updates treat RUNNING jobs when Batch replaces
 instances during an in-place update (EC2/SPOT environments). When unset,
 Batch waits for jobs to finish on the old instances (up to 30 minutes)
-before terminating them.
+before terminating them. ONCE SET, removing this block later does NOT
+reset the environment's policy -- AWS keeps the last-applied values (the
+provider only sends the policy when the block is present); to change
+course, keep the block and set its fields explicitly.
+
+- rule: set job_execution_timeout_minutes whenever update_policy is present (AWS's 30-minute default only applies when the whole policy is absent; use 30 to mirror it)
 
 ### spec.updatePolicy.terminateJobsOnUpdate
 
@@ -441,7 +445,8 @@ strategy. Leave false for long jobs that checkpoint poorly.
 
 How long (in minutes, 1-360) Batch waits for running jobs to finish on
 old instances before terminating them anyway. Only meaningful when
-terminate_jobs_on_update is false. AWS default: 30.
+terminate_jobs_on_update is false. AWS's default when the whole policy
+is absent: 30.
 
 - rule: {"int32":{"lte":360,"gte":1}}
 

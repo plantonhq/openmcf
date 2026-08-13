@@ -1,0 +1,35 @@
+# Associated AwsElasticIp scenario: the allocation attached to an EC2
+# instance through the spec's inline association surface (spec.instance --
+# the fold that made EIP attachment expressible; previously the catalog
+# could allocate an address but not point it at anything). The instance
+# fixture composes via the PATH form of e2e-prerequisites and rides the
+# instance kind's default-VPC fallback, so the chain is two resources. The
+# evidence bar is DescribeAddresses echoing AssociationId + InstanceId per
+# engine, and the association_id output landing non-empty. Destroy proves
+# the provider's disassociate-then-release path (an associated EIP cannot
+# release directly). associate_with_private_ip stays unset -- AWS targets
+# the primary private IP; the explicit-IP arm needs a multi-IP ENI fixture
+# (recorded in the profile). Full metadata is supplied for tagging/orphan
+# cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsElasticIp
+metadata:
+  name: planton-oss-e2e-awselasticip-assoc
+  id: planton-oss-e2e-awselasticip-assoc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awselasticip
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awselasticip/e2e/fixture-instance.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  instance:
+    valueFrom:
+      kind: AwsEc2Instance
+      name: planton-oss-e2e-awseip-instance
+      fieldPath: status.outputs.instance_id

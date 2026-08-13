@@ -36,7 +36,11 @@ func identityProvider(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 			}
 			return pulumi.ToStringArray(spec.IdpIdentifiers)
 		}(),
-	}, pulumi.Provider(provider))
+	}, pulumi.Provider(provider),
+		// AWS auto-populates ActiveEncryptionCertificate for SAML providers.
+		// Ignore it to prevent perpetual drift (mirrors the Terraform
+		// module's lifecycle.ignore_changes on the same key).
+		pulumi.IgnoreChanges([]string{`providerDetails["ActiveEncryptionCertificate"]`}))
 	if err != nil {
 		return errors.Wrap(err, "failed to create cognito identity provider")
 	}

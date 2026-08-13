@@ -9,10 +9,13 @@ spec:
   #
   # - full-surface: NO_SOURCE + inline buildspec (standalone -- no
   #   repository, connection, or bucket), environment variables incl. an SSM
-  #   Parameter Store reference, governance dials (timeouts, concurrency
-  #   cap, automatic retry), and CloudWatch logging via the managed default
-  #   log group. The service role resolves from the shared IAM role fixture
-  #   (registry prerequisite).
+  #   Parameter Store reference, the non-default kernel-6 host kernel
+  #   (verify BatchGetProjects reports hostKernel back -- if AWS rejects
+  #   the explicit selection for this image/region, trim the arm and record
+  #   the deferral), governance dials (timeouts, concurrency cap, automatic
+  #   retry), and CloudWatch logging via the managed default log group. The
+  #   service role resolves from the shared IAM role fixture (registry
+  #   prerequisite).
   #
   # Excluded from the live lane with reasons (proven by spec tests + the
   # offline plan gate against e2e/manifest.yaml, which exercises every
@@ -40,9 +43,17 @@ spec:
   # the project deploy itself took 14s) / Terraform 5m20s total (deploy
   # 10s). The project resource is near-instant either way; the fixture
   # chain dominates.
+  #
+  # Proven 2026-08-12, both engines, all eight phases (Pulumi 7m45s /
+  # Terraform 7m34s; the project deploy itself 10s/26s). The host_kernel
+  # arm's first live proof: AWS ACCEPTED explicit LINUX_KERNEL_6 on
+  # LINUX_CONTAINER/amazonlinux2-standard:5.0 in us-west-2, and
+  # BatchGetProjects (pinned Go SDK — the local aws-cli's OUTPUT model
+  # drops hostKernel while its input model knows it) echoed it per
+  # engine, alongside the governance dials (autoRetryLimit,
+  # concurrentBuildLimit). The three converged Pulumi pass-through sends
+  # rode the same lane clean.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

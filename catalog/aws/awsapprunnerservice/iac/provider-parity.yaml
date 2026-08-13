@@ -1,0 +1,156 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_apprunner_service:
+    mappings:
+      # --- Source arms: the spec models each source as its own typed
+      # message (image_source XOR code_source, spec CEL); the provider nests
+      # both under a source_configuration wrapper.
+      - spec: spec.image_source.image_identifier
+        arg: source_configuration.image_repository.image_identifier
+      - spec: spec.image_source.image_repository_type
+        arg: source_configuration.image_repository.image_repository_type
+      # Authentication lives with its source in the spec (the pull role is
+      # image-source surface; the connection is code-source surface); the
+      # provider carries both in one shared authentication block.
+      - spec: spec.image_source.access_role_arn
+        arg: source_configuration.authentication_configuration.access_role_arn
+      - spec: spec.code_source.connection_arn
+        arg: source_configuration.authentication_configuration.connection_arn
+      - spec: spec.code_source.repository_url
+        arg: source_configuration.code_repository.repository_url
+      # The spec models the branch directly; the provider wraps it in a
+      # source_code_version block whose type has exactly one legal value
+      # (see the exclusion below).
+      - spec: spec.code_source.branch
+        arg: source_configuration.code_repository.source_code_version.value
+      - spec: spec.code_source.source_directory
+        arg: source_configuration.code_repository.source_directory
+      - spec: spec.code_source.configuration_source
+        arg: source_configuration.code_repository.code_configuration.configuration_source
+      - spec: spec.code_source.runtime
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.runtime
+      - spec: spec.code_source.build_command
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.build_command
+      - spec: spec.auto_deployments_enabled
+        arg: source_configuration.auto_deployments_enabled
+      # --- Runtime settings shared by both arms: one spec field, two
+      # provider homes -- the module routes each into whichever source arm
+      # is active (they configure the runtime container either way).
+      - spec: spec.port
+        arg: source_configuration.image_repository.image_configuration.port
+      - spec: spec.port
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.port
+      - spec: spec.start_command
+        arg: source_configuration.image_repository.image_configuration.start_command
+      - spec: spec.start_command
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.start_command
+      - spec: spec.environment_variables
+        arg: source_configuration.image_repository.image_configuration.runtime_environment_variables
+      - spec: spec.environment_variables
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.runtime_environment_variables
+      - spec: spec.environment_secrets
+        arg: source_configuration.image_repository.image_configuration.runtime_environment_secrets
+      - spec: spec.environment_secrets
+        arg: source_configuration.code_repository.code_configuration.code_configuration_values.runtime_environment_secrets
+      # --- Instance configuration: flattened in the spec (the wrapper adds
+      # no meaning to a three-leaf block).
+      - spec: spec.cpu
+        arg: instance_configuration.cpu
+      - spec: spec.memory
+        arg: instance_configuration.memory
+      - spec: spec.instance_role_arn
+        arg: instance_configuration.instance_role_arn
+      # --- Health check: the spec's typed message mirrors the provider
+      # block leaf-for-leaf under its own name.
+      - spec: spec.health_check.protocol
+        arg: health_check_configuration.protocol
+      - spec: spec.health_check.path
+        arg: health_check_configuration.path
+      - spec: spec.health_check.interval
+        arg: health_check_configuration.interval
+      - spec: spec.health_check.timeout
+        arg: health_check_configuration.timeout
+      - spec: spec.health_check.healthy_threshold
+        arg: health_check_configuration.healthy_threshold
+      - spec: spec.health_check.unhealthy_threshold
+        arg: health_check_configuration.unhealthy_threshold
+      # --- Networking: flattened in the spec; egress_type itself is
+      # derived (see the exclusion below).
+      - spec: spec.vpc_connector_arn
+        arg: network_configuration.egress_configuration.vpc_connector_arn
+      - spec: spec.is_publicly_accessible
+        arg: network_configuration.ingress_configuration.is_publicly_accessible
+      - spec: spec.ip_address_type
+        arg: network_configuration.ip_address_type
+      # --- Encryption.
+      - spec: spec.kms_key_arn
+        arg: encryption_configuration.kms_key
+      # --- Observability: the reference is the surface; the enable flag is
+      # derived from its presence (see the exclusion below).
+      - spec: spec.observability_configuration_arn
+        arg: observability_configuration.observability_configuration_arn
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: service_name
+        reason: derived from metadata.name -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-computed merge of resource and provider-default tags -- never user surface
+      # One-value enums are not configuration.
+      - arg: source_configuration.code_repository.source_code_version.type
+        reason: BRANCH is the only source-code-version type AWS supports -- the spec models the branch directly instead of a one-value enum wrapper
+      # Derived toggles: presence of the reference IS the switch.
+      - arg: network_configuration.egress_configuration.egress_type
+        reason: derived -- VPC exactly when vpc_connector_arn is set, DEFAULT otherwise; a free-standing egress_type could only contradict the reference
+      - arg: observability_configuration.observability_enabled
+        reason: derived -- true exactly when observability_configuration_arn is set; a free-standing toggle would drift against the reference
+
+  aws_apprunner_custom_domain_association:
+    # Folded satellite: one association per spec.custom_domains entry,
+    # keyed by domain name.
+    mappings:
+      # The spec pluralizes the repeated entries.
+      - spec: spec.custom_domains.domain_name
+        arg: domain_name
+      - spec: spec.custom_domains.enable_www_subdomain
+        arg: enable_www_subdomain
+    exclusions:
+      - arg: service_arn
+        reason: wired by the module to the service it creates -- never user surface
+
+  aws_apprunner_vpc_ingress_connection:
+    # Folded satellite: one connection per spec.vpc_ingress_connections
+    # entry, keyed by connection name.
+    mappings:
+      # The spec pluralizes the repeated entries; the provider wraps the
+      # two VPC leaves in an ingress_vpc_configuration block.
+      - spec: spec.vpc_ingress_connections.name
+        arg: name
+      - spec: spec.vpc_ingress_connections.vpc_id
+        arg: ingress_vpc_configuration.vpc_id
+      - spec: spec.vpc_ingress_connections.vpc_endpoint_id
+        arg: ingress_vpc_configuration.vpc_endpoint_id
+    exclusions:
+      - arg: service_arn
+        reason: wired by the module to the service it creates -- never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-computed merge of resource and provider-default tags -- never user surface
+
+  aws_wafv2_web_acl_association:
+    # One optional association: the binding of the service to its (at most
+    # one) WAFv2 web ACL, a setting of the protected resource (the same
+    # shape the AwsAlb manifest records for its own association).
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the service it creates -- never user surface

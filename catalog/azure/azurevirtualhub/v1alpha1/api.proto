@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualhub.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurevirtualhub/v1alpha1/outputs.proto";
+import "catalog/azure/azurevirtualhub/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureVirtualHub is the top-level API resource describing a Virtual
+// Hub -- the managed regional router of an Azure Virtual WAN, to which
+// spoke VNets, branches, and gateways attach.
+message AzureVirtualHub {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureVirtualHub".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureVirtualHub'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Virtual Hub specification.
+  AzureVirtualHubSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureVirtualHubStatus status = 5;
+}
+
+// AzureVirtualHubStatus holds the deployment outputs.
+message AzureVirtualHubStatus {
+  // Stack outputs from the IaC deployment.
+  AzureVirtualHubStackOutputs outputs = 1;
+}

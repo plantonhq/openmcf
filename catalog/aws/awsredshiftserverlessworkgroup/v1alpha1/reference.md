@@ -41,6 +41,25 @@ spec:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
     - value: subnet-0a1b2c3d4e5f60003
+  # Governance: cap compute spend per day and datasharing transfer per
+  # month; deactivate stops queries until the period resets.
+  usageLimits:
+    - usageType: serverless-compute
+      amount: 100
+      period: daily
+      breachAction: deactivate
+    - usageType: cross-region-datasharing
+      amount: 5
+  # Cross-VPC access: a VPC endpoint reusing the workgroup's own subnets
+  # (an entry may bring its own consuming-VPC subnets instead).
+  endpointAccesses:
+    - endpointName: analytics-consumers
+  # A branded TLS endpoint fronted by an ACM certificate; the CNAME
+  # pointing the domain at the workgroup endpoint stays yours.
+  customDomain:
+    domainName: warehouse.example.com
+    certificateArn:
+      value: arn:aws:acm:us-west-2:123456789012:certificate/11111111-2222-3333-4444-555555555555
 ```
 
 ## Spec Fields
@@ -63,6 +82,18 @@ spec:
 | `spec.configParameters[].name` | `string` | yes |  |  |
 | `spec.configParameters[].value` | `string` | yes |  |  |
 | `spec.trackName` | `string` |  |  |  |
+| `spec.customDomain` | `AwsRedshiftServerlessWorkgroupCustomDomain` |  |  |  |
+| `spec.customDomain.domainName` | `string` | yes |  |  |
+| `spec.customDomain.certificateArn` | `string \| valueFrom` | yes |  | AwsCertManagerCert (`status.outputs.cert_arn`) |
+| `spec.endpointAccesses` | `[]AwsRedshiftServerlessWorkgroupEndpointAccess` |  |  |  |
+| `spec.endpointAccesses[].endpointName` | `string` | yes |  |  |
+| `spec.endpointAccesses[].subnetIds` | `[]string \| valueFrom` |  |  | AwsSubnet (`status.outputs.subnet_id`) |
+| `spec.endpointAccesses[].vpcSecurityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
+| `spec.usageLimits` | `[]AwsRedshiftServerlessWorkgroupUsageLimit` |  |  |  |
+| `spec.usageLimits[].usageType` | `string` | yes |  |  |
+| `spec.usageLimits[].amount` | `int64` |  |  |  |
+| `spec.usageLimits[].period` | `string` |  |  |  |
+| `spec.usageLimits[].breachAction` | `string` |  |  |  |
 
 ## Field Details
 
@@ -230,6 +261,129 @@ Empty keeps the AWS default.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"256","pattern":"^[a-zA-Z0-9_]+$"}}
 
+### spec.customDomain
+
+`AwsRedshiftServerlessWorkgroupCustomDomain`
+
+A custom DNS name for the workgroup's endpoint, fronted by an ACM
+certificate (one custom domain per workgroup -- AWS's own model).
+You own the CNAME record pointing the domain at the workgroup
+endpoint; AWS serves TLS for it from the certificate.
+
+### spec.customDomain.domainName
+
+`string` · required
+
+The custom domain name (e.g. "warehouse.example.com"), 1-253
+characters. Changing it replaces the association.
+
+- rule: {"required":true,"string":{"maxLen":"253"}}
+
+### spec.customDomain.certificateArn
+
+`string | valueFrom` · required
+
+The ACM certificate that serves TLS for the domain -- it must
+cover the domain name and live in the workgroup's region.
+Reference an AwsCertManagerCert cert_arn output or pass a literal
+certificate ARN.
+
+- references: AwsCertManagerCert (`status.outputs.cert_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsCertManagerCert, name: <that resource's name>, fieldPath: status.outputs.cert_arn}} -- a bare string does not parse
+
+### spec.endpointAccesses
+
+`[]AwsRedshiftServerlessWorkgroupEndpointAccess`
+
+VPC endpoints exposing this workgroup inside other subnets --
+same-account cross-VPC access without peering. Each entry keys one
+managed endpoint; its private address and port are exported per
+endpoint on the outputs contract.
+
+### spec.endpointAccesses[].endpointName
+
+`string` · required
+
+The endpoint's name: 1-30 characters, unique within the workgroup.
+Changing it replaces the endpoint.
+
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"30"}}
+
+### spec.endpointAccesses[].subnetIds
+
+`[]string | valueFrom`
+
+Subnets the endpoint's network interfaces land in -- typically the
+CONSUMING VPC's subnets. Empty reuses the workgroup's own
+subnet_ids (which must then be set -- CEL-enforced). Reference
+AwsSubnet subnet_id outputs or pass literal subnet IDs. Changing
+the list replaces the endpoint.
+
+- references: AwsSubnet (`status.outputs.subnet_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
+
+### spec.endpointAccesses[].vpcSecurityGroupIds
+
+`[]string | valueFrom`
+
+Security groups attached to the endpoint's network interfaces.
+Empty uses the VPC's default security group. Reference
+AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
+### spec.usageLimits
+
+`[]AwsRedshiftServerlessWorkgroupUsageLimit`
+
+Usage limits capping this workgroup's consumption -- RPU-hours of
+serverless compute or terabytes of cross-region datasharing
+transfer -- each with a breach action from logging to deactivation.
+
+### spec.usageLimits[].usageType
+
+`string` · required
+
+What the limit measures: "serverless-compute" (RPU-hours of
+compute) or "cross-region-datasharing" (terabytes transferred to
+consumers in other regions). Required.
+
+- rule: {"required":true,"string":{"in":["serverless-compute","cross-region-datasharing"]}}
+
+### spec.usageLimits[].amount
+
+`int64`
+
+The limit amount: RPU-hours for "serverless-compute", terabytes
+for "cross-region-datasharing". Must be positive.
+
+- rule: {"int64":{"gt":"0"}}
+
+### spec.usageLimits[].period
+
+`string`
+
+The period the amount applies to: "daily", "weekly", or "monthly".
+Empty keeps the AWS default (monthly). A weekly period begins on
+Sunday. Changing it replaces the limit.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["daily","weekly","monthly"]}}
+
+### spec.usageLimits[].breachAction
+
+`string`
+
+What Redshift Serverless does when the limit is breached: "log"
+writes an event to the system table, "emit-metric" additionally
+publishes a CloudWatch metric, "deactivate" turns queries off
+until the period resets. Empty keeps the AWS default (log). Note
+the serverless action vocabulary differs from provisioned
+clusters' ("deactivate", not "disable").
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["log","emit-metric","deactivate"]}}
+
 ## Validation Rules
 
 - `base_capacity_xor_price_performance`: base_capacity cannot be set when price_performance_target is enabled -- either fix the baseline yourself or let AWS pick it against the price-performance dial
@@ -238,6 +392,9 @@ Empty keeps the AWS default.
 - `max_capacity_covers_base`: max_capacity must be at least base_capacity -- a ceiling below the baseline leaves the workgroup nothing to run on
 - `subnets_span_three_azs`: provide at least three subnet_ids (in three distinct availability zones) -- Redshift Serverless refuses a workgroup with fewer; leave the list empty only to use the account's default VPC
 - `port_in_serverless_ranges`: port must be within 5431-5455 or 8191-8215 -- the only ranges Redshift Serverless accepts; 0 keeps the AWS default (5439)
+- `endpoint_access_names_unique`: endpoint access names must be unique
+- `endpoint_access_subnets_resolvable`: an endpoint access without its own subnet_ids requires the workgroup to declare subnet_ids to fall back on
+- `usage_limits_unique`: usage_limits must be unique per (usage_type, period) -- AWS allows one limit per usage type and period, and an empty period means monthly
 
 ## Outputs
 
@@ -250,6 +407,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedshiftServe
 | `status.outputs.arn` | `string` | The Amazon Resource Name of the workgroup, for IAM policies and usage limits. |
 | `status.outputs.endpoint_address` | `string` | The DNS hostname SQL clients connect to. |
 | `status.outputs.port` | `int32` | The port the workgroup accepts connections on. |
+| `status.outputs.endpoint_access_addresses` | `map<string, string>` | The private DNS addresses of the workgroup's VPC endpoints, keyed by endpoint name (spec.endpoint_accesses entries) -- what consumers inside the endpoint's VPC put in connection strings. |
+| `status.outputs.usage_limit_ids` | `map<string, string>` | The AWS-generated usage-limit IDs, keyed exactly as the module keys each limit: "<usage_type>/<period>", with an unset period rendered as "monthly" (the AWS default). These are the handles `aws redshift-serverless delete-usage-limit` and state import take; AWS generates them at creation time. |
+| `status.outputs.custom_domain_certificate_expiry_time` | `string` | When the custom domain's ACM certificate expires (RFC 3339) -- empty without a custom domain. Renewals through ACM update it in place. |
 
 ## References
 
@@ -260,6 +420,9 @@ Fields that can point at another resource's outputs:
 | `spec.namespaceName` | AwsRedshiftServerlessNamespace | `status.outputs.namespace_name` |
 | `spec.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.customDomain.certificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
+| `spec.endpointAccesses[].subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
+| `spec.endpointAccesses[].vpcSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
 ## See Also
 

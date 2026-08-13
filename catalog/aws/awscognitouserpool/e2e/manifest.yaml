@@ -26,5 +26,34 @@ spec:
     - name: verified_email
       priority: 1
   deletionProtection: false
+  userPoolTier: PLUS
+  userPoolAddOns:
+    advancedSecurityMode: ENFORCED
+  riskConfiguration:
+    accountTakeover:
+      highAction:
+        eventAction: BLOCK
+        notify: true
+      mediumAction:
+        eventAction: MFA_IF_CONFIGURED
+        notify: false
+      notifyConfiguration:
+        sourceArn:
+          value: arn:aws:ses:us-west-2:123456789012:identity/security@example.com
+        blockEmail:
+          subject: Sign-in attempt blocked
+          htmlBody: <p>We blocked a risky sign-in attempt on your account.</p>
+          textBody: We blocked a risky sign-in attempt on your account.
+    compromisedCredentials:
+      eventAction: BLOCK
+    riskException:
+      blockedIpRanges:
+        - 192.0.2.0/24
+  userGroups:
+    - name: admins
+      description: Administrators
+      precedence: 1
+      roleArn:
+        value: arn:aws:iam::123456789012:role/pool-admins
   domain:
     domain: test-auth-pool

@@ -1,0 +1,56 @@
+# Minimal AzureCognitiveAccount scenario: an OpenAI-kind S0 account
+# with a custom subdomain plus one responsible-AI blocklist and one
+# policy -- the flagship proof of the composed responsible-AI children
+# surfacing in the name-keyed rai_blocklist_ids / rai_policy_ids
+# outputs. The account provisions in one to three minutes; the S0
+# OpenAI account object carries no idle cost (billing follows
+# deployment usage) and only the fixture resource group rides the
+# prerequisite chain.
+#
+# The subdomain doubles as the account name -- globally unique by the
+# e2e naming prefix. Deletion is a SOFT delete: the module purges the
+# ghost on destroy (the provider default), and the orphan sweep's
+# recycle-bin check is `az cognitiveservices account list-deleted`.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccount
+metadata:
+  name: planton-oss-e2e-azurecognitiveaccount-smoke
+  id: planton-oss-e2e-azurecognitiveaccount-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecognitiveaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-cogacc-smoke
+  kind: OpenAI
+  skuName: S0
+  customSubdomainName: planton-oss-e2e-cogacc-smoke
+  raiBlocklists:
+    - name: e2e-blocked-terms
+      description: E2E fixture blocklist (items are data-plane; none are added).
+  raiPolicies:
+    - name: e2e-strict-chat
+      basePolicyName: Microsoft.Default
+      contentFilters:
+        - name: Hate
+          filterEnabled: true
+          blockEnabled: true
+          source: Prompt
+          severityThreshold: LOW
+        - name: Jailbreak
+          filterEnabled: true
+          blockEnabled: true
+          source: Prompt
+      mode: BLOCKING
+  tags:
+    e2e-suite: azure
+    purpose: smoke

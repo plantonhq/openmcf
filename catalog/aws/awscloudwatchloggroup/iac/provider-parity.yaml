@@ -1,0 +1,123 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudwatch_log_group:
+    exclusions:
+      # Identity is the kind's own contract -- the name is also how services
+      # (ECS awslogs, Route53 query logging, ...) address the group.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      - arg: name_prefix
+        reason: prefix-based auto-naming conflicts with the metadata.name identity contract -- the module always names the group deterministically
+      # IaC lifecycle knob, not cloud configuration: retaining the group on
+      # destroy contradicts honest lifecycle management, and the protection
+      # need is served by the modeled deletion_protection_enabled.
+      - arg: skip_destroy
+        reason: apply-behavior knob (retain-on-destroy), not cloud configuration -- deletion_protection_enabled covers the protection need with real AWS state
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # Data protection policy -- one group-scoped policy document; the spec
+  # models the JSON document as a Struct (one census leaf).
+  aws_cloudwatch_log_data_protection_policy:
+    mappings:
+      - spec: spec.data_protection_policy
+        arg: policy_document
+    exclusions:
+      - arg: log_group_name
+        reason: module-wired to the log group this kind creates -- never free-form user surface
+
+  # Field index policy -- one group-scoped policy document (Struct leaf).
+  aws_cloudwatch_log_index_policy:
+    mappings:
+      - spec: spec.field_index_policy
+        arg: policy_document
+    exclusions:
+      - arg: log_group_name
+        reason: module-wired to the log group this kind creates -- never free-form user surface
+
+  # Metric filters -- one aws_cloudwatch_log_metric_filter per
+  # spec.metric_filters entry. The spec names the transformation block for
+  # what it is and drops the provider's metric_ prefix stutter inside it.
+  aws_cloudwatch_log_metric_filter:
+    specRoot: spec.metric_filters
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The spec names the block for what it carries; leaves that keep their
+      # provider names (default_value, dimensions, unit) exact-match below
+      # the subtree.
+      - spec: spec.metric_filters.transformation
+        arg: metric_transformation
+      # The provider drops the metric_ prefix inside its block; the spec
+      # keeps it -- these leaves name a METRIC's identity, not the filter's.
+      - spec: spec.metric_filters.transformation.metric_name
+        arg: metric_transformation.name
+      - spec: spec.metric_filters.transformation.metric_namespace
+        arg: metric_transformation.namespace
+      - spec: spec.metric_filters.transformation.metric_value
+        arg: metric_transformation.value
+    exclusions:
+      - arg: log_group_name
+        reason: module-wired to the log group this kind creates -- never free-form user surface
+
+  # Subscription filters -- one aws_cloudwatch_log_subscription_filter per
+  # spec.subscription_filters entry; every leaf exact-matches.
+  aws_cloudwatch_log_subscription_filter:
+    specRoot: spec.subscription_filters
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: log_group_name
+        reason: module-wired to the log group this kind creates -- never free-form user surface
+
+  # Pre-created log streams -- one aws_cloudwatch_log_stream per
+  # spec.log_streams name (the stream's name is its entire configuration).
+  aws_cloudwatch_log_stream:
+    mappings:
+      - spec: spec.log_streams
+        arg: name
+    exclusions:
+      - arg: log_group_name
+        reason: module-wired to the log group this kind creates -- never free-form user surface
+
+  # Log transformer -- the group's ingest-time processor pipeline, one per
+  # group. The spec models the provider's transformer_config list as
+  # processors (each entry carries exactly one processor -- the AWS
+  # Processor union); entry lists are pluralized honestly.
+  aws_cloudwatch_log_transformer:
+    mappings:
+      - spec: spec.transformer.processors
+        arg: transformer_config
+      # The spec pluralizes the provider's repeated entry blocks.
+      - spec: spec.transformer.processors.add_keys.entries
+        arg: transformer_config.add_keys.entry
+      - spec: spec.transformer.processors.copy_value.entries
+        arg: transformer_config.copy_value.entry
+      - spec: spec.transformer.processors.move_keys.entries
+        arg: transformer_config.move_keys.entry
+      - spec: spec.transformer.processors.rename_keys.entries
+        arg: transformer_config.rename_keys.entry
+      - spec: spec.transformer.processors.split_string.entries
+        arg: transformer_config.split_string.entry
+      - spec: spec.transformer.processors.substitute_string.entries
+        arg: transformer_config.substitute_string.entry
+      - spec: spec.transformer.processors.type_converter.entries
+        arg: transformer_config.type_converter.entry
+    exclusions:
+      - arg: log_group_arn
+        reason: module-wired to the log group this kind creates -- never free-form user surface

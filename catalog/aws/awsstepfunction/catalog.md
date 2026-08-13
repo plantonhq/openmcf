@@ -104,6 +104,8 @@ These are the most important decisions when configuring Step Functions. Explore 
 
 **Versioning** -- Set `publish: true` to publish an immutable version on every create and configuration update (definition + role + logging/tracing/encryption frozen at publish time). The newest version's ARN is exported as `state_machine_version_arn` — pin EventBridge targets or aliases to it for safe rollouts and rollbacks. When false (the default), executions always run the latest saved revision.
 
+**Aliases** -- `aliases` entries (requires `publish: true`) each create a named alias routing 100% of traffic to the version this deployment published; consumers invoke the stable alias ARN (exported in `alias_arns` keyed by name) and follow deployments without repointing. Weighted canary routing between two specific versions is an imperative deployment-shift operation and is deliberately not modeled.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

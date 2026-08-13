@@ -150,6 +150,28 @@ func Resources(ctx *pulumi.Context, stackInput *awseksnodegroupv1alpha1.AwsEksNo
 		args.NodeRepairConfig = repairConfig
 	}
 
+	// A pool of pre-initialized nodes that cuts scale-out from minutes to
+	// seconds; updates in place. Stopped pools cost only EBS storage.
+	if spec.WarmPoolConfig != nil {
+		warmPoolConfig := &eks.NodeGroupWarmPoolConfigArgs{}
+		if spec.WarmPoolConfig.PoolState != "" {
+			warmPoolConfig.PoolState = pulumi.StringPtr(spec.WarmPoolConfig.PoolState)
+		}
+		if spec.WarmPoolConfig.MinSize > 0 {
+			warmPoolConfig.MinSize = pulumi.IntPtr(int(spec.WarmPoolConfig.MinSize))
+		}
+		// Explicit 0 is meaningful (no prepared capacity beyond min_size),
+		// so presence decides what is sent; unset keeps AWS's default
+		// ceiling (max_size minus desired capacity).
+		if spec.WarmPoolConfig.MaxGroupPreparedCapacity != nil {
+			warmPoolConfig.MaxGroupPreparedCapacity = pulumi.IntPtr(int(*spec.WarmPoolConfig.MaxGroupPreparedCapacity))
+		}
+		if spec.WarmPoolConfig.ReuseOnScaleIn {
+			warmPoolConfig.ReuseOnScaleIn = pulumi.BoolPtr(true)
+		}
+		args.WarmPoolConfig = warmPoolConfig
+	}
+
 	// Version changes roll the group node by node; release_version pins the
 	// exact AMI release within the minor.
 	if spec.Version != "" {

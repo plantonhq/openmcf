@@ -1,0 +1,18 @@
+# Offline-plan test manifest. Exercises the full surface: the link
+# with its metadata annotations (links carry no tags -- ARM gives them
+# a metadata map instead).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverVirtualNetworkLink
+metadata:
+  name: test-resolver-vnet-link
+  org: test-org
+  env: dev
+spec:
+  name: spoke-payments
+  dnsForwardingRulesetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/dnsForwardingRulesets/platform-ruleset
+  virtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/spoke-rg/providers/Microsoft.Network/virtualNetworks/spoke-vnet
+  metadata:
+    owner: payments-team
+    env: prod

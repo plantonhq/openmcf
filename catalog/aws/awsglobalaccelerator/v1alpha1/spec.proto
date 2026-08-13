@@ -138,7 +138,8 @@ message AwsGlobalAcceleratorFlowLogs {
 
   // S3 key prefix for flow logs. Useful for organizing logs when multiple
   // accelerators share a bucket. Example: "ga-logs/prod-accelerator/".
-  string s3_prefix = 3;
+  // Maximum 255 characters (the provider's bound).
+  string s3_prefix = 3 [(buf.validate.field).string.max_len = 255];
 
   // s3_bucket must be supplied when flow logs are enabled.
   option (buf.validate.message).cel = {
@@ -284,8 +285,12 @@ message AwsGlobalAcceleratorEndpointGroup {
 
   // AWS region for this endpoint group (e.g., "us-east-1", "eu-west-1").
   // When omitted, defaults to the spec's region. ForceNew — changing
-  // the region requires replacing the endpoint group.
-  string endpoint_group_region = 2;
+  // the region requires replacing the endpoint group. The format is checked
+  // here; region-name membership is validated by AWS (the region list grows).
+  string endpoint_group_region = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[a-z]{2}(-[a-z]+)+-[0-9]$"
+  ];
 
   // ---------------------------------------------------------------------------
   // Health check configuration
@@ -421,8 +426,10 @@ message AwsGlobalAcceleratorEndpoint {
   // type varies.
   dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint_id = 1 [(buf.validate.field).required = true];
 
-  // Relative weight for this endpoint. Range: 0-255. When omitted, AWS
-  // assigns the default weight of 128. Higher weight means more traffic.
+  // Relative weight for this endpoint. Range: 0-255. When omitted, both
+  // modules materialize AWS's documented default of 128 — the provider has no
+  // default of its own and would otherwise transmit 0, silently draining the
+  // endpoint. Higher weight means more traffic.
   //
   // Set to 0 explicitly to temporarily stop routing traffic to this endpoint
   // without removing it — 0 is a real value here, distinct from omitting the
@@ -449,8 +456,8 @@ message AwsGlobalAcceleratorEndpoint {
   // same-account endpoints — the common case.
   string attachment_arn = 4 [(buf.validate.field).cel = {
     id: "attachment_arn_format"
-    message: "attachment_arn must be a Global Accelerator attachment ARN (arn:...)"
-    expression: "this == '' || this.startsWith('arn:')"
+    message: "attachment_arn must be a Global Accelerator attachment ARN (arn:<partition>:globalaccelerator::<account>:attachment/<id>)"
+    expression: "this == '' || this.matches('^arn:aws[a-zA-Z-]*:globalaccelerator::[0-9]{12}:attachment/.+$')"
   }];
 }
 

@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureprivatednsresolver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzurePrivateDnsResolverSpec** defines an Azure DNS Private Resolver
+// -- the managed DNS proxy that makes names resolve ACROSS the
+// hybrid boundary without anyone running DNS server VMs. It anchors to
+// one virtual network and exposes up to two kinds of endpoints:
+//
+// - **Inbound endpoints** give on-premises (or other-cloud) DNS
+//   forwarders a private IP inside the network to send queries TO --
+//   Azure answers them with the network's private DNS view (private
+//   zones, private endpoints, VM records).
+// - **Outbound endpoints** carry queries OUT of Azure toward
+//   on-premises DNS servers, steered by the forwarding rules of the
+//   DNS forwarding rulesets attached to them
+//   (AzurePrivateDnsResolverForwardingRuleset).
+//
+// **Every endpoint needs its own dedicated subnet**, delegated to
+// "Microsoft.Network/dnsResolvers", sized /28 to /24, hosting nothing
+// else -- one endpoint per subnet, validated by ARM at deploy time
+// (the delegation lives on the referenced subnet, so it cannot be
+// checked here).
+//
+// **Service limits worth planning around** (enforced by Azure, not
+// mirrored as validation because Microsoft adjusts them over time):
+// a virtual network hosts AT MOST ONE resolver; a resolver carries up
+// to 5 inbound and 5 outbound endpoints; each endpoint serves ~10,000
+// queries/second. Endpoints bill hourly from the moment they
+// provision; the resolver object itself is free.
+//
+// Everything except tags is FIXED AT CREATION -- the resolver and its
+// endpoints have no ARM update surface beyond tags.
+message AzurePrivateDnsResolverSpec {
+  // The Azure region the resolver lives in, e.g. "eastus". MUST match
+  // the region of the virtual network it anchors to (ARM rejects a
+  // mismatch at deploy time). Composed endpoints deploy into the same
+  // region. Changing the region replaces the resolver.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the resolver is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output. Changing it replaces the
+  // resolver.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The resolver's name, unique within the resource group. Changing
+  // the name replaces the resolver.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The virtual network the resolver anchors to -- references an
+  // AzureVirtualNetwork's ARM id. All endpoint subnets must belong to
+  // THIS network, and Azure allows only ONE resolver per virtual
+  // network (a second create is rejected at deploy time). Changing
+  // the network replaces the resolver.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef virtual_network_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureVirtualNetwork,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.virtual_network_id"
+  ];
+
+  // Inbound endpoints -- the private IPs on-premises DNS forwarders
+  // send queries TO. Most deployments carry exactly one; Azure allows
+  // up to 5 per resolver (each on its own delegated subnet). The
+  // FIRST endpoint declared here is the resolver's primary: its
+  // resolved IP surfaces as the singular inbound_endpoint_ip output.
+  // Endpoints are FIXED AT CREATION (adding or removing entries
+  // creates or destroys endpoints; editing one replaces it).
+  repeated AzurePrivateDnsResolverInboundEndpoint inbound_endpoints = 5;
+
+  // Outbound endpoints -- the egress points queries leave Azure
+  // through, steered by attached forwarding rulesets. Most
+  // deployments carry exactly one; Azure allows up to 5 per resolver
+  // (each on its own delegated subnet). The FIRST endpoint declared
+  // here is the resolver's primary: its ARM id surfaces as the
+  // singular outbound_endpoint_id output that
+  // AzurePrivateDnsResolverForwardingRuleset references by default.
+  repeated AzurePrivateDnsResolverOutboundEndpoint outbound_endpoints = 6;
+
+  // Free-form tags applied to the resolver AND its endpoints, merged
+  // over the Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. The only surface
+  // updatable in place.
+  map<string, string> tags = 7;
+
+  option (buf.validate.message).cel = {
+    id: "inbound_endpoint_names_unique"
+    message: "Inbound endpoint names must be unique within the resolver"
+    expression: "this.inbound_endpoints.all(e, this.inbound_endpoints.filter(o, o.name == e.name).size() == 1)"
+  };
+  option (buf.validate.message).cel = {
+    id: "outbound_endpoint_names_unique"
+    message: "Outbound endpoint names must be unique within the resolver"
+    expression: "this.outbound_endpoints.all(e, this.outbound_endpoints.filter(o, o.name == e.name).size() == 1)"
+  };
+}
+
+// An inbound endpoint: a private IP inside the resolver's network
+// that answers DNS queries sent to it -- what on-premises forwarders
+// and other clouds point at. FIXED AT CREATION.
+message AzurePrivateDnsResolverInboundEndpoint {
+  // The endpoint's name, unique on the resolver. Its ARM id composes
+  // as {resolver_id}/inboundEndpoints/{name}.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The dedicated subnet the endpoint occupies -- references an
+  // AzureSubnet's ARM id. The subnet must belong to the resolver's
+  // virtual network, be delegated to "Microsoft.Network/dnsResolvers",
+  // be sized /28 to /24, and host NOTHING else (one endpoint per
+  // subnet; ARM validates all of this at deploy time because the
+  // delegation lives on the referenced subnet).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // How the endpoint's private IP is assigned. Unspecified applies
+  // DYNAMIC (Azure picks a free address from the subnet), the
+  // provider's default. STATIC pins the address you supply in
+  // private_ip_address -- pick static when on-premises forwarder
+  // configs must never change.
+  AzurePrivateDnsResolverIpAllocationMethod private_ip_allocation_method = 3 [(buf.validate.field).enum.defined_only = true];
+
+  // The static private IP to pin, from the endpoint subnet's range.
+  // REQUIRED with STATIC allocation; FORBIDDEN with DYNAMIC (the
+  // provider rejects the combination before touching ARM -- mirrored
+  // here so the failure is instant). The effective address -- static
+  // or dynamically assigned -- surfaces in the outputs either way.
+  string private_ip_address = 4;
+
+  option (buf.validate.message).cel = {
+    id: "static_requires_address"
+    message: "STATIC allocation requires private_ip_address (an address from the endpoint subnet's range)"
+    expression: "this.private_ip_allocation_method != 2 || this.private_ip_address != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "dynamic_forbids_address"
+    message: "private_ip_address can only be set with STATIC allocation -- DYNAMIC lets Azure pick the address"
+    expression: "this.private_ip_allocation_method == 2 || this.private_ip_address == ''"
+  };
+}
+
+// An outbound endpoint: the egress point DNS queries leave Azure
+// through on their way to on-premises (or other custom) DNS servers.
+// Which queries leave, and where they go, is decided by the
+// forwarding rulesets attached to this endpoint -- the endpoint
+// itself is pure plumbing. FIXED AT CREATION.
+message AzurePrivateDnsResolverOutboundEndpoint {
+  // The endpoint's name, unique on the resolver. Its ARM id composes
+  // as {resolver_id}/outboundEndpoints/{name} -- the value forwarding
+  // rulesets bind.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The dedicated subnet the endpoint occupies -- references an
+  // AzureSubnet's ARM id. Same contract as the inbound endpoint's
+  // subnet: the resolver's network, delegated to
+  // "Microsoft.Network/dnsResolvers", /28 to /24, nothing else in it,
+  // one endpoint per subnet (ARM validates at deploy time).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+}
+
+// How an inbound endpoint's private IP is assigned. Values mirror
+// ARM's IpAllocationMethod; unspecified applies DYNAMIC, the
+// provider's default.
+enum AzurePrivateDnsResolverIpAllocationMethod {
+  // Not specified -- Azure assigns a free address from the subnet
+  // (DYNAMIC), the provider's default.
+  azure_private_dns_resolver_ip_allocation_method_unspecified = 0;
+
+  // Azure picks a free address from the endpoint subnet's range.
+  DYNAMIC = 1;
+
+  // Pin the address supplied in private_ip_address -- forwarder
+  // configurations pointing at the endpoint never need to change.
+  STATIC = 2;
+}

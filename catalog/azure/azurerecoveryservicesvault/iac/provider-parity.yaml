@@ -1,0 +1,31 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (nested block arguments derive as
+# spec.<block>.<arg>: the identity, encryption, and monitoring blocks all
+# match that way). Every exclusion carries its reason: omission is a
+# decision, never an accident.
+
+resources:
+  azurerm_recovery_services_vault:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (an Azure
+      # region, a resource group), where the provider inherits ARM's
+      # terser property names.
+      - spec: spec.region
+        arg: location
+      - spec: spec.resource_group
+        arg: resource_group_name
+
+  azurerm_recovery_services_vault_resource_guard_association:
+    # Composed into the vault: created only when spec.resource_guard_id
+    # is set (Multi-User Authorization -- one guard per vault; ARM pins
+    # the association name to "VaultProxy").
+    mappings:
+      - spec: spec.resource_guard_id
+        arg: resource_guard_id
+    exclusions:
+      - arg: vault_id
+        reason: wired by the module to the vault it creates -- never user surface

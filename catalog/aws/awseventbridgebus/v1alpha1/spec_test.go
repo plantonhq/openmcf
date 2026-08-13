@@ -188,6 +188,70 @@ var _ = ginkgo.Describe("AwsEventBridgeBusSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
+	// Archives
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an archive with all fields set", func() {
+		pattern, err := structpb.NewStruct(map[string]interface{}{
+			"source": []interface{}{"orders.service"},
+		})
+		gomega.Expect(err).To(gomega.BeNil())
+		spec.Archives = []*AwsEventBridgeBusArchive{
+			{
+				Name:             "orders-archive",
+				Description:      "Replay source for the orders domain",
+				RetentionDays:    30,
+				EventPattern:     pattern,
+				KmsKeyIdentifier: strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123"),
+			},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a minimal archive (name only — archive everything, retain indefinitely)", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{{Name: "full-history"}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts multiple archives with distinct names", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{
+			{Name: "full-history"},
+			{Name: "orders-only", RetentionDays: 7},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when two archives share a name", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{
+			{Name: "dup"},
+			{Name: "dup"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when an archive name is missing", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{{RetentionDays: 7}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when an archive name exceeds 48 characters", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{
+			{Name: "a123456789012345678901234567890123456789012345678"}, // 49 chars
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when an archive name carries an illegal character", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{{Name: "orders/archive"}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when retention_days is negative", func() {
+		spec.Archives = []*AwsEventBridgeBusArchive{{Name: "neg", RetentionDays: -1}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
 	// Resource policy
 	// -------------------------------------------------------------------------
 

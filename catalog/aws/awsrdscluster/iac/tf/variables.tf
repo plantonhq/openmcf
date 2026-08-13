@@ -36,6 +36,13 @@ variable "spec" {
       performance_insights_enabled = optional(bool)
       monitoring_interval = optional(number, 0)
       ca_cert_identifier = optional(string, "")
+      copy_tags_to_snapshot = optional(bool, false)
+      performance_insights_kms_key_id = optional(string, "")
+      performance_insights_retention_period = optional(number, 0)
+      preferred_backup_window = optional(string, "")
+      preferred_maintenance_window = optional(string, "")
+      monitoring_role_arn = optional(string, "")
+      apply_immediately = optional(bool, false)
     })), [])
     serverless_v2_scaling = optional(object({
       min_capacity = optional(number, 0)
@@ -71,7 +78,10 @@ variable "spec" {
     deletion_protection = optional(bool, false)
     backtrack_window_seconds = optional(number, 0)
     iam_database_authentication_enabled = optional(bool, false)
-    iam_roles = optional(list(string), [])
+    iam_roles = optional(list(object({
+      role = string
+      feature_name = optional(string, "")
+    })), [])
     enable_http_endpoint = optional(bool, false)
     enabled_cloudwatch_logs_exports = optional(list(string), [])
     performance_insights_enabled = optional(bool, false)
@@ -103,5 +113,26 @@ variable "spec" {
     ca_certificate_identifier = optional(string, "")
     apply_immediately = optional(bool, false)
     allow_major_version_upgrade = optional(bool, false)
+    domain = optional(string, "")
+    domain_iam_role_name = optional(string, "")
+    auto_minor_version_upgrade = optional(bool)
+    s3_import = optional(object({
+      bucket_name = string
+      bucket_prefix = optional(string, "")
+      ingestion_role = string
+      source_engine = string
+      source_engine_version = string
+    }))
+    custom_endpoints = optional(list(object({
+      name = string
+      type = string
+      static_members = optional(list(string), [])
+      excluded_members = optional(list(string), [])
+    })), [])
+    activity_stream = optional(object({
+      mode = string
+      kms_key_id = string
+      engine_native_audit_fields_included = optional(bool, false)
+    }))
   })
 }

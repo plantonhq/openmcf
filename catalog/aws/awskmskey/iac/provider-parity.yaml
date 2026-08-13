@@ -1,0 +1,63 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_kms_key:
+    mappings:
+      # The provider keeps the deprecated-era argument name; the spec uses
+      # AWS's current KeySpec vocabulary.
+      - spec: spec.key_spec
+        arg: customer_master_key_spec
+      # The spec drops the provider's _in_ preposition.
+      - spec: spec.deletion_window_days
+        arg: deletion_window_in_days
+      # The spec models the OFF state (disabled) so the zero value is AWS's
+      # enabled default; the module renders is_enabled = !disabled.
+      - spec: spec.disabled
+        arg: is_enabled
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_kms_alias:
+    # One alias resource per spec.aliases entry so list edits add/remove in
+    # place.
+    specRoot: spec.aliases
+    mappings:
+      - spec: spec.aliases
+        arg: name
+    exclusions:
+      - arg: name_prefix
+        reason: covered alternative -- spec.aliases entries are explicit alias names; provider-generated name suffixes have no place in a declarative catalog
+      - arg: target_key_id
+        reason: wired by the module to the key it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the alias follows the key's spec.region through the provider connection
+
+  aws_kms_grant:
+    # One grant resource per spec.grants entry: scoped, revocable key
+    # permissions without key-policy edits.
+    specRoot: spec.grants
+    mappings:
+      # The provider nests both encryption-context constraints under a
+      # single-use constraints block; the spec flattens them.
+      - spec: spec.grants.encryption_context_equals
+        arg: constraints.encryption_context_equals
+      - spec: spec.grants.encryption_context_subset
+        arg: constraints.encryption_context_subset
+    exclusions:
+      - arg: key_id
+        reason: wired by the module to the key it creates -- never user surface
+      - arg: grant_creation_tokens
+        reason: Terraform apply-behavior knob (idempotency tokens for retried CreateGrant calls) -- engine operation, not grant configuration
+      - arg: region
+        reason: wired by the module -- grants follow the key's spec.region through the provider connection
+
+specExclusions: []

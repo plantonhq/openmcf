@@ -19,6 +19,8 @@ This preset creates an ECR repository where release tags are frozen forever whil
 
 ## Placeholders to Replace
 
+The example `repositoryName` (`team-blue/checkout-service`) is a realistic
+registry path — replace it with your own naming convention.
+
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<repository-name>` | ECR repository name (e.g., `myorg/api-service` or `team-blue/frontend`) | Your team's container image naming convention |

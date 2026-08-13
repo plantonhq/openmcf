@@ -1,0 +1,32 @@
+# Regional AwsNatGateway scenario: one AWS-managed gateway spanning every AZ
+# of the prerequisite VPC (availability_mode: regional + vpcId), in AUTO mode
+# -- no availability_zone_addresses, so AWS picks the zones and allocates and
+# releases the Elastic IPs itself. The AwsInternetGateway prerequisite attaches
+# the IGW a public gateway needs; no subnet or explicit EIP fixtures are
+# involved (those are zonal-mode inputs, covered by the minimal scenario).
+# Creating a regional gateway additionally exercises the
+# ec2:DescribeAvailabilityZones permission on the harness role.
+# Full metadata is supplied for tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsNatGateway
+metadata:
+  name: planton-oss-e2e-awsnatgateway-regional
+  id: planton-oss-e2e-awsnatgateway-regional
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsnatgateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  connectivityType: public
+  availabilityMode: regional
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id

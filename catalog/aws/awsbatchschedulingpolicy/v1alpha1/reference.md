@@ -33,9 +33,6 @@ metadata:
   env: dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsBatchSchedulingPolicy.test-batch-fair-share
 spec:
   region: us-west-2
   computeReservation: 10

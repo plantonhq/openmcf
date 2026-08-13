@@ -66,6 +66,26 @@ func Resources(ctx *pulumi.Context, stackInput *awss3bucketv1alpha1.AwsS3BucketS
 		return errors.Wrap(err, "intelligent tiering")
 	}
 
+	if err := abac(ctx, locals, provider, createdBucket); err != nil {
+		return errors.Wrap(err, "abac")
+	}
+
+	if err := analyticsConfigurations(ctx, locals, provider, createdBucket); err != nil {
+		return errors.Wrap(err, "analytics configurations")
+	}
+
+	if err := inventoryConfigurations(ctx, locals, provider, createdBucket); err != nil {
+		return errors.Wrap(err, "inventory configurations")
+	}
+
+	if err := metricsConfigurations(ctx, locals, provider, createdBucket); err != nil {
+		return errors.Wrap(err, "metrics configurations")
+	}
+
+	if err := metadataConfiguration(ctx, locals, provider, createdBucket); err != nil {
+		return errors.Wrap(err, "metadata configuration")
+	}
+
 	// Export outputs matching AwsS3BucketStackOutputs. Website outputs are
 	// exported as empty strings when hosting is not configured so the
 	// stack-output contract stays shape-stable across both engines.

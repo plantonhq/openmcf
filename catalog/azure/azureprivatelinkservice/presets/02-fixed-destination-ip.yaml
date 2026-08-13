@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateLinkService
+metadata:
+  name: my-private-link-service
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-service
+  natIpConfigurations:
+    - name: nat-1
+      subnetId:
+        value: "<your-pls-subnet-arm-id>" # a subnet with privateLinkServiceNetworkPoliciesEnabled: false
+      primary: true
+  destinationIpAddress: "<your-service-private-ip>" # NAT straight to one fixed IP -- no load balancer

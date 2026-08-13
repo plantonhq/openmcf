@@ -40,8 +40,9 @@ func Resources(ctx *pulumi.Context, stackInput *awsecsclusterv1alpha1.AwsEcsClus
 	ctx.Export(OpClusterArn, createdCluster.Arn)
 
 	// The full capacity vocabulary services can use in a strategy: the
-	// associated built-ins plus every folded EC2 provider name, in spec
-	// order (matching the Terraform module element-for-element).
+	// associated built-ins plus every folded provider name (EC2 then
+	// managed-instances), in spec order (matching the Terraform module
+	// element-for-element).
 	spec := locals.AwsEcsCluster.Spec
 	capacityProviderNames := pulumi.StringArray{}
 	for _, builtin := range spec.CapacityProviders {

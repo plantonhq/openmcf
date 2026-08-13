@@ -73,14 +73,16 @@ type AwsBatchComputeEnvironmentSpec struct {
 	// Attach this compute environment to an EKS cluster so Batch schedules
 	// jobs as Kubernetes pods instead of ECS tasks. CREATE-TIME ONLY: both
 	// fields replace the environment when changed. The referenced cluster must
-	// exist before the environment is created, and Batch-on-EKS job workloads
-	// are registered outside this graph (the AwsBatchJobDefinition kind models
-	// ECS-based container jobs).
+	// exist before the environment is created. The workload half of this
+	// pairing is an AwsBatchJobDefinition with its eks arm set.
 	EksConfiguration *AwsBatchEksConfiguration `protobuf:"bytes,5,opt,name=eks_configuration,json=eksConfiguration,proto3" json:"eks_configuration,omitempty"`
 	// How infrastructure updates treat RUNNING jobs when Batch replaces
 	// instances during an in-place update (EC2/SPOT environments). When unset,
 	// Batch waits for jobs to finish on the old instances (up to 30 minutes)
-	// before terminating them.
+	// before terminating them. ONCE SET, removing this block later does NOT
+	// reset the environment's policy -- AWS keeps the last-applied values (the
+	// provider only sends the policy when the block is present); to change
+	// course, keep the block and set its fields explicitly.
 	UpdatePolicy  *AwsBatchUpdatePolicy `protobuf:"bytes,6,opt,name=update_policy,json=updatePolicy,proto3" json:"update_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -194,7 +196,10 @@ type AwsBatchComputeResources struct {
 	// The initial vCPU target at environment creation. EC2/SPOT only. AWS
 	// Batch continuously adjusts the actual desired capacity between
 	// min_vcpus and max_vcpus based on queue demand, so treat this as a
-	// starting point, not a setpoint.
+	// starting point, not a setpoint. An explicit 0 is indistinguishable
+	// from unset all the way down (the provider cannot send a zero here at
+	// create or update) -- to keep an idle environment at zero instances,
+	// set min_vcpus to 0 and let Batch scale in.
 	DesiredVcpus int32 `protobuf:"varint,4,opt,name=desired_vcpus,json=desiredVcpus,proto3" json:"desired_vcpus,omitempty"`
 	// The VPC subnets where compute is launched. Spread across multiple
 	// Availability Zones for capacity diversity -- especially for SPOT, where
@@ -624,7 +629,8 @@ type AwsBatchUpdatePolicy struct {
 	TerminateJobsOnUpdate bool `protobuf:"varint,1,opt,name=terminate_jobs_on_update,json=terminateJobsOnUpdate,proto3" json:"terminate_jobs_on_update,omitempty"`
 	// How long (in minutes, 1-360) Batch waits for running jobs to finish on
 	// old instances before terminating them anyway. Only meaningful when
-	// terminate_jobs_on_update is false. AWS default: 30.
+	// terminate_jobs_on_update is false. AWS's default when the whole policy
+	// is absent: 30.
 	JobExecutionTimeoutMinutes *int32 `protobuf:"varint,2,opt,name=job_execution_timeout_minutes,json=jobExecutionTimeoutMinutes,proto3,oneof" json:"job_execution_timeout_minutes,omitempty"`
 	unknownFields              protoimpl.UnknownFields
 	sizeCache                  protoimpl.SizeCache
@@ -729,11 +735,12 @@ const file_catalog_aws_awsbatchcomputeenvironment_v1alpha1_spec_proto_rawDesc = 
 	"\x18image_kubernetes_version\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x16imageKubernetesVersion\"\xdd\x01\n" +
 	"\x18AwsBatchEksConfiguration\x12\x85\x01\n" +
 	"\x0feks_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\a\x92\xd4a\x1astatus.outputs.cluster_arnR\reksClusterArn\x129\n" +
-	"\x14kubernetes_namespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13kubernetesNamespace\"\xc5\x01\n" +
+	"\x14kubernetes_namespace\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13kubernetesNamespace\"\xba\x03\n" +
 	"\x14AwsBatchUpdatePolicy\x127\n" +
 	"\x18terminate_jobs_on_update\x18\x01 \x01(\bR\x15terminateJobsOnUpdate\x12R\n" +
 	"\x1djob_execution_timeout_minutes\x18\x02 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\xe8\x02(\x01H\x00R\x1ajobExecutionTimeoutMinutes\x88\x01\x01B \n" +
+	"\xbaH\a\x1a\x05\x18\xe8\x02(\x01H\x00R\x1ajobExecutionTimeoutMinutes\x88\x01\x01:\xf2\x01\xbaH\xee\x01\x1a\xeb\x01\n" +
+	"\x1eupdate_policy_timeout_required\x12\x9f\x01set job_execution_timeout_minutes whenever update_policy is present (AWS's 30-minute default only applies when the whole policy is absent; use 30 to mirror it)\x1a'has(this.job_execution_timeout_minutes)B \n" +
 	"\x1e_job_execution_timeout_minutesB\xa6\x03\n" +
 	"7com.dev.planton.aws.awsbatchcomputeenvironment.v1alpha1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/catalog/aws/awsbatchcomputeenvironment/v1alpha1;awsbatchcomputeenvironmentv1alpha1\xa2\x02\x04DPAA\xaa\x023Dev.Planton.Aws.Awsbatchcomputeenvironment.V1alpha1\xca\x023Dev\\Planton\\Aws\\Awsbatchcomputeenvironment\\V1alpha1\xe2\x02?Dev\\Planton\\Aws\\Awsbatchcomputeenvironment\\V1alpha1\\GPBMetadata\xea\x027Dev::Planton::Aws::Awsbatchcomputeenvironment::V1alpha1b\x06proto3"
 

@@ -21,4 +21,8 @@ spec:
       ipv4Cidrs:
         - 0.0.0.0/0
       description: Allow HTTPS outbound
+  # Share the same group into another VPC (same account and region) --
+  # resources there attach it instead of maintaining a per-VPC copy.
+  additionalVpcIds:
+    - value: vpc-0f9e8d7c6b5a43210
 

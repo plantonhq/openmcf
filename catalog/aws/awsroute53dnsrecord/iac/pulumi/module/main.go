@@ -62,7 +62,9 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53dnsrecordv1alpha1.AwsR
 			},
 		}
 	} else {
-		recordArgs.Ttl = pulumi.IntPtr(int(spec.Ttl))
+		// The CEL contract guarantees standard records carry a TTL; an
+		// explicit 0 ("never cache") passes through faithfully.
+		recordArgs.Ttl = pulumi.IntPtr(int(spec.GetTtl()))
 		recordArgs.Records = pulumi.ToStringArray(spec.Values)
 	}
 

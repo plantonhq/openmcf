@@ -7,9 +7,23 @@ metadata:
   id: test-bus-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsEventBridgeBus.test-bus
 spec:
   region: us-east-1
   description: Test event bus for local development
+  # Event archives recorded from this bus -- replay-able event history
+  # (EventBridge StartReplay). An empty archive costs nothing; storage bills
+  # per GB of archived events.
+  archives:
+    # Pattern-scoped archive with every knob: retention window, event
+    # pattern, and a customer-managed key for the archived events at rest.
+    - name: orders-archive
+      description: Replay source for the orders domain
+      retentionDays: 30
+      eventPattern:
+        source:
+          - orders.service
+      kmsKeyIdentifier:
+        value: arn:aws:kms:us-east-1:123456789012:key/00000000-0000-0000-0000-000000000000
+    # Minimal archive: every event on the bus, retained indefinitely,
+    # AWS-owned key.
+    - name: full-history

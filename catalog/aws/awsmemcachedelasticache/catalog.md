@@ -97,7 +97,7 @@ These are the most important decisions when configuring an ElastiCache Memcached
 
 **Node type and scaling** -- Set `nodeType` to determine per-node CPU, memory, and network capacity. Memcached scales horizontally by adding nodes via `numCacheNodes` (1-40). Changing `nodeType` forces cluster recreation and loses all cached data -- Memcached does not support vertical scaling in-place. Size the initial node type to accommodate growth.
 
-**AZ distribution** -- Set `azMode` to `"cross-az"` (requires `numCacheNodes > 1`) to distribute nodes across multiple Availability Zones for resilience. Use `"single-az"` for development or when AZ-level resilience is not required. Optionally specify `preferredAvailabilityZones` to control exact node placement.
+**AZ distribution** -- Set `azMode` to `"cross-az"` (requires `numCacheNodes > 1`) to distribute nodes across multiple Availability Zones for resilience. Use `"single-az"` for development or when AZ-level resilience is not required. For exact placement pick ONE control: `availabilityZone` pins every node to a single zone (AZ-local latency for a client fleet that lives in one zone; ForceNew), while `preferredAvailabilityZones` places nodes per-AZ in order. The two are mutually exclusive, and a single-AZ pin cannot combine with `cross-az` mode.
 
 **Encryption** -- Enable `transitEncryptionEnabled` for TLS on all client connections. Memcached does not support encryption at rest. There is no built-in authentication -- security relies entirely on VPC network isolation via security groups and private subnets.
 

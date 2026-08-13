@@ -143,7 +143,9 @@ type AwsDocumentDbSpec struct {
 	// refuses to delete without knowing the snapshot name.
 	SkipFinalSnapshot bool `protobuf:"varint,20,opt,name=skip_final_snapshot,json=skipFinalSnapshot,proto3" json:"skip_final_snapshot,omitempty"`
 	// The name for the final snapshot taken on deletion. Required when
-	// skip_final_snapshot is false.
+	// skip_final_snapshot is false. Must start with a letter, contain
+	// only letters, numbers, and hyphens, with no consecutive or
+	// trailing hyphens -- AWS's snapshot-identifier rules.
 	FinalSnapshotIdentifier string `protobuf:"bytes,21,opt,name=final_snapshot_identifier,json=finalSnapshotIdentifier,proto3" json:"final_snapshot_identifier,omitempty"`
 	// Refuse deletion of the cluster while enabled. Turn this on for
 	// anything holding data you cannot recreate -- deletion then requires
@@ -474,8 +476,18 @@ type AwsDocumentDbInstance struct {
 	CaCertIdentifier string `protobuf:"bytes,9,opt,name=ca_cert_identifier,json=caCertIdentifier,proto3" json:"ca_cert_identifier,omitempty"`
 	// Copy this instance's tags onto its snapshots.
 	CopyTagsToSnapshot bool `protobuf:"varint,10,opt,name=copy_tags_to_snapshot,json=copyTagsToSnapshot,proto3" json:"copy_tags_to_snapshot,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Restart the instance when its CA certificate rotates. Unset keeps
+	// the AWS default (true -- rotation restarts the instance so the new
+	// certificate is served immediately); false defers the restart to
+	// the next maintenance action, for workloads that cannot absorb an
+	// unscheduled restart. Tri-state on purpose: only an explicit value
+	// is sent to AWS.
+	CertificateRotationRestart *bool `protobuf:"varint,11,opt,name=certificate_rotation_restart,json=certificateRotationRestart,proto3,oneof" json:"certificate_rotation_restart,omitempty"`
+	// Apply modifications to THIS instance immediately instead of
+	// waiting for its next maintenance window. AWS defaults to deferred.
+	ApplyImmediately bool `protobuf:"varint,12,opt,name=apply_immediately,json=applyImmediately,proto3" json:"apply_immediately,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsDocumentDbInstance) Reset() {
@@ -574,6 +586,20 @@ func (x *AwsDocumentDbInstance) GetCaCertIdentifier() string {
 func (x *AwsDocumentDbInstance) GetCopyTagsToSnapshot() bool {
 	if x != nil {
 		return x.CopyTagsToSnapshot
+	}
+	return false
+}
+
+func (x *AwsDocumentDbInstance) GetCertificateRotationRestart() bool {
+	if x != nil && x.CertificateRotationRestart != nil {
+		return *x.CertificateRotationRestart
+	}
+	return false
+}
+
+func (x *AwsDocumentDbInstance) GetApplyImmediately() bool {
+	if x != nil {
+		return x.ApplyImmediately
 	}
 	return false
 }
@@ -790,7 +816,7 @@ var File_catalog_aws_awsdocumentdb_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_aws_awsdocumentdb_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsdocumentdb/v1alpha1/spec.proto\x12&dev.planton.aws.awsdocumentdb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe5*\n" +
+	"-catalog/aws/awsdocumentdb/v1alpha1/spec.proto\x12&dev.planton.aws.awsdocumentdb.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x97+\n" +
 	"\x11AwsDocumentDbSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
@@ -814,8 +840,8 @@ const file_catalog_aws_awsdocumentdb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17backup_retention_period\x18\x11 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x15backupRetentionPeriod\x12\x7f\n" +
 	"\x17preferred_backup_window\x18\x12 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x15preferredBackupWindow\x12\xc7\x01\n" +
 	"\x1cpreferred_maintenance_window\x18\x13 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12.\n" +
-	"\x13skip_final_snapshot\x18\x14 \x01(\bR\x11skipFinalSnapshot\x12:\n" +
-	"\x19final_snapshot_identifier\x18\x15 \x01(\tR\x17finalSnapshotIdentifier\x12/\n" +
+	"\x13skip_final_snapshot\x18\x14 \x01(\bR\x11skipFinalSnapshot\x12l\n" +
+	"\x19final_snapshot_identifier\x18\x15 \x01(\tB0\xbaH-\xd8\x01\x01r(2&^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$R\x17finalSnapshotIdentifier\x12/\n" +
 	"\x13deletion_protection\x18\x16 \x01(\bR\x12deletionProtection\x12O\n" +
 	"\x1fenabled_cloudwatch_logs_exports\x18\x17 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R\x1cenabledCloudwatchLogsExports\x12/\n" +
 	"\x13snapshot_identifier\x18\x18 \x01(\tR\x12snapshotIdentifier\x12\x81\x01\n" +
@@ -840,7 +866,7 @@ const file_catalog_aws_awsdocumentdb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1edb_serverless_requires_scaling\x12\x9a\x01serverless_v2_scaling is required when any instance uses class 'db.serverless' -- AWS rejects a serverless instance without capacity bounds on the cluster\x1aa!this.instances.exists(i, i.instance_class == 'db.serverless') || has(this.serverless_v2_scaling)\x1a\xc8\x01\n" +
 	"\x1asnapshot_xor_point_in_time\x12csnapshot_identifier and restore_to_point_in_time are mutually exclusive create-time restore sources\x1aEthis.snapshot_identifier == '' || !has(this.restore_to_point_in_time)\x1a\xea\x01\n" +
 	"!own_parameters_xor_existing_group\x12zparameters and db_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1aIthis.db_cluster_parameter_group_name == '' || this.parameters.size() == 0\x1a\xee\x01\n" +
-	"!parameters_require_engine_version\x12\x8e\x01inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine\x1a8this.parameters.size() == 0 || this.engine_version != ''\"\xd3\x06\n" +
+	"!parameters_require_engine_version\x12\x8e\x01inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine\x1a8this.parameters.size() == 0 || this.engine_version != ''\"\xf2\a\n" +
 	"\x15AwsDocumentDbInstance\x12/\n" +
 	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[a-z][a-z0-9-]*$R\x04name\x126\n" +
 	"\x0einstance_class\x18\x02 \x01(\tB\x0f\xbaH\f\xc8\x01\x01r\a2\x05^db\\.R\rinstanceClass\x120\n" +
@@ -852,8 +878,11 @@ const file_catalog_aws_awsdocumentdb_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1cpreferred_maintenance_window\x18\b \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x1apreferredMaintenanceWindow\x12,\n" +
 	"\x12ca_cert_identifier\x18\t \x01(\tR\x10caCertIdentifier\x121\n" +
 	"\x15copy_tags_to_snapshot\x18\n" +
-	" \x01(\bR\x12copyTagsToSnapshotB\x1d\n" +
-	"\x1b_auto_minor_version_upgrade\"\x9e\x04\n" +
+	" \x01(\bR\x12copyTagsToSnapshot\x12O\n" +
+	"\x1ccertificate_rotation_restart\x18\v \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1acertificateRotationRestart\x88\x01\x01\x12+\n" +
+	"\x11apply_immediately\x18\f \x01(\bR\x10applyImmediatelyB\x1d\n" +
+	"\x1b_auto_minor_version_upgradeB\x1f\n" +
+	"\x1d_certificate_rotation_restart\"\x9e\x04\n" +
 	" AwsDocumentDbServerlessV2Scaling\x12=\n" +
 	"\fmin_capacity\x18\x01 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00p@)\x00\x00\x00\x00\x00\x00\xe0?R\vminCapacity\x12=\n" +
 	"\fmax_capacity\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00p@)\x00\x00\x00\x00\x00\x00\xf0?R\vmaxCapacity:\xfb\x02\xbaH\xf7\x02\x1aw\n" +

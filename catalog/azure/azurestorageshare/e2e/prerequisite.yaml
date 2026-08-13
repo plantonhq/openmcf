@@ -1,0 +1,41 @@
+# AzureStorageShare install profile used as a fixture by composed
+# components (declared via prerequisites: [AzureStorageShare] in the
+# kind registry -- the protected-file-share lane today). A minimal SMB
+# share on the SHARED fixture storage account
+# (planton-oss-e2e-azure-fixture-sa) -- deliberately the same account
+# the backup-container registration fixture registers, so
+# protection-family lanes find the share inside the registered
+# container.
+#
+# The account arrives through the install-manifest prerequisite
+# annotation below (kind name -- the only form legal on install
+# manifests). The kind itself carries no registry prerequisites BY
+# DESIGN (its own scenario uses a scenario-local account because
+# account names are globally unique); this profile exists so DEPENDENT
+# kinds can chain a share fixture -- the minimal-scenario fallback is
+# not installable as a fixture (its path-form annotation is rejected
+# on install manifests).
+#
+# COST AND TIME: the share is pennies (standard tier bills used
+# capacity; the fixture stays empty) and creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageShare
+metadata:
+  name: planton-oss-e2e-azure-fixture-share
+  id: planton-oss-e2e-azure-fixture-share
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageshare
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  shareName: planton-oss-e2e-fixture-share
+  quotaGb: 1

@@ -1,0 +1,34 @@
+# AzureExpressRouteCircuit install profile used as a fixture by composed
+# components (declared via prerequisites: [AzureExpressRouteCircuit] in
+# the kind registry -- the peering kind's chain). The harness deploys
+# this document after the fixture resource group and captures its
+# outputs -- express_route_circuit_name in particular -- for dependents'
+# references to resolve against. The fixture circuit is the smallest
+# billing step (50 Mbps, Standard/Metered) and stays NotProvisioned (no
+# carrier behind the test subscription); billing runs from creation, so
+# lanes keep its life short.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuit
+metadata:
+  name: planton-oss-e2e-azure-fixture-erc
+  id: planton-oss-e2e-azure-fixture-erc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressroutecircuit
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-erc
+  skuTier: STANDARD
+  skuFamily: METERED_DATA
+  serviceProviderName: "Equinix"
+  peeringLocation: "Washington DC"
+  bandwidthInMbps: 50

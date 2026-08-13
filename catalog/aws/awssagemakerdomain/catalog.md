@@ -7,6 +7,8 @@ Deploys an Amazon SageMaker Domain providing a shared workspace for JupyterLab n
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **SageMaker Domain** -- a Studio workspace configured with the specified authentication mode, VPC placement, two inheritance planes (default user settings and default shared-space settings), per-IDE app defaults (JupyterLab, Code Editor, classic Jupyter Server, KernelGateway, TensorBoard), Canvas capabilities, optional RStudio Workbench, and domain-wide governance dials (Docker access, Studio UI hiding, tag propagation)
+- **User Profiles** -- one per `userProfiles` entry: the per-person workspaces inside the domain, each inheriting the domain's defaults with optional per-user overrides (adding a teammate is adding one list entry)
+- **Spaces** -- one per `spaces` entry: named shared (or private) workspaces whose runtime and EBS volume are shared by everyone with access -- the collaboration plane, declared beside the per-user plane
 - **EFS File System** -- automatically created by AWS to provide persistent home directories for each user profile in the domain (retention on domain deletion is your choice via `homeEfsRetentionPolicy`)
 - **Domain Boundary Security Group** -- automatically created by AWS to control cross-app and cross-user traffic within the domain
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance; set `tagPropagation: ENABLED` to flow them onto the apps, spaces, and user profiles created inside the domain
@@ -111,7 +113,7 @@ These are the most important decisions when configuring a SageMaker Domain. Expl
 
 **Network access** -- Set `appNetworkAccessType` to `PublicInternetOnly` (default) for internet-routable notebooks or `VpcOnly` to keep all traffic within the VPC. `VpcOnly` is recommended for production to prevent data exfiltration and is required for Docker trusted account restrictions.
 
-**Idle shutdown** -- Configure `defaultUserSettings.jupyterLabAppSettings.idleSettings` (and its Code Editor sibling). The block's presence is what turns idle auto-shutdown on, and all three timeouts are required together: `idleTimeoutInMinutes` (e.g., 120), `minIdleTimeoutInMinutes`, and `maxIdleTimeoutInMinutes` (the bounds individual users may pick for their own apps). Without idle shutdown, notebook instances run 24/7 at full compute cost.
+**Idle shutdown** -- Configure `defaultUserSettings.jupyterLabAppSettings.idleSettings` (and its Code Editor sibling). The block's presence turns idle auto-shutdown on, and all three timeouts are required together: `idleTimeoutInMinutes` (e.g., 120), `minIdleTimeoutInMinutes`, and `maxIdleTimeoutInMinutes` (the bounds individual users may pick for their own apps). Setting `lifecycleManagement: DISABLED` keeps the timeouts as published guardrails without enforcing auto-shutdown -- and flipping it back genuinely re-enables enforcement. Without idle shutdown, notebook instances run 24/7 at full compute cost.
 
 **Instance types** -- Set default instance types per app in each `defaultResourceSpec.instanceType` (JupyterLab, Code Editor, KernelGateway, TensorBoard, and the classic Jupyter Server's lightweight `system` instance). Start with `ml.t3.medium` for exploration and scale to GPU instances (`ml.g4dn.xlarge`) for training workloads. Pin custom images with `sagemakerImageVersionAlias` OR `sagemakerImageVersionArn` -- never both.
 
@@ -122,6 +124,8 @@ These are the most important decisions when configuring a SageMaker Domain. Expl
 **RStudio Workbench** -- Configuring `rStudioServerProDomainSettings` (its required `domainExecutionRoleArn` plus optional Connect/Package Manager URLs) is what activates the RStudio app plane; it requires a Posit license via AWS License Manager. The per-user switch lives in `defaultUserSettings.rStudioServerProAppSettings`, and `appSecurityGroupManagement` is only honored while RStudio is configured.
 
 **Shared spaces** -- `defaultSpaceSettings` is a second, independent inheritance plane for collaborative spaces, with its own execution role, app baselines, storage sizing, and POSIX identity. Omit it entirely to leave shared spaces on AWS defaults.
+
+**Team provisioning as code** -- Declare the people and the shared workspaces beside the domain: `userProfiles` (one per team member, each optionally overriding the defaults) and `spaces` (named workspaces with `Private` or `Shared` posture; ownership and sharing are declared together, and the owner must be a profile in the domain). Both are name-keyed, so membership changes are one-line diffs -- and removals are destructive (a removed profile takes its home-directory surfaces with it).
 
 **Docker access** -- Enable `dockerSettings.enableDockerAccess` to allow users to build and run custom containers. In `VpcOnly` mode, restrict image pulls to trusted accounts via `vpcOnlyTrustedAccounts`.
 

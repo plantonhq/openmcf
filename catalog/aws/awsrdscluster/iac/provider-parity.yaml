@@ -1,0 +1,157 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_rds_cluster:
+    mappings:
+      - spec: spec.allocated_storage_gb
+        arg: allocated_storage
+      - spec: spec.backtrack_window_seconds
+        arg: backtrack_window
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+      # Subtree mappings: exact matching resumes below each block.
+      - spec: spec.serverless_v2_scaling
+        arg: serverlessv2_scaling_configuration
+      - spec: spec.serverless_v1_scaling
+        arg: scaling_configuration
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module from metadata.name -- the identifier is platform naming, never free-form spec surface
+      - arg: cluster_identifier_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity -- the module always names the cluster exactly
+      - arg: cluster_members
+        reason: legacy inline member set -- cluster compute is modeled as spec.instances, each entry its own aws_rds_cluster_instance resource
+      - arg: cluster_scalability_type
+        reason: selects Aurora Limitless ("limitless" vs the default "standard") -- AWS discontinued Aurora Limitless; the standard value is the only meaningful one and is the provider default
+      - arg: db_system_id
+        reason: RDS Custom for SQL Server system id -- RDS Custom (custom-* engines) is excluded surface; its custom engine versions are a recorded deferral in the dispositions ledger
+      - arg: iam_roles
+        reason: deliberately unused -- engine feature roles render as one aws_rds_cluster_role_association per spec.iam_roles entry (the inline list cannot carry feature names and, per the provider's own warning, overwrites association resources when mixed with them)
+      - arg: master_password_wo
+        reason: write-only ephemeral password variant -- the managed-password posture (manage_master_user_password) supersedes it; the platform never round-trips raw credentials through manifests
+      - arg: master_password_wo_version
+        reason: version companion of the excluded write-only password
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_rds_cluster_instance:
+    # One instance per spec.instances entry, keyed by the entry's name so
+    # readers scale in and out without touching the cluster.
+    specRoot: spec.instances
+    mappings:
+      # The AWS identifier is the entry's name under the module's
+      # "<cluster>-<name>" composition.
+      - spec: spec.instances.name
+        arg: identifier
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: identifier_prefix
+        reason: prefix-based random naming conflicts with deterministic entry naming -- the module always names each instance exactly
+      - arg: engine
+        reason: wired by the module from the cluster resource -- cluster instances always run the cluster's engine
+      - arg: engine_version
+        reason: wired by the module from the cluster resource -- an unpinned cluster still stamps its instances with the resolved version
+      - arg: db_subnet_group_name
+        reason: inherited from the cluster -- cluster instances always live in the cluster's subnet group; a per-instance override would diverge from AWS's own placement
+      - arg: custom_iam_instance_profile
+        reason: RDS Custom surface (requires an AWSRDSCustom-prefixed profile and a custom-* engine) -- RDS Custom is excluded; its custom engine versions are a recorded deferral in the dispositions ledger
+      - arg: force_destroy
+        reason: destroy-behavior knob (forces deletion of an instance that is part of a cluster) -- engine operation, not mapping configuration; the recorded apply-behavior exclusion class
+      - arg: region
+        reason: wired by the module -- instances follow the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_rds_cluster_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters.
+    specRoot: spec.parameters
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: family
+        reason: derived by the module from spec.engine + spec.engine_version per AWS's own family naming -- a second source of the same fact would only drift
+      - arg: region
+        reason: wired by the module -- the group follows the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_db_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_rds_cluster_role_association:
+    # One association per spec.iam_roles entry -- the full-fidelity role
+    # wiring (feature_name), replacing the cluster's inline iam_roles list.
+    specRoot: spec.iam_roles
+    mappings:
+      - spec: spec.iam_roles.role
+        arg: role_arn
+    exclusions:
+      - arg: db_cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- associations follow the cluster's spec.region through the provider connection
+
+  aws_rds_cluster_endpoint:
+    # One custom endpoint per spec.custom_endpoints entry, keyed by name.
+    specRoot: spec.custom_endpoints
+    mappings:
+      - spec: spec.custom_endpoints.name
+        arg: cluster_endpoint_identifier
+      - spec: spec.custom_endpoints.type
+        arg: custom_endpoint_type
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- endpoints follow the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_rds_cluster_activity_stream:
+    # The Database Activity Stream, created when spec.activity_stream is
+    # set. The specRoot also keeps this resource's kms_key_id from
+    # coincidentally matching the cluster's storage key.
+    specRoot: spec.activity_stream
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the stream follows the cluster's spec.region through the provider connection

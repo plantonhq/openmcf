@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualWan
+metadata:
+  name: test-virtual-wan
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: global-wan
+  # The unset optional fields apply ARM's defaults: type "Standard"
+  # (the full-mesh tier), branch-to-branch transit on, VPN encryption
+  # on, no Office 365 local breakout.
+  tags:
+    purpose: hack-test

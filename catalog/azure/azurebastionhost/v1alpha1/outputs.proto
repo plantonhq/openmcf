@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebastionhost.v1alpha1;
+
+// **AzureBastionHostStackOutputs** captures the outputs of
+// provisioning a Bastion host.
+message AzureBastionHostStackOutputs {
+  // The host's ARM resource ID
+  // (.../providers/Microsoft.Network/bastionHosts/{name}).
+  string bastion_host_id = 1;
+
+  // The host's name within its resource group.
+  string bastion_host_name = 2;
+
+  // The DNS name sessions connect through (e.g.
+  // "bst-{guid}.bastion.azure.com"). Empty until Azure assigns it.
+  string dns_name = 3;
+
+  // Whether the host deployed PRIVATE-ONLY (a PREMIUM host whose
+  // ip_configuration carries no public IP) -- reachable only from
+  // connected networks.
+  bool private_only_enabled = 4;
+}

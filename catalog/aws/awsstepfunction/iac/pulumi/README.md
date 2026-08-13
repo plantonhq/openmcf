@@ -30,6 +30,7 @@ The module reads `AwsStepFunctionStackInput` which contains:
 | `revision_id` | Revision identifier of the current definition |
 | `status` | Lifecycle status reported by AWS |
 | `creation_date` | RFC3339 creation timestamp |
+| `alias_arns` | Alias ARNs keyed by alias name (empty map without aliases) |
 
 ## Local Development
 

@@ -1,0 +1,17 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name (source_storage_account_id,
+# source_file_share_name, backup_policy_id, and recovery_vault_name all
+# do). Every exclusion carries its reason: omission is a decision, never
+# an accident.
+
+resources:
+  azurerm_backup_protected_file_share:
+    mappings:
+      # The family-wide rename: the spec says what the field IS (a
+      # resource group), where the provider inherits ARM's terser name.
+      - spec: spec.resource_group
+        arg: resource_group_name

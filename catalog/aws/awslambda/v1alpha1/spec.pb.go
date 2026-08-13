@@ -9,6 +9,7 @@ package awslambdav1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -81,6 +82,14 @@ type AwsLambdaSpec struct {
 	// the S3 object is rewritten in place. Leave empty to update only
 	// when the S3 key or object version changes.
 	SourceCodeHash string `protobuf:"bytes,6,opt,name=source_code_hash,json=sourceCodeHash,proto3" json:"source_code_hash,omitempty"`
+	// Base64-encoded SHA256 of the DEPLOYED package as AWS reports it
+	// (the digest GetFunction returns). Set it to detect and roll
+	// out-of-band code changes from the deployed artifact's own digest —
+	// the deploy-side complement to source_code_hash, which hashes the
+	// artifact you upload. Most configurations want source_code_hash;
+	// use this when the artifact is published by a pipeline you don't
+	// control and only the deployed digest is known.
+	CodeSha256 string `protobuf:"bytes,39,opt,name=code_sha256,json=codeSha256,proto3" json:"code_sha256,omitempty"`
 	// The KMS key that encrypts the deployment package in S3 (bring-
 	// your-own-key for the code artifact itself -- distinct from
 	// kms_key_arn, which encrypts environment variables). Only
@@ -106,11 +115,13 @@ type AwsLambdaSpec struct {
 	// cheaper per GB-second and often faster -- prefer it whenever your
 	// runtime and native dependencies support it.
 	Architecture string `protobuf:"bytes,10,opt,name=architecture,proto3" json:"architecture,omitempty"`
-	// Memory in MB, 128-10240 for standard functions. CPU and network
-	// scale linearly with memory (a full vCPU arrives around 1769 MB),
-	// so raising memory is also how you buy CPU -- for CPU-bound code a
-	// larger size often costs LESS overall by finishing sooner. 0 keeps
-	// the AWS default (128 MB).
+	// Memory in MB: 128-10240 for standard functions, up to 32768 when
+	// the function runs on Lambda Managed Instances (managed_instances)
+	// -- AWS enforces the per-platform ceiling at deploy time. CPU and
+	// network scale linearly with memory (a full vCPU arrives around
+	// 1769 MB), so raising memory is also how you buy CPU -- for
+	// CPU-bound code a larger size often costs LESS overall by finishing
+	// sooner. 0 keeps the AWS default (128 MB).
 	MemorySizeMb int32 `protobuf:"varint,11,opt,name=memory_size_mb,json=memorySizeMb,proto3" json:"memory_size_mb,omitempty"`
 	// Maximum execution time per invocation in seconds, 1-900. Size it
 	// slightly above the worst expected runtime; API-fronted functions
@@ -181,6 +192,26 @@ type AwsLambdaSpec struct {
 	// using aliases for traffic shifting or SnapStart (which only
 	// applies to published versions).
 	Publish bool `protobuf:"varint,24,opt,name=publish,proto3" json:"publish,omitempty"`
+	// Maintain the "$LATEST.PUBLISHED" head pointer: "LATEST_PUBLISHED"
+	// (the only value AWS currently accepts) keeps a moving qualifier
+	// that always resolves to the newest published version -- the
+	// addressable target scaling_configs and qualified invocations can
+	// pin without naming version numbers. Empty leaves the head pointer
+	// unmanaged. Rollout caveat (live-verified us-west-2, 2026-08-11):
+	// regions/accounts where the $LATEST.PUBLISHED feature has not rolled
+	// out reject the value at CreateFunction with
+	// InvalidParameterValueException ("isn't a valid value for this
+	// field") -- and AWS creates the function BEFORE rejecting this
+	// parameter, so a failed create can leave a live function behind.
+	// Mid-rollout is subtler (live-verified us-west-2, 2026-08-13):
+	// CreateFunction can ACCEPT the value yet silently not maintain the
+	// head -- the "$LATEST.PUBLISHED" qualifier answers
+	// ResourceNotFoundException even after versions publish -- while
+	// UpdateFunctionCode still rejects the same value. Acceptance at
+	// create is NOT availability; the feature is available only where
+	// the qualifier actually resolves after a publish. Set this field
+	// only where that holds.
+	PublishTo string `protobuf:"bytes,38,opt,name=publish_to,json=publishTo,proto3" json:"publish_to,omitempty"`
 	// Reserved concurrency for this function. Unset: the function draws
 	// from the account's unreserved pool (no dedicated cap). 0: all
 	// invocations are throttled -- an operational kill switch. Positive:
@@ -193,6 +224,25 @@ type AwsLambdaSpec struct {
 	// to published versions only (enable publish and invoke through a
 	// version or alias to benefit).
 	SnapStart bool `protobuf:"varint,26,opt,name=snap_start,json=snapStart,proto3" json:"snap_start,omitempty"`
+	// Run the function on a Lambda Managed Instances capacity provider --
+	// dedicated EC2 capacity AWS manages on the function's behalf --
+	// instead of the on-demand fleet. The platform for steady
+	// high-throughput workloads, memory above 10 GB, and per-tenant
+	// isolation.
+	ManagedInstances *AwsLambdaManagedInstances `protobuf:"bytes,35,opt,name=managed_instances,json=managedInstances,proto3" json:"managed_instances,omitempty"`
+	// Durable execution: AWS checkpoints the function's progress so
+	// long-running workflows survive interruption and resume where they
+	// stopped, far beyond the classic 15-minute cap. ADDING OR REMOVING
+	// this block REPLACES the function (an AWS constraint); the values
+	// inside update in place.
+	DurableConfig *AwsLambdaDurableConfig `protobuf:"bytes,36,opt,name=durable_config,json=durableConfig,proto3" json:"durable_config,omitempty"`
+	// Isolate execution environments per tenant: "PER_TENANT" (the only
+	// mode AWS currently accepts) dedicates environments to the tenant id
+	// callers pass at invoke time -- no cross-tenant reuse of warm
+	// state. Create-time immutable: CHANGING it REPLACES the function.
+	// Empty keeps the AWS default (environments shared across all
+	// invocations).
+	TenantIsolationMode string `protobuf:"bytes,37,opt,name=tenant_isolation_mode,json=tenantIsolationMode,proto3" json:"tenant_isolation_mode,omitempty"`
 	// CloudWatch Logs delivery. Unset, AWS creates and writes to
 	// "/aws/lambda/<function-name>" in plain-text format with the log
 	// group owned by AWS (it survives function deletion). Configure to
@@ -236,8 +286,14 @@ type AwsLambdaSpec struct {
 	// How runtime patches roll out to the function: automatically, only
 	// on function updates, or pinned to a specific runtime version.
 	RuntimeManagement *AwsLambdaRuntimeManagement `protobuf:"bytes,34,opt,name=runtime_management,json=runtimeManagement,proto3" json:"runtime_management,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Per-qualifier execution-environment scaling bounds for functions on
+	// Lambda Managed Instances: pin a published version's (or the
+	// "$LATEST.PUBLISHED" head's) environment fleet between a floor and a
+	// ceiling. Each entry materializes as its own scaling-config resource
+	// keyed by qualifier, so list edits update in place.
+	ScalingConfigs []*AwsLambdaScalingConfig `protobuf:"bytes,40,rep,name=scaling_configs,json=scalingConfigs,proto3" json:"scaling_configs,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AwsLambdaSpec) Reset() {
@@ -308,6 +364,13 @@ func (x *AwsLambdaSpec) GetImageUri() string {
 func (x *AwsLambdaSpec) GetSourceCodeHash() string {
 	if x != nil {
 		return x.SourceCodeHash
+	}
+	return ""
+}
+
+func (x *AwsLambdaSpec) GetCodeSha256() string {
+	if x != nil {
+		return x.CodeSha256
 	}
 	return ""
 }
@@ -438,6 +501,13 @@ func (x *AwsLambdaSpec) GetPublish() bool {
 	return false
 }
 
+func (x *AwsLambdaSpec) GetPublishTo() string {
+	if x != nil {
+		return x.PublishTo
+	}
+	return ""
+}
+
 func (x *AwsLambdaSpec) GetReservedConcurrentExecutions() int32 {
 	if x != nil && x.ReservedConcurrentExecutions != nil {
 		return *x.ReservedConcurrentExecutions
@@ -450,6 +520,27 @@ func (x *AwsLambdaSpec) GetSnapStart() bool {
 		return x.SnapStart
 	}
 	return false
+}
+
+func (x *AwsLambdaSpec) GetManagedInstances() *AwsLambdaManagedInstances {
+	if x != nil {
+		return x.ManagedInstances
+	}
+	return nil
+}
+
+func (x *AwsLambdaSpec) GetDurableConfig() *AwsLambdaDurableConfig {
+	if x != nil {
+		return x.DurableConfig
+	}
+	return nil
+}
+
+func (x *AwsLambdaSpec) GetTenantIsolationMode() string {
+	if x != nil {
+		return x.TenantIsolationMode
+	}
+	return ""
 }
 
 func (x *AwsLambdaSpec) GetLoggingConfig() *AwsLambdaLoggingConfig {
@@ -504,6 +595,13 @@ func (x *AwsLambdaSpec) GetRecursiveLoop() string {
 func (x *AwsLambdaSpec) GetRuntimeManagement() *AwsLambdaRuntimeManagement {
 	if x != nil {
 		return x.RuntimeManagement
+	}
+	return nil
+}
+
+func (x *AwsLambdaSpec) GetScalingConfigs() []*AwsLambdaScalingConfig {
+	if x != nil {
+		return x.ScalingConfigs
 	}
 	return nil
 }
@@ -797,6 +895,13 @@ type AwsLambdaAlias struct {
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// The published version this alias points to, e.g. "1", or "$LATEST"
 	// (unpublished head -- fine for dev aliases, avoid for production).
+	// Numbering caveat (live-verified 2026-08-11): AWS never reuses
+	// version numbers for a function NAME, even across delete/recreate --
+	// a recreated function's first publish continues the old numbering,
+	// so a literal pin like "1" that worked on the first deployment 404s
+	// at CreateAlias ("Function not found ...:1") on a recreate. Pin
+	// literal numbers only against a function whose publish history you
+	// know; use "$LATEST" where the alias just needs to exist.
 	FunctionVersion string `protobuf:"bytes,3,opt,name=function_version,json=functionVersion,proto3" json:"function_version,omitempty"`
 	// Canary routing: additional version(s) receiving a fraction of this
 	// alias's traffic, as version -> weight (0.0-1.0). E.g. {"2": 0.1}
@@ -895,7 +1000,12 @@ type AwsLambdaFunctionUrl struct {
 	// Empty keeps the AWS default.
 	InvokeMode string `protobuf:"bytes,2,opt,name=invoke_mode,json=invokeMode,proto3" json:"invoke_mode,omitempty"`
 	// Cross-origin resource sharing for browser callers.
-	Cors          *AwsLambdaFunctionUrlCors `protobuf:"bytes,3,opt,name=cors,proto3" json:"cors,omitempty"`
+	Cors *AwsLambdaFunctionUrlCors `protobuf:"bytes,3,opt,name=cors,proto3" json:"cors,omitempty"`
+	// Attach the URL to one of this spec's aliases instead of $LATEST --
+	// the URL then serves whatever version the alias routes (including
+	// canary weights), so traffic shifting applies to URL callers too.
+	// Must name an entry in aliases; empty serves the unpublished head.
+	Qualifier     string `protobuf:"bytes,4,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -949,6 +1059,13 @@ func (x *AwsLambdaFunctionUrl) GetCors() *AwsLambdaFunctionUrlCors {
 		return x.Cors
 	}
 	return nil
+}
+
+func (x *AwsLambdaFunctionUrl) GetQualifier() string {
+	if x != nil {
+		return x.Qualifier
+	}
+	return ""
 }
 
 // AwsLambdaFunctionUrlCors configures CORS on the function URL.
@@ -1079,8 +1196,18 @@ type AwsLambdaInvokePermission struct {
 	// Required auth type when granting "lambda:InvokeFunctionUrl":
 	// "AWS_IAM" or "NONE" (the public-URL grant).
 	FunctionUrlAuthType string `protobuf:"bytes,7,opt,name=function_url_auth_type,json=functionUrlAuthType,proto3" json:"function_url_auth_type,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Scope the grant to one qualified ARN: a published version number
+	// ("3") or an alias name ("live"). The principal may then invoke only
+	// that version/alias. Empty grants on the unqualified function.
+	Qualifier string `protobuf:"bytes,8,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
+	// Token the caller must present with the invocation -- used by Alexa
+	// Skills (the skill id) to pin the grant to one skill.
+	EventSourceToken string `protobuf:"bytes,9,opt,name=event_source_token,json=eventSourceToken,proto3" json:"event_source_token,omitempty"`
+	// Restrict the grant to invocations that arrive THROUGH the function
+	// URL (rejects direct Invoke calls under this statement).
+	InvokedViaFunctionUrl bool `protobuf:"varint,10,opt,name=invoked_via_function_url,json=invokedViaFunctionUrl,proto3" json:"invoked_via_function_url,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *AwsLambdaInvokePermission) Reset() {
@@ -1162,6 +1289,27 @@ func (x *AwsLambdaInvokePermission) GetFunctionUrlAuthType() string {
 	return ""
 }
 
+func (x *AwsLambdaInvokePermission) GetQualifier() string {
+	if x != nil {
+		return x.Qualifier
+	}
+	return ""
+}
+
+func (x *AwsLambdaInvokePermission) GetEventSourceToken() string {
+	if x != nil {
+		return x.EventSourceToken
+	}
+	return ""
+}
+
+func (x *AwsLambdaInvokePermission) GetInvokedViaFunctionUrl() bool {
+	if x != nil {
+		return x.InvokedViaFunctionUrl
+	}
+	return false
+}
+
 // AwsLambdaAsyncInvokeConfig shapes asynchronous invocations (S3
 // events, SNS, EventBridge): retries, event age, and where outcomes
 // are delivered. The richer successor to the dead-letter queue --
@@ -1184,8 +1332,13 @@ type AwsLambdaAsyncInvokeConfig struct {
 	// Where failed invocation records are delivered after retries are
 	// exhausted -- same target types as on_success_destination_arn.
 	OnFailureDestinationArn *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=on_failure_destination_arn,json=onFailureDestinationArn,proto3" json:"on_failure_destination_arn,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// Apply this config to one qualified scope instead of the whole
+	// function: a published version number ("3") or an alias name
+	// ("live"). Async invocations through other qualifiers then keep the
+	// AWS defaults. Empty applies at function scope.
+	Qualifier     string `protobuf:"bytes,5,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsLambdaAsyncInvokeConfig) Reset() {
@@ -1246,6 +1399,13 @@ func (x *AwsLambdaAsyncInvokeConfig) GetOnFailureDestinationArn() *v1.StringValu
 	return nil
 }
 
+func (x *AwsLambdaAsyncInvokeConfig) GetQualifier() string {
+	if x != nil {
+		return x.Qualifier
+	}
+	return ""
+}
+
 // AwsLambdaRuntimeManagement controls how AWS rolls runtime patches to
 // the function.
 type AwsLambdaRuntimeManagement struct {
@@ -1260,8 +1420,12 @@ type AwsLambdaRuntimeManagement struct {
 	// meaningful for) "Manual". Obtain it from the function's runtime
 	// update events or the Lambda console.
 	RuntimeVersionArn string `protobuf:"bytes,2,opt,name=runtime_version_arn,json=runtimeVersionArn,proto3" json:"runtime_version_arn,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Apply the policy to one qualified scope instead of the whole
+	// function: a published version number ("3") or an alias name
+	// ("live"). Empty applies at function scope ($LATEST).
+	Qualifier     string `protobuf:"bytes,3,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsLambdaRuntimeManagement) Reset() {
@@ -1308,24 +1472,237 @@ func (x *AwsLambdaRuntimeManagement) GetRuntimeVersionArn() string {
 	return ""
 }
 
+func (x *AwsLambdaRuntimeManagement) GetQualifier() string {
+	if x != nil {
+		return x.Qualifier
+	}
+	return ""
+}
+
+// AwsLambdaManagedInstances runs the function on a Lambda Managed
+// Instances capacity provider -- dedicated EC2 capacity AWS provisions
+// and manages on the function's behalf -- instead of the shared
+// on-demand fleet.
+type AwsLambdaManagedInstances struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Lambda capacity provider supplying the managed EC2 capacity.
+	// Pass the capacity provider ARN as a literal, e.g.
+	// "arn:aws:lambda:us-west-2:123456789012:capacity-provider:my-cp".
+	CapacityProviderArn string `protobuf:"bytes,1,opt,name=capacity_provider_arn,json=capacityProviderArn,proto3" json:"capacity_provider_arn,omitempty"`
+	// Memory (GiB) provisioned per vCPU in each execution environment --
+	// how compute-heavy vs memory-heavy the environments are sized.
+	// 0 keeps the AWS default sizing.
+	MemoryGibPerVcpu float64 `protobuf:"fixed64,2,opt,name=memory_gib_per_vcpu,json=memoryGibPerVcpu,proto3" json:"memory_gib_per_vcpu,omitempty"`
+	// Maximum concurrent invocations one execution environment may serve.
+	// 0 keeps the AWS default.
+	MaxConcurrencyPerEnvironment int32 `protobuf:"varint,3,opt,name=max_concurrency_per_environment,json=maxConcurrencyPerEnvironment,proto3" json:"max_concurrency_per_environment,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
+}
+
+func (x *AwsLambdaManagedInstances) Reset() {
+	*x = AwsLambdaManagedInstances{}
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLambdaManagedInstances) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLambdaManagedInstances) ProtoMessage() {}
+
+func (x *AwsLambdaManagedInstances) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLambdaManagedInstances.ProtoReflect.Descriptor instead.
+func (*AwsLambdaManagedInstances) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *AwsLambdaManagedInstances) GetCapacityProviderArn() string {
+	if x != nil {
+		return x.CapacityProviderArn
+	}
+	return ""
+}
+
+func (x *AwsLambdaManagedInstances) GetMemoryGibPerVcpu() float64 {
+	if x != nil {
+		return x.MemoryGibPerVcpu
+	}
+	return 0
+}
+
+func (x *AwsLambdaManagedInstances) GetMaxConcurrencyPerEnvironment() int32 {
+	if x != nil {
+		return x.MaxConcurrencyPerEnvironment
+	}
+	return 0
+}
+
+// AwsLambdaDurableConfig makes invocations durable: AWS checkpoints the
+// function's progress so long-running workflows survive interruption
+// and resume where they stopped.
+type AwsLambdaDurableConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Maximum end-to-end time of one durable invocation in seconds,
+	// 1-31622400 (up to 366 days) -- checkpointing is what lets it far
+	// exceed the classic 15-minute cap.
+	ExecutionTimeoutSeconds int32 `protobuf:"varint,1,opt,name=execution_timeout_seconds,json=executionTimeoutSeconds,proto3" json:"execution_timeout_seconds,omitempty"`
+	// How long (days, 1-90) AWS retains each durable execution's state
+	// and history after it completes. 0 keeps the AWS default (14).
+	RetentionPeriodDays int32 `protobuf:"varint,2,opt,name=retention_period_days,json=retentionPeriodDays,proto3" json:"retention_period_days,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsLambdaDurableConfig) Reset() {
+	*x = AwsLambdaDurableConfig{}
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLambdaDurableConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLambdaDurableConfig) ProtoMessage() {}
+
+func (x *AwsLambdaDurableConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLambdaDurableConfig.ProtoReflect.Descriptor instead.
+func (*AwsLambdaDurableConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AwsLambdaDurableConfig) GetExecutionTimeoutSeconds() int32 {
+	if x != nil {
+		return x.ExecutionTimeoutSeconds
+	}
+	return 0
+}
+
+func (x *AwsLambdaDurableConfig) GetRetentionPeriodDays() int32 {
+	if x != nil {
+		return x.RetentionPeriodDays
+	}
+	return 0
+}
+
+// AwsLambdaScalingConfig pins one qualifier's execution-environment
+// fleet (Lambda Managed Instances functions) between a floor and a
+// ceiling. Both bounds are optional individually, but an entry must set
+// at least one -- an empty config is a reset, not a resource.
+type AwsLambdaScalingConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The qualifier the bounds apply to: a published version number
+	// ("3") or "$LATEST.PUBLISHED" (the newest published version --
+	// maintained by publish_to). Alias names are NOT accepted here (an
+	// AWS constraint specific to scaling configs).
+	Qualifier string `protobuf:"bytes,1,opt,name=qualifier,proto3" json:"qualifier,omitempty"`
+	// The floor of always-provisioned execution environments. Unset
+	// leaves the floor to AWS.
+	MinExecutionEnvironments *int32 `protobuf:"varint,2,opt,name=min_execution_environments,json=minExecutionEnvironments,proto3,oneof" json:"min_execution_environments,omitempty"`
+	// The ceiling of execution environments AWS may scale to. Unset
+	// leaves the ceiling to AWS.
+	MaxExecutionEnvironments *int32 `protobuf:"varint,3,opt,name=max_execution_environments,json=maxExecutionEnvironments,proto3,oneof" json:"max_execution_environments,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *AwsLambdaScalingConfig) Reset() {
+	*x = AwsLambdaScalingConfig{}
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsLambdaScalingConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsLambdaScalingConfig) ProtoMessage() {}
+
+func (x *AwsLambdaScalingConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsLambdaScalingConfig.ProtoReflect.Descriptor instead.
+func (*AwsLambdaScalingConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AwsLambdaScalingConfig) GetQualifier() string {
+	if x != nil {
+		return x.Qualifier
+	}
+	return ""
+}
+
+func (x *AwsLambdaScalingConfig) GetMinExecutionEnvironments() int32 {
+	if x != nil && x.MinExecutionEnvironments != nil {
+		return *x.MinExecutionEnvironments
+	}
+	return 0
+}
+
+func (x *AwsLambdaScalingConfig) GetMaxExecutionEnvironments() int32 {
+	if x != nil && x.MaxExecutionEnvironments != nil {
+		return *x.MaxExecutionEnvironments
+	}
+	return 0
+}
+
 var File_catalog_aws_awslambda_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	")catalog/aws/awslambda/v1alpha1/spec.proto\x12\"dev.planton.aws.awslambda.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9c(\n" +
+	")catalog/aws/awslambda/v1alpha1/spec.proto\x12\"dev.planton.aws.awslambda.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe4/\n" +
 	"\rAwsLambdaSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\vdescription\x12u\n" +
 	"\brole_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12C\n" +
 	"\x02s3\x18\x04 \x01(\v23.dev.planton.aws.awslambda.v1alpha1.AwsLambdaS3CodeR\x02s3\x12\x1b\n" +
 	"\timage_uri\x18\x05 \x01(\tR\bimageUri\x12(\n" +
-	"\x10source_code_hash\x18\x06 \x01(\tR\x0esourceCodeHash\x12\x80\x01\n" +
+	"\x10source_code_hash\x18\x06 \x01(\tR\x0esourceCodeHash\x12\x1f\n" +
+	"\vcode_sha256\x18' \x01(\tR\n" +
+	"codeSha256\x12\x80\x01\n" +
 	"\x12source_kms_key_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x0fsourceKmsKeyArn\x12\x18\n" +
 	"\aruntime\x18\b \x01(\tR\aruntime\x12\"\n" +
 	"\ahandler\x18\t \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\ahandler\x12;\n" +
 	"\farchitecture\x18\n" +
-	" \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\x06x86_64R\x05arm64R\farchitecture\x124\n" +
-	"\x0ememory_size_mb\x18\v \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80P(\x80\x01R\fmemorySizeMb\x126\n" +
+	" \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\x06x86_64R\x05arm64R\farchitecture\x125\n" +
+	"\x0ememory_size_mb\x18\v \x01(\x05B\x0f\xbaH\f\xd8\x01\x01\x1a\a\x18\x80\x80\x02(\x80\x01R\fmemorySizeMb\x126\n" +
 	"\x0ftimeout_seconds\x18\f \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\x84\a(\x01R\x0etimeoutSeconds\x12@\n" +
 	"\x14ephemeral_storage_mb\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80P(\x80\x04R\x12ephemeralStorageMb\x12d\n" +
@@ -1341,10 +1718,16 @@ const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"\fimage_config\x18\x16 \x01(\v28.dev.planton.aws.awslambda.v1alpha1.AwsLambdaImageConfigR\vimageConfig\x12[\n" +
 	"\n" +
 	"layer_arns\x18\x17 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\b\xbaH\x05\x92\x01\x02\x10\x05R\tlayerArns\x12\x18\n" +
-	"\apublish\x18\x18 \x01(\bR\apublish\x12R\n" +
+	"\apublish\x18\x18 \x01(\bR\apublish\x129\n" +
+	"\n" +
+	"publish_to\x18& \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\x10LATEST_PUBLISHEDR\tpublishTo\x12R\n" +
 	"\x1ereserved_concurrent_executions\x18\x19 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x1creservedConcurrentExecutions\x88\x01\x01\x12\x1d\n" +
 	"\n" +
-	"snap_start\x18\x1a \x01(\bR\tsnapStart\x12a\n" +
+	"snap_start\x18\x1a \x01(\bR\tsnapStart\x12j\n" +
+	"\x11managed_instances\x18# \x01(\v2=.dev.planton.aws.awslambda.v1alpha1.AwsLambdaManagedInstancesR\x10managedInstances\x12a\n" +
+	"\x0edurable_config\x18$ \x01(\v2:.dev.planton.aws.awslambda.v1alpha1.AwsLambdaDurableConfigR\rdurableConfig\x12H\n" +
+	"\x15tenant_isolation_mode\x18% \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\fR\n" +
+	"PER_TENANTR\x13tenantIsolationMode\x12a\n" +
 	"\x0elogging_config\x18\x1b \x01(\v2:.dev.planton.aws.awslambda.v1alpha1.AwsLambdaLoggingConfigR\rloggingConfig\x125\n" +
 	"\x17code_signing_config_arn\x18\x1c \x01(\tR\x14codeSigningConfigArn\x12L\n" +
 	"\aaliases\x18\x1d \x03(\v22.dev.planton.aws.awslambda.v1alpha1.AwsLambdaAliasR\aaliases\x12[\n" +
@@ -1352,10 +1735,11 @@ const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12invoke_permissions\x18\x1f \x03(\v2=.dev.planton.aws.awslambda.v1alpha1.AwsLambdaInvokePermissionR\x11invokePermissions\x12n\n" +
 	"\x13async_invoke_config\x18  \x01(\v2>.dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfigR\x11asyncInvokeConfig\x12A\n" +
 	"\x0erecursive_loop\x18! \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\x05AllowR\tTerminateR\rrecursiveLoop\x12m\n" +
-	"\x12runtime_management\x18\" \x01(\v2>.dev.planton.aws.awslambda.v1alpha1.AwsLambdaRuntimeManagementR\x11runtimeManagement\x1a>\n" +
+	"\x12runtime_management\x18\" \x01(\v2>.dev.planton.aws.awslambda.v1alpha1.AwsLambdaRuntimeManagementR\x11runtimeManagement\x12c\n" +
+	"\x0fscaling_configs\x18( \x03(\v2:.dev.planton.aws.awslambda.v1alpha1.AwsLambdaScalingConfigR\x0escalingConfigs\x1a>\n" +
 	"\x10EnvironmentEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb0\x12\xbaH\xac\x12\x1a\x9e\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9d\x16\xbaH\x99\x16\x1a\x9e\x01\n" +
 	"\x17exactly_one_code_source\x12[provide the function code as exactly one of s3 (zip archive) or image_uri (container image)\x1a&has(this.s3) != (this.image_uri != '')\x1a\xc1\x01\n" +
 	" zip_requires_runtime_and_handler\x12`zip deployments (s3) require both runtime and handler -- they tell Lambda how to start your code\x1a;!has(this.s3) || (this.runtime != '' && this.handler != '')\x1a\xf2\x01\n" +
 	"!image_forbids_runtime_and_handler\x12\x88\x01container-image deployments must leave runtime and handler empty -- the image defines both (use image_config to override the entrypoint)\x1aBthis.image_uri == '' || (this.runtime == '' && this.handler == '')\x1a\x94\x01\n" +
@@ -1367,7 +1751,9 @@ const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bsnap_start_requires_publish\x12\\SnapStart only applies to published versions -- enable publish so versions exist to snapshot\x1a !this.snap_start || this.publish\x1a\x98\x01\n" +
 	"\x17aliases_require_publish\x12Saliases point at published versions -- enable publish so versions exist to route to\x1a(this.aliases.size() == 0 || this.publish\x1a\x9f\x01\n" +
 	"\x12alias_names_unique\x12>each alias name must be unique -- aliases materialize per-name\x1aIthis.aliases.all(a, this.aliases.filter(b, b.name == a.name).size() == 1)\x1a\xef\x01\n" +
-	"\x1fpermission_statement_ids_unique\x12[each invoke permission statement_id must be unique -- permissions materialize per statement\x1aothis.invoke_permissions.all(p, this.invoke_permissions.filter(q, q.statement_id == p.statement_id).size() == 1)B!\n" +
+	"\x1fpermission_statement_ids_unique\x12[each invoke permission statement_id must be unique -- permissions materialize per statement\x1aothis.invoke_permissions.all(p, this.invoke_permissions.filter(q, q.statement_id == p.statement_id).size() == 1)\x1a\x8d\x02\n" +
+	"\"function_url_qualifier_names_alias\x12hfunction_url.qualifier must name one of this spec's aliases -- AWS only qualifies function URLs by alias\x1a}!has(this.function_url) || this.function_url.qualifier == '' || this.aliases.exists(a, a.name == this.function_url.qualifier)\x1a\xda\x01\n" +
+	" scaling_config_qualifiers_unique\x12Qeach scaling config qualifier must be unique -- configs materialize per qualifier\x1acthis.scaling_configs.all(s, this.scaling_configs.filter(t, t.qualifier == s.qualifier).size() == 1)B!\n" +
 	"\x1f_reserved_concurrent_executions\"\xc8\x01\n" +
 	"\x0fAwsLambdaS3Code\x12s\n" +
 	"\x06bucket\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\xf5\a\x92\xd4a\x18status.outputs.bucket_idR\x06bucket\x12\x19\n" +
@@ -1401,19 +1787,20 @@ const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"$alias_at_most_one_additional_version\x12FAWS allows at most one additional version in an alias's routing config\x1a3this.routing_additional_version_weights.size() <= 1\x1a\x99\x02\n" +
 	"#alias_weights_are_traffic_fractions\x12Yrouting weights are fractions of this alias's traffic -- each must be between 0.0 and 1.0\x1a\x96\x01this.routing_additional_version_weights.all(v, this.routing_additional_version_weights[v] >= 0.0 && this.routing_additional_version_weights[v] <= 1.0)\x1a\xdc\x01\n" +
 	"-alias_latest_excludes_provisioned_concurrency\x12Wprovisioned concurrency cannot target $LATEST -- point the alias at a published version\x1aRthis.function_version != '$LATEST' || !has(this.provisioned_concurrent_executions)B$\n" +
-	"\"_provisioned_concurrent_executions\"\xf6\x01\n" +
+	"\"_provisioned_concurrent_executions\"\xb0\x02\n" +
 	"\x14AwsLambdaFunctionUrl\x12F\n" +
 	"\x12authorization_type\x18\x01 \x01(\tB\x17\xbaH\x14\xc8\x01\x01r\x0fR\aAWS_IAMR\x04NONER\x11authorizationType\x12D\n" +
 	"\vinvoke_mode\x18\x02 \x01(\tB#\xbaH \xd8\x01\x01r\x1bR\bBUFFEREDR\x0fRESPONSE_STREAMR\n" +
 	"invokeMode\x12P\n" +
-	"\x04cors\x18\x03 \x01(\v2<.dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrlCorsR\x04cors\"\x95\x02\n" +
+	"\x04cors\x18\x03 \x01(\v2<.dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrlCorsR\x04cors\x128\n" +
+	"\tqualifier\x18\x04 \x01(\tB\x1a\xbaH\x17r\x15\x18\x80\x012\x10^[a-zA-Z0-9-_]*$R\tqualifier\"\x95\x02\n" +
 	"\x18AwsLambdaFunctionUrlCors\x12+\n" +
 	"\x11allow_credentials\x18\x01 \x01(\bR\x10allowCredentials\x12#\n" +
 	"\rallow_origins\x18\x02 \x03(\tR\fallowOrigins\x12#\n" +
 	"\rallow_methods\x18\x03 \x03(\tR\fallowMethods\x12#\n" +
 	"\rallow_headers\x18\x04 \x03(\tR\fallowHeaders\x12%\n" +
 	"\x0eexpose_headers\x18\x05 \x03(\tR\rexposeHeaders\x126\n" +
-	"\x0fmax_age_seconds\x18\x06 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x01R\rmaxAgeSeconds\"\xa2\x04\n" +
+	"\x0fmax_age_seconds\x18\x06 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x01R\rmaxAgeSeconds\"\xdf\x06\n" +
 	"\x19AwsLambdaInvokePermission\x12>\n" +
 	"\fstatement_id\x18\x01 \x01(\tB\x1b\xbaH\x18r\x16\x10\x01\x18d2\x10^[a-zA-Z0-9-_]+$R\vstatementId\x12%\n" +
 	"\tprincipal\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\tprincipal\x12\x16\n" +
@@ -1422,18 +1809,39 @@ const file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc = "" +
 	"source_arn\x18\x04 \x01(\tR\tsourceArn\x12%\n" +
 	"\x0esource_account\x18\x05 \x01(\tR\rsourceAccount\x12(\n" +
 	"\x10principal_org_id\x18\x06 \x01(\tR\x0eprincipalOrgId\x12L\n" +
-	"\x16function_url_auth_type\x18\a \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\aAWS_IAMR\x04NONER\x13functionUrlAuthType:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
-	"!url_auth_type_requires_url_action\x12Kfunction_url_auth_type only applies when action is lambda:InvokeFunctionUrl\x1aNthis.function_url_auth_type == '' || this.action == 'lambda:InvokeFunctionUrl'\"\xf2\x03\n" +
+	"\x16function_url_auth_type\x18\a \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\aAWS_IAMR\x04NONER\x13functionUrlAuthType\x12&\n" +
+	"\tqualifier\x18\b \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\tqualifier\x12\xd9\x01\n" +
+	"\x12event_source_token\x18\t \x01(\tB\xaa\x01\xbaH\x05r\x03\x18\x80\x02\xaa\xa6\x1d\x9d\x01An Alexa skill id (amzn1.ask.skill...) pinning the grant to one skill -- an identifier readable in the function's resource policy, never credential material.R\x10eventSourceToken\x127\n" +
+	"\x18invoked_via_function_url\x18\n" +
+	" \x01(\bR\x15invokedViaFunctionUrl:\xc7\x01\xbaH\xc3\x01\x1a\xc0\x01\n" +
+	"!url_auth_type_requires_url_action\x12Kfunction_url_auth_type only applies when action is lambda:InvokeFunctionUrl\x1aNthis.function_url_auth_type == '' || this.action == 'lambda:InvokeFunctionUrl'\"\x9a\x04\n" +
 	"\x1aAwsLambdaAsyncInvokeConfig\x12D\n" +
 	"\x16maximum_retry_attempts\x18\x01 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x00H\x00R\x14maximumRetryAttempts\x88\x01\x01\x12I\n" +
 	"\x19maximum_event_age_seconds\x18\x02 \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\xe0\xa8\x01(<R\x16maximumEventAgeSeconds\x12\x92\x01\n" +
 	"\x1aon_success_destination_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onSuccessDestinationArn\x12\x92\x01\n" +
-	"\x1aon_failure_destination_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArnB\x19\n" +
-	"\x17_maximum_retry_attempts\"\x8e\x03\n" +
+	"\x1aon_failure_destination_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x17onFailureDestinationArn\x12&\n" +
+	"\tqualifier\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\tqualifierB\x19\n" +
+	"\x17_maximum_retry_attempts\"\xb6\x03\n" +
 	"\x1aAwsLambdaRuntimeManagement\x12R\n" +
 	"\x11update_runtime_on\x18\x01 \x01(\tB&\xbaH#\xc8\x01\x01r\x1eR\x04AutoR\x0eFunctionUpdateR\x06ManualR\x0fupdateRuntimeOn\x12.\n" +
-	"\x13runtime_version_arn\x18\x02 \x01(\tR\x11runtimeVersionArn:\xeb\x01\xbaH\xe7\x01\x1a\xe4\x01\n" +
-	"\x1fmanual_pin_requires_version_arn\x12wupdate_runtime_on Manual requires runtime_version_arn (the exact runtime build to pin); other modes must leave it empty\x1aH(this.update_runtime_on == 'Manual') == (this.runtime_version_arn != '')B\xaf\x02\n" +
+	"\x13runtime_version_arn\x18\x02 \x01(\tR\x11runtimeVersionArn\x12&\n" +
+	"\tqualifier\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\tqualifier:\xeb\x01\xbaH\xe7\x01\x1a\xe4\x01\n" +
+	"\x1fmanual_pin_requires_version_arn\x12wupdate_runtime_on Manual requires runtime_version_arn (the exact runtime build to pin); other modes must leave it empty\x1aH(this.update_runtime_on == 'Manual') == (this.runtime_version_arn != '')\"\xd6\x01\n" +
+	"\x19AwsLambdaManagedInstances\x12:\n" +
+	"\x15capacity_provider_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x13capacityProviderArn\x12-\n" +
+	"\x13memory_gib_per_vcpu\x18\x02 \x01(\x01R\x10memoryGibPerVcpu\x12N\n" +
+	"\x1fmax_concurrency_per_environment\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x1cmaxConcurrencyPerEnvironment\"\xa4\x01\n" +
+	"\x16AwsLambdaDurableConfig\x12H\n" +
+	"\x19execution_timeout_seconds\x18\x01 \x01(\x05B\f\xbaH\t\x1a\a\x18\x80\x8a\x8a\x0f(\x01R\x17executionTimeoutSeconds\x12@\n" +
+	"\x15retention_period_days\x18\x02 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18Z(\x01R\x13retentionPeriodDays\"\x9f\x06\n" +
+	"\x16AwsLambdaScalingConfig\x12F\n" +
+	"\tqualifier\x18\x01 \x01(\tB(\xbaH%\xc8\x01\x01r 2\x1e^(\\$LATEST\\.PUBLISHED|[0-9]+)$R\tqualifier\x12J\n" +
+	"\x1amin_execution_environments\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x18minExecutionEnvironments\x88\x01\x01\x12J\n" +
+	"\x1amax_execution_environments\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01H\x01R\x18maxExecutionEnvironments\x88\x01\x01:\xe6\x03\xbaH\xe2\x03\x1a\xeb\x01\n" +
+	"\x16scaling_bounds_present\x12\x82\x01set at least one of min_execution_environments or max_execution_environments -- an empty scaling config is a reset, not a resource\x1aLhas(this.min_execution_environments) || has(this.max_execution_environments)\x1a\xf1\x01\n" +
+	"\x16scaling_bounds_ordered\x12@max_execution_environments must be >= min_execution_environments\x1a\x94\x01!has(this.min_execution_environments) || !has(this.max_execution_environments) || this.max_execution_environments >= this.min_execution_environmentsB\x1d\n" +
+	"\x1b_min_execution_environmentsB\x1d\n" +
+	"\x1b_max_execution_environmentsB\xaf\x02\n" +
 	"&com.dev.planton.aws.awslambda.v1alpha1B\tSpecProtoP\x01ZMgithub.com/plantonhq/planton/catalog/aws/awslambda/v1alpha1;awslambdav1alpha1\xa2\x02\x04DPAA\xaa\x02\"Dev.Planton.Aws.Awslambda.V1alpha1\xca\x02\"Dev\\Planton\\Aws\\Awslambda\\V1alpha1\xe2\x02.Dev\\Planton\\Aws\\Awslambda\\V1alpha1\\GPBMetadata\xea\x02&Dev::Planton::Aws::Awslambda::V1alpha1b\x06proto3"
 
 var (
@@ -1448,7 +1856,7 @@ func file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_catalog_aws_awslambda_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsLambdaSpec)(nil),              // 0: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec
 	(*AwsLambdaS3Code)(nil),            // 1: dev.planton.aws.awslambda.v1alpha1.AwsLambdaS3Code
@@ -1461,40 +1869,46 @@ var file_catalog_aws_awslambda_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsLambdaInvokePermission)(nil),  // 8: dev.planton.aws.awslambda.v1alpha1.AwsLambdaInvokePermission
 	(*AwsLambdaAsyncInvokeConfig)(nil), // 9: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig
 	(*AwsLambdaRuntimeManagement)(nil), // 10: dev.planton.aws.awslambda.v1alpha1.AwsLambdaRuntimeManagement
-	nil,                                // 11: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.EnvironmentEntry
-	nil,                                // 12: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.RoutingAdditionalVersionWeightsEntry
-	(*v1.StringValueOrRef)(nil),        // 13: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsLambdaManagedInstances)(nil),  // 11: dev.planton.aws.awslambda.v1alpha1.AwsLambdaManagedInstances
+	(*AwsLambdaDurableConfig)(nil),     // 12: dev.planton.aws.awslambda.v1alpha1.AwsLambdaDurableConfig
+	(*AwsLambdaScalingConfig)(nil),     // 13: dev.planton.aws.awslambda.v1alpha1.AwsLambdaScalingConfig
+	nil,                                // 14: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.EnvironmentEntry
+	nil,                                // 15: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.RoutingAdditionalVersionWeightsEntry
+	(*v1.StringValueOrRef)(nil),        // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awslambda_v1alpha1_spec_proto_depIdxs = []int32{
-	13, // 0: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 0: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.s3:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaS3Code
-	13, // 2: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.source_kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	11, // 3: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.environment:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.EnvironmentEntry
-	13, // 4: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 5: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 6: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 7: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.dead_letter_target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 2: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.source_kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	14, // 3: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.environment:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.EnvironmentEntry
+	16, // 4: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 5: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 6: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 7: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.dead_letter_target_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3,  // 8: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.file_system_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaFileSystemConfig
 	2,  // 9: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.image_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaImageConfig
-	13, // 10: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.layer_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 11: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.logging_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaLoggingConfig
-	5,  // 12: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.aliases:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias
-	6,  // 13: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.function_url:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrl
-	8,  // 14: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.invoke_permissions:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaInvokePermission
-	9,  // 15: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.async_invoke_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig
-	10, // 16: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.runtime_management:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaRuntimeManagement
-	13, // 17: dev.planton.aws.awslambda.v1alpha1.AwsLambdaS3Code.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 18: dev.planton.aws.awslambda.v1alpha1.AwsLambdaFileSystemConfig.access_point_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 19: dev.planton.aws.awslambda.v1alpha1.AwsLambdaLoggingConfig.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 20: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.routing_additional_version_weights:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.RoutingAdditionalVersionWeightsEntry
-	7,  // 21: dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrl.cors:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrlCors
-	13, // 22: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig.on_success_destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 23: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig.on_failure_destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	24, // [24:24] is the sub-list for method output_type
-	24, // [24:24] is the sub-list for method input_type
-	24, // [24:24] is the sub-list for extension type_name
-	24, // [24:24] is the sub-list for extension extendee
-	0,  // [0:24] is the sub-list for field type_name
+	16, // 10: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.layer_arns:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 11: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.managed_instances:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaManagedInstances
+	12, // 12: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.durable_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaDurableConfig
+	4,  // 13: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.logging_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaLoggingConfig
+	5,  // 14: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.aliases:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias
+	6,  // 15: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.function_url:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrl
+	8,  // 16: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.invoke_permissions:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaInvokePermission
+	9,  // 17: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.async_invoke_config:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig
+	10, // 18: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.runtime_management:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaRuntimeManagement
+	13, // 19: dev.planton.aws.awslambda.v1alpha1.AwsLambdaSpec.scaling_configs:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaScalingConfig
+	16, // 20: dev.planton.aws.awslambda.v1alpha1.AwsLambdaS3Code.bucket:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 21: dev.planton.aws.awslambda.v1alpha1.AwsLambdaFileSystemConfig.access_point_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 22: dev.planton.aws.awslambda.v1alpha1.AwsLambdaLoggingConfig.log_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 23: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.routing_additional_version_weights:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaAlias.RoutingAdditionalVersionWeightsEntry
+	7,  // 24: dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrl.cors:type_name -> dev.planton.aws.awslambda.v1alpha1.AwsLambdaFunctionUrlCors
+	16, // 25: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig.on_success_destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 26: dev.planton.aws.awslambda.v1alpha1.AwsLambdaAsyncInvokeConfig.on_failure_destination_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	27, // [27:27] is the sub-list for method output_type
+	27, // [27:27] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awslambda_v1alpha1_spec_proto_init() }
@@ -1505,13 +1919,14 @@ func file_catalog_aws_awslambda_v1alpha1_spec_proto_init() {
 	file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[5].OneofWrappers = []any{}
 	file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
+	file_catalog_aws_awslambda_v1alpha1_spec_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awslambda_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

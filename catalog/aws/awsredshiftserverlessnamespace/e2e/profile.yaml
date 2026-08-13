@@ -10,6 +10,12 @@ spec:
   # RPU charges. The scenario proves the recommended managed-password
   # path: no secret in the manifest or state, the secret ARN surfacing
   # as an output.
+  #
+  # Badge KEPT through the depth closure (T02 s24, manifest-only): zero
+  # spec/module changes -- the parity manifest recorded the write-only
+  # password pair as exclusions, and the serverless usage-limit
+  # satellite was verified WORKGROUP-scoped (provider tests + docs), so
+  # nothing new exists for a live lane to prove.
   tier: 1
   status: green
   validated_provisioners:

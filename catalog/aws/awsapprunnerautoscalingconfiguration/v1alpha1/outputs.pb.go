@@ -38,7 +38,11 @@ type AwsAppRunnerAutoScalingConfigurationStackOutputs struct {
 	ConfigurationRevision int64 `protobuf:"varint,2,opt,name=configuration_revision,json=configurationRevision,proto3" json:"configuration_revision,omitempty"`
 	// Whether this revision is the latest one registered under the
 	// configuration name.
-	Latest        bool `protobuf:"varint,3,opt,name=latest,proto3" json:"latest,omitempty"`
+	Latest bool `protobuf:"varint,3,opt,name=latest,proto3" json:"latest,omitempty"`
+	// Whether this configuration holds the account/region default
+	// designation at the end of the deployment (true when
+	// set_as_account_default claimed it).
+	IsDefault     bool `protobuf:"varint,4,opt,name=is_default,json=isDefault,proto3" json:"is_default,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -94,15 +98,24 @@ func (x *AwsAppRunnerAutoScalingConfigurationStackOutputs) GetLatest() bool {
 	return false
 }
 
+func (x *AwsAppRunnerAutoScalingConfigurationStackOutputs) GetIsDefault() bool {
+	if x != nil {
+		return x.IsDefault
+	}
+	return false
+}
+
 var File_catalog_aws_awsapprunnerautoscalingconfiguration_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsapprunnerautoscalingconfiguration_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Gcatalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1/outputs.proto\x12=dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1\"\xae\x01\n" +
+	"Gcatalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1/outputs.proto\x12=dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1\"\xcd\x01\n" +
 	"0AwsAppRunnerAutoScalingConfigurationStackOutputs\x12+\n" +
 	"\x11configuration_arn\x18\x01 \x01(\tR\x10configurationArn\x125\n" +
 	"\x16configuration_revision\x18\x02 \x01(\x03R\x15configurationRevision\x12\x16\n" +
-	"\x06latest\x18\x03 \x01(\bR\x06latestB\xf0\x03\n" +
+	"\x06latest\x18\x03 \x01(\bR\x06latest\x12\x1d\n" +
+	"\n" +
+	"is_default\x18\x04 \x01(\bR\tisDefaultB\xf0\x03\n" +
 	"Acom.dev.planton.aws.awsapprunnerautoscalingconfiguration.v1alpha1B\fOutputsProtoP\x01Z\x83\x01github.com/plantonhq/planton/catalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1;awsapprunnerautoscalingconfigurationv1alpha1\xa2\x02\x04DPAA\xaa\x02=Dev.Planton.Aws.Awsapprunnerautoscalingconfiguration.V1alpha1\xca\x02=Dev\\Planton\\Aws\\Awsapprunnerautoscalingconfiguration\\V1alpha1\xe2\x02IDev\\Planton\\Aws\\Awsapprunnerautoscalingconfiguration\\V1alpha1\\GPBMetadata\xea\x02ADev::Planton::Aws::Awsapprunnerautoscalingconfiguration::V1alpha1b\x06proto3"
 
 var (

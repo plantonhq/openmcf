@@ -38,11 +38,6 @@ metadata:
   org: test-org
   env: dev
   id: test-composite-alarm-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchCompositeAlarm.test-composite-alarm
 spec:
   region: us-west-2
   alarmRule: 'ALARM("test-cpu-alarm") AND ALARM("test-error-alarm")'
@@ -184,6 +179,11 @@ Maximum time (in seconds) the composite alarm waits for the suppressor
 alarm to enter ALARM state after the composite itself transitions,
 before concluding the suppressor is not firing and executing actions.
 
+AWS requires this field whenever a suppressor is configured (the
+PutCompositeAlarm contract) — both engines always send it with the
+suppressor. 0 means the composite acts immediately unless the suppressor
+is already in ALARM.
+
 - rule: {"int32":{"gte":0}}
 
 ### spec.actionsSuppressor.extensionPeriod
@@ -193,6 +193,10 @@ before concluding the suppressor is not firing and executing actions.
 Maximum time (in seconds) actions remain suppressed AFTER the suppressor
 alarm leaves ALARM state — a grace window that avoids acting on
 transitions that occur while the suppression is winding down.
+
+AWS requires this field whenever a suppressor is configured (the
+PutCompositeAlarm contract) — both engines always send it with the
+suppressor. 0 ends suppression the moment the suppressor recovers.
 
 - rule: {"int32":{"gte":0}}
 

@@ -1,0 +1,27 @@
+# Minimal AzureVirtualWan scenario: a Standard WAN with ARM's defaults
+# (branch-to-branch on, encryption on, no O365 breakout). The WAN is a
+# free policy object that provisions in minutes -- the lane proves the
+# ARM object, its type, and the transit-policy properties.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualWan
+metadata:
+  name: planton-oss-e2e-azurevirtualwan-smoke
+  id: planton-oss-e2e-azurevirtualwan-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualwan
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vwan-smoke
+  tags:
+    e2e-suite: azure
+    purpose: smoke

@@ -8,6 +8,7 @@ package awsvpcv1alpha1
 
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
+	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -28,18 +29,19 @@ const (
 //
 // A VPC is the networking foundation for nearly everything else on AWS, but it
 // is itself a thin construct: an IP address space (one primary IPv4 CIDR, plus
-// optional secondary IPv4 CIDRs and an IPv6 CIDR), a tenancy mode, and a few
-// DNS toggles. The things that make a network useful -- subnets, internet
-// gateways, NAT gateways, route tables -- are separate, independently ownable
-// components that reference this VPC. Keeping the VPC a clean building block is
-// what lets a topology be composed from first-class nodes rather than hidden
-// inside one opaque resource.
+// optional secondary IPv4/IPv6 CIDRs), a tenancy mode, a few DNS toggles, and
+// an optional encryption-in-transit control. The things that make a network
+// useful -- subnets, internet gateways, NAT gateways, route tables -- are
+// separate, independently ownable components that reference this VPC. Keeping
+// the VPC a clean building block is what lets a topology be composed from
+// first-class nodes rather than hidden inside one opaque resource.
 //
 // The primary IPv4 CIDR can be specified explicitly (cidr_block) or allocated
 // from an IPAM pool (ipv4_ipam_pool_id [+ ipv4_netmask_length]). IPv6 is opt-in
 // and supports either an Amazon-provided /56 (assign_generated_ipv6_cidr_block)
-// or an IPAM-allocated block (ipv6_ipam_pool_id). The cross-field rules below
-// mirror what AWS itself enforces.
+// or an IPAM-allocated block (ipv6_ipam_pool_id). Additional address space is
+// attached in place through secondary_ipv4_cidrs / secondary_ipv6_cidrs. The
+// cross-field rules below mirror what AWS itself enforces.
 type AwsVpcSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region where the VPC will be created.
@@ -54,18 +56,19 @@ type AwsVpcSpec struct {
 	// (set ipv4_ipam_pool_id instead); exactly one of cidr_block or
 	// ipv4_ipam_pool_id must be provided.
 	CidrBlock string `protobuf:"bytes,2,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
-	// Additional IPv4 CIDR blocks to associate with the VPC beyond the primary
-	// one (e.g. ["10.1.0.0/16", "100.64.0.0/16"]). Each is associated as its own
-	// resource and can be added or removed without recreating the VPC. Each block
-	// must be non-overlapping and within the AWS /16-/28 mask limits. Useful when
-	// a single /16 runs out of subnet space or when carving a distinct range
-	// (such as the 100.64.0.0/10 shared space) for specific workloads.
-	SecondaryIpv4CidrBlocks []string `protobuf:"bytes,3,rep,name=secondary_ipv4_cidr_blocks,json=secondaryIpv4CidrBlocks,proto3" json:"secondary_ipv4_cidr_blocks,omitempty"`
+	// Additional IPv4 address ranges to associate with the VPC beyond the
+	// primary one. Each entry is associated as its own resource and can be
+	// added or removed without recreating the VPC -- the standard way to grow
+	// a network whose original range ran out of subnet space, or to carve a
+	// distinct range (such as the 100.64.0.0/10 shared space) for specific
+	// workloads. Each entry names an explicit CIDR or an IPAM allocation.
+	SecondaryIpv4Cidrs []*AwsVpcSecondaryIpv4Cidr `protobuf:"bytes,3,rep,name=secondary_ipv4_cidrs,json=secondaryIpv4Cidrs,proto3" json:"secondary_ipv4_cidrs,omitempty"`
 	// The IPAM (IP Address Manager) pool to allocate the primary IPv4 CIDR from,
 	// instead of specifying cidr_block directly. Pair with ipv4_netmask_length to
 	// let IPAM choose a block of the requested size, or with cidr_block to take a
-	// specific block from the pool. Immutable: changing it replaces the VPC.
-	Ipv4IpamPoolId string `protobuf:"bytes,4,opt,name=ipv4_ipam_pool_id,json=ipv4IpamPoolId,proto3" json:"ipv4_ipam_pool_id,omitempty"`
+	// specific block from the pool. Supply a literal ipam-pool-id; there is no
+	// IPAM pool catalog kind yet. Immutable: changing it replaces the VPC.
+	Ipv4IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=ipv4_ipam_pool_id,json=ipv4IpamPoolId,proto3" json:"ipv4_ipam_pool_id,omitempty"`
 	// The netmask length of the primary IPv4 CIDR to allocate from
 	// ipv4_ipam_pool_id (e.g. 16 for a /16). Must be between 16 and 28. Requires
 	// ipv4_ipam_pool_id and is mutually exclusive with cidr_block. Immutable:
@@ -75,7 +78,7 @@ type AwsVpcSpec struct {
 	// run on shared hardware) or "dedicated" (every instance runs on
 	// single-tenant hardware, at higher cost). Leave empty for the AWS default
 	// ("default"). Note that AWS only supports changing "dedicated" -> "default"
-	// in place; other tenancy changes are not permitted by the API.
+	// in place; changing "default" -> "dedicated" replaces the VPC.
 	InstanceTenancy string `protobuf:"bytes,6,opt,name=instance_tenancy,json=instanceTenancy,proto3" json:"instance_tenancy,omitempty"`
 	// Whether the Amazon-provided DNS server (the .2 resolver) answers DNS
 	// queries from within the VPC. AWS enables this by default, and disabling it
@@ -97,22 +100,35 @@ type AwsVpcSpec struct {
 	// IPv6 fields (ipv6_ipam_pool_id / ipv6_cidr_block / ipv6_netmask_length).
 	AssignGeneratedIpv6CidrBlock bool `protobuf:"varint,10,opt,name=assign_generated_ipv6_cidr_block,json=assignGeneratedIpv6CidrBlock,proto3" json:"assign_generated_ipv6_cidr_block,omitempty"`
 	// An explicit IPv6 CIDR block to allocate from ipv6_ipam_pool_id (e.g.
-	// "2600:1f18:abcd:1200::/56"). Requires ipv6_ipam_pool_id (a bring-your-own
-	// IPv6 block without IPAM is not supported on the VPC resource) and is
-	// mutually exclusive with ipv6_netmask_length.
+	// "2600:1f18:abcd:1200::/56"). The prefix length must be one of /44, /48,
+	// /52, /56, or /60 (the AWS VPC IPv6 sizes). Requires ipv6_ipam_pool_id (a
+	// bring-your-own IPv6 block without IPAM is not supported on the VPC
+	// resource) and is mutually exclusive with ipv6_netmask_length.
 	Ipv6CidrBlock string `protobuf:"bytes,11,opt,name=ipv6_cidr_block,json=ipv6CidrBlock,proto3" json:"ipv6_cidr_block,omitempty"`
 	// The network border group from which to advertise an Amazon-provided IPv6
 	// CIDR (a Local Zone / Wavelength advertisement scope). Only valid together
 	// with assign_generated_ipv6_cidr_block.
 	Ipv6CidrBlockNetworkBorderGroup string `protobuf:"bytes,12,opt,name=ipv6_cidr_block_network_border_group,json=ipv6CidrBlockNetworkBorderGroup,proto3" json:"ipv6_cidr_block_network_border_group,omitempty"`
 	// The IPAM pool to allocate the IPv6 CIDR from. Pair with ipv6_netmask_length
-	// (the size to allocate) or ipv6_cidr_block (a specific block). Mutually
+	// (the size to allocate) or ipv6_cidr_block (a specific block). Supply a
+	// literal ipam-pool-id; there is no IPAM pool catalog kind yet. Mutually
 	// exclusive with assign_generated_ipv6_cidr_block.
-	Ipv6IpamPoolId string `protobuf:"bytes,13,opt,name=ipv6_ipam_pool_id,json=ipv6IpamPoolId,proto3" json:"ipv6_ipam_pool_id,omitempty"`
+	Ipv6IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,13,opt,name=ipv6_ipam_pool_id,json=ipv6IpamPoolId,proto3" json:"ipv6_ipam_pool_id,omitempty"`
 	// The netmask length of the IPv6 CIDR to allocate from ipv6_ipam_pool_id.
 	// Must be one of 44, 48, 52, 56, or 60. Requires ipv6_ipam_pool_id and is
 	// mutually exclusive with ipv6_cidr_block.
 	Ipv6NetmaskLength int32 `protobuf:"varint,14,opt,name=ipv6_netmask_length,json=ipv6NetmaskLength,proto3" json:"ipv6_netmask_length,omitempty"`
+	// Additional IPv6 address ranges to associate with the VPC beyond the one
+	// configured above. Each entry is associated as its own resource and can be
+	// added or removed without recreating the VPC. Each entry names exactly one
+	// source: an Amazon-provided block, a BYOIP public pool, or an IPAM pool.
+	SecondaryIpv6Cidrs []*AwsVpcSecondaryIpv6Cidr `protobuf:"bytes,15,rep,name=secondary_ipv6_cidrs,json=secondaryIpv6Cidrs,proto3" json:"secondary_ipv6_cidrs,omitempty"`
+	// VPC Encryption Control: monitor or enforce encryption in transit for
+	// traffic entering, leaving, and moving within the VPC. Omit to leave the
+	// feature off (the AWS default). Start in "monitor" mode to observe, then
+	// move to "enforce" once the exclusions below cover every path that cannot
+	// encrypt.
+	EncryptionControl *AwsVpcEncryptionControl `protobuf:"bytes,16,opt,name=encryption_control,json=encryptionControl,proto3" json:"encryption_control,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -161,18 +177,18 @@ func (x *AwsVpcSpec) GetCidrBlock() string {
 	return ""
 }
 
-func (x *AwsVpcSpec) GetSecondaryIpv4CidrBlocks() []string {
+func (x *AwsVpcSpec) GetSecondaryIpv4Cidrs() []*AwsVpcSecondaryIpv4Cidr {
 	if x != nil {
-		return x.SecondaryIpv4CidrBlocks
+		return x.SecondaryIpv4Cidrs
 	}
 	return nil
 }
 
-func (x *AwsVpcSpec) GetIpv4IpamPoolId() string {
+func (x *AwsVpcSpec) GetIpv4IpamPoolId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Ipv4IpamPoolId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsVpcSpec) GetIpv4NetmaskLength() int32 {
@@ -231,11 +247,11 @@ func (x *AwsVpcSpec) GetIpv6CidrBlockNetworkBorderGroup() string {
 	return ""
 }
 
-func (x *AwsVpcSpec) GetIpv6IpamPoolId() string {
+func (x *AwsVpcSpec) GetIpv6IpamPoolId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.Ipv6IpamPoolId
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsVpcSpec) GetIpv6NetmaskLength() int32 {
@@ -245,18 +261,332 @@ func (x *AwsVpcSpec) GetIpv6NetmaskLength() int32 {
 	return 0
 }
 
+func (x *AwsVpcSpec) GetSecondaryIpv6Cidrs() []*AwsVpcSecondaryIpv6Cidr {
+	if x != nil {
+		return x.SecondaryIpv6Cidrs
+	}
+	return nil
+}
+
+func (x *AwsVpcSpec) GetEncryptionControl() *AwsVpcEncryptionControl {
+	if x != nil {
+		return x.EncryptionControl
+	}
+	return nil
+}
+
+// AwsVpcSecondaryIpv4Cidr defines one additional IPv4 address range for the
+// VPC: an explicit CIDR block, or an allocation from an IPAM pool (sized by
+// netmask_length, or pinned to a specific block by also setting cidr_block).
+// Mirrors the allocation modes of the VPC's primary IPv4 range.
+type AwsVpcSecondaryIpv4Cidr struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// An explicit IPv4 CIDR block to associate (e.g. "10.1.0.0/16" or
+	// "100.64.0.0/16"). The mask must be between /16 and /28 and the range must
+	// not overlap the VPC's other CIDRs. When ipam_pool_id is also set, this
+	// pins a specific block from that pool. Immutable: changing it replaces the
+	// association (the VPC itself is untouched).
+	CidrBlock string `protobuf:"bytes,1,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
+	// The IPAM pool to allocate this secondary CIDR from, instead of (or in
+	// addition to, when pinning a specific block) cidr_block. Supply a literal
+	// ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable: changing
+	// it replaces the association.
+	IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=ipam_pool_id,json=ipamPoolId,proto3" json:"ipam_pool_id,omitempty"`
+	// The netmask length of the CIDR to allocate from ipam_pool_id (e.g. 16 for
+	// a /16). Must be between 16 and 28. Requires ipam_pool_id and is mutually
+	// exclusive with cidr_block. Immutable: changing it replaces the
+	// association.
+	NetmaskLength int32 `protobuf:"varint,3,opt,name=netmask_length,json=netmaskLength,proto3" json:"netmask_length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsVpcSecondaryIpv4Cidr) Reset() {
+	*x = AwsVpcSecondaryIpv4Cidr{}
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsVpcSecondaryIpv4Cidr) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsVpcSecondaryIpv4Cidr) ProtoMessage() {}
+
+func (x *AwsVpcSecondaryIpv4Cidr) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsVpcSecondaryIpv4Cidr.ProtoReflect.Descriptor instead.
+func (*AwsVpcSecondaryIpv4Cidr) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsVpcSecondaryIpv4Cidr) GetCidrBlock() string {
+	if x != nil {
+		return x.CidrBlock
+	}
+	return ""
+}
+
+func (x *AwsVpcSecondaryIpv4Cidr) GetIpamPoolId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IpamPoolId
+	}
+	return nil
+}
+
+func (x *AwsVpcSecondaryIpv4Cidr) GetNetmaskLength() int32 {
+	if x != nil {
+		return x.NetmaskLength
+	}
+	return 0
+}
+
+// AwsVpcSecondaryIpv6Cidr defines one additional IPv6 address range for the
+// VPC. Exactly one source selects where the range comes from: an
+// Amazon-provided block, a BYOIP public pool you brought to AWS, or an IPAM
+// pool (sized by netmask_length, or pinned by cidr_block).
+type AwsVpcSecondaryIpv6Cidr struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Request an Amazon-provided IPv6 /56 block. Mutually exclusive with the
+	// pool sources and with cidr_block (Amazon chooses the range).
+	AssignGenerated bool `protobuf:"varint,1,opt,name=assign_generated,json=assignGenerated,proto3" json:"assign_generated,omitempty"`
+	// The BYOIP public IPv6 pool (ipv6pool-ec2-...) to take the range from --
+	// address space you brought to AWS outside of IPAM. Pair with cidr_block to
+	// pin the specific block. Immutable: changing it replaces the association.
+	Ipv6Pool string `protobuf:"bytes,2,opt,name=ipv6_pool,json=ipv6Pool,proto3" json:"ipv6_pool,omitempty"`
+	// The IPAM pool to allocate the range from. Pair with netmask_length (the
+	// size to allocate) or cidr_block (a specific block). Supply a literal
+	// ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable: changing
+	// it replaces the association.
+	IpamPoolId *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=ipam_pool_id,json=ipamPoolId,proto3" json:"ipam_pool_id,omitempty"`
+	// An explicit IPv6 CIDR block, used with ipv6_pool or ipam_pool_id to pin
+	// the exact range (e.g. "2600:1f18:abcd:1200::/56"). The prefix length must
+	// be one of /44, /48, /52, /56, or /60. Mutually exclusive with
+	// netmask_length and with assign_generated. Immutable: changing it replaces
+	// the association.
+	CidrBlock string `protobuf:"bytes,4,opt,name=cidr_block,json=cidrBlock,proto3" json:"cidr_block,omitempty"`
+	// The netmask length to allocate from ipam_pool_id. Must be one of 44, 48,
+	// 52, 56, or 60 (AWS only sizes IPAM allocations -- pool and Amazon blocks
+	// pin their own size). Mutually exclusive with cidr_block. Immutable:
+	// changing it replaces the association.
+	NetmaskLength int32 `protobuf:"varint,5,opt,name=netmask_length,json=netmaskLength,proto3" json:"netmask_length,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) Reset() {
+	*x = AwsVpcSecondaryIpv6Cidr{}
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsVpcSecondaryIpv6Cidr) ProtoMessage() {}
+
+func (x *AwsVpcSecondaryIpv6Cidr) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsVpcSecondaryIpv6Cidr.ProtoReflect.Descriptor instead.
+func (*AwsVpcSecondaryIpv6Cidr) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) GetAssignGenerated() bool {
+	if x != nil {
+		return x.AssignGenerated
+	}
+	return false
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) GetIpv6Pool() string {
+	if x != nil {
+		return x.Ipv6Pool
+	}
+	return ""
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) GetIpamPoolId() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IpamPoolId
+	}
+	return nil
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) GetCidrBlock() string {
+	if x != nil {
+		return x.CidrBlock
+	}
+	return ""
+}
+
+func (x *AwsVpcSecondaryIpv6Cidr) GetNetmaskLength() int32 {
+	if x != nil {
+		return x.NetmaskLength
+	}
+	return 0
+}
+
+// AwsVpcEncryptionControl configures VPC Encryption Control: AWS's
+// VPC-wide monitor/enforce switch for encryption in transit. In "monitor"
+// mode AWS observes and reports unencrypted traffic paths; in "enforce"
+// mode unencrypted traffic is blocked, with per-service exclusions for
+// paths that cannot encrypt. The rollout pattern is monitor first, review
+// the findings, then enforce with the minimum exclusions.
+type AwsVpcEncryptionControl struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The control mode: "monitor" (observe and report unencrypted paths) or
+	// "enforce" (block unencrypted traffic, honoring the exclusions below).
+	Mode string `protobuf:"bytes,1,opt,name=mode,proto3" json:"mode,omitempty"`
+	// Exclude internet gateway traffic from enforcement.
+	ExcludeInternetGateway bool `protobuf:"varint,2,opt,name=exclude_internet_gateway,json=excludeInternetGateway,proto3" json:"exclude_internet_gateway,omitempty"`
+	// Exclude egress-only internet gateway traffic from enforcement.
+	ExcludeEgressOnlyInternetGateway bool `protobuf:"varint,3,opt,name=exclude_egress_only_internet_gateway,json=excludeEgressOnlyInternetGateway,proto3" json:"exclude_egress_only_internet_gateway,omitempty"`
+	// Exclude NAT gateway traffic from enforcement.
+	ExcludeNatGateway bool `protobuf:"varint,4,opt,name=exclude_nat_gateway,json=excludeNatGateway,proto3" json:"exclude_nat_gateway,omitempty"`
+	// Exclude virtual private gateway (Site-to-Site VPN) traffic from
+	// enforcement.
+	ExcludeVirtualPrivateGateway bool `protobuf:"varint,5,opt,name=exclude_virtual_private_gateway,json=excludeVirtualPrivateGateway,proto3" json:"exclude_virtual_private_gateway,omitempty"`
+	// Exclude VPC peering traffic from enforcement.
+	ExcludeVpcPeering bool `protobuf:"varint,6,opt,name=exclude_vpc_peering,json=excludeVpcPeering,proto3" json:"exclude_vpc_peering,omitempty"`
+	// Exclude VPC Lattice traffic from enforcement.
+	ExcludeVpcLattice bool `protobuf:"varint,7,opt,name=exclude_vpc_lattice,json=excludeVpcLattice,proto3" json:"exclude_vpc_lattice,omitempty"`
+	// Exclude Lambda function traffic from enforcement.
+	ExcludeLambda bool `protobuf:"varint,8,opt,name=exclude_lambda,json=excludeLambda,proto3" json:"exclude_lambda,omitempty"`
+	// Exclude Elastic File System (EFS) traffic from enforcement.
+	ExcludeElasticFileSystem bool `protobuf:"varint,9,opt,name=exclude_elastic_file_system,json=excludeElasticFileSystem,proto3" json:"exclude_elastic_file_system,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
+}
+
+func (x *AwsVpcEncryptionControl) Reset() {
+	*x = AwsVpcEncryptionControl{}
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsVpcEncryptionControl) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsVpcEncryptionControl) ProtoMessage() {}
+
+func (x *AwsVpcEncryptionControl) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsVpcEncryptionControl.ProtoReflect.Descriptor instead.
+func (*AwsVpcEncryptionControl) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AwsVpcEncryptionControl) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeInternetGateway() bool {
+	if x != nil {
+		return x.ExcludeInternetGateway
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeEgressOnlyInternetGateway() bool {
+	if x != nil {
+		return x.ExcludeEgressOnlyInternetGateway
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeNatGateway() bool {
+	if x != nil {
+		return x.ExcludeNatGateway
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeVirtualPrivateGateway() bool {
+	if x != nil {
+		return x.ExcludeVirtualPrivateGateway
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeVpcPeering() bool {
+	if x != nil {
+		return x.ExcludeVpcPeering
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeVpcLattice() bool {
+	if x != nil {
+		return x.ExcludeVpcLattice
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeLambda() bool {
+	if x != nil {
+		return x.ExcludeLambda
+	}
+	return false
+}
+
+func (x *AwsVpcEncryptionControl) GetExcludeElasticFileSystem() bool {
+	if x != nil {
+		return x.ExcludeElasticFileSystem
+	}
+	return false
+}
+
 var File_catalog_aws_awsvpc_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"&catalog/aws/awsvpc/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsvpc.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cshared/options/options.proto\"\x9e\x15\n" +
+	"&catalog/aws/awsvpc/v1alpha1/spec.proto\x12\x1fdev.planton.aws.awsvpc.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x83\x1a\n" +
 	"\n" +
 	"AwsVpcSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1d\n" +
 	"\n" +
-	"cidr_block\x18\x02 \x01(\tR\tcidrBlock\x12;\n" +
-	"\x1asecondary_ipv4_cidr_blocks\x18\x03 \x03(\tR\x17secondaryIpv4CidrBlocks\x12)\n" +
-	"\x11ipv4_ipam_pool_id\x18\x04 \x01(\tR\x0eipv4IpamPoolId\x12.\n" +
+	"cidr_block\x18\x02 \x01(\tR\tcidrBlock\x12j\n" +
+	"\x14secondary_ipv4_cidrs\x18\x03 \x03(\v28.dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv4CidrR\x12secondaryIpv4Cidrs\x12]\n" +
+	"\x11ipv4_ipam_pool_id\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0eipv4IpamPoolId\x12.\n" +
 	"\x13ipv4_netmask_length\x18\x05 \x01(\x05R\x11ipv4NetmaskLength\x12\xbb\x01\n" +
 	"\x10instance_tenancy\x18\x06 \x01(\tB\x8f\x01\xbaH\x80\x01\xba\x01}\n" +
 	"\x16instance_tenancy_valid\x123instance_tenancy must be one of: default, dedicated\x1a.this == '' || this in ['default', 'dedicated']\x92\xa6\x1d\adefaultR\x0finstanceTenancy\x12;\n" +
@@ -266,19 +596,54 @@ const file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDesc = "" +
 	" assign_generated_ipv6_cidr_block\x18\n" +
 	" \x01(\bR\x1cassignGeneratedIpv6CidrBlock\x12&\n" +
 	"\x0fipv6_cidr_block\x18\v \x01(\tR\ripv6CidrBlock\x12M\n" +
-	"$ipv6_cidr_block_network_border_group\x18\f \x01(\tR\x1fipv6CidrBlockNetworkBorderGroup\x12)\n" +
-	"\x11ipv6_ipam_pool_id\x18\r \x01(\tR\x0eipv6IpamPoolId\x12.\n" +
-	"\x13ipv6_netmask_length\x18\x0e \x01(\x05R\x11ipv6NetmaskLength:\xff\r\xbaH\xfb\r\x1a\x9b\x01\n" +
-	"\x1cipv4_primary_source_required\x12Dset exactly one primary IPv4 source: cidr_block or ipv4_ipam_pool_id\x1a5this.cidr_block != '' || this.ipv4_ipam_pool_id != ''\x1a\x99\x01\n" +
-	"$ipv4_cidr_block_vs_netmask_exclusive\x129cidr_block and ipv4_netmask_length are mutually exclusive\x1a6this.cidr_block == '' || this.ipv4_netmask_length == 0\x1a\xaf\x01\n" +
-	"\x16ipv4_cidr_block_format\x126cidr_block must be a valid IPv4 CIDR, e.g. 10.0.0.0/16\x1a]this.cidr_block == '' || this.cidr_block.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')\x1a\xef\x01\n" +
-	"\x19ipv4_netmask_length_valid\x12Lipv4_netmask_length must be between 16 and 28 and requires ipv4_ipam_pool_id\x1a\x83\x01this.ipv4_netmask_length == 0 || (this.ipv4_netmask_length >= 16 && this.ipv4_netmask_length <= 28 && this.ipv4_ipam_pool_id != '')\x1a\xb1\x02\n" +
-	"\x1dipv6_amazon_vs_ipam_exclusive\x12\x85\x01assign_generated_ipv6_cidr_block cannot be combined with the IPAM IPv6 fields (ipv6_ipam_pool_id/ipv6_cidr_block/ipv6_netmask_length)\x1a\x87\x01!this.assign_generated_ipv6_cidr_block || (this.ipv6_ipam_pool_id == '' && this.ipv6_cidr_block == '' && this.ipv6_netmask_length == 0)\x1a\x87\x01\n" +
-	"\x1dipv6_cidr_block_requires_ipam\x12*ipv6_cidr_block requires ipv6_ipam_pool_id\x1a:this.ipv6_cidr_block == '' || this.ipv6_ipam_pool_id != ''\x1a\xe6\x01\n" +
-	"\x19ipv6_netmask_length_valid\x12Tipv6_netmask_length must be one of 44, 48, 52, 56, 60 and requires ipv6_ipam_pool_id\x1asthis.ipv6_netmask_length == 0 || (this.ipv6_netmask_length in [44, 48, 52, 56, 60] && this.ipv6_ipam_pool_id != '')\x1a\xa3\x01\n" +
+	"$ipv6_cidr_block_network_border_group\x18\f \x01(\tR\x1fipv6CidrBlockNetworkBorderGroup\x12]\n" +
+	"\x11ipv6_ipam_pool_id\x18\r \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x0eipv6IpamPoolId\x12.\n" +
+	"\x13ipv6_netmask_length\x18\x0e \x01(\x05R\x11ipv6NetmaskLength\x12j\n" +
+	"\x14secondary_ipv6_cidrs\x18\x0f \x03(\v28.dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv6CidrR\x12secondaryIpv6Cidrs\x12g\n" +
+	"\x12encryption_control\x18\x10 \x01(\v28.dev.planton.aws.awsvpc.v1alpha1.AwsVpcEncryptionControlR\x11encryptionControl:\xf8\x0f\xbaH\xf4\x0f\x1a\x9a\x01\n" +
+	"\x1cipv4_primary_source_required\x12Dset exactly one primary IPv4 source: cidr_block or ipv4_ipam_pool_id\x1a4this.cidr_block != '' || has(this.ipv4_ipam_pool_id)\x1a\x99\x01\n" +
+	"$ipv4_cidr_block_vs_netmask_exclusive\x129cidr_block and ipv4_netmask_length are mutually exclusive\x1a6this.cidr_block == '' || this.ipv4_netmask_length == 0\x1a\xc3\x01\n" +
+	"\x16ipv4_cidr_block_format\x12Ecidr_block must be an IPv4 CIDR with a /16-/28 mask, e.g. 10.0.0.0/16\x1abthis.cidr_block == '' || this.cidr_block.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/(1[6-9]|2[0-8])$')\x1a\xee\x01\n" +
+	"\x19ipv4_netmask_length_valid\x12Lipv4_netmask_length must be between 16 and 28 and requires ipv4_ipam_pool_id\x1a\x82\x01this.ipv4_netmask_length == 0 || (this.ipv4_netmask_length >= 16 && this.ipv4_netmask_length <= 28 && has(this.ipv4_ipam_pool_id))\x1a\xb1\x02\n" +
+	"\x1dipv6_amazon_vs_ipam_exclusive\x12\x85\x01assign_generated_ipv6_cidr_block cannot be combined with the IPAM IPv6 fields (ipv6_ipam_pool_id/ipv6_cidr_block/ipv6_netmask_length)\x1a\x87\x01!this.assign_generated_ipv6_cidr_block || (!has(this.ipv6_ipam_pool_id) && this.ipv6_cidr_block == '' && this.ipv6_netmask_length == 0)\x1a\x86\x01\n" +
+	"\x1dipv6_cidr_block_requires_ipam\x12*ipv6_cidr_block requires ipv6_ipam_pool_id\x1a9this.ipv6_cidr_block == '' || has(this.ipv6_ipam_pool_id)\x1a\xe6\x01\n" +
+	"\x16ipv6_cidr_block_format\x12lipv6_cidr_block must be an IPv6 CIDR with a /44, /48, /52, /56, or /60 prefix, e.g. 2600:1f18:abcd:1200::/56\x1a^this.ipv6_cidr_block == '' || this.ipv6_cidr_block.matches('^[0-9a-fA-F:]+/(44|48|52|56|60)$')\x1a\xe5\x01\n" +
+	"\x19ipv6_netmask_length_valid\x12Tipv6_netmask_length must be one of 44, 48, 52, 56, 60 and requires ipv6_ipam_pool_id\x1arthis.ipv6_netmask_length == 0 || (this.ipv6_netmask_length in [44, 48, 52, 56, 60] && has(this.ipv6_ipam_pool_id))\x1a\xa3\x01\n" +
 	"$ipv6_cidr_block_vs_netmask_exclusive\x12>ipv6_cidr_block and ipv6_netmask_length are mutually exclusive\x1a;this.ipv6_cidr_block == '' || this.ipv6_netmask_length == 0\x1a\xcd\x01\n" +
 	"!ipv6_border_group_requires_amazon\x12Nipv6_cidr_block_network_border_group requires assign_generated_ipv6_cidr_block\x1aXthis.ipv6_cidr_block_network_border_group == '' || this.assign_generated_ipv6_cidr_blockB\x15\n" +
-	"\x13_enable_dns_supportB\x9a\x02\n" +
+	"\x13_enable_dns_support\"\xc2\x06\n" +
+	"\x17AwsVpcSecondaryIpv4Cidr\x12\x1d\n" +
+	"\n" +
+	"cidr_block\x18\x01 \x01(\tR\tcidrBlock\x12T\n" +
+	"\fipam_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\n" +
+	"ipamPoolId\x12%\n" +
+	"\x0enetmask_length\x18\x03 \x01(\x05R\rnetmaskLength:\x8a\x05\xbaH\x86\x05\x1a\xa2\x01\n" +
+	"\x1esecondary_ipv4_source_required\x12Oset cidr_block or ipam_pool_id (or both, to pin a specific block from the pool)\x1a/this.cidr_block != '' || has(this.ipam_pool_id)\x1a\xc7\x01\n" +
+	"\x1asecondary_ipv4_cidr_format\x12Ecidr_block must be an IPv4 CIDR with a /16-/28 mask, e.g. 10.1.0.0/16\x1abthis.cidr_block == '' || this.cidr_block.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/(1[6-9]|2[0-8])$')\x1a\x94\x02\n" +
+	"\x1csecondary_ipv4_netmask_valid\x12jnetmask_length must be between 16 and 28, requires ipam_pool_id, and is mutually exclusive with cidr_block\x1a\x87\x01this.netmask_length == 0 || (this.netmask_length >= 16 && this.netmask_length <= 28 && has(this.ipam_pool_id) && this.cidr_block == '')\"\xba\b\n" +
+	"\x17AwsVpcSecondaryIpv6Cidr\x12)\n" +
+	"\x10assign_generated\x18\x01 \x01(\bR\x0fassignGenerated\x12\x1b\n" +
+	"\tipv6_pool\x18\x02 \x01(\tR\bipv6Pool\x12T\n" +
+	"\fipam_pool_id\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\n" +
+	"ipamPoolId\x12\x1d\n" +
+	"\n" +
+	"cidr_block\x18\x04 \x01(\tR\tcidrBlock\x12%\n" +
+	"\x0enetmask_length\x18\x05 \x01(\x05R\rnetmaskLength:\xba\x06\xbaH\xb6\x06\x1a\xd0\x01\n" +
+	"\x19secondary_ipv6_one_source\x12Iset exactly one IPv6 source: assign_generated, ipv6_pool, or ipam_pool_id\x1ah(this.assign_generated ? 1 : 0) + (this.ipv6_pool != '' ? 1 : 0) + (has(this.ipam_pool_id) ? 1 : 0) == 1\x1a\x8e\x01\n" +
+	"&secondary_ipv6_cidr_not_with_generated\x123cidr_block cannot be combined with assign_generated\x1a/!this.assign_generated || this.cidr_block == ''\x1a\xbc\x01\n" +
+	"\x1asecondary_ipv6_cidr_format\x12Hcidr_block must be an IPv6 CIDR with a /44, /48, /52, /56, or /60 prefix\x1aTthis.cidr_block == '' || this.cidr_block.matches('^[0-9a-fA-F:]+/(44|48|52|56|60)$')\x1a\x90\x02\n" +
+	"\x1csecondary_ipv6_netmask_valid\x12rnetmask_length must be one of 44, 48, 52, 56, 60, requires ipam_pool_id, and is mutually exclusive with cidr_block\x1a|this.netmask_length == 0 || (this.netmask_length in [44, 48, 52, 56, 60] && has(this.ipam_pool_id) && this.cidr_block == '')\"\x85\a\n" +
+	"\x17AwsVpcEncryptionControl\x12.\n" +
+	"\x04mode\x18\x01 \x01(\tB\x1a\xbaH\x17\xc8\x01\x01r\x12R\amonitorR\aenforceR\x04mode\x128\n" +
+	"\x18exclude_internet_gateway\x18\x02 \x01(\bR\x16excludeInternetGateway\x12N\n" +
+	"$exclude_egress_only_internet_gateway\x18\x03 \x01(\bR excludeEgressOnlyInternetGateway\x12.\n" +
+	"\x13exclude_nat_gateway\x18\x04 \x01(\bR\x11excludeNatGateway\x12E\n" +
+	"\x1fexclude_virtual_private_gateway\x18\x05 \x01(\bR\x1cexcludeVirtualPrivateGateway\x12.\n" +
+	"\x13exclude_vpc_peering\x18\x06 \x01(\bR\x11excludeVpcPeering\x12.\n" +
+	"\x13exclude_vpc_lattice\x18\a \x01(\bR\x11excludeVpcLattice\x12%\n" +
+	"\x0eexclude_lambda\x18\b \x01(\bR\rexcludeLambda\x12=\n" +
+	"\x1bexclude_elastic_file_system\x18\t \x01(\bR\x18excludeElasticFileSystem:\xf2\x02\xbaH\xee\x02\x1a\xeb\x02\n" +
+	"\x1aexclusions_require_enforce\x12,exclusions only apply when mode is 'enforce'\x1a\x9e\x02this.mode == 'enforce' || !(this.exclude_internet_gateway || this.exclude_egress_only_internet_gateway || this.exclude_nat_gateway || this.exclude_virtual_private_gateway || this.exclude_vpc_peering || this.exclude_vpc_lattice || this.exclude_lambda || this.exclude_elastic_file_system)B\x9a\x02\n" +
 	"#com.dev.planton.aws.awsvpc.v1alpha1B\tSpecProtoP\x01ZGgithub.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1;awsvpcv1alpha1\xa2\x02\x04DPAA\xaa\x02\x1fDev.Planton.Aws.Awsvpc.V1alpha1\xca\x02\x1fDev\\Planton\\Aws\\Awsvpc\\V1alpha1\xe2\x02+Dev\\Planton\\Aws\\Awsvpc\\V1alpha1\\GPBMetadata\xea\x02#Dev::Planton::Aws::Awsvpc::V1alpha1b\x06proto3"
 
 var (
@@ -293,16 +658,27 @@ func file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsvpc_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awsvpc_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsVpcSpec)(nil), // 0: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec
+	(*AwsVpcSpec)(nil),              // 0: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec
+	(*AwsVpcSecondaryIpv4Cidr)(nil), // 1: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv4Cidr
+	(*AwsVpcSecondaryIpv6Cidr)(nil), // 2: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv6Cidr
+	(*AwsVpcEncryptionControl)(nil), // 3: dev.planton.aws.awsvpc.v1alpha1.AwsVpcEncryptionControl
+	(*v1.StringValueOrRef)(nil),     // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsvpc_v1alpha1_spec_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec.secondary_ipv4_cidrs:type_name -> dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv4Cidr
+	4, // 1: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec.ipv4_ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 2: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec.ipv6_ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 3: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec.secondary_ipv6_cidrs:type_name -> dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv6Cidr
+	3, // 4: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSpec.encryption_control:type_name -> dev.planton.aws.awsvpc.v1alpha1.AwsVpcEncryptionControl
+	4, // 5: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv4Cidr.ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 6: dev.planton.aws.awsvpc.v1alpha1.AwsVpcSecondaryIpv6Cidr.ipam_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsvpc_v1alpha1_spec_proto_init() }
@@ -317,7 +693,7 @@ func file_catalog_aws_awsvpc_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsvpc_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

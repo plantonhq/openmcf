@@ -1,0 +1,117 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers six provider resources as variants -- exactly one of
+# the spec's blob_storage / disk / kubernetes_cluster /
+# mysql_flexible_server / postgresql_flexible_server /
+# data_lake_storage blocks is set, and the module creates the matching
+# resource. Shared fields (name, vault_id) live at the spec root and
+# match by exact name where the provider uses them; variant-scoped
+# arguments map into their variant block below. Repeated-rule
+# arguments carry the catalog's plural field names (retention_rules,
+# life_cycles) over the provider's singular block names -- recorded as
+# prefix mappings so every nested argument derives through them.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_protection_backup_policy_blob_storage:
+    mappings:
+      - spec: spec.blob_storage.operational_default_retention_duration
+        arg: operational_default_retention_duration
+      - spec: spec.blob_storage.vault_default_retention_duration
+        arg: vault_default_retention_duration
+      - spec: spec.blob_storage.backup_repeating_time_intervals
+        arg: backup_repeating_time_intervals
+      - spec: spec.blob_storage.time_zone
+        arg: time_zone
+      # Prefix mapping: every nested rule argument (name, priority,
+      # criteria.*, life_cycle.*) derives through it.
+      - spec: spec.blob_storage.retention_rules
+        arg: retention_rule
+
+  azurerm_data_protection_backup_policy_disk:
+    mappings:
+      - spec: spec.disk.backup_repeating_time_intervals
+        arg: backup_repeating_time_intervals
+      - spec: spec.disk.default_retention_duration
+        arg: default_retention_duration
+      - spec: spec.disk.time_zone
+        arg: time_zone
+      - spec: spec.disk.retention_rules
+        arg: retention_rule
+
+  azurerm_data_protection_backup_policy_kubernetes_cluster:
+    mappings:
+      # The one variant the provider addresses by vault NAME + resource
+      # group instead of vault ID -- both derive from the spec's single
+      # vault_id reference (the module parses the structured ARM ID).
+      - spec: spec.vault_id
+        arg: vault_name
+      - spec: spec.vault_id
+        arg: resource_group_name
+      - spec: spec.kubernetes_cluster.backup_repeating_time_intervals
+        arg: backup_repeating_time_intervals
+      - spec: spec.kubernetes_cluster.time_zone
+        arg: time_zone
+      # The specific life-cycle mappings come BEFORE their rule prefix
+      # mappings: the catalog pluralizes the repeated life_cycle block
+      # (life_cycles), so the nested rename must win the derivation.
+      - spec: spec.kubernetes_cluster.default_retention_rule.life_cycles
+        arg: default_retention_rule.life_cycle
+      - spec: spec.kubernetes_cluster.default_retention_rule
+        arg: default_retention_rule
+      - spec: spec.kubernetes_cluster.retention_rules.life_cycles
+        arg: retention_rule.life_cycle
+      - spec: spec.kubernetes_cluster.retention_rules
+        arg: retention_rule
+
+  azurerm_data_protection_backup_policy_mysql_flexible_server:
+    mappings:
+      - spec: spec.mysql_flexible_server.backup_repeating_time_intervals
+        arg: backup_repeating_time_intervals
+      - spec: spec.mysql_flexible_server.time_zone
+        arg: time_zone
+      - spec: spec.mysql_flexible_server.default_retention_rule.life_cycles
+        arg: default_retention_rule.life_cycle
+      - spec: spec.mysql_flexible_server.default_retention_rule
+        arg: default_retention_rule
+      - spec: spec.mysql_flexible_server.retention_rules.life_cycles
+        arg: retention_rule.life_cycle
+      - spec: spec.mysql_flexible_server.retention_rules
+        arg: retention_rule
+
+  azurerm_data_protection_backup_policy_postgresql_flexible_server:
+    mappings:
+      - spec: spec.postgresql_flexible_server.backup_repeating_time_intervals
+        arg: backup_repeating_time_intervals
+      - spec: spec.postgresql_flexible_server.time_zone
+        arg: time_zone
+      - spec: spec.postgresql_flexible_server.default_retention_rule.life_cycles
+        arg: default_retention_rule.life_cycle
+      - spec: spec.postgresql_flexible_server.default_retention_rule
+        arg: default_retention_rule
+      - spec: spec.postgresql_flexible_server.retention_rules.life_cycles
+        arg: retention_rule.life_cycle
+      - spec: spec.postgresql_flexible_server.retention_rules
+        arg: retention_rule
+
+  azurerm_data_protection_backup_policy_data_lake_storage:
+    mappings:
+      # This resource names the same vault-ID argument its own way.
+      - spec: spec.vault_id
+        arg: data_protection_backup_vault_id
+      - spec: spec.data_lake_storage.backup_schedule
+        arg: backup_schedule
+      - spec: spec.data_lake_storage.default_retention_duration
+        arg: default_retention_duration
+      - spec: spec.data_lake_storage.time_zone
+        arg: time_zone
+      # Flat rules on this variant (criteria fields sit directly on
+      # the rule -- the provider's own shape; no priority argument,
+      # order is priority).
+      - spec: spec.data_lake_storage.retention_rules
+        arg: retention_rule

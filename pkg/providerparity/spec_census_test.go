@@ -5,6 +5,7 @@ package providerparity
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/plantonhq/planton/pkg/crkreflect"
@@ -52,6 +53,78 @@ func TestCollectSpecPaths_HermeticFixture(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("paths mismatch:\n got %v\nwant %v", got, want)
+	}
+}
+
+// TestCollectSpecPaths_RecursiveReentryIsOneLeaf proves the recursive
+// re-entry rule against a live recursive spec (AwsWafWebAcl's statement
+// tree): a field whose message type is an ancestor on the walk path counts
+// as ONE leaf (the author configures "the same grammar again" there), and
+// the walk never descends into it. The previous behavior dropped such
+// fields silently, hiding them from the census and the reverse-drift check.
+func TestCollectSpecPaths_RecursiveReentryIsOneLeaf(t *testing.T) {
+	msg, err := crkreflect.NewInstance(cloudresourcekind.CloudResourceKind_AwsWafWebAcl)
+	if err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	specField := msg.ProtoReflect().Descriptor().Fields().ByName("spec")
+	if specField == nil {
+		t.Fatal("AwsWafWebAcl has no spec field")
+	}
+
+	got := CollectSpecPaths(specField.Message(), "spec")
+	leaves := map[string]bool{}
+	for _, p := range got {
+		leaves[p] = true
+	}
+	wantLeaves := []string{
+		"spec.rules.statement.and_statement.statements",
+		"spec.rules.statement.or_statement.statements",
+		"spec.rules.statement.not_statement.statement",
+		"spec.rules.statement.managed_rule_group.scope_down_statement",
+		"spec.rules.statement.rate_based.scope_down_statement",
+	}
+	for _, want := range wantLeaves {
+		if !leaves[want] {
+			t.Errorf("census must record the recursive re-entry %s as a leaf", want)
+		}
+		for _, p := range got {
+			if strings.HasPrefix(p, want+".") {
+				t.Errorf("census must not descend below the re-entry leaf %s (got %s)", want, p)
+			}
+		}
+	}
+}
+
+// TestCollectSpecPaths_StructIsOneLeaf proves the well-known-value-type
+// rule against a live spec that carries a google.protobuf.Struct field
+// (AwsEventBridgeRule's event_pattern): the Struct is ONE leaf the author
+// writes as YAML -- the walk must never descend into its descriptor
+// internals (fields.bool_value and siblings are protobuf plumbing, not
+// configurable surface).
+func TestCollectSpecPaths_StructIsOneLeaf(t *testing.T) {
+	msg, err := crkreflect.NewInstance(cloudresourcekind.CloudResourceKind_AwsEventBridgeRule)
+	if err != nil {
+		t.Fatalf("new instance: %v", err)
+	}
+	specField := msg.ProtoReflect().Descriptor().Fields().ByName("spec")
+	if specField == nil {
+		t.Fatal("AwsEventBridgeRule has no spec field")
+	}
+
+	got := CollectSpecPaths(specField.Message(), "spec")
+	var sawLeaf bool
+	for _, p := range got {
+		if p == "spec.event_pattern" {
+			sawLeaf = true
+			continue
+		}
+		if len(p) > len("spec.event_pattern") && p[:len("spec.event_pattern.")] == "spec.event_pattern." {
+			t.Errorf("walk descended into the Struct's internals: %s", p)
+		}
+	}
+	if !sawLeaf {
+		t.Error("spec.event_pattern is missing from the census -- the Struct field should be one leaf")
 	}
 }
 

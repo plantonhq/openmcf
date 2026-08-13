@@ -38,7 +38,8 @@ const (
 //	metadata:
 //	  name: www-example
 //	spec:
-//	  hosted_zone_id: Z1234567890ABC
+//	  zone_id:
+//	    value: Z1234567890ABC
 //	  name: www.example.com
 //	  type: A
 //	  ttl: 300

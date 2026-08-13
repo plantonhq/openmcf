@@ -74,7 +74,7 @@ These are the most important decisions when configuring a MemoryDB ACL. Explore 
 
 **One name, one attachment** -- the resource name IS the AWS ACL name (create-time immutable): what a cluster's ACL field references. A cluster attaches exactly one ACL, so the ACL is the whole access story for that cluster.
 
-**Membership is the lever** -- every operational access change is a membership edit: onboarding a service adds its user, offboarding removes it. Edits apply in place — no user or cluster replacement, ever. Reference platform-managed users by their `user_name` output; users created outside the platform join by literal name.
+**Membership is the lever** -- every operational access change is a membership edit: onboarding a service adds its user, offboarding removes it. Edits apply in place — no user or cluster replacement, ever. Reference platform-managed users by their `user_name` output; users created outside the platform join by literal name. Deleting a user removes it from every ACL on the AWS side automatically, and the provider reconciles that — dropping an already-deleted member from the list is a clean no-op, never an error.
 
 **Empty is legal, open-access is built in** -- unlike ElastiCache user groups (which demand a member named "default"), a MemoryDB ACL may be empty: it deploys but accepts no authenticated connections — the deploy-then-populate shape. For deliberately unauthenticated access, clusters reference AWS's built-in `open-access` ACL by name; it always exists and is never modeled as a resource.
 

@@ -11,7 +11,9 @@ spec:
   # configuration.
   authenticationOptions:
     - type: federated-authentication
-      samlProviderArn: <iam-saml-provider-arn>
+      # Replace with your IAM SAML identity provider's ARN (IAM console →
+      # Identity providers). The shape below is what the field validates.
+      samlProviderArn: arn:aws:iam::123456789012:saml-provider/okta-workforce
   serverCertificateArn:
     value: <server-certificate-arn>
   clientCidrBlock: 10.100.0.0/22

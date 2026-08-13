@@ -1,9 +1,11 @@
 locals {
-  # Resource-identity tags follow the catalog convention. The repository's
-  # cloud name comes from spec.repository_name (ECR names are slash-namespaced
-  # registry paths, a different concept from the graph node's name).
+  # Resource-identity tags follow the catalog convention. No Name tag: the
+  # repository has a real name of its own (spec.repository_name, a
+  # slash-namespaced registry path) — tagging Name with the graph node's
+  # metadata.name would show a DIFFERENT value than the repository's actual
+  # name in every console tag view. Kinds whose AWS resource carries its own
+  # name omit the Name tag (the Global Accelerator / SageMaker convention).
   aws_tags = {
-    "Name"                     = var.metadata.name
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org
     "planton.ai/environment"   = var.metadata.env
@@ -28,28 +30,37 @@ locals {
   scan_on_push = coalesce(var.spec.scan_on_push, true)
 
   # Lifecycle rules — the spec models the ECR lifecycle policy JSON
-  # structurally; this rebuilds the exact document AWS expects. "expire" is
-  # the only action ECR supports and the "days" count unit only exists for
-  # sinceImagePushed, so both are materialized here. tagged rules carry
-  # exactly one selector list (CEL-enforced); untagged/any rules carry none.
+  # structurally; this rebuilds the exact document AWS expects. The "days"
+  # count unit exists for all three "since..." count types and is
+  # materialized here. Rules either expire images (the default) or
+  # transition them to the archive storage class; the transition/target
+  # coupling and the storageClass/countType pairing are CEL-enforced.
+  # Every optional member is merged in only when set — both engines must
+  # hand AWS the SAME document, so no member is ever emitted as null.
   lifecycle_rules = [
-    for rule in var.spec.lifecycle_rules : {
-      rulePriority = rule.rule_priority
-      description  = rule.description != "" ? rule.description : null
-      selection = merge(
-        {
-          tagStatus   = rule.tag_status
-          countType   = rule.count_type
-          countNumber = rule.count_number
-        },
-        rule.count_type == "sinceImagePushed" ? { countUnit = "days" } : {},
-        length(rule.tag_prefixes) > 0 ? { tagPrefixList = rule.tag_prefixes } : {},
-        length(rule.tag_patterns) > 0 ? { tagPatternList = rule.tag_patterns } : {},
-      )
-      action = {
-        type = "expire"
-      }
-    }
+    for rule in var.spec.lifecycle_rules : merge(
+      {
+        rulePriority = rule.rule_priority
+        selection = merge(
+          {
+            tagStatus   = rule.tag_status
+            countType   = rule.count_type
+            countNumber = rule.count_number
+          },
+          contains(["sinceImagePushed", "sinceImagePulled", "sinceImageTransitioned"], rule.count_type) ? { countUnit = "days" } : {},
+          rule.storage_class != "" ? { storageClass = rule.storage_class } : {},
+          length(rule.tag_prefixes) > 0 ? { tagPrefixList = rule.tag_prefixes } : {},
+          length(rule.tag_patterns) > 0 ? { tagPatternList = rule.tag_patterns } : {},
+        )
+        action = merge(
+          {
+            type = rule.action_type != "" ? rule.action_type : "expire"
+          },
+          rule.target_storage_class != "" ? { targetStorageClass = rule.target_storage_class } : {},
+        )
+      },
+      rule.description != "" ? { description = rule.description } : {},
+    )
   ]
 
   # Repository policy — the Struct arrives from the tfvars layer as a nested

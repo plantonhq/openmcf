@@ -99,7 +99,7 @@ These are the most important decisions when configuring a Firehose delivery stre
 
 **Buffering** -- Each destination's `buffering` carries `intervalInSeconds` and `sizeInMbs`; Firehose flushes when either threshold is met, and 0/absent means the AWS default. Splunk caps at 60 s / 5 MiB; the OpenSearch pair and HTTP endpoints cap the size at 100 MiB; Redshift buffers through its S3 staging configuration.
 
-**Data format conversion** -- For Extended S3, enable `dataFormatConversion` to convert JSON to Apache Parquet or ORC through an AWS Glue Data Catalog schema, and `dynamicPartitioning` (immutable after creation) to lay objects out by record fields for query pruning.
+**Data format conversion** -- For Extended S3, enable `dataFormatConversion` to convert JSON to Apache Parquet or ORC through an AWS Glue Data Catalog schema: pick one deserializer arm (`openXJson` or `hiveJson`) and one serializer arm (`parquet` or `orc`), each carrying its format's full tuning surface (compression codec, block/page/stripe sizes, bloom filters, dictionary encoding, writer/format versions). Pair it with `dynamicPartitioning` (immutable after creation) to lay objects out by record fields for query pruning.
 
 ## Outputs and Dependencies
 

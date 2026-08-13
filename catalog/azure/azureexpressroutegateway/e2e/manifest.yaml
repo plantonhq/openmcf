@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteGateway
+metadata:
+  name: test-express-route-gateway
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hub-er-gateway
+  virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+  scaleUnits: 1
+  # No connections in the canonical manifest: a connection requires a
+  # provider-PROVISIONED circuit peering (a live carrier behind it).
+  tags:
+    purpose: hack-test

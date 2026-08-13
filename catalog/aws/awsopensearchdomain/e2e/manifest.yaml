@@ -35,6 +35,14 @@ spec:
     masterUserName: admin
     masterUserPassword:
       value: "Sup3r$ecret!"
+  samlOptions:
+    idpEntityId: https://idp.example.com/saml/metadata
+    idpMetadataContent: |
+      <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example.com/saml/metadata"></EntityDescriptor>
+    rolesKey: roles
+    sessionTimeoutMinutes: 120
+  authorizedVpcEndpointAccessAccounts:
+    - "123456789012"
   autoTuneOptions:
     desiredState: ENABLED
     useOffPeakWindow: true

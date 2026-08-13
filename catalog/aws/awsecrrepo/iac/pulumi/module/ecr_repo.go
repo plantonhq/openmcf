@@ -102,10 +102,13 @@ func ecrRepo(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 }
 
 // createLifecyclePolicy rebuilds the exact lifecycle policy JSON document AWS
-// expects from the spec's structured rules. "expire" is the only action ECR
-// supports and the "days" count unit only exists for sinceImagePushed, so
-// both are materialized here. tagged rules carry exactly one selector list
-// (CEL-enforced); untagged/any rules carry none.
+// expects from the spec's structured rules. The "days" count unit exists for
+// all three "since..." count types and is materialized here. Rules either
+// expire images (the default) or transition them to the archive storage
+// class; the transition/target coupling and the storageClass/countType
+// pairing are CEL-enforced. Optional members are added only when set — both
+// engines must hand AWS the SAME document. tagged rules carry exactly one
+// selector list (CEL-enforced); untagged/any rules carry none.
 func createLifecyclePolicy(ctx *pulumi.Context, locals *Locals, repo *ecr.Repository, provider *aws.Provider) error {
 	rules := make([]map[string]interface{}, 0, len(locals.AwsEcrRepo.Spec.LifecycleRules))
 	for _, rule := range locals.AwsEcrRepo.Spec.LifecycleRules {
@@ -114,8 +117,12 @@ func createLifecyclePolicy(ctx *pulumi.Context, locals *Locals, repo *ecr.Reposi
 			"countType":   rule.CountType,
 			"countNumber": rule.CountNumber,
 		}
-		if rule.CountType == "sinceImagePushed" {
+		switch rule.CountType {
+		case "sinceImagePushed", "sinceImagePulled", "sinceImageTransitioned":
 			selection["countUnit"] = "days"
+		}
+		if rule.StorageClass != "" {
+			selection["storageClass"] = rule.StorageClass
 		}
 		if len(rule.TagPrefixes) > 0 {
 			selection["tagPrefixList"] = rule.TagPrefixes
@@ -124,10 +131,18 @@ func createLifecyclePolicy(ctx *pulumi.Context, locals *Locals, repo *ecr.Reposi
 			selection["tagPatternList"] = rule.TagPatterns
 		}
 
+		action := map[string]interface{}{"type": "expire"}
+		if rule.ActionType != "" {
+			action["type"] = rule.ActionType
+		}
+		if rule.TargetStorageClass != "" {
+			action["targetStorageClass"] = rule.TargetStorageClass
+		}
+
 		entry := map[string]interface{}{
 			"rulePriority": rule.RulePriority,
 			"selection":    selection,
-			"action":       map[string]interface{}{"type": "expire"},
+			"action":       action,
 		}
 		if rule.Description != "" {
 			entry["description"] = rule.Description

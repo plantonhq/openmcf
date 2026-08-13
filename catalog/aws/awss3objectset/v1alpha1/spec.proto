@@ -12,11 +12,13 @@ import "shared/options/options.proto";
 // created, updated, and destroyed alongside the infrastructure that consumes
 // it.
 //
-// Each entry in `objects` is one `aws_s3_object`-equivalent upload: the object
-// key, its content (inline UTF-8 text or base64-encoded binary), and the full
-// per-object HTTP/storage surface (content headers, user metadata, storage
-// class, encryption override, checksum, Object Lock retention, canned ACL,
-// tags).
+// Each entry in `objects` is one managed object: the object key, its source
+// (inline UTF-8 text, base64-encoded binary, or a server-side COPY of an
+// existing S3 object), and the full per-object HTTP/storage surface (content
+// headers, user metadata, storage class, encryption override, checksum,
+// Object Lock retention, canned ACL, tags). Content-sourced entries render as
+// `aws_s3_object`; copy-sourced entries render as `aws_s3_object_copy` — the
+// data never travels through the deploy host either way.
 //
 // Division of responsibility with AwsS3Bucket — read this before reaching for
 // the per-object security knobs:
@@ -31,7 +33,8 @@ import "shared/options/options.proto";
 //
 // Key behaviors:
 // - `key` is the object's identity. Changing a key replaces that object
-//   (delete + create); changing only content updates it in place.
+//   (delete + create); changing only content updates it in place. A
+//   copy-sourced object re-copies in place when its copy settings change.
 // - On a versioning-enabled bucket, destroying an object removes ALL of its
 //   versions.
 // - Object Lock fields require the BUCKET to have been created with Object
@@ -74,10 +77,10 @@ message AwsS3Object {
   // Examples: "config/app.json", "assets/logo.png", "data/seed.csv"
   string key = 1 [(buf.validate.field).string.min_len = 1];
 
-  // The content source for the object. Exactly one must be specified.
+  // The source for the object. Exactly one must be specified.
   // For content that lives in files at deploy time (build artifacts, large
-  // archives), stage it through a pipeline into the bucket instead — this
-  // component is for content that belongs IN the manifest.
+  // archives), stage it into a bucket through a pipeline and use `copy_from`
+  // — inline arms are for content that belongs IN the manifest.
   oneof source {
     // Inline UTF-8 text content.
     // Suitable for configuration files, JSON, YAML, HTML, and other text.
@@ -87,6 +90,14 @@ message AwsS3Object {
     // Suitable for images, zip archives, or any binary payload small enough
     // to carry in a manifest.
     string content_base64 = 3;
+
+    // Server-side copy of an existing S3 object (any size — the bytes move
+    // inside S3, never through the deploy host). Suitable for promoting
+    // build artifacts between buckets, seeding environments from a golden
+    // bucket, or re-homing objects with new placement/encryption. The copy
+    // is taken at deploy time; it does not track later changes to the
+    // source object.
+    AwsS3ObjectCopyFrom copy_from = 22;
   }
 
   // The MIME content type stored with the object and returned as the
@@ -261,12 +272,25 @@ message AwsS3Object {
   // take precedence on key collisions).
   map<string, string> tags = 21;
 
-  // Exactly one of content or content_base64 must be provided (they are
-  // alternative arms of the source oneof), and it must be non-empty.
+  // Exactly one source arm must be provided (content, content_base64, or
+  // copy_from), and a chosen inline arm must be non-empty.
   option (buf.validate.message).cel = {
     id: "object.source.required"
-    message: "Exactly one of content or content_base64 must be specified"
-    expression: "(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '')"
+    message: "Exactly one of content, content_base64, or copy_from must be specified"
+    expression: "(has(this.content) && this.content != '') || (has(this.content_base64) && this.content_base64 != '') || has(this.copy_from)"
+  };
+
+  // On a copy-sourced object, header/metadata fields only reach S3 when
+  // copy_from.replace_metadata is true — CopyObject's metadata directive
+  // defaults to COPY (preserve the source's), and AWS silently ignores
+  // header values sent under COPY. Rejecting the combination keeps dead
+  // config out of manifests. (content_type is exempt: the manifest loader
+  // materializes its default on every object, so its presence carries no
+  // authored intent — it is applied only under replace_metadata.)
+  option (buf.validate.message).cel = {
+    id: "object.copy.headers_require_replace_metadata"
+    message: "metadata and header fields (cache_control, content_encoding, content_disposition, content_language, website_redirect) on a copy-sourced object require copy_from.replace_metadata: true — a COPY-directive copy preserves the source's metadata and ignores them"
+    expression: "!has(this.copy_from) || this.copy_from.replace_metadata || (this.metadata.size() == 0 && this.cache_control == '' && this.content_encoding == '' && this.content_disposition == '' && this.content_language == '' && this.website_redirect == '')"
   };
 
   // Object Lock retention is a (mode, retain-until-date) pair — AWS rejects
@@ -285,4 +309,90 @@ message AwsS3Object {
     message: "kms_key requires server_side_encryption to be unset, aws:kms, or aws:kms:dsse"
     expression: "!has(this.kms_key) || this.server_side_encryption == '' || this.server_side_encryption.startsWith('aws:kms')"
   };
+}
+
+// AwsS3ObjectCopyFrom identifies an existing S3 object to copy server-side
+// into this set's bucket, plus the copy-time controls S3's CopyObject API
+// offers. The destination object's placement surface (storage class,
+// encryption, checksum, Object Lock, ACL, tags) comes from the owning
+// AwsS3Object entry's ordinary fields and applies to the COPY — the set's
+// identity tags are always written to the copy (the tagging directive is
+// REPLACE), while the source object's user metadata and content headers are
+// preserved unless `replace_metadata` is set.
+//
+// A version-pinned source (copying one specific version of a versioned
+// object) is NOT expressible: the pinned provider URL-escapes the entire
+// copy source string, so a `?versionId=` selector never survives the
+// request. Copies always take the source's current version.
+message AwsS3ObjectCopyFrom {
+  // The bucket holding the source object.
+  // Can be a literal bucket name or a reference to an AwsS3Bucket component
+  // (resolved from status.outputs.bucket_id). The literal arm also accepts
+  // an S3 access-point ARN (`arn:aws:s3:<region>:<account>:accesspoint/
+  // <name>`) for sources reached through an access point. The deploying
+  // principal needs s3:GetObject on the source.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The key of the source object within `source_bucket`.
+  // Example: "releases/v1.2.3/app.zip"
+  string source_key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Replace the destination object's user metadata and content headers
+  // instead of preserving the source's (S3's REPLACE metadata directive).
+  // When true, the owning object's `metadata`, `content_type`,
+  // `cache_control`, `content_encoding`, `content_disposition`,
+  // `content_language`, and `website_redirect` are written to the copy;
+  // when false (the default) those fields must stay unset and the copy
+  // keeps everything the source object carried.
+  bool replace_metadata = 3;
+
+  // Copy only if the source object's current ETag matches this value
+  // (a precondition evaluated by S3 at copy time; a failed precondition
+  // fails the deploy). Guards promotions against a source that changed
+  // since the ETag was recorded.
+  string copy_if_match = 4;
+
+  // Copy only if the source object's current ETag does NOT match this
+  // value.
+  string copy_if_none_match = 5;
+
+  // Copy only if the source object was modified after this RFC 3339
+  // timestamp (e.g. "2026-08-01T00:00:00Z").
+  string copy_if_modified_since = 6 [(buf.validate.field).cel = {
+    id: "copy_from.copy_if_modified_since.format"
+    message: "copy_if_modified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // Copy only if the source object has NOT been modified since this RFC
+  // 3339 timestamp.
+  string copy_if_unmodified_since = 7 [(buf.validate.field).cel = {
+    id: "copy_from.copy_if_unmodified_since.format"
+    message: "copy_if_unmodified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // The Expires header stored with the copied object, as an RFC 3339
+  // timestamp — the date after which the content is considered stale by
+  // caches. Only the copy path offers this header (the provider's
+  // content-object resource carries no expires argument).
+  string expires = 8 [(buf.validate.field).cel = {
+    id: "copy_from.expires.format"
+    message: "expires must be an RFC 3339 timestamp, e.g. 2027-01-01T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // Confirms the copier pays request and data-transfer costs when the
+  // SOURCE bucket is a Requester Pays bucket. The only accepted value is
+  // "requester" — S3 rejects copies from Requester Pays buckets without
+  // this acknowledgment.
+  string request_payer = 9 [(buf.validate.field).cel = {
+    id: "copy_from.request_payer"
+    message: "request_payer accepts only \"requester\""
+    expression: "this == '' || this == 'requester'"
+  }];
 }

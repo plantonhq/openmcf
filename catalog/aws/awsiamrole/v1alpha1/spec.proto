@@ -35,7 +35,14 @@ message AwsIamRoleSpec {
   // An optional human-readable description of the role's purpose, shown in
   // the IAM console. Updatable in place. Maximum 1000 characters; AWS rejects
   // typographic ("curly") quotes here, so stick to plain ASCII quoting.
-  string description = 2 [(buf.validate.field).string.max_len = 1000];
+  string description = 2 [
+    (buf.validate.field).string.max_len = 1000,
+    (buf.validate.field).cel = {
+      id: "description_no_curly_quotes"
+      message: "description must not contain typographic (curly) quote characters -- AWS rejects them; use plain ASCII quotes"
+      expression: "!this.contains('“') && !this.contains('‘')"
+    }
+  ];
 
   // The IAM path for the role, used to organize and match roles in IAM
   // policies (e.g. grant iam:PassRole only for

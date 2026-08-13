@@ -1,0 +1,116 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_ecs_task_definition:
+    mappings:
+      # The spec separates the agent's setup identity from the app's
+      # runtime identity by NAME as well as by role; the provider suffixes
+      # both with _arn.
+      - arg: execution_role_arn
+        spec: spec.execution_role
+      - arg: task_role_arn
+        spec: spec.task_role
+      # The single-field ephemeral_storage block flattens to one field.
+      - arg: ephemeral_storage.size_in_gib
+        spec: spec.ephemeral_storage_gib
+      # The volume set is spec.volumes; nested configuration blocks carry
+      # shorter spec names (efs / docker / s3files). Matching resumes
+      # exactly below each mapped subtree.
+      - arg: volume
+        spec: spec.volumes
+      - arg: volume.efs_volume_configuration
+        spec: spec.volumes.efs
+      - arg: volume.efs_volume_configuration.authorization_config.access_point_id
+        spec: spec.volumes.efs.access_point_id
+      # The bool renders as the provider's ENABLED string -- same setting,
+      # different type and depth.
+      - arg: volume.efs_volume_configuration.authorization_config.iam
+        spec: spec.volumes.efs.iam_authorization
+      - arg: volume.docker_volume_configuration
+        spec: spec.volumes.docker
+      - arg: volume.s3files_volume_configuration
+        spec: spec.volumes.s3files
+    exclusions:
+      - arg: family
+        reason: wired by the module from metadata.name -- the component's name IS the task-definition family
+      - arg: container_definitions
+        reason: one opaque JSON-document argument at the pin -- rendered in full from the structured spec.containers (see specExclusions)
+      - arg: volume.efs_volume_configuration.transit_encryption
+        reason: module-forced to ENABLED (secure by default -- AWS requires it with access points or IAM auth, and there is no good reason to mount EFS unencrypted in transit)
+      # FSx for Windows File Server volumes need an FSx Windows file system
+      # joined to Active Directory plus a Secrets Manager credential --
+      # Windows-stack surface this kind deliberately does not model.
+      # Revisit on a demand signal for Windows ECS tasks.
+      - arg: volume.fsx_windows_file_server_volume_configuration.file_system_id
+        reason: FSx-for-Windows volume surface (needs an AD-joined FSx Windows file system); deliberately unmodeled -- revisit on Windows-task demand
+      - arg: volume.fsx_windows_file_server_volume_configuration.root_directory
+        reason: FSx-for-Windows volume surface (needs an AD-joined FSx Windows file system); deliberately unmodeled -- revisit on Windows-task demand
+      - arg: volume.fsx_windows_file_server_volume_configuration.authorization_config.credentials_parameter
+        reason: FSx-for-Windows volume surface (needs an AD-joined FSx Windows file system); deliberately unmodeled -- revisit on Windows-task demand
+      - arg: volume.fsx_windows_file_server_volume_configuration.authorization_config.domain
+        reason: FSx-for-Windows volume surface (needs an AD-joined FSx Windows file system); deliberately unmodeled -- revisit on Windows-task demand
+      # App Mesh reached end of support (September 2026 per AWS's
+      # announcement); ECS Service Connect is the successor this catalog
+      # models (AwsEcsService.service_connect).
+      - arg: proxy_configuration.container_name
+        reason: App Mesh proxy surface -- App Mesh is end-of-support; Service Connect (AwsEcsService.service_connect) is the modeled successor
+      - arg: proxy_configuration.properties
+        reason: App Mesh proxy surface -- App Mesh is end-of-support; Service Connect (AwsEcsService.service_connect) is the modeled successor
+      - arg: proxy_configuration.type
+        reason: App Mesh proxy surface -- App Mesh is end-of-support; Service Connect (AwsEcsService.service_connect) is the modeled successor
+      - arg: track_latest
+        reason: IaC state-tracking behavior (whether the resource tracks the family's latest ACTIVE revision), not infrastructure configuration
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_cloudwatch_log_group:
+    # The module-managed default logging destination ("/ecs/<family>"),
+    # created only when logging is enabled and no existing group is
+    # referenced.
+    specRoot: spec.logging
+    mappings:
+      - arg: retention_in_days
+        spec: spec.logging.retention_days
+      # The provider injects region on every resource; the kind's one
+      # region field places the group beside the task definition.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: name
+        reason: wired by the module ("/ecs/<family>" from metadata.name) -- never user surface
+      - arg: skip_destroy
+        reason: the folded default group's lifecycle follows the task definition -- a group worth retaining independently is a referenced AwsCloudwatchLogGroup (spec.logging.log_group)
+      - arg: name_prefix
+        reason: alternative to name, which the module derives -- never user surface
+      - arg: kms_key_id
+        reason: advanced log-group posture belongs to a referenced AwsCloudwatchLogGroup (spec.logging.log_group); the folded default group stays minimal
+      - arg: log_group_class
+        reason: advanced log-group posture belongs to a referenced AwsCloudwatchLogGroup (spec.logging.log_group); the folded default group stays minimal
+      - arg: deletion_protection_enabled
+        reason: advanced log-group posture belongs to a referenced AwsCloudwatchLogGroup (spec.logging.log_group); the folded default group's lifecycle follows the task definition
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # The provider models container definitions as ONE opaque JSON-string
+  # argument; the module renders the whole document from this structured
+  # subtree (29 container fields incl. ports, environment, secrets, health
+  # checks, dependencies, log routing, restart policies). The per-field
+  # judgment lives in the spec comments; the document is deterministic
+  # (sorted maps) so revisions are stable across applies.
+  - field: spec.containers
+    reason: rendered in full into the provider's opaque container_definitions JSON document
+  - field: spec.logging.disabled
+    reason: platform switch -- controls whether the module wires the default awslogs destination at all; no provider counterpart
+  - field: spec.logging.log_group
+    reason: selects an existing CloudWatch group as the awslogs destination inside the container_definitions JSON -- consumed by the rendering, not by a log-group argument

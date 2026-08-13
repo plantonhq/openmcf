@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolverVirtualNetworkLink
+metadata:
+  name: spoke-payments-link
+spec:
+  # Name the link after the network it attaches -- the ruleset's link
+  # list then reads as its audience roster.
+  name: spoke-payments
+  # The rule book this link turns on -- the reference is also the
+  # deploy-order edge (the ruleset deploys first).
+  dnsForwardingRulesetId:
+    valueFrom:
+      kind: AzurePrivateDnsResolverForwardingRuleset
+      name: "<your-forwarding-ruleset>"
+      fieldPath: status.outputs.dns_forwarding_ruleset_id
+  # The network that starts forwarding -- must be in the ruleset's
+  # region; peering to the resolver's network is NOT required.
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "<your-spoke-vnet>"
+      fieldPath: status.outputs.virtual_network_id
+  metadata:
+    owner: payments-team

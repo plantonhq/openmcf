@@ -1,0 +1,51 @@
+# AzureMachineLearningWorkspace install profile used as a fixture by
+# composed components (declared via prerequisites:
+# [AzureMachineLearningWorkspace] in the kind registry -- the
+# datastore lane today, the compute lanes next). The harness deploys
+# this document after the fixture companion chain (storage account +
+# key vault + application insights) and captures its outputs --
+# machine_learning_workspace_id in particular -- for dependents'
+# references to resolve against.
+#
+# COST AND TIME: the Basic workspace is free at rest and provisions in
+# two to five minutes. The fixture deliberately stays on the DEFAULT
+# managed-network mode (no isolation, no VNet provisioning) so the
+# dependents' lanes stay fast; the smoke scenario is where the managed
+# network is proven. Deletion is a SOFT delete: the ghost holds the
+# workspace name until purged -- the module purges on destroy so
+# per-lane fixture cycles never collide on the name.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningWorkspace
+metadata:
+  name: planton-oss-e2e-azure-fixture-mlw
+  id: planton-oss-e2e-azure-fixture-mlw
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningworkspace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-fixture-mlw
+  applicationInsightsId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-appi
+  keyVaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-kv
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  identity:
+    type: SYSTEM_ASSIGNED
+  friendlyName: E2E Fixture Workspace
+  tags:
+    e2e-suite: azure
+    purpose: fixture

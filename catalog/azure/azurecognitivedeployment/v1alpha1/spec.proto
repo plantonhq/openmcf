@@ -1,0 +1,187 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitivedeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureCognitiveDeploymentSpec** defines a model deployment on an
+// Azure AI services account (ARM:
+// Microsoft.CognitiveServices/accounts/{account}/deployments/{name})
+// -- which actual model an application calls: "gpt-4o" version X on
+// deployment "chat", "text-embedding-3-large" on deployment
+// "embeddings". The account (AzureCognitiveAccount, kind "OpenAI" or
+// "AIServices") owns the endpoint and keys; the deployment decides
+// the model, the throughput class (SKU), and the capacity.
+//
+// **Billing follows the SKU**: "Standard" and the Global/DataZone
+// variants bill per token (capacity is a rate limit in thousands of
+// tokens-per-minute, not idle cost); the ProvisionedManaged variants
+// bill per PTU capacity CONTINUOUSLY while the deployment exists --
+// the expensive class.
+//
+// **The deployment is an ARM child of its account** -- it has no
+// region, resource group, or tags of its own (ARM derives all three
+// through the account; the provider's schema carries none).
+//
+// **ForceNew fields**: `name`, `cognitive_account_id`, the model's
+// `format` and `name`, and the sku's `name`/`tier`/`size`/`family`.
+// Model `version`, sku `capacity`, rai_policy_name,
+// version_upgrade_option and dynamic throttling update in place.
+message AzureCognitiveDeploymentSpec {
+  // The Azure AI services account the model deploys onto, by ARM ID.
+  // The account's kind must support model deployments ("OpenAI" or
+  // "AIServices"). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cognitive_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureCognitiveAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cognitive_account_id"
+  ];
+
+  // The deployment's name, unique on the account -- what applications
+  // pass as the model/deployment parameter when calling the endpoint
+  // ("chat", "embeddings"). Changing the name replaces the
+  // deployment.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The model being deployed.
+  AzureCognitiveDeploymentModel model = 3 [(buf.validate.field).required = true];
+
+  // The deployment's throughput class and capacity.
+  AzureCognitiveDeploymentSku sku = 4 [(buf.validate.field).required = true];
+
+  // The responsible-AI (content-filter) policy applied to this
+  // deployment, by policy NAME on the same account (a rai_policies
+  // entry of the AzureCognitiveAccount spec, or a policy created in
+  // the portal). Leave unset for Azure's default policy -- the
+  // service assigns one, so the value is read back from ARM rather
+  // than defaulted here.
+  string rai_policy_name = 5;
+
+  // What happens when Azure retires or supersedes the deployed model
+  // version. Unspecified applies the provider default,
+  // ONCE_NEW_DEFAULT_VERSION_AVAILABLE.
+  AzureCognitiveDeploymentVersionUpgradeOption version_upgrade_option = 6;
+
+  // Let the service raise the deployment's rate limits
+  // opportunistically (dynamic throttling).
+  bool dynamic_throttling_enabled = 7;
+}
+
+// The model a deployment runs. Format and name are fixed at creation
+// -- deploying a different model is a new deployment.
+message AzureCognitiveDeploymentModel {
+  // The model's format -- the publisher namespace ARM catalogs the
+  // model under. "OpenAI" for every Azure OpenAI model; partner
+  // models carry their publisher's format string.
+  string format = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The model's catalog name, e.g. "gpt-4o", "gpt-4o-mini",
+  // "text-embedding-3-large". Regional availability differs -- the
+  // account's region decides which models can deploy.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The model version, e.g. "2024-08-06". Leave unset to deploy the
+  // model's current default version (the value is read back from
+  // ARM). Updating the version upgrades the deployment in place.
+  string version = 3;
+}
+
+// The deployment's throughput class and capacity.
+message AzureCognitiveDeploymentSku {
+  // The throughput class (the wire values). "Standard" (regional
+  // pay-per-token), "GlobalStandard" (Azure-wide routing, the widest
+  // model availability), "DataZoneStandard" (EU/US data-zone
+  // routing), the "...Batch" variants (asynchronous batch
+  // inference), and the "...ProvisionedManaged" variants (reserved
+  // PTU capacity -- bills continuously while the deployment exists).
+  // Fixed at creation.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Standard",
+        "DataZoneBatch",
+        "DataZoneProvisionedManaged",
+        "DataZoneStandard",
+        "GlobalBatch",
+        "GlobalProvisionedManaged",
+        "GlobalStandard",
+        "ProvisionedManaged"
+      ]
+    }
+  ];
+
+  // The SKU tier. Rarely needed -- ARM derives it from the SKU name.
+  // Fixed at creation.
+  AzureCognitiveDeploymentSkuTier tier = 2;
+
+  // The SKU size code. Rarely needed. Fixed at creation.
+  string size = 3;
+
+  // The SKU family code. Rarely needed. Fixed at creation.
+  string family = 4;
+
+  // The capacity: thousands of tokens-per-minute for the
+  // pay-per-token SKUs (a rate limit, not idle cost), or PTUs for
+  // the ProvisionedManaged SKUs (billed while the deployment
+  // exists). Unspecified applies the provider default of 1. Updates
+  // in place -- this is the scale knob.
+  optional int32 capacity = 5 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// A deployment SKU tier (the wire values are the names in
+// title case: "Free", "Basic", "Standard", "Premium", "Enterprise").
+enum AzureCognitiveDeploymentSkuTier {
+  // Not specified: the property is omitted and ARM derives the tier
+  // from the SKU name.
+  azure_cognitive_deployment_sku_tier_unspecified = 0;
+
+  // Wire value "Free".
+  FREE = 1;
+
+  // Wire value "Basic".
+  BASIC = 2;
+
+  // Wire value "Standard".
+  STANDARD = 3;
+
+  // Wire value "Premium".
+  PREMIUM = 4;
+
+  // Wire value "Enterprise".
+  ENTERPRISE = 5;
+}
+
+// What happens when Azure retires or supersedes the deployed model
+// version.
+enum AzureCognitiveDeploymentVersionUpgradeOption {
+  // Not specified: the provider applies
+  // "OnceNewDefaultVersionAvailable".
+  azure_cognitive_deployment_version_upgrade_option_unspecified = 0;
+
+  // Upgrade when the deployed version expires (wire value
+  // "OnceCurrentVersionExpired").
+  ONCE_CURRENT_VERSION_EXPIRED = 1;
+
+  // Upgrade whenever a new default version ships (wire value
+  // "OnceNewDefaultVersionAvailable") -- the provider's default.
+  ONCE_NEW_DEFAULT_VERSION_AVAILABLE = 2;
+
+  // Never auto-upgrade; version changes are yours to make (wire
+  // value "NoAutoUpgrade"). The pinned-model compliance posture.
+  NO_AUTO_UPGRADE = 3;
+}

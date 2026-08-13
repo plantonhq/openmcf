@@ -10,11 +10,28 @@ spec:
   # db.t4g.medium instance (DocumentDB's smallest provisioned class) with
   # the AWS-managed master password: it proves the folded per-name instance
   # materialization AND the managed-credential path on the cheapest
-  # provisioned footprint. Instance provisioning dominates the runtime at
-  # roughly ten minutes each way per engine.
+  # provisioned footprint -- plus the free depth arms: the tri-state
+  # certificate_rotation_restart set to an explicit false and instance-level
+  # apply_immediately. Both arms are update-only ModifyDBInstance inputs the
+  # API never echoes on describe (the provider sends the restart flag only
+  # when ca_cert_identifier changes), so their live evidence is
+  # engine-native -- the rendered/state-pinned explicit values on both
+  # engines, proving the Pulumi STRING bridge -- not a DescribeDBInstances
+  # read-back. Instance provisioning dominates the
+  # runtime at roughly ten minutes each way per engine.
+  #
+  # PROVEN LIVE 2026-08-12: both engines all eight phases green (Pulumi
+  # 14m53s, Terraform 17m7s), per-engine attribution via distinct
+  # DbClusterResourceIds/DbiResourceIds (docdb 5.0.0, encrypted, managed
+  # secret active on both). The two update-only levers carried their
+  # engine-native evidence exactly as the corrected bar above demands:
+  # the Pulumi state pinned certificateRotationRestart as the STRING
+  # "false" (the nullable-bool bridge heal, no marshaler panic) with
+  # applyImmediately true, and the Terraform plan rendered
+  # + certificate_rotation_restart = "false" / + apply_immediately =
+  # true at create with the destroy refresh reading both back from
+  # state.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

@@ -1,0 +1,67 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_iam_user:
+    mappings:
+      # The spec qualifies the name (this kind materializes several IAM
+      # resources); the provider argument is the bare name.
+      - spec: spec.user_name
+        arg: name
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_iam_user_policy_attachment:
+    # One attachment per spec.managed_policy_arns entry -- attachments
+    # reconcile individually without touching the user.
+    specRoot: spec.managed_policy_arns
+    mappings:
+      - spec: spec.managed_policy_arns
+        arg: policy_arn
+    exclusions:
+      - arg: user
+        reason: wired by the module to the user it creates -- never user surface
+
+  aws_iam_user_policy:
+    # One inline policy per spec.inline_policies entry (map key names the
+    # policy, map value is the document).
+    specRoot: spec.inline_policies
+    mappings:
+      - spec: spec.inline_policies
+        arg: policy
+    exclusions:
+      - arg: name
+        reason: wired by the module from the inline_policies map key -- the map shape names each policy
+      - arg: name_prefix
+        reason: covered alternative -- inline_policies map keys provide deterministic naming; provider-generated name suffixes have no place in a declarative catalog
+      - arg: user
+        reason: wired by the module to the user it creates -- never user surface
+
+  aws_iam_access_key:
+    mappings:
+      # The spec qualifies the field (the key rides the user kind); the
+      # provider argument is the bare status.
+      - spec: spec.access_key_status
+        arg: status
+    exclusions:
+      - arg: user
+        reason: wired by the module to the user it creates -- never user surface
+      - arg: pgp_key
+        reason: deliberately unmodeled -- the platform delivers the secret through its own sensitive-output channel (base64, marked sensitive in both engines); PGP-encrypting state entries is the raw-Terraform workflow this catalog replaces
+
+specExclusions:
+  # IAM is a GLOBAL service: none of the four IAM resources carries a region
+  # argument. The spec's region drives only the provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- IAM is global and none of the consumed resources has a region argument
+  # Gates whether the module creates the aws_iam_access_key resource at all.
+  - field: spec.disable_access_keys
+    reason: drives whether the module materializes the aws_iam_access_key resource -- creation gate, not a provider argument

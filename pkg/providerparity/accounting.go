@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -118,6 +119,13 @@ type KindAccounting struct {
 	// InternalResources are consumed resources dispositioned as module
 	// plumbing by the manifest.
 	InternalResources []string `json:"internalResources,omitempty"`
+	// ExternalResources are consumed resources dispositioned as externally
+	// specified by the manifest: the kind's primary surface whose contract
+	// lives outside every loaded provider schema by recorded admission
+	// (e.g. a raw-ARM azapi resource at a pinned type@api-version). They
+	// carry no argument walk, and a kind consuming ONLY external/internal
+	// resources runs no reverse spec walk either.
+	ExternalResources []string `json:"externalResources,omitempty"`
 	// UnaccountedArgs ("resource: arg") have no match, mapping, or
 	// exclusion -- each is a Finding.
 	UnaccountedArgs []string `json:"unaccountedArgs,omitempty"`
@@ -382,7 +390,13 @@ func (m argMatcher) derive(argPath string) ([]string, bool) {
 			specs = append(specs, mp.Spec)
 			matchLen = len(mp.Arg)
 		} else if strings.HasPrefix(argPath, mp.Arg+".") {
-			specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			if mp.Collapse {
+				// Subtree-to-leaf judgment: everything under the arg
+				// subtree is the one spec leaf (recursive grammars).
+				specs = append(specs, mp.Spec)
+			} else {
+				specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			}
 			matchLen = len(mp.Arg)
 		}
 	}
@@ -410,8 +424,24 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 
 	coveredSpec := map[string]bool{}
 	consumed := map[string]bool{}
+	// schemaWalked flips when at least one consumed resource is argument-
+	// walked against a loaded schema; it decides whether the reverse spec
+	// walk below has any surface to check against.
+	schemaWalked := false
 	for _, res := range m.Resources {
 		consumed[res] = true
+
+		// An internal judgment is the whole judgment -- module plumbing
+		// with no arguments to account. Checked BEFORE the schema lookup
+		// so utility-provider resources (e.g. hashicorp/time's time_sleep,
+		// which no cloud-provider schema knows) can be judged internal
+		// instead of tripping the stale-artifact guard.
+		rm := manifest.Resources[res]
+		if rm != nil && rm.Internal != "" {
+			ka.InternalResources = append(ka.InternalResources, res)
+			continue
+		}
+
 		var block *Block
 		for _, name := range schemaNames {
 			if b, ok := schemas[name].Resources[res]; ok {
@@ -419,16 +449,25 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 				break
 			}
 		}
+		if rm != nil && rm.External != "" {
+			if block != nil {
+				// The judgment claims the resource lives outside the loaded
+				// schemas, but a schema serves it at the pin -- the external
+				// disposition is stale (the provider shipped native support);
+				// account the resource against the schema instead.
+				ka.ManifestStale = append(ka.ManifestStale,
+					fmt.Sprintf("%s: external judgment is stale -- the resource is served by a loaded schema at the pin; account it there", res))
+				continue
+			}
+			ka.ExternalResources = append(ka.ExternalResources, res)
+			continue
+		}
 		if block == nil {
 			ka.ManifestStale = append(ka.ManifestStale,
 				fmt.Sprintf("consumed resource %s is unknown to every loaded schema -- the module outruns its pin or the artifacts are stale", res))
 			continue
 		}
-		rm := manifest.Resources[res]
-		if rm != nil && rm.Internal != "" {
-			ka.InternalResources = append(ka.InternalResources, res)
-			continue
-		}
+		schemaWalked = true
 		matcher := newArgMatcher(rm)
 
 		argPaths := map[string]bool{}
@@ -488,6 +527,13 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: mapping spec %s matches no spec field", res, mp.Spec))
 			}
+			// A collapse mapping folds a whole arg subtree onto ONE leaf, so
+			// its spec side must BE a census leaf — a subtree would make the
+			// fold ambiguous and overclaim silently.
+			if mp.Collapse && !slices.Contains(kindSpecPaths, mp.Spec) {
+				ka.ManifestStale = append(ka.ManifestStale,
+					fmt.Sprintf("%s: collapse mapping spec %s must name a spec census leaf, not a subtree", res, mp.Spec))
+			}
 		}
 		for _, ex := range rm.Exclusions {
 			if !underPath(sortedArgs, ex.Arg) {
@@ -505,7 +551,14 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	}
 
 	// Reverse direction: every spec leaf reaches provider surface or
-	// carries a recorded exclusion.
+	// carries a recorded exclusion. When the kind's ENTIRE consumed surface
+	// is externally specified (plus any internal plumbing), no loaded
+	// schema serves its spec fields and the walk is suspended -- the spec's
+	// depth is accounted against the external contract the manifest's
+	// external judgment names. A kind that mixes schema-served and external
+	// resources keeps the walk: its schema-side fields still must reach
+	// provider surface, and external-fed fields need specExclusions naming
+	// the external resource.
 	specExcluded := func(path string) bool {
 		for _, ex := range manifest.SpecExclusions {
 			if path == ex.Field || strings.HasPrefix(path, ex.Field+".") {
@@ -514,9 +567,11 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 		}
 		return false
 	}
-	for _, p := range kindSpecPaths {
-		if !coveredSpec[p] && !specExcluded(p) {
-			ka.UncoveredSpecFields = append(ka.UncoveredSpecFields, p)
+	if schemaWalked || len(ka.ExternalResources) == 0 {
+		for _, p := range kindSpecPaths {
+			if !coveredSpec[p] && !specExcluded(p) {
+				ka.UncoveredSpecFields = append(ka.UncoveredSpecFields, p)
+			}
 		}
 	}
 	for _, ex := range manifest.SpecExclusions {
@@ -527,6 +582,7 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	}
 
 	sort.Strings(ka.InternalResources)
+	sort.Strings(ka.ExternalResources)
 	sort.Strings(ka.UnaccountedArgs)
 	sort.Strings(ka.UncoveredSpecFields)
 	sort.Strings(ka.ManifestStale)

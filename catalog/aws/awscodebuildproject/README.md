@@ -180,6 +180,7 @@ spec:
 | `certificate` | string | No | S3 path to a trusted certificate bundle (.pem/.zip) |
 | `privilegedMode` | bool | No | Docker daemon access (not for Lambda types) |
 | `imagePullCredentialsType` | string | No | CODEBUILD (default) or SERVICE_ROLE |
+| `hostKernel` | string | No | Linux kernel selection: `LINUX_KERNEL_4`, `LINUX_KERNEL_6`, or `LINUX_KERNEL_LATEST` (LINUX/ARM container and EC2 types only; omit to let AWS choose) |
 | `environmentVariables` | list | No | PLAINTEXT / PARAMETER_STORE / SECRETS_MANAGER variables |
 | `registryCredential` | object | No | Private registry secret (requires SERVICE_ROLE pulls) |
 | `dockerServer` | object | No | Persistent dedicated Docker server (compute + security groups) |

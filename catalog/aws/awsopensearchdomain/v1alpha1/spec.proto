@@ -64,10 +64,13 @@ message AwsOpenSearchDomainSpec {
   // ---------------------------------------------------------------------------
 
   // Enable encryption at rest for indices and automated snapshots. Uses the
-  // AWS-managed `aws/es` key unless `kms_key_id` is provided.
-  // One-way: encryption cannot be disabled once enabled (ForceNew), and enabling
-  // it on very old Elasticsearch versions (< 6.7) also forces recreation.
-  bool encrypt_at_rest_enabled = 5 [(dev.planton.shared.options.recommended_default) = "true"];
+  // AWS-managed `aws/es` key unless `kms_key_id` is provided. Defaults to
+  // TRUE (secure by default); set an explicit false only for legacy engine
+  // versions that cannot encrypt.
+  // One-way: encryption cannot be disabled once enabled (disabling forces
+  // domain recreation), and enabling it on very old Elasticsearch versions
+  // (< 6.7) also forces recreation.
+  optional bool encrypt_at_rest_enabled = 5 [(dev.planton.shared.options.default) = "true"];
 
   // Customer-managed KMS key ARN or ID for at-rest encryption. ForceNew — the
   // KMS key cannot be changed after domain creation.
@@ -77,9 +80,9 @@ message AwsOpenSearchDomainSpec {
   ];
 
   // Enable TLS encryption for all traffic between nodes in the cluster.
-  // Strongly recommended for production. One-way: cannot be disabled once
-  // enabled (ForceNew).
-  bool node_to_node_encryption_enabled = 7 [(dev.planton.shared.options.recommended_default) = "true"];
+  // Defaults to TRUE (secure by default). One-way: cannot be disabled once
+  // enabled (disabling forces domain recreation).
+  optional bool node_to_node_encryption_enabled = 7 [(dev.planton.shared.options.default) = "true"];
 
   // ---------------------------------------------------------------------------
   // Networking (VPC)
@@ -160,7 +163,9 @@ message AwsOpenSearchDomainSpec {
   AwsOpenSearchDomainOffPeakWindowOptions off_peak_window_options = 16;
 
   // Enable automatic service software updates. When true, AWS applies mandatory
-  // and optional service software updates during the off-peak window.
+  // and optional service software updates during the off-peak window. Both
+  // engines always send this setting explicitly, so false actively turns
+  // auto-updates OFF (including on domains where they were previously on).
   bool auto_software_update_enabled = 17;
 
   // Blue/green deployment strategy for configuration changes that require one.
@@ -210,6 +215,25 @@ message AwsOpenSearchDomainSpec {
   AwsOpenSearchDomainIdentityCenterOptions identity_center_options = 22;
 
   // ---------------------------------------------------------------------------
+  // SAML authentication for Dashboards
+  // ---------------------------------------------------------------------------
+
+  // SAML authentication for OpenSearch Dashboards: users sign in through an
+  // external SAML 2.0 identity provider (Okta, Entra ID, ...). Managed as its
+  // own provider resource alongside the domain; removing the block disables
+  // SAML. Requires fine-grained access control (advanced_security_options).
+  AwsOpenSearchDomainSamlOptions saml_options = 23;
+
+  // ---------------------------------------------------------------------------
+  // VPC endpoint access grants
+  // ---------------------------------------------------------------------------
+
+  // AWS account IDs authorized to create OpenSearch-managed VPC endpoints
+  // against this domain (the grantor side of cross-account private access).
+  // Each entry is managed as its own provider resource keyed by account ID.
+  repeated string authorized_vpc_endpoint_access_accounts = 24 [(buf.validate.field).repeated.unique = true];
+
+  // ---------------------------------------------------------------------------
   // CEL validations (cross-field)
   // ---------------------------------------------------------------------------
 
@@ -246,6 +270,29 @@ message AwsOpenSearchDomainSpec {
     id: "audit_logs_require_fgac"
     message: "AUDIT_LOGS log type requires advanced_security_options to be enabled"
     expression: "!this.log_publishing_options.exists(l, l.log_type == 'AUDIT_LOGS') || (has(this.advanced_security_options) && this.advanced_security_options.enabled)"
+  };
+
+  // SAML sign-in rides on fine-grained access control's role mapping.
+  option (buf.validate.message).cel = {
+    id: "saml_requires_fgac"
+    message: "saml_options requires advanced_security_options to be enabled (SAML roles map through fine-grained access control)"
+    expression: "!has(this.saml_options) || (has(this.advanced_security_options) && this.advanced_security_options.enabled)"
+  };
+
+  // Mirrors AWS's engine gate on JWT authentication: OpenSearch 2.11+ only
+  // (the provider rejects it at plan time on Elasticsearch engines and on
+  // older OpenSearch versions).
+  option (buf.validate.message).cel = {
+    id: "jwt_requires_opensearch_2_11"
+    message: "advanced_security_options.jwt_options requires engine_version OpenSearch_2.11 or newer (not available on Elasticsearch engines)"
+    expression: "!has(this.advanced_security_options) || !has(this.advanced_security_options.jwt_options) || this.engine_version.matches('^OpenSearch_(2\\\\.(1[1-9]|[2-9][0-9])|[3-9]\\\\.[0-9]+|[1-9][0-9]+\\\\.[0-9]+)$')"
+  };
+
+  // Twelve-digit AWS account IDs on the endpoint-access grant list.
+  option (buf.validate.message).cel = {
+    id: "authorized_accounts_format"
+    message: "authorized_vpc_endpoint_access_accounts entries must be 12-digit AWS account IDs"
+    expression: "this.authorized_vpc_endpoint_access_accounts.all(a, a.matches('^[0-9]{12}$'))"
   };
 }
 
@@ -312,14 +359,25 @@ message AwsOpenSearchDomainClusterConfig {
 
   // Enable UltraWarm storage tier for infrequently accessed, read-only data.
   // UltraWarm uses S3-backed storage at lower cost per GB than hot storage.
+  // Requires warm_type and warm_count.
   bool warm_enabled = 9;
 
-  // Instance type for UltraWarm nodes. Examples: "ultrawarm1.medium.search",
-  // "ultrawarm1.large.search". Only used when `warm_enabled` is true.
-  string warm_type = 10;
+  // Instance type for UltraWarm nodes: "ultrawarm1.medium.search",
+  // "ultrawarm1.large.search", or "ultrawarm1.xlarge.search". Required when
+  // `warm_enabled` is true.
+  string warm_type = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ultrawarm1.medium.search",
+        "ultrawarm1.large.search",
+        "ultrawarm1.xlarge.search"
+      ]
+    }
+  ];
 
-  // Number of UltraWarm nodes. Range: 2-150.
-  // Only used when `warm_enabled` is true.
+  // Number of UltraWarm nodes. Range: 2-150. Required when `warm_enabled`
+  // is true.
   int32 warm_count = 11;
 
   // ---------------------------------------------------------------------------
@@ -392,6 +450,15 @@ message AwsOpenSearchDomainClusterConfig {
     expression: "this.warm_count == 0 || (this.warm_count >= 2 && this.warm_count <= 150)"
   };
 
+  // Enabling UltraWarm requires the node shape -- without both values the
+  // engines would send an incomplete warm configuration that the provider
+  // rejects.
+  option (buf.validate.message).cel = {
+    id: "warm_enabled_requires_shape"
+    message: "warm_enabled requires warm_type and warm_count"
+    expression: "!this.warm_enabled || (this.warm_type != '' && this.warm_count > 0)"
+  };
+
   // cold_storage requires warm_enabled.
   option (buf.validate.message).cel = {
     id: "cold_requires_warm"
@@ -417,11 +484,18 @@ message AwsOpenSearchDomainNodeOption {
   bool enabled = 2;
 
   // Instance type for nodes in this pool (`.search` suffix).
-  // Example: "m7g.large.search".
+  // Example: "m7g.large.search". Required when the pool is enabled.
   string instance_type = 3;
 
-  // Number of nodes in the pool.
+  // Number of nodes in the pool (at least 1). Required when the pool is
+  // enabled.
   int32 count = 4;
+
+  option (buf.validate.message).cel = {
+    id: "enabled_pool_requires_shape"
+    message: "an enabled node pool requires instance_type and count (at least 1)"
+    expression: "!this.enabled || (this.instance_type != '' && this.count > 0)"
+  };
 }
 
 // AwsOpenSearchDomainEbsOptions defines EBS volume configuration for data node storage.
@@ -502,6 +576,15 @@ message AwsOpenSearchDomainVpcOptions {
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
+
+  // A VPC domain must land in at least one subnet -- an empty block would
+  // diverge between engines (one omits the VPC configuration entirely, the
+  // other sends an empty one).
+  option (buf.validate.message).cel = {
+    id: "vpc_requires_subnets"
+    message: "vpc_options requires at least one subnet_id"
+    expression: "this.subnet_ids.size() > 0"
+  };
 }
 
 // AwsOpenSearchDomainEndpointOptions configures the domain's HTTPS behavior,
@@ -512,9 +595,20 @@ message AwsOpenSearchDomainEndpointOptions {
   optional bool enforce_https = 1 [(dev.planton.shared.options.default) = "true"];
 
   // TLS security policy for the HTTPS endpoint. Controls the minimum TLS version
-  // and cipher suites. Example: "Policy-Min-TLS-1-2-PFS-2023-10" (recommended).
-  // Leave empty for the provider default.
-  string tls_security_policy = 2;
+  // and cipher suites. "Policy-Min-TLS-1-2-PFS-2023-10" is the recommended
+  // baseline; the FIPS policy serves regulated workloads. Leave empty for the
+  // provider default.
+  string tls_security_policy = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Policy-Min-TLS-1-0-2019-07",
+        "Policy-Min-TLS-1-2-2019-07",
+        "Policy-Min-TLS-1-2-PFS-2023-10",
+        "Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08"
+      ]
+    }
+  ];
 
   // Enable a custom domain endpoint (e.g., "search.example.com") instead of the
   // AWS-generated endpoint.
@@ -548,6 +642,14 @@ message AwsOpenSearchDomainEndpointOptions {
     id: "cert_requires_custom_enabled"
     message: "custom_endpoint_certificate_arn requires custom_endpoint_enabled to be true"
     expression: "!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_enabled"
+  };
+
+  // Literal values must be certificate ARNs (the provider validates ValidARN
+  // at plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "cert_arn_format"
+    message: "custom_endpoint_certificate_arn literal value must be an ACM certificate ARN (arn:...)"
+    expression: "!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_certificate_arn.value == '' || this.custom_endpoint_certificate_arn.value.startsWith('arn:')"
   };
 }
 
@@ -645,6 +747,14 @@ message AwsOpenSearchDomainAdvancedSecurityOptions {
     message: "jwt_options requires advanced security (enabled) to be true"
     expression: "!has(this.jwt_options) || this.enabled"
   };
+
+  // Literal values must be IAM ARNs (the provider validates ValidARN at
+  // plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "master_user_arn_format"
+    message: "master_user_arn literal value must be an IAM user or role ARN (arn:...)"
+    expression: "!has(this.master_user_arn) || this.master_user_arn.value == '' || this.master_user_arn.value.startsWith('arn:')"
+  };
 }
 
 // AwsOpenSearchDomainJwtOptions configures JWT bearer-token authentication under
@@ -665,20 +775,24 @@ message AwsOpenSearchDomainJwtOptions {
   string public_key = 3;
 
   // The token claim that carries the user's roles/groups. Example: "roles".
-  string roles_key = 4;
+  // Up to 64 characters.
+  string roles_key = 4 [(buf.validate.field).string.max_len = 64];
 
   // The token claim that identifies the user. Example: "sub", "email".
-  string subject_key = 5;
+  // Up to 64 characters.
+  string subject_key = 5 [(buf.validate.field).string.max_len = 64];
 
   // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
-  // When enabled, at least one of jwks_url / public_key must be provided.
+  // A validation source is required whenever the block is configured (not
+  // just when enabled) -- the provider enforces at-least-one-of on the block
+  // itself, and both engines send the block whenever it is present.
   option (buf.validate.message).cel = {
     id: "jwt_validation_source_required"
-    message: "provide jwks_url or public_key when JWT authentication is enabled"
-    expression: "!this.enabled || this.jwks_url != '' || this.public_key != ''"
+    message: "provide jwks_url or public_key when jwt_options is configured"
+    expression: "this.jwks_url != '' || this.public_key != ''"
   };
 }
 
@@ -794,9 +908,11 @@ message AwsOpenSearchDomainAutoTuneMaintenanceSchedule {
 // low-traffic window used for service software updates and (optionally)
 // Auto-Tune blue/green optimizations.
 message AwsOpenSearchDomainOffPeakWindowOptions {
-  // Whether the off-peak window feature is active. AWS enables it by default
-  // on new domains.
-  bool enabled = 1;
+  // Whether the off-peak window feature is active. Defaults to TRUE -- AWS
+  // enables the window on every new domain and requires it enabled at create
+  // time; false is only meaningful as a later update (AWS may still reject
+  // disabling it while features depend on the window).
+  optional bool enabled = 1 [(dev.planton.shared.options.default) = "true"];
 
   // Hour (0-23, local time) when the 10-hour window opens. AWS defaults to
   // 22 (10:00 PM) when not configured.
@@ -846,7 +962,10 @@ message AwsOpenSearchDomainIdentityCenterOptions {
   bool enabled_api_access = 1;
 
   // ARN of the IAM Identity Center instance to integrate with.
-  string identity_center_instance_arn = 2;
+  string identity_center_instance_arn = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:"
+  ];
 
   // The Identity Center attribute that carries a user's groups for role
   // mapping: "GroupName" or "GroupId".
@@ -902,6 +1021,14 @@ message AwsOpenSearchDomainLogPublishingOption {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
   ];
 
+  // Literal values must be log group ARNs (the provider validates ValidARN
+  // at plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "log_group_arn_format"
+    message: "cloudwatch_log_group_arn literal value must be a CloudWatch log group ARN (arn:...)"
+    expression: "!has(this.cloudwatch_log_group_arn) || this.cloudwatch_log_group_arn.value == '' || this.cloudwatch_log_group_arn.value.startsWith('arn:')"
+  };
+
   // Whether this log publishing option is active. Default: true.
   // Set to false to temporarily disable publishing without removing the configuration.
   optional bool enabled = 3 [(dev.planton.shared.options.default) = "true"];
@@ -915,5 +1042,49 @@ message AwsOpenSearchDomainLogPublishingOption {
     id: "log_type_valid"
     message: "log_type must be 'INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', or 'AUDIT_LOGS'"
     expression: "this.log_type in ['INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', 'AUDIT_LOGS']"
+  };
+}
+
+// AwsOpenSearchDomainSamlOptions configures SAML 2.0 authentication for
+// OpenSearch Dashboards under fine-grained access control. Managed as its
+// own provider resource alongside the domain -- removing the block turns
+// SAML sign-in off without touching the domain.
+message AwsOpenSearchDomainSamlOptions {
+  // The identity provider's entity ID (from the IdP metadata).
+  // Example: "https://idp.example.com/saml/metadata".
+  string idp_entity_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The IdP's SAML metadata document, as an XML string (typically downloaded
+  // from the IdP's metadata endpoint).
+  string idp_metadata_content = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The SAML backend role granted master (admin) access in Dashboards --
+  // mutually exclusive with master_user_name. Empty grants no SAML
+  // principal master access (map roles inside Dashboards instead).
+  string master_backend_role = 3;
+
+  // The SAML username granted master (admin) access in Dashboards --
+  // mutually exclusive with master_backend_role.
+  string master_user_name = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The SAML assertion attribute that carries the user's roles/groups.
+  // Empty uses the IdP's roles attribute conventions.
+  string roles_key = 5;
+
+  // The SAML assertion attribute that identifies the user. Empty uses
+  // NameID.
+  string subject_key = 6;
+
+  // Dashboards session lifetime in minutes, 1-1440. 0 keeps the AWS
+  // default (60).
+  int32 session_timeout_minutes = 7 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 1440
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "one_master_principal"
+    message: "master_backend_role and master_user_name are mutually exclusive"
+    expression: "this.master_backend_role == '' || this.master_user_name == ''"
   };
 }

@@ -13,10 +13,11 @@ spec:
       name: segmented-hub
       fieldPath: status.outputs.transit_gateway_id
   associations:
-    - valueFrom:
-        kind: AwsTransitGatewayVpcAttachment
-        name: prod-vpc-attachment
-        fieldPath: status.outputs.attachment_id
+    - attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: prod-vpc-attachment
+          fieldPath: status.outputs.attachment_id
   propagations:
     - valueFrom:
         kind: AwsTransitGatewayVpcAttachment

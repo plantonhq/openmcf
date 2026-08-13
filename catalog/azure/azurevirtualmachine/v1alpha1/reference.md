@@ -1365,6 +1365,14 @@ Fields that can point at another resource's outputs:
 | `spec.availability.virtualMachineScaleSetId` | AzureVirtualMachineScaleSet | `status.outputs.scale_set_id` |
 | `spec.secrets[].keyVaultId` | AzureKeyVault | `status.outputs.key_vault_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureBackupProtectedVm | `spec.sourceVmId` | `status.outputs.vm_id` |
+
 ## See Also
 
 - [Overview](../README.md)

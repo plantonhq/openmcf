@@ -9,7 +9,11 @@
 # lifecycle-free defaults), classic Jupyter Server, Code Editor idle
 # shutdown, TensorBoard, sharing to S3, space storage, both inheritance
 # planes (defaultUserSettings + defaultSpaceSettings), POSIX identity,
-# Studio UI hiding, and the role-free Canvas governance arms.
+# Studio UI hiding, the role-free Canvas governance arms, and the folded
+# satellites: one user profile (with a settings override carrying the
+# defined-but-disabled idle state) and one private space owned by it
+# (profiles create before spaces -- ownership references the profile by
+# name with no engine-level edge, so the modules order them explicitly).
 #
 # Excluded from the live lane with reasons (proven by spec tests + the
 # offline plan/preview gate against e2e/manifest.yaml):
@@ -142,3 +146,43 @@ spec:
     spaceStorageSettings:
       defaultEbsVolumeSizeInGb: 10
       maximumEbsVolumeSizeInGb: 50
+  # The folded per-person plane: one profile overriding the domain baseline.
+  # Its idle settings carry lifecycle_management DISABLED -- the
+  # defined-but-disabled state (guardrails published, enforcement off) that
+  # was unreachable before the heal; the verifier reads it back from
+  # DescribeUserProfile.
+  userProfiles:
+    - userProfileName: e2e-analyst
+      userSettings:
+        executionRoleArn:
+          valueFrom:
+            kind: AwsIamRole
+            name: planton-oss-e2e-sagemaker-execution-role
+            fieldPath: status.outputs.role_arn
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            lifecycleManagement: DISABLED
+            idleTimeoutInMinutes: 120
+            minIdleTimeoutInMinutes: 60
+            maxIdleTimeoutInMinutes: 240
+  # The folded collaboration plane: one private space owned by the profile
+  # above (ownership and sharing travel together -- AWS's RequiredWith
+  # contract, CEL-enforced).
+  spaces:
+    - spaceName: e2e-team-space
+      displayName: E2E Team Space
+      ownershipSettings:
+        ownerUserProfileName: e2e-analyst
+      spaceSharingSettings:
+        sharingType: Private
+      spaceSettings:
+        appType: JupyterLab
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            idleTimeoutInMinutes: 60
+        spaceStorageSettings:
+          ebsVolumeSizeInGb: 10

@@ -1471,7 +1471,7 @@ var File_catalog_azure_azurepostgresqlflexibleserver_v1alpha1_spec_proto protore
 
 const file_catalog_azure_azurepostgresqlflexibleserver_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"?catalog/azure/azurepostgresqlflexibleserver/v1alpha1/spec.proto\x128dev.planton.azure.azurepostgresqlflexibleserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x91J\n" +
+	"?catalog/azure/azurepostgresqlflexibleserver/v1alpha1/spec.proto\x128dev.planton.azure.azurepostgresqlflexibleserver.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf1I\n" +
 	"!AzurePostgresqlFlexibleServerSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -1483,9 +1483,9 @@ const file_catalog_azure_azurepostgresqlflexibleserver_v1alpha1_spec_proto_rawDe
 	"\x10source_server_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xee\x0f\x92\xd4a\x18status.outputs.server_idR\x0esourceServerId\x12\xba\x02\n" +
 	"!point_in_time_restore_time_in_utc\x18\x06 \x01(\tB\xf1\x01\xbaH\xed\x01\xba\x01\xe9\x01\n" +
 	"\x1dpostgres_restore_time_rfc3339\x12^point_in_time_restore_time_in_utc must be an RFC-3339 UTC timestamp, e.g. 2026-07-01T08:30:00Z\x1ahthis == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')R\x1bpointInTimeRestoreTimeInUtc\x12\x91\x01\n" +
-	"\x10replication_role\x18\a \x01(\x0e2f.dev.planton.azure.azurepostgresqlflexibleserver.v1alpha1.AzurePostgresqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\x8f\x03\n" +
-	"\x13administrator_login\x18\b \x01(\tB\xdd\x02\xbaH\xd9\x02\xba\x01\xd5\x02\n" +
-	"\x1dpostgres_admin_login_reserved\x12\x86\x01administrator_login cannot be azure_superuser, azure_pg_admin, admin, administrator, root, guest, or public, and cannot start with pg_\x1a\xaa\x01this == '' || (!(this.lowerAscii() in ['azure_superuser', 'azure_pg_admin', 'admin', 'administrator', 'root', 'guest', 'public']) && !this.lowerAscii().startsWith('pg_'))R\x12administratorLogin\x12o\n" +
+	"\x10replication_role\x18\a \x01(\x0e2f.dev.planton.azure.azurepostgresqlflexibleserver.v1alpha1.AzurePostgresqlFlexibleServerReplicationRoleR\x0freplicationRole\x12\xef\x02\n" +
+	"\x13administrator_login\x18\b \x01(\tB\xbd\x02\xbaH\xb9\x02\xba\x01\xb5\x02\n" +
+	"\x1dpostgres_admin_login_reserved\x12\x86\x01administrator_login cannot be azure_superuser, azure_pg_admin, admin, administrator, root, guest, or public, and cannot start with pg_\x1a\x8a\x01this == '' || (!this.matches('^(?i)(azure_superuser|azure_pg_admin|admin|administrator|root|guest|public)$') && !this.matches('^(?i)pg_'))R\x12administratorLogin\x12o\n" +
 	"\x16administrator_password\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x15administratorPassword\x12\xb8\x01\n" +
 	"\aversion\x18\n" +
 	" \x01(\tB\x98\x01\xbaH\x8e\x01\xba\x01\x8a\x01\n" +

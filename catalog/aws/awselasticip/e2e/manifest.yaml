@@ -4,3 +4,13 @@ metadata:
   name: static-egress-ip-demo
 spec:
   region: us-west-2
+  # Allocate from an IPAM public pool (omit to allocate from Amazon's pool).
+  ipamPoolId: ipam-pool-07ccc86aa41bef7ce
+  # Attach the address to an instance (at most one of instance /
+  # networkInterface; AWS associates with exactly one target).
+  instance:
+    value: i-0123456789abcdef0
+  # Reverse DNS (PTR) for the address -- AWS grants it only after a forward
+  # A record for this domain already resolves to the EIP, so point DNS at
+  # the address first, then set this on a follow-up apply.
+  reverseDnsDomainName: mail.example.com

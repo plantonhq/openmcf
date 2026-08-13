@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressrouteport.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureexpressrouteport/v1alpha1/outputs.proto";
+import "catalog/azure/azureexpressrouteport/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureExpressRoutePort is the top-level API resource describing an
+// ExpressRoute Port -- your own pair of physical ports on a Microsoft
+// edge router at a peering location (ExpressRoute Direct), from whose
+// bandwidth circuits are carved.
+message AzureExpressRoutePort {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureExpressRoutePort".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureExpressRoutePort'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // ExpressRoute Port specification.
+  AzureExpressRoutePortSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureExpressRoutePortStatus status = 5;
+}
+
+// AzureExpressRoutePortStatus holds the deployment outputs.
+message AzureExpressRoutePortStatus {
+  // Stack outputs from the IaC deployment.
+  AzureExpressRoutePortStackOutputs outputs = 1;
+}

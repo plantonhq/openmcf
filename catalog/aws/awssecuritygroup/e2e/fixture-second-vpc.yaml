@@ -1,0 +1,27 @@
+# Extra-instance fixture: a SECOND VPC for the multi-VPC share arm of the
+# rules-rich scenario (spec.additional_vpc_ids). The scenario's own chain
+# already deploys the standard AwsVpc prerequisite as the group's home VPC;
+# this fixture exists precisely to add another instance, composed via the
+# PATH form of the e2e-prerequisites annotation (a kind-name entry would be
+# deduplicated against the chain). Non-overlapping CIDR so the two VPCs
+# could peer in future scenarios. Full metadata is supplied for
+# tagging/orphan cleanup.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsVpc
+metadata:
+  name: planton-oss-e2e-awssg-second-vpc
+  id: planton-oss-e2e-awssg-second-vpc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssecuritygroup
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cidrBlock: 10.1.0.0/16
+  enableDnsHostnames: true
+  enableDnsSupport: true

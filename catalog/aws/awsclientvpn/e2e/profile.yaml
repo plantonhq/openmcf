@@ -17,10 +17,15 @@ spec:
   # the transit-gateway arm (needs a live TGW). Verification is
   # DescribeClientVpnEndpoints keyed on the endpoint ID, state-aware
   # (deleting counts as absent).
+  #
+  # pending_proof: the recorded owner deferral (association cost, ~25-35
+  # minutes per engine) was REOPENED by owner decision at the depth closure
+  # -- trivial dollars, wall-clock-moderate only (the OpenSearch-reopen
+  # class). The closure healed the three option blocks' un-disable trap
+  # (connect hook / login banner / route enforcement now always send the
+  # explicit state on both engines), converged disconnect_on_session_timeout
+  # cross-engine, and added the provider-mirrored CELs (canonical satellite
+  # CIDRs, comma-free group id, SAML ARN shapes, client CIDR /12-/22).
   tier: 2
-  status: deferred
-  deferred_reason: >-
-    Deferred by owner decision (association cost: composed lane ~25-35 minutes
-    per engine). Artifacts complete and re-runnable; the offline gate is fully
-    green.
+  status: pending_proof
   timeout_minutes: 60

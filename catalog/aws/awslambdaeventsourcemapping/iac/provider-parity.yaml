@@ -1,0 +1,91 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lambda_event_source_mapping:
+    mappings:
+      # AWS models the Kafka source config once per source family (MSK vs
+      # self-managed) with identical shapes; the spec carries each concept
+      # once and the module renders it into whichever family the source
+      # selects -- two provider arguments fan into one spec field.
+      - arg: amazon_managed_kafka_event_source_config.consumer_group_id
+        spec: spec.kafka_consumer_group_id
+      - arg: self_managed_kafka_event_source_config.consumer_group_id
+        spec: spec.kafka_consumer_group_id
+      - arg: amazon_managed_kafka_event_source_config.schema_registry_config.schema_registry_uri
+        spec: spec.schema_registry.uri
+      - arg: self_managed_kafka_event_source_config.schema_registry_config.schema_registry_uri
+        spec: spec.schema_registry.uri
+      - arg: amazon_managed_kafka_event_source_config.schema_registry_config.event_record_format
+        spec: spec.schema_registry.event_record_format
+      - arg: self_managed_kafka_event_source_config.schema_registry_config.event_record_format
+        spec: spec.schema_registry.event_record_format
+      - arg: amazon_managed_kafka_event_source_config.schema_registry_config.schema_validation_config.attribute
+        spec: spec.schema_registry.validation_attributes
+      - arg: self_managed_kafka_event_source_config.schema_registry_config.schema_validation_config.attribute
+        spec: spec.schema_registry.validation_attributes
+      - arg: amazon_managed_kafka_event_source_config.schema_registry_config.access_config
+        spec: spec.schema_registry.access_configurations
+      - arg: self_managed_kafka_event_source_config.schema_registry_config.access_config
+        spec: spec.schema_registry.access_configurations
+      # The provider nests the failure destination two blocks deep; the
+      # spec flattens it to one ARN field.
+      - arg: destination_config.on_failure.destination_arn
+        spec: spec.on_failure_destination_arn
+      # Shorter spec block name for the DocumentDB source options; leaves
+      # match exactly below.
+      - arg: document_db_event_source_config
+        spec: spec.document_db
+      # The spec models the pause switch positively-named (disabled) so the
+      # zero value is AWS's enabled default; the module inverts it into the
+      # provider's enabled flag.
+      - arg: enabled
+        spec: spec.disabled
+      # The filter wrapper flattens: the spec's repeated filters ARE the
+      # provider's filter set.
+      - arg: filter_criteria.filter
+        spec: spec.filters
+      # The function argument accepts a name or ARN; the spec feeds it the
+      # referenced function's ARN.
+      - arg: function_name
+        spec: spec.function_arn
+      # Units ride the spec names.
+      - arg: maximum_batching_window_in_seconds
+        spec: spec.maximum_batching_window_seconds
+      - arg: maximum_record_age_in_seconds
+        spec: spec.maximum_record_age_seconds
+      - arg: tumbling_window_in_seconds
+        spec: spec.tumbling_window_seconds
+      # Single-field provider wrappers flatten to one spec field each.
+      - arg: metrics_config.metrics
+        spec: spec.metrics
+      - arg: scaling_config.maximum_concurrency
+        spec: spec.scaling_max_concurrency
+      # Shorter spec block name for the Kafka poller fleet; leaves match
+      # exactly below.
+      - arg: provisioned_poller_config
+        spec: spec.provisioned_pollers
+      # AWS accepts exactly one MQ queue (a single-element list); the spec
+      # keeps the scalar.
+      - arg: queues
+        spec: spec.mq_queue
+      # The provider's endpoints map has one documented key
+      # (KAFKA_BOOTSTRAP_SERVERS); the spec models the value directly.
+      - arg: self_managed_event_source.endpoints
+        spec: spec.self_managed_kafka.bootstrap_servers
+      # The provider names the set singular; the spec keeps the plural its
+      # repeated shape reads naturally as.
+      - arg: source_access_configuration
+        spec: spec.source_access_configurations
+    exclusions:
+      - arg: use_resource_timeout_for_propagation
+        reason: Terraform apply-behavior knob (how long the provider polls for IAM propagation) -- engine operation, not mapping configuration
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

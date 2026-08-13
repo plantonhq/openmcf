@@ -10,7 +10,9 @@ spec:
   transitGatewayId:
     value: tgw-0a1b2c3d4e5f00001
   associations:
-    - value: tgw-attach-0a1b2c3d4e5f00001
+    - attachmentId:
+        value: tgw-attach-0a1b2c3d4e5f00001
+      replaceExistingAssociation: true
   propagations:
     - value: tgw-attach-0a1b2c3d4e5f00001
     - value: tgw-attach-0a1b2c3d4e5f00002
@@ -24,3 +26,5 @@ spec:
     - prefixListId: pl-0a1b2c3d4e5f00001
       attachmentId:
         value: tgw-attach-0a1b2c3d4e5f00001
+  setAsDefaultAssociationTable: true
+  setAsDefaultPropagationTable: true

@@ -9,6 +9,18 @@
 # documented default this component preserves). skipFinalSnapshot keeps the
 # destroy phase unconditional. Full metadata is supplied for tagging/orphan
 # cleanup.
+#
+# Free arms proven live on this lane: one engine feature role attached BY
+# REFERENCE (the e2e-prerequisites annotation composes the consumer-scoped
+# AwsIamRole fixture -- the role MUST trust rds.amazonaws.com, a
+# server-side AddRoleToDBCluster contract; verify the association via the
+# RDS API, not apply success alone), one custom READER endpoint over the
+# folded instance (verify its
+# DNS name in the outputs), explicit cluster-level auto-minor-upgrade, and
+# per-instance maintenance-window + snapshot-tag arms. The Kerberos,
+# S3-import, and activity-stream arms are offline-proven (directory,
+# seeded bucket, and KMS+Kinesis costs) -- see e2e/manifest.yaml and the
+# 04 preset.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsCluster
 metadata:
@@ -21,6 +33,7 @@ metadata:
     e2e-component: awsrdscluster
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
   tags:
     - planton-e2e
 spec:
@@ -38,10 +51,25 @@ spec:
   masterUsername: e2eadmin
   manageMasterUserPassword: true
   storageEncrypted: true
+  autoMinorVersionUpgrade: true
   serverlessV2Scaling:
     minCapacity: 0
     maxCapacity: 1
   instances:
     - name: one
       instanceClass: db.serverless
+      copyTagsToSnapshot: true
+      preferredMaintenanceWindow: sun:05:00-sun:06:00
+  iamRoles:
+    - role:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-rds-feature-role
+          fieldPath: status.outputs.role_arn
+      featureName: s3Export
+  customEndpoints:
+    - name: analytics
+      type: READER
+      staticMembers:
+        - one
   skipFinalSnapshot: true

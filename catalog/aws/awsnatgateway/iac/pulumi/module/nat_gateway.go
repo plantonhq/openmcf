@@ -14,9 +14,48 @@ func natGateway(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRes
 
 	args := &ec2.NatGatewayArgs{
 		ConnectivityType: pulumi.String(spec.ConnectivityType),
-		SubnetId:         pulumi.String(spec.SubnetId.GetValue()),
 		Tags: convertstringmaps.ConvertGoStringMapToPulumiStringMap(
 			stringmaps.AddEntry(locals.AwsTags, "Name", name)),
+	}
+
+	// Placement: zonal gateways live in one subnet; regional gateways span a
+	// VPC (availability_mode = "regional" + vpc_id). The spec's CEL rules
+	// guarantee exactly one placement form arrives here; unset arms are
+	// OMITTED, never sent as empty strings.
+	if spec.SubnetId.GetValue() != "" {
+		args.SubnetId = pulumi.StringPtr(spec.SubnetId.GetValue())
+	}
+	if spec.AvailabilityMode != "" {
+		args.AvailabilityMode = pulumi.StringPtr(spec.AvailabilityMode)
+	}
+	if spec.VpcId.GetValue() != "" {
+		args.VpcId = pulumi.StringPtr(spec.VpcId.GetValue())
+	}
+
+	// Regional gateways: explicit per-AZ layout (manual mode). An empty list
+	// means AWS picks the zones and manages addresses itself (auto mode);
+	// switching a live gateway between auto and manual replaces it (provider
+	// behavior, via its internal auto-mode marker attribute).
+	if len(spec.AvailabilityZoneAddresses) > 0 {
+		azAddresses := make(ec2.NatGatewayAvailabilityZoneAddressArray, 0, len(spec.AvailabilityZoneAddresses))
+		for _, azAddress := range spec.AvailabilityZoneAddresses {
+			azArgs := ec2.NatGatewayAvailabilityZoneAddressArgs{}
+			if azAddress.AvailabilityZone != "" {
+				azArgs.AvailabilityZone = pulumi.StringPtr(azAddress.AvailabilityZone)
+			}
+			if azAddress.AvailabilityZoneId != "" {
+				azArgs.AvailabilityZoneId = pulumi.StringPtr(azAddress.AvailabilityZoneId)
+			}
+			if len(azAddress.AllocationIds) > 0 {
+				allocationIds := make(pulumi.StringArray, 0, len(azAddress.AllocationIds))
+				for _, allocationId := range azAddress.AllocationIds {
+					allocationIds = append(allocationIds, pulumi.String(allocationId.GetValue()))
+				}
+				azArgs.AllocationIds = allocationIds
+			}
+			azAddresses = append(azAddresses, azArgs)
+		}
+		args.AvailabilityZoneAddresses = azAddresses
 	}
 
 	// Public gateways carry an Elastic IP; private gateways carry private IPs.

@@ -1,0 +1,19 @@
+# Offline-plan test manifest. Exercises the full surface: the
+# exclusion list (present here to prove the wire shape -- production
+# guidance is an EMPTY list, which guards everything) and user tags
+# merged over the derived ones.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionResourceGuard
+metadata:
+  name: test-data-protection-resource-guard
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: test-backup-mua-guard
+  vaultCriticalOperationExclusionList:
+    - Microsoft.RecoveryServices/vaults/backupconfig/write
+  tags:
+    cost-center: platform

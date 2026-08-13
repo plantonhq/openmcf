@@ -1,0 +1,58 @@
+# Minimal AzureVirtualHub scenario: a Standard hub on the fixture WAN
+# with one custom route table and one route map -- the flagship proof
+# of the composed-children surfacing (name-keyed route_table_ids /
+# route_map_ids outputs) at zero extra cost (tables and maps are free;
+# the hub itself bills ~$0.25/hr while the lane runs).
+#
+# REGION: eastus2, NOT the fixture region -- ARM allows one hub per
+# region per WAN, and the fixture hub (which the connection and gateway
+# lanes chain through) lives in eastus. Distinct regions mean the two
+# hubs can never collide even when lanes overlap.
+#
+# TIME: ARM takes 15-30 minutes to bring the hub router to a
+# Provisioned routing state; deletion runs 10-15 minutes.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHub
+metadata:
+  name: planton-oss-e2e-azurevirtualhub-smoke
+  id: planton-oss-e2e-azurevirtualhub-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevirtualhub
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus2
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vhub-smoke
+  virtualWanId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vwan
+  addressPrefix: "10.100.0.0/23"
+  routeTables:
+    - name: prod-isolated
+      labels:
+        - prod
+  routeMaps:
+    - name: ingress-policy
+      rules:
+        - name: tag-on-prem
+          matchCriteria:
+            - matchCondition: CONTAINS
+              routePrefix:
+                - "10.0.0.0/8"
+          actions:
+            - type: ADD
+              parameters:
+                - community:
+                    - "65001:100"
+          nextStepIfMatched: CONTINUE
+  tags:
+    e2e-suite: azure
+    purpose: smoke

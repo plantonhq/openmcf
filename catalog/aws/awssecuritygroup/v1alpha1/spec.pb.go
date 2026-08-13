@@ -61,8 +61,20 @@ type AwsSecurityGroupSpec struct {
 	// cross-group (e.g. an app tier referenced by a database tier) so teardown
 	// never requires manual rule surgery. Safe to toggle in place.
 	RevokeRulesOnDelete bool `protobuf:"varint,6,opt,name=revoke_rules_on_delete,json=revokeRulesOnDelete,proto3" json:"revoke_rules_on_delete,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// additional_vpc_ids shares this security group into OTHER VPCs beyond its
+	// home vpc_id, so resources in those VPCs can attach the same group instead
+	// of maintaining copied groups per VPC (one firewall definition, many VPCs).
+	// Each entry must be a different VPC in the same account and region as the
+	// group's own VPC, and must not repeat vpc_id or another entry — AWS rejects
+	// duplicates at apply (entries may be references, so this is not validated
+	// here). Reference AwsVpc vpc_id outputs or pass literal "vpc-..." ids.
+	// Adding or removing an entry associates/disassociates in place; the group
+	// itself is never replaced. Rules referencing security groups from a
+	// DIFFERENT VPC than the one a packet traverses are ignored by AWS in that
+	// VPC — prefer CIDR/prefix-list rules on multi-VPC groups.
+	AdditionalVpcIds []*v1.StringValueOrRef `protobuf:"bytes,7,rep,name=additional_vpc_ids,json=additionalVpcIds,proto3" json:"additional_vpc_ids,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsSecurityGroupSpec) Reset() {
@@ -135,6 +147,13 @@ func (x *AwsSecurityGroupSpec) GetRevokeRulesOnDelete() bool {
 		return x.RevokeRulesOnDelete
 	}
 	return false
+}
+
+func (x *AwsSecurityGroupSpec) GetAdditionalVpcIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.AdditionalVpcIds
+	}
+	return nil
 }
 
 // SecurityGroupRule represents a single inbound or outbound rule in the
@@ -294,7 +313,7 @@ var File_catalog_aws_awssecuritygroup_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_aws_awssecuritygroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awssecuritygroup/v1alpha1/spec.proto\x12)dev.planton.aws.awssecuritygroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x92\x04\n" +
+	"0catalog/aws/awssecuritygroup/v1alpha1/spec.proto\x12)dev.planton.aws.awssecuritygroup.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc0\b\n" +
 	"\x14AwsSecurityGroupSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
 	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x84\x01\n" +
@@ -302,7 +321,10 @@ const file_catalog_aws_awssecuritygroup_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18description_length_check\x12*Description must not exceed 255 characters\x1a\x11size(this) <= 255\xc8\x01\x01R\vdescription\x12V\n" +
 	"\aingress\x18\x04 \x03(\v2<.dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRuleR\aingress\x12T\n" +
 	"\x06egress\x18\x05 \x03(\v2<.dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRuleR\x06egress\x123\n" +
-	"\x16revoke_rules_on_delete\x18\x06 \x01(\bR\x13revokeRulesOnDelete\"\xe9\a\n" +
+	"\x16revoke_rules_on_delete\x18\x06 \x01(\bR\x13revokeRulesOnDelete\x12\x80\x01\n" +
+	"\x12additional_vpc_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x10additionalVpcIds:\xa8\x03\xbaH\xa4\x03\x1a\xd0\x01\n" +
+	"\x1fingress_rules_use_source_groups\x12kingress rules take source_security_group_ids -- destination_security_group_ids applies only to egress rules\x1a@this.ingress.all(r, size(r.destination_security_group_ids) == 0)\x1a\xce\x01\n" +
+	"#egress_rules_use_destination_groups\x12kegress rules take destination_security_group_ids -- source_security_group_ids applies only to ingress rules\x1a:this.egress.all(r, size(r.source_security_group_ids) == 0)\"\xe9\a\n" +
 	"\x11SecurityGroupRule\x12\"\n" +
 	"\bprotocol\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bprotocol\x121\n" +
 	"\tfrom_port\x18\x02 \x01(\x05B\x14\xbaH\x11\x1a\x0f\x18\xff\xff\x03(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01R\bfromPort\x12-\n" +
@@ -343,13 +365,14 @@ var file_catalog_aws_awssecuritygroup_v1alpha1_spec_proto_depIdxs = []int32{
 	2, // 0: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 1: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupSpec.ingress:type_name -> dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule
 	1, // 2: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupSpec.egress:type_name -> dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule
-	2, // 3: dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule.source_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	2, // 4: dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule.destination_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	2, // 3: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupSpec.additional_vpc_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 4: dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule.source_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 5: dev.planton.aws.awssecuritygroup.v1alpha1.SecurityGroupRule.destination_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awssecuritygroup_v1alpha1_spec_proto_init() }

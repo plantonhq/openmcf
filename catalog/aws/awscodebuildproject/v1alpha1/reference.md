@@ -27,9 +27,11 @@ environment.fleet_arn.
 
 ```yaml
 # Full-surface offline-plan manifest. This exercises every optional block the
-# module renders -- including the arms excluded from live E2E lanes (webhook,
-# source auth, public visibility, EFS mounts, batch builds) -- so the
-# `tofu plan` / `pulumi preview` proofs cover the whole contract.
+# module renders -- including the arms excluded from live E2E lanes (webhook
+# with manual creation, organization scope, and PR build policy; source auth;
+# public visibility with its access role; EFS mounts; batch builds; the
+# host-kernel selection) -- so the `tofu plan` / `pulumi preview` proofs
+# cover the whole contract.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
@@ -37,11 +39,6 @@ metadata:
   id: test-codebuild
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsCodeBuildProject.test-codebuild
 spec:
   region: us-west-2
   source:
@@ -73,6 +70,7 @@ spec:
     certificate: certs-bucket/private-ca.pem
     privilegedMode: true
     imagePullCredentialsType: CODEBUILD
+    hostKernel: LINUX_KERNEL_6
     environmentVariables:
       - name: STAGE
         value: dev
@@ -110,6 +108,11 @@ spec:
   autoRetryLimit: 2
   badgeEnabled: true
   sourceVersion: main
+  # Public visibility with its required read-access role (PUBLIC_READ is
+  # CEL-gated on resourceAccessRole being set).
+  projectVisibility: PUBLIC_READ
+  resourceAccessRole:
+    value: arn:aws:iam::123456789012:role/codebuild-public-read-role
   cache:
     type: S3
     location:
@@ -164,6 +167,15 @@ spec:
             aws:ResourceAccount: "${aws:PrincipalAccount}"
   webhook:
     buildType: BUILD
+    # manual_creation: CodeBuild creates the webhook definition without
+    # registering it with the source provider -- the payload URL and secret
+    # are then wired into GitHub by hand (GitHub-source projects only).
+    manualCreation: true
+    # An organization-scoped webhook: one webhook covering every repository
+    # in the GitHub organization (runner/monorepo fan-in patterns).
+    scopeConfiguration:
+      name: example-org
+      scope: GITHUB_ORGANIZATION
     filterGroups:
       - filters:
           - type: EVENT
@@ -239,6 +251,7 @@ spec:
 | `spec.environment.dockerServer.computeType` | `string` | yes |  |  |
 | `spec.environment.dockerServer.securityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.environment.fleetArn` | `string` |  |  |  |
+| `spec.environment.hostKernel` | `string` |  |  |  |
 | `spec.artifacts` | `AwsCodeBuildArtifacts` | yes |  |  |
 | `spec.artifacts.type` | `string` | yes |  |  |
 | `spec.artifacts.location` | `string \| valueFrom` |  |  | AwsS3Bucket (`status.outputs.bucket_id`) |
@@ -684,6 +697,7 @@ version for that source.
 environment defines the build container: image, compute, and variables.
 
 - rule: {"required":true}
+- rule: host_kernel applies only to LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and ARM_EC2 environment types
 
 ### spec.environment.type
 
@@ -865,6 +879,22 @@ pre-provisioned, always-warm build machines (zero queue/provisioning
 time; required for MAC_ARM and the EC2 environment types). The fleet is
 a shared, account-level resource managed outside this project; reference
 it by ARN.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-zA-Z-]*:codebuild:[a-z0-9-]+:[0-9]{12}:fleet/.+$"}}
+
+### spec.environment.hostKernel
+
+`string`
+
+host_kernel selects the Linux kernel version for the build hosts.
+  LINUX_KERNEL_4:      Kernel 4.x (the long-standing default)
+  LINUX_KERNEL_6:      Kernel 6.x (newer eBPF/io_uring features)
+  LINUX_KERNEL_LATEST: Always the newest kernel CodeBuild offers
+Applies only to the LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and
+ARM_EC2 environment types — AWS's contract; Windows, Lambda, and Mac
+environments have no kernel selection. Omit to let AWS choose.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["LINUX_KERNEL_4","LINUX_KERNEL_6","LINUX_KERNEL_LATEST"]}}
 
 ### spec.artifacts
 

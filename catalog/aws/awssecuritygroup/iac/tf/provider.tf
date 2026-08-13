@@ -9,7 +9,9 @@ terraform {
       # argument needs. Only the sweep moves this line — never a single kind.
       #
       # Feature floor: everything this module uses (inline rules, prefix
-      # lists, revoke_rules_on_delete) is stable across the v6 line.
+      # lists, revoke_rules_on_delete) is stable across the v6 line;
+      # aws_vpc_security_group_vpc_association (the additional_vpc_ids
+      # multi-VPC share) landed in 5.76.0, also below the v6 line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

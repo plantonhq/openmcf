@@ -53,8 +53,8 @@ var _ = ginkgo.Describe("AwsTransitGatewayRouteTableSpec validations", func() {
 	})
 
 	ginkgo.It("accepts a full routing domain (associations, propagations, routes, prefix lists)", func() {
-		spec.Associations = []*foreignkeyv1.StringValueOrRef{
-			strRef("tgw-attach-0aaa111"),
+		spec.Associations = []*AwsTransitGatewayRouteTableAssociation{
+			{AttachmentId: strRef("tgw-attach-0aaa111")},
 		}
 		spec.Propagations = []*foreignkeyv1.StringValueOrRef{
 			strRef("tgw-attach-0aaa111"),
@@ -71,6 +71,21 @@ var _ = ginkgo.Describe("AwsTransitGatewayRouteTableSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("accepts an association that takes over an existing association", func() {
+		spec.Associations = []*AwsTransitGatewayRouteTableAssociation{
+			{AttachmentId: strRef("tgw-attach-0aaa111"), ReplaceExistingAssociation: true},
+		}
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts both gateway default-table designations on one table", func() {
+		spec.SetAsDefaultAssociationTable = true
+		spec.SetAsDefaultPropagationTable = true
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
 	// Required field validations
 	// -------------------------------------------------------------------------
@@ -83,6 +98,14 @@ var _ = ginkgo.Describe("AwsTransitGatewayRouteTableSpec validations", func() {
 
 	ginkgo.It("fails when transit_gateway_id is missing", func() {
 		spec.TransitGatewayId = nil
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails an association without an attachment", func() {
+		spec.Associations = []*AwsTransitGatewayRouteTableAssociation{
+			{ReplaceExistingAssociation: true},
+		}
 		err := protovalidate.Validate(validEnvelope(spec))
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

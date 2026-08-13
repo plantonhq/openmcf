@@ -1,0 +1,176 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_redshift_cluster:
+    mappings:
+      # The provider calls the attached security groups by their VPC home;
+      # the spec keeps the catalog-wide security_group_ids name.
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module from metadata.name -- the cluster identifier is platform naming, never free-form spec surface
+      - arg: cluster_type
+        reason: derived by the provider from number_of_nodes at create (single-node vs multi-node) -- carries no configuration of its own
+      - arg: master_password_wo
+        reason: write-only ephemeral variant of master_password -- a Terraform-language ergonomics feature, not cloud surface; the spec models the durable argument and the managed-password posture
+      - arg: master_password_wo_version
+        reason: version companion of the write-only password -- exists only to trigger re-sends of master_password_wo
+      - arg: tags
+        reason: wired by the module from metadata (Name plus planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_redshift_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_redshift_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters.
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+      - spec: spec.parameter_group_family
+        arg: family
+    exclusions:
+      - arg: name
+        reason: wired by the module ("<cluster>-params") -- the group is owned by exactly one cluster
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_redshift_logging:
+    # Audit logging is a cluster setting keyed by the cluster identifier
+    # (folded, never a standalone node).
+    specRoot: spec.logging
+    mappings:
+      # The provider names the S3 destination generically; the spec keeps
+      # the destination-scoped name.
+      - spec: spec.logging.s3_bucket_name
+        arg: bucket_name
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- logging follows the cluster's spec.region through the provider connection
+
+  aws_redshift_snapshot_copy:
+    # Cross-region snapshot copy is a cluster setting keyed by the cluster
+    # identifier (folded, never a standalone node).
+    specRoot: spec.snapshot_copy
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the copy configuration follows the cluster's spec.region through the provider connection
+
+  aws_redshift_usage_limit:
+    # One limit per spec.usage_limits entry, keyed by the
+    # feature/limit-type/period triple.
+    specRoot: spec.usage_limits
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- limits follow the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_redshift_scheduled_action:
+    # One action per spec.scheduled_actions entry, keyed by name; the
+    # target arms mirror AWS's ScheduledActionType union.
+    specRoot: spec.scheduled_actions
+    mappings:
+      # The provider's enable flag is the spec's disabled flag inverted --
+      # the zero value keeps AWS's default (enabled).
+      - spec: spec.scheduled_actions.disabled
+        arg: enable
+      - spec: spec.scheduled_actions.iam_role_arn
+        arg: iam_role
+      # The provider wraps the resize arm in a target_action block; the
+      # spec flattens the arms onto the entry with an exactly-one CEL.
+      - spec: spec.scheduled_actions.resize_cluster
+        arg: target_action.resize_cluster
+      - spec: spec.scheduled_actions.resize_cluster.classic
+        arg: target_action.resize_cluster.classic
+      - spec: spec.scheduled_actions.resize_cluster.cluster_type
+        arg: target_action.resize_cluster.cluster_type
+      - spec: spec.scheduled_actions.resize_cluster.node_type
+        arg: target_action.resize_cluster.node_type
+      - spec: spec.scheduled_actions.resize_cluster.number_of_nodes
+        arg: target_action.resize_cluster.number_of_nodes
+    exclusions:
+      - arg: target_action.pause_cluster.cluster_identifier
+        reason: wired by the module to the cluster it creates -- actions always target this cluster
+      - arg: target_action.resume_cluster.cluster_identifier
+        reason: wired by the module to the cluster it creates -- actions always target this cluster
+      - arg: target_action.resize_cluster.cluster_identifier
+        reason: wired by the module to the cluster it creates -- actions always target this cluster
+      - arg: region
+        reason: wired by the module -- actions follow the cluster's spec.region through the provider connection
+
+  aws_redshift_endpoint_access:
+    # One managed VPC endpoint per spec.endpoint_accesses entry, keyed by
+    # endpoint name.
+    specRoot: spec.endpoint_accesses
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: resource_owner
+        reason: the cross-account GRANTEE side (an endpoint into another account's cluster) -- lives in the grantee's credential domain; this kind models the owner side, with grants on spec.endpoint_authorizations
+      - arg: region
+        reason: wired by the module -- endpoints follow the cluster's spec.region through the provider connection
+
+  aws_redshift_endpoint_authorization:
+    # One per-account grant per spec.endpoint_authorizations entry -- the
+    # grantor side of cross-account endpoint access.
+    specRoot: spec.endpoint_authorizations
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- authorizations follow the cluster's spec.region through the provider connection
+
+  aws_redshift_snapshot_schedule_association:
+    # Binds the cluster to an EXISTING account-scoped schedule (one per
+    # cluster -- AWS's own model); the schedule itself is a future kind.
+    mappings:
+      - spec: spec.snapshot_schedule_identifier
+        arg: schedule_identifier
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+
+specExclusions:
+  # Pause and resume are empty-payload arms of AWS's ScheduledActionType
+  # union -- the spec bool renders the provider's pause_cluster{} /
+  # resume_cluster{} block whose only member (cluster_identifier) the
+  # module wires; block presence IS the configuration.
+  - field: spec.scheduled_actions.pause_cluster
+    reason: renders the provider's pause_cluster{} target arm -- block presence is the configuration; its only member is the module-wired cluster identifier
+  - field: spec.scheduled_actions.resume_cluster
+    reason: renders the provider's resume_cluster{} target arm -- block presence is the configuration; its only member is the module-wired cluster identifier

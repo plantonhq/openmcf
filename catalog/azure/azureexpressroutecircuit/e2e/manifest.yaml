@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRouteCircuit
+metadata:
+  name: test-express-route-circuit
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hq-circuit
+  # STANDARD reaches the geopolitical area; METERED_DATA bills outbound
+  # per GB (the common production pairing).
+  skuTier: STANDARD
+  skuFamily: METERED_DATA
+  # Service-provider mode: the trio travels together. Billing starts at
+  # creation; the circuit sits NotProvisioned until the provider
+  # completes the cross-connect with the service key.
+  serviceProviderName: "Equinix"
+  peeringLocation: "Washington DC"
+  bandwidthInMbps: 50
+  # One issued authorization: its ARM-generated key (sensitive) surfaces
+  # in the authorization_keys output under this name.
+  authorizations:
+    - name: partner-team
+  tags:
+    purpose: hack-test

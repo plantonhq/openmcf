@@ -4,18 +4,33 @@ metadata:
   name: awssqsqueue
 spec:
   # An SQS queue under E2E: the harness runs deploy -> GetQueueAttributes
-  # verify -> destroy -> verify-destroyed on both provisioners. The scenario
-  # is a FIFO queue with content-based deduplication, per-message-group
-  # deduplication scope, high-throughput FIFO settings, and SSE-SQS
-  # encryption -- the fullest honest FIFO surface. Deliberately not in the
-  # live scenario: a dead-letter queue (the harness forbids same-kind
-  # e2e-prerequisites, and a FIFO DLQ must itself be FIFO), customer-managed
-  # KMS keys, redrive-allow byQueue lists, and resource policies -- all
-  # proven by CEL spec tests and the offline gate; SQS-as-DLQ wiring is
-  # exercised live by the AwsEventBridgeBus lane.
+  # verify -> destroy -> verify-destroyed on both provisioners. Two
+  # scenarios: the FIFO queue with content-based deduplication,
+  # per-message-group deduplication scope, high-throughput FIFO settings,
+  # and explicit-true SSE-SQS; and the standard queue with the explicit
+  # encryption OPT-OUT (sqsManagedSseEnabled: false -- the presence-typed
+  # field's explicit-false send path; verify GetQueueAttributes reports
+  # SqsManagedSseEnabled false, not apply success alone). The shared
+  # prerequisite fixture leaves the field unset, proving the omit path
+  # live via consumer chains (AWS's default-on encryption stands there).
+  # Deliberately not in the live scenarios: a dead-letter queue (the
+  # harness forbids same-kind e2e-prerequisites, and a FIFO DLQ must
+  # itself be FIFO), customer-managed KMS keys, redrive-allow byQueue
+  # lists, and resource policies -- all proven by CEL spec tests and the
+  # offline gate; SQS-as-DLQ wiring is exercised live by the
+  # AwsEventBridgeBus lane.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  # Proven live 2026-08-12, both engines, both scenarios, plus the blind
+  # import round-trip on the Terraform lane (queue_url re-imported, plan
+  # zero-diff, both scenarios). The SSE tri-state was API-evidenced per
+  # engine via GetQueueAttributes: the opt-out scenario echoed
+  # SqsManagedSseEnabled=false (the explicit-false send path), the FIFO
+  # scenario echoed true (explicit-true), and the shared prerequisite
+  # fixture echoed true on the omit path in every consumer lane window
+  # (AWS's default-on encryption stands when the field is unset).
+  # pending_proof: the tag-convergence sweep added the canonical Name key to
+  # the Pulumi identity map (the Terraform twin already sent it live) -- Q31
+  # proves the Name-addition class on this kind for the whole sweep
+  status: pending_proof
+  validated_provisioners: []
   timeout_minutes: 15

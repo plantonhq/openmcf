@@ -67,8 +67,21 @@ func PulumiRemoveStack(moduleDir, stackName, backendURL string) error {
 }
 
 // PulumiStackOutputs retrieves stack outputs as a raw string.
+//
+// --show-secrets is load-bearing: without it Pulumi masks every secret
+// output as the literal string "[secret]", which corrupts a sensitive
+// SCALAR output silently (the sentinel populates the proto field and
+// counts as verified) and fails a sensitive MAP output's JSON parse
+// (first live hit: a name-keyed authorization_keys map). The Terraform
+// path reads real values (`terraform output -json` includes sensitive
+// outputs), so the flag keeps both engines' verification bar identical
+// -- and dependency-output capture rides this same helper, where a
+// consumer's value_from reference to a fixture's sensitive output would
+// otherwise resolve to the sentinel and deploy silently wrong. No
+// caller prints raw output values (counts and names only), so the
+// unmasked values never reach logs.
 func PulumiStackOutputs(moduleDir, stackName, backendURL string) (string, error) {
-	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive"}
+	args := []string{"stack", "output", "--stack", stackName, "--json", "--non-interactive", "--show-secrets"}
 	result, err := runPulumi(moduleDir, backendURL, "", "", args)
 	if err != nil {
 		return "", err
@@ -152,20 +165,36 @@ func PulumiLogin(backendURL string) error {
 	return nil
 }
 
-// GenerateStackName creates a unique, deterministic stack name for an E2E test run.
-// Format: e2e-{component}-{shortID}
-func GenerateStackName(component string, runID string) string {
+// maxStackNameLen caps generated stack names. The cap itself is a
+// conservative budget (Pulumi accepts up to 100 characters); what matters is
+// HOW the cap is enforced -- see GenerateStackName.
+const maxStackNameLen = 50
+
+// GenerateStackName creates a unique, deterministic stack name for an E2E
+// test run. Format: e2e-{label}-{shortID}, capped at maxStackNameLen.
+//
+// The cap is enforced by replacing the tail with a short hash of the FULL
+// composed name -- never by blind truncation. Labels carry uniquifying
+// suffixes at the END (an install profile's per-document index, the scenario
+// name, the run id), so a blind prefix cut collapses distinct stacks into
+// one shared name, and every `pulumi up` after the first silently REPLACES
+// the previous document's resources in that shared stack (live-caught: a
+// four-document subnet install profile deployed as one stack, each subnet
+// deleting its predecessor -- the gateway's subnet was gone by deploy time).
+// The hash keeps distinct full names distinct, and the derivation stays
+// deterministic, so per-run stack reuse across scenarios is unaffected.
+func GenerateStackName(label string, runID string) string {
 	short := runID
 	if len(short) > 8 {
 		short = short[:8]
 	}
-	return fmt.Sprintf("e2e-%s-%s", component, short)
+	name := fmt.Sprintf("e2e-%s-%s", label, short)
+	if len(name) <= maxStackNameLen {
+		return name
+	}
+	digest := sha256.Sum256([]byte(name))
+	return name[:maxStackNameLen-9] + "-" + hex.EncodeToString(digest[:4])
 }
-
-// maxStackNameLen bounds generated stack names. The bound itself is a
-// conservative readability/tooling limit; what matters is HOW names shrink
-// to it -- see boundStackName.
-const maxStackNameLen = 50
 
 // boundStackName truncates a stack name to maxStackNameLen while preserving
 // uniqueness: the head stays readable and the tail is replaced by a short

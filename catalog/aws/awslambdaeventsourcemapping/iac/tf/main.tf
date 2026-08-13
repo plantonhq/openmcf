@@ -149,6 +149,9 @@ resource "aws_lambda_event_source_mapping" "this" {
     content {
       minimum_pollers = provisioned_poller_config.value.minimum_pollers != 0 ? provisioned_poller_config.value.minimum_pollers : null
       maximum_pollers = provisioned_poller_config.value.maximum_pollers != 0 ? provisioned_poller_config.value.maximum_pollers : null
+      # Mappings naming the same group share (and are jointly capped
+      # by) one poller fleet instead of provisioning their own.
+      poller_group_name = provisioned_poller_config.value.poller_group_name != "" ? provisioned_poller_config.value.poller_group_name : null
     }
   }
 

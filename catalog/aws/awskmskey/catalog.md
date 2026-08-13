@@ -6,7 +6,8 @@ Deploys a customer-managed KMS key with configurable cryptographic shape (key sp
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **KMS Key** -- a customer-managed key with the specified key spec and usage, description, key policy, rotation configuration, multi-Region designation, and deletion window
+- **KMS Key** -- a customer-managed key with the specified key spec and usage, description, key policy, rotation configuration, multi-Region designation, deletion window, and (optionally) a custom key store home
+- **KMS Grants** -- created only when `grants` is set; one grant resource per entry, giving a principal scoped, revocable use of the key without key-policy edits
 - **KMS Aliases** -- one alias resource per entry in `aliases`; friendly names (e.g., `alias/data-encryption`) that reference the key, added and removed in place as the list changes
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the key
 
@@ -60,7 +61,11 @@ This creates a symmetric encryption key with automatic rotation enabled, a 30-da
 
 These are the most important decisions when configuring a KMS key. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Key spec and usage** -- The `keySpec` field defaults to `SYMMETRIC_DEFAULT`, the shape every AWS service integration requires. Choose an RSA (`RSA_2048`/`RSA_3072`/`RSA_4096`) or ECC (`ECC_NIST_P256`/`ECC_NIST_P384`/`ECC_NIST_P521`/`ECC_SECG_P256K1`) spec for signing or public-key workflows, an HMAC spec (`HMAC_224`/`HMAC_256`/`HMAC_384`/`HMAC_512`) for token authentication, or `SM2` in China regions. `keyUsage` is coupled to the spec's family: symmetric keys encrypt/decrypt, HMAC keys generate/verify MACs, ECC keys sign/verify, and RSA/SM2 keys choose between encryption and signing. Both fields are create-time immutable -- changing them replaces the key.
+**Key spec and usage** -- The `keySpec` field defaults to `SYMMETRIC_DEFAULT`, the shape every AWS service integration requires. Choose an RSA (`RSA_2048`/`RSA_3072`/`RSA_4096`) or ECC (`ECC_NIST_P256`/`ECC_NIST_P384`/`ECC_NIST_P521`/`ECC_NIST_EDWARDS25519`/`ECC_SECG_P256K1`) spec for signing or public-key workflows, a post-quantum ML-DSA spec (`ML_DSA_44`/`ML_DSA_65`/`ML_DSA_87`) for quantum-resistant signing, an HMAC spec (`HMAC_224`/`HMAC_256`/`HMAC_384`/`HMAC_512`) for token authentication, or `SM2` in China regions. `keyUsage` is coupled to the spec's family: symmetric keys encrypt/decrypt, HMAC keys generate/verify MACs, the NIST ECC curves sign/verify or derive shared secrets (`KEY_AGREEMENT`, ECDH), Ed25519/secp256k1/ML-DSA keys sign only, and RSA/SM2 keys choose between encryption and signing -- the spec validates the full AWS compatibility matrix before deployment. Both fields are create-time immutable -- changing them replaces the key.
+
+**Grants** -- The `grants` list delegates scoped, revocable key access without editing the key policy: each entry names an IAM principal (reference an `AwsIamRole`'s `role_arn` output, or pass a literal IAM principal ARN -- AWS rejects bare service principals on this parameter; service-principal grants ride a separate API surface the provider does not expose), the allowed operations, optional encryption-context constraints, and whether teardown retires (graceful) or revokes (immediate) the grant. Grants are the chart-native way to wire "this workload may use this key."
+
+**Custom key stores** -- `customKeyStoreId` creates the key in a CloudHSM key store (your hardware) or, with `xksKeyId`, in an external key store whose material lives outside AWS entirely. Custom key store keys are symmetric-only, never rotate automatically, and cannot be multi-Region -- AWS's contract, enforced at validate time.
 
 **Key rotation** -- Set `enableKeyRotation: true` to rotate the material automatically (symmetric keys only). Rotation is transparent to callers: the key ID, ARN, and aliases never change, and old ciphertext keeps decrypting. `rotationPeriodInDays` (90-2560) tunes the cadence; leaving it unset keeps AWS's 365-day default.
 
@@ -87,6 +92,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `key_id` | Generated ID of the KMS key (`mrk-…` for multi-Region keys) | Direct key references in AWS service configurations |
 | `key_arn` | Amazon Resource Name of the KMS key | EKS secrets encryption, S3 SSE-KMS, RDS storage encryption, EBS volume encryption |
 | `alias_names` | Alias names attached to the key, in spec order | Human-readable key references in application configuration |
+| `grant_ids` | AWS-generated grant IDs, keyed by the grant's position in `spec.grants` | Grant retirement/revocation tooling, state import |
 
 The `key_arn` output is the primary value consumed by downstream resources. S3 buckets, EKS clusters, RDS instances, and EBS volumes reference it to enable customer-managed encryption instead of AWS-managed default keys.
 

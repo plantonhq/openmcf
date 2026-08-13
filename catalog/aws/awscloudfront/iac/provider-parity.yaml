@@ -1,0 +1,184 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudfront_distribution:
+    mappings:
+      # The provider argument is named web_acl_id, but for WAFv2 it takes
+      # the web ACL's ARN -- the spec names the truth.
+      - spec: spec.web_acl_arn
+        arg: web_acl_id
+      # One-leaf provider blocks flattened to spec-level fields.
+      - spec: spec.cache_tag_header_name
+        arg: cache_tag_config.header_name
+      - spec: spec.connection_function_id
+        arg: connection_function_association.id
+      # The spec drops the provider's _config suffix; the trust-store
+      # wrapper (single-use) is flattened into the same message.
+      - spec: spec.viewer_mtls
+        arg: viewer_mtls_config
+      - spec: spec.viewer_mtls.trust_store_id
+        arg: viewer_mtls_config.trust_store_config.trust_store_id
+      - spec: spec.viewer_mtls.advertise_trust_store_ca_names
+        arg: viewer_mtls_config.trust_store_config.advertise_trust_store_ca_names
+      - spec: spec.viewer_mtls.ignore_certificate_expiry
+        arg: viewer_mtls_config.trust_store_config.ignore_certificate_expiry
+      # Origins: the spec pluralizes the repeated block, appends _seconds to
+      # timeout leaves, and drops the provider's origin_/_config affixes on
+      # the type arms.
+      - spec: spec.origins
+        arg: origin
+      - spec: spec.origins.connection_timeout_seconds
+        arg: origin.connection_timeout
+      - spec: spec.origins.response_completion_timeout_seconds
+        arg: origin.response_completion_timeout
+      - spec: spec.origins.custom_headers
+        arg: origin.custom_header
+      - spec: spec.origins.s3_origin.origin_access_identity
+        arg: origin.s3_origin_config.origin_access_identity
+      - spec: spec.origins.custom_origin
+        arg: origin.custom_origin_config
+      - spec: spec.origins.custom_origin.protocol_policy
+        arg: origin.custom_origin_config.origin_protocol_policy
+      - spec: spec.origins.custom_origin.ssl_protocols
+        arg: origin.custom_origin_config.origin_ssl_protocols
+      - spec: spec.origins.custom_origin.keepalive_timeout_seconds
+        arg: origin.custom_origin_config.origin_keepalive_timeout
+      - spec: spec.origins.custom_origin.read_timeout_seconds
+        arg: origin.custom_origin_config.origin_read_timeout
+      # The single-use origin_mtls_config wrapper is flattened to one leaf.
+      - spec: spec.origins.custom_origin.mtls_client_certificate_arn
+        arg: origin.custom_origin_config.origin_mtls_config.client_certificate_arn
+      - spec: spec.origins.vpc_origin
+        arg: origin.vpc_origin_config
+      - spec: spec.origins.vpc_origin.keepalive_timeout_seconds
+        arg: origin.vpc_origin_config.origin_keepalive_timeout
+      - spec: spec.origins.vpc_origin.read_timeout_seconds
+        arg: origin.vpc_origin_config.origin_read_timeout
+      # Origin groups: the group's own ID is origin_group_id in the spec
+      # (the provider reuses origin_id); members flatten to an ID list and
+      # the failover_criteria wrapper to one list.
+      - spec: spec.origin_groups
+        arg: origin_group
+      - spec: spec.origin_groups.origin_group_id
+        arg: origin_group.origin_id
+      - spec: spec.origin_groups.failover_status_codes
+        arg: origin_group.failover_criteria.status_codes
+      - spec: spec.origin_groups.member_origin_ids
+        arg: origin_group.member.origin_id
+      # Cache behaviors: TTLs carry _seconds, associations pluralize, the
+      # grpc_config wrapper flattens to one flag, cookies flatten into the
+      # forwarded_values message, and trusted key groups name their IDs.
+      - spec: spec.default_cache_behavior.min_ttl_seconds
+        arg: default_cache_behavior.min_ttl
+      - spec: spec.default_cache_behavior.default_ttl_seconds
+        arg: default_cache_behavior.default_ttl
+      - spec: spec.default_cache_behavior.max_ttl_seconds
+        arg: default_cache_behavior.max_ttl
+      - spec: spec.default_cache_behavior.trusted_key_group_ids
+        arg: default_cache_behavior.trusted_key_groups
+      - spec: spec.default_cache_behavior.function_associations
+        arg: default_cache_behavior.function_association
+      - spec: spec.default_cache_behavior.lambda_function_associations
+        arg: default_cache_behavior.lambda_function_association
+      - spec: spec.default_cache_behavior.grpc_enabled
+        arg: default_cache_behavior.grpc_config.enabled
+      - spec: spec.default_cache_behavior.forwarded_values.cookies_forward
+        arg: default_cache_behavior.forwarded_values.cookies.forward
+      - spec: spec.default_cache_behavior.forwarded_values.whitelisted_cookie_names
+        arg: default_cache_behavior.forwarded_values.cookies.whitelisted_names
+      # Ordered behaviors nest the shared behavior message under `behavior`
+      # with the path pattern alongside it; the same leaf renames apply.
+      - spec: spec.ordered_cache_behaviors.behavior
+        arg: ordered_cache_behavior
+      - spec: spec.ordered_cache_behaviors.path_pattern
+        arg: ordered_cache_behavior.path_pattern
+      - spec: spec.ordered_cache_behaviors.behavior.min_ttl_seconds
+        arg: ordered_cache_behavior.min_ttl
+      - spec: spec.ordered_cache_behaviors.behavior.default_ttl_seconds
+        arg: ordered_cache_behavior.default_ttl
+      - spec: spec.ordered_cache_behaviors.behavior.max_ttl_seconds
+        arg: ordered_cache_behavior.max_ttl
+      - spec: spec.ordered_cache_behaviors.behavior.trusted_key_group_ids
+        arg: ordered_cache_behavior.trusted_key_groups
+      - spec: spec.ordered_cache_behaviors.behavior.function_associations
+        arg: ordered_cache_behavior.function_association
+      - spec: spec.ordered_cache_behaviors.behavior.lambda_function_associations
+        arg: ordered_cache_behavior.lambda_function_association
+      - spec: spec.ordered_cache_behaviors.behavior.grpc_enabled
+        arg: ordered_cache_behavior.grpc_config.enabled
+      - spec: spec.ordered_cache_behaviors.behavior.forwarded_values.cookies_forward
+        arg: ordered_cache_behavior.forwarded_values.cookies.forward
+      - spec: spec.ordered_cache_behaviors.behavior.forwarded_values.whitelisted_cookie_names
+        arg: ordered_cache_behavior.forwarded_values.cookies.whitelisted_names
+      # Custom error responses pluralize; the error-caching TTL carries
+      # _seconds.
+      - spec: spec.custom_error_responses
+        arg: custom_error_response
+      - spec: spec.custom_error_responses.error_caching_min_ttl_seconds
+        arg: custom_error_response.error_caching_min_ttl
+      # The provider's mandatory restrictions wrapper is flattened: absent
+      # spec geo_restriction renders restriction_type "none".
+      - spec: spec.geo_restriction
+        arg: restrictions.geo_restriction
+      # The spec drops the provider's _config suffix.
+      - spec: spec.logging
+        arg: logging_config
+    exclusions:
+      - arg: viewer_certificate.cloudfront_default_certificate
+        reason: wired by the module from arm absence -- no custom certificate arm set means the default *.cloudfront.net certificate, never a separate toggle
+      - arg: origin.origin_shield.enabled
+        reason: wired by the module from block presence -- declaring origin_shield enables it; a disabled shield is an absent block
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_cloudfront_continuous_deployment_policy:
+    # Folded blue/green policy: created when spec.continuous_deployment is
+    # set and attached to this (primary) distribution.
+    specRoot: spec.continuous_deployment
+    mappings:
+      # The provider's items/quantity wrapper is flattened to one list; the
+      # traffic_config wrapper and its _config-suffixed arms flatten to the
+      # spec's two routing arms.
+      - spec: spec.continuous_deployment.staging_distribution_dns_names
+        arg: staging_distribution_dns_names.items
+      - spec: spec.continuous_deployment.single_weight
+        arg: traffic_config.single_weight_config
+      - spec: spec.continuous_deployment.single_weight.session_stickiness
+        arg: traffic_config.single_weight_config.session_stickiness_config
+      - spec: spec.continuous_deployment.single_weight.session_stickiness.idle_ttl_seconds
+        arg: traffic_config.single_weight_config.session_stickiness_config.idle_ttl
+      - spec: spec.continuous_deployment.single_weight.session_stickiness.maximum_ttl_seconds
+        arg: traffic_config.single_weight_config.session_stickiness_config.maximum_ttl
+      - spec: spec.continuous_deployment.single_header
+        arg: traffic_config.single_header_config
+    exclusions:
+      - arg: staging_distribution_dns_names.quantity
+        reason: wired by the module to the DNS-name list's length -- the provider's count-and-items shape, never an independent decision
+      - arg: traffic_config.type
+        reason: wired by the module from arm presence -- single_weight renders SingleWeight, single_header renders SingleHeader; CEL guarantees exactly one arm
+
+  aws_cloudfront_origin_access_control:
+    internal: module-shaped plumbing driven from spec.origins[].s3_origin.create_origin_access_control (one s3-type OAC per requesting origin; name/description/signing are module decisions); existing OACs of any type attach through the origin-level origin_access_control_id instead
+
+  aws_cloudfront_monitoring_subscription:
+    internal: module-shaped plumbing driven from spec.enable_additional_metrics (the CloudWatch additional-metrics toggle materialized as the provider's distribution-keyed resource)
+
+specExclusions:
+  # CloudFront is a GLOBAL service: the distribution resource carries no
+  # region argument. The spec's region drives only the provider connection.
+  - field: spec.region
+    reason: provider-connection region only -- CloudFront is global and the distribution resource has no region argument
+  # Drives the internal aws_cloudfront_monitoring_subscription above.
+  - field: spec.enable_additional_metrics
+    reason: drives the folded aws_cloudfront_monitoring_subscription (judged on that resource's internal entry)
+  # Drives the internal aws_cloudfront_origin_access_control above.
+  - field: spec.origins.s3_origin.create_origin_access_control
+    reason: drives the folded aws_cloudfront_origin_access_control (judged on that resource's internal entry)

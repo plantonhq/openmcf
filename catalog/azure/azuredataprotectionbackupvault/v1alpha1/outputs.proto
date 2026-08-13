@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackupvault.v1alpha1;
+
+// **AzureDataProtectionBackupVaultStackOutputs** captures the outputs
+// of provisioning a Data Protection backup vault.
+message AzureDataProtectionBackupVaultStackOutputs {
+  // The Azure Resource Manager ID of the vault -- what backup
+  // policies and backup instances reference their vault by.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.DataProtection/backupVaults/{name}
+  string backup_vault_id = 1;
+
+  // The vault's name.
+  string backup_vault_name = 2;
+
+  // The principal (object) ID of the vault's system-assigned
+  // identity, when one is enabled -- what Key Vault access policies
+  // and datasource RBAC grants bind to (customer-managed-key
+  // encryption, backup permissions on protected resources).
+  string system_assigned_identity_principal_id = 3;
+}

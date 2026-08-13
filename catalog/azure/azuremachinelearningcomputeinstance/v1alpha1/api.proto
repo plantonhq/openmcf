@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningcomputeinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremachinelearningcomputeinstance/v1alpha1/outputs.proto";
+import "catalog/azure/azuremachinelearningcomputeinstance/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMachineLearningComputeInstance is the top-level API resource
+// describing a compute instance on an Azure Machine Learning
+// workspace -- a single always-on VM serving as one data scientist's
+// cloud workstation (notebooks, interactive debugging, small jobs).
+message AzureMachineLearningComputeInstance {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureMachineLearningComputeInstance".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMachineLearningComputeInstance'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Compute instance specification.
+  AzureMachineLearningComputeInstanceSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureMachineLearningComputeInstanceStatus status = 5;
+}
+
+// AzureMachineLearningComputeInstanceStatus holds the deployment outputs.
+message AzureMachineLearningComputeInstanceStatus {
+  // Stack outputs from the IaC deployment.
+  AzureMachineLearningComputeInstanceStackOutputs outputs = 1;
+}

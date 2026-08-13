@@ -26,6 +26,7 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsecsservicev1alpha1.Aws
 	}
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsEcsService.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsEcsService.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsEcsService.Metadata.Env,

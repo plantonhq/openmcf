@@ -1,0 +1,32 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_mwaa_environment:
+    mappings:
+      # The spec names the field for what it carries (a KMS key ARN,
+      # chart-wired via StringValueOrRef); the provider drops the suffix.
+      - spec: spec.kms_key_arn
+        arg: kms_key
+      # The spec flattens the provider's network_configuration wrapper --
+      # networking is first-class surface, not a nested detail.
+      - spec: spec.subnet_ids
+        arg: network_configuration.subnet_ids
+      - spec: spec.security_group_ids
+        arg: network_configuration.security_group_ids
+    exclusions:
+      # Identity is the kind's own contract. The provider carries no name
+      # validation of its own; AWS's 1-80 char [a-zA-Z0-9-_] contract is
+      # enforced on metadata.name at manifest level.
+      - arg: name
+        reason: derived from metadata.name (create-time-immutable) -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

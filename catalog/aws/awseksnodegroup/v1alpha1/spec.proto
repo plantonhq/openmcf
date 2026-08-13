@@ -160,6 +160,12 @@ message AwsEksNodeGroupSpec {
   // consulted while version/release_version/launch_template change.
   bool force_update_version = 18;
 
+  // A pool of pre-initialized instances that cuts scale-out latency from
+  // minutes to seconds -- worth its cost exactly when boot time (AMI +
+  // bootstrap + image pulls) dominates how fast new capacity serves
+  // pods. Updates in place.
+  AwsEksNodeGroupWarmPoolConfig warm_pool_config = 19;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -384,6 +390,39 @@ message AwsEksNodeGroupNodeRepairConfig {
     id: "threshold_percentage_range"
     message: "max_unhealthy_node_threshold_percentage must be between 1 and 100 when set"
     expression: "this.max_unhealthy_node_threshold_percentage == 0 || (this.max_unhealthy_node_threshold_percentage >= 1 && this.max_unhealthy_node_threshold_percentage <= 100)"
+  };
+}
+
+// AwsEksNodeGroupWarmPoolConfig keeps pre-initialized nodes ready so
+// scale-out serves pods in seconds instead of minutes (the managed
+// node group's own warm pool -- EKS provisions and recycles the pooled
+// instances). Pooled instances in the Stopped state cost only their EBS
+// storage; Running pools trade full instance cost for instant capacity.
+message AwsEksNodeGroupWarmPoolConfig {
+  // The state pooled instances wait in: "STOPPED" (AWS default --
+  // near-zero compute cost, seconds to start), "RUNNING" (instant but
+  // full price), or "HIBERNATED" (RAM restored from disk -- fast
+  // JVM/cache warmup without running cost). Empty keeps the AWS default.
+  string pool_state = 1;
+
+  // Minimum number of instances always kept in the pool.
+  int32 min_size = 2 [(buf.validate.field).int32.gte = 0];
+
+  // Ceiling on pool size. Unset keeps the AWS default: the gap between
+  // the group's max_size and its desired capacity (AWS represents that
+  // default internally as -1 -- it never appears here). Explicit 0 is
+  // meaningful (no prepared capacity beyond min_size), which is why this
+  // field is optional.
+  optional int32 max_group_prepared_capacity = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Return scaled-in instances to the pool instead of terminating them
+  // -- reuse the warm boot instead of paying for it again.
+  bool reuse_on_scale_in = 4;
+
+  option (buf.validate.message).cel = {
+    id: "pool_state_valid"
+    message: "pool_state must be 'STOPPED', 'RUNNING', or 'HIBERNATED' when set"
+    expression: "this.pool_state == '' || this.pool_state in ['STOPPED', 'RUNNING', 'HIBERNATED']"
   };
 }
 

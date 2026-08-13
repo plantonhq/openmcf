@@ -1,0 +1,222 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutecircuit.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureExpressRouteCircuitSpec** defines an ExpressRoute circuit -- the
+// dedicated PRIVATE connection between your infrastructure (on-premises
+// or colocation) and Microsoft, bought either through a connectivity
+// provider or on your own ExpressRoute Direct port. The circuit is the
+// billing and identity object: creating it issues a service key the
+// provider uses to provision the physical cross-connect, and routing
+// only starts once peerings (AzureExpressRouteCircuitPeering) are
+// configured on it.
+//
+// **Exactly one provisioning mode**:
+// - **Service provider** (the common shape): name the provider, its
+//   peering location, and the bandwidth in Mbps -- the trio travels
+//   together. After creation the circuit sits in provisioning state
+//   "NotProvisioned" until you hand the service key to the provider and
+//   they complete the cross-connect.
+// - **ExpressRoute Direct**: reference the ExpressRoute Port and set the
+//   bandwidth in Gbps -- the pair travels together. No third-party
+//   provider is involved.
+//
+// **Billing starts at creation**: Azure meters the circuit from the
+// moment the service key is issued, even while the provider side is
+// unprovisioned. Deprovision (delete) circuits you are not going to
+// hook up.
+//
+// **ForceNew fields**: `name`, `region`, `resource_group`,
+// `service_provider_name`, `peering_location`, and
+// `express_route_port_id`. `bandwidth_in_mbps` may be INCREASED in
+// place; decreasing it replaces the circuit (ARM cannot shrink a
+// provisioned circuit).
+message AzureExpressRouteCircuitSpec {
+  // The Azure region the circuit object lives in, e.g. "eastus". This is
+  // the ARM metadata location -- the physical connectivity location is
+  // peering_location. Changing the region replaces the circuit.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the circuit is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's name
+  // output. Changing it replaces the circuit.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The circuit's name, unique within the resource group. Peerings
+  // reference the circuit by this name. Changing the name replaces the
+  // circuit.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The SKU tier -- what the circuit can reach. LOCAL peers only within
+  // the circuit's metro (no egress fees), STANDARD reaches every region
+  // in the geopolitical area, PREMIUM adds global reach across
+  // geopolitical areas plus higher route limits. BASIC is a legacy
+  // constrained tier. Together with sku_family this forms Azure's SKU
+  // name (e.g. "Standard_MeteredData").
+  AzureExpressRouteCircuitSkuTier sku_tier = 4 [(buf.validate.field).enum.defined_only = true];
+
+  // The billing family: METERED_DATA bills outbound data per GB;
+  // UNLIMITED_DATA is a flat rate with no egress metering (economical
+  // above roughly two-thirds sustained utilization).
+  AzureExpressRouteCircuitSkuFamily sku_family = 5 [(buf.validate.field).enum.defined_only = true];
+
+  // SERVICE-PROVIDER MODE: the connectivity provider's name exactly as
+  // Azure lists it (e.g. "Equinix", "Megaport" -- `az network
+  // express-route list-service-providers` shows the vocabulary).
+  // Requires peering_location and bandwidth_in_mbps. Fixed at creation.
+  string service_provider_name = 6;
+
+  // SERVICE-PROVIDER MODE: the provider's peering location -- the
+  // physical site of the cross-connect (e.g. "Washington DC", "Silicon
+  // Valley"), NOT an Azure region name. Fixed at creation.
+  string peering_location = 7;
+
+  // SERVICE-PROVIDER MODE: the circuit bandwidth in Mbps, from the
+  // provider's offered steps (50, 100, 200, 500, 1000, 2000, 5000,
+  // 10000). May be INCREASED in place; decreasing replaces the circuit.
+  int32 bandwidth_in_mbps = 8 [(buf.validate.field).int32.gte = 0];
+
+  // EXPRESSROUTE DIRECT MODE: the ExpressRoute Port the circuit rides
+  // on, by ARM id. Requires bandwidth_in_gbps. Fixed at creation.
+  string express_route_port_id = 9;
+
+  // EXPRESSROUTE DIRECT MODE: the circuit bandwidth in Gbps carved from
+  // the port (fractional steps like 1, 2, 5, 10 up to the port size).
+  double bandwidth_in_gbps = 10 [(buf.validate.field).double.gte = 0];
+
+  // Rate-limit the circuit to its configured bandwidth on ExpressRoute
+  // Direct (maps to ARM's EnableDirectPortRateLimit). Off by default;
+  // meaningful on Direct circuits only.
+  bool rate_limiting_enabled = 11;
+
+  // Allow the classic (ASM) deployment model to use this circuit.
+  // Legacy interop only -- leave off for anything new.
+  bool allow_classic_operations = 12;
+
+  // The authorization key this circuit REDEEMS when it is built on
+  // capacity someone else owns (e.g. an ExpressRoute Port authorization
+  // from another subscription). Reference a secret rather than embedding
+  // the literal in manifests. ARM never returns it on reads. Not to be
+  // confused with `authorizations` below, which ISSUES keys to others.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef authorization_key = 13 [(dev.planton.shared.options.sensitive) = true];
+
+  // Authorizations ISSUED by this circuit: each entry creates a named
+  // authorization whose generated key lets a virtual network gateway in
+  // ANOTHER subscription connect to this circuit. The generated keys
+  // surface (marked sensitive) in the circuit's authorization_keys
+  // output, keyed by name. Deleting an entry revokes the authorization.
+  repeated AzureExpressRouteCircuitAuthorization authorizations = 14;
+
+  // Free-form tags applied to the circuit, merged over the
+  // Planton-derived resource tags (organization, environment, resource
+  // id); a user tag with the same key wins.
+  map<string, string> tags = 15;
+
+  // The SKU choice is explicit -- tier and family size cost and reach.
+  option (buf.validate.message).cel = {
+    id: "sku_tier_required"
+    message: "Choose the SKU tier explicitly -- LOCAL (metro only, no egress fees), STANDARD (geopolitical area), or PREMIUM (global reach)"
+    expression: "this.sku_tier != 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "sku_family_required"
+    message: "Choose the billing family explicitly -- METERED_DATA (pay per outbound GB) or UNLIMITED_DATA (flat rate)"
+    expression: "this.sku_family != 0"
+  };
+  // ARM's two provisioning modes are mutually exclusive; each mode's
+  // fields travel together.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_provisioning_mode"
+    message: "Provision the circuit exactly one way: through a service provider (service_provider_name + peering_location + bandwidth_in_mbps) or on an ExpressRoute Direct port (express_route_port_id + bandwidth_in_gbps)"
+    expression: "(this.service_provider_name != '') != (this.express_route_port_id != '')"
+  };
+  option (buf.validate.message).cel = {
+    id: "service_provider_trio_travels_together"
+    message: "Service-provider mode needs all three of service_provider_name, peering_location, and bandwidth_in_mbps"
+    expression: "this.service_provider_name == '' || (this.peering_location != '' && this.bandwidth_in_mbps > 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "provider_fields_only_in_provider_mode"
+    message: "peering_location and bandwidth_in_mbps belong to service-provider mode -- remove them from an ExpressRoute Direct circuit"
+    expression: "this.service_provider_name != '' || (this.peering_location == '' && this.bandwidth_in_mbps == 0)"
+  };
+  option (buf.validate.message).cel = {
+    id: "direct_pair_travels_together"
+    message: "ExpressRoute Direct mode needs both express_route_port_id and bandwidth_in_gbps"
+    expression: "this.express_route_port_id == '' || this.bandwidth_in_gbps > 0.0"
+  };
+  option (buf.validate.message).cel = {
+    id: "gbps_only_in_direct_mode"
+    message: "bandwidth_in_gbps belongs to ExpressRoute Direct mode -- service-provider circuits size bandwidth_in_mbps instead"
+    expression: "this.express_route_port_id != '' || this.bandwidth_in_gbps == 0.0"
+  };
+  option (buf.validate.message).cel = {
+    id: "authorization_names_unique"
+    message: "Authorization names must be unique on the circuit"
+    expression: "this.authorizations.all(a, this.authorizations.filter(o, o.name == a.name).size() == 1)"
+  };
+}
+
+// The SKU tier -- the circuit's reach.
+enum AzureExpressRouteCircuitSkuTier {
+  // Not specified -- invalid: the tier choice is explicit (see the
+  // sku_tier_required contract).
+  azure_express_route_circuit_sku_tier_unspecified = 0;
+
+  // Legacy constrained tier (limited routes, no global reach). Prefer
+  // LOCAL or STANDARD for anything new.
+  BASIC = 1;
+
+  // Connectivity within the circuit's own metro area only -- no egress
+  // fees, priced below STANDARD.
+  LOCAL = 2;
+
+  // Connectivity to every Azure region in the circuit's geopolitical
+  // area. The common production choice.
+  STANDARD = 3;
+
+  // STANDARD plus global reach across geopolitical areas, more route
+  // prefixes, and more VNet links.
+  PREMIUM = 4;
+}
+
+// The billing family.
+enum AzureExpressRouteCircuitSkuFamily {
+  // Not specified -- invalid: the family choice is explicit (see the
+  // sku_family_required contract).
+  azure_express_route_circuit_sku_family_unspecified = 0;
+
+  // Outbound data billed per GB on top of the circuit fee.
+  METERED_DATA = 1;
+
+  // Flat circuit fee with unlimited data transfer.
+  UNLIMITED_DATA = 2;
+}
+
+// One authorization issued by the circuit. Creating it makes ARM
+// generate an authorization key (surfaced, marked sensitive, in the
+// circuit's authorization_keys output under this name); a virtual
+// network gateway in another subscription redeems the key to connect.
+message AzureExpressRouteCircuitAuthorization {
+  // The authorization's name, unique on the circuit -- the key's lookup
+  // name in the authorization_keys output. Renaming revokes the old
+  // authorization and issues a new key.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

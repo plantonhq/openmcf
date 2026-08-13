@@ -7,9 +7,10 @@ Deploy and manage AWS CodePipeline continuous delivery pipelines that orchestrat
 AWS CodePipeline is a fully managed CI/CD orchestration service that automates your release process. A pipeline is an ordered sequence of stages — each containing one or more actions that perform tasks such as fetching source code, running builds, executing tests, requiring manual approval, or deploying to production environments.
 
 This component creates a CodePipeline pipeline with full support for:
-- **Stages and actions** — source, build, test, deploy, approval, invoke
+- **Stages and actions** — source, build, test, deploy, approval, invoke, and compute (inline shell commands without a build project)
 - **Artifact stores** — S3-backed storage for passing artifacts between stages
 - **V2 features** — git-based triggers for automatic execution, pipeline-level variables for parameterization, and advanced execution modes (QUEUED, PARALLEL)
+- **Stage conditions** — entry gates (before_entry), post-success verification (on_success), and failure handling (on_failure) with automatic rollback or retry, driven by managed rules (DeploymentWindow, CloudWatchAlarm, LambdaInvoke, VariableCheck, Commands)
 - **Cross-region and cross-account** — actions that execute in different regions or assume roles in different accounts
 
 **Bundled resources:**
@@ -17,7 +18,7 @@ This component creates a CodePipeline pipeline with full support for:
 - **Triggers** (V2) — automatic execution rules based on git push/PR events
 - **Variables** (V2) — pipeline-level parameters referenced in action configurations
 
-**Not included:** Webhooks (legacy V1 mechanism, superseded by triggers), custom action types (account-level resources with independent lifecycles), and stage conditions (before_entry, on_success, on_failure — deferred to v2).
+**Not included:** Webhooks (legacy V1 mechanism, superseded by triggers) and custom action types (account-level resources with independent lifecycles).
 
 ## Prerequisites
 
@@ -201,7 +202,10 @@ spec:
 | `version` | string | **Yes** | Action type version (typically `"1"`) |
 | `configuration` | map | No | Provider-specific key-value pairs controlling action behavior |
 | `inputArtifacts` | list | No | Artifact names consumed from previous stages/actions |
-| `outputArtifacts` | list | No | Artifact names produced for downstream stages/actions |
+| `outputArtifacts` | list | No | Artifact names produced for downstream stages/actions (every category EXCEPT `Compute`) |
+| `commands` | list | No | Shell commands run by a `Compute` action (max 50, each 1-1000 chars; bills CodeBuild compute per execution) |
+| `outputVariables` | list | No | Variable names a `Compute` action exports (max 15; referenced via `namespace`) |
+| `outputArtifactsForComputeAction` | list | No | File-based output artifacts of a `Compute` action (`name` + `files`; mutually exclusive with `outputArtifacts`) |
 | `namespace` | string | No | Variable namespace for output variables (`#{namespace.Var}`) |
 | `region` | string | No | AWS region for cross-region actions |
 | `roleArn` | StringValueOrRef | No | IAM role to assume (for cross-account or scoped permissions) |
@@ -240,6 +244,7 @@ spec:
 | `02-ecr-ecs-deploy` | V2 pipeline: ECR source → CodeBuild → ECS deploy. Container deployment pipeline |
 | `03-s3-lambda-deploy` | V2 pipeline: S3 source → Lambda deploy. Serverless deployment pipeline |
 | `04-gated-deploy-with-rollback` | V2 pipeline: deployment-window entry gate, post-deploy alarm check, automatic rollback |
+| `05-inline-compute-checks` | V2 pipeline: Compute action running inline lint/test commands with exported variables and file artifacts — no CodeBuild project |
 
 ## Deliberate Exclusions
 

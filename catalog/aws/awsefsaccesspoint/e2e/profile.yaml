@@ -12,7 +12,5 @@ spec:
   # and deletes in seconds.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

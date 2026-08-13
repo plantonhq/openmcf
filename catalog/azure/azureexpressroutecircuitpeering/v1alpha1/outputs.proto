@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureexpressroutecircuitpeering.v1alpha1;
+
+// **AzureExpressRouteCircuitPeeringStackOutputs** captures the outputs
+// of provisioning an ExpressRoute circuit peering.
+message AzureExpressRouteCircuitPeeringStackOutputs {
+  // The Azure Resource Manager ID of the peering -- what a Global Reach
+  // connection on ANOTHER circuit references as peer_peering_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/expressRouteCircuits/{circuit}/peerings/{type}
+  string express_route_circuit_peering_id = 1;
+
+  // Microsoft's Autonomous System Number on this peering (12076 on
+  // public Azure) -- configure it as the BGP neighbor ASN on your
+  // routers.
+  int64 azure_asn = 2;
+
+  // The Microsoft-edge identifier of the PRIMARY physical port the
+  // peering rides on.
+  string primary_azure_port = 3;
+
+  // The Microsoft-edge identifier of the SECONDARY physical port.
+  string secondary_azure_port = 4;
+
+  // The ARM ID of each Global Reach connection created from this
+  // peering's `connections` list, keyed by the connection's name.
+  // Example valueFrom fieldPath: status.outputs.connection_ids.hq-to-branch
+  map<string, string> connection_ids = 5;
+}

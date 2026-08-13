@@ -70,6 +70,13 @@ var _ = ginkgo.Describe("AwsAppRunnerAutoScalingConfigurationSpec validations", 
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("accepts a configuration claiming the account default", func() {
+		spec.MaxConcurrency = int32Ptr(80)
+		spec.SetAsAccountDefault = true
+		err := protovalidate.Validate(validEnvelope(spec))
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
 	// Failure cases
 	// -------------------------------------------------------------------------

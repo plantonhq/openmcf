@@ -1,0 +1,27 @@
+# Offline-plan test manifest. Exercises the deep seams: the explicit
+# AADToken auth value (the vocabulary's only member -- the batch
+# service rejects everything else), a dual system+user identity through
+# the optional identity block, the default-deployment pointer riding
+# ARM's defaults object, and the ARM property dictionary.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningBatchEndpoint
+metadata:
+  name: test-ml-batch-endpoint
+  org: test-org
+  env: dev
+spec:
+  workspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace
+  name: test-nightly-scoring
+  region: eastus
+  authMode: AADToken
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  defaultDeploymentName: production
+  properties:
+    team: ml-platform
+  description: Offline-plan batch endpoint exercising the full surface
+  tags:
+    cost-center: ml-platform

@@ -3,10 +3,13 @@
 # pinned explicitly), optional TOTP MFA, passwordless email OTP as an allowed
 # first factor, admin-invite and verification message templates (proving the
 # {####}/{username} placeholder CELs against the live API), a custom
-# attribute (the append-only schema path), device remembering, and a
-# Cognito-hosted prefix domain on the classic hosted UI. Everything here is
-# dependency-free by design: no SES identity (COGNITO_DEFAULT email), no SNS
-# role (no SMS features), no PLUS-tier threat protection.
+# attribute (the append-only schema path), device remembering, user groups
+# (the folded aws_cognito_user_group arm -- free, dependency-free without
+# role ARNs), and a Cognito-hosted prefix domain on the classic hosted UI.
+# Everything here is dependency-free by design: no SES identity
+# (COGNITO_DEFAULT email), no SNS role (no SMS features), no PLUS-tier
+# threat protection (the risk-configuration arm is offline-proven from the
+# 04-threat-protected preset until the tier's billing posture is verified).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPool
 metadata:
@@ -63,6 +66,12 @@ spec:
       mutable: true
       stringMinLength: "1"
       stringMaxLength: "64"
+  userGroups:
+    - name: admins
+      description: Administrators with elevated application access
+      precedence: 1
+    - name: readers
+      description: Read-only application users
   domain:
     domain: planton-oss-e2e-pool
     managedLoginVersion: 1

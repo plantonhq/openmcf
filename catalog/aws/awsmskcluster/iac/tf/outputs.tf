@@ -82,3 +82,8 @@ output "configuration_arn" {
   description = "ARN of the module-managed MSK Configuration created from server_properties, if any"
   value       = local.manage_configuration ? aws_msk_configuration.this[0].arn : ""
 }
+
+output "topic_arns" {
+  description = "ARNs of the declared Kafka topics, keyed by topic name"
+  value       = { for name, topic in aws_msk_topic.this : name => topic.arn }
+}

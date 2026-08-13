@@ -301,11 +301,15 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AzureAiFoundry | `spec.encryption.keyId` | `status.outputs.key_id` |
 | AzureAksCluster | `spec.keyManagementService.keyVaultKeyId` | `status.outputs.key_id` |
+| AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureDataProtectionBackupVault | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureDiskEncryptionSet | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.keyVaultKeyIds` | `status.outputs.versionless_id` |
+| AzureMachineLearningWorkspace | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureManagedRedis | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlDatabase | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlServer | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
@@ -313,6 +317,7 @@ Fields on other kinds that can point at this resource:
 | AzureMysqlFlexibleServer | `spec.customerManagedKey.geoBackupKeyVaultKeyId` | `status.outputs.versionless_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzurePostgresqlFlexibleServer | `spec.customerManagedKey.geoBackupKeyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureRecoveryServicesVault | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureServiceBusNamespace | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureStorageAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureStorageEncryptionScope | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |

@@ -198,6 +198,41 @@ spec:
     customPosixUserConfig:
       uid: 10001
       gid: 1002
+  # The folded per-person plane: profiles inherit defaultUserSettings and
+  # override per person. The first profile's idle settings carry
+  # lifecycleManagement DISABLED -- guardrails published, enforcement off.
+  userProfiles:
+    - userProfileName: alice
+      userSettings:
+        executionRoleArn:
+          value: arn:aws:iam::123456789012:role/hack-user-execution-role
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            lifecycleManagement: DISABLED
+            idleTimeoutInMinutes: 120
+            minIdleTimeoutInMinutes: 60
+            maxIdleTimeoutInMinutes: 240
+    - userProfileName: bob
+  # The folded collaboration plane: named spaces (ownership and sharing
+  # travel together -- AWS's RequiredWith contract).
+  spaces:
+    - spaceName: team-analytics
+      displayName: Team Analytics
+      ownershipSettings:
+        ownerUserProfileName: alice
+      spaceSharingSettings:
+        sharingType: Shared
+      spaceSettings:
+        appType: JupyterLab
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            idleTimeoutInMinutes: 60
+        spaceStorageSettings:
+          ebsVolumeSizeInGb: 25
 ```
 
 ## Spec Fields
@@ -213,7 +248,7 @@ spec:
 | `spec.appSecurityGroupManagement` | `string` |  |  |  |
 | `spec.tagPropagation` | `string` |  | `DISABLED` |  |
 | `spec.homeEfsRetentionPolicy` | `string` |  | `Retain` |  |
-| `spec.defaultUserSettings` | `AwsSagemakerDomainDefaultUserSettings` | yes |  |  |
+| `spec.defaultUserSettings` | `AwsSagemakerDomainUserSettings` | yes |  |  |
 | `spec.defaultUserSettings.executionRoleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.defaultUserSettings.securityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.defaultUserSettings.defaultLandingUri` | `string` |  |  |  |
@@ -235,6 +270,7 @@ spec:
 | `spec.defaultUserSettings.jupyterLabAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
 | `spec.defaultUserSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
 | `spec.defaultUserSettings.jupyterLabAppSettings.idleSettings` | `AwsSagemakerDomainIdleSettings` |  |  |  |
+| `spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement` | `string` |  | `ENABLED` |  |
 | `spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.minIdleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.maxIdleTimeoutInMinutes` | `int32` | yes |  |  |
@@ -277,6 +313,7 @@ spec:
 | `spec.defaultUserSettings.codeEditorAppSettings.customImages[].imageName` | `string` | yes |  |  |
 | `spec.defaultUserSettings.codeEditorAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
 | `spec.defaultUserSettings.codeEditorAppSettings.idleSettings` | `AwsSagemakerDomainIdleSettings` |  |  |  |
+| `spec.defaultUserSettings.codeEditorAppSettings.idleSettings.lifecycleManagement` | `string` |  | `ENABLED` |  |
 | `spec.defaultUserSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultUserSettings.codeEditorAppSettings.idleSettings.minIdleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultUserSettings.codeEditorAppSettings.idleSettings.maxIdleTimeoutInMinutes` | `int32` | yes |  |  |
@@ -358,6 +395,7 @@ spec:
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings` | `AwsSagemakerDomainIdleSettings` |  |  |  |
+| `spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement` | `string` |  | `ENABLED` |  |
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.minIdleTimeoutInMinutes` | `int32` | yes |  |  |
 | `spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.maxIdleTimeoutInMinutes` | `int32` | yes |  |  |
@@ -412,6 +450,193 @@ spec:
 | `spec.rStudioServerProDomainSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
 | `spec.rStudioServerProDomainSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
 | `spec.trustedIdentityPropagationStatus` | `string` |  |  |  |
+| `spec.userProfiles` | `[]AwsSagemakerDomainUserProfile` |  |  |  |
+| `spec.userProfiles[].userProfileName` | `string` | yes |  |  |
+| `spec.userProfiles[].singleSignOnUserIdentifier` | `string` |  |  |  |
+| `spec.userProfiles[].singleSignOnUserValue` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings` | `AwsSagemakerDomainUserSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.executionRoleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.securityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
+| `spec.userProfiles[].userSettings.defaultLandingUri` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.studioWebPortal` | `string` |  | `ENABLED` |  |
+| `spec.userProfiles[].userSettings.autoMountHomeEfs` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings` | `AwsSagemakerDomainJupyterLabAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.builtInLifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages` | `[]AwsSagemakerDomainCustomImage` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].appImageConfigName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].imageName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings` | `AwsSagemakerDomainIdleSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement` | `string` |  | `ENABLED` |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.minIdleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.maxIdleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings` | `AwsSagemakerDomainEmrSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `[]string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | `[]string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings` | `AwsSagemakerDomainJupyterServerAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
+| `spec.userProfiles[].userSettings.jupyterServerAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings` | `AwsSagemakerDomainKernelGatewayAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages` | `[]AwsSagemakerDomainCustomImage` |  |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].appImageConfigName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].imageName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings` | `AwsSagemakerDomainCodeEditorAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.builtInLifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.customImages` | `[]AwsSagemakerDomainCustomImage` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].appImageConfigName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].imageName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings` | `AwsSagemakerDomainIdleSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.lifecycleManagement` | `string` |  | `ENABLED` |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.minIdleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.maxIdleTimeoutInMinutes` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings` | `AwsSagemakerDomainTensorBoardAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings` | `AwsSagemakerDomainRSessionAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.customImages` | `[]AwsSagemakerDomainCustomImage` |  |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].appImageConfigName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].imageName` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
+| `spec.userProfiles[].userSettings.rStudioServerProAppSettings` | `AwsSagemakerDomainRStudioServerProAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.rStudioServerProAppSettings.accessStatus` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.rStudioServerProAppSettings.userGroup` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings` | `AwsSagemakerDomainCanvasAppSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.directDeployStatus` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings` | `AwsSagemakerDomainCanvasEmrServerlessSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.status` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings` | `[]AwsSagemakerDomainCanvasIdentityProviderOauthSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].dataSourceName` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].secretArn` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].status` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.kendraSettingsStatus` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings` | `AwsSagemakerDomainCanvasModelRegisterSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings.crossAccountModelRegisterRoleArn` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings.status` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings` | `AwsSagemakerDomainCanvasTimeSeriesForecastingSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.status` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings` | `AwsSagemakerDomainCanvasWorkspaceSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3ArtifactPath` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.userProfiles[].userSettings.sharingSettings` | `AwsSagemakerDomainSharingSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.sharingSettings.notebookOutputOption` | `string` |  | `Disabled` |  |
+| `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
+| `spec.userProfiles[].userSettings.sharingSettings.s3OutputPath` | `string` |  |  |  |
+| `spec.userProfiles[].userSettings.spaceStorageSettings` | `AwsSagemakerDomainSpaceStorageSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.spaceStorageSettings.defaultEbsVolumeSizeInGb` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.spaceStorageSettings.maximumEbsVolumeSizeInGb` | `int32` | yes |  |  |
+| `spec.userProfiles[].userSettings.customFileSystemConfigs` | `[]AwsSagemakerDomainCustomFileSystemConfig` |  |  |  |
+| `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig` | `AwsSagemakerDomainEfsFileSystemConfig` | yes |  |  |
+| `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | `string \| valueFrom` | yes |  | AwsElasticFileSystem (`status.outputs.file_system_id`) |
+| `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemPath` | `string` | yes |  |  |
+| `spec.userProfiles[].userSettings.customPosixUserConfig` | `AwsSagemakerDomainCustomPosixUserConfig` |  |  |  |
+| `spec.userProfiles[].userSettings.customPosixUserConfig.uid` | `int64` | yes |  |  |
+| `spec.userProfiles[].userSettings.customPosixUserConfig.gid` | `int64` | yes |  |  |
+| `spec.userProfiles[].userSettings.studioWebPortalSettings` | `AwsSagemakerDomainStudioWebPortalSettings` |  |  |  |
+| `spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenAppTypes` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenInstanceTypes` | `[]string` |  |  |  |
+| `spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenMlTools` | `[]string` |  |  |  |
+| `spec.spaces` | `[]AwsSagemakerDomainSpace` |  |  |  |
+| `spec.spaces[].spaceName` | `string` | yes |  |  |
+| `spec.spaces[].displayName` | `string` |  |  |  |
+| `spec.spaces[].ownershipSettings` | `AwsSagemakerDomainSpaceOwnership` |  |  |  |
+| `spec.spaces[].ownershipSettings.ownerUserProfileName` | `string` | yes |  |  |
+| `spec.spaces[].spaceSharingSettings` | `AwsSagemakerDomainSpaceSharing` |  |  |  |
+| `spec.spaces[].spaceSharingSettings.sharingType` | `string` | yes |  |  |
+| `spec.spaces[].spaceSettings` | `AwsSagemakerDomainSpaceSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.appType` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings` | `AwsSagemakerDomainSpaceJupyterLabAppSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` | yes |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.idleSettings` | `AwsSagemakerDomainSpaceIdleSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings` | `AwsSagemakerDomainSpaceCodeEditorAppSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` | yes |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.idleSettings` | `AwsSagemakerDomainSpaceIdleSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes` | `int32` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings` | `AwsSagemakerDomainJupyterServerAppSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.codeRepositories` | `[]AwsSagemakerDomainCodeRepository` |  |  |  |
+| `spec.spaces[].spaceSettings.jupyterServerAppSettings.codeRepositories[].repositoryUrl` | `string` | yes |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings` | `AwsSagemakerDomainKernelGatewayAppSettings` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec` | `AwsSagemakerDomainResourceSpec` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.instanceType` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionAlias` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionArn` | `string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.lifecycleConfigArns` | `[]string` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages` | `[]AwsSagemakerDomainCustomImage` |  |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].appImageConfigName` | `string` | yes |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].imageName` | `string` | yes |  |  |
+| `spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].imageVersionNumber` | `int32` |  |  |  |
+| `spec.spaces[].spaceSettings.customFileSystems` | `[]AwsSagemakerDomainSpaceCustomFileSystem` |  |  |  |
+| `spec.spaces[].spaceSettings.customFileSystems[].fileSystemId` | `string \| valueFrom` | yes |  | AwsElasticFileSystem (`status.outputs.file_system_id`) |
+| `spec.spaces[].spaceSettings.spaceStorageSettings` | `AwsSagemakerDomainSpaceStorage` |  |  |  |
+| `spec.spaces[].spaceSettings.spaceStorageSettings.ebsVolumeSizeInGb` | `int32` | yes |  |  |
 
 ## Field Details
 
@@ -530,7 +755,7 @@ ForceNew: the retention decision is fixed at create time.
 
 ### spec.defaultUserSettings
 
-`AwsSagemakerDomainDefaultUserSettings` · required
+`AwsSagemakerDomainUserSettings` · required
 
 default_user_settings defines the default configuration inherited by all user profiles
 in the domain. These settings control the execution environment, per-IDE app
@@ -628,6 +853,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -740,6 +970,20 @@ Critical for cost management: without idle timeout, instances run 24/7 at full
 compute cost even when no user is interacting with them.
 
 - rule: max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes
+- rule: lifecycle_management must be 'ENABLED' or 'DISABLED'
+
+### spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement
+
+`string` · optional (explicit presence)
+
+lifecycle_management is the enforcement switch: "ENABLED" (the default when
+this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+the block's timeout values as published guardrails users may adopt WITHOUT
+forcing auto-shutdown on — the defined-but-disabled state. Both engines
+send the explicit value, so flipping to "DISABLED" genuinely turns
+enforcement off.
+
+- default: `ENABLED`
 
 ### spec.defaultUserSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes
 
@@ -826,6 +1070,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -912,6 +1161,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1011,6 +1265,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.codeEditorAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1096,6 +1355,20 @@ idle_settings configures automatic shutdown of idle Code Editor instances -- the
 same cost-control dial JupyterLab carries.
 
 - rule: max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes
+- rule: lifecycle_management must be 'ENABLED' or 'DISABLED'
+
+### spec.defaultUserSettings.codeEditorAppSettings.idleSettings.lifecycleManagement
+
+`string` · optional (explicit presence)
+
+lifecycle_management is the enforcement switch: "ENABLED" (the default when
+this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+the block's timeout values as published guardrails users may adopt WITHOUT
+forcing auto-shutdown on — the defined-but-disabled state. Both engines
+send the explicit value, so flipping to "DISABLED" genuinely turns
+enforcement off.
+
+- default: `ENABLED`
 
 ### spec.defaultUserSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes
 
@@ -1154,6 +1427,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.tensorBoardAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1212,6 +1490,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultUserSettings.rSessionAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1695,6 +1978,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultSpaceSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1807,6 +2095,20 @@ Critical for cost management: without idle timeout, instances run 24/7 at full
 compute cost even when no user is interacting with them.
 
 - rule: max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes
+- rule: lifecycle_management must be 'ENABLED' or 'DISABLED'
+
+### spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement
+
+`string` · optional (explicit presence)
+
+lifecycle_management is the enforcement switch: "ENABLED" (the default when
+this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+the block's timeout values as published guardrails users may adopt WITHOUT
+forcing auto-shutdown on — the defined-but-disabled state. Both engines
+send the explicit value, so flipping to "DISABLED" genuinely turns
+enforcement off.
+
+- default: `ENABLED`
 
 ### spec.defaultSpaceSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes
 
@@ -1891,6 +2193,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultSpaceSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -1974,6 +2281,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.defaultSpaceSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -2170,9 +2482,10 @@ in their notebooks and terminals.
 vpc_only_trusted_accounts restricts Docker image pulling to images from specified
 AWS account IDs when app_network_access_type is "VpcOnly". This prevents users from
 pulling arbitrary images from public registries, enforcing approved image sources.
-Maximum 20 account IDs.
+Maximum 20 account IDs, each exactly 12 digits — a malformed entry would make this
+security control silently not match the intended account.
 
-- rule: {"repeated":{"maxItems":"20"}}
+- rule: {"repeated":{"maxItems":"20","items":{"string":{"pattern":"^[0-9]{12}$"}}}}
 
 ### spec.executionRoleIdentityConfig
 
@@ -2239,6 +2552,11 @@ Common choices:
   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
 
 ### spec.rStudioServerProDomainSettings.defaultResourceSpec.lifecycleConfigArn
 
@@ -2282,6 +2600,1696 @@ IAM-auth domains ("TrustedIdentityPropagationSettings is only supported for
 Domains with AWS IAM Identity Center enabled"), even when set to "DISABLED".
 Leave unset on IAM domains.
 
+### spec.userProfiles
+
+`[]AwsSagemakerDomainUserProfile`
+
+user_profiles are the per-person workspaces inside the domain, keyed by
+name. Each profile inherits `default_user_settings` and may override any
+of it via its own `user_settings`. Profiles add/remove in place as the
+list changes; removing an entry deletes that profile AND its apps and
+data surfaces, so treat removals as destructive. Profiles created
+outside this manifest (IAM Identity Center auto-provisioning, console)
+are not managed or removed by it.
+
+- rule: single_sign_on_user_identifier and single_sign_on_user_value must be set together
+
+### spec.userProfiles[].userProfileName
+
+`string` · required
+
+The profile name — unique within the domain, and the key both IaC modules
+use for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+starting and ending alphanumeric. ForceNew: renaming replaces the profile
+(and its home directory association).
+
+- rule: {"required":true,"string":{"maxLen":"63","pattern":"^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$"}}
+
+### spec.userProfiles[].singleSignOnUserIdentifier
+
+`string`
+
+For SSO-auth domains: the IAM Identity Center attribute that identifies the
+user. AWS supports exactly one identifier scheme, "UserName". Set together
+with `single_sign_on_user_value`. ForceNew.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"const":"UserName"}}
+
+### spec.userProfiles[].singleSignOnUserValue
+
+`string`
+
+For SSO-auth domains: the Identity Center username this profile belongs to.
+Set together with `single_sign_on_user_identifier`. ForceNew.
+
+### spec.userProfiles[].userSettings
+
+`AwsSagemakerDomainUserSettings`
+
+Per-user overrides of the domain's `default_user_settings` — the same
+settings tree, applied on top of the domain baseline. Unset means the
+profile inherits the baseline unchanged. `execution_role_arn` is required
+inside this block whenever it is set (the AWS contract for UserSettings).
+
+- rule: studio_web_portal must be 'ENABLED' or 'DISABLED'
+- rule: auto_mount_home_efs must be 'Enabled' or 'Disabled' at the domain level
+
+### spec.userProfiles[].userSettings.executionRoleArn
+
+`string | valueFrom` · required
+
+execution_role_arn is the IAM role assumed by SageMaker when running notebooks,
+training jobs, and other ML workloads on behalf of users. This role determines what
+AWS resources (S3 buckets, ECR repos, Secrets Manager, etc.) users can access from
+their Studio sessions. The role must have a trust policy allowing
+sagemaker.amazonaws.com to assume it.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.securityGroupIds
+
+`[]string | valueFrom`
+
+security_group_ids are user-level security groups controlling network access for
+notebook instances and apps. These are attached to the ENIs created for each user's
+apps and control inbound/outbound traffic at the user level. Maximum 5 security groups.
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: {"repeated":{"maxItems":"5"}}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.defaultLandingUri
+
+`string`
+
+default_landing_uri is the URI of the default app opened when a user accesses the domain.
+Common values:
+  "studio::relative/JupyterLab" - opens JupyterLab (recommended for most teams)
+  "studio::relative/JupyterServer:" - opens classic Jupyter Server
+  "studio::" - opens SageMaker Studio home
+If omitted, AWS uses the platform default.
+
+### spec.userProfiles[].userSettings.studioWebPortal
+
+`string` · optional (explicit presence)
+
+studio_web_portal controls whether the SageMaker Studio web portal is accessible.
+"ENABLED" (default): users can access the full Studio web interface.
+"DISABLED": restricts access to programmatic-only usage (API/CLI).
+
+- default: `ENABLED`
+
+### spec.userProfiles[].userSettings.autoMountHomeEfs
+
+`string` · optional (explicit presence)
+
+auto_mount_home_efs controls whether each user's home directory on the domain's EFS
+file system is automatically mounted into their apps.
+"Enabled": home directories mount automatically (the classic Studio experience).
+"Disabled": apps start without the shared home directory -- pair with space storage
+  or custom file systems when home directories are not wanted.
+(AWS's third value, "DefaultAsDomain", is only valid on per-user profiles -- it means
+"inherit this domain-level setting" and is rejected here at the domain level.)
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings
+
+`AwsSagemakerDomainJupyterLabAppSettings`
+
+jupyter_lab_app_settings configures JupyterLab, the primary IDE for SageMaker Studio.
+JupyterLab provides a modern notebook and code editing experience with built-in Git
+integration, terminal access, extension support, and collaborative editing.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for new JupyterLab apps. Users can override the instance type at app creation time.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts that run when
+JupyterLab apps start. Use lifecycle configs to install Python packages, configure
+JupyterLab extensions, set environment variables, or mount additional storage.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.builtInLifecycleConfigArn
+
+`string`
+
+built_in_lifecycle_config_arn is the ARN of an AWS-curated (built-in) lifecycle
+configuration to run at app start, as opposed to the customer-authored scripts in
+lifecycle_config_arns.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages
+
+`[]AwsSagemakerDomainCustomImage`
+
+custom_images are custom Docker images available as JupyterLab kernels.
+Each image must be registered in SageMaker via an AppImageConfig that defines
+the kernel specification and file system layout. Maximum 200 images.
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].appImageConfigName
+
+`string` · required
+
+app_image_config_name is the name of the SageMaker AppImageConfig that defines how
+the image is presented to users (kernel specifications, file system configuration).
+The AppImageConfig must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].imageName
+
+`string` · required
+
+image_name is the name of the SageMaker Image resource that contains this container image.
+The Image resource must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.customImages[].imageVersionNumber
+
+`int32` · optional (explicit presence)
+
+image_version_number pins to a specific version of the image.
+If omitted, the latest available version is used.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.codeRepositories
+
+`[]AwsSagemakerDomainCodeRepository`
+
+code_repositories are Git repositories automatically cloned into JupyterLab on startup.
+Provides immediate access to team code, shared notebooks, and documentation.
+Maximum 10 repositories.
+
+- rule: {"repeated":{"maxItems":"10"}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl
+
+`string` · required
+
+repository_url is the HTTPS URL of the Git repository to clone.
+Must be an HTTPS URL (SSH URLs are not supported by SageMaker).
+Examples: "https://github.com/org/ml-notebooks.git"
+Maximum length: 1024 characters.
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings
+
+`AwsSagemakerDomainIdleSettings`
+
+idle_settings configures automatic shutdown of idle JupyterLab instances.
+Critical for cost management: without idle timeout, instances run 24/7 at full
+compute cost even when no user is interacting with them.
+
+- rule: max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes
+- rule: lifecycle_management must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.lifecycleManagement
+
+`string` · optional (explicit presence)
+
+lifecycle_management is the enforcement switch: "ENABLED" (the default when
+this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+the block's timeout values as published guardrails users may adopt WITHOUT
+forcing auto-shutdown on — the defined-but-disabled state. Both engines
+send the explicit value, so flipping to "DISABLED" genuinely turns
+enforcement off.
+
+- default: `ENABLED`
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes
+
+`int32` · required
+
+idle_timeout_in_minutes is the duration of inactivity (in minutes) before an instance
+is automatically shut down. Range: 60-525600 (1 hour to 365 days).
+A reasonable production default is 120 (2 hours).
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.minIdleTimeoutInMinutes
+
+`int32` · required
+
+min_idle_timeout_in_minutes sets the minimum idle timeout that individual users can
+configure for their own apps. Prevents users from setting excessively short timeouts
+that would cause disruptive shutdowns during brief pauses. Range: 60-525600.
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.idleSettings.maxIdleTimeoutInMinutes
+
+`int32` · required
+
+max_idle_timeout_in_minutes sets the maximum idle timeout that individual users can
+configure. Prevents users from effectively disabling idle shutdown by setting
+extremely long timeouts. Range: 60-525600.
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings
+
+`AwsSagemakerDomainEmrSettings`
+
+emr_settings pre-authorizes the IAM roles JupyterLab uses to discover and connect
+to Amazon EMR clusters for large-scale data processing directly from notebooks.
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns
+
+`[]string | valueFrom`
+
+assumable_role_arns are IAM roles the JupyterLab app can assume to CONNECT to EMR
+clusters -- including clusters in other AWS accounts (cross-account access).
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.executionRoleArns
+
+`[]string | valueFrom`
+
+execution_role_arns are IAM runtime roles available for EMR workloads submitted from
+the notebook (the role the EMR job itself runs under).
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings
+
+`AwsSagemakerDomainJupyterServerAppSettings`
+
+jupyter_server_app_settings configures the classic Jupyter Server app (Studio
+Classic). Teams still running the previous-generation Studio experience configure
+its default resources and startup repositories here.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default configuration for the Jupyter Server app.
+Jupyter Server runs on a lightweight system-managed instance ("system" instance type).
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts for the
+Jupyter Server app.
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.codeRepositories
+
+`[]AwsSagemakerDomainCodeRepository`
+
+code_repositories are Git repositories automatically cloned on startup.
+Maximum 10 repositories.
+
+- rule: {"repeated":{"maxItems":"10"}}
+
+### spec.userProfiles[].userSettings.jupyterServerAppSettings.codeRepositories[].repositoryUrl
+
+`string` · required
+
+repository_url is the HTTPS URL of the Git repository to clone.
+Must be an HTTPS URL (SSH URLs are not supported by SageMaker).
+Examples: "https://github.com/org/ml-notebooks.git"
+Maximum length: 1024 characters.
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings
+
+`AwsSagemakerDomainKernelGatewayAppSettings`
+
+kernel_gateway_app_settings configures KernelGateway apps that provide custom compute
+kernels. Use KernelGateway to bring your own Docker images with specialized ML
+frameworks, custom libraries, or GPU-optimized environments that go beyond the
+standard SageMaker-provided kernels.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for new KernelGateway apps.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts for KernelGateway apps.
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages
+
+`[]AwsSagemakerDomainCustomImage`
+
+custom_images are custom Docker images available as KernelGateway kernels.
+Each image must be registered in SageMaker via an AppImageConfig. Maximum 200 images.
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].appImageConfigName
+
+`string` · required
+
+app_image_config_name is the name of the SageMaker AppImageConfig that defines how
+the image is presented to users (kernel specifications, file system configuration).
+The AppImageConfig must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].imageName
+
+`string` · required
+
+image_name is the name of the SageMaker Image resource that contains this container image.
+The Image resource must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.kernelGatewayAppSettings.customImages[].imageVersionNumber
+
+`int32` · optional (explicit presence)
+
+image_version_number pins to a specific version of the image.
+If omitted, the latest available version is used.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings
+
+`AwsSagemakerDomainCodeEditorAppSettings`
+
+code_editor_app_settings configures the Code Editor app -- SageMaker's VS Code
+(Code-OSS) IDE. It carries the same resource-spec/lifecycle/custom-image/idle
+controls as JupyterLab, for teams that prefer a full code editor over notebooks.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for new Code Editor apps.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts for Code Editor apps.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.builtInLifecycleConfigArn
+
+`string`
+
+built_in_lifecycle_config_arn is the ARN of an AWS-curated (built-in) lifecycle
+configuration to run at app start.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.customImages
+
+`[]AwsSagemakerDomainCustomImage`
+
+custom_images are custom Docker images available in Code Editor. Maximum 200 images.
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].appImageConfigName
+
+`string` · required
+
+app_image_config_name is the name of the SageMaker AppImageConfig that defines how
+the image is presented to users (kernel specifications, file system configuration).
+The AppImageConfig must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].imageName
+
+`string` · required
+
+image_name is the name of the SageMaker Image resource that contains this container image.
+The Image resource must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.customImages[].imageVersionNumber
+
+`int32` · optional (explicit presence)
+
+image_version_number pins to a specific version of the image.
+If omitted, the latest available version is used.
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings
+
+`AwsSagemakerDomainIdleSettings`
+
+idle_settings configures automatic shutdown of idle Code Editor instances -- the
+same cost-control dial JupyterLab carries.
+
+- rule: max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes
+- rule: lifecycle_management must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.lifecycleManagement
+
+`string` · optional (explicit presence)
+
+lifecycle_management is the enforcement switch: "ENABLED" (the default when
+this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+the block's timeout values as published guardrails users may adopt WITHOUT
+forcing auto-shutdown on — the defined-but-disabled state. Both engines
+send the explicit value, so flipping to "DISABLED" genuinely turns
+enforcement off.
+
+- default: `ENABLED`
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes
+
+`int32` · required
+
+idle_timeout_in_minutes is the duration of inactivity (in minutes) before an instance
+is automatically shut down. Range: 60-525600 (1 hour to 365 days).
+A reasonable production default is 120 (2 hours).
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.minIdleTimeoutInMinutes
+
+`int32` · required
+
+min_idle_timeout_in_minutes sets the minimum idle timeout that individual users can
+configure for their own apps. Prevents users from setting excessively short timeouts
+that would cause disruptive shutdowns during brief pauses. Range: 60-525600.
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.codeEditorAppSettings.idleSettings.maxIdleTimeoutInMinutes
+
+`int32` · required
+
+max_idle_timeout_in_minutes sets the maximum idle timeout that individual users can
+configure. Prevents users from effectively disabling idle shutdown by setting
+extremely long timeouts. Range: 60-525600.
+
+- rule: {"required":true,"int32":{"lte":525600,"gte":60}}
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings
+
+`AwsSagemakerDomainTensorBoardAppSettings`
+
+tensor_board_app_settings configures the TensorBoard app used to visualize
+training runs. Only the default resource spec is configurable.
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for the TensorBoard app.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.tensorBoardAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings
+
+`AwsSagemakerDomainRSessionAppSettings`
+
+r_session_app_settings configures RSession apps (the R kernels backing RStudio
+sessions). Requires RStudio to be enabled on the domain via
+r_studio_server_pro_domain_settings.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for RSession apps.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.customImages
+
+`[]AwsSagemakerDomainCustomImage`
+
+custom_images are custom Docker images available as RSession kernels. Maximum 200 images.
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].appImageConfigName
+
+`string` · required
+
+app_image_config_name is the name of the SageMaker AppImageConfig that defines how
+the image is presented to users (kernel specifications, file system configuration).
+The AppImageConfig must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].imageName
+
+`string` · required
+
+image_name is the name of the SageMaker Image resource that contains this container image.
+The Image resource must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.rSessionAppSettings.customImages[].imageVersionNumber
+
+`int32` · optional (explicit presence)
+
+image_version_number pins to a specific version of the image.
+If omitted, the latest available version is used.
+
+### spec.userProfiles[].userSettings.rStudioServerProAppSettings
+
+`AwsSagemakerDomainRStudioServerProAppSettings`
+
+r_studio_server_pro_app_settings controls per-user RStudio Server Pro access.
+Requires RStudio to be enabled on the domain via r_studio_server_pro_domain_settings.
+
+- rule: access_status must be 'ENABLED' or 'DISABLED'
+- rule: user_group must be 'R_STUDIO_ADMIN' or 'R_STUDIO_USER'
+- rule: user_group is only honored when access_status is 'ENABLED'
+
+### spec.userProfiles[].userSettings.rStudioServerProAppSettings.accessStatus
+
+`string`
+
+access_status grants or denies the user access to RStudio Server Pro.
+"ENABLED": the user sees and can launch RStudio.
+"DISABLED": RStudio is hidden for the user.
+
+### spec.userProfiles[].userSettings.rStudioServerProAppSettings.userGroup
+
+`string`
+
+user_group assigns the RStudio authorization level.
+"R_STUDIO_ADMIN": administrative access to the RStudio Workbench admin dashboard.
+"R_STUDIO_USER" (AWS default): regular RStudio user.
+Only meaningful when access_status is "ENABLED" -- AWS ignores it otherwise, so the
+spec rejects the dead combination up front.
+
+### spec.userProfiles[].userSettings.canvasAppSettings
+
+`AwsSagemakerDomainCanvasAppSettings`
+
+canvas_app_settings configures SageMaker Canvas, the no-code ML workspace.
+Each sub-block is an independent Canvas capability (direct model deployment,
+EMR Serverless big-data processing, Bedrock generative AI, SaaS data connectors,
+Kendra document search, cross-account model registration, time-series forecasting,
+and the shared artifact workspace).
+
+- rule: direct_deploy_status must be 'ENABLED' or 'DISABLED'
+- rule: kendra_settings_status must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.canvasAppSettings.directDeployStatus
+
+`string` · optional (explicit presence)
+
+direct_deploy_status controls whether Canvas users can deploy models they build
+directly to SageMaker real-time endpoints ("ENABLED" or "DISABLED"). Direct
+deployment creates billable endpoints, so governance-minded teams often disable it
+and route models through the registry instead (model_register_settings).
+
+### spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings
+
+`AwsSagemakerDomainCanvasEmrServerlessSettings`
+
+emr_serverless_settings lets Canvas run large data preparation and processing jobs
+on EMR Serverless.
+
+- rule: status must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn
+
+`string | valueFrom`
+
+execution_role_arn is the IAM role Canvas uses to submit and manage EMR Serverless
+jobs.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.status
+
+`string`
+
+status enables or disables the capability ("ENABLED" or "DISABLED").
+
+### spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn
+
+`string | valueFrom`
+
+generative_ai_bedrock_role_arn is the IAM role Canvas assumes to call Amazon Bedrock
+for generative-AI features. Setting the role is what enables the capability.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings
+
+`[]AwsSagemakerDomainCanvasIdentityProviderOauthSettings`
+
+identity_provider_oauth_settings wire Canvas to external SaaS data sources
+(Salesforce Data Cloud, Snowflake) through OAuth. Each entry names the data source
+and the Secrets Manager secret holding its OAuth client credentials. Maximum 20.
+
+- rule: {"repeated":{"maxItems":"20"}}
+- rule: data_source_name must be 'SalesforceGenie' or 'Snowflake'
+- rule: status must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].dataSourceName
+
+`string`
+
+data_source_name identifies the SaaS data source.
+"SalesforceGenie": Salesforce Data Cloud.
+"Snowflake": Snowflake.
+
+### spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].secretArn
+
+`string` · required
+
+secret_arn is the Secrets Manager secret holding the data source's OAuth client
+credentials (client ID and secret). The ARN is a reference Canvas resolves at
+connection time -- never secret material itself.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.canvasAppSettings.identityProviderOauthSettings[].status
+
+`string`
+
+status enables or disables this connector ("ENABLED" or "DISABLED").
+
+### spec.userProfiles[].userSettings.canvasAppSettings.kendraSettingsStatus
+
+`string` · optional (explicit presence)
+
+kendra_settings_status controls whether Canvas can query Amazon Kendra indexes for
+document search ("ENABLED" or "DISABLED").
+
+### spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings
+
+`AwsSagemakerDomainCanvasModelRegisterSettings`
+
+model_register_settings controls whether Canvas users can register their models into
+a SageMaker Model Registry, optionally in another AWS account.
+
+- rule: status must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings.crossAccountModelRegisterRoleArn
+
+`string`
+
+cross_account_model_register_role_arn is the IAM role Canvas assumes to register
+models into a Model Registry that lives in ANOTHER AWS account. Leave unset to
+register into this account's registry.
+
+### spec.userProfiles[].userSettings.canvasAppSettings.modelRegisterSettings.status
+
+`string`
+
+status enables or disables model registration ("ENABLED" or "DISABLED").
+
+### spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings
+
+`AwsSagemakerDomainCanvasTimeSeriesForecastingSettings`
+
+time_series_forecasting_settings enables Canvas time-series forecasting, which uses
+Amazon Forecast under the hood via the given IAM role.
+
+- rule: status must be 'ENABLED' or 'DISABLED'
+
+### spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn
+
+`string | valueFrom`
+
+amazon_forecast_role_arn is the IAM role Canvas assumes to call Amazon Forecast.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.status
+
+`string`
+
+status enables or disables forecasting ("ENABLED" or "DISABLED").
+
+### spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings
+
+`AwsSagemakerDomainCanvasWorkspaceSettings`
+
+workspace_settings pins the S3 location (and optional KMS key) where Canvas stores
+its working artifacts -- datasets, intermediate results, generated models.
+
+- rule: s3_artifact_path must be an s3:// or https:// URI
+
+### spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3ArtifactPath
+
+`string`
+
+s3_artifact_path is the S3 URI where Canvas stores datasets, intermediate results,
+and generated models. Example: "s3://my-canvas-workspace/artifacts/".
+
+- rule: {"string":{"maxLen":"1024"}}
+
+### spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId
+
+`string | valueFrom`
+
+s3_kms_key_id is the KMS key used to encrypt Canvas artifacts in S3.
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.sharingSettings
+
+`AwsSagemakerDomainSharingSettings`
+
+sharing_settings controls notebook output sharing to S3. When enabled, notebook cell
+outputs are persisted to an S3 location, allowing team members to view results
+without running the notebook.
+
+- rule: notebook_output_option must be 'Allowed' or 'Disabled'
+- rule: s3_output_path is required when notebook_output_option is 'Allowed'
+
+### spec.userProfiles[].userSettings.sharingSettings.notebookOutputOption
+
+`string` · optional (explicit presence)
+
+notebook_output_option controls whether notebook cell outputs are persisted to S3.
+"Allowed": outputs are copied to S3 at the location specified by s3_output_path.
+"Disabled" (default): outputs are not shared externally.
+
+- default: `Disabled`
+
+### spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId
+
+`string | valueFrom`
+
+s3_kms_key_id is the KMS key used to encrypt shared notebook outputs in S3.
+If omitted, outputs are encrypted with the default S3 bucket encryption.
+
+- references: AwsKmsKey (`status.outputs.key_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.sharingSettings.s3OutputPath
+
+`string`
+
+s3_output_path is the S3 URI where shared notebook outputs are stored.
+Required when notebook_output_option is "Allowed".
+Example: "s3://my-team-bucket/notebook-outputs/"
+
+### spec.userProfiles[].userSettings.spaceStorageSettings
+
+`AwsSagemakerDomainSpaceStorageSettings`
+
+space_storage_settings configures default EBS volume sizes for user spaces.
+Spaces use EBS volumes for working storage beyond the shared EFS home directory.
+
+- rule: maximum_ebs_volume_size_in_gb must be >= default_ebs_volume_size_in_gb
+
+### spec.userProfiles[].userSettings.spaceStorageSettings.defaultEbsVolumeSizeInGb
+
+`int32` · required
+
+default_ebs_volume_size_in_gb is the default EBS volume size (in GB) assigned to new spaces.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.spaceStorageSettings.maximumEbsVolumeSizeInGb
+
+`int32` · required
+
+maximum_ebs_volume_size_in_gb is the maximum EBS volume size (in GB) that users can request
+for their spaces. Must be >= default_ebs_volume_size_in_gb.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.customFileSystemConfigs
+
+`[]AwsSagemakerDomainCustomFileSystemConfig`
+
+custom_file_system_configs mount additional file systems (beyond the domain's own
+EFS home directories) into every user's apps -- shared datasets, feature stores,
+model artifact trees. Each entry names one file system and the path where it mounts.
+
+### spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig
+
+`AwsSagemakerDomainEfsFileSystemConfig` · required
+
+efs_file_system_config mounts an Amazon EFS file system.
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId
+
+`string | valueFrom` · required
+
+file_system_id is the EFS file system to mount. The file system must be reachable
+from the domain's subnets (mount targets + security groups are the file system's
+own configuration).
+
+- references: AwsElasticFileSystem (`status.outputs.file_system_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticFileSystem, name: <that resource's name>, fieldPath: status.outputs.file_system_id}} -- a bare string does not parse
+
+### spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemPath
+
+`string` · required
+
+file_system_path is the path within the EFS file system to mount into apps.
+Example: "/shared/datasets"
+
+- rule: {"required":true}
+
+### spec.userProfiles[].userSettings.customPosixUserConfig
+
+`AwsSagemakerDomainCustomPosixUserConfig`
+
+custom_posix_user_config sets the POSIX identity (UID/GID) that apps run as when
+accessing the EFS home directory and custom file systems. Set this when file-system
+permissions on shared storage must map to a specific owner instead of SageMaker's
+default identity.
+
+### spec.userProfiles[].userSettings.customPosixUserConfig.uid
+
+`int64` · required
+
+uid is the POSIX user ID. Must be at least 10000.
+
+- rule: {"required":true,"int64":{"gte":"10000"}}
+
+### spec.userProfiles[].userSettings.customPosixUserConfig.gid
+
+`int64` · required
+
+gid is the POSIX group ID. Must be at least 1001.
+
+- rule: {"required":true,"int64":{"gte":"1001"}}
+
+### spec.userProfiles[].userSettings.studioWebPortalSettings
+
+`AwsSagemakerDomainStudioWebPortalSettings`
+
+studio_web_portal_settings hides parts of the Studio UI from users -- entire app
+types, specific instance types, or ML tools. Use it to keep expensive GPU instance
+types or unused tooling out of the picker instead of policing them after the fact.
+
+### spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenAppTypes
+
+`[]string`
+
+hidden_app_types are Studio app types to hide (e.g. "JupyterServer", "KernelGateway",
+"Canvas", "CodeEditor", "JupyterLab", "TensorBoard", "RStudioServerPro"). Values are
+SageMaker AppType names; AWS validates them at deploy time as the set grows.
+
+### spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenInstanceTypes
+
+`[]string`
+
+hidden_instance_types are instance types to hide from app-creation pickers
+(e.g. "ml.p3.2xlarge"). Values are SageMaker app instance type names.
+
+### spec.userProfiles[].userSettings.studioWebPortalSettings.hiddenMlTools
+
+`[]string`
+
+hidden_ml_tools are Studio ML tools to hide (e.g. "DataWrangler", "FeatureStore",
+"EmrClusters", "AutoMl", "Experiments", "Pipelines"). Values are SageMaker MlTools
+names; AWS validates them at deploy time as the set grows.
+
+### spec.spaces
+
+`[]AwsSagemakerDomainSpace`
+
+spaces are named shared (or private) workspaces inside the domain, keyed
+by name — the collaboration plane, where a JupyterLab or Code Editor
+runtime is shared rather than per-user. Spaces inherit
+`default_space_settings` and may override via their own
+`space_settings`. Add/remove in place; removing an entry deletes the
+space and its EBS volume.
+
+- rule: ownership_settings and space_sharing_settings must be set together — AWS requires both (or neither, for a legacy unscoped space)
+
+### spec.spaces[].spaceName
+
+`string` · required
+
+The space name — unique within the domain, and the key both IaC modules use
+for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+starting alphanumeric. ForceNew.
+
+- rule: {"required":true,"string":{"maxLen":"63","pattern":"^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$"}}
+
+### spec.spaces[].displayName
+
+`string`
+
+Display name shown in Studio (the space name itself is immutable; this is
+not). Maximum 64 characters. Updates in place.
+
+- rule: {"string":{"maxLen":"64"}}
+
+### spec.spaces[].ownershipSettings
+
+`AwsSagemakerDomainSpaceOwnership`
+
+Ownership: names the user profile that owns this space. Required for
+PRIVATE spaces and for shared spaces alike when sharing is configured —
+AWS requires ownership and sharing to be declared together (or neither,
+which creates a legacy unscoped space). The owner profile must exist in
+the domain; it is usually one of `user_profiles`, but profiles provisioned
+outside this manifest (SSO auto-provisioning) are equally valid owners.
+Not updatable after create — the provider never sends changes to it.
+
+### spec.spaces[].ownershipSettings.ownerUserProfileName
+
+`string` · required
+
+The owning user profile's name (not ARN).
+
+- rule: {"required":true}
+
+### spec.spaces[].spaceSharingSettings
+
+`AwsSagemakerDomainSpaceSharing`
+
+Sharing posture: "Private" (one owner, one runtime) or "Shared"
+(collaborative). Declared together with `ownership_settings`. Not
+updatable after create.
+
+### spec.spaces[].spaceSharingSettings.sharingType
+
+`string` · required
+
+"Private" or "Shared".
+
+- rule: {"required":true,"string":{"in":["Private","Shared"]}}
+
+### spec.spaces[].spaceSettings
+
+`AwsSagemakerDomainSpaceSettings`
+
+The space's own settings — app type, per-app configuration, storage, and
+mounted file systems.
+
+- rule: app_type must be 'JupyterLab', 'CodeEditor', 'JupyterServer', or 'KernelGateway'
+- rule: jupyter_server_app_settings.default_resource_spec is required on a space
+- rule: kernel_gateway_app_settings.default_resource_spec is required on a space
+
+### spec.spaces[].spaceSettings.appType
+
+`string` · optional (explicit presence)
+
+Which app this space runs: "JupyterLab", "CodeEditor", "JupyterServer",
+or "KernelGateway". Spaces are single-app workspaces; the matching
+app-settings block below configures it.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings
+
+`AwsSagemakerDomainSpaceJupyterLabAppSettings`
+
+JupyterLab configuration for the space. `default_resource_spec` is
+required here (unlike the domain baseline) — AWS's space contract.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec` · required
+
+The compute instance type and image for the space's JupyterLab runtime.
+
+- rule: {"required":true}
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.codeRepositories
+
+`[]AwsSagemakerDomainCodeRepository`
+
+Git repositories cloned into the space's JupyterLab on startup. Maximum 10.
+
+- rule: {"repeated":{"maxItems":"10"}}
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.codeRepositories[].repositoryUrl
+
+`string` · required
+
+repository_url is the HTTPS URL of the Git repository to clone.
+Must be an HTTPS URL (SSH URLs are not supported by SageMaker).
+Examples: "https://github.com/org/ml-notebooks.git"
+Maximum length: 1024 characters.
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.idleSettings
+
+`AwsSagemakerDomainSpaceIdleSettings`
+
+Automatic shutdown of the space's JupyterLab when idle.
+
+### spec.spaces[].spaceSettings.jupyterLabAppSettings.idleSettings.idleTimeoutInMinutes
+
+`int32` · optional (explicit presence)
+
+Minutes of inactivity before the space's app shuts down. Range: 60-525600.
+
+- rule: {"int32":{"lte":525600,"gte":60}}
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings
+
+`AwsSagemakerDomainSpaceCodeEditorAppSettings`
+
+Code Editor (VS Code / Code-OSS) configuration for the space.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec` · required
+
+The compute instance type and image for the space's Code Editor runtime.
+
+- rule: {"required":true}
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.idleSettings
+
+`AwsSagemakerDomainSpaceIdleSettings`
+
+Automatic shutdown of the space's Code Editor when idle.
+
+### spec.spaces[].spaceSettings.codeEditorAppSettings.idleSettings.idleTimeoutInMinutes
+
+`int32` · optional (explicit presence)
+
+Minutes of inactivity before the space's app shuts down. Range: 60-525600.
+
+- rule: {"int32":{"lte":525600,"gte":60}}
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings
+
+`AwsSagemakerDomainJupyterServerAppSettings`
+
+Classic Jupyter Server configuration for the space. Same shape as the
+domain baseline, but `default_resource_spec` is required here.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default configuration for the Jupyter Server app.
+Jupyter Server runs on a lightweight system-managed instance ("system" instance type).
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts for the
+Jupyter Server app.
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.codeRepositories
+
+`[]AwsSagemakerDomainCodeRepository`
+
+code_repositories are Git repositories automatically cloned on startup.
+Maximum 10 repositories.
+
+- rule: {"repeated":{"maxItems":"10"}}
+
+### spec.spaces[].spaceSettings.jupyterServerAppSettings.codeRepositories[].repositoryUrl
+
+`string` · required
+
+repository_url is the HTTPS URL of the Git repository to clone.
+Must be an HTTPS URL (SSH URLs are not supported by SageMaker).
+Examples: "https://github.com/org/ml-notebooks.git"
+Maximum length: 1024 characters.
+
+- rule: {"required":true,"string":{"maxLen":"1024"}}
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings
+
+`AwsSagemakerDomainKernelGatewayAppSettings`
+
+KernelGateway configuration for the space. Same shape as the domain
+baseline, but `default_resource_spec` is required here.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec
+
+`AwsSagemakerDomainResourceSpec`
+
+default_resource_spec sets the default compute instance type and image configuration
+for new KernelGateway apps.
+
+- rule: sagemaker_image_version_alias and sagemaker_image_version_arn are mutually exclusive
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.instanceType
+
+`string`
+
+instance_type is the EC2 instance type for the app's compute.
+Common choices:
+  "ml.t3.medium" - development/exploration (2 vCPU, 4 GB)
+  "ml.m5.large" - general-purpose notebooks (2 vCPU, 8 GB)
+  "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
+  "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
+  "system" - lightweight system-managed instance for JupyterServer
+The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+fails at manifest time; membership in AWS's instance-type list grows with
+every hardware launch and is validated by AWS at deploy time.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"}}
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.lifecycleConfigArn
+
+`string`
+
+lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
+when this specific app type starts.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageArn
+
+`string`
+
+sagemaker_image_arn is the ARN of a SageMaker Image that defines the app's container.
+Use this to specify a custom base image instead of the SageMaker-provided default.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionAlias
+
+`string`
+
+sagemaker_image_version_alias is a human-readable alias for a specific image version
+(e.g., "latest", "v2.0"). Mutually exclusive with sagemaker_image_version_arn.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.defaultResourceSpec.sagemakerImageVersionArn
+
+`string`
+
+sagemaker_image_version_arn is the ARN of a specific SageMaker image version.
+Pins the app to an exact image version for reproducibility across team members.
+Mutually exclusive with sagemaker_image_version_alias.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.lifecycleConfigArns
+
+`[]string`
+
+lifecycle_config_arns are ARNs of lifecycle configuration scripts for KernelGateway apps.
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages
+
+`[]AwsSagemakerDomainCustomImage`
+
+custom_images are custom Docker images available as KernelGateway kernels.
+Each image must be registered in SageMaker via an AppImageConfig. Maximum 200 images.
+
+- rule: {"repeated":{"maxItems":"200"}}
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].appImageConfigName
+
+`string` · required
+
+app_image_config_name is the name of the SageMaker AppImageConfig that defines how
+the image is presented to users (kernel specifications, file system configuration).
+The AppImageConfig must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].imageName
+
+`string` · required
+
+image_name is the name of the SageMaker Image resource that contains this container image.
+The Image resource must exist before referencing it here.
+
+- rule: {"required":true}
+
+### spec.spaces[].spaceSettings.kernelGatewayAppSettings.customImages[].imageVersionNumber
+
+`int32` · optional (explicit presence)
+
+image_version_number pins to a specific version of the image.
+If omitted, the latest available version is used.
+
+### spec.spaces[].spaceSettings.customFileSystems
+
+`[]AwsSagemakerDomainSpaceCustomFileSystem`
+
+Existing EFS file systems mounted into the space's apps (by id — the
+space form has no per-mount path, unlike the domain baseline's config).
+
+### spec.spaces[].spaceSettings.customFileSystems[].fileSystemId
+
+`string | valueFrom` · required
+
+The EFS file system to mount. The file system must have mount targets in
+the domain's VPC.
+
+- references: AwsElasticFileSystem (`status.outputs.file_system_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticFileSystem, name: <that resource's name>, fieldPath: status.outputs.file_system_id}} -- a bare string does not parse
+
+### spec.spaces[].spaceSettings.spaceStorageSettings
+
+`AwsSagemakerDomainSpaceStorage`
+
+The space's EBS boot/work volume size, in GB (5-16384). Persists across
+app restarts; deleted with the space.
+
+### spec.spaces[].spaceSettings.spaceStorageSettings.ebsVolumeSizeInGb
+
+`int32` · required
+
+The EBS volume size in GB. Range: 5-16384.
+
+- rule: {"required":true,"int32":{"lte":16384,"gte":5}}
+
 ## Validation Rules
 
 - `auth_mode_valid`: auth_mode must be 'IAM' or 'SSO'
@@ -2293,6 +4301,8 @@ Leave unset on IAM domains.
 - `execution_role_identity_config_valid`: execution_role_identity_config must be 'USER_PROFILE_NAME' or 'DISABLED'
 - `trusted_identity_propagation_status_valid`: trusted_identity_propagation_status must be 'ENABLED' or 'DISABLED'
 - `trusted_identity_propagation_requires_sso`: trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')
+- `user_profile_names_unique`: user_profiles names must be unique — each name keys one user profile
+- `space_names_unique`: spaces names must be unique — each name keys one space
 
 ## Outputs
 
@@ -2307,6 +4317,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerDoma
 | `status.outputs.security_group_id_for_domain_boundary` | `string` | security_group_id_for_domain_boundary is the ID of the security group that AWS automatically creates to establish the network boundary for the domain. This security group controls cross-app and cross-user traffic within the domain. |
 | `status.outputs.single_sign_on_application_arn` | `string` | single_sign_on_application_arn is the ARN of the IAM Identity Center application created for this domain. Only populated when auth_mode is "SSO". Useful for SSO configuration and access management. |
 | `status.outputs.single_sign_on_managed_application_instance_id` | `string` | single_sign_on_managed_application_instance_id is the IAM Identity Center managed application instance ID for this domain. Only populated when auth_mode is "SSO". Used when assigning Identity Center users and groups to the domain programmatically. |
+| `status.outputs.user_profile_arns` | `map<string, string>` | user_profile_arns maps each folded user profile's name (the spec key) to its ARN. Feeds IAM policies scoped to a profile and the import tooling's per-satellite IDs. |
+| `status.outputs.space_arns` | `map<string, string>` | space_arns maps each folded space's name (the spec key) to its ARN — the space's canonical identity (space imports are ARN-keyed). |
+| `status.outputs.space_urls` | `map<string, string>` | space_urls maps each folded space's name to the URL where its runtime is reached. |
 
 ## References
 
@@ -2334,6 +4347,17 @@ Fields that can point at another resource's outputs:
 | `spec.defaultSpaceSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 | `spec.domainSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.rStudioServerProDomainSettings.domainExecutionRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.executionRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.jupyterLabAppSettings.emrSettings.executionRoleArns` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.userProfiles[].userSettings.customFileSystemConfigs[].efsFileSystemConfig.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
+| `spec.spaces[].spaceSettings.customFileSystems[].fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
 
 ## See Also
 

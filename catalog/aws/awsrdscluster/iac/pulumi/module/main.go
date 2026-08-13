@@ -46,6 +46,20 @@ func Resources(ctx *pulumi.Context, stackInput *awsrdsclusterv1alpha1.AwsRdsClus
 		return errors.Wrap(err, "failed to create cluster instances")
 	}
 
+	if err := roleAssociations(ctx, locals, provider, createdCluster); err != nil {
+		return errors.Wrap(err, "failed to create role associations")
+	}
+
+	createdEndpoints, err := customEndpoints(ctx, locals, provider, createdCluster, createdInstances)
+	if err != nil {
+		return errors.Wrap(err, "failed to create custom endpoints")
+	}
+
+	createdActivityStream, err := activityStream(ctx, locals, provider, createdCluster, createdInstances)
+	if err != nil {
+		return errors.Wrap(err, "failed to start activity stream")
+	}
+
 	ctx.Export(OpClusterIdentifier, createdCluster.ClusterIdentifier)
 	ctx.Export(OpArn, createdCluster.Arn)
 	ctx.Export(OpClusterResourceId, createdCluster.ClusterResourceId)
@@ -75,6 +89,25 @@ func Resources(ctx *pulumi.Context, stackInput *awsrdsclusterv1alpha1.AwsRdsClus
 		instanceEndpoints = append(instanceEndpoints, createdInstance.Endpoint)
 	}
 	ctx.Export(OpInstanceEndpoints, instanceEndpoints)
+
+	// Custom endpoints in spec order -- each entry's name and the DNS
+	// endpoint AWS assigned it, for charts to wire into consumers.
+	customEndpointOutputs := make(pulumi.Array, 0, len(createdEndpoints))
+	for i, createdEndpoint := range createdEndpoints {
+		customEndpointOutputs = append(customEndpointOutputs, pulumi.Map{
+			"name":     pulumi.String(locals.AwsRdsCluster.Spec.CustomEndpoints[i].Name),
+			"endpoint": createdEndpoint.Endpoint,
+		})
+	}
+	ctx.Export(OpCustomEndpoints, customEndpointOutputs)
+
+	// The Kinesis stream receiving the activity stream -- empty when the
+	// spec asks for none, so the output shape stays stable.
+	if createdActivityStream != nil {
+		ctx.Export(OpActivityStreamKinesisStreamName, createdActivityStream.KinesisStreamName)
+	} else {
+		ctx.Export(OpActivityStreamKinesisStreamName, pulumi.String(""))
+	}
 
 	return nil
 }

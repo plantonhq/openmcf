@@ -17,14 +17,18 @@ resource "aws_lb_target_group" "this" {
   protocol_version = var.spec.protocol_version != "" ? var.spec.protocol_version : null
   ip_address_type  = var.spec.ip_address_type != "" ? var.spec.ip_address_type : null
 
+  # ALB Target Optimizer: setting the agent port enables per-target readiness
+  # routing. Create-only, like the group's other identity fields.
+  target_control_port = var.spec.target_control_port > 0 ? var.spec.target_control_port : null
+
   # 0 means "keep the AWS default" (300s) -- the manifest zero value is not
   # distinguishable from unset, so immediate deregistration is expressed as 1.
   deregistration_delay = var.spec.deregistration_delay_seconds > 0 ? var.spec.deregistration_delay_seconds : null
   slow_start           = var.spec.slow_start_seconds > 0 ? var.spec.slow_start_seconds : null
 
-  load_balancing_algorithm_type      = var.spec.load_balancing_algorithm_type != "" ? var.spec.load_balancing_algorithm_type : null
-  load_balancing_anomaly_mitigation  = var.spec.load_balancing_anomaly_mitigation != "" ? var.spec.load_balancing_anomaly_mitigation : null
-  load_balancing_cross_zone_enabled  = var.spec.load_balancing_cross_zone_enabled != "" ? var.spec.load_balancing_cross_zone_enabled : null
+  load_balancing_algorithm_type     = var.spec.load_balancing_algorithm_type != "" ? var.spec.load_balancing_algorithm_type : null
+  load_balancing_anomaly_mitigation = var.spec.load_balancing_anomaly_mitigation != "" ? var.spec.load_balancing_anomaly_mitigation : null
+  load_balancing_cross_zone_enabled = var.spec.load_balancing_cross_zone_enabled != "" ? var.spec.load_balancing_cross_zone_enabled : null
 
   # preserve_client_ip is a nullable tri-state at AWS (the default depends on
   # the target type): null keeps the AWS default, an explicit value overrides.
@@ -118,4 +122,5 @@ resource "aws_lb_target_group_attachment" "this" {
   target_id         = var.spec.targets[count.index].target_id
   port              = var.spec.targets[count.index].port > 0 ? var.spec.targets[count.index].port : null
   availability_zone = var.spec.targets[count.index].availability_zone != "" ? var.spec.targets[count.index].availability_zone : null
+  quic_server_id    = var.spec.targets[count.index].quic_server_id != "" ? var.spec.targets[count.index].quic_server_id : null
 }

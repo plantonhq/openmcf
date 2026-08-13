@@ -8,6 +8,7 @@ spec:
     - value: subnet-0a1b2c3d4e5f60001
     - value: subnet-0a1b2c3d4e5f60002
   engine: postgres
+  engineVersion: "16.4"
   instanceClass: db.t4g.micro
   allocatedStorageGb: 20
   storageType: gp3
@@ -15,3 +16,17 @@ spec:
   username: hackadmin
   manageMasterUserPassword: true
   skipFinalSnapshot: true
+  # Opt out of paid extended support: upgrade before standard support ends.
+  engineLifecycleSupport: open-source-rds-extended-support-disabled
+  # Instance-owned parameter group from inline parameters (the family is
+  # derived from engine + engineVersion).
+  parameters:
+    - name: rds.force_ssl
+      value: "1"
+      applyMethod: immediate
+  # Engine feature roles, one association per entry (feature_name is
+  # required on instance associations).
+  iamRoles:
+    - role:
+        value: arn:aws:iam::123456789012:role/rds-s3-export
+      featureName: s3Export

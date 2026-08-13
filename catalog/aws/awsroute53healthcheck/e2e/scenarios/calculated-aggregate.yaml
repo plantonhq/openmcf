@@ -1,0 +1,31 @@
+# CALCULATED AwsRoute53HealthCheck scenario: the aggregation model's first
+# live proof. The parent aggregates one child check (the fixture below,
+# composed as an extra instance of this same kind via the path-form
+# annotation) and carries an EXPLICIT ZERO health threshold — AWS's
+# always-healthy contract, a different configuration from omitting the
+# threshold; the lane proves the presence-typed zero survives both engines
+# (GetHealthCheck must report HealthThreshold = 0 with the child attached).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: planton-oss-e2e-awsroute53healthcheck-calc
+  id: planton-oss-e2e-awsroute53healthcheck-calc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsroute53healthcheck
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awsroute53healthcheck/e2e/fixture-child-check.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  checkType: CALCULATED
+  childHealthChecks:
+    - valueFrom:
+        kind: AwsRoute53HealthCheck
+        name: planton-oss-e2e-awsroute53healthcheck-child
+        fieldPath: status.outputs.health_check_id
+  childHealthThreshold: 0

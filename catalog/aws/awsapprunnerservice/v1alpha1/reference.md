@@ -32,6 +32,9 @@ any number of services:
   - AwsAppRunnerObservabilityConfiguration
     (observability_configuration_arn) enables X-Ray request tracing;
     omitted, tracing is off.
+INBOUND private access is service-owned, not shared, so it is modeled
+inline: vpc_ingress_connections publishes the service into named VPCs
+through interface VPC endpoints (AWS PrivateLink).
 
 ForceNew honesty (changing these replaces the service):
   - kms_key_arn (the stored-source encryption key)
@@ -66,6 +69,13 @@ spec:
   customDomains:
     - domainName: "app.example.com"
       enableWwwSubdomain: false
+  isPubliclyAccessible: false
+  vpcIngressConnections:
+    - name: "apprunner-demo-private"
+      vpcId:
+        value: "vpc-0abc123def4567890"
+      vpcEndpointId:
+        value: "vpce-0abc123def4567890"
 ```
 
 ## Spec Fields
@@ -103,6 +113,10 @@ spec:
 | `spec.vpcConnectorArn` | `string \| valueFrom` |  |  | AwsAppRunnerVpcConnector (`status.outputs.vpc_connector_arn`) |
 | `spec.observabilityConfigurationArn` | `string \| valueFrom` |  |  | AwsAppRunnerObservabilityConfiguration (`status.outputs.configuration_arn`) |
 | `spec.isPubliclyAccessible` | `bool` |  | `true` |  |
+| `spec.vpcIngressConnections` | `[]AwsAppRunnerServiceVpcIngressConnection` |  |  |  |
+| `spec.vpcIngressConnections[].name` | `string` | yes |  |  |
+| `spec.vpcIngressConnections[].vpcId` | `string \| valueFrom` | yes |  | AwsVpc (`status.outputs.vpc_id`) |
+| `spec.vpcIngressConnections[].vpcEndpointId` | `string \| valueFrom` | yes |  | AwsVpcEndpoint (`status.outputs.vpc_endpoint_id`) |
 | `spec.ipAddressType` | `string` |  | `IPV4` |  |
 | `spec.kmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.autoDeploymentsEnabled` | `bool` |  |  |  |
@@ -131,6 +145,7 @@ stored in Amazon ECR (private) or ECR Public Gallery.
 
 - rule: image_repository_type must be 'ECR' (private registry) or 'ECR_PUBLIC' (public gallery)
 - rule: access_role_arn is required when image_repository_type is 'ECR' -- App Runner needs an IAM role to pull from a private registry
+- rule: image_identifier must be a private ECR path (ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG) or an ECR Public Gallery path (public.ecr.aws/ALIAS/REPO:TAG)
 
 ### spec.imageSource.imageIdentifier
 
@@ -141,6 +156,9 @@ ECR format: "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/REPO:TAG"
 ECR Public format: "public.ecr.aws/ALIAS/REPO:TAG"
 This stays a literal string (not a reference) because it carries a
 repository-plus-tag coordinate no single upstream output represents.
+The format rule below is AWS's own ImageIdentifier pattern (mirrored
+by the provider): a 12-digit-account private ECR host path, or a
+public.ecr.aws gallery path.
 
 - rule: {"string":{"minLen":"1"}}
 
@@ -205,7 +223,9 @@ this branch; with auto_deployments_enabled, every push deploys.
 Subdirectory within the repository containing the application source.
 Defaults to the repository root. Useful for monorepos where the service
 lives in a subfolder; with configuration_source="REPOSITORY", the
-apprunner.yaml is read from this directory.
+apprunner.yaml is read from this directory. One-way on a live service:
+clearing this does not return the build to the repository root (the
+provider keeps the last-applied value) -- set "/" explicitly instead.
 
 ### spec.codeSource.connectionArn
 
@@ -263,7 +283,9 @@ terminates TLS on 443 and forwards requests to this port.
 Override the container start command. For image_source this overrides
 the image ENTRYPOINT/CMD; for code_source with
 configuration_source="API" it is the command that starts the built
-application.
+application. One-way on a live service: the provider drops empty
+values on update, so clearing this does not restore the image's own
+ENTRYPOINT/CMD -- set the desired command explicitly instead.
 
 ### spec.environmentVariables
 
@@ -319,7 +341,9 @@ invalid pairs.
 IAM role that service instances assume at runtime to call AWS APIs --
 the role your application code uses (reading S3, writing DynamoDB,
 resolving environment_secrets). This is NOT the image-pull role (that
-is image_source.access_role_arn).
+is image_source.access_role_arn). One-way on a live service: the
+provider drops empty values on update, so REMOVING the role does not
+detach it from a running service -- attach a replacement role instead.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
@@ -331,7 +355,10 @@ is image_source.access_role_arn).
 Health check configuration App Runner uses to monitor instance
 readiness; unhealthy instances are replaced automatically. When
 omitted, App Runner performs TCP checks on the configured port with
-AWS defaults.
+AWS defaults. Removing the block from a live service stops managing
+the check but does not reset it -- to return to defaults, set the
+default values explicitly (protocol TCP, interval 5, timeout 2,
+thresholds 1/5).
 
 - rule: health check protocol must be 'TCP' (port check) or 'HTTP' (GET request to path)
 
@@ -401,7 +428,11 @@ concurrency-based scaling. When omitted, AWS applies the account's
 default auto scaling configuration (1 min / 25 max / 100 concurrency
 unless the account default was changed). The referenced ARN carries a
 revision, so registering a new revision rolls this service on its next
-deployment.
+deployment. One-way on a live service: once set, REMOVING this
+reference does not return the service to the account default -- the
+provider keeps the last-applied configuration (its attribute is
+Optional+Computed, so removal produces no change). To move back to the
+default, reference the default configuration's ARN explicitly.
 
 - references: AwsAppRunnerAutoScalingConfiguration (`status.outputs.configuration_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsAppRunnerAutoScalingConfiguration, name: <that resource's name>, fieldPath: status.outputs.configuration_arn}} -- a bare string does not parse
@@ -425,8 +456,14 @@ shared by any number of services.
 
 ARN of an AwsAppRunnerObservabilityConfiguration revision. When set,
 the service sends request traces to the configured vendor (AWS X-Ray);
-when omitted, tracing is off. Presence of the reference IS the enable
-switch -- there is no separate toggle to keep in sync.
+when omitted at creation, tracing is off. Presence of the reference IS
+the enable switch -- there is no separate toggle to keep in sync.
+One-way on a live service (upstream provider gap): once tracing is
+enabled, REMOVING this reference does not disable it -- the provider
+sends nothing for an absent block, so AWS keeps tracing on and the
+plan never converges. To genuinely disable tracing today, replace the
+service (or disable it in the AWS console) until the provider gains a
+disable path.
 
 - references: AwsAppRunnerObservabilityConfiguration (`status.outputs.configuration_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsAppRunnerObservabilityConfiguration, name: <that resource's name>, fieldPath: status.outputs.configuration_arn}} -- a bare string does not parse
@@ -437,11 +474,58 @@ switch -- there is no separate toggle to keep in sync.
 
 Whether the service endpoint is publicly reachable from the internet.
 When true (default), the service gets a public HTTPS URL. When false,
-the endpoint is reachable only from within VPCs that attach an App
-Runner VPC Ingress Connection to this service (a separate AWS resource;
-create it against the exported service_arn).
+the endpoint is reachable only from within VPCs that attach a VPC
+Ingress Connection to this service -- declare those below in
+vpc_ingress_connections.
 
 - default: `true`
+
+### spec.vpcIngressConnections
+
+`[]AwsAppRunnerServiceVpcIngressConnection`
+
+VPC Ingress Connections for this service -- each entry publishes the
+service into one VPC through an interface VPC endpoint
+(AWS PrivateLink), so clients inside that VPC reach the service
+privately at the exported per-connection domain name. Pair with
+is_publicly_accessible: false for a service reachable ONLY from inside
+the named VPCs. Keyed by name: adding or removing entries updates in
+place; changing an entry's VPC or endpoint replaces that one
+connection.
+
+### spec.vpcIngressConnections[].name
+
+`string` · required
+
+Name for this VPC Ingress Connection. Must be unique across all active
+VPC Ingress Connections in the AWS account and region (it is the AWS
+resource name, not a label). App Runner family names are 4-40
+characters.
+
+- rule: {"string":{"minLen":"4","maxLen":"40"}}
+
+### spec.vpcIngressConnections[].vpcId
+
+`string | valueFrom` · required
+
+The VPC to publish the service into.
+
+- references: AwsVpc (`status.outputs.vpc_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
+
+### spec.vpcIngressConnections[].vpcEndpointId
+
+`string | valueFrom` · required
+
+The interface VPC endpoint in that VPC that carries the traffic. AWS
+requires both members -- an ingress connection cannot exist without its
+endpoint (the provider leaves both optional and lets the create call
+fail server-side; this spec enforces AWS's contract up front).
+
+- references: AwsVpcEndpoint (`status.outputs.vpc_endpoint_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpcEndpoint, name: <that resource's name>, fieldPath: status.outputs.vpc_endpoint_id}} -- a bare string does not parse
 
 ### spec.ipAddressType
 
@@ -473,8 +557,13 @@ changes (a new image pushed to the tracked tag, or a new commit on the
 tracked branch). Disabled by default: deployments then happen only when
 this resource is applied or a deployment is started explicitly, which
 keeps rollouts deterministic and graph-driven. AWS supports automatic
-deployments only for private ECR and code repositories -- ECR Public
-images cannot enable this (AWS rejects the create call).
+deployments only for private same-account ECR and code repositories --
+ECR Public images cannot enable this (AWS rejects the create call).
+The modules always send this value explicitly: AWS's own default is
+conditional on the source type (on for code repos and same-account
+ECR, off otherwise), and the provider substitutes an unconditional
+"on" for any omitted value -- explicit send is the only deterministic
+path through both layers.
 
 ### spec.customDomains
 
@@ -543,6 +632,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerServ
 | `status.outputs.custom_domains[].certificate_validation_records[].record_name` | `string` | The DNS record name to create (a "_<hash>.<domain>." CNAME). |
 | `status.outputs.custom_domains[].certificate_validation_records[].record_type` | `string` | The DNS record type (always "CNAME" today). |
 | `status.outputs.custom_domains[].certificate_validation_records[].record_value` | `string` | The DNS record value the name must resolve to. |
+| `status.outputs.vpc_ingress_connections` | `[]AwsAppRunnerServiceVpcIngressConnectionOutput` | Per-connection identifiers for the spec's vpc_ingress_connections -- one entry per spec entry. The domain_name is what clients inside the connected VPC resolve to reach the service privately. Empty when the spec declares no ingress connections. |
+| `status.outputs.vpc_ingress_connections[].name` | `string` | The connection name (matches the spec entry's name). |
+| `status.outputs.vpc_ingress_connections[].arn` | `string` | The ARN of the VPC Ingress Connection resource. |
+| `status.outputs.vpc_ingress_connections[].domain_name` | `string` | The domain name clients inside the connected VPC use to reach the service (resolves through the interface VPC endpoint). |
+| `status.outputs.vpc_ingress_connections[].status` | `string` | The connection status at the end of the deployment ("AVAILABLE" when serving). |
 
 ## References
 
@@ -555,6 +649,8 @@ Fields that can point at another resource's outputs:
 | `spec.autoScalingConfigurationArn` | AwsAppRunnerAutoScalingConfiguration | `status.outputs.configuration_arn` |
 | `spec.vpcConnectorArn` | AwsAppRunnerVpcConnector | `status.outputs.vpc_connector_arn` |
 | `spec.observabilityConfigurationArn` | AwsAppRunnerObservabilityConfiguration | `status.outputs.configuration_arn` |
+| `spec.vpcIngressConnections[].vpcId` | AwsVpc | `status.outputs.vpc_id` |
+| `spec.vpcIngressConnections[].vpcEndpointId` | AwsVpcEndpoint | `status.outputs.vpc_endpoint_id` |
 | `spec.kmsKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.webAclArn` | AwsWafWebAcl | `status.outputs.web_acl_arn` |
 

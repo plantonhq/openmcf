@@ -58,8 +58,11 @@ spec:
       content: '{"error": "request blocked by WAF"}'
       contentType: APPLICATION_JSON
   rules:
+    # Priority 0 is deliberate: AWS's rule priorities are 0-based and the
+    # spec types priority presence-aware precisely so 0 stays expressible --
+    # this arm proves the zero-priority path live.
     - name: managed-common
-      priority: 1
+      priority: 0
       overrideAction: none
       statement:
         managedRuleGroup:

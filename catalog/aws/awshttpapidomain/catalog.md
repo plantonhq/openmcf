@@ -1,15 +1,16 @@
 # AWS HTTP API Domain
 
-Deploys an API Gateway v2 custom domain name — the production front door for HTTP APIs ([AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway)). It binds an owned domain (e.g. `api.example.com`) to an ACM certificate ([AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert)) and maps one or more APIs onto the domain through API mappings. The domain is deliberately its own resource: it outlives any one API, many APIs compose onto it under distinct path keys ("orders", "billing"), and the certificate rotates on its own lifecycle. DNS is composed, not embedded — the domain exports `target_domain_name` and `hosted_zone_id`, and an [AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record) alias points your name at them.
+Deploys an API Gateway v2 custom domain name — the production front door for HTTP APIs ([AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway)). It binds an owned domain (e.g. `api.example.com`) to an ACM certificate ([AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert)) and routes requests onto one or more APIs — statically through path-key API mappings, dynamically through priority-ordered routing rules that match on base path or header, or both. The domain is deliberately its own resource: it outlives any one API, many APIs compose onto it under distinct path keys ("orders", "billing"), and the certificate rotates on its own lifecycle. DNS is composed, not embedded — the domain exports `target_domain_name` and `hosted_zone_id`, and an [AwsRoute53DnsRecord](/cloud-catalog/aws-route53-dns-record) alias points your name at them.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **API Gateway v2 Custom Domain** -- the REGIONAL endpoint with the TLS_1_2 security policy (v2 domains support only these, so the modules set both)
-- **Certificate Binding** -- TLS termination with the referenced ACM certificate (same region, covering the domain name)
+- **Certificate Binding** -- TLS termination with the referenced ACM certificate (same region, covering the domain name), plus the ownership-verification certificate when Private-CA or imported-cert setups require it
 - **Mutual TLS Configuration** -- the S3-hosted truststore requiring client certificates, when configured
 - **API Mappings** -- one binding per row, each serving an API's stage at the root or under a path key
+- **Routing Rules** -- one rule per row, matching requests on base path or header globs and invoking an API stage in priority order
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -96,13 +97,15 @@ These are the most important decisions when configuring a custom domain. Explore
 
 **API mappings compose the domain** -- an empty path key serves an API at the root; distinct keys serve others under `https://<domain>/<key>/`. Keys are unique (only one root), single-segment (no slashes), and edit in place as APIs come and go.
 
+**Routing rules route dynamically -- to REST APIs only** -- switch `routingMode` to `ROUTING_RULE_ONLY`, then declare rules that match on base paths or header globs and invoke a REST API stage (pass the REST API id literally: API Gateway rejects HTTP/WebSocket targets in routing rules, live-verified). Priorities (1-1,000,000, unique, lowest first) order evaluation; conditions on one rule are ANDed; `stripBasePath` forwards `/orders/list` to the API as `/list`. Rules and `apiMappings` are mutually exclusive: AWS rejects HTTP-API mappings on rule-mode domains (live-verified), so the spec rejects the combination at validate time -- along with rules without a rule-honoring mode, and a rule mode without rules. (`ROUTING_RULE_THEN_API_MAPPING` remains legal for domains whose fallback mappings are REST APIs managed outside this resource.)
+
 **Mutual TLS is half a lock by itself** -- the S3 truststore requires client certificates at the domain edge, but each mapped API's default execute-api endpoint bypasses it. Disable that endpoint on the mapped APIs whenever mTLS is on.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-References an [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) (`cert_arn`, required) and [AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway) resources (`api_id`) through its mappings.
+References an [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) (`cert_arn`, required; optionally a second certificate for ownership verification) and [AwsHttpApiGateway](/cloud-catalog/aws-http-api-gateway) resources (`api_id`) through its mappings and routing rules.
 
 ### What This Component Provides
 
@@ -122,6 +125,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Single API front door** -- one API at the domain root; the everyday production shape. Start from the **Single API Domain** preset.
 
 **Composed multi-API domain with mTLS** -- several teams' APIs under path keys, client certificates required at the edge. Start from the **Multi API mTLS Domain** preset.
+
+**Rule-routed domain** -- path-based service splits and header-based tenant pinning under one hostname, with the mappings as fallback. Start from the **Rule Routed Domain** preset.
 
 ## Works With
 

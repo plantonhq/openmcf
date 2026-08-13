@@ -2190,12 +2190,12 @@ const file_catalog_kubernetes_kubernetesmongodb_v1alpha1_spec_proto_rawDesc = ""
 	"\x0fstorage_account\x18\x04 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0estorageAccount\x12)\n" +
 	"\n" +
 	"access_key\x18\x05 \x01(\tB\n" +
-	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\taccessKey\"\xe2\b\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\taccessKey\"\xdb\b\n" +
 	"\x1bKubernetesMongodbBackupTask\x12\xb5\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xa0\x01\xbaH\x9c\x01\xba\x01\x95\x01\n" +
-	"\x1dspec.backup.tasks.name_format\x12Ctask name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\xce\x01\n" +
-	"\bschedule\x18\x02 \x01(\tB\xb1\x01\xbaH\xad\x01\xba\x01\xa6\x01\n" +
-	"\"spec.backup.tasks.cron_five_fields\x12Pschedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00\x1a.this.split(' ').filter(f, f != '').size() == 5\xc8\x01\x01R\bschedule\x12)\n" +
+	"\x1dspec.backup.tasks.name_format\x12Ctask name must be a lowercase DNS label (letters, numbers, hyphens)\x1a/this.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$')\xc8\x01\x01R\x04name\x12\xc7\x01\n" +
+	"\bschedule\x18\x02 \x01(\tB\xaa\x01\xbaH\xa6\x01\xba\x01\x9f\x01\n" +
+	"\"spec.backup.tasks.cron_five_fields\x12Pschedule is a five-field cron expression — e.g. '0 2 * * *' for daily at 02:00\x1a'this.matches('^ *[^ ]+( +[^ ]+){4} *$')\xc8\x01\x01R\bschedule\x12)\n" +
 	"\fstorage_name\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vstorageName\x12\xe5\x01\n" +
 	"\x04type\x18\x04 \x01(\tB\xcb\x01\xbaH\xbc\x01\xba\x01\xb8\x01\n" +
 	"\x1bspec.backup.tasks.type_enum\x12Gbackup type must be logical, physical, incremental, or incremental-base\x1aPthis == '' || this in ['logical', 'physical', 'incremental', 'incremental-base']\x8a\xa6\x1d\alogicalH\x00R\x04type\x88\x01\x01\x12 \n" +

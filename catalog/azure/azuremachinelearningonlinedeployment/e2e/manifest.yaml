@@ -1,0 +1,55 @@
+# Offline-plan test manifest. Exercises the deep seams: a registered
+# model with scoring code, all three probes on ISO-8601 durations, the
+# secure-egress bool -> Enabled/Disabled wire mapping, request settings,
+# the data-collector block with per-collection sampling, environment
+# variables, and the instance-count -> SKU-capacity contract.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineDeployment
+metadata:
+  name: test-ml-online-deployment
+  org: test-org
+  env: dev
+spec:
+  endpointId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/onlineEndpoints/test-fraud-scoring
+  name: blue
+  region: eastus
+  instanceType: Standard_DS3_v2
+  instanceCount: 2
+  model: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/models/fraud-model/versions/3
+  codeConfiguration:
+    codeId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace/codes/scoring/versions/1
+    scoringScript: score.py
+  environmentId: azureml://registries/azureml/environments/sklearn-1.5/versions/12
+  environmentVariables:
+    LOG_LEVEL: info
+  appInsightsEnabled: true
+  egressPublicNetworkAccessEnabled: false
+  livenessProbe:
+    failureThreshold: 10
+    period: PT10S
+    timeout: PT2S
+  readinessProbe:
+    initialDelay: PT10S
+  startupProbe:
+    failureThreshold: 60
+    period: PT10S
+  requestSettings:
+    maxConcurrentRequestsPerInstance: 2
+    requestTimeout: PT30S
+  dataCollector:
+    collections:
+      model_inputs:
+        enabled: true
+        samplingRate: 0.2
+      model_outputs:
+        enabled: true
+    rollingRate: Day
+    requestLogging:
+      captureHeaders:
+        - x-request-id
+  properties:
+    team: ml-platform
+  description: Offline-plan deployment exercising the full surface
+  tags:
+    cost-center: ml-platform

@@ -1857,7 +1857,7 @@ const file_catalog_azure_azurefrontdoorfirewallpolicy_v1alpha1_spec_proto_rawDes
 	"\x10negate_condition\x18\x05 \x01(\bR\x0fnegateCondition\x12\x91\x01\n" +
 	"\n" +
 	"transforms\x18\x06 \x03(\x0e2^.dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1.AzureFrontDoorFirewallPolicyTransformB\x11\xbaH\x0e\x92\x01\v\x10\x05\"\a\x82\x01\x04\x10\x01 \x00R\n" +
-	"transforms\"\xd4\x0e\n" +
+	"transforms\"\xca\x0e\n" +
 	"*AzureFrontDoorFirewallPolicyManagedRuleSet\x12\x1e\n" +
 	"\x04type\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x04type\x12$\n" +
@@ -1868,13 +1868,13 @@ const file_catalog_azure_azurefrontdoorfirewallpolicy_v1alpha1_spec_proto_rawDes
 	"\n" +
 	"exclusions\x18\x04 \x03(\v2i.dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1.AzureFrontDoorFirewallPolicyManagedRuleExclusionB\b\xbaH\x05\x92\x01\x02\x10dR\n" +
 	"exclusions\x12\x95\x01\n" +
-	"\toverrides\x18\x05 \x03(\v2m.dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1.AzureFrontDoorFirewallPolicyManagedRuleGroupOverrideB\b\xbaH\x05\x92\x01\x02\x10dR\toverrides:\xa1\n" +
-	"\xbaH\x9d\n" +
+	"\toverrides\x18\x05 \x03(\v2m.dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1.AzureFrontDoorFirewallPolicyManagedRuleGroupOverrideB\b\xbaH\x05\x92\x01\x02\x10dR\toverrides:\x97\n" +
+	"\xbaH\x93\n" +
 	"\x1a\x89\x02\n" +
 	"3front_door_firewall_policy_default_rule_set_version\x12\x88\x01the legacy DefaultRuleSet type only supports versions '1.0' and 'preview-0.1' -- for 1.1 and above use the Microsoft_DefaultRuleSet type\x1aGthis.type != 'DefaultRuleSet' || this.version in ['1.0', 'preview-0.1']\x1a\xc7\x02\n" +
 	"=front_door_firewall_policy_microsoft_default_rule_set_version\x12~Microsoft_DefaultRuleSet starts at version '1.1' ('1.1', '2.0', '2.1') -- for 1.0 and below use the legacy DefaultRuleSet type\x1a\x85\x01this.type != 'Microsoft_DefaultRuleSet' || !(this.version.startsWith('0.') || this.version == '1.0' || this.version == 'preview-0.1')\x1a\xb2\x03\n" +
-	"7front_door_firewall_policy_anomaly_scoring_version_gate\x12\x9d\x01rule overrides on 2.0+ rule sets must use OVERRIDE_ANOMALY_SCORING or OVERRIDE_LOG (the anomaly-scoring model); OVERRIDE_ANOMALY_SCORING is invalid below 2.0\x1a\xd6\x01(!this.version.startsWith('0.') && !this.version.startsWith('1.') && this.version != 'preview-0.1') ? this.overrides.all(o, o.rules.all(r, r.action in [2, 6])) : this.overrides.all(o, o.rules.all(r, r.action != 2))\x1a\x8f\x02\n" +
-	"8front_door_firewall_policy_js_challenge_bot_manager_only\x12ethe OVERRIDE_JS_CHALLENGE action is only valid on bot-manager rule sets (Microsoft_BotManagerRuleSet)\x1althis.type.lowerAscii().contains('botmanagerruleset') || this.overrides.all(o, o.rules.all(r, r.action != 5))\"\x8b\x03\n" +
+	"7front_door_firewall_policy_anomaly_scoring_version_gate\x12\x9d\x01rule overrides on 2.0+ rule sets must use OVERRIDE_ANOMALY_SCORING or OVERRIDE_LOG (the anomaly-scoring model); OVERRIDE_ANOMALY_SCORING is invalid below 2.0\x1a\xd6\x01(!this.version.startsWith('0.') && !this.version.startsWith('1.') && this.version != 'preview-0.1') ? this.overrides.all(o, o.rules.all(r, r.action in [2, 6])) : this.overrides.all(o, o.rules.all(r, r.action != 2))\x1a\x85\x02\n" +
+	"8front_door_firewall_policy_js_challenge_bot_manager_only\x12ethe OVERRIDE_JS_CHALLENGE action is only valid on bot-manager rule sets (Microsoft_BotManagerRuleSet)\x1abthis.type.matches('(?i)botmanagerruleset') || this.overrides.all(o, o.rules.all(r, r.action != 5))\"\x8b\x03\n" +
 	"0AzureFrontDoorFirewallPolicyManagedRuleExclusion\x12\x9e\x01\n" +
 	"\x0ematch_variable\x18\x01 \x01(\x0e2k.dev.planton.azure.azurefrontdoorfirewallpolicy.v1alpha1.AzureFrontDoorFirewallPolicyExclusionMatchVariableB\n" +
 	"\xbaH\a\x82\x01\x04\x10\x01 \x00R\rmatchVariable\x12\x8d\x01\n" +

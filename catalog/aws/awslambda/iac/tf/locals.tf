@@ -38,4 +38,8 @@ locals {
 
   # Invoke permissions keyed by statement_id (CEL enforces uniqueness).
   invoke_permissions = { for p in coalesce(var.spec.invoke_permissions, []) : p.statement_id => p }
+
+  # Per-qualifier scaling configs keyed by qualifier (CEL enforces
+  # uniqueness). Keys like "$LATEST.PUBLISHED" are valid map keys.
+  scaling_configs = { for s in coalesce(var.spec.scaling_configs, []) : s.qualifier => s }
 }

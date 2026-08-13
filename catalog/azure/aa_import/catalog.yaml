@@ -18,6 +18,23 @@ spec:
   # stack output. Child resources nested under a parent's ARM path (a
   # gateway's NAT rules) compose the parent's id with the child segment.
   resource_types:
+    # --- Raw ARM (azapi) ---------------------------------------------------
+    # One entry serves EVERY azapi-backed kind: azapi imports any resource
+    # by its full ARM ID with the module's pinned api-version as a query
+    # suffix (the suffix keeps the import GET on the exact contract the
+    # module writes; without it the provider guesses among recent
+    # api-versions). Each kind's import-map derives {arm_resource_id} from
+    # its own stack output and pins {azapi_api_version} as a literal -- the
+    # api-version is a property of the module, not of any one resource.
+    #
+    # pulumi_type is deliberately empty: azapi kinds' Pulumi modules use
+    # azure-native TYPED resources whose tokens differ per kind -- a
+    # per-Terraform-type table structurally cannot carry them. The token
+    # knowledge lives in each kind's Pulumi module; nothing consumes this
+    # field today.
+    - terraform_type: azapi_resource
+      id_format: "{arm_resource_id}?api-version={azapi_api_version}"
+
     # --- Hybrid connectivity: the virtual network gateway family ----------
     - terraform_type: azurerm_virtual_network_gateway
       pulumi_type: azure:network/virtualNetworkGateway:VirtualNetworkGateway
@@ -38,3 +55,339 @@ spec:
     - terraform_type: azurerm_local_network_gateway
       pulumi_type: azure:network/localNetworkGateway:LocalNetworkGateway
       id_format: "{local_network_gateway_id}"
+
+    # --- Hybrid connectivity: Private Link and the ExpressRoute circuit
+    # family ---------------------------------------------------------------
+    - terraform_type: azurerm_private_link_service
+      # The classic SDK registers the resource under the legacy
+      # "privatedns" module -- a historical upstream placement, not a DNS
+      # resource.
+      pulumi_type: azure:privatedns/linkService:LinkService
+      id_format: "{private_link_service_id}"
+    - terraform_type: azurerm_express_route_circuit
+      pulumi_type: azure:network/expressRouteCircuit:ExpressRouteCircuit
+      id_format: "{express_route_circuit_id}"
+      # authorization_key (the key the circuit REDEEMS) is never returned
+      # by ARM -- an imported circuit configured with one legitimately
+      # plans an in-place update on it.
+      write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_express_route_circuit_authorization
+      pulumi_type: azure:network/expressRouteCircuitAuthorization:ExpressRouteCircuitAuthorization
+      id_format: "{express_route_circuit_id}/authorizations/{authorization_name}"
+      # The module deploys one authorization per spec entry, keyed by
+      # name -- the address's instance key supplies {authorization_name}.
+    - terraform_type: azurerm_express_route_circuit_peering
+      pulumi_type: azure:network/expressRouteCircuitPeering:ExpressRouteCircuitPeering
+      id_format: "{express_route_circuit_peering_id}"
+      # shared_key is write-only in ARM (never read back) -- an imported
+      # peering configured with one legitimately plans an in-place update.
+      write_normalized_attributes: [shared_key]
+    - terraform_type: azurerm_express_route_circuit_connection
+      pulumi_type: azure:network/expressRouteCircuitConnection:ExpressRouteCircuitConnection
+      id_format: "{express_route_circuit_peering_id}/connections/{connection_name}"
+      # The module deploys one Global Reach connection per spec entry,
+      # keyed by name. ARM masks authorization_key on reads (a fixed
+      # asterisk sentinel), so it can never round-trip.
+      write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_express_route_port
+      pulumi_type: azure:network/expressRoutePort:ExpressRoutePort
+      id_format: "{express_route_port_id}"
+    - terraform_type: azurerm_express_route_port_authorization
+      pulumi_type: azure:network/expressRoutePortAuthorization:ExpressRoutePortAuthorization
+      id_format: "{express_route_port_id}/authorizations/{authorization_name}"
+      # The module deploys one authorization per spec entry, keyed by
+      # name -- the address's instance key supplies {authorization_name}.
+
+    # --- Hybrid connectivity: the Virtual WAN family ----------------------
+    - terraform_type: azurerm_virtual_wan
+      pulumi_type: azure:network/virtualWan:VirtualWan
+      id_format: "{virtual_wan_id}"
+    - terraform_type: azurerm_virtual_hub
+      pulumi_type: azure:network/virtualHub:VirtualHub
+      id_format: "{virtual_hub_id}"
+    - terraform_type: azurerm_virtual_hub_route_table
+      pulumi_type: azure:network/virtualHubRouteTable:VirtualHubRouteTable
+      id_format: "{virtual_hub_id}/hubRouteTables/{route_table_name}"
+      # The module deploys one table per spec entry, keyed by name --
+      # the address's instance key supplies {route_table_name}.
+    - terraform_type: azurerm_route_map
+      pulumi_type: azure:network/routeMap:RouteMap
+      id_format: "{virtual_hub_id}/routeMaps/{route_map_name}"
+      # The module deploys one map per spec entry, keyed by name.
+    - terraform_type: azurerm_virtual_hub_bgp_connection
+      pulumi_type: azure:network/bgpConnection:BgpConnection
+      id_format: "{virtual_hub_id}/bgpConnections/{bgp_connection_name}"
+      # The module deploys one peering per spec entry, keyed by name.
+    - terraform_type: azurerm_virtual_hub_routing_intent
+      pulumi_type: azure:network/routingIntent:RoutingIntent
+      id_format: "{virtual_hub_id}/routingIntent/{routing_intent_name}"
+      # A hub has at most one routing intent; the module keys it by the
+      # intent's name so the address supplies {routing_intent_name}.
+    - terraform_type: azurerm_virtual_hub_connection
+      pulumi_type: azure:network/virtualHubConnection:VirtualHubConnection
+      id_format: "{virtual_hub_connection_id}"
+    - terraform_type: azurerm_express_route_gateway
+      pulumi_type: azure:network/expressRouteGateway:ExpressRouteGateway
+      id_format: "{express_route_gateway_id}"
+    - terraform_type: azurerm_express_route_connection
+      pulumi_type: azure:network/expressRouteConnection:ExpressRouteConnection
+      id_format: "{express_route_gateway_id}/expressRouteConnections/{connection_name}"
+      # The module deploys one connection per spec entry, keyed by name.
+      # authorization_key (the key the connection REDEEMS) is never
+      # returned by ARM -- an imported connection configured with one
+      # legitimately plans an in-place update on it.
+      write_normalized_attributes: [authorization_key]
+    - terraform_type: azurerm_vpn_gateway
+      pulumi_type: azure:network/vpnGateway:VpnGateway
+      id_format: "{vpn_gateway_id}"
+    - terraform_type: azurerm_vpn_gateway_nat_rule
+      # The classic SDK's token is misspelled ("Vnp") -- a legacy
+      # artifact; it creates the same ARM object.
+      pulumi_type: azure:network/vnpGatewayNatRule:VnpGatewayNatRule
+      id_format: "{vpn_gateway_id}/natRules/{nat_rule_name}"
+      # The module deploys one rule per spec entry, keyed by name --
+      # the address's instance key supplies {nat_rule_name}.
+    - terraform_type: azurerm_vpn_site
+      pulumi_type: azure:network/vpnSite:VpnSite
+      id_format: "{vpn_site_id}"
+    - terraform_type: azurerm_vpn_gateway_connection
+      pulumi_type: azure:network/vpnGatewayConnection:VpnGatewayConnection
+      id_format: "{connection_id}"
+    - terraform_type: azurerm_point_to_site_vpn_gateway
+      # The classic SDK's token is misnamed ("PointToPoint") -- a
+      # legacy artifact; it creates the same ARM p2sVpnGateways object.
+      pulumi_type: azure:network/pointToPointVpnGateway:PointToPointVpnGateway
+      id_format: "{point_to_site_vpn_gateway_id}"
+    - terraform_type: azurerm_vpn_server_configuration
+      pulumi_type: azure:network/vpnServerConfiguration:VpnServerConfiguration
+      id_format: "{vpn_server_configuration_id}"
+      # ARM never returns the RADIUS server secret (the provider reads
+      # it back from config) -- an imported configuration carrying one
+      # legitimately plans an in-place update on exactly that sub-path.
+      write_normalized_attributes: [radius.server.secret]
+    - terraform_type: azurerm_vpn_server_configuration_policy_group
+      pulumi_type: azure:network/vpnServerConfigurationPolicyGroup:VpnServerConfigurationPolicyGroup
+      id_format: "{vpn_server_configuration_id}/configurationPolicyGroups/{policy_group_name}"
+      # The module deploys one group per spec entry, keyed by name --
+      # the address's instance key supplies {policy_group_name}.
+    - terraform_type: azurerm_cognitive_account
+      pulumi_type: azure:cognitive/account:Account
+      id_format: "{cognitive_account_id}"
+      # ARM never returns the custom-question-answering Search API key
+      # (the provider's read sets only the endpoint id) -- an imported
+      # account configured with one legitimately plans an in-place
+      # update on exactly that argument.
+      write_normalized_attributes: [custom_question_answering_search_service_key]
+    - terraform_type: azurerm_cognitive_account_rai_blocklist
+      pulumi_type: azure:cognitive/accountRaiBlocklist:AccountRaiBlocklist
+      id_format: "{cognitive_account_id}/raiBlocklists/{rai_blocklist_name}"
+      # The module deploys one blocklist per spec entry, keyed by name --
+      # the address's instance key supplies {rai_blocklist_name}.
+    - terraform_type: azurerm_cognitive_account_rai_policy
+      pulumi_type: azure:cognitive/accountRaiPolicy:AccountRaiPolicy
+      id_format: "{cognitive_account_id}/raiPolicies/{rai_policy_name}"
+      # The module deploys one policy per spec entry, keyed by name --
+      # the address's instance key supplies {rai_policy_name}.
+    - terraform_type: azurerm_cognitive_deployment
+      pulumi_type: azure:cognitive/deployment:Deployment
+      id_format: "{deployment_id}"
+    - terraform_type: azurerm_cognitive_account_project
+      pulumi_type: azure:cognitive/accountProject:AccountProject
+      id_format: "{project_id}"
+
+    # --- AI/ML: the Machine Learning workspace family --------------------
+    - terraform_type: azurerm_machine_learning_workspace
+      pulumi_type: azure:machinelearning/workspace:Workspace
+      id_format: "{machine_learning_workspace_id}"
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_fqdn
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRuleFqdn:WorkspaceNetworkOutboundRuleFqdn
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+      # The module deploys one rule per spec entry, keyed by name --
+      # the address's instance key supplies {outbound_rule_name}. All
+      # three rule types share this ARM collection.
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_private_endpoint
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRulePrivateEndpoint:WorkspaceNetworkOutboundRulePrivateEndpoint
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+    - terraform_type: azurerm_machine_learning_workspace_network_outbound_rule_service_tag
+      pulumi_type: azure:machinelearning/workspaceNetworkOutboundRuleServiceTag:WorkspaceNetworkOutboundRuleServiceTag
+      id_format: "{machine_learning_workspace_id}/outboundRules/{outbound_rule_name}"
+    # The three datastore variants of AzureMachineLearningDatastore --
+    # one kind, exactly one of these resources per deployment; all
+    # three share the same ARM child collection and id shape. ARM
+    # never returns account keys, SAS tokens, or client secrets (the
+    # provider echoes them from configuration) -- an imported
+    # datastore configured with them legitimately plans an in-place
+    # update on exactly those arguments.
+    - terraform_type: azurerm_machine_learning_datastore_blobstorage
+      pulumi_type: azure:machinelearning/datastoreBlobstorage:DatastoreBlobstorage
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [account_key, shared_access_signature]
+    - terraform_type: azurerm_machine_learning_datastore_datalake_gen2
+      pulumi_type: azure:machinelearning/datastoreDatalakeGen2:DatastoreDatalakeGen2
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [client_secret]
+    - terraform_type: azurerm_machine_learning_datastore_fileshare
+      pulumi_type: azure:machinelearning/datastoreFileshare:DatastoreFileshare
+      id_format: "{datastore_id}"
+      write_normalized_attributes: [account_key, shared_access_signature]
+    # The ML computes (cluster and instance) share ONE ARM child
+    # collection (.../workspaces/{ws}/computes/{name}) -- each kind is
+    # a single-id import keyed on its own primary output.
+    - terraform_type: azurerm_machine_learning_compute_cluster
+      pulumi_type: azure:machinelearning/computeCluster:ComputeCluster
+      id_format: "{machine_learning_compute_cluster_id}"
+    - terraform_type: azurerm_machine_learning_compute_instance
+      pulumi_type: azure:machinelearning/computeInstance:ComputeInstance
+      id_format: "{machine_learning_compute_instance_id}"
+    # AI Foundry hubs and projects are ML workspaces at ARM (kind
+    # "Hub" / kind "Project") -- the providers' importers verify the
+    # kind and reject a mismatch, so a hub id never imports as a
+    # project or vice versa.
+    - terraform_type: azurerm_ai_foundry
+      pulumi_type: azure:aifoundry/hub:Hub
+      id_format: "{ai_foundry_id}"
+    - terraform_type: azurerm_ai_foundry_project
+      pulumi_type: azure:aifoundry/project:Project
+      id_format: "{ai_foundry_project_id}"
+    # --- AI Search ---------------------------------------------------------
+    - terraform_type: azurerm_search_service
+      pulumi_type: azure:search/service:Service
+      id_format: "{search_service_id}"
+    - terraform_type: azurerm_search_shared_private_link_service
+      pulumi_type: azure:search/sharedPrivateLinkService:SharedPrivateLinkService
+      id_format: "{search_service_id}/sharedPrivateLinkResources/{shared_private_link_name}"
+      # The module deploys one link per spec entry, keyed by name --
+      # the address's instance key supplies {shared_private_link_name}.
+    # --- Classic Azure Backup (Recovery Services) --------------------------
+    - terraform_type: azurerm_recovery_services_vault
+      pulumi_type: azure:recoveryservices/vault:Vault
+      id_format: "{recovery_services_vault_id}"
+    - terraform_type: azurerm_recovery_services_vault_resource_guard_association
+      pulumi_type: azure:recoveryservices/vaultResourceGuardAssociation:VaultResourceGuardAssociation
+      id_format: "{recovery_services_vault_id}/backupResourceGuardProxies/VaultProxy"
+      # ARM pins the association's proxy segment to the literal
+      # "VaultProxy" -- one guard per vault, so the id composes wholly
+      # from the vault's own id.
+    - terraform_type: azurerm_backup_policy_vm
+      pulumi_type: azure:backup/policyVM:PolicyVM
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_backup_protected_vm
+      pulumi_type: azure:backup/protectedVM:ProtectedVM
+      id_format: "{backup_protected_vm_id}"
+    - terraform_type: azurerm_backup_policy_file_share
+      pulumi_type: azure:backup/policyFileShare:PolicyFileShare
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_backup_container_storage_account
+      pulumi_type: azure:backup/containerStorageAccount:ContainerStorageAccount
+      id_format: "{backup_container_id}"
+      # ARM derives the container segment from the storage account's
+      # group and name (StorageContainer;storage;{sa-rg};{sa-name});
+      # the id is quoted on import -- it carries semicolons.
+    - terraform_type: azurerm_backup_protected_file_share
+      pulumi_type: azure:backup/protectedFileShare:ProtectedFileShare
+      id_format: "{backup_protected_file_share_id}"
+      # The item segment carries the share's SYSTEM name
+      # (AzureFileShare;{system-name}), not its friendly name -- the id
+      # comes from the stack output or `az backup item list`, never
+      # composed by hand; quoted on import (semicolons).
+    # --- Modern Azure Backup (Data Protection) -----------------------------
+    - terraform_type: azurerm_data_protection_backup_vault
+      pulumi_type: azure:dataprotection/backupVault:BackupVault
+      id_format: "{backup_vault_id}"
+    - terraform_type: azurerm_data_protection_backup_vault_customer_managed_key
+      pulumi_type: azure:dataprotection/backupVaultCustomerManagedKey:BackupVaultCustomerManagedKey
+      id_format: "{backup_vault_id}"
+      # The provider's CMK resource IS the vault re-addressed (its
+      # create rewrites the vault's own security settings), so its id
+      # composes wholly from the vault's own id.
+    - terraform_type: azurerm_data_protection_resource_guard
+      pulumi_type: azure:dataprotection/resourceGuard:ResourceGuard
+      id_format: "{resource_guard_id}"
+    # One backup-policy kind, six variant resources -- the SAME
+    # vault-child id shape (.../backupPolicies/{name}) serves all six;
+    # which resource imports it follows the spec's variant block.
+    - terraform_type: azurerm_data_protection_backup_policy_blob_storage
+      pulumi_type: azure:dataprotection/backupPolicyBlobStorage:BackupPolicyBlobStorage
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_disk
+      pulumi_type: azure:dataprotection/backupPolicyDisk:BackupPolicyDisk
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_kubernetes_cluster
+      pulumi_type: azure:dataprotection/backupPolicyKubernetesCluster:BackupPolicyKubernetesCluster
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_mysql_flexible_server
+      pulumi_type: azure:dataprotection/backupPolicyMysqlFlexibleServer:BackupPolicyMysqlFlexibleServer
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_postgresql_flexible_server
+      pulumi_type: azure:dataprotection/backupPolicyPostgresqlFlexibleServer:BackupPolicyPostgresqlFlexibleServer
+      id_format: "{backup_policy_id}"
+    - terraform_type: azurerm_data_protection_backup_policy_data_lake_storage
+      pulumi_type: azure:dataprotection/backupPolicyDataLakeStorage:BackupPolicyDataLakeStorage
+      id_format: "{backup_policy_id}"
+    # One backup-instance kind, six variant resources -- the SAME
+    # vault-child id shape (.../backupInstances/{name}) serves all six;
+    # which resource imports it follows the spec's variant block. The
+    # blob resource's Pulumi token misspells Blob as "Blog" -- the
+    # bridge's own identifier, never a typo to fix.
+    - terraform_type: azurerm_data_protection_backup_instance_blob_storage
+      pulumi_type: azure:dataprotection/backupInstanceBlogStorage:BackupInstanceBlogStorage
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_disk
+      pulumi_type: azure:dataprotection/backupInstanceDisk:BackupInstanceDisk
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_kubernetes_cluster
+      pulumi_type: azure:dataprotection/backupInstanceKubernetesCluster:BackupInstanceKubernetesCluster
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_mysql_flexible_server
+      pulumi_type: azure:dataprotection/backupInstanceMysqlFlexibleServer:BackupInstanceMysqlFlexibleServer
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_postgresql_flexible_server
+      pulumi_type: azure:dataprotection/backupInstancePostgresqlFlexibleServer:BackupInstancePostgresqlFlexibleServer
+      id_format: "{backup_instance_id}"
+    - terraform_type: azurerm_data_protection_backup_instance_data_lake_storage
+      pulumi_type: azure:dataprotection/backupInstanceDataLakeStorage:BackupInstanceDataLakeStorage
+      id_format: "{backup_instance_id}"
+    # --- Key Vault data-plane objects ---------------------------------------
+    # Key Vault nested items import by their versioned DATA-PLANE ID
+    # (https://{vault}.vault.azure.net/...), not an ARM path -- the
+    # provider resolves the vault from the URI.
+    - terraform_type: azurerm_key_vault_secret
+      pulumi_type: azure:keyvault/secret:Secret
+      id_format: "{secret_id}"
+
+    # --- Network access and observability -----------------------------------
+    # The classic SDK's bridge parks BastionHost in the COMPUTE module
+    # (a historical upstream placement) -- the token is correct as
+    # written, never a typo to fix.
+    - terraform_type: azurerm_bastion_host
+      pulumi_type: azure:compute/bastionHost:BastionHost
+      id_format: "{bastion_host_id}"
+    # The flow log is a child of the regional Network Watcher; its ARM
+    # ID carries the watcher segment
+    # (.../networkWatchers/{watcher}/flowLogs/{name}).
+    - terraform_type: azurerm_network_watcher_flow_log
+      pulumi_type: azure:network/networkWatcherFlowLog:NetworkWatcherFlowLog
+      id_format: "{flow_log_id}"
+
+    # --- DNS Private Resolver ------------------------------------------------
+    # The resolver's endpoints and the ruleset's rules are composed
+    # children -- their IDs compose from the parent's ID plus the child
+    # name recorded in the spec (the import map's address keys).
+    - terraform_type: azurerm_private_dns_resolver
+      pulumi_type: azure:privatedns/resolver:Resolver
+      id_format: "{dns_resolver_id}"
+    - terraform_type: azurerm_private_dns_resolver_inbound_endpoint
+      pulumi_type: azure:privatedns/resolverInboundEndpoint:ResolverInboundEndpoint
+      id_format: "{dns_resolver_id}/inboundEndpoints/{inbound_endpoint_name}"
+    - terraform_type: azurerm_private_dns_resolver_outbound_endpoint
+      pulumi_type: azure:privatedns/resolverOutboundEndpoint:ResolverOutboundEndpoint
+      id_format: "{dns_resolver_id}/outboundEndpoints/{outbound_endpoint_name}"
+    - terraform_type: azurerm_private_dns_resolver_dns_forwarding_ruleset
+      pulumi_type: azure:privatedns/resolverDnsForwardingRuleset:ResolverDnsForwardingRuleset
+      id_format: "{dns_forwarding_ruleset_id}"
+    - terraform_type: azurerm_private_dns_resolver_forwarding_rule
+      pulumi_type: azure:privatedns/resolverForwardingRule:ResolverForwardingRule
+      id_format: "{dns_forwarding_ruleset_id}/forwardingRules/{forwarding_rule_name}"
+    - terraform_type: azurerm_private_dns_resolver_virtual_network_link
+      pulumi_type: azure:privatedns/resolverVirtualNetworkLink:ResolverVirtualNetworkLink
+      id_format: "{virtual_network_link_id}"

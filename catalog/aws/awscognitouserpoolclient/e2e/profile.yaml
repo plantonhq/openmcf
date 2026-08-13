@@ -8,12 +8,20 @@ spec:
   # verify (DescribeUserPoolClient on the composite pool-id/client-id
   # identity), destroy, and verify-destroyed on both provisioners. The lane
   # exercises the confidential arm (generate_secret), OAuth code flow,
-  # unit-carrying token lifetimes, and refresh-token rotation. Pinpoint
-  # analytics is excluded (needs a Pinpoint project); wiring is proven by the
-  # offline gate.
+  # unit-carrying token lifetimes, and refresh-token rotation with the
+  # EXPLICIT-ZERO grace period (the tri-state repair's newly expressible
+  # state). Pinpoint analytics is excluded (needs a Pinpoint project); the
+  # client-scoped risk-configuration arm is excluded (requires the pool's
+  # PLUS-tier threat protection -- billing posture unverified); wiring for
+  # both is proven by the offline gate.
+  #
+  # Proven live 2026-08-12, both engines. The tri-state repair was
+  # API-evidenced per engine: DescribeUserPoolClient echoed
+  # RefreshTokenRotation.RetryGracePeriodSeconds=0 (the explicit-zero send
+  # path, previously inexpressible on Pulumi and silently forced on
+  # Terraform) alongside AllowedOAuthFlowsUserPoolClient=true (one of the
+  # three state-pinned send convergences).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -36,6 +36,30 @@ spec:
       targetTracking:
         targetValue: 60
         predefinedMetricType: ASGAverageCPUUtilization
+    # A forecast policy staged in observe-only mode AND disabled: the split
+    # predefined form trains on total CPU while capacity is sized against
+    # average CPU. Enable it after the forecast has proven itself.
+    - name: cpu-forecast
+      policyType: PredictiveScaling
+      disabled: true
+      predictiveScaling:
+        targetValue: 60
+        predefinedLoadMetric:
+          metricType: ASGTotalCPUUtilization
+        predefinedScalingMetric:
+          metricType: ASGAverageCPUUtilization
+  # Retain instances whose terminate hook times out into ABANDON -- the
+  # post-mortem posture for fleets with drain hooks.
+  instanceLifecyclePolicy:
+    terminateHookAbandon: retain
+  lifecycleHooks:
+    # apply_at_launch attaches the hook atomically at group creation, so
+    # even the very first instance is caught by the warm-up pause.
+    - name: warm-cache
+      lifecycleTransition: autoscaling:EC2_INSTANCE_LAUNCHING
+      defaultResult: CONTINUE
+      heartbeatTimeoutSeconds: 120
+      applyAtLaunch: true
   enabledMetrics:
     - GroupMinSize
     - GroupMaxSize

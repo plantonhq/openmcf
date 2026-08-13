@@ -32,11 +32,6 @@ metadata:
   org: test-org
   env: dev
   id: test-ses-identity-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSesEmailIdentity.test-ses-identity
 spec:
   region: us-west-2
   emailIdentity: mail.example.com
@@ -58,7 +53,7 @@ spec:
 | `spec.mailFrom` | `AwsSesEmailIdentityMailFrom` |  |  |  |
 | `spec.mailFrom.mailFromDomain` | `string` | yes |  |  |
 | `spec.mailFrom.behaviorOnMxFailure` | `string` |  | `USE_DEFAULT_VALUE` |  |
-| `spec.emailForwardingEnabled` | `bool` |  | `true` |  |
+| `spec.emailForwardingEnabled` | `bool` |  |  |  |
 | `spec.policies` | `[]AwsSesEmailIdentityPolicy` |  |  |  |
 | `spec.policies[].name` | `string` | yes |  |  |
 | `spec.policies[].policy` | `object` | yes |  |  |
@@ -109,6 +104,7 @@ configuration; leave unset for email-address identities (they inherit
 the domain's DKIM when the domain is also verified) and to accept
 Easy DKIM with a 2048-bit key, the AWS default, on domains.
 
+- rule: dkim_signing must configure an arm -- next_signing_key_length (Easy DKIM) or the BYODKIM key/selector pair; omit the block to accept AWS's Easy DKIM default
 - rule: domain_signing_private_key and domain_signing_selector must be set together (the BYODKIM pair)
 - rule: next_signing_key_length (Easy DKIM) cannot be combined with the BYODKIM key/selector pair
 
@@ -120,9 +116,9 @@ Easy DKIM: the RSA key length AWS generates for the NEXT signing key
 -- "RSA_1024_BIT" or "RSA_2048_BIT" (prefer 2048, the AWS default;
 1024 exists for DNS providers with 255-character TXT limits).
 Setting it on a live identity rotates the key. Mutually exclusive
-with the BYODKIM pair.
+with the BYODKIM pair (empty when BYODKIM is used).
 
-- rule: {"string":{"in":["RSA_1024_BIT","RSA_2048_BIT"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["RSA_1024_BIT","RSA_2048_BIT"]}}
 
 ### spec.dkimSigning.domainSigningPrivateKey
 
@@ -186,11 +182,17 @@ broken:
 `bool` · optional (explicit presence)
 
 Whether bounce and complaint notifications are forwarded by email to
-the identity's mailbox. Defaults to true (the AWS default). Turn it
-off once event destinations or SNS feedback handle bounces --
-forwarding is the fallback channel, not the production one.
-
-- default: `true`
+the identity's mailbox. Tri-state: leave UNSET to accept AWS's own
+default (forwarding on) with no managed setting at all; set true or
+false to pin the position explicitly -- the modules materialize the
+feedback sub-resource only when a position is taken. Turn it off once
+event destinations or SNS feedback handle bounces -- forwarding is the
+fallback channel, not the production one. One retention caveat
+(live-verified 2026-08-12): SES remembers the LAST-WRITTEN forwarding
+value per identity name, surviving even DeleteEmailIdentity and
+re-creation -- so on an identity that was ever explicitly managed,
+clearing this field stops managing the setting but does NOT restore
+AWS's default; set true explicitly to turn forwarding back on.
 
 ### spec.policies
 
@@ -245,6 +247,16 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.configurationSet` | AwsSesConfigurationSet | `status.outputs.configuration_set_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsCognitoUserPool | `spec.emailConfiguration.sourceArn` | `status.outputs.identity_arn` |
+| AwsCognitoUserPool | `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
+| AwsCognitoUserPoolClient | `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
 
 ## See Also
 

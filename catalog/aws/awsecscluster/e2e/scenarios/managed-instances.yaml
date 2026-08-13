@@ -1,0 +1,81 @@
+# Managed-instances ECS cluster scenario: the ECS Managed Instances
+# capacity provider, where ECS itself launches and retires EC2 instances
+# from attribute-based requirements -- no auto-scaling group, AMI, or user
+# data. Creating the provider launches NOTHING (instances appear only when
+# a service schedules tasks onto it, which this scenario never does), so
+# the whole lane is free: it proves the provider materializes, the
+# infrastructure-role and instance-profile references resolve, and the
+# association PUT unions the provider with the FARGATE built-in. A failed
+# association here is usually iam:PassRole on the caller for the
+# infrastructure role, not a module defect.
+#
+# The e2e-prerequisites annotation composes the instance-profile fixture
+# (its registry graph pulls the shared role install profile, which carries
+# the ecs.amazonaws.com-trusted infrastructure role), the two-AZ subnet
+# pair for network placement, and the security-group fixture -- AWS's
+# CreateCapacityProvider REQUIRES security groups in a managed-instances
+# network configuration (live-verified 400 without them; there is no
+# VPC-default fall-back on this path, unlike EC2 launches).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEcsCluster
+metadata:
+  name: planton-oss-e2e-ecs-mi-smoke
+  id: planton-oss-e2e-ecs-mi-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsecscluster
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamInstanceProfile, AwsSubnet, AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  containerInsights: enabled
+  capacityProviders:
+    - FARGATE
+  managedInstancesCapacityProviders:
+    - name: planton-oss-e2e-mi-general
+      infrastructureRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-ecs-mi-infra-role
+          fieldPath: status.outputs.role_arn
+      instanceLaunchTemplate:
+        ec2InstanceProfileArn:
+          valueFrom:
+            kind: AwsIamInstanceProfile
+            name: planton-oss-e2e-awsiaminstanceprofile-prereq
+            fieldPath: status.outputs.instance_profile_arn
+        networkConfiguration:
+          subnets:
+            - valueFrom:
+                kind: AwsSubnet
+                name: planton-oss-e2e-awssubnet-prereq-a
+                fieldPath: status.outputs.subnet_id
+            - valueFrom:
+                kind: AwsSubnet
+                name: planton-oss-e2e-awssubnet-prereq-b
+                fieldPath: status.outputs.subnet_id
+          securityGroups:
+            - valueFrom:
+                kind: AwsSecurityGroup
+                name: planton-oss-e2e-awssg-prereq
+                fieldPath: status.outputs.security_group_id
+        instanceRequirements:
+          memoryMib:
+            min: 2048
+          vcpuCount:
+            min: 1
+        monitoring: BASIC
+  # The default strategy deliberately names the FARGATE built-in, not the
+  # MI provider: a strategy naming a just-created MI provider races its
+  # seconds-long provisioning on first apply (AWS rejects the PUT with
+  # "not in an ACTIVE state" -- documented on the spec field). The MI
+  # attachment itself is verified via the cluster's provider list and
+  # DescribeCapacityProviders, not via the strategy.
+  defaultCapacityProviderStrategy:
+    - capacityProvider: FARGATE
+      weight: 1

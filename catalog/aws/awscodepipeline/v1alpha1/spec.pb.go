@@ -54,7 +54,10 @@ type AwsCodePipelineSpec struct {
 	//	V1: Legacy pipeline (no triggers, no variables, SUPERSEDED execution only)
 	//	V2: Modern pipeline with triggers, variables, and advanced execution modes
 	//
-	// Default: V2 (recommended for all new pipelines).
+	// Default: V2 (recommended for all new pipelines). The platform materializes
+	// this default when the manifest is loaded; the AWS provider's own default
+	// is V1, so a raw module invocation that bypasses manifest loading and
+	// omits this field deploys a V1 pipeline.
 	PipelineType *string `protobuf:"bytes,2,opt,name=pipeline_type,json=pipelineType,proto3,oneof" json:"pipeline_type,omitempty"`
 	// execution_mode controls how concurrent pipeline executions are handled.
 	//
@@ -530,13 +533,15 @@ type AwsCodePipelineRule struct {
 	RuleTypeId *AwsCodePipelineRuleTypeId `protobuf:"bytes,2,opt,name=rule_type_id,json=ruleTypeId,proto3" json:"rule_type_id,omitempty"`
 	// configuration contains rule-provider-specific key-value pairs (e.g.,
 	// DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-	// WaitTime; LambdaInvoke: FunctionName).
+	// WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+	// characters (AWS's rule-configuration value cap).
 	Configuration map[string]string `protobuf:"bytes,3,rep,name=configuration,proto3" json:"configuration,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// commands are shell commands executed by the Commands rule provider
 	// (max 50, each 1-1000 characters).
 	Commands []string `protobuf:"bytes,4,rep,name=commands,proto3" json:"commands,omitempty"`
 	// input_artifacts are artifact names available to the rule (e.g., for
-	// Commands rules operating on build output).
+	// Commands rules operating on build output). Each name 1-100 characters,
+	// alphanumeric with underscores and hyphens.
 	InputArtifacts []string `protobuf:"bytes,5,rep,name=input_artifacts,json=inputArtifacts,proto3" json:"input_artifacts,omitempty"`
 	// region is the AWS region where the rule executes. Omit to run in the
 	// pipeline's region.
@@ -763,6 +768,8 @@ type AwsCodePipelineAction struct {
 	//	Lambda:                   FunctionName, UserParameters
 	//	Manual (approval):        CustomData, ExternalEntityLink, NotificationArn
 	//	CloudFormation:           ActionMode, StackName, TemplatePath, RoleArn
+	//
+	// Keys are limited to 50 characters (AWS's action-configuration key cap).
 	Configuration map[string]string `protobuf:"bytes,6,rep,name=configuration,proto3" json:"configuration,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// input_artifacts are artifact names from previous stages or actions
 	// that this action consumes. For Source actions, this is typically empty.
@@ -788,10 +795,29 @@ type AwsCodePipelineAction struct {
 	// timeout_in_minutes overrides the action type's default timeout.
 	// Range: 5-86400 (60 days). AWS supports this override ONLY on Manual
 	// Approval actions (category Approval, provider Manual) — every other
-	// action type is rejected at pipeline creation.
+	// action type is rejected at pipeline creation. (The provider validates
+	// only the numeric range; the Approval-only scope is AWS's own API
+	// contract, mirrored here as validation.)
 	TimeoutInMinutes int32 `protobuf:"varint,13,opt,name=timeout_in_minutes,json=timeoutInMinutes,proto3" json:"timeout_in_minutes,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// commands are shell commands run by a Compute action (category Compute,
+	// provider Commands) — inline CI steps without standing up a CodeBuild
+	// project. CodeBuild logs and permissions are used under the hood, and
+	// running commands bills CodeBuild compute time per execution. All
+	// command forms are supported except multi-line formats. Max 50 commands,
+	// each 1-1000 characters. AWS ignores this field on non-Compute actions.
+	Commands []string `protobuf:"bytes,14,rep,name=commands,proto3" json:"commands,omitempty"`
+	// output_artifacts_for_compute_action declares the file artifacts a
+	// Compute action exports (Compute actions use this INSTEAD of
+	// output_artifacts — AWS ignores plain output artifact names on Compute
+	// actions and file-based artifacts on every other category).
+	OutputArtifactsForComputeAction []*AwsCodePipelineComputeOutputArtifact `protobuf:"bytes,15,rep,name=output_artifacts_for_compute_action,json=outputArtifactsForComputeAction,proto3" json:"output_artifacts_for_compute_action,omitempty"`
+	// output_variables lists variable names a Compute action exports (these
+	// are the CodeBuild environment variables the commands set). Downstream
+	// actions reference them through this action's namespace as
+	// #{namespace.VariableName}. Max 15 names, each 1-128 characters.
+	OutputVariables []string `protobuf:"bytes,16,rep,name=output_variables,json=outputVariables,proto3" json:"output_variables,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsCodePipelineAction) Reset() {
@@ -915,6 +941,85 @@ func (x *AwsCodePipelineAction) GetTimeoutInMinutes() int32 {
 	return 0
 }
 
+func (x *AwsCodePipelineAction) GetCommands() []string {
+	if x != nil {
+		return x.Commands
+	}
+	return nil
+}
+
+func (x *AwsCodePipelineAction) GetOutputArtifactsForComputeAction() []*AwsCodePipelineComputeOutputArtifact {
+	if x != nil {
+		return x.OutputArtifactsForComputeAction
+	}
+	return nil
+}
+
+func (x *AwsCodePipelineAction) GetOutputVariables() []string {
+	if x != nil {
+		return x.OutputVariables
+	}
+	return nil
+}
+
+// AwsCodePipelineComputeOutputArtifact is a file-based output artifact
+// exported by a Compute action: a named artifact assembled from the files
+// the action's commands produce.
+type AwsCodePipelineComputeOutputArtifact struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// name is the output artifact name, unique within the pipeline.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// files are the paths (relative to the compute working directory) to
+	// include in the exported artifact. Max 10 paths, each 1-128 characters.
+	Files         []string `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCodePipelineComputeOutputArtifact) Reset() {
+	*x = AwsCodePipelineComputeOutputArtifact{}
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCodePipelineComputeOutputArtifact) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCodePipelineComputeOutputArtifact) ProtoMessage() {}
+
+func (x *AwsCodePipelineComputeOutputArtifact) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCodePipelineComputeOutputArtifact.ProtoReflect.Descriptor instead.
+func (*AwsCodePipelineComputeOutputArtifact) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsCodePipelineComputeOutputArtifact) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsCodePipelineComputeOutputArtifact) GetFiles() []string {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
 // AwsCodePipelineTrigger defines an automatic pipeline execution trigger
 // based on git events. V2 pipelines only.
 type AwsCodePipelineTrigger struct {
@@ -930,7 +1035,7 @@ type AwsCodePipelineTrigger struct {
 
 func (x *AwsCodePipelineTrigger) Reset() {
 	*x = AwsCodePipelineTrigger{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -942,7 +1047,7 @@ func (x *AwsCodePipelineTrigger) String() string {
 func (*AwsCodePipelineTrigger) ProtoMessage() {}
 
 func (x *AwsCodePipelineTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[9]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -955,7 +1060,7 @@ func (x *AwsCodePipelineTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineTrigger.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineTrigger) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AwsCodePipelineTrigger) GetProviderType() string {
@@ -992,7 +1097,7 @@ type AwsCodePipelineGitConfiguration struct {
 
 func (x *AwsCodePipelineGitConfiguration) Reset() {
 	*x = AwsCodePipelineGitConfiguration{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1004,7 +1109,7 @@ func (x *AwsCodePipelineGitConfiguration) String() string {
 func (*AwsCodePipelineGitConfiguration) ProtoMessage() {}
 
 func (x *AwsCodePipelineGitConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[10]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1017,7 +1122,7 @@ func (x *AwsCodePipelineGitConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineGitConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineGitConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *AwsCodePipelineGitConfiguration) GetSourceActionName() string {
@@ -1057,7 +1162,7 @@ type AwsCodePipelineGitPush struct {
 
 func (x *AwsCodePipelineGitPush) Reset() {
 	*x = AwsCodePipelineGitPush{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1069,7 +1174,7 @@ func (x *AwsCodePipelineGitPush) String() string {
 func (*AwsCodePipelineGitPush) ProtoMessage() {}
 
 func (x *AwsCodePipelineGitPush) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[11]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1082,7 +1187,7 @@ func (x *AwsCodePipelineGitPush) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineGitPush.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineGitPush) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{11}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AwsCodePipelineGitPush) GetBranches() *AwsCodePipelineGitFilter {
@@ -1125,7 +1230,7 @@ type AwsCodePipelineGitPullRequest struct {
 
 func (x *AwsCodePipelineGitPullRequest) Reset() {
 	*x = AwsCodePipelineGitPullRequest{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1137,7 +1242,7 @@ func (x *AwsCodePipelineGitPullRequest) String() string {
 func (*AwsCodePipelineGitPullRequest) ProtoMessage() {}
 
 func (x *AwsCodePipelineGitPullRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1150,7 +1255,7 @@ func (x *AwsCodePipelineGitPullRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineGitPullRequest.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineGitPullRequest) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsCodePipelineGitPullRequest) GetBranches() *AwsCodePipelineGitFilter {
@@ -1190,7 +1295,7 @@ type AwsCodePipelineGitFilter struct {
 
 func (x *AwsCodePipelineGitFilter) Reset() {
 	*x = AwsCodePipelineGitFilter{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1202,7 +1307,7 @@ func (x *AwsCodePipelineGitFilter) String() string {
 func (*AwsCodePipelineGitFilter) ProtoMessage() {}
 
 func (x *AwsCodePipelineGitFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1215,7 +1320,7 @@ func (x *AwsCodePipelineGitFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineGitFilter.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineGitFilter) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsCodePipelineGitFilter) GetIncludes() []string {
@@ -1249,7 +1354,7 @@ type AwsCodePipelineVariable struct {
 
 func (x *AwsCodePipelineVariable) Reset() {
 	*x = AwsCodePipelineVariable{}
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1261,7 +1366,7 @@ func (x *AwsCodePipelineVariable) String() string {
 func (*AwsCodePipelineVariable) ProtoMessage() {}
 
 func (x *AwsCodePipelineVariable) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1274,7 +1379,7 @@ func (x *AwsCodePipelineVariable) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsCodePipelineVariable.ProtoReflect.Descriptor instead.
 func (*AwsCodePipelineVariable) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AwsCodePipelineVariable) GetName() string {
@@ -1345,14 +1450,14 @@ const file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc = "" +
 	")retry_configuration_requires_retry_result\x12/retry_configuration requires result to be RETRY\x1a8!has(this.retry_configuration) || this.result == 'RETRY'\"i\n" +
 	"!AwsCodePipelineRetryConfiguration\x12D\n" +
 	"\n" +
-	"retry_mode\x18\x01 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1dR\x0eFAILED_ACTIONSR\vALL_ACTIONSR\tretryMode\"\x94\x05\n" +
+	"retry_mode\x18\x01 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1dR\x0eFAILED_ACTIONSR\vALL_ACTIONSR\tretryMode\"\xc9\x05\n" +
 	"\x13AwsCodePipelineRule\x125\n" +
 	"\x04name\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19\x10\x01\x18d2\x13^[A-Za-z0-9.@\\-_]+$R\x04name\x12m\n" +
 	"\frule_type_id\x18\x02 \x01(\v2C.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRuleTypeIdB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"ruleTypeId\x12v\n" +
-	"\rconfiguration\x18\x03 \x03(\v2P.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntryR\rconfiguration\x12-\n" +
-	"\bcommands\x18\x04 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x102\"\ar\x05\x10\x01\x18\xe8\aR\bcommands\x12'\n" +
-	"\x0finput_artifacts\x18\x05 \x03(\tR\x0einputArtifacts\x12\x16\n" +
+	"ruleTypeId\x12\x87\x01\n" +
+	"\rconfiguration\x18\x03 \x03(\v2P.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntryB\x0f\xbaH\f\x9a\x01\t*\ar\x05\x10\x01\x18\x90NR\rconfiguration\x12-\n" +
+	"\bcommands\x18\x04 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x102\"\ar\x05\x10\x01\x18\xe8\aR\bcommands\x12J\n" +
+	"\x0finput_artifacts\x18\x05 \x03(\tB!\xbaH\x1e\x92\x01\x1b\"\x19r\x17\x10\x01\x18d2\x11^[a-zA-Z0-9_\\-]+$R\x0einputArtifacts\x12\x16\n" +
 	"\x06region\x18\x06 \x01(\tR\x06region\x12o\n" +
 	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12<\n" +
 	"\x12timeout_in_minutes\x18\b \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x05R\x10timeoutInMinutes\x1a@\n" +
@@ -1367,15 +1472,15 @@ const file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc = "" +
 	"\x03AWS\x8a\xa6\x1d\x03AWSH\x01R\x05owner\x88\x01\x01\x127\n" +
 	"\aversion\x18\x04 \x01(\tB\x1d\xbaH\x1a\xd8\x01\x01r\x15\x18\t2\x11^[0-9A-Za-z_\\-]+$R\aversionB\v\n" +
 	"\t_categoryB\b\n" +
-	"\x06_owner\"\xb7\b\n" +
+	"\x06_owner\"\x81\x0e\n" +
 	"\x15AwsCodePipelineAction\x125\n" +
 	"\x04name\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19\x10\x01\x18d2\x13^[0-9A-Za-z_.@\\-]+$R\x04name\x12\\\n" +
 	"\bcategory\x18\x02 \x01(\tB@\xbaH=\xc8\x01\x01r8R\x06SourceR\x05BuildR\x04TestR\x06DeployR\bApprovalR\x06InvokeR\aComputeR\bcategory\x127\n" +
 	"\x05owner\x18\x03 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19R\x03AWSR\n" +
 	"ThirdPartyR\x06CustomR\x05owner\x12(\n" +
 	"\bprovider\x18\x04 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18#R\bprovider\x12&\n" +
-	"\aversion\x18\x05 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18\tR\aversion\x12x\n" +
-	"\rconfiguration\x18\x06 \x03(\v2R.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntryR\rconfiguration\x12'\n" +
+	"\aversion\x18\x05 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x10\x01\x18\tR\aversion\x12\x88\x01\n" +
+	"\rconfiguration\x18\x06 \x03(\v2R.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntryB\x0e\xbaH\v\x9a\x01\b\"\x06r\x04\x10\x01\x182R\rconfiguration\x12'\n" +
 	"\x0finput_artifacts\x18\a \x03(\tR\x0einputArtifacts\x12)\n" +
 	"\x10output_artifacts\x18\b \x03(\tR\x0foutputArtifacts\x12<\n" +
 	"\tnamespace\x18\t \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x16\x18d2\x12^[0-9A-Za-z_@\\-]+$R\tnamespace\x12\x16\n" +
@@ -1384,11 +1489,20 @@ const file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc = "" +
 	"\brole_arn\x18\v \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12*\n" +
 	"\trun_order\x18\f \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\xe7\a(\x01R\brunOrder\x12<\n" +
-	"\x12timeout_in_minutes\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x05R\x10timeoutInMinutes\x1a@\n" +
+	"\x12timeout_in_minutes\x18\r \x01(\x05B\x0e\xbaH\v\xd8\x01\x01\x1a\x06\x18\x80\xa3\x05(\x05R\x10timeoutInMinutes\x12-\n" +
+	"\bcommands\x18\x0e \x03(\tB\x11\xbaH\x0e\x92\x01\v\x102\"\ar\x05\x10\x01\x18\xe8\aR\bcommands\x12\x9c\x01\n" +
+	"#output_artifacts_for_compute_action\x18\x0f \x03(\v2N.dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineComputeOutputArtifactR\x1foutputArtifactsForComputeAction\x12<\n" +
+	"\x10output_variables\x18\x10 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x10\x0f\"\ar\x05\x10\x01\x18\x80\x01R\x0foutputVariables\x1a@\n" +
 	"\x12ConfigurationEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbc\x01\xbaH\xb8\x01\x1a\xb5\x01\n" +
-	"!timeout_only_for_approval_actions\x12Stimeout_in_minutes is only supported on Manual Approval actions (category Approval)\x1a;this.timeout_in_minutes == 0 || this.category == 'Approval'\"\xe1\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe9\x04\xbaH\xe5\x04\x1a\xb5\x01\n" +
+	"!timeout_only_for_approval_actions\x12Stimeout_in_minutes is only supported on Manual Approval actions (category Approval)\x1a;this.timeout_in_minutes == 0 || this.category == 'Approval'\x1a\xc9\x01\n" +
+	"%compute_action_uses_compute_artifacts\x12`a Compute action exports artifacts via output_artifacts_for_compute_action, not output_artifacts\x1a>this.category != 'Compute' || size(this.output_artifacts) == 0\x1a\xde\x01\n" +
+	")compute_artifacts_only_for_compute_action\x12^output_artifacts_for_compute_action is only supported on Compute actions; use output_artifacts\x1aQthis.category == 'Compute' || size(this.output_artifacts_for_compute_action) == 0\"\x84\x01\n" +
+	"$AwsCodePipelineComputeOutputArtifact\x123\n" +
+	"\x04name\x18\x01 \x01(\tB\x1f\xbaH\x1c\xc8\x01\x01r\x17\x10\x01\x18d2\x11^[a-zA-Z0-9_\\-]+$R\x04name\x12'\n" +
+	"\x05files\x18\x02 \x03(\tB\x11\xbaH\x0e\x92\x01\v\x10\n" +
+	"\"\ar\x05\x10\x01\x18\x80\x01R\x05files\"\xe1\x01\n" +
 	"\x16AwsCodePipelineTrigger\x12G\n" +
 	"\rprovider_type\x18\x01 \x01(\tB\"\xbaH\x1f\xc8\x01\x01r\x1a\n" +
 	"\x18CodeStarSourceConnectionR\fproviderType\x12~\n" +
@@ -1430,35 +1544,36 @@ func file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsCodePipelineSpec)(nil),               // 0: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec
-	(*AwsCodePipelineArtifactStore)(nil),      // 1: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore
-	(*AwsCodePipelineStage)(nil),              // 2: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage
-	(*AwsCodePipelineStageCondition)(nil),     // 3: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageCondition
-	(*AwsCodePipelineFailureHandling)(nil),    // 4: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineFailureHandling
-	(*AwsCodePipelineRetryConfiguration)(nil), // 5: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRetryConfiguration
-	(*AwsCodePipelineRule)(nil),               // 6: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule
-	(*AwsCodePipelineRuleTypeId)(nil),         // 7: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRuleTypeId
-	(*AwsCodePipelineAction)(nil),             // 8: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction
-	(*AwsCodePipelineTrigger)(nil),            // 9: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger
-	(*AwsCodePipelineGitConfiguration)(nil),   // 10: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration
-	(*AwsCodePipelineGitPush)(nil),            // 11: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush
-	(*AwsCodePipelineGitPullRequest)(nil),     // 12: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest
-	(*AwsCodePipelineGitFilter)(nil),          // 13: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	(*AwsCodePipelineVariable)(nil),           // 14: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariable
-	nil,                                       // 15: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntry
-	nil,                                       // 16: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntry
-	(*v1.StringValueOrRef)(nil),               // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCodePipelineSpec)(nil),                  // 0: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec
+	(*AwsCodePipelineArtifactStore)(nil),         // 1: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore
+	(*AwsCodePipelineStage)(nil),                 // 2: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage
+	(*AwsCodePipelineStageCondition)(nil),        // 3: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageCondition
+	(*AwsCodePipelineFailureHandling)(nil),       // 4: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineFailureHandling
+	(*AwsCodePipelineRetryConfiguration)(nil),    // 5: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRetryConfiguration
+	(*AwsCodePipelineRule)(nil),                  // 6: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule
+	(*AwsCodePipelineRuleTypeId)(nil),            // 7: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRuleTypeId
+	(*AwsCodePipelineAction)(nil),                // 8: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction
+	(*AwsCodePipelineComputeOutputArtifact)(nil), // 9: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineComputeOutputArtifact
+	(*AwsCodePipelineTrigger)(nil),               // 10: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger
+	(*AwsCodePipelineGitConfiguration)(nil),      // 11: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration
+	(*AwsCodePipelineGitPush)(nil),               // 12: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush
+	(*AwsCodePipelineGitPullRequest)(nil),        // 13: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest
+	(*AwsCodePipelineGitFilter)(nil),             // 14: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	(*AwsCodePipelineVariable)(nil),              // 15: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariable
+	nil,                                          // 16: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntry
+	nil,                                          // 17: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntry
+	(*v1.StringValueOrRef)(nil),                  // 18: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 0: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 1: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.artifact_stores:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore
 	2,  // 2: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.stages:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage
-	9,  // 3: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.triggers:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger
-	14, // 4: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.variables:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariable
-	17, // 5: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 6: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore.encryption_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 3: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.triggers:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger
+	15, // 4: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineSpec.variables:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineVariable
+	18, // 5: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore.location:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	18, // 6: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineArtifactStore.encryption_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	8,  // 7: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage.actions:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction
 	3,  // 8: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage.before_entry:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageCondition
 	3,  // 9: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStage.on_success:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageCondition
@@ -1467,23 +1582,24 @@ var file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_depIdxs = []int32{
 	5,  // 12: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineFailureHandling.retry_configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRetryConfiguration
 	3,  // 13: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineFailureHandling.condition:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineStageCondition
 	7,  // 14: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.rule_type_id:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRuleTypeId
-	15, // 15: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntry
-	17, // 16: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 17: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntry
-	17, // 18: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 19: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger.git_configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration
-	11, // 20: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration.push:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush
-	12, // 21: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration.pull_request:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest
-	13, // 22: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.branches:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	13, // 23: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.file_paths:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	13, // 24: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.tags:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	13, // 25: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest.branches:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	13, // 26: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest.file_paths:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
-	27, // [27:27] is the sub-list for method output_type
-	27, // [27:27] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	16, // 15: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.ConfigurationEntry
+	18, // 16: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineRule.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 17: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.ConfigurationEntry
+	18, // 18: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 19: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineAction.output_artifacts_for_compute_action:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineComputeOutputArtifact
+	11, // 20: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineTrigger.git_configuration:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration
+	12, // 21: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration.push:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush
+	13, // 22: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitConfiguration.pull_request:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest
+	14, // 23: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.branches:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	14, // 24: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.file_paths:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	14, // 25: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPush.tags:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	14, // 26: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest.branches:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	14, // 27: dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitPullRequest.file_paths:type_name -> dev.planton.aws.awscodepipeline.v1alpha1.AwsCodePipelineGitFilter
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_init() }
@@ -1499,7 +1615,7 @@ func file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awscodepipeline_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

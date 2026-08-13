@@ -1,0 +1,325 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuresearchservice.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureSearchServiceSpec** defines an Azure AI Search service (ARM:
+// Microsoft.Search/searchServices) -- the managed search-and-retrieval
+// engine AI applications use to index and query their own data
+// (keyword, vector, and semantic search). AI Search is the standard
+// retrieval companion to Azure OpenAI (the "R" in RAG).
+//
+// Capacity is sku x partitions x replicas: the SKU fixes the
+// per-unit size and price class, partitions scale storage and
+// indexing, replicas scale query throughput and availability.
+// Partitions and replicas resize in place; the SKU upgrades in place
+// ONLY along basic -> standard -> standard2 -> standard3 -- every
+// other SKU change (downgrades, free, storage-optimized) replaces
+// the service (the provider's own update contract).
+message AzureSearchServiceSpec {
+  // The Azure region the service lives in, e.g. "eastus". Higher
+  // SKUs are not available in every region. Changing the region
+  // replaces the service.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the service is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The service's name -- GLOBALLY unique across all of Azure: it
+  // forms the service's endpoint, https://{name}.search.windows.net.
+  // The provider deliberately carries no format rule (ARM enforces
+  // its own naming at create); a name-taken error at deploy means a
+  // genuine global collision. Changing the name replaces the
+  // service.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The service's pricing tier (the wire values). "free" is one
+  // shared-cluster service per subscription; "basic" and the
+  // "standard" tiers are the paid dedicated clusters; the
+  // "storage_optimized_l1"/"l2" tiers trade query latency for large
+  // indexes. NOTE: "standard2", "standard3" and both
+  // storage-optimized tiers require a quota increase request to
+  // Microsoft before ARM accepts them. In-place upgrade works ONLY
+  // along basic -> standard -> standard2 -> standard3; every other
+  // change replaces the service.
+  string sku = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "basic",
+        "free",
+        "standard",
+        "standard2",
+        "standard3",
+        "storage_optimized_l1",
+        "storage_optimized_l2"
+      ]
+    }
+  ];
+
+  // How many replicas the service runs -- query throughput and
+  // availability (3+ replicas give a 99.9% read-write SLA).
+  // Unspecified applies 1. Caps: 1 on "free", 3 on "basic", 12
+  // elsewhere. Resizes in place.
+  optional int32 replica_count = 5 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1,
+    (buf.validate.field).int32.lte = 12
+  ];
+
+  // How many partitions the service runs -- index storage and
+  // indexing throughput. Unspecified applies 1. Legal values are 1,
+  // 2, 3, 4, 6 or 12; capped at 1 on "free", 3 on "basic", and 3 in
+  // high-density hosting. Resizes in place.
+  optional int32 partition_count = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      in: [
+        1,
+        2,
+        3,
+        4,
+        6,
+        12
+      ]
+    }
+  ];
+
+  // The hosting mode. HIGH_DENSITY packs up to 3000 small indexes
+  // per service (multi-tenant SaaS pattern) and is only legal on the
+  // "standard3" SKU. Unspecified applies DEFAULT. Fixed at creation.
+  AzureSearchServiceHostingMode hosting_mode = 7;
+
+  // Whether API-key authentication is enabled on the data plane.
+  // Unspecified applies true. Set false for the RBAC-only posture --
+  // the admin/query keys stop working, and
+  // authentication_failure_mode must stay unset (the provider's own
+  // contract). Updates in place.
+  optional bool local_authentication_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // How the service answers data-plane requests that fail Microsoft
+  // Entra authentication when BOTH auth modes are on (the wire
+  // values): "http401WithBearerChallenge" or "http403". Setting this
+  // is what enables the RBAC-alongside-API-keys mode; leave unset
+  // for API keys only. Only legal while
+  // local_authentication_enabled is true.
+  string authentication_failure_mode = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "http401WithBearerChallenge",
+        "http403"
+      ]
+    }
+  ];
+
+  // Enforce that every index/indexer uses a customer-managed key --
+  // the service reports non-compliant objects and blocks new ones
+  // without CMK. The keys themselves are configured per index at the
+  // data plane. Updates in place.
+  bool customer_managed_key_enforcement_enabled = 10;
+
+  // Whether the service's endpoint answers the public internet.
+  // Unspecified applies true. Set false to make the service
+  // reachable only through private endpoints. Updates in place.
+  optional bool public_network_access_enabled = 11 [(dev.planton.shared.options.default) = "true"];
+
+  // The semantic-ranking tier (the wire values): "free" (1000
+  // requests/month) or "standard" (unlimited, billed). Leave unset
+  // to keep semantic ranking disabled. Not available on the "free"
+  // service SKU. Updates in place.
+  string semantic_search_sku = 12 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "free",
+        "standard"
+      ]
+    }
+  ];
+
+  // IPv4 addresses or CIDR ranges allowed through the service's
+  // firewall (e.g. "203.0.113.7" or "203.0.113.0/24"). An empty list
+  // leaves the endpoint open to the internet while
+  // public_network_access_enabled is true. Updates in place.
+  repeated string allowed_ips = 13 [(buf.validate.field).repeated.items.string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}(/([0-9]|[1-2][0-9]|3[0-2]))?$"];
+
+  // Whether trusted Azure services may bypass the IP firewall (the
+  // wire values): "AzureServices" or "None". Unspecified applies
+  // "None". Updates in place.
+  string network_rule_bypass_option = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AzureServices",
+        "None"
+      ]
+    }
+  ];
+
+  // The service's managed identity -- what indexers use to reach
+  // data sources without connection-string secrets.
+  AzureSearchServiceIdentity identity = 15;
+
+  // Free-form tags applied to the service, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 16;
+
+  // Shared private links from THIS search service out to other Azure
+  // resources -- how the service's indexers reach data sources that
+  // sit behind private endpoints. Each entry deploys as its own ARM
+  // child (.../sharedPrivateLinkResources/{name}); ids surface
+  // name-keyed in the shared_private_link_service_ids output. The
+  // target side must APPROVE the connection before traffic flows
+  // (the link sits "Pending" until then).
+  repeated AzureSearchServiceSharedPrivateLink shared_private_link_services = 17;
+
+  // The provider enforces every contract below in its own code at
+  // apply time; front-loaded here so the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "high_density_requires_standard3"
+    message: "hosting_mode HIGH_DENSITY is only available on the standard3 sku"
+    expression: "this.hosting_mode != 2 || this.sku == 'standard3'"
+  };
+  option (buf.validate.message).cel = {
+    id: "partition_count_free_sku_cap"
+    message: "the free sku supports a single partition -- leave partition_count unset or 1"
+    expression: "this.sku != 'free' || !has(this.partition_count) || this.partition_count <= 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "partition_count_basic_sku_cap"
+    message: "the basic sku supports at most 3 partitions"
+    expression: "this.sku != 'basic' || !has(this.partition_count) || this.partition_count <= 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "partition_count_high_density_cap"
+    message: "standard3 in HIGH_DENSITY hosting supports at most 3 partitions"
+    expression: "!(this.sku == 'standard3' && this.hosting_mode == 2) || !has(this.partition_count) || this.partition_count <= 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "replica_count_free_sku_cap"
+    message: "the free sku supports a single replica -- leave replica_count unset or 1"
+    expression: "this.sku != 'free' || !has(this.replica_count) || this.replica_count <= 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "replica_count_basic_sku_cap"
+    message: "the basic sku supports at most 3 replicas"
+    expression: "this.sku != 'basic' || !has(this.replica_count) || this.replica_count <= 3"
+  };
+  option (buf.validate.message).cel = {
+    id: "auth_failure_mode_requires_local_auth"
+    message: "authentication_failure_mode only applies while local_authentication_enabled is true -- in the RBAC-only posture, remove it"
+    expression: "this.authentication_failure_mode == '' || !has(this.local_authentication_enabled) || this.local_authentication_enabled"
+  };
+  option (buf.validate.message).cel = {
+    id: "semantic_search_not_on_free_sku"
+    message: "semantic_search_sku cannot be set on the free service sku"
+    expression: "this.sku != 'free' || this.semantic_search_sku == ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "shared_private_link_names_unique"
+    message: "shared private link names must be unique within the service"
+    expression: "this.shared_private_link_services.map(r, r.name).unique()"
+  };
+}
+
+// The service's hosting mode.
+enum AzureSearchServiceHostingMode {
+  // Not specified: the provider applies its default, "default".
+  azure_search_service_hosting_mode_unspecified = 0;
+
+  // Normal index density (wire value "default").
+  DEFAULT = 1;
+
+  // Up to 3000 small indexes on one service, standard3 SKU only
+  // (wire value "highDensity").
+  HIGH_DENSITY = 2;
+}
+
+// The service's managed identity.
+message AzureSearchServiceIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the service; USER_ASSIGNED brings identities you manage
+  // (grantable data-source access BEFORE the service exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureSearchServiceIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the service, by ARM ID.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The service's managed-identity flavor.
+enum AzureSearchServiceIdentityType {
+  // Not specified: rejected when the identity block is present.
+  azure_search_service_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the service.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// One shared private link from the search service to another Azure
+// resource (ARM child: .../sharedPrivateLinkResources/{name}). Every
+// field except request_message is fixed at creation.
+message AzureSearchServiceSharedPrivateLink {
+  // The link's name, unique within the service. The link's ARM id
+  // surfaces in the shared_private_link_service_ids output under
+  // this name. Changing the name replaces the link.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The target's sub-resource (group id) the private link binds --
+  // must match the target resource's type: a storage account takes
+  // "blob"/"table"/"queue"/"file"/"dfs"/"web", a SQL server
+  // "sqlServer", a Key Vault "vault", a Cognitive/OpenAI account
+  // "account", another search-reachable service its own documented
+  // group id. 3-63 characters, alphanumeric at both ends.
+  string subresource_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_.-]{1,61}[a-zA-Z0-9]$"
+  ];
+
+  // The Azure resource the private link points at, by ARM ID. No
+  // default reference kind -- the target can be any of several kinds
+  // (storage account, SQL server, Key Vault, Cognitive account, ...);
+  // name the kind explicitly in valueFrom when referencing.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 3 [(buf.validate.field).required = true];
+
+  // The approval-request message shown to the target resource's
+  // owner (the link sits "Pending" until they approve). Updates in
+  // place -- the only field on the link that does.
+  string request_message = 4;
+}

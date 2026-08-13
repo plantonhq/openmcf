@@ -32,6 +32,9 @@ through referenced roles and the exported OIDC issuer -- lets you:
   VPC (inspection/firewall architectures) or isolate it.
 - **Address families**: `ipv4` or `ipv6` pod/service networking with a
   custom service CIDR.
+- **Hybrid nodes**: declare the on-premises/edge node and pod CIDR
+  ranges allowed to join over VPN/Direct Connect -- one cluster, cloud
+  and on-prem capacity; ranges update in place.
 
 ### Security Posture
 
@@ -48,6 +51,9 @@ through referenced roles and the exported OIDC issuer -- lets you:
 
 - **Upgrade support tier**: standard schedule or extended support (with
   its surcharge) -- an explicit, reviewable choice.
+- **Provisioned control-plane scaling**: pre-provision API-server
+  capacity (`tier-xl` through `tier-8xl`, billed hourly) for very large
+  or bursty clusters; `standard` keeps EKS's free reactive scaling.
 - **Zonal shift** for automatic traffic movement away from an impaired
   availability zone.
 - **EKS Auto Mode**: AWS-managed compute, block storage, and load

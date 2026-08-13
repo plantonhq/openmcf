@@ -50,9 +50,22 @@ type AwsVpcStackOutputs struct {
 	DefaultRouteTableId string `protobuf:"bytes,9,opt,name=default_route_table_id,json=defaultRouteTableId,proto3" json:"default_route_table_id,omitempty"`
 	// The region the VPC was created in (mirrors spec.region, included for
 	// convenience).
-	Region        string `protobuf:"bytes,10,opt,name=region,proto3" json:"region,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Region string `protobuf:"bytes,10,opt,name=region,proto3" json:"region,omitempty"`
+	// The association IDs ("vpc-cidr-assoc-...") of the secondary IPv4 CIDR
+	// blocks, keyed exactly as the module keys each association: by the
+	// entry's literal CIDR, or "ipam-<index>" for IPAM-sized entries. These
+	// are the handles `aws ec2 disassociate-vpc-cidr-block` and state import
+	// take; AWS generates them at association time.
+	SecondaryIpv4CidrAssociationIds map[string]string `protobuf:"bytes,11,rep,name=secondary_ipv4_cidr_association_ids,json=secondaryIpv4CidrAssociationIds,proto3" json:"secondary_ipv4_cidr_association_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The association IDs of the secondary IPv6 CIDR blocks, keyed exactly as
+	// the module keys each association: by the entry's pinned CIDR, or
+	// "ipv6-<index>" for Amazon-provided/BYOIP-pool/IPAM entries.
+	SecondaryIpv6CidrAssociationIds map[string]string `protobuf:"bytes,12,rep,name=secondary_ipv6_cidr_association_ids,json=secondaryIpv6CidrAssociationIds,proto3" json:"secondary_ipv6_cidr_association_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// The ID ("vpcec-...") of the VPC Encryption Control resource, empty when
+	// spec.encryption_control is not configured.
+	EncryptionControlId string `protobuf:"bytes,13,opt,name=encryption_control_id,json=encryptionControlId,proto3" json:"encryption_control_id,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsVpcStackOutputs) Reset() {
@@ -155,11 +168,32 @@ func (x *AwsVpcStackOutputs) GetRegion() string {
 	return ""
 }
 
+func (x *AwsVpcStackOutputs) GetSecondaryIpv4CidrAssociationIds() map[string]string {
+	if x != nil {
+		return x.SecondaryIpv4CidrAssociationIds
+	}
+	return nil
+}
+
+func (x *AwsVpcStackOutputs) GetSecondaryIpv6CidrAssociationIds() map[string]string {
+	if x != nil {
+		return x.SecondaryIpv6CidrAssociationIds
+	}
+	return nil
+}
+
+func (x *AwsVpcStackOutputs) GetEncryptionControlId() string {
+	if x != nil {
+		return x.EncryptionControlId
+	}
+	return ""
+}
+
 var File_catalog_aws_awsvpc_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	")catalog/aws/awsvpc/v1alpha1/outputs.proto\x12\x1fdev.planton.aws.awsvpc.v1alpha1\"\x92\x03\n" +
+	")catalog/aws/awsvpc/v1alpha1/outputs.proto\x12\x1fdev.planton.aws.awsvpc.v1alpha1\"\xc0\a\n" +
 	"\x12AwsVpcStackOutputs\x12\x15\n" +
 	"\x06vpc_id\x18\x01 \x01(\tR\x05vpcId\x12\x17\n" +
 	"\avpc_arn\x18\x02 \x01(\tR\x06vpcArn\x12\x1d\n" +
@@ -172,7 +206,16 @@ const file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x16default_network_acl_id\x18\b \x01(\tR\x13defaultNetworkAclId\x123\n" +
 	"\x16default_route_table_id\x18\t \x01(\tR\x13defaultRouteTableId\x12\x16\n" +
 	"\x06region\x18\n" +
-	" \x01(\tR\x06regionB\x9d\x02\n" +
+	" \x01(\tR\x06region\x12\xa6\x01\n" +
+	"#secondary_ipv4_cidr_association_ids\x18\v \x03(\v2X.dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv4CidrAssociationIdsEntryR\x1fsecondaryIpv4CidrAssociationIds\x12\xa6\x01\n" +
+	"#secondary_ipv6_cidr_association_ids\x18\f \x03(\v2X.dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv6CidrAssociationIdsEntryR\x1fsecondaryIpv6CidrAssociationIds\x122\n" +
+	"\x15encryption_control_id\x18\r \x01(\tR\x13encryptionControlId\x1aR\n" +
+	"$SecondaryIpv4CidrAssociationIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aR\n" +
+	"$SecondaryIpv6CidrAssociationIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x9d\x02\n" +
 	"#com.dev.planton.aws.awsvpc.v1alpha1B\fOutputsProtoP\x01ZGgithub.com/plantonhq/planton/catalog/aws/awsvpc/v1alpha1;awsvpcv1alpha1\xa2\x02\x04DPAA\xaa\x02\x1fDev.Planton.Aws.Awsvpc.V1alpha1\xca\x02\x1fDev\\Planton\\Aws\\Awsvpc\\V1alpha1\xe2\x02+Dev\\Planton\\Aws\\Awsvpc\\V1alpha1\\GPBMetadata\xea\x02#Dev::Planton::Aws::Awsvpc::V1alpha1b\x06proto3"
 
 var (
@@ -187,16 +230,20 @@ func file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsvpc_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsvpc_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_catalog_aws_awsvpc_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsVpcStackOutputs)(nil), // 0: dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs
+	nil,                        // 1: dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv4CidrAssociationIdsEntry
+	nil,                        // 2: dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv6CidrAssociationIdsEntry
 }
 var file_catalog_aws_awsvpc_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.secondary_ipv4_cidr_association_ids:type_name -> dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv4CidrAssociationIdsEntry
+	2, // 1: dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.secondary_ipv6_cidr_association_ids:type_name -> dev.planton.aws.awsvpc.v1alpha1.AwsVpcStackOutputs.SecondaryIpv6CidrAssociationIdsEntry
+	2, // [2:2] is the sub-list for method output_type
+	2, // [2:2] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsvpc_v1alpha1_outputs_proto_init() }
@@ -210,7 +257,7 @@ func file_catalog_aws_awsvpc_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsvpc_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -39,15 +39,22 @@ resource "aws_lambda_provisioned_concurrency_config" "this" {
   provisioned_concurrent_executions = each.value.provisioned_concurrent_executions
 }
 
-# The built-in HTTPS endpoint. One per function ($LATEST-qualified);
-# with authorization_type NONE, AWS additionally requires a public
-# invoke permission, which the provider manages on this resource.
+# The built-in HTTPS endpoint. One per function, optionally qualified
+# by an alias (the URL then serves whatever the alias routes, canary
+# weights included); with authorization_type NONE, AWS additionally
+# requires a public invoke permission, which the provider manages on
+# this resource.
 resource "aws_lambda_function_url" "this" {
   count = var.spec.function_url != null ? 1 : 0
 
   function_name      = aws_lambda_function.this.function_name
   authorization_type = var.spec.function_url.authorization_type
   invoke_mode        = var.spec.function_url.invoke_mode != "" ? var.spec.function_url.invoke_mode : null
+
+  # Attach to an alias (CEL guarantees it names a declared alias);
+  # referencing the alias resource's name attribute gives Terraform the
+  # graph edge that makes the alias exist before the URL targets it.
+  qualifier = var.spec.function_url.qualifier != "" ? aws_lambda_alias.this[var.spec.function_url.qualifier].name : null
 
   dynamic "cors" {
     for_each = var.spec.function_url.cors != null ? [1] : []
@@ -82,14 +89,27 @@ resource "aws_lambda_permission" "this" {
   source_account         = each.value.source_account != "" ? each.value.source_account : null
   principal_org_id       = each.value.principal_org_id != "" ? each.value.principal_org_id : null
   function_url_auth_type = each.value.function_url_auth_type != "" ? each.value.function_url_auth_type : null
+
+  # Scope the grant to one qualified ARN (version or alias); the caller
+  # may then invoke only that qualifier.
+  qualifier = each.value.qualifier != "" ? each.value.qualifier : null
+
+  # Alexa Skills: the token callers must present (the skill id).
+  event_source_token = each.value.event_source_token != "" ? each.value.event_source_token : null
+
+  # Restrict this statement to invocations arriving through the
+  # function URL.
+  invoked_via_function_url = each.value.invoked_via_function_url ? true : null
 }
 
 # Asynchronous-invocation shaping: retries, event age, and on-success /
-# on-failure destinations. One config per function ($LATEST-qualified).
+# on-failure destinations. One config, applied at function scope or to
+# one qualifier (version or alias).
 resource "aws_lambda_function_event_invoke_config" "this" {
   count = var.spec.async_invoke_config != null ? 1 : 0
 
   function_name = aws_lambda_function.this.function_name
+  qualifier     = var.spec.async_invoke_config.qualifier != "" ? var.spec.async_invoke_config.qualifier : null
 
   maximum_retry_attempts       = var.spec.async_invoke_config.maximum_retry_attempts
   maximum_event_age_in_seconds = var.spec.async_invoke_config.maximum_event_age_seconds != 0 ? var.spec.async_invoke_config.maximum_event_age_seconds : null
@@ -124,11 +144,29 @@ resource "aws_lambda_function_recursion_config" "this" {
 }
 
 # Runtime-update management. Only materialized when configured --
-# deleting the resource reverts to Auto (the AWS default).
+# deleting the resource reverts to Auto (the AWS default). Optionally
+# scoped to one qualifier (version or alias).
 resource "aws_lambda_runtime_management_config" "this" {
   count = var.spec.runtime_management != null ? 1 : 0
 
   function_name       = aws_lambda_function.this.function_name
+  qualifier           = var.spec.runtime_management.qualifier != "" ? var.spec.runtime_management.qualifier : null
   update_runtime_on   = var.spec.runtime_management.update_runtime_on
   runtime_version_arn = var.spec.runtime_management.runtime_version_arn != "" ? var.spec.runtime_management.runtime_version_arn : null
+}
+
+# Per-qualifier execution-environment scaling bounds (Lambda Managed
+# Instances functions). Materialized per qualifier so list edits update
+# in place; at least one bound per entry is CEL-enforced (an empty
+# config is a reset, which cannot persist as a resource).
+resource "aws_lambda_function_scaling_config" "this" {
+  for_each = local.scaling_configs
+
+  function_name = aws_lambda_function.this.function_name
+  qualifier     = each.value.qualifier
+
+  function_scaling_config {
+    min_execution_environments = each.value.min_execution_environments
+    max_execution_environments = each.value.max_execution_environments
+  }
 }

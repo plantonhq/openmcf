@@ -39,6 +39,9 @@ spec:
           Action:
             - "s3:PutObject"
           Resource: "arn:aws:s3:::demo-bucket/*"
+  # The rotation lever: flip to Inactive to suspend the key without deleting
+  # it (id and secret survive; AWS rejects requests signed with it).
+  accessKeyStatus: Active
 ```
 
 ## Spec Fields
@@ -53,6 +56,7 @@ spec:
 | `spec.permissionsBoundary` | `string \| valueFrom` |  |  | AwsIamPolicy (`status.outputs.policy_arn`) |
 | `spec.disableAccessKeys` | `bool` |  |  |  |
 | `spec.forceDestroy` | `bool` |  |  |  |
+| `spec.accessKeyStatus` | `string` |  |  |  |
 
 ## Field Details
 
@@ -145,10 +149,25 @@ if such artifacts exist, surfacing them instead of silently destroying
 credentials someone may depend on. Turn on for ephemeral or CI-owned
 users where teardown must always succeed.
 
+### spec.accessKeyStatus
+
+`string`
+
+Lifecycle state of the managed access key: "Active" (the AWS default) or
+"Inactive". An Inactive key keeps its id and secret but AWS rejects every
+request signed with it -- the standard rotation lever: create the
+replacement credential, flip this key "Inactive" to prove nothing still
+depends on it, then delete it. Updatable in place (no key re-creation, so
+the secret output never changes). Empty keeps the key Active. Only
+meaningful when the access key exists (disable_access_keys is false).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Active","Inactive"]}}
+
 ## Validation Rules
 
 - `path_format`: path must begin and end with '/' and contain no empty segments, e.g. '/' or '/ci/'
 - `path_length`: path must be at most 512 characters
+- `access_key_status_requires_key`: access_key_status has no effect when disable_access_keys is true -- remove one of the two
 
 ## Outputs
 
@@ -162,6 +181,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsIamUser, name
 | `status.outputs.console_url` | `string` | console_url is the AWS console sign-in URL for this user. |
 | `status.outputs.user_name` | `string` | user_name is the friendly name of the IAM user. |
 | `status.outputs.user_id` | `string` | user_id is the stable unique ID of the IAM user. |
+| `status.outputs.access_key_status` | `string` | access_key_status is the access key's status (Active/Inactive) as the provider reports it after apply -- the rotation-lever position, verifiable against ListAccessKeys. Empty when no access key was created. |
 
 ## References
 

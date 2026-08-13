@@ -60,8 +60,11 @@ type AwsLbListenerSpec struct {
 	Port int32 `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	// Protocol the listener speaks. Decides the load balancer family and the
 	// allowed actions:
-	// - ALB: "HTTP", "HTTPS" (full action set).
-	// - NLB: "TCP", "UDP", "TCP_UDP", "TLS" (forward only).
+	//   - ALB: "HTTP", "HTTPS" (full action set).
+	//   - NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC" (forward
+	//     only). "QUIC" accepts QUIC connections natively; "TCP_QUIC" serves
+	//     TCP and QUIC on one port (the HTTP/3 pattern with TCP fallback) and
+	//     forwards to a matching QUIC-family target group.
 	Protocol string `protobuf:"bytes,4,opt,name=protocol,proto3" json:"protocol,omitempty"`
 	// The default server certificate presented to clients that do not match an
 	// SNI certificate. Required for "HTTPS" and "TLS" listeners; not valid
@@ -1486,7 +1489,7 @@ var File_catalog_aws_awslblistener_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_aws_awslblistener_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awslblistener/v1alpha1/spec.proto\x12&dev.planton.aws.awslblistener.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcb\x12\n" +
+	"-catalog/aws/awslblistener/v1alpha1/spec.proto\x12&dev.planton.aws.awslblistener.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xef\x12\n" +
 	"\x11AwsLbListenerSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x8f\x01\n" +
 	"\x11load_balancer_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\xbaH\x03\xc8\x01\x01\x88\xd4a\xe8\a\x92\xd4a status.outputs.load_balancer_arnR\x0floadBalancerArn\x12\"\n" +
@@ -1502,10 +1505,10 @@ const file_catalog_aws_awslblistener_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18tcp_idle_timeout_seconds\x18\n" +
 	" \x01(\x05R\x15tcpIdleTimeoutSeconds\x12q\n" +
 	"\x0fdefault_actions\x18\v \x03(\v2;.dev.planton.aws.awslblistener.v1alpha1.AwsLbListenerActionB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x0edefaultActions\x12c\n" +
-	"\fhttp_headers\x18\f \x01(\v2@.dev.planton.aws.awslblistener.v1alpha1.AwsLbListenerHttpHeadersR\vhttpHeaders:\xd3\n" +
-	"\xbaH\xcf\n" +
-	"\x1a\x92\x01\n" +
-	"\x0eprotocol_valid\x12<protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS\x1aBthis.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS']\x1a\x9a\x01\n" +
+	"\fhttp_headers\x18\f \x01(\v2@.dev.planton.aws.awslblistener.v1alpha1.AwsLbListenerHttpHeadersR\vhttpHeaders:\xf7\n" +
+	"\xbaH\xf3\n" +
+	"\x1a\xb6\x01\n" +
+	"\x0eprotocol_valid\x12Lprotocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC\x1aVthis.protocol in ['HTTP', 'HTTPS', 'TCP', 'UDP', 'TCP_UDP', 'TLS', 'QUIC', 'TCP_QUIC']\x1a\x9a\x01\n" +
 	"!ssl_policy_only_for_tls_protocols\x129ssl_policy only applies when protocol is 'HTTPS' or 'TLS'\x1a:this.ssl_policy == '' || this.protocol in ['HTTPS', 'TLS']\x1a\x81\x01\n" +
 	"\x1calpn_policy_only_for_nlb_tls\x12/alpn_policy only applies when protocol is 'TLS'\x1a0this.alpn_policy == '' || this.protocol == 'TLS'\x1a\xdf\x01\n" +
 	"\x11alpn_policy_valid\x12Ualpn_policy must be one of: HTTP1Only, HTTP2Only, HTTP2Optional, HTTP2Preferred, None\x1asthis.alpn_policy == '' || this.alpn_policy in ['HTTP1Only', 'HTTP2Only', 'HTTP2Optional', 'HTTP2Preferred', 'None']\x1a\xa1\x01\n" +
@@ -1603,15 +1606,16 @@ const file_catalog_aws_awslblistener_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06format\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06format\x12,\n" +
 	"\x06values\x18\x03 \x03(\tB\x14\xbaH\x11\xc8\x01\x01\x92\x01\v\b\x01\x10\n" +
 	"\"\x05r\x03\x18\x80\x02R\x06values:\xb8\x01\xbaH\xb4\x01\x1a\xb1\x01\n" +
-	"\x16jwt_claim_format_valid\x12Kformat must be 'single-string', 'string-array', or 'space-separated-values'\x1aJthis.format in ['single-string', 'string-array', 'space-separated-values']\"\x8b\x06\n" +
+	"\x16jwt_claim_format_valid\x12Kformat must be 'single-string', 'string-array', or 'space-separated-values'\x1aJthis.format in ['single-string', 'string-array', 'space-separated-values']\"\xbe\a\n" +
 	"!AwsLbListenerMutualAuthentication\x12\x1a\n" +
 	"\x04mode\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04mode\x12Z\n" +
 	"\x0ftrust_store_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\rtrustStoreArn\x12G\n" +
 	" ignore_client_certificate_expiry\x18\x03 \x01(\bR\x1dignoreClientCertificateExpiry\x12B\n" +
-	"\x1eadvertise_trust_store_ca_names\x18\x04 \x01(\tR\x1aadvertiseTrustStoreCaNames:\xe0\x03\xbaH\xdc\x03\x1ap\n" +
+	"\x1eadvertise_trust_store_ca_names\x18\x04 \x01(\tR\x1aadvertiseTrustStoreCaNames:\x93\x05\xbaH\x8f\x05\x1ap\n" +
 	"\x0fmtls_mode_valid\x12.mode must be 'off', 'verify', or 'passthrough'\x1a-this.mode in ['off', 'verify', 'passthrough']\x1a\xa3\x01\n" +
 	"\x1bmtls_expiry_only_for_verify\x12Cignore_client_certificate_expiry only applies when mode is 'verify'\x1a?!this.ignore_client_certificate_expiry || this.mode == 'verify'\x1a\xc1\x01\n" +
-	"\x1dmtls_advertise_ca_names_valid\x12=advertise_trust_store_ca_names must be 'on' or 'off' when set\x1aathis.advertise_trust_store_ca_names == '' || this.advertise_trust_store_ca_names in ['on', 'off']\"\xe3\x01\n" +
+	"\x1dmtls_advertise_ca_names_valid\x12=advertise_trust_store_ca_names must be 'on' or 'off' when set\x1aathis.advertise_trust_store_ca_names == '' || this.advertise_trust_store_ca_names in ['on', 'off']\x1a\xb0\x01\n" +
+	"'mtls_advertise_ca_names_only_for_verify\x12Aadvertise_trust_store_ca_names only applies when mode is 'verify'\x1aBthis.advertise_trust_store_ca_names == '' || this.mode == 'verify'\"\xe3\x01\n" +
 	"\x18AwsLbListenerHttpHeaders\x12a\n" +
 	"\arequest\x18\x01 \x01(\v2G.dev.planton.aws.awslblistener.v1alpha1.AwsLbListenerHttpRequestHeadersR\arequest\x12d\n" +
 	"\bresponse\x18\x02 \x01(\v2H.dev.planton.aws.awslblistener.v1alpha1.AwsLbListenerHttpResponseHeadersR\bresponse\"\xe2\x04\n" +

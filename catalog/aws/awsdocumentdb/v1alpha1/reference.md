@@ -43,6 +43,11 @@ spec:
   instances:
     - name: writer
       instanceClass: db.t4g.medium
+      # Defer the CA-rotation restart to the next maintenance action
+      # instead of restarting immediately (unset keeps the AWS default:
+      # restart on rotation).
+      certificateRotationRestart: false
+      applyImmediately: true
 ```
 
 ## Spec Fields
@@ -69,6 +74,8 @@ spec:
 | `spec.instances[].preferredMaintenanceWindow` | `string` |  |  |  |
 | `spec.instances[].caCertIdentifier` | `string` |  |  |  |
 | `spec.instances[].copyTagsToSnapshot` | `bool` |  |  |  |
+| `spec.instances[].certificateRotationRestart` | `bool` |  | `true` |  |
+| `spec.instances[].applyImmediately` | `bool` |  |  |  |
 | `spec.serverlessV2Scaling` | `AwsDocumentDbServerlessV2Scaling` |  |  |  |
 | `spec.serverlessV2Scaling.minCapacity` | `double` | yes |  |  |
 | `spec.serverlessV2Scaling.maxCapacity` | `double` | yes |  |  |
@@ -296,6 +303,26 @@ The CA certificate bundle for this instance (e.g.
 
 Copy this instance's tags onto its snapshots.
 
+### spec.instances[].certificateRotationRestart
+
+`bool` · optional (explicit presence)
+
+Restart the instance when its CA certificate rotates. Unset keeps
+the AWS default (true -- rotation restarts the instance so the new
+certificate is served immediately); false defers the restart to
+the next maintenance action, for workloads that cannot absorb an
+unscheduled restart. Tri-state on purpose: only an explicit value
+is sent to AWS.
+
+- default: `true`
+
+### spec.instances[].applyImmediately
+
+`bool`
+
+Apply modifications to THIS instance immediately instead of
+waiting for its next maintenance window. AWS defaults to deferred.
+
 ### spec.serverlessV2Scaling
 
 `AwsDocumentDbServerlessV2Scaling`
@@ -423,7 +450,11 @@ refuses to delete without knowing the snapshot name.
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Must start with a letter, contain
+only letters, numbers, and hyphens, with no consecutive or
+trailing hyphens -- AWS's snapshot-identifier rules.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"}}
 
 ### spec.deletionProtection
 

@@ -51,3 +51,31 @@ resource "aws_cloudwatch_event_bus_policy" "this" {
   event_bus_name = aws_cloudwatch_event_bus.this.name
   policy         = local.resource_policy
 }
+
+# Event archives recorded from THIS bus — one archive per spec entry, keyed by
+# the archive's own name (names are identity: reordering entries is a no-op
+# and a rename is honestly a new archive). Replay is an on-demand EventBridge
+# operation (StartReplay), never declarative configuration.
+#
+# The entries arrive untyped (the spec's event_pattern Struct keeps the list
+# out of Terraform's unifiable object types), and tfvars omits zero-value
+# fields entirely, so every optional field reads through try() with the
+# omit-to-AWS-default fallback.
+resource "aws_cloudwatch_event_archive" "this" {
+  for_each = { for archive in var.spec.archives : archive.name => archive }
+
+  name             = each.value.name
+  event_source_arn = aws_cloudwatch_event_bus.this.arn
+
+  description = try(each.value.description, "") != "" ? each.value.description : null
+
+  # 0 / absent = retain indefinitely (the AWS default).
+  retention_days = try(each.value.retention_days, 0) != 0 ? each.value.retention_days : null
+
+  # Absent = archive every event delivered to the bus.
+  event_pattern = try(each.value.event_pattern, null) != null ? jsonencode(each.value.event_pattern) : null
+
+  # Absent = AWS-owned key. This is the ARCHIVE's key, independent of the
+  # bus's own kms_key_identifier.
+  kms_key_identifier = try(each.value.kms_key_identifier, "") != "" ? each.value.kms_key_identifier : null
+}

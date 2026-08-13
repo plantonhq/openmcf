@@ -7,6 +7,11 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor 6.47.0: route.odb_network_arn (Oracle Database@AWS route
+      # target) landed there, and 6.53.0 fixed the gateway-id drift AWS reports
+      # alongside ODB routes. Everything else this module renders (IPAM
+      # allocation, ipv6_native, the remaining route targets) predates 6.0.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

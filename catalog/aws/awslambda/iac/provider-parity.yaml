@@ -1,0 +1,191 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lambda_function:
+    mappings:
+      # The provider models architecture as a single-element list; the spec
+      # keeps the scalar choice.
+      - arg: architectures
+        spec: spec.architecture
+      # The provider double-nests Managed Instances under a required
+      # single-entry wrapper; the spec flattens it to one managed_instances
+      # message with shorter leaf names.
+      - arg: capacity_provider_config.lambda_managed_instances_capacity_provider_config.capacity_provider_arn
+        spec: spec.managed_instances.capacity_provider_arn
+      - arg: capacity_provider_config.lambda_managed_instances_capacity_provider_config.execution_environment_memory_gib_per_vcpu
+        spec: spec.managed_instances.memory_gib_per_vcpu
+      - arg: capacity_provider_config.lambda_managed_instances_capacity_provider_config.per_execution_environment_max_concurrency
+        spec: spec.managed_instances.max_concurrency_per_environment
+      # Single-field provider wrappers flatten to one spec field each.
+      - arg: dead_letter_config.target_arn
+        spec: spec.dead_letter_target_arn
+      - arg: environment.variables
+        spec: spec.environment
+      - arg: ephemeral_storage.size
+        spec: spec.ephemeral_storage_mb
+      - arg: tracing_config.mode
+        spec: spec.tracing_mode
+      - arg: tenancy_config.tenant_isolation_mode
+        spec: spec.tenant_isolation_mode
+      # Units ride the spec names.
+      - arg: durable_config.execution_timeout
+        spec: spec.durable_config.execution_timeout_seconds
+      - arg: durable_config.retention_period
+        spec: spec.durable_config.retention_period_days
+      - arg: memory_size
+        spec: spec.memory_size_mb
+      - arg: timeout
+        spec: spec.timeout_seconds
+      # The EFS argument takes the ACCESS POINT arn; the spec name says so.
+      - arg: file_system_config.arn
+        spec: spec.file_system_config.access_point_arn
+      - arg: layers
+        spec: spec.layer_arns
+      - arg: role
+        spec: spec.role_arn
+      # The S3 code source folds into one message.
+      - arg: s3_bucket
+        spec: spec.s3.bucket
+      - arg: s3_key
+        spec: spec.s3.key
+      - arg: s3_object_version
+        spec: spec.s3.object_version
+      # SnapStart is a boolean toggle in the spec; the module renders the
+      # block's only meaningful value ("PublishedVersions" -- "None" is the
+      # provider's off state, expressed by omitting the block).
+      - arg: snap_start.apply_on
+        spec: spec.snap_start
+      # The VPC attachment block flattens to the spec root (subnets +
+      # security groups travel together, CEL-enforced).
+      - arg: vpc_config.ipv6_allowed_for_dual_stack
+        spec: spec.ipv6_allowed_for_dual_stack
+      - arg: vpc_config.security_group_ids
+        spec: spec.security_group_ids
+      - arg: vpc_config.subnet_ids
+        spec: spec.subnet_ids
+    exclusions:
+      - arg: filename
+        reason: local-zip deployment path -- the platform standardizes on S3 archives and ECR images, which deploy from durable, addressable artifacts instead of files on the operator's machine
+      - arg: function_name
+        reason: the function name comes from metadata.name -- platform identity, never free-form spec surface
+      - arg: package_type
+        reason: wired by the module from the code source (Image for image_uri, Zip for s3) -- the spec's exactly-one-code-source choice already carries the decision
+      - arg: replace_security_groups_on_destroy
+        reason: Terraform destroy-behavior knob (swaps ENI security groups to speed teardown) -- engine operation, not function configuration
+      - arg: replacement_security_group_ids
+        reason: companion to replace_security_groups_on_destroy -- same destroy-behavior class
+      - arg: skip_destroy
+        reason: Terraform lifecycle knob (leaves the function orphaned on destroy) -- contradicts the platform's zero-orphan teardown contract
+      - arg: use_resource_timeout_for_propagation
+        reason: Terraform apply-behavior knob (how long the provider polls for IAM propagation) -- engine operation, not function configuration
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_lambda_alias:
+    # Instantiated per spec.aliases entry, keyed by name.
+    specRoot: spec.aliases
+    mappings:
+      # The provider wraps canary weights in a routing_config block; the
+      # spec flattens to one map.
+      - arg: routing_config.additional_version_weights
+        spec: spec.aliases.routing_additional_version_weights
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- an alias lives on its function, never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+
+  aws_lambda_provisioned_concurrency_config:
+    # Instantiated per alias that sets provisioned_concurrent_executions --
+    # provisioned concurrency is alias-scoped by design here (AWS also
+    # allows version-scoped configs; the alias is the stable operational
+    # target).
+    specRoot: spec.aliases
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+      - arg: qualifier
+        reason: wired by the module to the owning alias's name -- the spec models provisioned concurrency ON the alias, so the qualifier is structural, never user surface
+      - arg: skip_destroy
+        reason: Terraform lifecycle knob (leaves the config orphaned on destroy) -- contradicts the platform's zero-orphan teardown contract
+
+  aws_lambda_function_url:
+    specRoot: spec.function_url
+    mappings:
+      # Units ride the spec name.
+      - arg: cors.max_age
+        spec: spec.function_url.cors.max_age_seconds
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- the URL lives on its function, never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+
+  aws_lambda_permission:
+    # Instantiated per spec.invoke_permissions entry, keyed by statement_id.
+    specRoot: spec.invoke_permissions
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- a permission statement lives on its function, never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+      - arg: statement_id_prefix
+        reason: covered alternative to statement_id -- the spec keys statements by explicit statement_id, so prefix-generated ids have no configuration role
+
+  aws_lambda_function_event_invoke_config:
+    specRoot: spec.async_invoke_config
+    mappings:
+      # The provider nests destinations two blocks deep; the spec flattens
+      # each to one ARN field. Units ride the event-age spec name.
+      - arg: destination_config.on_failure.destination
+        spec: spec.async_invoke_config.on_failure_destination_arn
+      - arg: destination_config.on_success.destination
+        spec: spec.async_invoke_config.on_success_destination_arn
+      - arg: maximum_event_age_in_seconds
+        spec: spec.async_invoke_config.maximum_event_age_seconds
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+
+  aws_lambda_function_recursion_config:
+    # recursive_loop matches the spec root field by name; only the wiring
+    # argument diverges.
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- never user surface
+
+  aws_lambda_function_scaling_config:
+    # Instantiated per spec.scaling_configs entry, keyed by qualifier.
+    specRoot: spec.scaling_configs
+    mappings:
+      # The provider wraps the bounds in a function_scaling_config block;
+      # the spec flattens them to the entry itself.
+      - arg: function_scaling_config.max_execution_environments
+        spec: spec.scaling_configs.max_execution_environments
+      - arg: function_scaling_config.min_execution_environments
+        spec: spec.scaling_configs.min_execution_environments
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- a scaling config lives on its function, never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface
+
+  aws_lambda_runtime_management_config:
+    specRoot: spec.runtime_management
+    exclusions:
+      - arg: function_name
+        reason: wired by the module to the function it creates -- never user surface
+      - arg: region
+        reason: wired by the module to the function's region -- a function-scoped satellite lives where its function lives, never user surface

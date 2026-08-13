@@ -136,6 +136,11 @@ func mapping(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lamb
 		if spec.ProvisionedPollers.MaximumPollers != 0 {
 			pollerArgs.MaximumPollers = pulumi.Int(int(spec.ProvisionedPollers.MaximumPollers))
 		}
+		// Mappings naming the same group share (and are jointly capped
+		// by) one poller fleet instead of provisioning their own.
+		if spec.ProvisionedPollers.PollerGroupName != "" {
+			pollerArgs.PollerGroupName = pulumi.String(spec.ProvisionedPollers.PollerGroupName)
+		}
 		args.ProvisionedPollerConfig = pollerArgs
 	}
 

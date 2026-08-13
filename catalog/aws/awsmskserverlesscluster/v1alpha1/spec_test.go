@@ -25,9 +25,13 @@ func validMinimalSpec() *AwsMskServerlessCluster {
 		},
 		Spec: &AwsMskServerlessClusterSpec{
 			Region: "us-west-2",
-			SubnetIds: []*foreignkeyv1.StringValueOrRef{
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-aaa"}},
-				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-bbb"}},
+			VpcConfigs: []*AwsMskServerlessClusterVpcConfig{
+				{
+					SubnetIds: []*foreignkeyv1.StringValueOrRef{
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-aaa"}},
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-bbb"}},
+					},
+				},
 			},
 		},
 	}
@@ -39,34 +43,49 @@ var _ = ginkgo.Describe("AwsMskServerlessClusterSpec Validation Tests", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
 
-		ginkgo.It("should accept a minimal valid cluster (subnets only; AWS attaches the default SG)", func() {
+		ginkgo.It("should accept a minimal valid cluster (one VPC, subnets only; AWS attaches the default SG)", func() {
 			input := validMinimalSpec()
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept a cluster with security groups attached", func() {
+		ginkgo.It("should accept a placement with security groups attached", func() {
 			input := validMinimalSpec()
-			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
+			input.Spec.VpcConfigs[0].SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-broker-123"}},
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept a cluster with the maximum of 5 security groups", func() {
+		ginkgo.It("should accept a placement with the maximum of 5 security groups", func() {
 			input := validMinimalSpec()
 			for _, id := range []string{"sg-1", "sg-2", "sg-3", "sg-4", "sg-5"} {
-				input.Spec.SecurityGroupIds = append(input.Spec.SecurityGroupIds,
+				input.Spec.VpcConfigs[0].SecurityGroupIds = append(input.Spec.VpcConfigs[0].SecurityGroupIds,
 					&foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: id}})
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept a cluster with valueFrom references", func() {
+		ginkgo.It("should accept multiple VPC placements", func() {
 			input := validMinimalSpec()
-			input.Spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
+			input.Spec.VpcConfigs = append(input.Spec.VpcConfigs, &AwsMskServerlessClusterVpcConfig{
+				SubnetIds: []*foreignkeyv1.StringValueOrRef{
+					{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-ccc"}},
+					{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "subnet-ddd"}},
+				},
+				SecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
+					{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-analytics-vpc"}},
+				},
+			})
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a placement with valueFrom references", func() {
+			input := validMinimalSpec()
+			input.Spec.VpcConfigs[0].SubnetIds = []*foreignkeyv1.StringValueOrRef{
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
 					ValueFrom: &foreignkeyv1.ValueFromRef{
 						Kind: cloudresourcekind.CloudResourceKind_AwsSubnet,
@@ -80,7 +99,7 @@ var _ = ginkgo.Describe("AwsMskServerlessClusterSpec Validation Tests", func() {
 					},
 				}},
 			}
-			input.Spec.SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
+			input.Spec.VpcConfigs[0].SecurityGroupIds = []*foreignkeyv1.StringValueOrRef{
 				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
 					ValueFrom: &foreignkeyv1.ValueFromRef{
 						Kind: cloudresourcekind.CloudResourceKind_AwsSecurityGroup,
@@ -105,19 +124,26 @@ var _ = ginkgo.Describe("AwsMskServerlessClusterSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 
-			ginkgo.It("should fail when subnet_ids is empty", func() {
+			ginkgo.It("should fail when vpc_configs is empty", func() {
 				input := validMinimalSpec()
-				input.Spec.SubnetIds = nil
+				input.Spec.VpcConfigs = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should fail when a placement has no subnets", func() {
+				input := validMinimalSpec()
+				input.Spec.VpcConfigs[0].SubnetIds = nil
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
 
 		ginkgo.Context("bounds", func() {
-			ginkgo.It("should fail when more than 5 security groups are attached", func() {
+			ginkgo.It("should fail when more than 5 security groups are attached to one placement", func() {
 				input := validMinimalSpec()
 				for _, id := range []string{"sg-1", "sg-2", "sg-3", "sg-4", "sg-5", "sg-6"} {
-					input.Spec.SecurityGroupIds = append(input.Spec.SecurityGroupIds,
+					input.Spec.VpcConfigs[0].SecurityGroupIds = append(input.Spec.VpcConfigs[0].SecurityGroupIds,
 						&foreignkeyv1.StringValueOrRef{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: id}})
 				}
 				err := protovalidate.Validate(input)

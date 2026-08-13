@@ -40,7 +40,13 @@ resource "aws_docdb_cluster_instance" "this" {
 
   ca_cert_identifier = each.value.ca_cert_identifier != "" ? each.value.ca_cert_identifier : null
 
+  # Tri-state on purpose: null sends nothing and keeps the AWS default
+  # (restart on CA rotation so the new certificate serves immediately);
+  # an explicit false defers the restart to the next maintenance action.
+  certificate_rotation_restart = each.value.certificate_rotation_restart
+
   copy_tags_to_snapshot = each.value.copy_tags_to_snapshot
+  apply_immediately     = each.value.apply_immediately ? true : null
 
   tags = local.aws_tags
 }

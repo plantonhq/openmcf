@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // accountingFixture exercises every accounting shape in one hermetic
@@ -327,6 +325,119 @@ func TestBuildAccounting_FanInMappings(t *testing.T) {
 // classes always win over the ledger AND that a shadowed entry is a
 // staleness finding: judgment duplicating what the instrument derives on
 // its own is judgment nobody re-evaluates.
+// TestBuildAccounting_CollapseMapping proves the subtree-to-leaf judgment
+// for recursive provider grammars: the provider expands a recursive schema
+// into bounded nesting levels (thousands of leaf paths), the spec census
+// records each re-entry as ONE leaf, and a collapse mapping folds every
+// argument under the re-entry subtree onto that leaf. Without the flag the
+// same mapping resumes exact matching below the subtree and the deep args
+// surface as findings — collapse is never implicit.
+func TestBuildAccounting_CollapseMapping(t *testing.T) {
+	schemas := map[string]*Schema{"aws": {
+		Provider: "aws",
+		Source:   "hashicorp/aws",
+		Version:  "6.58.0",
+		Resources: map[string]*Block{
+			"aws_recursive_thing": {
+				Blocks: map[string]*NestedBlock{
+					// The provider's bounded expansion of a recursive
+					// grammar: statement.kind at the root, and the same
+					// grammar again under and.statement (two levels).
+					"statement": {NestingMode: "single", Block: &Block{
+						Attributes: map[string]*Attribute{"kind": {Optional: true}},
+						Blocks: map[string]*NestedBlock{
+							"and": {NestingMode: "single", Block: &Block{
+								Blocks: map[string]*NestedBlock{
+									"statement": {NestingMode: "list", Block: &Block{
+										Attributes: map[string]*Attribute{"kind": {Optional: true}},
+										Blocks: map[string]*NestedBlock{
+											"and": {NestingMode: "single", Block: &Block{
+												Blocks: map[string]*NestedBlock{
+													"statement": {NestingMode: "list", Block: &Block{
+														Attributes: map[string]*Attribute{"kind": {Optional: true}},
+													}},
+												},
+											}},
+										},
+									}},
+								},
+							}},
+						},
+					}},
+				},
+			},
+		},
+	}}
+	// The spec models the grammar recursively: the census emits the root
+	// arm's leaf plus the re-entry field as ONE leaf.
+	spec := []KindCensus{{
+		Kind: "TestRecursive",
+		SpecFieldPaths: []string{
+			"spec.statement.and.statements",
+			"spec.statement.kind",
+		},
+	}}
+	modules := []ModuleCensus{{
+		Kind:      "TestRecursive",
+		ModuleDir: "catalog/aws/testrecursive/iac/tf",
+		Resources: []string{"aws_recursive_thing"},
+	}}
+	manifest := &Manifest{Resources: map[string]*ResourceManifest{
+		"aws_recursive_thing": {
+			Mappings: []Mapping{
+				{Arg: "statement", Spec: "spec.statement"},
+				{Arg: "statement.and.statement", Spec: "spec.statement.and.statements", Collapse: true},
+			},
+		},
+	}}
+
+	acc := buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka := kindByName(t, acc, "TestRecursive")
+	// statement.kind (mapped via subtree), statement.and.statement.kind and
+	// statement.and.statement.and.statement.kind (both collapse-mapped).
+	if ka.TotalArgs != 3 || ka.MappedArgs != 3 {
+		t.Errorf("total/mapped = %d/%d, want 3/3", ka.TotalArgs, ka.MappedArgs)
+	}
+	if len(ka.UnaccountedArgs) != 0 {
+		t.Errorf("UnaccountedArgs = %v, want none", ka.UnaccountedArgs)
+	}
+	if len(ka.UncoveredSpecFields) != 0 {
+		t.Errorf("UncoveredSpecFields = %v, want none (the collapse covers the re-entry leaf)", ka.UncoveredSpecFields)
+	}
+	if !ka.Accounted() {
+		t.Error("TestRecursive must be at total accounting")
+	}
+
+	// The same mapping WITHOUT collapse leaves the deep args unaccounted —
+	// proving the fold never happens implicitly.
+	manifest.Resources["aws_recursive_thing"].Mappings[1].Collapse = false
+	acc = buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka = kindByName(t, acc, "TestRecursive")
+	if len(ka.UnaccountedArgs) != 2 {
+		t.Errorf("UnaccountedArgs = %v, want the two deep args", ka.UnaccountedArgs)
+	}
+
+	// A collapse mapping pointing at a spec SUBTREE (not a leaf) is a
+	// staleness finding: the fold target must be a single census leaf.
+	manifest.Resources["aws_recursive_thing"].Mappings[1] = Mapping{
+		Arg: "statement.and.statement", Spec: "spec.statement", Collapse: true,
+	}
+	acc = buildAccounting("aws", spec, modules, schemas, "aws",
+		map[string]*Manifest{"TestRecursive": manifest}, nil)
+	ka = kindByName(t, acc, "TestRecursive")
+	var sawLeafStale bool
+	for _, s := range ka.ManifestStale {
+		if strings.Contains(s, "must name a spec census leaf") {
+			sawLeafStale = true
+		}
+	}
+	if !sawLeafStale {
+		t.Errorf("ManifestStale = %v, want the collapse-to-subtree finding", ka.ManifestStale)
+	}
+}
+
 func TestBuildAccounting_LedgerShadowsComputedClasses(t *testing.T) {
 	spec, modules, schemas, manifests, _ := accountingFixture()
 	ledger := []LedgerEntry{
@@ -397,6 +508,91 @@ func TestBuildAccounting_MissingModule(t *testing.T) {
 	}
 }
 
+// TestBuildAccounting_ExternalResources proves the externally-specified
+// judgment end to end: an external-dispositioned resource carries no
+// argument walk and no unknown-resource finding, a kind consuming ONLY
+// external resources runs no reverse spec walk (its depth is accounted
+// against the external contract the admission records), a MIXED kind keeps
+// the reverse walk for its schema-served side, an external judgment on a
+// schema-served resource is a staleness finding (the provider shipped
+// native support -- the exit-to-native ratchet), and an external resource
+// WITHOUT the judgment keeps the unknown-resource finding.
+func TestBuildAccounting_ExternalResources(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec,
+		KindCensus{Kind: "TestArm", SpecFieldPaths: []string{"spec.auth_mode", "spec.traffic"}},
+		KindCensus{Kind: "TestMixed", SpecFieldPaths: []string{"spec.plain_name", "spec.arm_only_field"}},
+		KindCensus{Kind: "TestArmUnjudged", SpecFieldPaths: []string{"spec.x"}},
+	)
+	modules = append(modules,
+		ModuleCensus{Kind: "TestArm", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestMixed", Resources: []string{"google_plain", "azapi_resource"}, Pins: map[string]string{"google": "~> 6.0", "azapi": "2.11.0"}},
+		ModuleCensus{Kind: "TestArmUnjudged", Resources: []string{"azapi_resource"}, Pins: map[string]string{"azapi": "2.11.0"}},
+	)
+	external := &ResourceManifest{External: "raw-ARM surface at a pinned type@api-version by recorded admission"}
+	manifests["TestArm"] = &Manifest{Resources: map[string]*ResourceManifest{"azapi_resource": external}}
+	manifests["TestMixed"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"azapi_resource": external,
+		"google_plain":   {Mappings: []Mapping{{Spec: "spec.plain_name", Arg: "name"}}},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	arm := kindByName(t, acc, "TestArm")
+	if !arm.Accounted() {
+		t.Errorf("external-only kind must be at total accounting, got %+v", arm)
+	}
+	if !reflect.DeepEqual(arm.ExternalResources, []string{"azapi_resource"}) {
+		t.Errorf("ExternalResources = %v, want [azapi_resource]", arm.ExternalResources)
+	}
+	if len(arm.UncoveredSpecFields) != 0 {
+		t.Errorf("external-only kind must suspend the reverse walk, got uncovered %v", arm.UncoveredSpecFields)
+	}
+
+	// The mixed kind keeps the reverse walk: its schema-served field is
+	// covered by the mapping; the external-fed field is flagged until a
+	// specExclusion names the external resource.
+	mixed := kindByName(t, acc, "TestMixed")
+	if !reflect.DeepEqual(mixed.UncoveredSpecFields, []string{"spec.arm_only_field"}) {
+		t.Errorf("mixed kind uncovered = %v, want [spec.arm_only_field]", mixed.UncoveredSpecFields)
+	}
+
+	// Without the judgment, the unknown-resource finding stands unchanged.
+	unjudged := kindByName(t, acc, "TestArmUnjudged")
+	if unjudged.Accounted() || len(unjudged.ManifestStale) != 1 ||
+		!strings.Contains(unjudged.ManifestStale[0], "unknown to every loaded schema") {
+		t.Errorf("unjudged external consumption must keep the unknown-resource finding, got %+v", unjudged)
+	}
+}
+
+// TestBuildAccounting_ExternalJudgmentGoesStale proves the exit-to-native
+// ratchet: when a loaded schema starts serving a resource the manifest
+// still calls external, the judgment is a staleness finding, never a
+// silent double-accounting.
+func TestBuildAccounting_ExternalJudgmentGoesStale(t *testing.T) {
+	spec, modules, schemas, manifests, _ := accountingFixture()
+	spec = append(spec, KindCensus{Kind: "TestNative", SpecFieldPaths: []string{"spec.plain_name"}})
+	modules = append(modules, ModuleCensus{Kind: "TestNative", Resources: []string{"google_plain"}})
+	manifests["TestNative"] = &Manifest{Resources: map[string]*ResourceManifest{
+		"google_plain": {External: "stale: the schema serves this resource now"},
+	}}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+
+	native := kindByName(t, acc, "TestNative")
+	if native.Accounted() {
+		t.Error("stale external judgment must fail accounting")
+	}
+	found := false
+	for _, s := range native.ManifestStale {
+		if strings.Contains(s, "external judgment is stale") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("ManifestStale = %v, want the stale-external finding", native.ManifestStale)
+	}
+}
+
 // TestBuildAccounting_ManifestStaleness proves the ratchet: judgment
 // referencing surface that no longer exists fails, in every reference class.
 func TestBuildAccounting_ManifestStaleness(t *testing.T) {
@@ -449,6 +645,50 @@ func TestBuildAccounting_ManifestStaleness(t *testing.T) {
 	// The valid mapping still matched.
 	if plain.MappedArgs != 1 || len(plain.UnaccountedArgs) != 0 {
 		t.Errorf("mapped/unaccounted = %d/%v, want 1/none", plain.MappedArgs, plain.UnaccountedArgs)
+	}
+}
+
+// A consumed resource no loaded schema knows (a utility provider like
+// hashicorp/time) is legal exactly when the manifest judges it internal --
+// the judgment is "module plumbing, no provider surface to account", so no
+// schema is needed. Without the judgment the stale-artifact guard fires.
+func TestBuildAccounting_InternalUtilityResourceNeedsNoSchema(t *testing.T) {
+	spec, _, schemas, _, _ := accountingFixture()
+
+	modules := []ModuleCensus{
+		{Kind: "TestPlain", Resources: []string{"google_plain", "time_sleep"}, Pins: map[string]string{"google": "~> 6.0"}},
+	}
+
+	// Judged internal: no stale finding, listed as internal.
+	manifests := map[string]*Manifest{
+		"TestPlain": {
+			Resources: map[string]*ResourceManifest{
+				"time_sleep": {Internal: "destroy-ordering utility from the hashicorp/time provider -- no provider surface"},
+			},
+		},
+	}
+	acc := buildAccounting("gcp", spec, modules, schemas, "google", manifests, nil)
+	plain := kindByName(t, acc, "TestPlain")
+	for _, s := range plain.ManifestStale {
+		if strings.Contains(s, "time_sleep") {
+			t.Errorf("internal utility resource flagged stale: %v", plain.ManifestStale)
+		}
+	}
+	if len(plain.InternalResources) != 1 || plain.InternalResources[0] != "time_sleep" {
+		t.Errorf("InternalResources = %v, want [time_sleep]", plain.InternalResources)
+	}
+
+	// Unjudged: the stale-artifact guard still fires.
+	acc = buildAccounting("gcp", spec, modules, schemas, "google", map[string]*Manifest{}, nil)
+	plain = kindByName(t, acc, "TestPlain")
+	found := false
+	for _, s := range plain.ManifestStale {
+		if strings.Contains(s, "time_sleep is unknown to every loaded schema") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("unjudged unknown resource not flagged; got %v", plain.ManifestStale)
 	}
 }
 
@@ -537,10 +777,13 @@ resources:
 	}
 }
 
-// TestProviderParityGate is the live gate over the whole GCP catalog: the
-// accounting runs against the committed schemas, manifests, ledger, and
-// baseline, and any drift from the recorded state fails. This test IS the CI
-// lane (lint.provider-parity.yaml).
+// TestProviderParityGate is the live gate over every enrolled catalog: each
+// provider's accounting runs against the committed schemas, manifests,
+// ledger, and the ONE shared baseline, and any drift from the recorded state
+// fails. Gating and regenerating always use the merged findings of all
+// enrollments -- a single provider's findings against the shared baseline
+// would misreport every other provider's entries as stale. This test IS the
+// CI lane (lint.provider-parity.yaml).
 func TestProviderParityGate(t *testing.T) {
 	root := repoRoot(t)
 	if _, err := os.Stat(filepath.Join(root, catalogRoot)); err != nil {
@@ -550,31 +793,34 @@ func TestProviderParityGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("committed schemas: %v", err)
 	}
-	acc, err := BuildAccounting(root, cloudresourcekind.CloudResourceProvider_gcp, schemas, "google", "")
+	accountings, err := EnrolledAccountings(root, schemas)
 	if err != nil {
 		t.Fatalf("accounting: %v", err)
 	}
 
-	accounted := 0
-	for _, k := range acc.Kinds {
-		if k.Accounted() {
-			accounted++
+	for _, acc := range accountings {
+		accounted := 0
+		for _, k := range acc.Kinds {
+			if k.Accounted() {
+				accounted++
+			}
+		}
+		t.Logf("%s depth accounting: %d/%d kinds at total accounting against %s@%s",
+			acc.CloudProvider, accounted, len(acc.Kinds), acc.GASchema, acc.GASchemaVersion)
+		t.Logf("%s breadth dispositions: %v", acc.CloudProvider, acc.DispositionTotals)
+
+		if raw, err := json.MarshalIndent(acc, "", "  "); err == nil && os.Getenv("PLANTON_PROVIDERPARITY_DUMP") != "" {
+			path := filepath.Join(os.TempDir(), "providerparity-"+acc.CloudProvider+"-accounting.json")
+			if err := os.WriteFile(path, raw, 0o644); err == nil {
+				t.Logf("full accounting written to %s", path)
+			}
 		}
 	}
-	t.Logf("gcp depth accounting: %d/%d kinds at total accounting against %s@%s",
-		accounted, len(acc.Kinds), acc.GASchema, acc.GASchemaVersion)
-	t.Logf("gcp breadth dispositions: %v", acc.DispositionTotals)
 
-	if raw, err := json.MarshalIndent(acc, "", "  "); err == nil && os.Getenv("PLANTON_PROVIDERPARITY_DUMP") != "" {
-		path := filepath.Join(os.TempDir(), "providerparity-gcp-accounting.json")
-		if err := os.WriteFile(path, raw, 0o644); err == nil {
-			t.Logf("full accounting written to %s", path)
-		}
-	}
-
+	findings := MergeFindings(accountings)
 	baselinePath := filepath.Join(root, DefaultBaselinePath)
 	if os.Getenv("PLANTON_REGEN_PROVIDERPARITY_BASELINE") == "1" {
-		if err := WriteBaseline(baselinePath, acc.Findings); err != nil {
+		if err := WriteBaseline(baselinePath, findings); err != nil {
 			t.Fatalf("regenerating baseline: %v", err)
 		}
 		t.Log("baseline regenerated -- review the diff before committing")
@@ -583,7 +829,7 @@ func TestProviderParityGate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("baseline: %v (regenerate with PLANTON_REGEN_PROVIDERPARITY_BASELINE=1)", err)
 	}
-	res := Gate(acc.Findings, baseline)
+	res := Gate(findings, baseline)
 	for _, f := range res.NewFindings {
 		t.Errorf("new parity gap [%s]: %s", f.BaselineKey, f.Detail)
 	}

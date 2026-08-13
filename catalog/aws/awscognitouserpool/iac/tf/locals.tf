@@ -3,16 +3,16 @@ locals {
   # uses, so both engines create identically-named pools.
   resource_name = var.metadata.name
 
-  # Resource-identity tags follow the catalog convention; user labels merge in
-  # without being able to override the identity keys.
-  aws_tags = merge(try(var.metadata.labels, {}), {
+  # Resource-identity tags match the Pulumi module key-for-key (the canonical
+  # six-key identity map -- user labels never merge into cloud tags).
+  aws_tags = {
     "Name"                     = local.resource_name
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org
     "planton.ai/environment"   = var.metadata.env
     "planton.ai/resource-kind" = "AwsCognitoUserPool"
     "planton.ai/resource-id"   = var.metadata.id
-  })
+  }
 
   # A certificate is what makes a domain "custom" to AWS (it rides a managed
   # CloudFront distribution); a dot in the domain is the spec-level signal,

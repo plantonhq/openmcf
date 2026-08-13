@@ -54,6 +54,7 @@ variable "spec" {
       encrypted = optional(bool, false)
       kms_key_id = optional(string, "")
       delete_on_termination = optional(bool)
+      tags = optional(map(string), {})
     }))
     ebs_block_devices = optional(list(object({
       device_name = string
@@ -65,12 +66,14 @@ variable "spec" {
       kms_key_id = optional(string, "")
       snapshot_id = optional(string, "")
       delete_on_termination = optional(bool)
+      tags = optional(map(string), {})
     })), [])
     ephemeral_block_devices = optional(list(object({
       device_name = string
       virtual_name = optional(string, "")
       no_device = optional(bool, false)
     })), [])
+    volume_tags = optional(map(string), {})
     ebs_optimized = optional(bool, false)
     metadata_options = optional(object({
       http_endpoint = optional(string, "")
@@ -87,6 +90,7 @@ variable "spec" {
       nested_virtualization = optional(string, "")
     }))
     cpu_credits = optional(string, "")
+    market_type = optional(string, "")
     spot_options = optional(object({
       max_price = optional(string, "")
       spot_instance_type = optional(string, "")
@@ -113,6 +117,7 @@ variable "spec" {
     instance_initiated_shutdown_behavior = optional(string, "")
     disable_api_stop = optional(bool)
     disable_api_termination = optional(bool)
+    force_destroy = optional(bool, false)
     user_data = optional(string, "")
     user_data_base64 = optional(string, "")
     user_data_replace_on_change = optional(bool, false)

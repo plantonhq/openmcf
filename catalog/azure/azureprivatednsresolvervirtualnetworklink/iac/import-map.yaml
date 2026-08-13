@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureprivatednsresolvervirtualnetworklink
+spec:
+  # The link imports by its full ARM resource ID (a child of the
+  # forwarding ruleset).
+  values:
+    - name: virtual_network_link_id
+      derivations:
+        - from_stack_output: virtual_network_link_id
+      where_to_find: >-
+        `az dns-resolver vnet-link show -g <resource-group>
+        --ruleset-name <ruleset> -n <name> --query id`, or the
+        component's own virtual_network_link_id stack output.

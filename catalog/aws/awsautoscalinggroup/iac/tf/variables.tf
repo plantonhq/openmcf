@@ -197,13 +197,73 @@ variable "spec" {
       }))
       predictive_scaling = optional(object({
         target_value = number
-        predefined_metric_pair_type = string
+        predefined_metric_pair_type = optional(string, "")
         resource_label = optional(string, "")
         mode = optional(string, "")
         scheduling_buffer_time_seconds = optional(number, 0)
         max_capacity_breach_behavior = optional(string, "")
         max_capacity_buffer = optional(number, 0)
+        predefined_load_metric = optional(object({
+          metric_type = string
+          resource_label = optional(string, "")
+        }))
+        predefined_scaling_metric = optional(object({
+          metric_type = string
+          resource_label = optional(string, "")
+        }))
+        customized_load_metric_queries = optional(list(object({
+          id = string
+          expression = optional(string, "")
+          metric_stat = optional(object({
+            metric_name = string
+            namespace = string
+            stat = string
+            unit = optional(string, "")
+            dimensions = optional(list(object({
+              name = string
+              value = string
+            })), [])
+            period_seconds = optional(number, 0)
+          }))
+          label = optional(string, "")
+          return_data = optional(bool)
+        })), [])
+        customized_scaling_metric_queries = optional(list(object({
+          id = string
+          expression = optional(string, "")
+          metric_stat = optional(object({
+            metric_name = string
+            namespace = string
+            stat = string
+            unit = optional(string, "")
+            dimensions = optional(list(object({
+              name = string
+              value = string
+            })), [])
+            period_seconds = optional(number, 0)
+          }))
+          label = optional(string, "")
+          return_data = optional(bool)
+        })), [])
+        customized_capacity_metric_queries = optional(list(object({
+          id = string
+          expression = optional(string, "")
+          metric_stat = optional(object({
+            metric_name = string
+            namespace = string
+            stat = string
+            unit = optional(string, "")
+            dimensions = optional(list(object({
+              name = string
+              value = string
+            })), [])
+            period_seconds = optional(number, 0)
+          }))
+          label = optional(string, "")
+          return_data = optional(bool)
+        })), [])
       }))
+      disabled = optional(bool, false)
     })), [])
     scheduled_actions = optional(list(object({
       name = string
@@ -223,10 +283,27 @@ variable "spec" {
       notification_target_arn = optional(string, "")
       role_arn = optional(string, "")
       notification_metadata = optional(string, "")
+      apply_at_launch = optional(bool, false)
     })), [])
     notifications = optional(object({
       topic = string
       event_types = list(string)
     }))
+    capacity_reservation = optional(object({
+      preference = optional(string, "")
+      capacity_reservation_ids = optional(list(string), [])
+      capacity_reservation_resource_group_arns = optional(list(string), [])
+    }))
+    traffic_sources = optional(list(object({
+      identifier = string
+      type = optional(string, "")
+    })), [])
+    instance_lifecycle_policy = optional(object({
+      terminate_hook_abandon = optional(string, "")
+    }))
+    ignore_failed_scaling_activities = optional(bool, false)
+    force_delete_warm_pool = optional(bool, false)
+    min_elb_capacity = optional(number, 0)
+    wait_for_elb_capacity = optional(number, 0)
   })
 }

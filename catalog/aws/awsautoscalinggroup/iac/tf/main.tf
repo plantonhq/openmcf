@@ -181,7 +181,77 @@ resource "aws_autoscaling_group" "this" {
   suspended_processes = length(var.spec.suspended_processes) > 0 ? var.spec.suspended_processes : null
 
   force_delete              = var.spec.force_delete ? true : null
+  force_delete_warm_pool    = var.spec.force_delete_warm_pool ? true : null
   wait_for_capacity_timeout = var.spec.wait_for_capacity_timeout != "" ? var.spec.wait_for_capacity_timeout : null
+
+  # ELB-health waits (engine behavior, like wait_for_capacity_timeout):
+  # min_elb_capacity gates the CREATE; wait_for_elb_capacity gates create
+  # AND every update, and takes precedence when both are set.
+  min_elb_capacity      = var.spec.min_elb_capacity > 0 ? var.spec.min_elb_capacity : null
+  wait_for_elb_capacity = var.spec.wait_for_elb_capacity > 0 ? var.spec.wait_for_elb_capacity : null
+
+  # Keep IaC applies moving while a scaling activity is failing -- for
+  # groups whose scaling errors are watched by their own alarms.
+  ignore_failed_scaling_activities = var.spec.ignore_failed_scaling_activities ? true : null
+
+  # Launch into EC2 Capacity Reservations: a preference shapes reservation
+  # use; targets pin the group to specific reservations or a resource
+  # group of them.
+  dynamic "capacity_reservation_specification" {
+    for_each = var.spec.capacity_reservation != null ? [var.spec.capacity_reservation] : []
+    content {
+      capacity_reservation_preference = capacity_reservation_specification.value.preference != "" ? capacity_reservation_specification.value.preference : null
+      dynamic "capacity_reservation_target" {
+        for_each = (length(capacity_reservation_specification.value.capacity_reservation_ids) > 0 || length(capacity_reservation_specification.value.capacity_reservation_resource_group_arns) > 0) ? [capacity_reservation_specification.value] : []
+        content {
+          capacity_reservation_ids                  = length(capacity_reservation_target.value.capacity_reservation_ids) > 0 ? capacity_reservation_target.value.capacity_reservation_ids : null
+          capacity_reservation_resource_group_arns  = length(capacity_reservation_target.value.capacity_reservation_resource_group_arns) > 0 ? capacity_reservation_target.value.capacity_reservation_resource_group_arns : null
+        }
+      }
+    }
+  }
+
+  # Generalized traffic sources (VPC Lattice / Classic ELB); ALB/NLB
+  # target groups use target_group_arns above -- the spec forbids mixing
+  # the two, mirroring the provider's ConflictsWith.
+  dynamic "traffic_source" {
+    for_each = var.spec.traffic_sources
+    content {
+      identifier = traffic_source.value.identifier
+      type       = traffic_source.value.type != "" ? traffic_source.value.type : null
+    }
+  }
+
+  # The fate of instances whose TERMINATING hook ends in ABANDON:
+  # "retain" keeps them running (out of the group) for post-mortems.
+  dynamic "instance_lifecycle_policy" {
+    for_each = var.spec.instance_lifecycle_policy != null ? [var.spec.instance_lifecycle_policy] : []
+    content {
+      dynamic "retention_triggers" {
+        for_each = instance_lifecycle_policy.value.terminate_hook_abandon != "" ? [instance_lifecycle_policy.value.terminate_hook_abandon] : []
+        content {
+          terminate_hook_abandon = retention_triggers.value
+        }
+      }
+    }
+  }
+
+  # Hooks flagged apply_at_launch attach atomically at group creation, so
+  # even the very first instance is caught; AWS makes these creation-time
+  # hooks immutable (changing one replaces the group). The rest are
+  # standalone hook resources below, individually updatable.
+  dynamic "initial_lifecycle_hook" {
+    for_each = { for hook in var.spec.lifecycle_hooks : hook.name => hook if hook.apply_at_launch }
+    content {
+      name                    = initial_lifecycle_hook.value.name
+      lifecycle_transition    = initial_lifecycle_hook.value.lifecycle_transition
+      default_result          = initial_lifecycle_hook.value.default_result != "" ? initial_lifecycle_hook.value.default_result : null
+      heartbeat_timeout       = initial_lifecycle_hook.value.heartbeat_timeout_seconds > 0 ? initial_lifecycle_hook.value.heartbeat_timeout_seconds : null
+      notification_target_arn = initial_lifecycle_hook.value.notification_target_arn != "" ? initial_lifecycle_hook.value.notification_target_arn : null
+      role_arn                = initial_lifecycle_hook.value.role_arn != "" ? initial_lifecycle_hook.value.role_arn : null
+      notification_metadata   = initial_lifecycle_hook.value.notification_metadata != "" ? initial_lifecycle_hook.value.notification_metadata : null
+    }
+  }
 
   # Rolling replacement when the launch template (or another watched
   # attribute) changes -- the mechanism that turns a template update into a
@@ -289,6 +359,11 @@ resource "aws_autoscaling_policy" "this" {
   name                   = each.value.name
   policy_type            = each.value.policy_type
 
+  # The pause button: a disabled policy stays configured (alarms, history,
+  # forecast state) but stops acting on the group. AWS defaults to
+  # enabled, so only an explicit disable is sent.
+  enabled = each.value.disabled ? false : null
+
   estimated_instance_warmup = each.value.estimated_instance_warmup_seconds > 0 ? each.value.estimated_instance_warmup_seconds : null
 
   # SimpleScaling / StepScaling shared knobs.
@@ -388,8 +463,10 @@ resource "aws_autoscaling_policy" "this" {
     }
   }
 
-  # PredictiveScaling: forecast-driven pre-provisioning using the
-  # predefined metric-pair form (load + scaling metric derived together).
+  # PredictiveScaling: forecast-driven pre-provisioning. The metrics come
+  # in three forms (spec validation enforces the choice): one predefined
+  # PAIR, SPLIT predefined load + scaling metrics, or fully CUSTOMIZED
+  # metric-math query sets.
   dynamic "predictive_scaling_configuration" {
     for_each = each.value.predictive_scaling != null ? [each.value.predictive_scaling] : []
     content {
@@ -403,9 +480,136 @@ resource "aws_autoscaling_policy" "this" {
       metric_specification {
         target_value = predictive_scaling_configuration.value.target_value
 
-        predefined_metric_pair_specification {
-          predefined_metric_type = predictive_scaling_configuration.value.predefined_metric_pair_type
-          resource_label         = predictive_scaling_configuration.value.resource_label != "" ? predictive_scaling_configuration.value.resource_label : null
+        dynamic "predefined_metric_pair_specification" {
+          for_each = predictive_scaling_configuration.value.predefined_metric_pair_type != "" ? [predictive_scaling_configuration.value] : []
+          content {
+            predefined_metric_type = predefined_metric_pair_specification.value.predefined_metric_pair_type
+            resource_label         = predefined_metric_pair_specification.value.resource_label != "" ? predefined_metric_pair_specification.value.resource_label : null
+          }
+        }
+
+        dynamic "predefined_load_metric_specification" {
+          for_each = predictive_scaling_configuration.value.predefined_load_metric != null ? [predictive_scaling_configuration.value.predefined_load_metric] : []
+          content {
+            predefined_metric_type = predefined_load_metric_specification.value.metric_type
+            resource_label         = predefined_load_metric_specification.value.resource_label != "" ? predefined_load_metric_specification.value.resource_label : null
+          }
+        }
+
+        dynamic "predefined_scaling_metric_specification" {
+          for_each = predictive_scaling_configuration.value.predefined_scaling_metric != null ? [predictive_scaling_configuration.value.predefined_scaling_metric] : []
+          content {
+            predefined_metric_type = predefined_scaling_metric_specification.value.metric_type
+            resource_label         = predefined_scaling_metric_specification.value.resource_label != "" ? predefined_scaling_metric_specification.value.resource_label : null
+          }
+        }
+
+        dynamic "customized_load_metric_specification" {
+          for_each = length(predictive_scaling_configuration.value.customized_load_metric_queries) > 0 ? [predictive_scaling_configuration.value.customized_load_metric_queries] : []
+          content {
+            dynamic "metric_data_queries" {
+              for_each = customized_load_metric_specification.value
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression != "" ? metric_data_queries.value.expression : null
+                label       = metric_data_queries.value.label != "" ? metric_data_queries.value.label : null
+                return_data = metric_data_queries.value.return_data
+
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat != null ? [metric_data_queries.value.metric_stat] : []
+                  content {
+                    stat = metric_stat.value.stat
+                    unit = metric_stat.value.unit != "" ? metric_stat.value.unit : null
+
+                    metric {
+                      metric_name = metric_stat.value.metric_name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
+                        content {
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        dynamic "customized_scaling_metric_specification" {
+          for_each = length(predictive_scaling_configuration.value.customized_scaling_metric_queries) > 0 ? [predictive_scaling_configuration.value.customized_scaling_metric_queries] : []
+          content {
+            dynamic "metric_data_queries" {
+              for_each = customized_scaling_metric_specification.value
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression != "" ? metric_data_queries.value.expression : null
+                label       = metric_data_queries.value.label != "" ? metric_data_queries.value.label : null
+                return_data = metric_data_queries.value.return_data
+
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat != null ? [metric_data_queries.value.metric_stat] : []
+                  content {
+                    stat = metric_stat.value.stat
+                    unit = metric_stat.value.unit != "" ? metric_stat.value.unit : null
+
+                    metric {
+                      metric_name = metric_stat.value.metric_name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
+                        content {
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        dynamic "customized_capacity_metric_specification" {
+          for_each = length(predictive_scaling_configuration.value.customized_capacity_metric_queries) > 0 ? [predictive_scaling_configuration.value.customized_capacity_metric_queries] : []
+          content {
+            dynamic "metric_data_queries" {
+              for_each = customized_capacity_metric_specification.value
+              content {
+                id          = metric_data_queries.value.id
+                expression  = metric_data_queries.value.expression != "" ? metric_data_queries.value.expression : null
+                label       = metric_data_queries.value.label != "" ? metric_data_queries.value.label : null
+                return_data = metric_data_queries.value.return_data
+
+                dynamic "metric_stat" {
+                  for_each = metric_data_queries.value.metric_stat != null ? [metric_data_queries.value.metric_stat] : []
+                  content {
+                    stat = metric_stat.value.stat
+                    unit = metric_stat.value.unit != "" ? metric_stat.value.unit : null
+
+                    metric {
+                      metric_name = metric_stat.value.metric_name
+                      namespace   = metric_stat.value.namespace
+
+                      dynamic "dimensions" {
+                        for_each = metric_stat.value.dimensions
+                        content {
+                          name  = dimensions.value.name
+                          value = dimensions.value.value
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -431,11 +635,12 @@ resource "aws_autoscaling_schedule" "this" {
   desired_capacity = each.value.desired_capacity == null ? -1 : each.value.desired_capacity
 }
 
-# Lifecycle hooks: pause points in the instance lifecycle. Managed as
-# standalone hook resources (not the group's create-only inline block) so
-# hooks stay individually updatable.
+# Lifecycle hooks: pause points in the instance lifecycle. Hooks WITHOUT
+# apply_at_launch are managed as standalone hook resources so they stay
+# individually updatable; flagged hooks render inline on the group above
+# (attached atomically at creation, at the cost of immutability).
 resource "aws_autoscaling_lifecycle_hook" "this" {
-  for_each = { for hook in var.spec.lifecycle_hooks : hook.name => hook }
+  for_each = { for hook in var.spec.lifecycle_hooks : hook.name => hook if !hook.apply_at_launch }
 
   autoscaling_group_name = aws_autoscaling_group.this.name
   name                   = each.value.name

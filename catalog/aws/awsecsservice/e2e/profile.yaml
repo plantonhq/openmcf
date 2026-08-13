@@ -14,10 +14,22 @@ spec:
   # when a referenced target group has no associated listener, so a
   # LB-wired live scenario would force ALB + listener + rule fixtures onto
   # every run. The target-group ref path is proven by the resolver unit
-  # tests and the offline gate instead.
+  # tests and the offline gate instead. The VPC Lattice arm needs a
+  # Lattice target group (no catalog kind yet) and the managed-EBS arm a
+  # volumes infrastructure-role fixture -- both offline-proven for now.
+  #
+  # pending_proof: the spec surface deepened (VPC Lattice target-group
+  # attachments, Service Connect access logs and test-traffic rules,
+  # managed-EBS volume tag_specifications and initialization rate) after
+  # the prior green run, so that proof no longer covers the current
+  # surface. Offline plans and previews passed on both engines; the live
+  # lanes re-earn the badge.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

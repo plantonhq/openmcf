@@ -52,3 +52,13 @@ output "instance_endpoints" {
   description = "Per-instance endpoints of the folded instances, in spec order. Empty for headless shapes (restores, replicas, and global-cluster members created without instances)."
   value       = [for instance in var.spec.instances : aws_neptune_cluster_instance.this[instance.name].endpoint]
 }
+
+output "custom_endpoint_addresses" {
+  description = "Custom endpoint DNS addresses keyed by spec.custom_endpoints[].name."
+  value       = { for name, endpoint in aws_neptune_cluster_endpoint.this : name => endpoint.endpoint }
+}
+
+output "neptune_instance_parameter_group_name" {
+  description = "The module-managed instance parameter group created from spec.instance_parameters (empty when not managed here)."
+  value       = local.manage_instance_parameter_group ? aws_neptune_parameter_group.instance[0].name : ""
+}

@@ -19,6 +19,10 @@ spec:
     volumeSizeGb: 30
     volumeType: gp3
     encrypted: true
+  volumeTags: # uniform at-creation tags on EVERY volume (ABAC-compliant); per-device tags are the post-creation alternative
+    cost-center: platform
+  disableApiTermination: true # protect the pet from fat-fingered deletion
+  forceDestroy: true # ...while keeping teardown declarative: destroy lifts the protection itself
   userData: |
     #!/bin/bash
     echo "hello from ${HOSTNAME}" > /etc/motd

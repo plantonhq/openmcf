@@ -14,7 +14,11 @@ resource "aws_dynamodb_table" "this" {
   billing_mode = var.spec.billing_mode != "" ? var.spec.billing_mode : null
 
   # Reserved capacity applies only when the effective billing mode is
-  # PROVISIONED (CEL enforces the coupling either way).
+  # PROVISIONED (CEL enforces the coupling either way). These values seed
+  # the table at create; live capacity is owned by Application Auto
+  # Scaling from then on (see autoscaling.tf and the ignore_changes note
+  # below), so declared capacity changes land through the scalable
+  # targets, never through this resource.
   read_capacity  = var.spec.provisioned_throughput != null ? var.spec.provisioned_throughput.read_capacity_units : null
   write_capacity = var.spec.provisioned_throughput != null ? var.spec.provisioned_throughput.write_capacity_units : null
 
@@ -206,4 +210,17 @@ resource "aws_dynamodb_table" "this" {
   }
 
   tags = local.aws_tags
+
+  # Live capacity is Application Auto Scaling's to manage on provisioned
+  # tables (autoscaling.tf registers targets in BOTH modes: user bounds
+  # with tracking policies, or pinned min = max from
+  # provisioned_throughput). ignore_changes must be a static literal list
+  # (OpenTofu forbids a conditional expression here), so this always
+  # ignores -- matching the house convention for autoscaler-managed
+  # values (the Pulumi module ignores the same paths). Declared capacity
+  # changes still land: the scalable targets carry them, and AWS moves
+  # out-of-range capacity into the target's bounds by contract.
+  lifecycle {
+    ignore_changes = [read_capacity, write_capacity]
+  }
 }

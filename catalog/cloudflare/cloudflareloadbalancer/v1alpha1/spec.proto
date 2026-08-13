@@ -101,7 +101,7 @@ message CloudflareLoadBalancerSpec {
   double ttl = 12 [(buf.validate.field).cel = {
     id: "lb.ttl_non_negative"
     message: "ttl must be 0 (default) or a positive number of seconds"
-    expression: "this >= 0"
+    expression: "this >= 0.0"
   }];
 
   // Seconds until a client's affinity session expires. Leave 0 for the
@@ -109,7 +109,7 @@ message CloudflareLoadBalancerSpec {
   double session_affinity_ttl = 13 [(buf.validate.field).cel = {
     id: "lb.session_affinity_ttl_non_negative"
     message: "session_affinity_ttl must be 0 (default) or a positive number of seconds"
-    expression: "this >= 0"
+    expression: "this >= 0.0"
   }];
 
   // Fine-grained session-affinity attributes (drain, headers, cookie flags,
@@ -168,7 +168,7 @@ message CloudflareLoadBalancerSessionAffinityAttributes {
   double drain_duration = 1 [(buf.validate.field).cel = {
     id: "saa.drain_duration_non_negative"
     message: "drain_duration must be 0 or a positive number of seconds"
-    expression: "this >= 0"
+    expression: "this >= 0.0"
   }];
 
   // HTTP header names that header-based affinity is keyed on (required when
@@ -239,7 +239,7 @@ message CloudflareLoadBalancerRandomSteering {
   double default_weight = 1 [(buf.validate.field).cel = {
     id: "rs.default_weight_range"
     message: "default_weight must be between 0 and 1"
-    expression: "this >= 0 && this <= 1"
+    expression: "this >= 0.0 && this <= 1.0"
   }];
 
   // Per-pool weight overrides, keyed by pool ID. Each weight is relative to the

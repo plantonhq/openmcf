@@ -9,8 +9,9 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor 6.29.0: routing_mode landed on the domain resource in 6.29.0,
-      # changing its schema shape -- the family floor pins there so every
+      # Feature floor 6.29.0: routing_mode on the domain resource and the
+      # aws_apigatewayv2_routing_rule resource (both used by this module)
+      # landed together in 6.29.0 -- the family floor pins there so every
       # apigatewayv2 sibling resolves from the same provider build.
       source  = "hashicorp/aws"
       version = "~> 6.58"

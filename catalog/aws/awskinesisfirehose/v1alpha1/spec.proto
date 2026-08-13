@@ -264,6 +264,14 @@ message AwsKinesisFirehoseMskSource {
     message: "connectivity must be 'PRIVATE' or 'PUBLIC'"
     expression: "this.connectivity in ['PRIVATE', 'PUBLIC']"
   };
+
+  // The provider rejects anything that is not an RFC 3339 timestamp at plan
+  // time -- mirror that here so a bad value fails at validate instead.
+  option (buf.validate.message).cel = {
+    id: "read_from_timestamp_rfc3339"
+    message: "read_from_timestamp must be an RFC 3339 timestamp (e.g., '2026-05-01T00:00:00Z') when set"
+    expression: "this.read_from_timestamp == '' || this.read_from_timestamp.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+  };
 }
 
 // =============================================================================
@@ -475,12 +483,14 @@ message AwsKinesisFirehoseLambdaProcessor {
   ];
 
   // Buffer size in MiB that Firehose accumulates before invoking Lambda.
-  // Range: 1-3 MiB. Default: 3 MiB.
+  // Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+  // low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+  // destination is Splunk).
   //
   // Smaller buffers invoke Lambda more frequently with smaller batches.
   // Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
   // invocation costs.
-  int32 buffer_size_in_mbs = 2;
+  double buffer_size_in_mbs = 2;
 
   // Buffer interval in seconds. Firehose invokes Lambda when this interval
   // elapses, even if the buffer size threshold has not been reached.
@@ -492,14 +502,28 @@ message AwsKinesisFirehoseLambdaProcessor {
   // Range: 0-300. Default: 3.
   int32 number_of_retries = 4;
 
+  // IAM role ARN Firehose assumes to invoke the Lambda function. When
+  // absent, Firehose uses the delivery stream's destination role -- the
+  // right choice for almost every pipeline. Set this only when the
+  // transformation function must be invoked with a DIFFERENT role than the
+  // one that writes to the destination (e.g. the function lives in another
+  // account). Note: AWS reports the delivery role back for unset values, and
+  // the provider does not store default-valued processor parameters in
+  // state -- so set this only to a non-default role, never to the delivery
+  // role itself (that would cause perpetual plan diffs).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
   // ---------------------------------------------------------------------------
   // CEL validations
   // ---------------------------------------------------------------------------
 
   option (buf.validate.message).cel = {
     id: "buffer_size_range"
-    message: "buffer_size_in_mbs must be between 1 and 3 when set"
-    expression: "this.buffer_size_in_mbs == 0 || (this.buffer_size_in_mbs >= 1 && this.buffer_size_in_mbs <= 3)"
+    message: "buffer_size_in_mbs must be between 0.2 and 3 when set"
+    expression: "this.buffer_size_in_mbs == 0.0 || (this.buffer_size_in_mbs >= 0.2 && this.buffer_size_in_mbs <= 3.0)"
   };
 
   option (buf.validate.message).cel = {
@@ -620,7 +644,12 @@ message AwsKinesisFirehoseCloudwatchLogging {
   bool enabled = 1;
 
   // CloudWatch Logs log group name where errors are published.
-  // Required when enabled is true.
+  // Required when enabled is true. Firehose neither creates nor
+  // validates this group: CreateDeliveryStream accepts a nonexistent
+  // name (live-verified 2026-08-12), and delivery errors are silently
+  // dropped until a log group with exactly this name exists -- create
+  // it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+  // trail you configured here never materializes.
   string log_group_name = 2;
 
   // CloudWatch Logs log stream name within the log group.
@@ -883,38 +912,36 @@ message AwsKinesisFirehoseDynamicPartitioning {
 // - The Firehose IAM role must have glue:GetTable and glue:GetTableVersions
 //   permissions on the Glue catalog
 message AwsKinesisFirehoseDataFormatConversion {
-  // Enable data format conversion. When true, output_format and schema are
-  // required.
+  // Enable data format conversion. When true, exactly one deserializer arm
+  // (open_x_json or hive_json), exactly one serializer arm (parquet or orc),
+  // and schema are required. When false with arms configured, the
+  // conversion settings are retained but inactive (AWS permits disabling
+  // conversion without discarding its configuration).
   bool enabled = 1;
 
-  // Input data format for deserialization. Firehose reads incoming JSON
-  // records using this deserializer.
-  //
-  // Valid values:
-  // - "OPENX_JSON" (default) -- OpenX JSON SerDe. Handles most JSON formats
-  //   including nested objects. Recommended for general use.
-  // - "HIVE_JSON" -- Apache Hive JSON SerDe. Use for Hive-compatible JSON
-  //   with custom timestamp formats.
-  string input_format = 2;
+  // OpenX JSON deserializer arm. Handles most JSON formats including nested
+  // objects -- the right choice for general use. Exactly one of open_x_json
+  // or hive_json must be set when conversion is enabled; set it empty
+  // ("openXJson: {}") to accept the deserializer defaults.
+  AwsKinesisFirehoseOpenXJsonDeserializer open_x_json = 2;
 
-  // Output columnar format for serialization. Records are converted from
-  // JSON to this format before writing to S3.
-  //
-  // Valid values:
-  // - "PARQUET" -- Apache Parquet format. Best for read-heavy analytical
-  //   workloads (Athena, Spark, Presto). Excellent compression, predicate
-  //   pushdown, and columnar pruning.
-  // - "ORC" -- Apache ORC format. Best for Hive workloads. ACID support,
-  //   bloom filters, and built-in indexing.
-  string output_format = 3;
+  // Apache Hive JSON deserializer arm. Use for Hive-compatible JSON when
+  // records carry non-standard timestamp encodings that need explicit
+  // parsing patterns. Exactly one of open_x_json or hive_json must be set
+  // when conversion is enabled.
+  AwsKinesisFirehoseHiveJsonDeserializer hive_json = 3;
 
-  // Compression for Parquet output. Only used when output_format is "PARQUET".
-  // Valid values: "SNAPPY" (default), "GZIP", "UNCOMPRESSED".
-  string parquet_compression = 4;
+  // Apache Parquet serializer arm. Best for read-heavy analytical workloads
+  // (Athena, Spark, Presto): excellent compression, predicate pushdown, and
+  // columnar pruning. Exactly one of parquet or orc must be set when
+  // conversion is enabled; set it empty ("parquet: {}") to accept the
+  // serializer defaults (SNAPPY compression).
+  AwsKinesisFirehoseParquetSerializer parquet = 4;
 
-  // Compression for ORC output. Only used when output_format is "ORC".
-  // Valid values: "SNAPPY" (default), "ZLIB", "NONE".
-  string orc_compression = 5;
+  // Apache ORC serializer arm. Best for Hive workloads: ACID support, bloom
+  // filters, and built-in indexing. Exactly one of parquet or orc must be
+  // set when conversion is enabled.
+  AwsKinesisFirehoseOrcSerializer orc = 5;
 
   // AWS Glue Data Catalog schema reference. Defines the table schema used
   // for converting JSON records to the columnar format. Required when
@@ -925,11 +952,28 @@ message AwsKinesisFirehoseDataFormatConversion {
   // CEL validations
   // ---------------------------------------------------------------------------
 
-  // output_format and schema required when enabled.
   option (buf.validate.message).cel = {
-    id: "output_format_required_when_enabled"
-    message: "output_format is required when data format conversion is enabled"
-    expression: "!this.enabled || this.output_format != ''"
+    id: "deserializer_at_most_one"
+    message: "at most one deserializer arm may be set: open_x_json or hive_json"
+    expression: "!(has(this.open_x_json) && has(this.hive_json))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "deserializer_required_when_enabled"
+    message: "a deserializer arm (open_x_json or hive_json) is required when data format conversion is enabled"
+    expression: "!this.enabled || has(this.open_x_json) || has(this.hive_json)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "serializer_at_most_one"
+    message: "at most one serializer arm may be set: parquet or orc"
+    expression: "!(has(this.parquet) && has(this.orc))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "serializer_required_when_enabled"
+    message: "a serializer arm (parquet or orc) is required when data format conversion is enabled"
+    expression: "!this.enabled || has(this.parquet) || has(this.orc)"
   };
 
   option (buf.validate.message).cel = {
@@ -937,43 +981,212 @@ message AwsKinesisFirehoseDataFormatConversion {
     message: "schema is required when data format conversion is enabled"
     expression: "!this.enabled || has(this.schema)"
   };
+}
+
+// AwsKinesisFirehoseOpenXJsonDeserializer configures the OpenX JSON SerDe
+// used to read incoming JSON records. All fields are optional -- an empty
+// arm accepts the deserializer defaults.
+message AwsKinesisFirehoseOpenXJsonDeserializer {
+  // When true (the AWS default), JSON keys are lowercased before
+  // deserialization, so keys match case-insensitively against the Glue
+  // schema's lowercase column names. Set to false only when the source
+  // JSON keys must be matched exactly as sent (combine with
+  // column_to_json_key_mappings for columns whose keys differ only by
+  // case).
+  optional bool case_insensitive = 1;
+
+  // Map of Glue schema column names to JSON keys that differ from them.
+  // Use when a JSON key is not a valid column name -- e.g. a key that
+  // collides with a Hive reserved word: {"ts": "timestamp"} reads the JSON
+  // key "timestamp" into the column "ts".
+  map<string, string> column_to_json_key_mappings = 2;
+
+  // When true, dots in JSON keys are converted to underscores before
+  // matching against the schema ("a.b" reads into column "a_b"). Glue
+  // column names cannot contain dots, so enable this when source keys do.
+  // Default: false.
+  bool convert_dots_in_json_keys_to_underscores = 3;
+}
+
+// AwsKinesisFirehoseHiveJsonDeserializer configures the Apache Hive JSON
+// SerDe used to read incoming JSON records.
+message AwsKinesisFirehoseHiveJsonDeserializer {
+  // Joda-Time datetime format patterns for parsing timestamp fields from
+  // the source JSON (e.g. "yyyy-MM-dd'T'HH:mm:ss"). Include the special
+  // value "millis" to parse epoch-millisecond timestamps. When empty,
+  // Firehose uses java.sql.Timestamp::valueOf.
+  repeated string timestamp_formats = 1;
+}
+
+// AwsKinesisFirehoseParquetSerializer configures Apache Parquet output.
+// All fields are optional -- an empty arm accepts the serializer defaults
+// (SNAPPY compression, 256 MiB blocks, 1 MiB pages, writer version V1).
+message AwsKinesisFirehoseParquetSerializer {
+  // Compression codec for Parquet pages. "SNAPPY" (the default) balances
+  // speed and size; "GZIP" compresses harder at higher CPU cost --
+  // preferable when S3 storage/scan cost outweighs write throughput;
+  // "UNCOMPRESSED" only when downstream readers cannot decompress.
+  string compression = 1;
+
+  // Parquet row-group (block) size in bytes. Firehose and query engines use
+  // it for padding and row-group sizing; larger blocks improve scan
+  // efficiency at the cost of memory. Minimum: 67108864 (64 MiB).
+  // Default: 268435456 (256 MiB).
+  int64 block_size_bytes = 2;
+
+  // Parquet page size in bytes -- the smallest unit a read must fully
+  // decompress. Minimum: 65536 (64 KiB). Default: 1048576 (1 MiB).
+  int64 page_size_bytes = 3;
+
+  // Maximum padding in bytes when writing row groups (used to align blocks
+  // to HDFS-style boundaries; rarely needed on S3). Default: 0.
+  int64 max_padding_bytes = 4;
+
+  // Enable dictionary compression -- encodes repeated column values through
+  // a dictionary. Effective when columns carry low-cardinality values.
+  // Default: false.
+  bool enable_dictionary_compression = 5;
+
+  // Parquet writer version. "V1" (the default) is readable by every
+  // engine; "V2" enables newer encodings -- confirm downstream reader
+  // support before switching. Valid values: "V1", "V2".
+  string writer_version = 6;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
 
   option (buf.validate.message).cel = {
-    id: "input_format_valid"
-    message: "input_format must be 'OPENX_JSON' or 'HIVE_JSON' when set"
-    expression: "this.input_format == '' || this.input_format in ['OPENX_JSON', 'HIVE_JSON']"
+    id: "compression_valid"
+    message: "compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set"
+    expression: "this.compression == '' || this.compression in ['SNAPPY', 'GZIP', 'UNCOMPRESSED']"
   };
 
   option (buf.validate.message).cel = {
-    id: "output_format_valid"
-    message: "output_format must be 'PARQUET' or 'ORC' when set"
-    expression: "this.output_format == '' || this.output_format in ['PARQUET', 'ORC']"
+    id: "block_size_min"
+    message: "block_size_bytes must be at least 67108864 (64 MiB) when set"
+    expression: "this.block_size_bytes == 0 || this.block_size_bytes >= 67108864"
   };
 
   option (buf.validate.message).cel = {
-    id: "parquet_compression_valid"
-    message: "parquet_compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set"
-    expression: "this.parquet_compression == '' || this.parquet_compression in ['SNAPPY', 'GZIP', 'UNCOMPRESSED']"
+    id: "page_size_min"
+    message: "page_size_bytes must be at least 65536 (64 KiB) when set"
+    expression: "this.page_size_bytes == 0 || this.page_size_bytes >= 65536"
   };
 
   option (buf.validate.message).cel = {
-    id: "orc_compression_valid"
-    message: "orc_compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set"
-    expression: "this.orc_compression == '' || this.orc_compression in ['SNAPPY', 'ZLIB', 'NONE']"
+    id: "max_padding_non_negative"
+    message: "max_padding_bytes must not be negative"
+    expression: "this.max_padding_bytes >= 0"
   };
 
-  // parquet_compression requires output_format PARQUET.
   option (buf.validate.message).cel = {
-    id: "parquet_compression_requires_parquet"
-    message: "parquet_compression is only valid when output_format is 'PARQUET'"
-    expression: "this.parquet_compression == '' || this.output_format == 'PARQUET'"
+    id: "writer_version_valid"
+    message: "writer_version must be 'V1' or 'V2' when set"
+    expression: "this.writer_version == '' || this.writer_version in ['V1', 'V2']"
+  };
+}
+
+// AwsKinesisFirehoseOrcSerializer configures Apache ORC output. All fields
+// are optional -- an empty arm accepts the serializer defaults (SNAPPY
+// compression, 256 MiB blocks, 64 MiB stripes, format version V0_12).
+message AwsKinesisFirehoseOrcSerializer {
+  // Compression codec for ORC stripes. "SNAPPY" (the default) balances
+  // speed and size; "ZLIB" compresses harder at higher CPU cost; "NONE"
+  // only when downstream readers cannot decompress.
+  string compression = 1;
+
+  // ORC block size in bytes, used for padding calculations and copy-block
+  // sizing. Minimum: 67108864 (64 MiB). Default: 268435456 (256 MiB).
+  int64 block_size_bytes = 2;
+
+  // ORC stripe size in bytes -- the unit of independent reading. Minimum:
+  // 8388608 (8 MiB). Default: 67108864 (64 MiB).
+  int64 stripe_size_bytes = 3;
+
+  // Column names to build bloom filters for. Bloom filters let readers
+  // skip stripes that cannot contain a searched value -- list the columns
+  // your queries filter on by equality.
+  repeated string bloom_filter_columns = 4;
+
+  // Bloom filter false-positive probability, between 0 and 1. Lower values
+  // make filters more selective but larger. AWS default: 0.05. Explicit 0
+  // is AWS-legal, so absence (AWS default) and 0 are distinct states.
+  optional double bloom_filter_false_positive_probability = 5;
+
+  // Fraction of a column's total distinct keys above which dictionary
+  // encoding is abandoned for that column, between 0 and 1. 0 (the AWS
+  // default) always dictionary-encodes; 1 never abandons it.
+  double dictionary_key_threshold = 6;
+
+  // Pad stripes to HDFS-style block boundaries. Relevant for HDFS-backed
+  // readers; rarely needed for S3. Default: false.
+  bool enable_padding = 7;
+
+  // Maximum fraction of a stripe that may be wasted as padding, between 0
+  // and 1. Only meaningful when enable_padding is true. AWS default: 0.05.
+  // Explicit 0 is AWS-legal, so absence and 0 are distinct states.
+  optional double padding_tolerance = 8;
+
+  // ORC file format version. "V0_12" (the default) is current; "V0_11" is
+  // the legacy Hive 0.11 format -- use only for readers frozen on it.
+  // Valid values: "V0_11", "V0_12".
+  string format_version = 9;
+
+  // Number of rows between index entries. Must be at least 1000 when set.
+  // Default: 10000.
+  int32 row_index_stride = 10;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  option (buf.validate.message).cel = {
+    id: "compression_valid"
+    message: "compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set"
+    expression: "this.compression == '' || this.compression in ['SNAPPY', 'ZLIB', 'NONE']"
   };
 
-  // orc_compression requires output_format ORC.
   option (buf.validate.message).cel = {
-    id: "orc_compression_requires_orc"
-    message: "orc_compression is only valid when output_format is 'ORC'"
-    expression: "this.orc_compression == '' || this.output_format == 'ORC'"
+    id: "block_size_min"
+    message: "block_size_bytes must be at least 67108864 (64 MiB) when set"
+    expression: "this.block_size_bytes == 0 || this.block_size_bytes >= 67108864"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "stripe_size_min"
+    message: "stripe_size_bytes must be at least 8388608 (8 MiB) when set"
+    expression: "this.stripe_size_bytes == 0 || this.stripe_size_bytes >= 8388608"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "bloom_filter_fpp_range"
+    message: "bloom_filter_false_positive_probability must be between 0 and 1"
+    expression: "!has(this.bloom_filter_false_positive_probability) || (this.bloom_filter_false_positive_probability >= 0.0 && this.bloom_filter_false_positive_probability <= 1.0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "dictionary_key_threshold_range"
+    message: "dictionary_key_threshold must be between 0 and 1"
+    expression: "this.dictionary_key_threshold >= 0.0 && this.dictionary_key_threshold <= 1.0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "padding_tolerance_range"
+    message: "padding_tolerance must be between 0 and 1"
+    expression: "!has(this.padding_tolerance) || (this.padding_tolerance >= 0.0 && this.padding_tolerance <= 1.0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "format_version_valid"
+    message: "format_version must be 'V0_11' or 'V0_12' when set"
+    expression: "this.format_version == '' || this.format_version in ['V0_11', 'V0_12']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "row_index_stride_min"
+    message: "row_index_stride must be at least 1000 when set"
+    expression: "this.row_index_stride == 0 || this.row_index_stride >= 1000"
   };
 }
 

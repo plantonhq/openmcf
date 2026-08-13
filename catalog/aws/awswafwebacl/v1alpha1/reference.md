@@ -116,6 +116,25 @@ spec:
                 textTransformations:
                   - priority: 0
                     type: URL_DECODE
+  # Request logging with the full redaction surface and a keep-only-enforcement
+  # filter: BLOCK and COUNT records are kept, everything else is dropped.
+  logging:
+    destinationArn:
+      value: arn:aws:logs:us-west-2:111122223333:log-group:aws-waf-logs-test-waf-acl
+    redactedHeaderNames:
+      - authorization
+      - cookie
+    redactUriPath: true
+    redactQueryString: true
+    redactMethod: true
+    filter:
+      defaultBehavior: DROP
+      filters:
+        - behavior: KEEP
+          requirement: MEETS_ANY
+          conditions:
+            - action: BLOCK
+            - action: COUNT
 ```
 
 ## Spec Fields
@@ -599,6 +618,15 @@ spec:
 | `spec.logging.redactedHeaderNames` | `[]string` |  |  |  |
 | `spec.logging.redactUriPath` | `bool` |  |  |  |
 | `spec.logging.redactQueryString` | `bool` |  |  |  |
+| `spec.logging.redactMethod` | `bool` |  |  |  |
+| `spec.logging.filter` | `AwsWafWebAclLoggingFilterConfig` |  |  |  |
+| `spec.logging.filter.defaultBehavior` | `string` | yes |  |  |
+| `spec.logging.filter.filters` | `[]AwsWafWebAclLoggingFilter` | yes |  |  |
+| `spec.logging.filter.filters[].behavior` | `string` | yes |  |  |
+| `spec.logging.filter.filters[].requirement` | `string` | yes |  |  |
+| `spec.logging.filter.filters[].conditions` | `[]AwsWafWebAclLoggingFilterCondition` | yes |  |  |
+| `spec.logging.filter.filters[].conditions[].action` | `string` |  |  |  |
+| `spec.logging.filter.filters[].conditions[].labelName` | `string` |  |  |  |
 
 ## Field Details
 
@@ -686,17 +714,21 @@ Additional HTTP headers to include in the block response.
 
 `string` · required
 
-HTTP header name (case-insensitive).
+HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+with "x-amzn-waf-" on the wire (name "sample" arrives as
+"x-amzn-waf-sample") to avoid clobbering existing request headers;
+response headers are sent under the name as given.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z_$.-]+$"}}
 
 ### spec.defaultAction.customResponse.responseHeaders[].value
 
 `string` · required
 
-HTTP header value.
+HTTP header value. 1-255 characters.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"255"}}
 
 ### spec.defaultAction.customRequestHeaders
 
@@ -710,17 +742,21 @@ to the protected resource.
 
 `string` · required
 
-HTTP header name (case-insensitive).
+HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+with "x-amzn-waf-" on the wire (name "sample" arrives as
+"x-amzn-waf-sample") to avoid clobbering existing request headers;
+response headers are sent under the name as given.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z_$.-]+$"}}
 
 ### spec.defaultAction.customRequestHeaders[].value
 
 `string` · required
 
-HTTP header value.
+HTTP header value. 1-255 characters.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"255"}}
 
 ### spec.description
 
@@ -763,12 +799,15 @@ Unique name for this rule. Used in CloudWatch metrics and log entries.
 
 ### spec.rules[].priority
 
-`int32` · required
+`int32` · required · optional (explicit presence)
 
 Evaluation priority. Lower numbers are evaluated first. Must be unique
-across all rules in the Web ACL. Range: 0-2147483647.
+across all rules in the Web ACL. Range: 0-2147483647. Priority 0 is
+legal (AWS-console-generated ACLs commonly start at 0) — the field is
+presence-typed exactly so 0 can be expressed while the field stays
+required.
 
-- rule: {"required":true}
+- rule: {"required":true,"int32":{"gte":0}}
 
 ### spec.rules[].statement
 
@@ -912,6 +951,9 @@ only requests to this path.
 `bool`
 
 Treat login_path as a regular expression instead of a literal path.
+AWS's default is false, and the AWS API types this as a plain (non-
+nullable) boolean — absence and false are identical on the wire, so a
+plain bool models it exactly.
 
 ### spec.rules[].statement.managedRuleGroup.managedRuleGroupConfigs.accountTakeoverPrevention.requestInspection
 
@@ -1098,6 +1140,9 @@ The path of the page presenting the sign-up form (e.g. "/register").
 `bool`
 
 Treat the paths as regular expressions instead of literal paths.
+AWS's default is false, and the AWS API types this as a plain (non-
+nullable) boolean — absence and false are identical on the wire, so a
+plain bool models it exactly.
 
 ### spec.rules[].statement.managedRuleGroup.managedRuleGroupConfigs.accountCreationFraudPrevention.requestInspection
 
@@ -2215,12 +2260,12 @@ forwarded header).
 
 `[]string` · required
 
-ISO 3166-1 alpha-2 country codes to match against.
-Examples: "US", "CA", "GB", "DE", "JP", "AU".
+ISO 3166-1 alpha-2 country codes to match against (two uppercase
+letters). Examples: "US", "CA", "GB", "DE", "JP", "AU".
 
 At least one country code is required.
 
-- rule: {"required":true,"repeated":{"minItems":"1"}}
+- rule: {"required":true,"repeated":{"minItems":"1","items":{"string":{"pattern":"^[A-Z]{2}$"}}}}
 
 ### spec.rules[].statement.geoMatch.forwardedIpConfig
 
@@ -4027,9 +4072,11 @@ label whose namespace prefix matches key).
 `string` · required
 
 The label (for scope LABEL, e.g. "awswaf:111122223333:rulegroup:testRules:label:testLabel")
-or namespace prefix ending in ':' (for scope NAMESPACE).
+or namespace prefix ending in ':' (for scope NAMESPACE). 1-1024
+characters of letters, digits, hyphen, underscore, and ':' (the WAF
+label syntax).
 
-- rule: {"required":true,"string":{"minLen":"1","maxLen":"1024"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"1024","pattern":"^[0-9A-Za-z_\\-:]+$"}}
 
 ### spec.rules[].statement.asnMatch
 
@@ -4216,17 +4263,21 @@ Additional HTTP headers to include in the block response.
 
 `string` · required
 
-HTTP header name (case-insensitive).
+HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+with "x-amzn-waf-" on the wire (name "sample" arrives as
+"x-amzn-waf-sample") to avoid clobbering existing request headers;
+response headers are sent under the name as given.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z_$.-]+$"}}
 
 ### spec.rules[].customResponse.responseHeaders[].value
 
 `string` · required
 
-HTTP header value.
+HTTP header value. 1-255 characters.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"255"}}
 
 ### spec.rules[].customRequestHeaders
 
@@ -4239,17 +4290,21 @@ Headers are added to the request before forwarding to the protected resource.
 
 `string` · required
 
-HTTP header name (case-insensitive).
+HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+with "x-amzn-waf-" on the wire (name "sample" arrives as
+"x-amzn-waf-sample") to avoid clobbering existing request headers;
+response headers are sent under the name as given.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z_$.-]+$"}}
 
 ### spec.rules[].customRequestHeaders[].value
 
 `string` · required
 
-HTTP header value.
+HTTP header value. 1-255 characters.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"255"}}
 
 ### spec.rules[].ruleLabels
 
@@ -4257,7 +4312,11 @@ HTTP header value.
 
 Labels added to requests that match this rule. Labels are key-value pairs
 (namespace:name format) that can be matched by label_match statements in
-subsequent rules, enabling multi-stage rule evaluation.
+subsequent rules, enabling multi-stage rule evaluation. Each label is
+1-1024 characters of letters, digits, hyphen, underscore, and ':'
+namespace separators (the WAF label syntax).
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"1024","pattern":"^[0-9A-Za-z_\\-:]+$"}}}}
 
 ### spec.rules[].visibilityConfig
 
@@ -4289,8 +4348,11 @@ Default: true (applied by IaC module when omitted).
 `string`
 
 CloudWatch metric name for this Web ACL or rule. Must be unique within
-the Web ACL's rules.
+the Web ACL's rules. 1-128 characters: letters, digits, hyphen,
+underscore only; "All" and "Default_Action" are reserved by WAF.
 Default: resource name (Web ACL) or rule name (applied by IaC module).
+
+- rule: metric_name must be 1-128 characters of A-Za-z0-9_- and must not be the reserved 'All' or 'Default_Action' when set
 
 ### spec.rules[].captchaConfig
 
@@ -4362,8 +4424,11 @@ Default: true (applied by IaC module when omitted).
 `string`
 
 CloudWatch metric name for this Web ACL or rule. Must be unique within
-the Web ACL's rules.
+the Web ACL's rules. 1-128 characters: letters, digits, hyphen,
+underscore only; "All" and "Default_Action" are reserved by WAF.
 Default: resource name (Web ACL) or rule name (applied by IaC module).
+
+- rule: metric_name must be 1-128 characters of A-Za-z0-9_- and must not be the reserved 'All' or 'Default_Action' when set
 
 ### spec.customResponseBodies
 
@@ -4383,9 +4448,10 @@ and content_type.
 `string` · required
 
 Unique key used to reference this response body from custom_response
-configurations. Must be unique within the Web ACL.
+configurations. Must be unique within the Web ACL. 1-128 characters:
+letters, digits, underscore, hyphen.
 
-- rule: {"required":true,"string":{"minLen":"1"}}
+- rule: {"required":true,"string":{"minLen":"1","maxLen":"128","pattern":"^[\\w\\-]+$"}}
 
 ### spec.customResponseBodies[].content
 
@@ -4411,6 +4477,11 @@ Valid values: "TEXT_PLAIN", "TEXT_HTML", "APPLICATION_JSON".
 Domains to accept in web request tokens for CAPTCHA and Challenge actions.
 Required when using CAPTCHA/Challenge with multiple domains that share
 the same Web ACL. When omitted, tokens are scoped to the request domain.
+Each entry is a domain name (1-253 characters; letters, digits, dots,
+hyphens, slashes). Public suffixes (e.g. "co.uk", "gov.au") are rejected
+by AWS.
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"253","pattern":"^[\\w\\.\\-/]+$"}}}}
 
 ### spec.captchaConfig
 
@@ -4519,7 +4590,7 @@ the logging destination): use it for PII that must never appear anywhere.
 The fields to protect (up to 26 entries).
 
 - rule: {"repeated":{"minItems":"1","maxItems":"26"}}
-- rule: field_keys is required for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT and must be empty for QUERY_STRING/BODY
+- rule: field_keys is only valid for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT (omit it to protect all keys of the field type)
 
 ### spec.dataProtectionConfig.dataProtections[].fieldType
 
@@ -4535,10 +4606,13 @@ The field class to protect: "SINGLE_HEADER", "SINGLE_COOKIE",
 `[]string`
 
 The specific keys to protect for the SINGLE_* field types (header names,
-cookie names, query-argument names; up to 100). Not applicable to
-QUERY_STRING/BODY (which protect the whole component).
+cookie names, query-argument names; up to 100, each 1-64 characters).
+OMITTING keys for a SINGLE_* type protects ALL keys of that type (the
+AWS contract: "If you don't specify any key, then all keys for the
+field type are protected"). Not applicable to QUERY_STRING/BODY (which
+protect the whole component).
 
-- rule: {"repeated":{"maxItems":"100"}}
+- rule: {"repeated":{"maxItems":"100","items":{"string":{"minLen":"1","maxLen":"64"}}}}
 
 ### spec.dataProtectionConfig.dataProtections[].action
 
@@ -4586,6 +4660,11 @@ ARN of the logging destination. Must be one of:
 
 The destination resource name must start with "aws-waf-logs-".
 
+Deliberately singular: AWS allows exactly one logging destination per
+web ACL (the Terraform provider's log_destination_configs argument
+nominally accepts up to 100 entries, but the service contract — SDK:
+"You can associate one logging destination to a web ACL" — is one).
+
 No default_kind is set because the destination can be any of three
 different resource types.
 
@@ -4596,10 +4675,13 @@ different resource types.
 
 `[]string`
 
-HTTP header names to redact from logs. Redacted headers appear as
-"REDACTED" in log entries instead of their actual values.
+HTTP header names to redact from logs (each 1-64 characters). Redacted
+headers appear as "REDACTED" in log entries instead of their actual
+values.
 
 Common headers to redact: "Authorization", "Cookie", "X-Api-Key".
+
+- rule: {"repeated":{"items":{"string":{"minLen":"1","maxLen":"64"}}}}
 
 ### spec.logging.redactUriPath
 
@@ -4614,6 +4696,87 @@ as "REDACTED" in logs.
 
 Redact the query string from log entries. When true, query string
 parameters appear as "REDACTED" in logs.
+
+### spec.logging.redactMethod
+
+`bool`
+
+Redact the HTTP method from log entries. When true, the method appears
+as "REDACTED" in logs. (Method, query string, URI path, and single
+headers are the only components AWS supports redacting.)
+
+### spec.logging.filter
+
+`AwsWafWebAclLoggingFilterConfig`
+
+Optional log filtering: keep or drop log records by the action WAF
+applied or by labels on the request, instead of logging every inspected
+request. Typical use: keep only BLOCK and COUNT records to cut logging
+cost on high-traffic ACLs.
+
+### spec.logging.filter.defaultBehavior
+
+`string` · required
+
+What happens to log records that match NONE of the filters:
+"KEEP" (log them) or "DROP" (discard them).
+
+- rule: {"required":true,"string":{"in":["KEEP","DROP"]}}
+
+### spec.logging.filter.filters
+
+`[]AwsWafWebAclLoggingFilter` · required
+
+The filters, each with its own keep/drop behavior. At least one.
+
+- rule: {"repeated":{"minItems":"1"}}
+
+### spec.logging.filter.filters[].behavior
+
+`string` · required
+
+What happens to log records matching this filter: "KEEP" or "DROP".
+
+- rule: {"required":true,"string":{"in":["KEEP","DROP"]}}
+
+### spec.logging.filter.filters[].requirement
+
+`string` · required
+
+How the conditions combine: "MEETS_ALL" (every condition must match)
+or "MEETS_ANY" (at least one condition matches).
+
+- rule: {"required":true,"string":{"in":["MEETS_ALL","MEETS_ANY"]}}
+
+### spec.logging.filter.filters[].conditions
+
+`[]AwsWafWebAclLoggingFilterCondition` · required
+
+The match conditions. At least one.
+
+- rule: {"repeated":{"minItems":"1"}}
+- rule: set exactly one of action or label_name per condition
+
+### spec.logging.filter.filters[].conditions[].action
+
+`string`
+
+Match log records by the action WAF applied to the request:
+"ALLOW", "BLOCK", "COUNT", "CAPTCHA", "CHALLENGE",
+"EXCLUDED_AS_COUNT" (rules overridden to count — the tuning-noise
+filter), or "MONETIZE" (marketplace rule groups only).
+
+- rule: action must be 'ALLOW', 'BLOCK', 'COUNT', 'CAPTCHA', 'CHALLENGE', 'EXCLUDED_AS_COUNT', or 'MONETIZE' when set
+
+### spec.logging.filter.filters[].conditions[].labelName
+
+`string`
+
+Match log records carrying this label. Must be the FULLY QUALIFIED
+label name including the prefix, e.g.
+"awswaf:managed:aws:bot-control:bot:category:monitoring".
+
+- rule: {"string":{"maxLen":"1024"}}
 
 ## Validation Rules
 

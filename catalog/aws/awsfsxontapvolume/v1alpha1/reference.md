@@ -369,7 +369,9 @@ creation.
 
 `string`
 
-The tiering policy name.
+The tiering policy name. Required when a tiering policy is declared —
+declaring the block is choosing a policy; to keep AWS's default
+(SNAPSHOT_ONLY), omit tiering_policy entirely.
 
 - "NONE": All data remains on primary SSD storage. No tiering. Use for
   latency-sensitive workloads where all data must be instantly accessible.
@@ -481,14 +483,16 @@ for the specified duration are automatically transitioned to WORM state.
 This eliminates the need for applications to explicitly commit files.
 
 - rule: autocommit period type must be 'NONE', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', or 'YEARS'
-- rule: autocommit period value must be >= 1 when type is not 'NONE'
-- rule: autocommit period value must be between 1 and 65535
+- rule: autocommit value must match its unit's AWS range (MINUTES 5-65535, HOURS 1-65535, DAYS 1-3650, MONTHS 1-120, YEARS 1-10) and must be unset for NONE
 
 ### spec.snaplockConfiguration.autocommitPeriod.type
 
 `string`
 
-The unit of time for the autocommit period.
+The unit of time for the autocommit period. Required when autocommit_period
+is declared — the AWS API's AutocommitPeriod.Type member is required, and a
+unit-less period cannot be expressed. To disable autocommit, set "NONE"
+(or omit autocommit_period entirely; NONE is also AWS's default).
 
 - "NONE": Autocommit is disabled.
 - "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": The time unit for the
@@ -499,9 +503,14 @@ The unit of time for the autocommit period.
 `int32`
 
 The number of time units before an unmodified file is auto-committed to
-WORM state. Required when type is not "NONE".
+WORM state. Required for every unit type except "NONE" (which takes no
+value). Each unit carries its own AWS range:
 
-Range: 1-65535.
+- MINUTES: 5-65,535
+- HOURS: 1-65,535
+- DAYS: 1-3,650
+- MONTHS: 1-120
+- YEARS: 1-10
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -521,26 +530,36 @@ The default retention period applied to files committed to WORM state
 without an explicit retention period.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.defaultRetention.type
 
 `string`
 
-The unit of time for the retention duration.
+The unit of time for the retention duration. Required when the duration is
+declared — the AWS API's RetentionPeriod.Type member is required, and a
+unit-less duration cannot be expressed.
 
 - "SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": Standard
   time units. The value field specifies the count.
-- "INFINITE": Files are retained forever. The value field is ignored.
-- "UNSPECIFIED": No retention period is set. The value field is ignored.
+- "INFINITE": Files are retained forever. The value field takes no value.
+- "UNSPECIFIED": No retention period is set. The value field takes no value.
 
 ### spec.snaplockConfiguration.retentionPeriod.defaultRetention.value
 
 `int32`
 
-The number of time units for the retention duration. Ignored when type is
-"INFINITE" or "UNSPECIFIED".
+The number of time units for the retention duration. Each unit carries its
+own AWS range (0 is legal and means a zero-length duration):
 
-Range: 0-65535.
+- SECONDS: 0-65,535
+- MINUTES: 0-65,535
+- HOURS: 0-24
+- DAYS: 0-365
+- MONTHS: 0-12
+- YEARS: 0-100
+
+INFINITE and UNSPECIFIED take no value.
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -552,26 +571,36 @@ The minimum retention period. Files cannot have retention periods shorter
 than this value.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.minimumRetention.type
 
 `string`
 
-The unit of time for the retention duration.
+The unit of time for the retention duration. Required when the duration is
+declared — the AWS API's RetentionPeriod.Type member is required, and a
+unit-less duration cannot be expressed.
 
 - "SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": Standard
   time units. The value field specifies the count.
-- "INFINITE": Files are retained forever. The value field is ignored.
-- "UNSPECIFIED": No retention period is set. The value field is ignored.
+- "INFINITE": Files are retained forever. The value field takes no value.
+- "UNSPECIFIED": No retention period is set. The value field takes no value.
 
 ### spec.snaplockConfiguration.retentionPeriod.minimumRetention.value
 
 `int32`
 
-The number of time units for the retention duration. Ignored when type is
-"INFINITE" or "UNSPECIFIED".
+The number of time units for the retention duration. Each unit carries its
+own AWS range (0 is legal and means a zero-length duration):
 
-Range: 0-65535.
+- SECONDS: 0-65,535
+- MINUTES: 0-65,535
+- HOURS: 0-24
+- DAYS: 0-365
+- MONTHS: 0-12
+- YEARS: 0-100
+
+INFINITE and UNSPECIFIED take no value.
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -583,26 +612,36 @@ The maximum retention period. Files cannot have retention periods longer
 than this value.
 
 - rule: retention duration type must be 'SECONDS', 'MINUTES', 'HOURS', 'DAYS', 'MONTHS', 'YEARS', 'INFINITE', or 'UNSPECIFIED'
+- rule: retention value must match its unit's AWS range (SECONDS/MINUTES 0-65535, HOURS 0-24, DAYS 0-365, MONTHS 0-12, YEARS 0-100) and must be unset for INFINITE/UNSPECIFIED
 
 ### spec.snaplockConfiguration.retentionPeriod.maximumRetention.type
 
 `string`
 
-The unit of time for the retention duration.
+The unit of time for the retention duration. Required when the duration is
+declared — the AWS API's RetentionPeriod.Type member is required, and a
+unit-less duration cannot be expressed.
 
 - "SECONDS", "MINUTES", "HOURS", "DAYS", "MONTHS", "YEARS": Standard
   time units. The value field specifies the count.
-- "INFINITE": Files are retained forever. The value field is ignored.
-- "UNSPECIFIED": No retention period is set. The value field is ignored.
+- "INFINITE": Files are retained forever. The value field takes no value.
+- "UNSPECIFIED": No retention period is set. The value field takes no value.
 
 ### spec.snaplockConfiguration.retentionPeriod.maximumRetention.value
 
 `int32`
 
-The number of time units for the retention duration. Ignored when type is
-"INFINITE" or "UNSPECIFIED".
+The number of time units for the retention duration. Each unit carries its
+own AWS range (0 is legal and means a zero-length duration):
 
-Range: 0-65535.
+- SECONDS: 0-65,535
+- MINUTES: 0-65,535
+- HOURS: 0-24
+- DAYS: 0-365
+- MONTHS: 0-12
+- YEARS: 0-100
+
+INFINITE and UNSPECIFIED take no value.
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 

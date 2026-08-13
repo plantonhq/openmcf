@@ -50,8 +50,16 @@ type AwsRdsInstanceStackOutputs struct {
 	MasterUserSecretArn string `protobuf:"bytes,9,opt,name=master_user_secret_arn,json=masterUserSecretArn,proto3" json:"master_user_secret_arn,omitempty"`
 	// The name of the DB subnet group the instance runs in.
 	DbSubnetGroupName string `protobuf:"bytes,10,opt,name=db_subnet_group_name,json=dbSubnetGroupName,proto3" json:"db_subnet_group_name,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The name of the DB parameter group in use (module-managed from
+	// spec.parameters or the referenced existing group; empty when the
+	// engine default group applies).
+	DbParameterGroupName string `protobuf:"bytes,11,opt,name=db_parameter_group_name,json=dbParameterGroupName,proto3" json:"db_parameter_group_name,omitempty"`
+	// The name of the option group in use (module-managed from
+	// spec.options or the referenced existing group; empty when the
+	// engine default group applies).
+	OptionGroupName string `protobuf:"bytes,12,opt,name=option_group_name,json=optionGroupName,proto3" json:"option_group_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsRdsInstanceStackOutputs) Reset() {
@@ -154,11 +162,25 @@ func (x *AwsRdsInstanceStackOutputs) GetDbSubnetGroupName() string {
 	return ""
 }
 
+func (x *AwsRdsInstanceStackOutputs) GetDbParameterGroupName() string {
+	if x != nil {
+		return x.DbParameterGroupName
+	}
+	return ""
+}
+
+func (x *AwsRdsInstanceStackOutputs) GetOptionGroupName() string {
+	if x != nil {
+		return x.OptionGroupName
+	}
+	return ""
+}
+
 var File_catalog_aws_awsrdsinstance_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsrdsinstance_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awsrdsinstance/v1alpha1/outputs.proto\x12'dev.planton.aws.awsrdsinstance.v1alpha1\"\x8a\x03\n" +
+	"1catalog/aws/awsrdsinstance/v1alpha1/outputs.proto\x12'dev.planton.aws.awsrdsinstance.v1alpha1\"\xed\x03\n" +
 	"\x1aAwsRdsInstanceStackOutputs\x12/\n" +
 	"\x13instance_identifier\x18\x01 \x01(\tR\x12instanceIdentifier\x12\x10\n" +
 	"\x03arn\x18\x02 \x01(\tR\x03arn\x12\x1f\n" +
@@ -171,7 +193,9 @@ const file_catalog_aws_awsrdsinstance_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x15engine_version_actual\x18\b \x01(\tR\x13engineVersionActual\x123\n" +
 	"\x16master_user_secret_arn\x18\t \x01(\tR\x13masterUserSecretArn\x12/\n" +
 	"\x14db_subnet_group_name\x18\n" +
-	" \x01(\tR\x11dbSubnetGroupNameB\xd5\x02\n" +
+	" \x01(\tR\x11dbSubnetGroupName\x125\n" +
+	"\x17db_parameter_group_name\x18\v \x01(\tR\x14dbParameterGroupName\x12*\n" +
+	"\x11option_group_name\x18\f \x01(\tR\x0foptionGroupNameB\xd5\x02\n" +
 	"+com.dev.planton.aws.awsrdsinstance.v1alpha1B\fOutputsProtoP\x01ZWgithub.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1;awsrdsinstancev1alpha1\xa2\x02\x04DPAA\xaa\x02'Dev.Planton.Aws.Awsrdsinstance.V1alpha1\xca\x02'Dev\\Planton\\Aws\\Awsrdsinstance\\V1alpha1\xe2\x023Dev\\Planton\\Aws\\Awsrdsinstance\\V1alpha1\\GPBMetadata\xea\x02+Dev::Planton::Aws::Awsrdsinstance::V1alpha1b\x06proto3"
 
 var (

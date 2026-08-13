@@ -82,6 +82,14 @@ variable "spec" {
         client_alias = optional(object({
           port = optional(number, 0)
           dns_name = optional(string, "")
+          test_traffic_rules = optional(list(object({
+            header = optional(object({
+              name = string
+              value = object({
+                exact = string
+              })
+            }))
+          })), [])
         }))
         ingress_port_override = optional(number)
         timeout = optional(object({
@@ -98,6 +106,10 @@ variable "spec" {
         log_driver = string
         options = optional(map(string), {})
         secret_options = optional(map(string), {})
+      }))
+      access_log_configuration = optional(object({
+        format = optional(string, "")
+        include_query_parameters = optional(string, "")
       }))
     }))
     service_registries = optional(object({
@@ -118,6 +130,12 @@ variable "spec" {
         kms_key_id = optional(string, "")
         snapshot_id = optional(string, "")
         file_system_type = optional(string, "")
+        tag_specifications = optional(list(object({
+          resource_type = optional(string, "")
+          tags = optional(map(string), {})
+          propagate_tags = optional(string, "")
+        })), [])
+        volume_initialization_rate = optional(number, 0)
       })
     }))
     ordered_placement_strategy = optional(list(object({
@@ -157,5 +175,10 @@ variable "spec" {
         disable_scale_in = optional(bool, false)
       }))
     }))
+    vpc_lattice_configurations = optional(list(object({
+      role_arn = string
+      target_group_arn = string
+      port_name = string
+    })), [])
   })
 }

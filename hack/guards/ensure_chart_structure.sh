@@ -55,7 +55,10 @@ if [[ -d "$charts_base" ]]; then
     fi
 
     # 3) Chart.yaml must carry the InfraChart identity (apiVersion + kind).
-    if ! grep -Eq '^apiVersion:[[:space:]]*infra-hub\.planton\.ai/v1[[:space:]]*$' "$chart_yaml" \
+    #    The apiVersion literal is the platform's own proto constraint (the
+    #    InfraChart api_version const): a chart shipping any other value is
+    #    rejected by every control plane at apply, so it must fail HERE first.
+    if ! grep -Eq '^apiVersion:[[:space:]]*infra-hub\.planton\.ai/v1alpha1[[:space:]]*$' "$chart_yaml" \
        || ! grep -Eq '^kind:[[:space:]]*InfraChart[[:space:]]*$' "$chart_yaml"; then
       bad_chart_identity+=("$chart_dir")
     fi
@@ -98,7 +101,7 @@ fi
 if [[ ${#bad_chart_identity[@]} -gt 0 ]]; then
   status=1
   echo "ERROR: ${#bad_chart_identity[@]} chart(s) have a Chart.yaml missing the InfraChart identity" >&2
-  echo "(expected 'apiVersion: infra-hub.planton.ai/v1' and 'kind: InfraChart'):" >&2
+  echo "(expected 'apiVersion: infra-hub.planton.ai/v1alpha1' and 'kind: InfraChart'):" >&2
   printf '  - %s\n' "${bad_chart_identity[@]}" >&2
   echo >&2
 fi

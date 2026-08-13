@@ -20,8 +20,9 @@ resource rather than a detail of the load balancer.
 
 The same kind serves both Application and Network Load Balancers, exactly as
 AWS models it: the protocol decides the family (HTTP/HTTPS for ALB;
-TCP/UDP/TCP_UDP/TLS for NLB), and the family decides which tuning fields
-apply. Field comments call out the scope of every family-specific field.
+TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC for NLB), and the family decides which
+tuning fields apply. Field comments call out the scope of every
+family-specific field.
 Gateway Load Balancer (GENEVE) target groups are deliberately not modeled --
 there is no gateway load balancer kind to compose them with.
 
@@ -62,6 +63,12 @@ spec:
   stickiness:
     type: lb_cookie
     cookieDurationSeconds: 3600
+  # ALB Target Optimizer: the agent port on each target. Create-time config
+  # on a group that never registers targets here -- the QUIC-family arms
+  # (protocol QUIC/TCP_QUIC, flow-hash stickiness, quic_server_id) live in
+  # the 04-quic-passthrough preset because protocol is one create-only field
+  # and this fixture proves the ALB family.
+  targetControlPort: 9999
 ```
 
 ## Spec Fields
@@ -113,6 +120,8 @@ spec:
 | `spec.targets[].targetId` | `string \| valueFrom` | yes |  | AwsEc2Instance (`status.outputs.instance_id`) |
 | `spec.targets[].port` | `int32` |  |  |  |
 | `spec.targets[].availabilityZone` | `string` |  |  |  |
+| `spec.targets[].quicServerId` | `string` |  |  |  |
+| `spec.targetControlPort` | `int32` |  |  |  |
 
 ## Field Details
 
@@ -175,10 +184,13 @@ per target. Immutable.
 The protocol used between the load balancer and the targets. Decides the
 load balancer family this group can attach to. Immutable.
 - ALB: "HTTP", "HTTPS".
-- NLB: "TCP", "UDP", "TCP_UDP", "TLS".
+- NLB: "TCP", "UDP", "TCP_UDP", "TLS", "QUIC", "TCP_QUIC".
 Required for every target type except "lambda". A TLS listener may
 forward to TCP targets (the NLB terminates TLS); an HTTPS listener may
-forward to HTTP targets (the ALB terminates TLS).
+forward to HTTP targets (the ALB terminates TLS). "QUIC" carries QUIC
+traffic natively; "TCP_QUIC" serves both TCP and QUIC on one group (the
+HTTP/3 pattern where clients may fall back to TCP). QUIC targets are
+registered with a quic_server_id (see targets).
 
 ### spec.protocolVersion
 
@@ -295,10 +307,11 @@ Not valid for TCP probes (a TCP probe has no response body to match).
 `AwsLbTargetGroupStickiness`
 
 Session stickiness. ALB supports cookie-based stickiness ("lb_cookie",
-"app_cookie"); NLB supports source-IP stickiness ("source_ip"). When
-omitted, stickiness is disabled.
+"app_cookie"); NLB supports flow-hash stickiness ("source_ip",
+"source_ip_dest_ip", "source_ip_dest_ip_proto"). When omitted,
+stickiness is disabled.
 
-- rule: type must be 'lb_cookie', 'app_cookie', or 'source_ip'
+- rule: type must be 'lb_cookie', 'app_cookie', 'source_ip', 'source_ip_dest_ip', or 'source_ip_dest_ip_proto'
 - rule: cookie_name is required for 'app_cookie' and not valid for other types
 - rule: cookie_duration_seconds only applies to 'lb_cookie' and 'app_cookie'
 - rule: cookie_duration_seconds must be between 1 and 604800 when set
@@ -313,6 +326,10 @@ The stickiness mechanism. Required.
 - "app_cookie" (ALB): the application issues the cookie named in
   cookie_name; the load balancer follows it.
 - "source_ip" (NLB): affinity by client source IP.
+- "source_ip_dest_ip" (NLB): affinity by source and destination IP --
+  for dualstack groups where one client may arrive on both families.
+- "source_ip_dest_ip_proto" (NLB): affinity by source IP, destination
+  IP, and protocol -- the narrowest flow-hash affinity.
 
 - rule: {"required":true}
 
@@ -545,13 +562,35 @@ one host).
 For "ip" targets outside the load balancer's VPC (peered VPC,
 on-premises): the literal string "all". Leave unset for in-VPC targets.
 
+### spec.targets[].quicServerId
+
+`string`
+
+QUIC / TCP_QUIC target groups only: the QUIC server ID this target
+serves. QUIC routes established connections by connection ID rather
+than by 5-tuple, and the server ID ties a registration to the QUIC
+endpoint identity the target presents.
+
+### spec.targetControlPort
+
+`int32`
+
+ALB only. The port the ALB Target Optimizer agent listens on, 1-65535.
+Setting it enables Target Optimizer for this group: an agent on each
+target reports its readiness for new requests over this port, and the
+ALB routes accordingly. Requires the agent to be running on every
+target -- enabling it without the agent marks targets unavailable.
+Immutable: changing it replaces the target group.
+
 ## Validation Rules
 
 - `target_type_valid`: target_type must be 'instance', 'ip', 'lambda', or 'alb' when set
-- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS
+- `protocol_valid`: protocol must be one of: HTTP, HTTPS, TCP, UDP, TCP_UDP, TLS, QUIC, TCP_QUIC
 - `port_protocol_required_unless_lambda`: port and protocol are required unless target_type is 'lambda'
 - `lambda_takes_no_port_or_protocol`: port, protocol, and protocol_version do not apply when target_type is 'lambda'
 - `port_range`: port must be between 1 and 65535 when set
+- `target_control_port_range`: target_control_port must be between 1 and 65535 when set
+- `target_control_port_only_for_alb_protocols`: target_control_port only applies when protocol is 'HTTP' or 'HTTPS'
 - `protocol_version_valid`: protocol_version must be 'HTTP1', 'HTTP2', or 'GRPC' when set
 - `protocol_version_only_for_alb_protocols`: protocol_version only applies when protocol is 'HTTP' or 'HTTPS'
 - `ip_address_type_valid`: ip_address_type must be 'ipv4' or 'ipv6' when set

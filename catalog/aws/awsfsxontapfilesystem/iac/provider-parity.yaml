@@ -1,0 +1,21 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_fsx_ontap_file_system:
+    mappings:
+      # The provider counts capacity in a bare "storage_capacity"; the spec
+      # names the unit (GiB) per the catalog convention.
+      - spec: spec.storage_capacity_gib
+        arg: storage_capacity
+
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

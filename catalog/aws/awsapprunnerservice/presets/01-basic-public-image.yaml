@@ -7,11 +7,13 @@ metadata:
   id: my-web-app-id
 spec:
   region: <aws-region>
-  # ECR Public image -- no IAM access role needed for pulling. Note:
-  # automatic deployments are not supported for public images; deploy by
-  # applying this resource with a new tag.
+  # ECR Public image -- no IAM access role needed for pulling. Replace the
+  # example path with your own (the format is validated:
+  # public.ecr.aws/ALIAS/REPO:TAG). Note: automatic deployments are not
+  # supported for public images; deploy by applying this resource with a
+  # new tag.
   imageSource:
-    imageIdentifier: "<ecr-public-image-uri>"
+    imageIdentifier: "public.ecr.aws/aws-containers/hello-app-runner:latest"
     imageRepositoryType: "ECR_PUBLIC"
   # Port your application listens on (App Runner routes HTTPS:443 -> this port)
   port: "<application-port>"

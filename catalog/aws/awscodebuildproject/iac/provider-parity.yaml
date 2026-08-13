@@ -1,0 +1,74 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_codebuild_project:
+    mappings:
+      # The provider names repeated blocks in the singular; the spec uses
+      # the catalog's plural list convention. Leaves bind by name beneath
+      # each subtree.
+      - spec: spec.environment.environment_variables
+        arg: environment.environment_variable
+      - spec: spec.secondary_source_versions
+        arg: secondary_source_version
+
+      # The provider wraps the fleet reference in a single-leaf block; the
+      # spec carries the ARN flat on the environment.
+      - spec: spec.environment.fleet_arn
+        arg: environment.fleet.fleet_arn
+
+      # The provider calls the VPC subnet set "subnets"; the spec follows
+      # the catalog's _ids reference convention.
+      - spec: spec.vpc_config.subnet_ids
+        arg: vpc_config.subnets
+
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- project names are create-time-immutable identity, never mutable spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_codebuild_webhook:
+    # The webhook is 1:1 with its project (useless in isolation) and folds
+    # as spec.webhook; its arguments bind under that block.
+    specRoot: spec.webhook
+    mappings:
+      # The provider names the repeated blocks in the singular; the spec
+      # uses the catalog's plural list convention.
+      - spec: spec.webhook.filter_groups
+        arg: filter_group
+      - spec: spec.webhook.filter_groups.filters
+        arg: filter_group.filter
+
+    exclusions:
+      - arg: project_name
+        reason: wired by the module to the project it creates -- a webhook lives on its project, never user surface
+      - arg: region
+        reason: wired by the module to the project's region -- a webhook lives where its project lives, never user surface
+      - arg: branch_filter
+        reason: legacy single-regex filter superseded by filter_group (the provider declares the two mutually exclusive); the spec models the structured filter groups
+
+  aws_codebuild_resource_policy:
+    # The resource policy is a single project-keyed document; the spec
+    # carries it as the resource_policy Struct.
+    mappings:
+      - spec: spec.resource_policy
+        arg: policy
+
+    exclusions:
+      - arg: resource_arn
+        reason: wired by the module to the project it creates -- the policy attaches to its own project, never user surface
+
+specExclusions:
+  # The source message is shared between the primary source and
+  # secondary_sources; AWS keys only secondaries by identifier, and the
+  # spec's CEL forces the field empty on the primary.
+  - field: spec.source.source_identifier
+    reason: shared-message field legal only on secondary sources (per-source identifier); the spec's CEL rejects it on the primary source, where the provider has no such argument

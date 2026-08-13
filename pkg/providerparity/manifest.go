@@ -4,8 +4,9 @@
 // Per-kind mapping manifests: the recorded-judgment side of provider parity.
 // Detection is mechanical (the censuses); judgment -- "this provider argument
 // is this spec field under another name", "this one is deliberately not
-// modeled, and here is why" -- is recorded ONCE, in the kind's own manifest,
-// where the tooling reads it and the next author finds it.
+// modeled, and here is why", "this resource's contract is pinned outside the
+// provider by recorded admission" -- is recorded ONCE, in the kind's own
+// manifest, where the tooling reads it and the next author finds it.
 //
 // The manifest lives at catalog/<provider>/<kind>/iac/provider-parity.yaml,
 // beside iac/import-map.yaml, and file presence IS enrollment (the import-map
@@ -54,6 +55,17 @@ type ResourceManifest struct {
 	// decisions with fixed or derived values, not spec surface. The value
 	// is the mandatory reason. Mutually exclusive with every other field.
 	Internal string `yaml:"internal,omitempty"`
+	// External marks the whole resource as EXTERNALLY SPECIFIED: it is the
+	// kind's primary surface, but its configuration contract lives outside
+	// every loaded provider schema BY DESIGN — a raw-API resource (e.g.
+	// azapi's azapi_resource) admitted per kind by a recorded decision that
+	// pins an exact type@api-version. The value is the mandatory reason and
+	// must name that pin. No argument walk is possible (there is no schema
+	// to walk), and when ALL of a kind's consumed resources are external or
+	// internal, the reverse spec walk is suspended too — the spec's depth
+	// is accounted against the external contract, where the admission
+	// records it. Mutually exclusive with every other field.
+	External string `yaml:"external,omitempty"`
 	// SpecRoot is the spec subtree this resource's arguments match under.
 	// Defaults to "spec" (the kind's primary resource); a secondary
 	// resource names the subtree that instantiates it, e.g.
@@ -78,9 +90,20 @@ type ResourceManifest struct {
 // block, e.g. "lifecycle_rule.condition.age") is spec (an absolute
 // spec-rooted path, e.g. "spec.lifecycle_rules.condition.age_days").
 // Both sides may name a subtree; matching resumes exactly below it.
+//
+// Collapse marks a subtree-to-leaf judgment: EVERY argument at or under arg
+// accounts to the ONE spec leaf named by spec. This exists for recursive
+// provider grammars (the provider expands a recursive schema into bounded
+// nesting levels, while the spec census records each re-entry as one leaf —
+// e.g. a WAF and_statement's nested statement list). The flag is explicit
+// so an ordinary mapping can never silently swallow a subtree: without it,
+// matching resumes below the mapped subtree and unmatched leaves surface as
+// findings. A collapse mapping's spec must be an exact census leaf
+// (enforced by the accounting's staleness checks).
 type Mapping struct {
-	Spec string `yaml:"spec"`
-	Arg  string `yaml:"arg"`
+	Spec     string `yaml:"spec"`
+	Arg      string `yaml:"arg"`
+	Collapse bool   `yaml:"collapse,omitempty"`
 }
 
 // ArgExclusion is one deliberately unmodeled argument (or argument
@@ -156,10 +179,21 @@ func (m *Manifest) validate() error {
 		if rm == nil {
 			return errors.Errorf("resource %s carries no judgment -- an empty entry records nothing; remove it", resource)
 		}
+		if rm.Internal != "" && rm.External != "" {
+			return errors.Errorf(
+				"resource %s: internal and external are mutually exclusive whole-resource judgments", resource)
+		}
 		if rm.Internal != "" {
 			if rm.SpecRoot != "" || len(rm.Mappings) > 0 || len(rm.Exclusions) > 0 {
 				return errors.Errorf(
 					"resource %s: internal is the whole judgment -- it cannot carry specRoot/mappings/exclusions", resource)
+			}
+			continue
+		}
+		if rm.External != "" {
+			if rm.SpecRoot != "" || len(rm.Mappings) > 0 || len(rm.Exclusions) > 0 {
+				return errors.Errorf(
+					"resource %s: external is the whole judgment -- it cannot carry specRoot/mappings/exclusions", resource)
 			}
 			continue
 		}

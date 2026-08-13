@@ -10,11 +10,18 @@ spec:
   # one SQS target carrying sqs_target and input_transformer blocks -- the
   # smallest honest custom-bus routing surface. Deliberately not in the live
   # scenario: schedule rules, multi-target fan-out, ECS/Batch typed targets,
-  # and per-target dead-letter queues -- all proven by CEL spec tests and
-  # the offline gate.
+  # per-target dead-letter queues (proven by CEL spec tests and the offline
+  # gate), plus the four newest typed targets -- Redshift Data API, SSM Run
+  # Command, SageMaker Pipelines, AppSync -- whose backing services and
+  # invocation-role fixtures do not exist in the test account (the role
+  # fixture home is the awsiamrole prerequisite profile); all proven by
+  # offline plans and previews on both engines, never silent skips.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

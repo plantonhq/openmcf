@@ -1,9 +1,11 @@
 # Full-surface offline-plan manifest. This exercises every optional block the
 # module renders -- V2 triggers with push + pull-request filters, pipeline
 # variables, per-action timeouts/regions/roles, KMS-encrypted artifact store,
-# and all three stage-condition arms (entry gate, success check, failure
-# rollback) -- so the `tofu plan` / `pulumi preview` proofs cover the whole
-# contract.
+# a Compute action with inline commands, exported variables, and file-based
+# output artifacts, all three stage-condition arms (entry gate with a
+# Commands rule, success check, failure handling with retry configuration
+# and a rule-gated condition) -- so the `tofu plan` / `pulumi preview`
+# proofs cover the whole contract.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodePipeline
 metadata:
@@ -11,11 +13,6 @@ metadata:
   id: test-pipeline
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsCodePipeline.test-pipeline
 spec:
   region: us-west-2
   pipelineType: V2
@@ -83,6 +80,14 @@ spec:
             configuration:
               Cron: "* 9-17 ? * MON-FRI *"
               TimeZone: America/Los_Angeles
+          # A Commands rule exercises the rule-level shell-command arm.
+          - name: PreflightHealthCheck
+            ruleTypeId:
+              provider: Commands
+            commands:
+              - curl -sf https://internal.example.com/deploy-gate
+            inputArtifacts:
+              - SourceOutput
       actions:
         - name: BuildAction
           category: Build
@@ -96,6 +101,29 @@ spec:
             - BuildOutput
           configuration:
             ProjectName: my-build-project
+        # A Compute action exercises inline commands, exported variables,
+        # and file-based output artifacts (Compute actions use
+        # outputArtifactsForComputeAction INSTEAD of outputArtifacts).
+        - name: InlineChecks
+          category: Compute
+          owner: AWS
+          provider: Commands
+          version: "1"
+          runOrder: 2
+          namespace: ComputeVars
+          inputArtifacts:
+            - SourceOutput
+          commands:
+            - npm ci
+            - npm run lint
+            - export LINT_REPORT_URL=$(cat lint-report-url.txt)
+          outputVariables:
+            - LINT_REPORT_URL
+          outputArtifactsForComputeAction:
+            - name: LintReports
+              files:
+                - reports/lint.xml
+                - reports/summary.json
       onSuccess:
         rules:
           - name: VerifyNoAlarm
@@ -135,3 +163,26 @@ spec:
             FileName: imagedefinitions.json
       onFailure:
         result: ROLLBACK
+    # A retry-configured stage exercises retry_configuration plus the
+    # rule-gated on_failure condition arm.
+    - name: Smoke
+      actions:
+        - name: SmokeTest
+          category: Invoke
+          owner: AWS
+          provider: Lambda
+          version: "1"
+          configuration:
+            FunctionName: post-deploy-smoke
+      onFailure:
+        result: RETRY
+        retryConfiguration:
+          retryMode: FAILED_ACTIONS
+        condition:
+          rules:
+            - name: OnlyRetryOffHours
+              ruleTypeId:
+                provider: DeploymentWindow
+              configuration:
+                Cron: "* 0-6 ? * * *"
+                TimeZone: Etc/UTC

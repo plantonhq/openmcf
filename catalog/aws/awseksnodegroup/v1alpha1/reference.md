@@ -59,6 +59,13 @@ spec:
   updateConfig:
     maxUnavailable: 1
     updateStrategy: MINIMAL
+  # Pre-initialized nodes that cut scale-out from minutes to seconds.
+  # STOPPED pooled instances cost only their EBS storage.
+  warmPoolConfig:
+    poolState: STOPPED
+    minSize: 1
+    maxGroupPreparedCapacity: 2
+    reuseOnScaleIn: true
 ```
 
 ## Spec Fields
@@ -106,6 +113,11 @@ spec:
 | `spec.version` | `string` |  |  |  |
 | `spec.releaseVersion` | `string` |  |  |  |
 | `spec.forceUpdateVersion` | `bool` |  |  |  |
+| `spec.warmPoolConfig` | `AwsEksNodeGroupWarmPoolConfig` |  |  |  |
+| `spec.warmPoolConfig.poolState` | `string` |  |  |  |
+| `spec.warmPoolConfig.minSize` | `int32` |  |  |  |
+| `spec.warmPoolConfig.maxGroupPreparedCapacity` | `int32` |  |  |  |
+| `spec.warmPoolConfig.reuseOnScaleIn` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -509,6 +521,53 @@ rolls the group.
 Force a version update even if pods cannot be drained within their
 disruption budgets (otherwise the update fails and rolls back). Only
 consulted while version/release_version/launch_template change.
+
+### spec.warmPoolConfig
+
+`AwsEksNodeGroupWarmPoolConfig`
+
+A pool of pre-initialized instances that cuts scale-out latency from
+minutes to seconds -- worth its cost exactly when boot time (AMI +
+bootstrap + image pulls) dominates how fast new capacity serves
+pods. Updates in place.
+
+- rule: pool_state must be 'STOPPED', 'RUNNING', or 'HIBERNATED' when set
+
+### spec.warmPoolConfig.poolState
+
+`string`
+
+The state pooled instances wait in: "STOPPED" (AWS default --
+near-zero compute cost, seconds to start), "RUNNING" (instant but
+full price), or "HIBERNATED" (RAM restored from disk -- fast
+JVM/cache warmup without running cost). Empty keeps the AWS default.
+
+### spec.warmPoolConfig.minSize
+
+`int32`
+
+Minimum number of instances always kept in the pool.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.warmPoolConfig.maxGroupPreparedCapacity
+
+`int32` · optional (explicit presence)
+
+Ceiling on pool size. Unset keeps the AWS default: the gap between
+the group's max_size and its desired capacity (AWS represents that
+default internally as -1 -- it never appears here). Explicit 0 is
+meaningful (no prepared capacity beyond min_size), which is why this
+field is optional.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.warmPoolConfig.reuseOnScaleIn
+
+`bool`
+
+Return scaled-in instances to the pool instead of terminating them
+-- reuse the warm boot instead of paying for it again.
 
 ## Validation Rules
 

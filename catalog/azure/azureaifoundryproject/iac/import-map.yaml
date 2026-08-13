@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureaifoundryproject
+spec:
+  # The project's identity is its full ARM resource ID (an ML
+  # workspace path -- projects are workspaces of kind "Project"; the
+  # provider's importer verifies the kind). The project lives in the
+  # HUB's resource group.
+  values:
+    - name: ai_foundry_project_id
+      derivations:
+        - from_stack_output: ai_foundry_project_id
+      where_to_find: >-
+        Portal -> Azure AI Foundry -> the project -> Properties ->
+        Resource ID, or `az ml workspace show -g <hub-rg> -n <name>
+        --query id` (projects are ML workspaces at ARM, in the hub's
+        resource group).

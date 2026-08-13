@@ -230,8 +230,56 @@ var _ = ginkgo.Describe("AwsCertManagerCert", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should reject an unknown validation method", func() {
+		ginkgo.It("should accept HTTP validation without a zone", func() {
 			input.Spec.ValidationMethod = "HTTP"
+			input.Spec.Route53HostedZoneId = nil
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject HTTP validation with a Route53 zone", func() {
+			input.Spec.ValidationMethod = "HTTP"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unknown validation method", func() {
+			input.Spec.ValidationMethod = "TXT"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Early renewal (early_renewal_requires_private_ca)", func() {
+		ginkgo.It("should accept an RFC 3339 duration on a private certificate", func() {
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.EarlyRenewalDuration = "P90D"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a Go-style duration on a private certificate", func() {
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.EarlyRenewalDuration = "2160h"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject early renewal on a publicly validated certificate", func() {
+			input.Spec.EarlyRenewalDuration = "P90D"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed duration", func() {
+			input.Spec.ValidationMethod = ""
+			input.Spec.Route53HostedZoneId = nil
+			input.Spec.CertificateAuthorityArn = "arn:aws:acm-pca:us-west-2:123456789012:certificate-authority/abc-123"
+			input.Spec.EarlyRenewalDuration = "ninety days"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})

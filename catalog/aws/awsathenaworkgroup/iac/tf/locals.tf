@@ -5,10 +5,12 @@ locals {
   # Pulumi module.
   workgroup_name = var.metadata.name
 
-  # Resource-identity tags match the Pulumi module key-for-key. Identity
-  # tagging is the only tagging surface this module manages; user-defined
-  # custom tags are a platform-wide concern, not per-kind spec surface.
+  # Canonical six-key resource-identity map, matching the Pulumi module
+  # key-for-key (Name + the planton.ai identity keys). Identity tagging is
+  # the only tagging surface this module manages; user-defined custom tags
+  # are a platform-wide concern, not per-kind spec surface.
   tags = {
+    "Name"                     = var.metadata.name
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org
     "planton.ai/environment"   = var.metadata.env

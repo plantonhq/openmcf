@@ -133,6 +133,10 @@ type AwsFsxOpenzfsFileSystemSpec struct {
 	// deployment. ForceNew. Must be a CIDR block within the VPC's CIDR range
 	// that does not overlap with any existing subnets; AWS assigns floating IPs
 	// from this range for seamless failover. When omitted, AWS picks a range.
+	//
+	// The provider does not validate this field's format for OpenZFS (unlike its
+	// ONTAP sibling) — the CEL below mirrors the ONTAP kind so a malformed range
+	// fails at validate instead of at the AWS API.
 	EndpointIpAddressRange string `protobuf:"bytes,10,opt,name=endpoint_ip_address_range,json=endpointIpAddressRange,proto3" json:"endpoint_ip_address_range,omitempty"`
 	// Route tables in which AWS manages routes to the floating file-system
 	// endpoints of a MULTI_AZ_1 deployment. Specify every VPC route table
@@ -826,7 +830,7 @@ var File_catalog_aws_awsfsxopenzfsfilesystem_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_aws_awsfsxopenzfsfilesystem_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/aws/awsfsxopenzfsfilesystem/v1alpha1/spec.proto\x120dev.planton.aws.awsfsxopenzfsfilesystem.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa93\n" +
+	"7catalog/aws/awsfsxopenzfsfilesystem/v1alpha1/spec.proto\x120dev.planton.aws.awsfsxopenzfsfilesystem.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xeb4\n" +
 	"\x1bAwsFsxOpenzfsFileSystemSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12=\n" +
 	"\x0fdeployment_type\x18\x02 \x01(\tB\x0f\x8a\xa6\x1d\vSINGLE_AZ_2H\x00R\x0edeploymentType\x88\x01\x01\x12B\n" +
@@ -837,9 +841,10 @@ const file_catalog_aws_awsfsxopenzfsfilesystem_v1alpha1_spec_proto_rawDesc = "" 
 	"\n" +
 	"subnet_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
 	"\x12security_group_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12\x85\x01\n" +
-	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x129\n" +
+	"\x13preferred_subnet_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\x11preferredSubnetId\x12\xfa\x01\n" +
 	"\x19endpoint_ip_address_range\x18\n" +
-	" \x01(\tR\x16endpointIpAddressRange\x12\x8e\x01\n" +
+	" \x01(\tB\xbe\x01\xbaH\xba\x01\xba\x01\xb6\x01\n" +
+	"\x1dendpoint_ip_range_cidr_format\x12Lendpoint_ip_address_range must be an IPv4 CIDR block (e.g., '198.19.0.0/24')\x1aGthis == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')R\x16endpointIpAddressRange\x12\x8e\x01\n" +
 	"\x0froute_table_ids\x18\v \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\xbaH\x05\x92\x01\x02\x102\x88\xd4a\xbc\b\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12q\n" +
 	"\n" +
 	"kms_key_id\x18\f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1b\n" +

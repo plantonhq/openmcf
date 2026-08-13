@@ -1,0 +1,37 @@
+# AzureExpressRoutePort install profile used as a fixture by composed
+# components (declared via prerequisites or the e2e-prerequisites
+# annotation -- the ExpressRoute Direct circuit shape). The harness
+# deploys this document after the fixture resource group and captures
+# its outputs -- express_route_port_id in particular -- for dependents'
+# references to resolve against.
+#
+# ⚠ COST + ENROLLMENT: this is one of the most EXPENSIVE fixtures in
+# the Azure suite -- a port bills its full monthly rate (thousands of
+# dollars/month at 10 Gbps, pro-rated per hour) from creation, and
+# subscriptions may need Microsoft enrollment for ExpressRoute Direct
+# before ARM accepts the create. No lane deploys this fixture unless a
+# scenario genuinely composes a Direct-mode circuit; keep its life as
+# short as the lane allows and never park one.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRoutePort
+metadata:
+  name: planton-oss-e2e-azure-fixture-erport
+  id: planton-oss-e2e-azure-fixture-erport
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureexpressrouteport
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-erport
+  peeringLocation: "Equinix-Ashburn-DC2"
+  bandwidthInGbps: 10
+  encapsulation: DOT1Q

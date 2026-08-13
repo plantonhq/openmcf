@@ -5,11 +5,6 @@ metadata:
   org: test-org
   env: dev
   id: test-composite-alarm-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchCompositeAlarm.test-composite-alarm
 spec:
   region: us-west-2
   alarmRule: 'ALARM("test-cpu-alarm") AND ALARM("test-error-alarm")'

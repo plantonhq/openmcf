@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevirtualhub.v1alpha1;
+
+// **AzureVirtualHubStackOutputs** captures the outputs of provisioning
+// a Virtual Hub and its routing children.
+message AzureVirtualHubStackOutputs {
+  // The Azure Resource Manager ID of the hub -- what connections,
+  // gateways, and firewalls reference as their virtual_hub_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/virtualHubs/{name}
+  string virtual_hub_id = 1;
+
+  // The name of the hub.
+  string virtual_hub_name = 2;
+
+  // The ARM ID of the hub's built-in default route table -- what a
+  // connection's routing associates with when no custom table is
+  // chosen.
+  // Example valueFrom fieldPath: status.outputs.default_route_table_id
+  string default_route_table_id = 3;
+
+  // The hub router's BGP autonomous system number (always 65515) --
+  // configure it as the remote ASN when peering NVAs with the hub.
+  int64 virtual_router_asn = 4;
+
+  // The hub router's peering IPv4 addresses (a pair) -- the BGP
+  // neighbor addresses an NVA in a connected spoke peers with.
+  repeated string virtual_router_ips = 5;
+
+  // The ARM ID of each custom route table on the hub, keyed by the
+  // table's name from the spec -- what connections reference as their
+  // associated/propagated route tables.
+  // Example valueFrom fieldPath: status.outputs.route_table_ids.prod-isolated
+  map<string, string> route_table_ids = 6;
+
+  // The ARM ID of each route map on the hub, keyed by the map's name
+  // from the spec -- what connections reference as their
+  // inbound/outbound route maps.
+  // Example valueFrom fieldPath: status.outputs.route_map_ids.strip-private-communities
+  map<string, string> route_map_ids = 7;
+
+  // The ARM ID of each BGP connection on the hub, keyed by the
+  // peering's name from the spec.
+  map<string, string> bgp_connection_ids = 8;
+
+  // The ARM ID of the hub's routing intent -- empty when no routing
+  // intent is configured.
+  string routing_intent_id = 9;
+}

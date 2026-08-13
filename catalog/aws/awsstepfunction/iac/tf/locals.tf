@@ -26,14 +26,14 @@ locals {
   # the JSON the AWS API expects. ASL key casing survives jsonencode.
   definition = jsonencode(var.spec.definition)
 
-  # Logging is enabled only when a non-OFF level is configured. AWS models
-  # "no logging" as level OFF rather than an absent block, so an omitted
-  # block and an explicit OFF are equivalent. HCL's && does NOT
-  # short-circuit, so attribute access on the nullable block must ride
-  # try() -- a bare var.spec.logging.level errors at apply time whenever the
-  # block is omitted.
-  logging_level   = try(var.spec.logging.level, "")
-  logging_enabled = local.logging_level != "" && local.logging_level != "OFF"
+  # The logging block renders for ANY configured level, including an
+  # explicit OFF (the disable send -- see main.tf). Only a fully omitted
+  # level sends nothing. HCL's && does NOT short-circuit, so attribute
+  # access on the nullable block must ride try() -- a bare
+  # var.spec.logging.level errors at apply time whenever the block is
+  # omitted.
+  logging_level      = try(var.spec.logging.level, "")
+  logging_configured = local.logging_level != ""
 
   # AWS requires the CloudWatch log group ARN in log_destination to carry a
   # ":*" suffix (the provider rejects it at plan time otherwise). Referenced

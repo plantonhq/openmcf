@@ -1,0 +1,86 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# aws_elasticache_cluster is a SHARED two-engine resource: the catalog
+# models the Memcached engine here and the Redis engine through
+# AwsRedisElasticache (aws_elasticache_replication_group). The Redis-only
+# arguments below are engine-scoped exclusions naming that kind, mirroring
+# how the two ALB-family kinds split the shared aws_lb resource.
+
+resources:
+  aws_elasticache_cluster:
+    exclusions:
+      - arg: cluster_id
+        reason: wired by the module from metadata.name -- the cluster id is platform naming, never free-form spec surface
+      - arg: engine
+        reason: wired by the module to "memcached" -- the engine IS this kind's identity; the Redis engine is modeled by AwsRedisElasticache
+      - arg: replication_group_id
+        reason: Redis-engine surface (attaches a node to a replication group) -- Redis is modeled by AwsRedisElasticache via aws_elasticache_replication_group
+      - arg: final_snapshot_identifier
+        reason: Redis-engine surface -- Memcached has no persistence (the provider itself rejects it for memcached at plan time); snapshots are modeled on AwsRedisElasticache
+      - arg: snapshot_arns
+        reason: Redis-engine surface -- Memcached has no persistence; restore sources are modeled on AwsRedisElasticache
+      - arg: snapshot_name
+        reason: Redis-engine surface -- Memcached has no persistence; restore sources are modeled on AwsRedisElasticache
+      - arg: snapshot_retention_limit
+        reason: Redis-engine surface -- Memcached has no persistence; snapshot retention is modeled on AwsRedisElasticache
+      - arg: snapshot_window
+        reason: Redis-engine surface -- Memcached has no persistence; snapshot windows are modeled on AwsRedisElasticache
+      - arg: log_delivery_configuration.destination
+        reason: Redis-engine surface (slow-log/engine-log delivery) -- Memcached emits neither log type; log delivery is modeled on AwsRedisElasticache
+      - arg: log_delivery_configuration.destination_type
+        reason: Redis-engine surface (slow-log/engine-log delivery) -- Memcached emits neither log type; log delivery is modeled on AwsRedisElasticache
+      - arg: log_delivery_configuration.log_format
+        reason: Redis-engine surface (slow-log/engine-log delivery) -- Memcached emits neither log type; log delivery is modeled on AwsRedisElasticache
+      - arg: log_delivery_configuration.log_type
+        reason: Redis-engine surface (slow-log/engine-log delivery) -- Memcached emits neither log type; log delivery is modeled on AwsRedisElasticache
+      - arg: outpost_mode
+        reason: AWS Outposts placement -- Outposts deployment is excluded surface across the catalog (the recorded Outposts exclusion class)
+      - arg: preferred_outpost_arn
+        reason: AWS Outposts placement -- the recorded Outposts exclusion class
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_elasticache_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_elasticache_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters. The
+    # family stays a spec field (unlike engine-derived families elsewhere:
+    # Memcached parameter families are chosen by the user alongside the
+    # version pin).
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+      - spec: spec.parameter_group_family
+        arg: family
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

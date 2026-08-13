@@ -102,7 +102,9 @@ These are the most important decisions when configuring an App Runner service. E
 
 **Image vs. code source** -- Choose `imageSource` to deploy a pre-built container image from ECR or ECR Public. Choose `codeSource` to deploy from a repository through an App Runner connection, with the build configured in the spec (`configurationSource: API`) or read from an `apprunner.yaml` in the repo. Exactly one must be provided.
 
-**Companions attach by reference, and presence IS the switch** -- `autoScalingConfigurationArn`, `vpcConnectorArn`, and `observabilityConfigurationArn` each reference a shared, versioned companion kind. Omitted: AWS's account default scaling applies, egress is public-internet-only, and tracing is off. There are no separate enable toggles to keep in sync.
+**Companions attach by reference, and presence IS the switch** -- `autoScalingConfigurationArn`, `vpcConnectorArn`, and `observabilityConfigurationArn` each reference a shared, versioned companion kind. Omitted at creation: AWS's account default scaling applies, egress is public-internet-only, and tracing is off. There are no separate enable toggles to keep in sync. Two one-way doors on a LIVE service (provider contracts): removing `autoScalingConfigurationArn` does not return the service to the account default (reference the default's ARN explicitly instead), and removing `observabilityConfigurationArn` does not disable tracing (an upstream provider gap -- disabling requires replacing the service).
+
+**Private services get their ingress inline** -- set `isPubliclyAccessible: false` and declare `vpcIngressConnections`: each entry publishes the service into one VPC through an interface VPC endpoint for the App Runner requests service (AWS PrivateLink), and clients there resolve the per-connection private domain name exported in stack outputs. Ingress and egress are independent -- a fully VPC-internal service pairs `vpcIngressConnections` (inbound) with `vpcConnectorArn` (outbound).
 
 **Instance sizing** -- Defaults to 1 vCPU (`cpu: "1024"`) and 2 GB memory (`memory: "2048"`). AWS accepts specific CPU/memory pairings only (e.g. 4 vCPU requires 8–12 GB); the console derives the legal memory choices from the selected CPU.
 
@@ -125,6 +127,8 @@ These are the most important decisions when configuring an App Runner service. E
 | **AwsAppRunnerObservabilityConfiguration** (optional) | `observabilityConfigurationArn` | `status.outputs.configuration_arn` |
 | **AwsKmsKey** (optional) | `kmsKeyArn` | `status.outputs.key_arn` |
 | **AwsWafWebAcl** (optional) | `webAclArn` | `status.outputs.web_acl_arn` |
+| **AwsVpc** (per ingress connection) | `vpcIngressConnections[].vpcId` | `status.outputs.vpc_id` |
+| **AwsVpcEndpoint** (per ingress connection) | `vpcIngressConnections[].vpcEndpointId` | `status.outputs.vpc_endpoint_id` |
 
 ### What This Component Provides
 
@@ -132,12 +136,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `service_arn` | Full ARN of the App Runner Service | VPC Ingress Connections, IAM policies, CloudWatch alarms |
+| `service_arn` | Full ARN of the App Runner Service | IAM policies, CloudWatch alarms, deployment triggers |
 | `service_id` | Unique identifier assigned by App Runner | Operational dashboards, event filtering |
 | `service_url` | HTTPS URL for the service | Application configuration, DNS CNAME records |
 | `service_name` | Computed name derived from metadata | Monitoring labels, log correlation |
 | `service_status` | Current operational status (e.g., `RUNNING`) | Health monitoring, deployment verification |
 | `custom_domains` | Per-domain DNS target, association status, and certificate-validation records | Route53 record composition for ownership proof |
+| `vpc_ingress_connections` | Per-connection private domain name, ARN, and status | Internal DNS / service discovery inside the connected VPCs |
 
 ## Common Patterns
 

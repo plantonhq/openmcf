@@ -47,6 +47,14 @@ spec:
     volumeSizeGb: 8
     volumeType: gp3
     encrypted: true
+    # Per-volume tags apply post-creation via a separate tagging call --
+    # free, and the lane verifies them on the volume itself
+    # (DescribeVolumes), not just apply success.
+    tags:
+      volume-role: boot
   userData: |
     #!/bin/bash
     echo "booted as ${HOSTNAME} at $(date)" > /etc/motd
+  # source_dest_check is deliberately UNSET: the lane proves the omit path
+  # keeps AWS's default (true) now that the field is presence-typed --
+  # previously a materialized default forced an explicit send.

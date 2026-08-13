@@ -1,4 +1,4 @@
-name: awsautoscalinggroup-pulumi-project
+name: awsautoscalinggroup
 runtime:
   name: go
 # options:

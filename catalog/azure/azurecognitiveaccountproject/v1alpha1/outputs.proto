@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecognitiveaccountproject.v1alpha1;
+
+// **AzureCognitiveAccountProjectStackOutputs** captures the outputs of
+// provisioning an AI Foundry project.
+message AzureCognitiveAccountProjectStackOutputs {
+  // The Azure Resource Manager ID of the project.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{account}/projects/{name}
+  string project_id = 1;
+
+  // The project's name.
+  string project_name = 2;
+
+  // The project's data-plane endpoints, keyed by service label as ARM
+  // reports them (e.g. the AI Foundry API endpoint agents and SDKs
+  // call).
+  map<string, string> endpoints = 3;
+
+  // Whether ARM made this the account's DEFAULT project (the first
+  // project created on an account becomes the default).
+  bool is_default = 4;
+
+  // The principal (object) ID of the project's system-assigned
+  // identity, when one is enabled -- what data-source grants (storage,
+  // search) bind to.
+  string system_assigned_identity_principal_id = 5;
+}

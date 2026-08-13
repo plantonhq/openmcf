@@ -1,6 +1,6 @@
 # AWS Batch Job Definition
 
-Deploys an AWS Batch job definition: the versioned container blueprint jobs are submitted from — image, command, sizing, IAM identities, retries, and timeout. The compute environment provides capacity, the queue routes, and the job definition describes WHAT runs. It models single-container ECS-based jobs for EC2 and Fargate — the shape nearly every Batch workload uses. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an AWS Batch job definition: the versioned container blueprint jobs are submitted from — image, command, sizing, IAM identities, retries, and timeout. The compute environment provides capacity, the queue routes, and the job definition describes WHAT runs. It models both workload arms of AWS type `container`: single-container ECS-based jobs for EC2 and Fargate — the shape nearly every Batch workload uses — and Batch-on-EKS pod jobs for compute environments attached to an EKS cluster. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
@@ -86,7 +86,9 @@ Jobs are submitted at runtime against a queue + this definition; within an Infra
 
 These are the most important decisions when configuring a job definition. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Platform** -- `FARGATE` requires the execution role and offers the fixed vCPU/memory pairing table, the Graviton (ARM64) runtime, and ephemeral storage up to 200 GiB; `EC2` unlocks GPUs, ulimits, privileged mode, devices, tmpfs, and swap. The definition's platform must match the queue's compute-environment family.
+**Workload arm** -- exactly one of `container` (ECS-based, EC2/Fargate) or `eks` (a Kubernetes pod on an EKS-attached compute environment). EKS jobs carry Kubernetes-native controls: cpu/memory quantity sizing, a service account for AWS permissions (IRSA / Pod Identity), pod security contexts, and emptyDir/hostPath/secret volumes. AWS's Batch-pod default is `hostNetwork: true` — set an explicit `false` for VPC-CNI pod networking.
+
+**Platform** -- `FARGATE` requires the execution role and offers the fixed vCPU/memory pairing table, the Graviton (ARM64) runtime, and ephemeral storage up to 200 GiB; `EC2` unlocks GPUs, ulimits, privileged mode, devices, tmpfs, and swap. The definition's platform must match the queue's compute-environment family. (Container arm only — EKS jobs take their capacity from the compute environment's cluster.)
 
 **Sizing** -- Fargate accepts only specific vCPU/memory pairs (0.25 vCPU → 512-2048 MiB, up to 16 vCPU → 32-120 GiB); the console offers only legal pairs. EC2 sizes are free-form — size against the compute environment's instance types or jobs sit in RUNNABLE forever.
 
@@ -128,6 +130,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Fargate container job** -- the zero-management default: a parameterized container with the Spot-reclaim retry posture. Start from the **Fargate Container Job** preset.
 
 **EC2 GPU job** -- GPU-reserved training or inference on EC2 compute with the NVIDIA image family. Start from the **EC2 GPU Job** preset.
+
+**EKS pod job** -- a hardened Kubernetes pod (init container, tmpfs scratch, secret-projected config) on an EKS-attached compute environment. Start from the **EKS Pod Job** preset.
 
 **Scheduled batch** -- an EventBridge rule targeting the queue + this definition's revisioned ARN: pushing a new image tag and redeploying rolls the schedule onto the new code automatically.
 

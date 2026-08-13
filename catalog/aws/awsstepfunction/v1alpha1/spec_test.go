@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -91,9 +92,55 @@ var _ = ginkgo.Describe("AwsStepFunctionSpec validations", func() {
 	})
 
 	ginkgo.It("accepts a spec with tracing enabled", func() {
-		spec.TracingEnabled = true
+		spec.TracingEnabled = proto.Bool(true)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a spec with tracing explicitly disabled (the revert send)", func() {
+		spec.TracingEnabled = proto.Bool(false)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts aliases when publish is true", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsStepFunctionAlias{
+			{Name: "prod", Description: "production traffic"},
+			{Name: "canary"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects aliases without publish", func() {
+		spec.Publish = false
+		spec.Aliases = []*AwsStepFunctionAlias{{Name: "prod"}}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("aliases require publish"))
+	})
+
+	ginkgo.It("rejects duplicate alias names", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsStepFunctionAlias{{Name: "prod"}, {Name: "prod"}}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be unique"))
+	})
+
+	ginkgo.It("rejects an alias name with illegal characters", func() {
+		spec.Publish = true
+		spec.Aliases = []*AwsStepFunctionAlias{{Name: "prod alias"}}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a literal role_arn that is not an ARN", func() {
+		spec.RoleArn = strRef("not-an-arn")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be an IAM role ARN"))
 	})
 
 	ginkgo.It("accepts a spec with logging (level ALL + destination)", func() {
@@ -153,7 +200,7 @@ var _ = ginkgo.Describe("AwsStepFunctionSpec validations", func() {
 		spec.Type = "STANDARD"
 		spec.Definition = lambdaTaskDefinition()
 		spec.Publish = true
-		spec.TracingEnabled = true
+		spec.TracingEnabled = proto.Bool(true)
 		spec.Logging = &AwsStepFunctionLoggingConfig{
 			Level:                "ALL",
 			IncludeExecutionData: true,

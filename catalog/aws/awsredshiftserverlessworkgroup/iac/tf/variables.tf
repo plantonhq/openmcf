@@ -32,5 +32,20 @@ variable "spec" {
       value = string
     })), [])
     track_name = optional(string, "")
+    custom_domain = optional(object({
+      domain_name = string
+      certificate_arn = string
+    }))
+    endpoint_accesses = optional(list(object({
+      endpoint_name = string
+      subnet_ids = optional(list(string), [])
+      vpc_security_group_ids = optional(list(string), [])
+    })), [])
+    usage_limits = optional(list(object({
+      usage_type = string
+      amount = optional(number, 0)
+      period = optional(string, "")
+      breach_action = optional(string, "")
+    })), [])
   })
 }

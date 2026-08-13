@@ -83,6 +83,28 @@ variable "spec" {
         propagate_tags = optional(string, "")
         enable_ecs_managed_tags = optional(bool, false)
         enable_execute_command = optional(bool, false)
+        tags = optional(map(string), {})
+      }))
+      redshift_target = optional(object({
+        database = string
+        db_user = optional(string, "")
+        secrets_manager_arn = optional(string, "")
+        sql = optional(string, "")
+        statement_name = optional(string, "")
+        with_event = optional(bool, false)
+      }))
+      run_command_targets = optional(list(object({
+        key = string
+        values = list(string)
+      })), [])
+      sagemaker_pipeline_target = optional(object({
+        pipeline_parameter_list = optional(list(object({
+          name = string
+          value = string
+        })), [])
+      }))
+      appsync_target = optional(object({
+        graphql_operation = string
       }))
     })), [])
   })

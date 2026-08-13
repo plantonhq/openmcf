@@ -1,0 +1,17 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurepointtositevpngateway
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests, both
+  # engine builds, offline tofu plan green); live dual-engine proof has
+  # not yet run. The gateway joins the vWAN gateway slow class: creates
+  # run 30-45 minutes (the provider's timeout class is 90), billing
+  # starts at creation, and the lane also pays the fixture-hub cycle
+  # (15-30 min create) plus the free fixture server configuration inside
+  # the prerequisite chain. No client ever connects (the fixture root's
+  # private key does not exist) -- verifiers assert ARM state.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 150

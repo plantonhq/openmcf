@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaifoundryproject.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureaifoundryproject/v1alpha1/outputs.proto";
+import "catalog/azure/azureaifoundryproject/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureAiFoundryProject is the top-level API resource describing an
+// Azure AI Foundry project -- the workspace one AI team works in,
+// created inside an AzureAiFoundry hub and inheriting its posture.
+message AzureAiFoundryProject {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureAiFoundryProject".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureAiFoundryProject'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // AI Foundry project specification.
+  AzureAiFoundryProjectSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureAiFoundryProjectStatus status = 5;
+}
+
+// AzureAiFoundryProjectStatus holds the deployment outputs.
+message AzureAiFoundryProjectStatus {
+  // Stack outputs from the IaC deployment.
+  AzureAiFoundryProjectStackOutputs outputs = 1;
+}

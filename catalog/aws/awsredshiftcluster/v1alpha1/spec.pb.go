@@ -114,13 +114,16 @@ type AwsRedshiftClusterSpec struct {
 	// patches ride maintenance_track_name and allow_version_upgrade.
 	ClusterVersion string `protobuf:"bytes,13,opt,name=cluster_version,json=clusterVersion,proto3" json:"cluster_version,omitempty"`
 	// The name of the first database created in the cluster. Empty keeps
-	// the AWS default ("dev"). 1-64 lowercase alphanumeric/underscore
-	// characters.
+	// the AWS default ("dev"). 1-64 characters: lowercase alphanumeric,
+	// underscore, or dollar sign, starting with a letter or underscore
+	// (AWS's CreateCluster contract).
 	DatabaseName string `protobuf:"bytes,14,opt,name=database_name,json=databaseName,proto3" json:"database_name,omitempty"`
 	// The admin username. Required for a brand-new cluster -- AWS has no
-	// default and rejects a blank value at CreateCluster. Only clusters
-	// restored from a snapshot leave it empty and inherit the source's
-	// credentials. Create-time only -- changing it replaces the cluster.
+	// default and rejects a blank value at CreateCluster. 1-128
+	// characters starting with a letter; letters, digits, and _.@+- are
+	// legal. Only clusters restored from a snapshot leave it empty and
+	// inherit the source's credentials. Create-time only -- changing it
+	// replaces the cluster.
 	MasterUsername string `protobuf:"bytes,15,opt,name=master_username,json=masterUsername,proto3" json:"master_username,omitempty"`
 	// Let AWS manage the admin password in Secrets Manager: AWS
 	// generates it, stores it, rotates it on schedule, and no secret ever
@@ -240,8 +243,37 @@ type AwsRedshiftClusterSpec struct {
 	// group is default.redshift-2.0); set it here when the managed group
 	// should track that family. Only meaningful alongside `parameters`.
 	ParameterGroupFamily string `protobuf:"bytes,40,opt,name=parameter_group_family,json=parameterGroupFamily,proto3" json:"parameter_group_family,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// The identifier of an existing snapshot schedule to associate with
+	// this cluster (AWS allows exactly ONE schedule per cluster -- the
+	// schedule replaces the default automated-snapshot cadence with
+	// explicit cron/rate definitions). The schedule itself is an
+	// account-scoped resource shared by many clusters and is not created
+	// here. Empty keeps AWS's default snapshot cadence.
+	SnapshotScheduleIdentifier string `protobuf:"bytes,41,opt,name=snapshot_schedule_identifier,json=snapshotScheduleIdentifier,proto3" json:"snapshot_schedule_identifier,omitempty"`
+	// Usage limits capping what individual Redshift features may consume
+	// on this cluster -- Spectrum data scanned, concurrency-scaling time,
+	// cross-region datasharing transfer -- each with a breach action from
+	// logging to hard disable. Cluster-scoped settings keyed by the
+	// cluster itself (folded, never standalone nodes).
+	UsageLimits []*AwsRedshiftClusterUsageLimit `protobuf:"bytes,42,rep,name=usage_limits,json=usageLimits,proto3" json:"usage_limits,omitempty"`
+	// Scheduled actions that pause, resume, or resize this cluster on a
+	// cron/at schedule -- the standard nights-and-weekends cost lever for
+	// non-production warehouses. Each entry keys one scheduled action
+	// targeting this cluster.
+	ScheduledActions []*AwsRedshiftClusterScheduledAction `protobuf:"bytes,43,rep,name=scheduled_actions,json=scheduledActions,proto3" json:"scheduled_actions,omitempty"`
+	// Redshift-managed VPC endpoints that expose this cluster inside
+	// another subnet group (same-account cross-VPC access without
+	// peering; requires RA3 node types). Each entry keys one managed
+	// endpoint; its private address and port are exported per endpoint on
+	// the outputs contract.
+	EndpointAccesses []*AwsRedshiftClusterEndpointAccess `protobuf:"bytes,44,rep,name=endpoint_accesses,json=endpointAccesses,proto3" json:"endpoint_accesses,omitempty"`
+	// Grants that authorize OTHER AWS accounts to create managed VPC
+	// endpoints to this cluster (the grantor side of cross-account
+	// access; the grantee creates its endpoint in its own account). Each
+	// entry keys one per-account authorization.
+	EndpointAuthorizations []*AwsRedshiftClusterEndpointAuthorization `protobuf:"bytes,45,rep,name=endpoint_authorizations,json=endpointAuthorizations,proto3" json:"endpoint_authorizations,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AwsRedshiftClusterSpec) Reset() {
@@ -554,6 +586,41 @@ func (x *AwsRedshiftClusterSpec) GetParameterGroupFamily() string {
 	return ""
 }
 
+func (x *AwsRedshiftClusterSpec) GetSnapshotScheduleIdentifier() string {
+	if x != nil {
+		return x.SnapshotScheduleIdentifier
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterSpec) GetUsageLimits() []*AwsRedshiftClusterUsageLimit {
+	if x != nil {
+		return x.UsageLimits
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterSpec) GetScheduledActions() []*AwsRedshiftClusterScheduledAction {
+	if x != nil {
+		return x.ScheduledActions
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterSpec) GetEndpointAccesses() []*AwsRedshiftClusterEndpointAccess {
+	if x != nil {
+		return x.EndpointAccesses
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterSpec) GetEndpointAuthorizations() []*AwsRedshiftClusterEndpointAuthorization {
+	if x != nil {
+		return x.EndpointAuthorizations
+	}
+	return nil
+}
+
 // AwsRedshiftClusterLogging delivers the cluster's audit logs --
 // connection attempts, executed queries, and user DDL changes -- to S3
 // or CloudWatch Logs.
@@ -779,11 +846,490 @@ func (x *AwsRedshiftClusterParameter) GetValue() string {
 	return ""
 }
 
+// AwsRedshiftClusterUsageLimit caps what one Redshift feature may
+// consume on this cluster in a given period, with a configurable breach
+// action. AWS pairs each feature with exactly one limit type -- the
+// pairing is enforced here so a mismatch fails at validate instead of
+// at deploy.
+type AwsRedshiftClusterUsageLimit struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Redshift feature the limit applies to: "spectrum" (external S3
+	// scans), "concurrency-scaling" (burst clusters),
+	// "cross-region-datasharing" (data transferred to consumers in other
+	// regions), or "extra-compute-for-automatic-optimization". Required;
+	// changing it replaces the limit.
+	FeatureType string `protobuf:"bytes,1,opt,name=feature_type,json=featureType,proto3" json:"feature_type,omitempty"`
+	// How the limit is measured: "time" (minutes of feature usage) or
+	// "data-scanned" (terabytes). AWS's contract pairs spectrum and
+	// cross-region-datasharing with "data-scanned", concurrency-scaling
+	// and extra-compute-for-automatic-optimization with "time"
+	// (CEL-enforced). Required; changing it replaces the limit.
+	LimitType string `protobuf:"bytes,2,opt,name=limit_type,json=limitType,proto3" json:"limit_type,omitempty"`
+	// The limit amount: minutes when limit_type is "time", terabytes
+	// when it is "data-scanned". Must be positive.
+	Amount int64 `protobuf:"varint,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	// The period the amount applies to: "daily", "weekly", or "monthly".
+	// Empty keeps the AWS default (monthly). A weekly period begins on
+	// Sunday. Changing it replaces the limit.
+	Period string `protobuf:"bytes,4,opt,name=period,proto3" json:"period,omitempty"`
+	// What Redshift does when the limit is breached: "log" writes an
+	// event to the system table, "emit-metric" additionally publishes a
+	// CloudWatch metric, "disable" turns the feature off until the
+	// period resets (spectrum and concurrency-scaling only -- AWS
+	// rejects disable for cross-region datasharing). Empty keeps the AWS
+	// default (log).
+	BreachAction  string `protobuf:"bytes,5,opt,name=breach_action,json=breachAction,proto3" json:"breach_action,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterUsageLimit) Reset() {
+	*x = AwsRedshiftClusterUsageLimit{}
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterUsageLimit) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterUsageLimit) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterUsageLimit) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterUsageLimit.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterUsageLimit) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsRedshiftClusterUsageLimit) GetFeatureType() string {
+	if x != nil {
+		return x.FeatureType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterUsageLimit) GetLimitType() string {
+	if x != nil {
+		return x.LimitType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterUsageLimit) GetAmount() int64 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
+func (x *AwsRedshiftClusterUsageLimit) GetPeriod() string {
+	if x != nil {
+		return x.Period
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterUsageLimit) GetBreachAction() string {
+	if x != nil {
+		return x.BreachAction
+	}
+	return ""
+}
+
+// AwsRedshiftClusterScheduledAction pauses, resumes, or resizes this
+// cluster on a schedule -- exactly one action arm per entry. The
+// classic nights-and-weekends lever: pause at close of business, resume
+// before it opens.
+type AwsRedshiftClusterScheduledAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The scheduled action's name: 1-63 lowercase alphanumeric/hyphen
+	// characters. NOTE: names are unique per AWS ACCOUNT (not per
+	// cluster) -- include something cluster-specific to avoid collisions
+	// across clusters. Changing it replaces the action.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// An optional description of what the action does and why.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// Suspend the action without deleting it. The zero value (false)
+	// keeps the AWS default: the action is enabled and fires on
+	// schedule.
+	Disabled bool `protobuf:"varint,3,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// When the action fires, in at() or cron() format -- e.g.
+	// "cron(0 22 * * ? *)" (daily 22:00 UTC) or
+	// "at(2026-09-01T03:00:00)". Cron fields are
+	// Minutes Hours Day-of-month Month Day-of-week Year, in UTC.
+	Schedule string `protobuf:"bytes,4,opt,name=schedule,proto3" json:"schedule,omitempty"`
+	// When the schedule becomes active (RFC 3339, e.g.
+	// "2026-09-01T00:00:00Z"). Empty activates it immediately.
+	StartTime string `protobuf:"bytes,5,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
+	// When the schedule expires (RFC 3339). Empty keeps it active until
+	// deleted.
+	EndTime string `protobuf:"bytes,6,opt,name=end_time,json=endTime,proto3" json:"end_time,omitempty"`
+	// The IAM role Redshift assumes to perform the action. The role's
+	// TRUST POLICY must allow the "scheduler.redshift.amazonaws.com"
+	// service principal to sts:AssumeRole (AWS validates the trust at
+	// create -- a role trusting only redshift.amazonaws.com or ec2 is
+	// rejected; the provider retries briefly on trust-propagation
+	// delays). Reference an AwsIamRole role_arn output or pass a literal
+	// role ARN.
+	IamRoleArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=iam_role_arn,json=iamRoleArn,proto3" json:"iam_role_arn,omitempty"`
+	// Pause the cluster (compute stops billing; storage persists).
+	// Exactly one action arm must be set (CEL-enforced).
+	PauseCluster bool `protobuf:"varint,8,opt,name=pause_cluster,json=pauseCluster,proto3" json:"pause_cluster,omitempty"`
+	// Resume a paused cluster. Exactly one action arm must be set
+	// (CEL-enforced).
+	ResumeCluster bool `protobuf:"varint,9,opt,name=resume_cluster,json=resumeCluster,proto3" json:"resume_cluster,omitempty"`
+	// Resize the cluster to a new node count/type. Exactly one action
+	// arm must be set (CEL-enforced).
+	ResizeCluster *AwsRedshiftClusterResizeAction `protobuf:"bytes,10,opt,name=resize_cluster,json=resizeCluster,proto3" json:"resize_cluster,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterScheduledAction) Reset() {
+	*x = AwsRedshiftClusterScheduledAction{}
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterScheduledAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterScheduledAction) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterScheduledAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterScheduledAction.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterScheduledAction) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetSchedule() string {
+	if x != nil {
+		return x.Schedule
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetStartTime() string {
+	if x != nil {
+		return x.StartTime
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetEndTime() string {
+	if x != nil {
+		return x.EndTime
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetIamRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.IamRoleArn
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetPauseCluster() bool {
+	if x != nil {
+		return x.PauseCluster
+	}
+	return false
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetResumeCluster() bool {
+	if x != nil {
+		return x.ResumeCluster
+	}
+	return false
+}
+
+func (x *AwsRedshiftClusterScheduledAction) GetResizeCluster() *AwsRedshiftClusterResizeAction {
+	if x != nil {
+		return x.ResizeCluster
+	}
+	return nil
+}
+
+// AwsRedshiftClusterResizeAction is the resize arm of a scheduled
+// action: the new topology the cluster resizes to when the schedule
+// fires. Unset members keep the cluster's current value.
+type AwsRedshiftClusterResizeAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Force a CLASSIC resize (full data redistribution -- hours, but
+	// works between any topologies) instead of the default elastic
+	// resize (minutes, but constrained to compatible node counts).
+	Classic bool `protobuf:"varint,1,opt,name=classic,proto3" json:"classic,omitempty"`
+	// The target cluster type. Empty keeps the current type; AWS derives
+	// it from the node count otherwise.
+	ClusterType string `protobuf:"bytes,2,opt,name=cluster_type,json=clusterType,proto3" json:"cluster_type,omitempty"`
+	// The target node class (e.g. "ra3.large"). Empty keeps the current
+	// class.
+	NodeType string `protobuf:"bytes,3,opt,name=node_type,json=nodeType,proto3" json:"node_type,omitempty"`
+	// The target node count. 0 keeps the current count.
+	NumberOfNodes int32 `protobuf:"varint,4,opt,name=number_of_nodes,json=numberOfNodes,proto3" json:"number_of_nodes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterResizeAction) Reset() {
+	*x = AwsRedshiftClusterResizeAction{}
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterResizeAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterResizeAction) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterResizeAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterResizeAction.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterResizeAction) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsRedshiftClusterResizeAction) GetClassic() bool {
+	if x != nil {
+		return x.Classic
+	}
+	return false
+}
+
+func (x *AwsRedshiftClusterResizeAction) GetClusterType() string {
+	if x != nil {
+		return x.ClusterType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterResizeAction) GetNodeType() string {
+	if x != nil {
+		return x.NodeType
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterResizeAction) GetNumberOfNodes() int32 {
+	if x != nil {
+		return x.NumberOfNodes
+	}
+	return 0
+}
+
+// AwsRedshiftClusterEndpointAccess is one Redshift-managed VPC endpoint
+// exposing this cluster inside another subnet group -- same-account
+// cross-VPC access without peering. Requires RA3 node types. The
+// endpoint's private address and port are exported per endpoint on the
+// outputs contract.
+type AwsRedshiftClusterEndpointAccess struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The endpoint's name: 1-30 lowercase alphanumeric/hyphen
+	// characters, unique within the cluster. Changing it replaces the
+	// endpoint.
+	EndpointName string `protobuf:"bytes,1,opt,name=endpoint_name,json=endpointName,proto3" json:"endpoint_name,omitempty"`
+	// The Redshift subnet group the endpoint lands in -- typically a
+	// group in the CONSUMING VPC. Empty reuses the cluster's own subnet
+	// group (module-managed or referenced), which yields an extra
+	// endpoint in the cluster's own VPC. Changing it replaces the
+	// endpoint.
+	SubnetGroupName string `protobuf:"bytes,2,opt,name=subnet_group_name,json=subnetGroupName,proto3" json:"subnet_group_name,omitempty"`
+	// Security groups attached to the endpoint's network interfaces.
+	// Empty uses the VPC's default security group. Reference
+	// AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+	VpcSecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=vpc_security_group_ids,json=vpcSecurityGroupIds,proto3" json:"vpc_security_group_ids,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterEndpointAccess) Reset() {
+	*x = AwsRedshiftClusterEndpointAccess{}
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterEndpointAccess) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterEndpointAccess) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterEndpointAccess) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterEndpointAccess.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterEndpointAccess) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsRedshiftClusterEndpointAccess) GetEndpointName() string {
+	if x != nil {
+		return x.EndpointName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterEndpointAccess) GetSubnetGroupName() string {
+	if x != nil {
+		return x.SubnetGroupName
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterEndpointAccess) GetVpcSecurityGroupIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcSecurityGroupIds
+	}
+	return nil
+}
+
+// AwsRedshiftClusterEndpointAuthorization grants ONE other AWS account
+// permission to create managed VPC endpoints to this cluster -- the
+// grantor side of cross-account access. The grantee account creates
+// its own endpoint from its own catalog/tooling; that half lives in
+// the grantee's credential domain and is not modeled here.
+type AwsRedshiftClusterEndpointAuthorization struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The AWS account ID being authorized (12 digits). Changing it
+	// replaces the authorization.
+	Account string `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
+	// Restrict the grant to specific VPCs in the grantee account. Empty
+	// authorizes ALL of the account's VPCs. Reference AwsVpc vpc_id
+	// outputs or pass literal VPC IDs.
+	VpcIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=vpc_ids,json=vpcIds,proto3" json:"vpc_ids,omitempty"`
+	// Revoke the authorization on delete even if the grantee still has
+	// live endpoints against the cluster (their endpoints are deleted
+	// too). Off by default: delete fails while grantee endpoints exist.
+	ForceDelete   bool `protobuf:"varint,3,opt,name=force_delete,json=forceDelete,proto3" json:"force_delete,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) Reset() {
+	*x = AwsRedshiftClusterEndpointAuthorization{}
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRedshiftClusterEndpointAuthorization) ProtoMessage() {}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRedshiftClusterEndpointAuthorization.ProtoReflect.Descriptor instead.
+func (*AwsRedshiftClusterEndpointAuthorization) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) GetAccount() string {
+	if x != nil {
+		return x.Account
+	}
+	return ""
+}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) GetVpcIds() []*v1.StringValueOrRef {
+	if x != nil {
+		return x.VpcIds
+	}
+	return nil
+}
+
+func (x *AwsRedshiftClusterEndpointAuthorization) GetForceDelete() bool {
+	if x != nil {
+		return x.ForceDelete
+	}
+	return false
+}
+
 var File_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awsredshiftcluster/v1alpha1/spec.proto\x12+dev.planton.aws.awsredshiftcluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb20\n" +
+	"2catalog/aws/awsredshiftcluster/v1alpha1/spec.proto\x12+dev.planton.aws.awsredshiftcluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9bC\n" +
 	"\x16AwsRedshiftClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
 	"\n" +
@@ -800,9 +1346,9 @@ const file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc = "" +
 	" \x01(\x05R\x04port\x12#\n" +
 	"\tnode_type\x18\v \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bnodeType\x12&\n" +
 	"\x0fnumber_of_nodes\x18\f \x01(\x05R\rnumberOfNodes\x12'\n" +
-	"\x0fcluster_version\x18\r \x01(\tR\x0eclusterVersion\x12#\n" +
-	"\rdatabase_name\x18\x0e \x01(\tR\fdatabaseName\x12'\n" +
-	"\x0fmaster_username\x18\x0f \x01(\tR\x0emasterUsername\x12>\n" +
+	"\x0fcluster_version\x18\r \x01(\tR\x0eclusterVersion\x12G\n" +
+	"\rdatabase_name\x18\x0e \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a2\x18^[a-z_][0-9a-z_$]{0,63}$R\fdatabaseName\x12T\n" +
+	"\x0fmaster_username\x18\x0f \x01(\tB+\xbaH(\xd8\x01\x01r#2!^[A-Za-z][0-9A-Za-z_.@+-]{0,127}$R\x0emasterUsername\x12>\n" +
 	"\x16manage_master_password\x18\x10 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14manageMasterPassword\x12-\n" +
 	"\x0fmaster_password\x18\x11 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterPassword\x12\x9c\x01\n" +
 	"!master_password_secret_kms_key_id\x18\x12 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x1cmasterPasswordSecretKmsKeyId\x12+\n" +
@@ -830,22 +1376,34 @@ const file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"parameters\x18' \x03(\v2H.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterParameterR\n" +
 	"parameters\x124\n" +
-	"\x16parameter_group_family\x18( \x01(\tR\x14parameterGroupFamily:\xc9\x18\xbaH\xc5\x18\x1a\xb1\x01\n" +
+	"\x16parameter_group_family\x18( \x01(\tR\x14parameterGroupFamily\x12@\n" +
+	"\x1csnapshot_schedule_identifier\x18) \x01(\tR\x1asnapshotScheduleIdentifier\x12l\n" +
+	"\fusage_limits\x18* \x03(\v2I.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterUsageLimitR\vusageLimits\x12{\n" +
+	"\x11scheduled_actions\x18+ \x03(\v2N.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterScheduledActionR\x10scheduledActions\x12z\n" +
+	"\x11endpoint_accesses\x18, \x03(\v2M.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAccessR\x10endpointAccesses\x12\x8d\x01\n" +
+	"\x17endpoint_authorizations\x18- \x03(\v2T.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAuthorizationR\x16endpointAuthorizations:\xa8&\xbaH\xa4&\x1a\xb1\x01\n" +
 	"\x10subnets_or_group\x12Wprovide at least two subnet_ids (distinct AZs) or an existing cluster_subnet_group_name\x1aD(this.subnet_ids.size() >= 2) || has(this.cluster_subnet_group_name)\x1a\x99\x01\n" +
 	"\n" +
 	"port_range\x12Nport must be between 1115 and 65535 when set -- 0 keeps the AWS default (5439)\x1a;this.port == 0 || (this.port >= 1115 && this.port <= 65535)\x1a\xd0\x01\n" +
 	"\x15number_of_nodes_range\x12^number_of_nodes must be between 1 and 128 when set -- 0 keeps the AWS default (1, single-node)\x1aWthis.number_of_nodes == 0 || (this.number_of_nodes >= 1 && this.number_of_nodes <= 128)\x1a\xb8\x01\n" +
-	"\x14password_xor_managed\x12_master_password cannot be set when manage_master_password is true -- pick one password strategy\x1a?this.manage_master_password ? this.master_password == '' : true\x1a\x90\x02\n" +
+	"\x14password_xor_managed\x12_master_password cannot be set when manage_master_password is true -- pick one password strategy\x1a?this.manage_master_password ? this.master_password == '' : true\x1a\x96\x03\n" +
+	"\x1amaster_password_complexity\x12\x9d\x01master_password must be 8-64 characters with at least one lowercase letter, one uppercase letter, and one digit, and must not contain /, @, quotes, or spaces\x1a\xd7\x01this.master_password == '' || (this.master_password.matches('^[^\\x2F\\x40\\x22\\x27 ]{8,64}$') && this.master_password.matches('[a-z]') && this.master_password.matches('[A-Z]') && this.master_password.matches('[0-9]'))\x1a\xe2\x01\n" +
+	"\x1bsecret_kms_requires_managed\x12vmaster_password_secret_kms_key_id is only meaningful with manage_master_password -- it encrypts the AWS-managed secret\x1aK!has(this.master_password_secret_kms_key_id) || this.manage_master_password\x1a\x90\x02\n" +
 	"'master_username_required_unless_derived\x12\x8b\x01master_username is required for a new cluster -- AWS rejects a blank username; only snapshot restores inherit credentials from their source\x1aWthis.master_username != '' || this.snapshot_identifier != '' || this.snapshot_arn != ''\x1a\xfa\x01\n" +
 	"\x17relocation_xor_multi_az\x12\x9f\x01availability_zone_relocation_enabled and multi_az are mutually exclusive -- relocation moves the single cluster between zones, Multi-AZ fails over to a standby\x1a=!(this.availability_zone_relocation_enabled && this.multi_az)\x1a\xb5\x01\n" +
 	"\x1aelastic_ip_requires_public\x12delastic_ip requires publicly_accessible -- a private cluster has no public IP to bind the address to\x1a1!has(this.elastic_ip) || this.publicly_accessible\x1a\xdf\x02\n" +
 	"\x1fmanual_snapshot_retention_range\x12\x7fmanual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)\x1a\xba\x01this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)\x1a\x83\x02\n" +
-	",final_snapshot_id_required_when_not_skipping\x12\x8a\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xa9\x01\n" +
+	",final_snapshot_id_required_when_not_skipping\x12\x8a\x01final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name\x1aFthis.skip_final_snapshot ? true : this.final_snapshot_identifier != ''\x1a\xec\x02\n" +
+	" final_snapshot_identifier_format\x12yfinal_snapshot_identifier must be 1-255 alphanumeric/hyphen characters with no consecutive hyphens and no trailing hyphen\x1a\xcc\x01this.final_snapshot_identifier == '' || (this.final_snapshot_identifier.matches('^[0-9A-Za-z-]{1,255}$') && !this.final_snapshot_identifier.contains('--') && !this.final_snapshot_identifier.endsWith('-'))\x1a\xa9\x01\n" +
 	"\x13snapshot_id_xor_arn\x12Wsnapshot_identifier and snapshot_arn are mutually exclusive create-time restore sources\x1a9this.snapshot_identifier == '' || this.snapshot_arn == ''\x1a\xf1\x01\n" +
 	"%snapshot_cluster_requires_snapshot_id\x12~snapshot_cluster_identifier is only meaningful alongside snapshot_identifier -- it disambiguates a snapshot NAME, never an ARN\x1aHthis.snapshot_cluster_identifier == '' || this.snapshot_identifier != ''\x1a\xda\x01\n" +
 	"\x1eowner_account_requires_restore\x12aowner_account is only meaningful alongside a restore source (snapshot_identifier or snapshot_arn)\x1aUthis.owner_account == '' || this.snapshot_identifier != '' || this.snapshot_arn != ''\x1a\xe4\x01\n" +
 	"!own_parameters_xor_existing_group\x12wparameters and cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group\x1aFthis.cluster_parameter_group_name == '' || this.parameters.size() == 0\x1a\xd0\x01\n" +
-	"\x1afamily_requires_parameters\x12qparameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family\x1a?this.parameter_group_family == '' || this.parameters.size() > 0B\f\n" +
+	"\x1afamily_requires_parameters\x12qparameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family\x1a?this.parameter_group_family == '' || this.parameters.size() > 0\x1a\xb1\x02\n" +
+	"\x13usage_limits_unique\x12\xa1\x01usage_limits must be unique per (feature_type, limit_type, period) -- AWS allows one limit per feature/type/period combination, and an empty period means monthly\x1avthis.usage_limits.map(l, l.feature_type + '/' + l.limit_type + '/' + (l.period == '' ? 'monthly' : l.period)).unique()\x1av\n" +
+	"\x1dscheduled_action_names_unique\x12%scheduled action names must be unique\x1a.this.scheduled_actions.map(a, a.name).unique()\x1a}\n" +
+	"\x1cendpoint_access_names_unique\x12$endpoint access names must be unique\x1a7this.endpoint_accesses.map(e, e.endpoint_name).unique()\x1a\xc4\x01\n" +
+	"&endpoint_authorization_accounts_unique\x12aendpoint authorization grantee accounts must be unique -- AWS keeps one authorization per account\x1a7this.endpoint_authorizations.map(a, a.account).unique()B\f\n" +
 	"\n" +
 	"_encryptedB&\n" +
 	"$_automated_snapshot_retention_periodB\x18\n" +
@@ -868,7 +1426,47 @@ const file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bcopy_manual_retention_range\x12\x7fmanual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)\x1a\xba\x01this.manual_snapshot_retention_period == 0 || this.manual_snapshot_retention_period == -1 || (this.manual_snapshot_retention_period >= 1 && this.manual_snapshot_retention_period <= 3653)\"W\n" +
 	"\x1bAwsRedshiftClusterParameter\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
-	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05valueB\xee\x02\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\x8e\x06\n" +
+	"\x1cAwsRedshiftClusterUsageLimit\x12\x8e\x01\n" +
+	"\ffeature_type\x18\x01 \x01(\tBk\xbaHh\xc8\x01\x01rcR\bspectrumR\x13concurrency-scalingR\x18cross-region-datasharingR(extra-compute-for-automatic-optimizationR\vfeatureType\x12;\n" +
+	"\n" +
+	"limit_type\x18\x02 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14R\x04timeR\fdata-scannedR\tlimitType\x12\x1f\n" +
+	"\x06amount\x18\x03 \x01(\x03B\a\xbaH\x04\"\x02 \x00R\x06amount\x128\n" +
+	"\x06period\x18\x04 \x01(\tB \xbaH\x1d\xd8\x01\x01r\x18R\x05dailyR\x06weeklyR\amonthlyR\x06period\x12H\n" +
+	"\rbreach_action\x18\x05 \x01(\tB#\xbaH \xd8\x01\x01r\x1bR\x03logR\vemit-metricR\adisableR\fbreachAction:\xfa\x02\xbaH\xf6\x02\x1a\xf3\x02\n" +
+	"\x1afeature_limit_type_pairing\x12\xb5\x01limit_type must be 'data-scanned' for spectrum/cross-region-datasharing and 'time' for concurrency-scaling/extra-compute-for-automatic-optimization (AWS's CreateUsageLimit contract)\x1a\x9c\x01(this.feature_type in ['spectrum', 'cross-region-datasharing']) ? this.limit_type == 'data-scanned' : (this.feature_type == '' || this.limit_type == 'time')\"\x8a\n" +
+	"\n" +
+	"!AwsRedshiftClusterScheduledAction\x12/\n" +
+	"\x04name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[0-9a-z-]{1,63}$R\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bdisabled\x18\x03 \x01(\bR\bdisabled\x127\n" +
+	"\bschedule\x18\x04 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^(at|cron)\\(.+\\)$R\bschedule\x12\x1d\n" +
+	"\n" +
+	"start_time\x18\x05 \x01(\tR\tstartTime\x12\x19\n" +
+	"\bend_time\x18\x06 \x01(\tR\aendTime\x12|\n" +
+	"\fiam_role_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\n" +
+	"iamRoleArn\x12#\n" +
+	"\rpause_cluster\x18\b \x01(\bR\fpauseCluster\x12%\n" +
+	"\x0eresume_cluster\x18\t \x01(\bR\rresumeCluster\x12r\n" +
+	"\x0eresize_cluster\x18\n" +
+	" \x01(\v2K.dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterResizeActionR\rresizeCluster:\xc4\x05\xbaH\xc0\x05\x1a\xcd\x01\n" +
+	"\x16exactly_one_action_arm\x12Kexactly one of pause_cluster, resume_cluster, or resize_cluster must be set\x1af(this.pause_cluster ? 1 : 0) + (this.resume_cluster ? 1 : 0) + (has(this.resize_cluster) ? 1 : 0) == 1\x1a\xf9\x01\n" +
+	"\x12start_time_rfc3339\x12Pstart_time must be an RFC 3339 timestamp (e.g., '2026-09-01T00:00:00Z') when set\x1a\x90\x01this.start_time == '' || this.start_time.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')\x1a\xf1\x01\n" +
+	"\x10end_time_rfc3339\x12Nend_time must be an RFC 3339 timestamp (e.g., '2026-09-30T00:00:00Z') when set\x1a\x8c\x01this.end_time == '' || this.end_time.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')\"\xce\x01\n" +
+	"\x1eAwsRedshiftClusterResizeAction\x12\x18\n" +
+	"\aclassic\x18\x01 \x01(\bR\aclassic\x12D\n" +
+	"\fcluster_type\x18\x02 \x01(\tB!\xbaH\x1e\xd8\x01\x01r\x19R\vsingle-nodeR\n" +
+	"multi-nodeR\vclusterType\x12\x1b\n" +
+	"\tnode_type\x18\x03 \x01(\tR\bnodeType\x12/\n" +
+	"\x0fnumber_of_nodes\x18\x04 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rnumberOfNodes\"\xa5\x02\n" +
+	" AwsRedshiftClusterEndpointAccess\x12@\n" +
+	"\rendpoint_name\x18\x01 \x01(\tB\x1b\xbaH\x18\xc8\x01\x01r\x132\x11^[0-9a-z-]{1,30}$R\fendpointName\x12*\n" +
+	"\x11subnet_group_name\x18\x02 \x01(\tR\x0fsubnetGroupName\x12\x92\x01\n" +
+	"\x16vpc_security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x13vpcSecurityGroupIds\"\xea\x01\n" +
+	"'AwsRedshiftClusterEndpointAuthorization\x12/\n" +
+	"\aaccount\x18\x01 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\r2\v^[0-9]{12}$R\aaccount\x12k\n" +
+	"\avpc_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1e\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x06vpcIds\x12!\n" +
+	"\fforce_delete\x18\x03 \x01(\bR\vforceDeleteB\xee\x02\n" +
 	"/com.dev.planton.aws.awsredshiftcluster.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awsredshiftcluster/v1alpha1;awsredshiftclusterv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awsredshiftcluster.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awsredshiftcluster\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awsredshiftcluster\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awsredshiftcluster::V1alpha1b\x06proto3"
 
 var (
@@ -883,31 +1481,44 @@ func file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsRedshiftClusterSpec)(nil),         // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec
-	(*AwsRedshiftClusterLogging)(nil),      // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterLogging
-	(*AwsRedshiftClusterSnapshotCopy)(nil), // 2: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSnapshotCopy
-	(*AwsRedshiftClusterParameter)(nil),    // 3: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterParameter
-	(*v1.StringValueOrRef)(nil),            // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsRedshiftClusterSpec)(nil),                  // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec
+	(*AwsRedshiftClusterLogging)(nil),               // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterLogging
+	(*AwsRedshiftClusterSnapshotCopy)(nil),          // 2: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSnapshotCopy
+	(*AwsRedshiftClusterParameter)(nil),             // 3: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterParameter
+	(*AwsRedshiftClusterUsageLimit)(nil),            // 4: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterUsageLimit
+	(*AwsRedshiftClusterScheduledAction)(nil),       // 5: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterScheduledAction
+	(*AwsRedshiftClusterResizeAction)(nil),          // 6: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterResizeAction
+	(*AwsRedshiftClusterEndpointAccess)(nil),        // 7: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAccess
+	(*AwsRedshiftClusterEndpointAuthorization)(nil), // 8: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAuthorization
+	(*v1.StringValueOrRef)(nil),                     // 9: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_depIdxs = []int32{
-	4,  // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.cluster_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 2: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 3: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.elastic_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 4: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.master_password_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 5: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 6: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 7: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.default_iam_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 0: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 1: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.cluster_subnet_group_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 2: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 3: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.elastic_ip:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 4: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.master_password_secret_kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 5: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 6: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.iam_roles:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 7: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.default_iam_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 8: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.logging:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterLogging
 	2,  // 9: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.snapshot_copy:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSnapshotCopy
 	3,  // 10: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.parameters:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterParameter
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	4,  // 11: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.usage_limits:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterUsageLimit
+	5,  // 12: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.scheduled_actions:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterScheduledAction
+	7,  // 13: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.endpoint_accesses:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAccess
+	8,  // 14: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterSpec.endpoint_authorizations:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAuthorization
+	9,  // 15: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterScheduledAction.iam_role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 16: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterScheduledAction.resize_cluster:type_name -> dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterResizeAction
+	9,  // 17: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAccess.vpc_security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 18: dev.planton.aws.awsredshiftcluster.v1alpha1.AwsRedshiftClusterEndpointAuthorization.vpc_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // [19:19] is the sub-list for method output_type
+	19, // [19:19] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_init() }
@@ -922,7 +1533,7 @@ func file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsredshiftcluster_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

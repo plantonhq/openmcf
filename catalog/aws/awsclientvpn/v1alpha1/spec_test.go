@@ -458,3 +458,71 @@ var _ = ginkgo.Describe("AwsClientVpnSpec validations", func() {
 		})
 	})
 })
+
+// Coverage for the provider-mirrored value-domain promotions: the client CIDR
+// block-size bounds, canonical network addresses on the satellite CIDRs, the
+// comma-free access group id, and the SAML provider ARN shapes.
+var _ = ginkgo.Describe("AwsClientVpnSpec value-domain promotions", func() {
+	ginkgo.It("rejects a client CIDR smaller than /22", func() {
+		spec := certificateVpn()
+		spec.ClientCidrBlock = "10.100.0.0/24"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a client CIDR larger than /12", func() {
+		spec := certificateVpn()
+		spec.ClientCidrBlock = "10.0.0.0/8"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts the /12 and /22 boundary blocks", func() {
+		spec := certificateVpn()
+		spec.ClientCidrBlock = "10.16.0.0/12"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+		spec.ClientCidrBlock = "10.100.0.0/22"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a non-canonical authorization rule CIDR (host bits set)", func() {
+		spec := certificateVpn()
+		spec.AuthorizationRules[0].TargetNetworkCidr = "10.0.1.5/24"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a non-canonical route CIDR (host bits set)", func() {
+		spec := certificateVpn()
+		spec.Routes = []*AwsClientVpnRoute{{
+			DestinationCidrBlock: "192.168.1.1/24",
+			TargetSubnetId:       svr("subnet-11111111"),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts the canonical full-tunnel route", func() {
+		spec := certificateVpn()
+		spec.Routes = []*AwsClientVpnRoute{{
+			DestinationCidrBlock: "0.0.0.0/0",
+			TargetSubnetId:       svr("subnet-11111111"),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an access group id containing a comma", func() {
+		spec := certificateVpn()
+		spec.AuthorizationRules[0].AuthorizeAllGroups = false
+		spec.AuthorizationRules[0].AccessGroupId = "S-1-5-21,S-1-5-22"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a malformed SAML provider ARN", func() {
+		spec := federatedVpn()
+		spec.AuthenticationOptions[0].SamlProviderArn = "okta-workforce"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a malformed self-service SAML provider ARN", func() {
+		spec := federatedVpn()
+		spec.AuthenticationOptions[0].SelfServiceSamlProviderArn = "arn:aws:iam::12:saml-provider/x"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+})

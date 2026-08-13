@@ -52,6 +52,14 @@ node lets you:
 - **Version discipline**: pin `version`/`release_version`, roll on your
   schedule, `force_update_version` for unsatisfiable disruption budgets.
 
+### Scale-Out Latency
+
+- **Warm pools**: pre-initialized nodes (stopped, running, or
+  hibernated) that join in seconds instead of cold-boot minutes --
+  with a standby floor, an optional capacity ceiling, and
+  reuse-on-scale-in so a warm boot is never paid for twice. Updates in
+  place.
+
 ## Benefits
 
 - **Composability**: cluster, role, subnets, template, and SSH source

@@ -3,6 +3,7 @@ package module
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	iamrolev1 "github.com/plantonhq/planton/catalog/aws/awsiamrole/v1alpha1"
@@ -67,10 +68,10 @@ func iamRole(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResour
 	}
 	// When enabled, deletion force-detaches policies still attached to the
 	// role (including attachments made outside this resource) instead of
-	// failing.
-	if spec.ForceDetachPolicies {
-		roleArgs.ForceDetachPolicies = pulumi.BoolPtr(true)
-	}
+	// failing. Always sent -- explicit false included -- so both engines pin
+	// the value in state identically (the Terraform module renders it
+	// unconditionally).
+	roleArgs.ForceDetachPolicies = pulumi.BoolPtr(spec.ForceDetachPolicies)
 
 	createdRole, err := iam.NewRole(ctx, roleName, roleArgs, pulumi.Provider(provider))
 	if err != nil {
@@ -82,8 +83,12 @@ func iamRole(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResour
 	// individually: adding or removing an entry attaches or detaches just that
 	// policy, and attachments made outside this resource are left alone.
 	// valueFrom references were resolved to policy ARNs before the module ran.
-	for idx, policyArn := range valuefrom.ToStringArray(spec.ManagedPolicyArns) {
-		attachName := fmt.Sprintf("%s-attach-%d", roleName, idx)
+	// Attachments are keyed by the policy ARN itself (sanitized for the
+	// logical name), never the list index -- mirrors the Terraform module's
+	// for_each = toset(...): reordering managed_policy_arns must be a no-op,
+	// not a transient detach/re-attach on a live role.
+	for _, policyArn := range valuefrom.ToStringArray(spec.ManagedPolicyArns) {
+		attachName := fmt.Sprintf("%s-attach-%s", roleName, sanitizeForLogicalName(policyArn))
 		_, err := iam.NewRolePolicyAttachment(ctx, attachName, &iam.RolePolicyAttachmentArgs{
 			Role:      createdRole.Name,
 			PolicyArn: pulumi.String(policyArn),
@@ -117,6 +122,19 @@ func iamRole(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResour
 	ctx.Export(OpRoleId, createdRole.UniqueId)
 
 	return nil
+}
+
+// sanitizeForLogicalName reduces an ARN to a stable Pulumi logical-name
+// segment: every character outside [A-Za-z0-9] becomes '-'. The full ARN
+// stays in the name so distinct policies can never collide (bare policy
+// names repeat across paths and accounts).
+func sanitizeForLogicalName(s string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '-'
+	}, s)
 }
 
 // structToJSONString converts a google.protobuf.Struct to a raw JSON string.

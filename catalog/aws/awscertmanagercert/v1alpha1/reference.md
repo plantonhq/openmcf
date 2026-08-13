@@ -73,6 +73,7 @@ spec:
 | `spec.imported.privateKey` | `string` (sensitive) | yes |  |  |
 | `spec.imported.certificateChain` | `string` |  |  |  |
 | `spec.certificateAuthorityArn` | `string` |  |  |  |
+| `spec.earlyRenewalDuration` | `string` |  |  |  |
 
 ## Field Details
 
@@ -121,12 +122,14 @@ not repeat primary_domain_name here -- ACM already includes it.
 
 How ACM verifies domain ownership for requested certificates:
 "DNS" (recommended -- a CNAME record per domain, kept in place so
-renewals are fully automatic) or "EMAIL" (approval mail to the
+renewals are fully automatic), "EMAIL" (approval mail to the
 domain's WHOIS/admin addresses; renewal requires re-approval every
-time, so prefer DNS). Empty keeps DNS. Not applicable to imported
-or private certificates.
+time, so prefer DNS), or "HTTP" (serve a validation token from the
+domain -- for domains whose DNS you cannot touch; renewals repeat
+the challenge). Empty keeps DNS. Not applicable to imported or
+private certificates.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["DNS","EMAIL"]}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["DNS","EMAIL","HTTP"]}}
 
 ### spec.validationOptions
 
@@ -281,12 +284,27 @@ internal ALBs) where clients trust your private root.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-zA-Z-]*:acm-pca:[a-z0-9-]+:[0-9]{12}:certificate-authority/.+$"}}
 
+### spec.earlyRenewalDuration
+
+`string`
+
+How long before expiry ACM starts the managed renewal of this
+PRIVATE certificate -- either an RFC 3339 duration ("P90D",
+"P3M") or a Go-style duration ("2160h"). Durations under 60 days
+have no effect (AWS's floor). Private-CA certificates only:
+publicly validated certificates renew on ACM's own schedule (kept
+automatic by leaving the DNS validation records in place), and
+imported certificates never renew.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(P([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?(T([0-9]+H)?([0-9]+M)?([0-9]+(\\.[0-9]+)?S)?)?|([0-9]+(\\.[0-9]+)?(ns|us|ms|s|m|h))+)$"}}
+
 ## Validation Rules
 
 - `exactly_one_creation_mode`: set exactly one of primary_domain_name (requested or private certificate) or imported (bring-your-own certificate material)
 - `imported_excludes_issuance_fields`: imported certificates derive their domains, algorithm, and options from the certificate material -- remove alternate_domain_names, validation_method, validation_options, key_algorithm, options, certificate_authority_arn, and route53_hosted_zone_id
 - `private_ca_excludes_validation`: private (ACM-PCA) certificates are issued without public validation -- remove validation_method, validation_options, and route53_hosted_zone_id when certificate_authority_arn is set
-- `route53_zone_requires_dns_validation`: route53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL
+- `route53_zone_requires_dns_validation`: route53_hosted_zone_id automates DNS validation records -- it cannot be combined with validation_method EMAIL or HTTP
+- `early_renewal_requires_private_ca`: early_renewal_duration drives managed renewal of private (ACM-PCA) certificates -- it requires certificate_authority_arn
 
 ## Outputs
 
@@ -321,12 +339,15 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsClientVpn | `spec.authenticationOptions[].rootCertificateChainArn` | `status.outputs.cert_arn` |
 | AwsClientVpn | `spec.serverCertificateArn` | `status.outputs.cert_arn` |
+| AwsCloudFront | `spec.origins[].customOrigin.mtlsClientCertificateArn` | `status.outputs.cert_arn` |
 | AwsCloudFront | `spec.viewerCertificate.acmCertificateArn` | `status.outputs.cert_arn` |
 | AwsCognitoUserPool | `spec.domain.certificateArn` | `status.outputs.cert_arn` |
 | AwsHttpApiDomain | `spec.certificateArn` | `status.outputs.cert_arn` |
+| AwsHttpApiDomain | `spec.ownershipVerificationCertificateArn` | `status.outputs.cert_arn` |
 | AwsLbListener | `spec.certificateArn` | `status.outputs.cert_arn` |
 | AwsLbListener | `spec.additionalCertificateArns` | `status.outputs.cert_arn` |
 | AwsOpenSearchDomain | `spec.domainEndpointOptions.customEndpointCertificateArn` | `status.outputs.cert_arn` |
+| AwsRedshiftServerlessWorkgroup | `spec.customDomain.certificateArn` | `status.outputs.cert_arn` |
 
 ## See Also
 

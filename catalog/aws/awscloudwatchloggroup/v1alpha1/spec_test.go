@@ -9,6 +9,7 @@ import (
 	"github.com/plantonhq/planton/shared"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	fkv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -206,7 +207,23 @@ var _ = ginkgo.Describe("AwsCloudwatchLogGroupSpec validations", func() {
 			Spec: &AwsCloudwatchLogGroupSpec{
 				Region:                    "us-west-2",
 				RetentionInDays:           90,
-				DeletionProtectionEnabled: true,
+				DeletionProtectionEnabled: proto.Bool(true),
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts explicit-false deletion protection (the only way to disable an enabled protection)", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "unprotected-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:                    "us-west-2",
+				DeletionProtectionEnabled: proto.Bool(false),
 			},
 		}
 		err := protovalidate.Validate(input)
@@ -233,7 +250,7 @@ var _ = ginkgo.Describe("AwsCloudwatchLogGroupSpec validations", func() {
 					},
 				},
 				LogGroupClass:             "STANDARD",
-				DeletionProtectionEnabled: true,
+				DeletionProtectionEnabled: proto.Bool(true),
 			},
 		}
 		err := protovalidate.Validate(input)
@@ -860,6 +877,584 @@ var _ = ginkgo.Describe("AwsCloudwatchLogGroupSpec validations", func() {
 			},
 		}
 		err = protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Filter name formats (PutMetricFilter / PutSubscriptionFilter contracts)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when a metric filter name contains a colon", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-filter-name",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "errors:count",
+						Pattern: "ERROR",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "ErrorCount",
+							MetricNamespace: "MyApp",
+							MetricValue:     "1",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a metric transformation name contains a dollar sign", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-metric-name",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				MetricFilters: []*AwsCloudwatchLogGroupMetricFilter{
+					{
+						Name:    "errors",
+						Pattern: "ERROR",
+						Transformation: &AwsCloudwatchLogGroupMetricTransformation{
+							MetricName:      "Error$Count",
+							MetricNamespace: "MyApp",
+							MetricValue:     "1",
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a subscription filter name contains an asterisk", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-subscription-name",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{
+						Name: "fan*out",
+						DestinationArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_Value{
+								Value: "arn:aws:kinesis:us-west-2:123456789012:stream/logs",
+							},
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// emit_system_fields (incl. @source.log, provider 6.56.0)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts @source.log in emit_system_fields", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "source-log-enriched",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				SubscriptionFilters: []*AwsCloudwatchLogGroupSubscriptionFilter{
+					{
+						Name: "central-delivery",
+						DestinationArn: &fkv1.StringValueOrRef{
+							LiteralOrRef: &fkv1.StringValueOrRef_Value{
+								Value: "arn:aws:kinesis:us-west-2:123456789012:stream/logs",
+							},
+						},
+						EmitSystemFields: []string{"@aws.account", "@aws.region", "@source.log"},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Log streams fold
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts pre-created log stream names", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "streamed-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:     "us-west-2",
+				LogStreams: []string{"agent-primary", "agent-secondary"},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when log stream names are duplicated", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "dup-streams",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:     "us-west-2",
+				LogStreams: []string{"agent", "agent"},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a log stream name contains a colon", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-stream-name",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:     "us-west-2",
+				LogStreams: []string{"agent:primary"},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Transformer fold
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a transformer whose pipeline starts with a parser", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "transformed-logs",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{RenameKeys: &AwsCloudwatchLogGroupTransformerRenameKeys{
+							Entries: []*AwsCloudwatchLogGroupTransformerRenameKeysEntry{
+								{Key: "msg", RenameTo: "message"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the first processor is not a parser", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "mutate-first",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{RenameKeys: &AwsCloudwatchLogGroupTransformerRenameKeys{
+							Entries: []*AwsCloudwatchLogGroupTransformerRenameKeysEntry{
+								{Key: "msg", RenameTo: "message"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a pipeline entry sets no processor", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "empty-entry",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a pipeline entry sets two processors", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "double-entry",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{
+							ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{},
+							TrimString: &AwsCloudwatchLogGroupTransformerWithKeys{
+								WithKeys: []string{"message"},
+							},
+						},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when grok appears twice in one pipeline", func() {
+		grokEntry := func() *AwsCloudwatchLogGroupTransformerProcessor {
+			return &AwsCloudwatchLogGroupTransformerProcessor{
+				Grok: &AwsCloudwatchLogGroupTransformerGrok{Match: "%{COMMONAPACHELOG}"},
+			}
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "double-grok",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{grokEntry(), grokEntry()},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a vended parser is not the first processor", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "vended-not-first",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{ParseVpc: &AwsCloudwatchLogGroupTransformerVendedLogParser{}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a vended parser as the first processor", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "vpc-flow-parsed",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseVpc: &AwsCloudwatchLogGroupTransformerVendedLogParser{Source: "@message"}},
+						{AddKeys: &AwsCloudwatchLogGroupTransformerAddKeys{
+							Entries: []*AwsCloudwatchLogGroupTransformerAddKeysEntry{
+								{Key: "environment", Value: "production"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a vended parser source is not @message", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-vended-source",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseWaf: &AwsCloudwatchLogGroupTransformerVendedLogParser{Source: "detail.message"}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when parse_to_ocsf uses an unsupported event_source", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-ocsf-source",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseToOcsf: &AwsCloudwatchLogGroupTransformerParseToOcsf{
+							EventSource: "GuardDuty",
+							OcsfVersion: "V1.1",
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts parse_to_ocsf with OCSF V1.5", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "ocsf-converted",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseToOcsf: &AwsCloudwatchLogGroupTransformerParseToOcsf{
+							EventSource: "VPCFlow",
+							OcsfVersion: "V1.5",
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when list_to_map flattens without naming the surviving element", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "flatten-without-element",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{ListToMap: &AwsCloudwatchLogGroupTransformerListToMap{
+							Source:  "items",
+							Key:     "name",
+							Flatten: true,
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a transformer is configured on an INFREQUENT_ACCESS group", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "ia-with-transformer",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region:        "us-west-2",
+				LogGroupClass: "INFREQUENT_ACCESS",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when the pipeline exceeds 20 processors", func() {
+		processors := []*AwsCloudwatchLogGroupTransformerProcessor{
+			{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+		}
+		for i := 0; i < 20; i++ {
+			processors = append(processors, &AwsCloudwatchLogGroupTransformerProcessor{
+				TrimString: &AwsCloudwatchLogGroupTransformerWithKeys{WithKeys: []string{"message"}},
+			})
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "oversized-pipeline",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: processors,
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when parse_json appears six times", func() {
+		processors := make([]*AwsCloudwatchLogGroupTransformerProcessor, 0, 6)
+		for i := 0; i < 6; i++ {
+			processors = append(processors, &AwsCloudwatchLogGroupTransformerProcessor{
+				ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{},
+			})
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-parse-json",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: processors,
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when add_keys has more than five entries", func() {
+		entries := make([]*AwsCloudwatchLogGroupTransformerAddKeysEntry, 0, 6)
+		for _, key := range []string{"a", "b", "c", "d", "e", "f"} {
+			entries = append(entries, &AwsCloudwatchLogGroupTransformerAddKeysEntry{Key: key, Value: "v"})
+		}
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-add-keys",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{AddKeys: &AwsCloudwatchLogGroupTransformerAddKeys{Entries: entries}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when type_converter uses an unsupported type", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "bad-type-conversion",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{ParseJson: &AwsCloudwatchLogGroupTransformerParseJson{}},
+						{TypeConverter: &AwsCloudwatchLogGroupTransformerTypeConverter{
+							Entries: []*AwsCloudwatchLogGroupTransformerTypeConverterEntry{
+								{Key: "count", Type: "float"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a full observability pipeline (grok + datetime + substitute + type conversion)", func() {
+		input := &AwsCloudwatchLogGroup{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchLogGroup",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "full-pipeline",
+			},
+			Spec: &AwsCloudwatchLogGroupSpec{
+				Region: "us-west-2",
+				Transformer: &AwsCloudwatchLogGroupTransformer{
+					Processors: []*AwsCloudwatchLogGroupTransformerProcessor{
+						{Grok: &AwsCloudwatchLogGroupTransformerGrok{Match: "%{COMMONAPACHELOG}"}},
+						{DateTimeConverter: &AwsCloudwatchLogGroupTransformerDateTimeConverter{
+							Source:        "timestamp",
+							Target:        "ingestedAt",
+							MatchPatterns: []string{"dd/MMM/yyyy:HH:mm:ss Z"},
+						}},
+						{SubstituteString: &AwsCloudwatchLogGroupTransformerSubstituteString{
+							Entries: []*AwsCloudwatchLogGroupTransformerSubstituteStringEntry{
+								{Source: "request", From: "/api/v[0-9]+", To: "/api"},
+							},
+						}},
+						{TypeConverter: &AwsCloudwatchLogGroupTransformerTypeConverter{
+							Entries: []*AwsCloudwatchLogGroupTransformerTypeConverterEntry{
+								{Key: "bytes", Type: "integer"},
+							},
+						}},
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 })

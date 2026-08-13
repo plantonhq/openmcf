@@ -34,8 +34,17 @@ resource graph, not deploy tooling.
   are separate referenced `AwsIamRole` nodes, never one accumulated role.
 - **Graviton and Windows** -- `runtimePlatform` selects ARM64 (~20%
   cheaper per vCPU on Fargate) or a Windows Server family.
-- **EFS volumes** -- durable shared storage with access-point pinning and
-  IAM-authorized, transit-encrypted mounts.
+- **The full volume family** -- EFS (durable shared storage with
+  access-point pinning and IAM-authorized, transit-encrypted mounts),
+  S3 buckets mounted as file systems (`s3files`), EC2 Docker volumes,
+  host paths, and launch-time volumes (`configureAtLaunch`) whose
+  managed-EBS backing the running `AwsEcsService` supplies per task.
+- **EC2 namespace and placement control** -- `ipcMode` / `pidMode`
+  namespace sharing and task-level `placementConstraints` for EC2 tasks
+  (CEL guards the Fargate rules); `pidMode: task` also works on Fargate
+  for sidecar process observation.
+- **Fault injection opt-in** -- `enableFaultInjection` lets AWS FIS chaos
+  experiments target the task's containers; off by default.
 
 ## Example
 

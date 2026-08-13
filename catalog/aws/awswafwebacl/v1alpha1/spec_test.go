@@ -8,6 +8,7 @@ import (
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -53,7 +54,7 @@ func stmt(arm isAwsWafWebAclStatement_Statement) *AwsWafWebAclStatement {
 func managedRuleGroupRule(name string, priority int32, groupName string) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
-		Priority: priority,
+		Priority: proto.Int32(priority),
 		Statement: stmt(&AwsWafWebAclStatement_ManagedRuleGroup{
 			ManagedRuleGroup: &AwsWafWebAclManagedRuleGroupStatement{
 				Name:       groupName,
@@ -68,7 +69,7 @@ func managedRuleGroupRule(name string, priority int32, groupName string) *AwsWaf
 func rateBasedRule(name string, priority int32, limit int32) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
-		Priority: priority,
+		Priority: proto.Int32(priority),
 		Statement: stmt(&AwsWafWebAclStatement_RateBased{
 			RateBased: &AwsWafWebAclRateBasedStatement{
 				Limit: limit,
@@ -82,7 +83,7 @@ func rateBasedRule(name string, priority int32, limit int32) *AwsWafWebAclRule {
 func geoMatchRule(name string, priority int32, countryCodes []string) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
-		Priority: priority,
+		Priority: proto.Int32(priority),
 		Statement: stmt(&AwsWafWebAclStatement_GeoMatch{
 			GeoMatch: &AwsWafWebAclGeoMatchStatement{
 				CountryCodes: countryCodes,
@@ -96,7 +97,7 @@ func geoMatchRule(name string, priority int32, countryCodes []string) *AwsWafWeb
 func ipSetRefRule(name string, priority int32, arn string) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:     name,
-		Priority: priority,
+		Priority: proto.Int32(priority),
 		Statement: stmt(&AwsWafWebAclStatement_IpSetReference{
 			IpSetReference: &AwsWafWebAclIpSetReferenceStatement{
 				Arn: strRef(arn),
@@ -124,7 +125,7 @@ func byteMatchStatement(search string) *AwsWafWebAclStatement {
 func matchRule(name string, priority int32, statement *AwsWafWebAclStatement) *AwsWafWebAclRule {
 	return &AwsWafWebAclRule{
 		Name:      name,
-		Priority:  priority,
+		Priority:  proto.Int32(priority),
 		Statement: statement,
 		Action:    "block",
 	}
@@ -238,7 +239,7 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	ginkgo.It("rejects a rule group reference rule with action instead of override_action", func() {
 		rule := &AwsWafWebAclRule{
 			Name:     "custom-group",
-			Priority: 1,
+			Priority: proto.Int32(1),
 			Statement: stmt(&AwsWafWebAclStatement_RuleGroupReference{
 				RuleGroupReference: &AwsWafWebAclRuleGroupReferenceStatement{
 					Arn: "arn:aws:wafv2:us-west-2:111122223333:regional/rulegroup/x/1",
@@ -252,7 +253,7 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	ginkgo.It("accepts a rule group reference rule with override_action", func() {
 		rule := &AwsWafWebAclRule{
 			Name:     "custom-group",
-			Priority: 1,
+			Priority: proto.Int32(1),
 			Statement: stmt(&AwsWafWebAclStatement_RuleGroupReference{
 				RuleGroupReference: &AwsWafWebAclRuleGroupReferenceStatement{
 					Arn: "arn:aws:wafv2:us-west-2:111122223333:regional/rulegroup/x/1",
@@ -283,14 +284,14 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	})
 
 	ginkgo.It("rejects a rule without a statement", func() {
-		rule := &AwsWafWebAclRule{Name: "no-stmt", Priority: 1, Action: "block"}
+		rule := &AwsWafWebAclRule{Name: "no-stmt", Priority: proto.Int32(1), Action: "block"}
 		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
 	})
 
 	ginkgo.It("rejects a statement with no arm set", func() {
 		rule := &AwsWafWebAclRule{
 			Name:      "empty-stmt",
-			Priority:  1,
+			Priority:  proto.Int32(1),
 			Statement: &AwsWafWebAclStatement{},
 			Action:    "block",
 		}
@@ -512,7 +513,7 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 	ginkgo.It("rejects an ip-set reference without an arn", func() {
 		rule := &AwsWafWebAclRule{
 			Name:     "ips",
-			Priority: 1,
+			Priority: proto.Int32(1),
 			Statement: stmt(&AwsWafWebAclStatement_IpSetReference{
 				IpSetReference: &AwsWafWebAclIpSetReferenceStatement{},
 			}),
@@ -900,14 +901,16 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
-	ginkgo.It("rejects a SINGLE_HEADER data protection without field keys", func() {
+	ginkgo.It("accepts a SINGLE_HEADER data protection without field keys (protects all headers)", func() {
+		// AWS contract: omitting field_keys for a SINGLE_* type protects
+		// ALL keys of that type — this shape is legal, not an error.
 		spec := minimalSpec()
 		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
 			DataProtections: []*AwsWafWebAclDataProtection{
 				{FieldType: "SINGLE_HEADER", Action: "HASH"},
 			},
 		}
-		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).To(gomega.BeNil())
 	})
 
 	ginkgo.It("rejects a BODY data protection with field keys", func() {
@@ -992,6 +995,213 @@ var _ = ginkgo.Describe("AwsWafWebAclSpec validations", func() {
 			FallbackBehavior: "MATCH",
 			Position:         "MIDDLE",
 		}
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Rule priority presence (0 is AWS-legal)
+	// =========================================================================
+
+	ginkgo.It("accepts a rule with priority 0", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			matchRule("first", 0, byteMatchStatement("/admin")),
+		))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a rule without a priority", func() {
+		rule := matchRule("no-priority", 0, byteMatchStatement("/admin"))
+		rule.Priority = nil
+		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a negative rule priority", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			matchRule("negative", -1, byteMatchStatement("/admin")),
+		))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Logging: full redaction surface + log filtering
+	// =========================================================================
+
+	// helper for a logging config with a valid destination.
+	loggingWith := func(mutate func(*AwsWafWebAclLoggingConfig)) *AwsWafWebAcl {
+		spec := minimalSpec()
+		spec.Logging = &AwsWafWebAclLoggingConfig{
+			DestinationArn: strRef("arn:aws:logs:us-west-2:111122223333:log-group:aws-waf-logs-test"),
+		}
+		mutate(spec.Logging)
+		return minimalAcl(spec)
+	}
+
+	ginkgo.It("accepts method redaction", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.RedactMethod = true
+		}))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a redacted header name over 64 characters", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.RedactedHeaderNames = []string{string(make([]byte, 65))}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a logging filter keeping only blocked requests", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "DROP",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "KEEP",
+					Requirement: "MEETS_ANY",
+					Conditions: []*AwsWafWebAclLoggingFilterCondition{
+						{Action: "BLOCK"},
+						{Action: "EXCLUDED_AS_COUNT"},
+					},
+				}},
+			}
+		}))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a logging filter condition on a label name", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "KEEP",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "DROP",
+					Requirement: "MEETS_ALL",
+					Conditions: []*AwsWafWebAclLoggingFilterCondition{
+						{LabelName: "awswaf:managed:aws:bot-control:bot:category:monitoring"},
+					},
+				}},
+			}
+		}))).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a logging filter without filters", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{DefaultBehavior: "KEEP"}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a logging filter with an invalid default behavior", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "IGNORE",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "KEEP",
+					Requirement: "MEETS_ANY",
+					Conditions:  []*AwsWafWebAclLoggingFilterCondition{{Action: "BLOCK"}},
+				}},
+			}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a logging filter condition with an invalid action", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "KEEP",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "DROP",
+					Requirement: "MEETS_ANY",
+					Conditions:  []*AwsWafWebAclLoggingFilterCondition{{Action: "DENY"}},
+				}},
+			}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a logging filter condition carrying both action and label", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "KEEP",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "DROP",
+					Requirement: "MEETS_ANY",
+					Conditions: []*AwsWafWebAclLoggingFilterCondition{
+						{Action: "BLOCK", LabelName: "awswaf:x:y"},
+					},
+				}},
+			}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an empty logging filter condition", func() {
+		gomega.Expect(protovalidate.Validate(loggingWith(func(l *AwsWafWebAclLoggingConfig) {
+			l.Filter = &AwsWafWebAclLoggingFilterConfig{
+				DefaultBehavior: "KEEP",
+				Filters: []*AwsWafWebAclLoggingFilter{{
+					Behavior:    "DROP",
+					Requirement: "MEETS_ANY",
+					Conditions:  []*AwsWafWebAclLoggingFilterCondition{{}},
+				}},
+			}
+		}))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Data protection: field_keys scope (omitting keys protects all keys)
+	// =========================================================================
+
+	ginkgo.It("rejects a QUERY_STRING data protection carrying field keys", func() {
+		spec := minimalSpec()
+		spec.DataProtectionConfig = &AwsWafWebAclDataProtectionConfig{
+			DataProtections: []*AwsWafWebAclDataProtection{{
+				FieldType: "QUERY_STRING",
+				FieldKeys: []string{"q"},
+				Action:    "SUBSTITUTION",
+			}},
+		}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	// =========================================================================
+	// Value-domain repairs: token domains, metric names, country codes,
+	// custom response body keys, custom header bounds, rule labels
+	// =========================================================================
+
+	ginkgo.It("rejects a token domain with illegal characters", func() {
+		spec := minimalSpec()
+		spec.TokenDomains = []string{"bad domain.com"}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a reserved CloudWatch metric name", func() {
+		spec := minimalSpec()
+		spec.VisibilityConfig = &AwsWafWebAclVisibilityConfig{
+			CloudwatchMetricsEnabled: true,
+			SampledRequestsEnabled:   true,
+			MetricName:               "Default_Action",
+		}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a lowercase country code", func() {
+		gomega.Expect(protovalidate.Validate(aclWithRules(
+			geoMatchRule("geo", 1, []string{"us"}),
+		))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a custom response body key with illegal characters", func() {
+		spec := minimalSpec()
+		spec.CustomResponseBodies = []*AwsWafWebAclCustomResponseBody{{
+			Key:         "bad key!",
+			Content:     "denied",
+			ContentType: "TEXT_PLAIN",
+		}}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a custom header value over 255 characters", func() {
+		spec := minimalSpec()
+		spec.DefaultAction.CustomRequestHeaders = []*AwsWafWebAclCustomHeader{{
+			Name:  "x-origin-check",
+			Value: string(make([]byte, 256)),
+		}}
+		gomega.Expect(protovalidate.Validate(minimalAcl(spec))).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a rule label with illegal characters", func() {
+		rule := matchRule("labeled", 1, byteMatchStatement("/admin"))
+		rule.RuleLabels = []string{"has space:label"}
 		gomega.Expect(protovalidate.Validate(aclWithRules(rule))).NotTo(gomega.BeNil())
 	})
 })

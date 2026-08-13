@@ -93,6 +93,17 @@ var _ = ginkgo.Describe("AwsFsxOpenzfsFileSystemSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects a malformed endpoint_ip_address_range (must be an IPv4 CIDR)", func() {
+		spec = multiAzBase()
+		spec.EndpointIpAddressRange = "not-a-cidr"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+
+		spec.EndpointIpAddressRange = "10.0.255.0"
+		err = protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	ginkgo.It("accepts INTELLIGENT_TIERING on MULTI_AZ_1 with a read cache", func() {
 		spec = multiAzBase()
 		spec.StorageType = stringPtr("INTELLIGENT_TIERING")

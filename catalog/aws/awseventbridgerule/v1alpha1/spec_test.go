@@ -666,4 +666,179 @@ var _ = ginkgo.Describe("AwsEventBridgeRuleSpec validations", func() {
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// ECS task tags
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an ecs_target with task tags", func() {
+		spec.Targets[0].EcsTarget = &AwsEventBridgeTargetEcsConfig{
+			TaskDefinitionArn: strRef("arn:aws:ecs:us-east-1:123456789012:task-definition/etl:7"),
+			Tags:              map[string]string{"team": "data", "cost-center": "etl"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Redshift Data API target
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a redshift_target with temporary-credential auth", func() {
+		spec.Targets[0].Arn = strRef("arn:aws:redshift:us-east-1:123456789012:cluster:warehouse")
+		spec.Targets[0].RoleArn = strRef("arn:aws:iam::123456789012:role/events-redshift")
+		spec.Targets[0].RedshiftTarget = &AwsEventBridgeTargetRedshiftConfig{
+			Database:      "analytics",
+			DbUser:        "etl_ingest",
+			Sql:           "CALL ingest_orders();",
+			StatementName: "hourly-order-ingest",
+			WithEvent:     true,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a redshift_target with Secrets Manager auth", func() {
+		spec.Targets[0].RedshiftTarget = &AwsEventBridgeTargetRedshiftConfig{
+			Database:          "analytics",
+			SecretsManagerArn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:redshift-etl-abc123",
+			Sql:               "REFRESH MATERIALIZED VIEW mv_orders;",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when redshift_target is missing database", func() {
+		spec.Targets[0].RedshiftTarget = &AwsEventBridgeTargetRedshiftConfig{
+			Sql: "SELECT 1;",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// SSM Run Command target
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts run_command_targets selecting instances by tag", func() {
+		spec.Targets[0].Arn = strRef("arn:aws:ssm:us-east-1::document/AWS-RunShellScript")
+		spec.Targets[0].RoleArn = strRef("arn:aws:iam::123456789012:role/events-runcommand")
+		spec.Targets[0].RunCommandTargets = []*AwsEventBridgeTargetRunCommandSelector{
+			{Key: "tag:Environment", Values: []string{"production"}},
+			{Key: "InstanceIds", Values: []string{"i-0123456789abcdef0"}},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a run_command selector has no values", func() {
+		spec.Targets[0].RunCommandTargets = []*AwsEventBridgeTargetRunCommandSelector{
+			{Key: "tag:Environment"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when run_command_targets exceeds 5 selectors", func() {
+		selectors := make([]*AwsEventBridgeTargetRunCommandSelector, 6)
+		for i := range selectors {
+			selectors[i] = &AwsEventBridgeTargetRunCommandSelector{
+				Key: "tag:Group", Values: []string{"a"},
+			}
+		}
+		spec.Targets[0].RunCommandTargets = selectors
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// SageMaker Pipelines target
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a sagemaker_pipeline_target with parameters", func() {
+		spec.Targets[0].Arn = strRef("arn:aws:sagemaker:us-east-1:123456789012:pipeline/retrain")
+		spec.Targets[0].RoleArn = strRef("arn:aws:iam::123456789012:role/events-sagemaker")
+		spec.Targets[0].SagemakerPipelineTarget = &AwsEventBridgeTargetSagemakerPipelineConfig{
+			PipelineParameterList: []*AwsEventBridgeSagemakerPipelineParameter{
+				{Name: "InputDataS3Uri", Value: "s3://training-data/latest/"},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a sagemaker pipeline parameter is missing its value", func() {
+		spec.Targets[0].SagemakerPipelineTarget = &AwsEventBridgeTargetSagemakerPipelineConfig{
+			PipelineParameterList: []*AwsEventBridgeSagemakerPipelineParameter{
+				{Name: "InputDataS3Uri"},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// AppSync target
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts an appsync_target with a GraphQL operation", func() {
+		spec.Targets[0].Arn = strRef("arn:aws:appsync:us-east-1:123456789012:endpoints/graphql-api/abc123")
+		spec.Targets[0].RoleArn = strRef("arn:aws:iam::123456789012:role/events-appsync")
+		spec.Targets[0].AppsyncTarget = &AwsEventBridgeTargetAppsyncConfig{
+			GraphqlOperation: "mutation UpsertEvent($detail:String){ upsertEvent(detail:$detail){ id } }",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when appsync_target is missing graphql_operation", func() {
+		spec.Targets[0].AppsyncTarget = &AwsEventBridgeTargetAppsyncConfig{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// One-typed-block rule across the new target types
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when redshift_target is combined with sqs_target", func() {
+		spec.Targets[0].RedshiftTarget = &AwsEventBridgeTargetRedshiftConfig{Database: "analytics"}
+		spec.Targets[0].SqsTarget = &AwsEventBridgeTargetSqsConfig{MessageGroupId: "orders"}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when run_command_targets is combined with ecs_target", func() {
+		spec.Targets[0].RunCommandTargets = []*AwsEventBridgeTargetRunCommandSelector{
+			{Key: "tag:Environment", Values: []string{"production"}},
+		}
+		spec.Targets[0].EcsTarget = &AwsEventBridgeTargetEcsConfig{
+			TaskDefinitionArn: strRef("arn:aws:ecs:us-east-1:123456789012:task-definition/etl:7"),
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// Quota and reserved-prefix tightenings
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when the rule carries more than 5 targets", func() {
+		targets := make([]*AwsEventBridgeTarget, 6)
+		for i := range targets {
+			targets[i] = minimalTarget()
+		}
+		spec.Targets = targets
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when an input_paths key starts with the reserved AWS prefix", func() {
+		spec.Targets[0].InputTransformer = &AwsEventBridgeInputTransformer{
+			InputPaths:    map[string]string{"AWSRegion": "$.region"},
+			InputTemplate: `{"region": <AWSRegion>}`,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })

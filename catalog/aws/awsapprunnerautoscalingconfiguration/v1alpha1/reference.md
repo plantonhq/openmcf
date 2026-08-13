@@ -23,11 +23,12 @@ are stopped; App Runner keeps min_size instances warm at all times --
 warm instances are billed for memory only, not CPU.
 
 Revision semantics (important): AWS versions these configurations. Every
-value is create-time immutable -- changing any of them registers a NEW
-revision under the same configuration name and points referencing services
-at it on their next deployment. The exported ARN carries the revision, so
-a change here rolls referencing services naturally through the resource
-graph.
+scaling value is create-time immutable -- changing any of them registers a
+NEW revision under the same configuration name and points referencing
+services at it on their next deployment. The exported ARN carries the
+revision, so a change here rolls referencing services naturally through
+the resource graph. The set_as_account_default designation is the one
+exception: it is a pointer AWS moves in place, not part of the revision.
 
 Credentials, region, and deployment workflow live outside this spec in
 stack inputs.
@@ -47,6 +48,7 @@ spec:
   maxConcurrency: 80
   maxSize: 10
   minSize: 2
+  setAsAccountDefault: true
 ```
 
 ## Spec Fields
@@ -57,6 +59,7 @@ spec:
 | `spec.maxConcurrency` | `int32` |  | `100` |  |
 | `spec.maxSize` | `int32` |  | `25` |  |
 | `spec.minSize` | `int32` |  | `1` |  |
+| `spec.setAsAccountDefault` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -106,6 +109,22 @@ charge.
 - default: `1`
 - rule: {"int32":{"gte":1}}
 
+### spec.setAsAccountDefault
+
+`bool`
+
+Claim this configuration as the ACCOUNT-WIDE default for its region:
+App Runner services created WITHOUT an explicit auto scaling
+configuration use the account default. One default exists per account
+per region -- claiming it silently displaces whichever configuration
+held the designation (AWS marks it non-default), and the claim only
+affects services created afterwards; existing services keep their
+current associations. One-way at AWS: un-setting this flag (or
+deleting this resource) does NOT restore the previous default -- AWS
+has no restore API, so the designation stays with this configuration
+until another one claims it. Coordinate so at most one configuration
+per account/region sets this flag.
+
 ## Validation Rules
 
 - `max_size_gte_min_size`: max_size must be greater than or equal to min_size -- the scale-out ceiling cannot sit below the warm floor
@@ -119,6 +138,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsAppRunnerAuto
 | `status.outputs.configuration_arn` | `string` | The ARN of this configuration revision (e.g. "arn:aws:apprunner: us-west-2:123456789012:autoscalingconfiguration/my-asc/3/abc123"). The ARN carries the revision number, so registering a new revision changes this output and rolls referencing services on their next deployment. |
 | `status.outputs.configuration_revision` | `int64` | The revision this deployment registered (e.g. 3). Revisions are immutable; every value change registers the next number under the same configuration name. |
 | `status.outputs.latest` | `bool` | Whether this revision is the latest one registered under the configuration name. |
+| `status.outputs.is_default` | `bool` | Whether this configuration holds the account/region default designation at the end of the deployment (true when set_as_account_default claimed it). |
 
 ## Referenced By
 

@@ -145,8 +145,10 @@ resource "aws_sagemaker_domain" "this" {
 
         # The spec folds idle_settings directly under the app settings and
         # makes block presence the enable switch; the provider nests them
-        # inside a single-purpose app_lifecycle_management wrapper with an
-        # explicit ENABLED flag, both reconstructed here. All three timeouts
+        # inside a single-purpose app_lifecycle_management wrapper, both
+        # reconstructed here. lifecycle_management defaults to ENABLED when
+        # the block is present; an explicit DISABLED keeps the timeouts as
+        # published guardrails without enforcing auto-shutdown. All three timeouts
         # are required by the live API whenever the block is sent (absent
         # members transmit as 0 and AWS rejects them), so they pass through
         # unconditionally.
@@ -154,7 +156,7 @@ resource "aws_sagemaker_domain" "this" {
           for_each = jupyter_lab_app_settings.value.idle_settings != null ? [jupyter_lab_app_settings.value.idle_settings] : []
           content {
             idle_settings {
-              lifecycle_management        = "ENABLED"
+              lifecycle_management        = coalesce(app_lifecycle_management.value.lifecycle_management, "ENABLED")
               idle_timeout_in_minutes     = app_lifecycle_management.value.idle_timeout_in_minutes
               min_idle_timeout_in_minutes = app_lifecycle_management.value.min_idle_timeout_in_minutes
               max_idle_timeout_in_minutes = app_lifecycle_management.value.max_idle_timeout_in_minutes
@@ -260,7 +262,7 @@ resource "aws_sagemaker_domain" "this" {
           for_each = code_editor_app_settings.value.idle_settings != null ? [code_editor_app_settings.value.idle_settings] : []
           content {
             idle_settings {
-              lifecycle_management        = "ENABLED"
+              lifecycle_management        = coalesce(app_lifecycle_management.value.lifecycle_management, "ENABLED")
               idle_timeout_in_minutes     = app_lifecycle_management.value.idle_timeout_in_minutes
               min_idle_timeout_in_minutes = app_lifecycle_management.value.min_idle_timeout_in_minutes
               max_idle_timeout_in_minutes = app_lifecycle_management.value.max_idle_timeout_in_minutes
@@ -496,7 +498,7 @@ resource "aws_sagemaker_domain" "this" {
             for_each = jupyter_lab_app_settings.value.idle_settings != null ? [jupyter_lab_app_settings.value.idle_settings] : []
             content {
               idle_settings {
-                lifecycle_management        = "ENABLED"
+                lifecycle_management        = coalesce(app_lifecycle_management.value.lifecycle_management, "ENABLED")
                 idle_timeout_in_minutes     = app_lifecycle_management.value.idle_timeout_in_minutes
                 min_idle_timeout_in_minutes = app_lifecycle_management.value.min_idle_timeout_in_minutes
                 max_idle_timeout_in_minutes = app_lifecycle_management.value.max_idle_timeout_in_minutes

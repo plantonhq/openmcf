@@ -56,7 +56,9 @@ message AwsRedisElasticacheSpec {
   string engine = 2;
 
   // Engine version to deploy. Examples: "7.1", "7.0", "6.2" for Redis;
-  // "7.2", "8.0" for Valkey. Leave empty to use the provider default.
+  // "7.2", "8.0" for Valkey. Redis 6+ and Valkey use major.minor ("7.1");
+  // Redis 5 and earlier use full three-part versions ("5.0.6"). Leave empty
+  // to use the provider default.
   // Must be left empty when joining a global datastore (inherited).
   string engine_version = 3;
 
@@ -90,7 +92,10 @@ message AwsRedisElasticacheSpec {
 
   // Total number of cache clusters (nodes) in the replication group. This includes
   // the primary and all read replicas. For example, 3 means 1 primary + 2 replicas.
-  // Range: 1–6 (AWS caps a non-clustered group at 1 primary + 5 replicas).
+  // Range: 1–6 — AWS's CreateReplicationGroup contract caps a non-clustered
+  // group at 1 primary + 5 replicas (the Terraform provider stopped
+  // validating this cap in 6.35.0; the spec deliberately mirrors AWS's
+  // contract, not the provider's looseness).
   // Mutually exclusive with `num_node_groups`.
   int32 num_cache_clusters = 7;
 
@@ -111,8 +116,11 @@ message AwsRedisElasticacheSpec {
   // shard layout).
   int32 num_node_groups = 9;
 
-  // Number of read replicas per shard. Range: 0–5. Only valid when
-  // `num_node_groups` is set.
+  // Number of read replicas per shard. Range: 0–5 — AWS's
+  // CreateReplicationGroup contract ("Valid values are 0 to 5"; the
+  // Terraform provider stopped validating the ceiling in 6.35.0 — the spec
+  // deliberately mirrors AWS's contract, not the provider's looseness).
+  // Only valid when `num_node_groups` is set.
   int32 replicas_per_node_group = 10 [(buf.validate.field).int32 = {
     gte: 0
     lte: 5
@@ -204,13 +212,22 @@ message AwsRedisElasticacheSpec {
   // ---------------------------------------------------------------------------
 
   // Enable encryption at rest for data stored on disk and in snapshots.
-  // ForceNew — changing this destroys and recreates the cluster.
-  bool at_rest_encryption_enabled = 21 [(dev.planton.shared.options.recommended_default) = "true"];
+  // Presence matters: leave unset to let AWS apply its engine default,
+  // set true/false to pin it explicitly. Must be left UNSET when joining a
+  // global datastore — the setting is inherited from the primary, and the
+  // provider rejects the argument's presence alongside
+  // global_replication_group_id. ForceNew — changing it destroys and
+  // recreates the cluster.
+  optional bool at_rest_encryption_enabled = 21 [(dev.planton.shared.options.recommended_default) = "true"];
 
   // Enable encryption in transit (TLS) for all client connections and
   // replication traffic. Strongly recommended for production; required for
-  // AUTH tokens and IAM-authenticated RBAC users.
-  bool transit_encryption_enabled = 22 [(dev.planton.shared.options.recommended_default) = "true"];
+  // AUTH tokens and IAM-authenticated RBAC users. Presence matters: leave
+  // unset to let AWS apply its default (disabled), set true/false to pin it
+  // explicitly. Must be left UNSET when joining a global datastore — the
+  // setting is inherited from the primary, and the provider rejects the
+  // argument's presence alongside global_replication_group_id.
+  optional bool transit_encryption_enabled = 22 [(dev.planton.shared.options.recommended_default) = "true"];
 
   // TLS enforcement mode. "preferred" allows both TLS and non-TLS connections
   // (useful during migration); "required" enforces TLS for all connections.
@@ -238,8 +255,10 @@ message AwsRedisElasticacheSpec {
   // How an auth-token CHANGE is applied to the running cluster. Values:
   // "ROTATE" (old and new tokens both work until the rotation completes —
   // zero-downtime), "SET" (the new token replaces the old immediately),
-  // "DELETE" (remove the token entirely and turn AUTH off). Only meaningful
-  // alongside `auth_token`.
+  // "DELETE" (remove the token entirely and turn AUTH off — the migration
+  // step from AUTH to RBAC user groups). ROTATE and SET require
+  // `auth_token`; DELETE requires it to be ABSENT (the provider rejects a
+  // token alongside DELETE — you are removing it).
   string auth_token_update_strategy = 26 [(dev.planton.shared.options.sensitive_exempt_reason) = "rotation policy enum (ROTATE/SET/DELETE), not credential material"];
 
   // RBAC user groups controlling fine-grained access. Each group carries
@@ -338,8 +357,12 @@ message AwsRedisElasticacheSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
   ];
 
-  // Automatically apply minor engine version upgrades during maintenance windows.
-  bool auto_minor_version_upgrade = 40;
+  // Automatically apply minor engine version upgrades during maintenance
+  // windows. AWS enables this by default: leave unset to keep the default,
+  // set false to pin the running minor version explicitly, set true to pin
+  // the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+  // never as false.
+  optional bool auto_minor_version_upgrade = 40;
 
   // Enable data tiering — automatically moves less-frequently-accessed data to
   // SSD storage for up to 5x more data per node. Only available on r6gd node
@@ -370,6 +393,15 @@ message AwsRedisElasticacheSpec {
     id: "engine_version_inherited_with_global"
     message: "leave engine_version empty when joining a global datastore — the primary's engine version is inherited"
     expression: "this.global_replication_group_id == '' || this.engine_version == ''"
+  };
+
+  // Engine version format, per engine (mirrors the provider's validators:
+  // Redis <6 is x.y.z, Redis 6+ is major.minor or the literal 6.x; Valkey
+  // is major.minor at 7+).
+  option (buf.validate.message).cel = {
+    id: "engine_version_format"
+    message: "engine_version format is invalid — Redis uses '5.0.6'-style below 6, '6.x' or '7.1'-style from 6; Valkey uses '7.2'-style"
+    expression: "this.engine_version == '' || (this.engine == 'valkey' ? this.engine_version.matches('^[7-9]\\\\.[0-9]+$') : this.engine_version.matches('^[1-5](\\\\.[0-9]+){2}$|^6\\\\.x$|^[6-9]\\\\.[0-9]+$'))"
   };
 
   // Node type: required, unless inherited from a global datastore.
@@ -485,18 +517,20 @@ message AwsRedisElasticacheSpec {
     expression: "this.auth_token_update_strategy == '' || this.auth_token_update_strategy in ['ROTATE', 'SET', 'DELETE']"
   };
 
-  // auth_token_update_strategy requires auth_token.
+  // auth_token_update_strategy: ROTATE/SET roll a token out (require it);
+  // DELETE removes AUTH entirely (the token must be absent — mirrors the
+  // provider's own validation and enables the AUTH-to-RBAC migration).
   option (buf.validate.message).cel = {
     id: "auth_strategy_requires_token"
-    message: "auth_token_update_strategy only applies alongside auth_token — it controls how a token change rolls out"
-    expression: "this.auth_token_update_strategy == '' || has(this.auth_token)"
+    message: "auth_token_update_strategy ROTATE/SET require auth_token; DELETE removes AUTH and requires auth_token to be absent"
+    expression: "this.auth_token_update_strategy == '' || (this.auth_token_update_strategy == 'DELETE' ? !has(this.auth_token) : has(this.auth_token))"
   };
 
-  // transit_encryption_mode requires transit_encryption_enabled.
+  // transit_encryption_mode requires transit encryption explicitly enabled.
   option (buf.validate.message).cel = {
     id: "transit_mode_requires_encryption"
-    message: "transit_encryption_mode requires transit_encryption_enabled to be true"
-    expression: "this.transit_encryption_mode == '' || this.transit_encryption_enabled"
+    message: "transit_encryption_mode requires transit_encryption_enabled to be explicitly true"
+    expression: "this.transit_encryption_mode == '' || (has(this.transit_encryption_enabled) && this.transit_encryption_enabled)"
   };
 
   // transit_encryption_mode valid values.
@@ -521,10 +555,13 @@ message AwsRedisElasticacheSpec {
   };
 
   // Encryption settings are inherited from the global datastore primary.
+  // Presence (not value) is what conflicts: the provider rejects the
+  // arguments' presence alongside global_replication_group_id, so even an
+  // explicit false must not be sent.
   option (buf.validate.message).cel = {
     id: "encryption_inherited_with_global"
     message: "a global-datastore secondary inherits encryption from the primary — leave at_rest_encryption_enabled, transit_encryption_enabled, and transit_encryption_mode unset when joining"
-    expression: "this.global_replication_group_id == '' || (!this.at_rest_encryption_enabled && !this.transit_encryption_enabled && this.transit_encryption_mode == '')"
+    expression: "this.global_replication_group_id == '' || (!has(this.at_rest_encryption_enabled) && !has(this.transit_encryption_enabled) && this.transit_encryption_mode == '')"
   };
 
   // Parameter-group settings are inherited from the global datastore primary.

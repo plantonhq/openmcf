@@ -18,5 +18,10 @@ variable "spec" {
     public_ipv4_pool = optional(string, "")
     address = optional(string, "")
     network_border_group = optional(string, "")
+    ipam_pool_id = optional(string, "")
+    instance = optional(string, "")
+    network_interface = optional(string, "")
+    associate_with_private_ip = optional(string, "")
+    reverse_dns_domain_name = optional(string, "")
   })
 }

@@ -96,7 +96,7 @@ message CloudflareLoadBalancerPoolSpec {
   optional double latitude = 10 [(buf.validate.field).cel = {
     id: "pool.latitude_range"
     message: "latitude must be between -90 and 90"
-    expression: "this >= -90 && this <= 90"
+    expression: "this >= -90.0 && this <= 90.0"
   }];
 
   // Longitude (decimal degrees) of the data center hosting these origins, used by
@@ -104,7 +104,7 @@ message CloudflareLoadBalancerPoolSpec {
   optional double longitude = 11 [(buf.validate.field).cel = {
     id: "pool.longitude_range"
     message: "longitude must be between -180 and 180"
-    expression: "this >= -180 && this <= 180"
+    expression: "this >= -180.0 && this <= 180.0"
   }];
 
   // Load-shedding policy: sheds a configurable percentage of traffic away from
@@ -139,7 +139,7 @@ message CloudflareLoadBalancerPoolOrigin {
     (buf.validate.field).cel = {
       id: "origin.weight_range"
       message: "weight must be between 0 and 1"
-      expression: "this >= 0 && this <= 1"
+      expression: "this >= 0.0 && this <= 1.0"
     }
   ];
 
@@ -175,7 +175,7 @@ message CloudflareLoadBalancerPoolLoadShedding {
   double default_percent = 1 [(buf.validate.field).cel = {
     id: "load_shedding.default_percent_range"
     message: "default_percent must be between 0 and 100"
-    expression: "this >= 0 && this <= 100"
+    expression: "this >= 0.0 && this <= 100.0"
   }];
 
   // Policy for shedding default traffic: "random" sheds a random percent of
@@ -191,7 +191,7 @@ message CloudflareLoadBalancerPoolLoadShedding {
   double session_percent = 3 [(buf.validate.field).cel = {
     id: "load_shedding.session_percent_range"
     message: "session_percent must be between 0 and 100"
-    expression: "this >= 0 && this <= 100"
+    expression: "this >= 0.0 && this <= 100.0"
   }];
 
   // Policy for shedding existing sessions. Only "hash" is supported (to avoid

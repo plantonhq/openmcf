@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePointToSiteVpnGateway
+metadata:
+  name: test-p2s-vpn-gateway
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: remote-users-gw
+  virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+  vpnServerConfigurationId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/vpnServerConfigurations/remote-workforce
+  # The unset optional scale_unit applies 1 (the provider requires an
+  # explicit value; the module renders the default).
+  connectionConfigurations:
+    - name: default-clients
+      addressPrefixes:
+        - "172.16.201.0/24"
+      route:
+        associatedRouteTableId:
+          value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus/hubRouteTables/defaultRouteTable
+        propagatedRouteTable:
+          routeTableIds:
+            - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus/hubRouteTables/defaultRouteTable
+          labels:
+            - default
+  dnsServers:
+    - "10.0.0.4"
+  tags:
+    purpose: hack-test

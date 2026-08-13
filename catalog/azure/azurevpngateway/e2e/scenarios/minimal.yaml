@@ -1,0 +1,48 @@
+# Minimal AzureVpnGateway scenario: a one-scale-unit gateway in the
+# fixture hub with one NAT rule -- the flagship proof of the composed
+# NAT-rule child surfacing in the name-keyed nat_rule_ids output (the
+# rule is free; the gateway bills ~$0.36/hr while the lane runs) and of
+# ARM's assigned instance public IPs landing in public_ip_addresses.
+#
+# ONE GATEWAY PER HUB: the scenario gateway deploys into the fixture
+# hub, which the prerequisite chain creates fresh for this lane and
+# tears down after it -- within a lane there is never a second gateway
+# contending for the hub. A wedged teardown of EITHER object blocks
+# the next lane needing the hub's gateway slot until swept.
+#
+# TIME: ARM takes 30-45 minutes to create the gateway and 10-20 to
+# delete it, on top of the fixture hub's own 15-30 minute cycle.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGateway
+metadata:
+  name: planton-oss-e2e-azurevpngateway-smoke
+  id: planton-oss-e2e-azurevpngateway-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurevpngateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-vpngw-smoke
+  virtualHubId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-vhub
+  natRules:
+    - name: branch-overlap
+      mode: INGRESS_SNAT
+      type: STATIC_NAT
+      externalMappings:
+        - addressSpace: "100.64.10.0/24"
+      internalMappings:
+        - addressSpace: "192.168.10.0/24"
+  tags:
+    e2e-suite: azure
+    purpose: smoke

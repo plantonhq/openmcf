@@ -27,29 +27,42 @@ network gateway and one connection.
   configuration -- including its subnet or public IP) costs you that
   full cycle plus tunnel downtime for every connected site. Get the SKU
   family and generation right the first time; resizing WITHIN a family
-  (VpnGw1 -> VpnGw2) is in-place, crossing families (Basic -> anything,
-  non-AZ -> AZ for ExpressRoute) is not.
-- The gateway bills hourly from provisioning (VpnGw1 ≈ $0.19/hour, ~$140
-  a month) whether or not any tunnel is connected. Do not leave test
-  gateways running overnight.
+  (VpnGw1AZ -> VpnGw2AZ) is in-place, crossing families (Basic ->
+  anything, non-AZ -> AZ for ExpressRoute) is not.
+- The gateway bills hourly from provisioning (VpnGw1AZ is in the
+  ~$0.2-0.4/hour class -- Azure reduced AZ pricing as part of the SKU
+  consolidation) whether or not any tunnel is connected. Do not leave
+  test gateways running overnight.
 
 ## Choosing the SKU
 
-- **VPN_GW_1** is the right production default: 650 Mbps aggregate, 30
-  tunnels, BGP. Move up when aggregate throughput or tunnel count says
-  so.
+- **Only the AZ tiers accept new VPN gateway creates.** Azure retired
+  the non-AZ VpnGw1-5 SKUs (creates rejected with
+  NonAzSkusNotAllowedForVPNGateway since November 2025) and the legacy
+  Standard/HighPerformance VPN tiers before that; existing non-AZ
+  gateways are being migrated to their AZ twins. AZ SKUs deploy in
+  EVERY region: zone-redundant where the region has availability
+  zones, plain regional where it does not -- there is no region where
+  "AZ" is the wrong choice.
+- **AZ SKUs demand ZONED public IPs.** ARM rejects an AZ-SKU gateway
+  whose Standard public IP carries no zones
+  (VmssVpnGatewayPublicIpsMustHaveZonesConfigured) -- give the
+  AzurePublicIp zones `["1","2","3"]` unless you are deliberately
+  pinning a single zone. The rejection happens at deploy, not at
+  validation: the zones live on the referenced address.
+- **VPN_GW_1_AZ** is the right production default: 650 Mbps aggregate,
+  30 tunnels, BGP. Move up when aggregate throughput or tunnel count
+  says so.
 - **BASIC is a trap** for anything durable: no zone redundancy, no
   IKEv2 point-to-site, no BGP, and NO in-place upgrade path -- leaving
   it means rebuilding the gateway and every tunnel. Use it only for
   short-lived experiments (it is also the only SKU policy-based VPN
-  supports).
-- **_AZ variants** cost the same order and remove a whole failure class
-  in regions with availability zones -- prefer them for production.
-  They require Standard static public IPs (which is all this catalog's
-  AzurePublicIp deploys).
-- **GENERATION2** doubles throughput ceilings but starts at VPN_GW_2;
-  Azure picks the default generation when unset -- pin it explicitly if
-  you ever plan to resize, because generation is ForceNew.
+  supports). It is not retiring, but new BASIC gateways must use a
+  Standard public IP.
+- **GENERATION2** doubles throughput ceilings but starts at
+  VPN_GW_2_AZ; Azure picks the default generation when unset -- pin it
+  explicitly if you ever plan to resize, because generation is
+  ForceNew.
 
 ## The GatewaySubnet contract
 

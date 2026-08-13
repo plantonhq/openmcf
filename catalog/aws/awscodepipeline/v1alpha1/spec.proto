@@ -34,7 +34,10 @@ message AwsCodePipelineSpec {
   // pipeline_type selects the pipeline version.
   //   V1: Legacy pipeline (no triggers, no variables, SUPERSEDED execution only)
   //   V2: Modern pipeline with triggers, variables, and advanced execution modes
-  // Default: V2 (recommended for all new pipelines).
+  // Default: V2 (recommended for all new pipelines). The platform materializes
+  // this default when the manifest is loaded; the AWS provider's own default
+  // is V1, so a raw module invocation that bypasses manifest loading and
+  // omits this field deploys a V1 pipeline.
   optional string pipeline_type = 2 [
     (dev.planton.shared.options.default) = "V2",
     (buf.validate.field).string = {
@@ -297,8 +300,12 @@ message AwsCodePipelineRule {
 
   // configuration contains rule-provider-specific key-value pairs (e.g.,
   // DeploymentWindow: Cron, TimeZone; CloudWatchAlarm: AlarmName,
-  // WaitTime; LambdaInvoke: FunctionName).
-  map<string, string> configuration = 3;
+  // WaitTime; LambdaInvoke: FunctionName). Values are limited to 10,000
+  // characters (AWS's rule-configuration value cap).
+  map<string, string> configuration = 3 [(buf.validate.field).map.values.string = {
+    min_len: 1
+    max_len: 10000
+  }];
 
   // commands are shell commands executed by the Commands rule provider
   // (max 50, each 1-1000 characters).
@@ -313,8 +320,15 @@ message AwsCodePipelineRule {
   }];
 
   // input_artifacts are artifact names available to the rule (e.g., for
-  // Commands rules operating on build output).
-  repeated string input_artifacts = 5;
+  // Commands rules operating on build output). Each name 1-100 characters,
+  // alphanumeric with underscores and hyphens.
+  repeated string input_artifacts = 5 [(buf.validate.field).repeated.items = {
+    string: {
+      min_len: 1
+      max_len: 100
+      pattern: "^[a-zA-Z0-9_\\-]+$"
+    }
+  }];
 
   // region is the AWS region where the rule executes. Omit to run in the
   // pipeline's region.
@@ -465,7 +479,11 @@ message AwsCodePipelineAction {
   //   Lambda:                   FunctionName, UserParameters
   //   Manual (approval):        CustomData, ExternalEntityLink, NotificationArn
   //   CloudFormation:           ActionMode, StackName, TemplatePath, RoleArn
-  map<string, string> configuration = 6;
+  // Keys are limited to 50 characters (AWS's action-configuration key cap).
+  map<string, string> configuration = 6 [(buf.validate.field).map.keys.string = {
+    min_len: 1
+    max_len: 50
+  }];
 
   // input_artifacts are artifact names from previous stages or actions
   // that this action consumes. For Source actions, this is typically empty.
@@ -512,7 +530,9 @@ message AwsCodePipelineAction {
   // timeout_in_minutes overrides the action type's default timeout.
   // Range: 5-86400 (60 days). AWS supports this override ONLY on Manual
   // Approval actions (category Approval, provider Manual) — every other
-  // action type is rejected at pipeline creation.
+  // action type is rejected at pipeline creation. (The provider validates
+  // only the numeric range; the Approval-only scope is AWS's own API
+  // contract, mirrored here as validation.)
   int32 timeout_in_minutes = 13 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).int32 = {
@@ -520,6 +540,42 @@ message AwsCodePipelineAction {
       lte: 86400
     }
   ];
+
+  // commands are shell commands run by a Compute action (category Compute,
+  // provider Commands) — inline CI steps without standing up a CodeBuild
+  // project. CodeBuild logs and permissions are used under the hood, and
+  // running commands bills CodeBuild compute time per execution. All
+  // command forms are supported except multi-line formats. Max 50 commands,
+  // each 1-1000 characters. AWS ignores this field on non-Compute actions.
+  repeated string commands = 14 [(buf.validate.field).repeated = {
+    max_items: 50
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+
+  // output_artifacts_for_compute_action declares the file artifacts a
+  // Compute action exports (Compute actions use this INSTEAD of
+  // output_artifacts — AWS ignores plain output artifact names on Compute
+  // actions and file-based artifacts on every other category).
+  repeated AwsCodePipelineComputeOutputArtifact output_artifacts_for_compute_action = 15;
+
+  // output_variables lists variable names a Compute action exports (these
+  // are the CodeBuild environment variables the commands set). Downstream
+  // actions reference them through this action's namespace as
+  // #{namespace.VariableName}. Max 15 names, each 1-128 characters.
+  repeated string output_variables = 16 [(buf.validate.field).repeated = {
+    max_items: 15
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
 
   // AWS rejects a timeout override on any non-Approval action at
   // CreatePipeline ("Overridden timeout is only supported for Manual
@@ -529,6 +585,48 @@ message AwsCodePipelineAction {
     message: "timeout_in_minutes is only supported on Manual Approval actions (category Approval)"
     expression: "this.timeout_in_minutes == 0 || this.category == 'Approval'"
   };
+
+  // Compute actions export artifacts through
+  // output_artifacts_for_compute_action; plain output_artifacts is the
+  // non-Compute mechanism (the provider rejects the mix at plan time —
+  // caught here at validation time instead).
+  option (buf.validate.message).cel = {
+    id: "compute_action_uses_compute_artifacts"
+    message: "a Compute action exports artifacts via output_artifacts_for_compute_action, not output_artifacts"
+    expression: "this.category != 'Compute' || size(this.output_artifacts) == 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "compute_artifacts_only_for_compute_action"
+    message: "output_artifacts_for_compute_action is only supported on Compute actions; use output_artifacts"
+    expression: "this.category == 'Compute' || size(this.output_artifacts_for_compute_action) == 0"
+  };
+}
+
+// AwsCodePipelineComputeOutputArtifact is a file-based output artifact
+// exported by a Compute action: a named artifact assembled from the files
+// the action's commands produce.
+message AwsCodePipelineComputeOutputArtifact {
+  // name is the output artifact name, unique within the pipeline.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 100
+      pattern: "^[a-zA-Z0-9_\\-]+$"
+    }
+  ];
+
+  // files are the paths (relative to the compute working directory) to
+  // include in the exported artifact. Max 10 paths, each 1-128 characters.
+  repeated string files = 2 [(buf.validate.field).repeated = {
+    max_items: 10
+    items: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+  }];
 }
 
 // AwsCodePipelineTrigger defines an automatic pipeline execution trigger

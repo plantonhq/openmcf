@@ -1,0 +1,151 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_batch_job_definition:
+    mappings:
+      # The ECS-based container arm is ONE opaque JSON argument in the
+      # provider (containerProperties, compared semantically). The
+      # document's identity member (image) carries the mapping; every
+      # other typed spec.container member is a specExclusion below naming
+      # the JSON member it renders to (one provider argument, many spec
+      # homes -- the redrive-policy pattern).
+      - spec: spec.container.image
+        arg: container_properties
+      # The Batch-on-EKS arm: the provider wraps the pod in
+      # eksProperties.podProperties (the wrapper carries nothing else);
+      # the spec flattens it to spec.eks. Exact matching resumes below
+      # this subtree; the leaf mappings that follow record the true
+      # renames inside it.
+      - spec: spec.eks
+        arg: eks_properties.pod_properties
+      # Kubernetes-style name/value env entries; the spec carries the
+      # catalog's map idiom (two provider arguments, one spec home).
+      - spec: spec.eks.containers.env
+        arg: eks_properties.pod_properties.containers.env.name
+      - spec: spec.eks.containers.env
+        arg: eks_properties.pod_properties.containers.env.value
+      - spec: spec.eks.init_containers.env
+        arg: eks_properties.pod_properties.init_containers.env.name
+      - spec: spec.eks.init_containers.env
+        arg: eks_properties.pod_properties.init_containers.env.value
+      # Single-member blocks flattened by the spec.
+      - spec: spec.eks.image_pull_secret_names
+        arg: eks_properties.pod_properties.image_pull_secret.name
+      - spec: spec.eks.pod_labels
+        arg: eks_properties.pod_properties.metadata.labels
+      - spec: spec.eks.volumes.host_path
+        arg: eks_properties.pod_properties.volumes.host_path.path
+    exclusions:
+      # Recorded workload-shape boundaries (the spec's message comment):
+      # judgments revisitable on demand signals, never silence.
+      - arg: ecs_properties
+        reason: multi-container ECS task jobs (sidecar shapes) -- a separate long-tail workload arm deliberately not modeled; the modeled container arm covers the single-container shape nearly every Batch workload uses
+      - arg: node_properties
+        reason: multi-node parallel (MPI-style) jobs, AWS type "multinode" -- a separate long-tail workload arm deliberately not modeled; pairs with the type exclusion below
+      - arg: type
+        reason: always "container" by module design (both modeled arms are AWS type container; "multinode" belongs to the unmodeled node_properties shape)
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name -- revisions register under it in both engines, never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # One provider argument, many spec homes: every typed member of
+  # spec.container renders into the SAME aws_batch_job_definition
+  # container_properties JSON document (Batch API camelCase). The identity
+  # member (image) carries the mapping above; each sibling is recorded
+  # here with the JSON member it renders to.
+  - field: spec.container.command
+    reason: renders into the container_properties JSON document (command)
+  - field: spec.container.vcpus
+    reason: renders into the container_properties JSON document (resourceRequirements, type VCPU)
+  - field: spec.container.memory_mib
+    reason: renders into the container_properties JSON document (resourceRequirements, type MEMORY)
+  - field: spec.container.gpus
+    reason: renders into the container_properties JSON document (resourceRequirements, type GPU)
+  - field: spec.container.job_role
+    reason: renders into the container_properties JSON document (jobRoleArn)
+  - field: spec.container.execution_role
+    reason: renders into the container_properties JSON document (executionRoleArn)
+  - field: spec.container.environment
+    reason: renders into the container_properties JSON document (environment, sorted name/value entries)
+  - field: spec.container.secrets
+    reason: renders into the container_properties JSON document (secrets, sorted name/valueFrom entries)
+  - field: spec.container.log_configuration.log_driver
+    reason: renders into the container_properties JSON document (logConfiguration.logDriver)
+  - field: spec.container.log_configuration.options
+    reason: renders into the container_properties JSON document (logConfiguration.options)
+  - field: spec.container.log_configuration.secret_options
+    reason: renders into the container_properties JSON document (logConfiguration.secretOptions, sorted name/valueFrom entries)
+  - field: spec.container.mount_points.source_volume
+    reason: renders into the container_properties JSON document (mountPoints[].sourceVolume)
+  - field: spec.container.mount_points.container_path
+    reason: renders into the container_properties JSON document (mountPoints[].containerPath)
+  - field: spec.container.mount_points.read_only
+    reason: renders into the container_properties JSON document (mountPoints[].readOnly)
+  - field: spec.container.volumes.name
+    reason: renders into the container_properties JSON document (volumes[].name)
+  - field: spec.container.volumes.host_path
+    reason: renders into the container_properties JSON document (volumes[].host.sourcePath)
+  - field: spec.container.volumes.efs.file_system_id
+    reason: renders into the container_properties JSON document (volumes[].efsVolumeConfiguration.fileSystemId)
+  - field: spec.container.volumes.efs.root_directory
+    reason: renders into the container_properties JSON document (volumes[].efsVolumeConfiguration.rootDirectory)
+  - field: spec.container.volumes.efs.access_point_id
+    reason: renders into the container_properties JSON document (volumes[].efsVolumeConfiguration.authorizationConfig.accessPointId)
+  - field: spec.container.volumes.efs.iam_authorization
+    reason: renders into the container_properties JSON document (volumes[].efsVolumeConfiguration.authorizationConfig.iam)
+  - field: spec.container.ulimits.name
+    reason: renders into the container_properties JSON document (ulimits[].name)
+  - field: spec.container.ulimits.soft_limit
+    reason: renders into the container_properties JSON document (ulimits[].softLimit)
+  - field: spec.container.ulimits.hard_limit
+    reason: renders into the container_properties JSON document (ulimits[].hardLimit)
+  - field: spec.container.linux_parameters.init_process_enabled
+    reason: renders into the container_properties JSON document (linuxParameters.initProcessEnabled)
+  - field: spec.container.linux_parameters.shared_memory_size_mib
+    reason: renders into the container_properties JSON document (linuxParameters.sharedMemorySize)
+  - field: spec.container.linux_parameters.max_swap_mib
+    reason: renders into the container_properties JSON document (linuxParameters.maxSwap)
+  - field: spec.container.linux_parameters.swappiness
+    reason: renders into the container_properties JSON document (linuxParameters.swappiness)
+  - field: spec.container.linux_parameters.devices.host_path
+    reason: renders into the container_properties JSON document (linuxParameters.devices[].hostPath)
+  - field: spec.container.linux_parameters.devices.container_path
+    reason: renders into the container_properties JSON document (linuxParameters.devices[].containerPath)
+  - field: spec.container.linux_parameters.devices.permissions
+    reason: renders into the container_properties JSON document (linuxParameters.devices[].permissions)
+  - field: spec.container.linux_parameters.tmpfs.container_path
+    reason: renders into the container_properties JSON document (linuxParameters.tmpfs[].containerPath)
+  - field: spec.container.linux_parameters.tmpfs.size_mib
+    reason: renders into the container_properties JSON document (linuxParameters.tmpfs[].size)
+  - field: spec.container.linux_parameters.tmpfs.mount_options
+    reason: renders into the container_properties JSON document (linuxParameters.tmpfs[].mountOptions)
+  - field: spec.container.privileged
+    reason: renders into the container_properties JSON document (privileged)
+  - field: spec.container.user
+    reason: renders into the container_properties JSON document (user)
+  - field: spec.container.readonly_root_filesystem
+    reason: renders into the container_properties JSON document (readonlyRootFilesystem)
+  - field: spec.container.repository_credentials_secret_arn
+    reason: renders into the container_properties JSON document (repositoryCredentials.credentialsParameter)
+  - field: spec.container.runtime_platform.cpu_architecture
+    reason: renders into the container_properties JSON document (runtimePlatform.cpuArchitecture)
+  - field: spec.container.runtime_platform.operating_system_family
+    reason: renders into the container_properties JSON document (runtimePlatform.operatingSystemFamily)
+  - field: spec.container.fargate_platform_version
+    reason: renders into the container_properties JSON document (fargatePlatformConfiguration.platformVersion)
+  - field: spec.container.assign_public_ip
+    reason: renders into the container_properties JSON document (networkConfiguration.assignPublicIp)
+  - field: spec.container.ephemeral_storage_gib
+    reason: renders into the container_properties JSON document (ephemeralStorage.sizeInGiB)

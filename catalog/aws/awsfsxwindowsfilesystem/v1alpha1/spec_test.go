@@ -1,6 +1,7 @@
 package awsfsxwindowsfilesystemv1alpha1
 
 import (
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
@@ -189,6 +190,12 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
+
+		ginkgo.It("fails for an explicit empty deployment_type (presence survives default materialization)", func() {
+			spec.DeploymentType = stringPtr("")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 	})
 
 	// -------------------------------------------------------------------------
@@ -219,6 +226,18 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 
 		ginkgo.It("fails when storage_type is lowercase", func() {
 			spec.StorageType = stringPtr("ssd")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for an explicit empty storage_type (presence survives default materialization)", func() {
+			spec.StorageType = stringPtr("")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for INTELLIGENT_TIERING (AWS scopes it to OpenZFS and Lustre, not Windows)", func() {
+			spec.StorageType = stringPtr("INTELLIGENT_TIERING")
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -521,6 +540,18 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
+
+		ginkgo.It("fails for an explicit empty file_system_administrators_group (presence survives default materialization)", func() {
+			spec.SelfManagedActiveDirectory.FileSystemAdministratorsGroup = stringPtr("")
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for file_system_administrators_group above 256 characters", func() {
+			spec.SelfManagedActiveDirectory.FileSystemAdministratorsGroup = stringPtr(strings.Repeat("a", 257))
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 	})
 
 	// -------------------------------------------------------------------------
@@ -564,6 +595,20 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("file_share_access_audit_log_level"))
+		})
+
+		ginkgo.It("fails for explicit empty audit levels (presence survives default materialization)", func() {
+			spec.AuditLogConfiguration = &AwsFsxWindowsFileSystemAuditLogConfiguration{
+				FileAccessAuditLogLevel: stringPtr(""),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+
+			spec.AuditLogConfiguration = &AwsFsxWindowsFileSystemAuditLogConfiguration{
+				FileShareAccessAuditLogLevel: stringPtr(""),
+			}
+			err = protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("fails when audit_log_destination is set with both levels DISABLED", func() {
@@ -641,6 +686,14 @@ var _ = ginkgo.Describe("AwsFsxWindowsFileSystemSpec validations", func() {
 		ginkgo.It("fails when mode is lowercase", func() {
 			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
 				Mode: stringPtr("automatic"),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails for an explicit empty mode (presence survives default materialization)", func() {
+			spec.DiskIopsConfiguration = &AwsFsxWindowsFileSystemDiskIopsConfiguration{
+				Mode: stringPtr(""),
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())

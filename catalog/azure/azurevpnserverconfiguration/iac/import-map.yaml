@@ -1,0 +1,25 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurevpnserverconfiguration
+spec:
+  # The configuration's identity is its full ARM resource ID. Policy
+  # groups are ARM children composed under it, each keyed by the spec
+  # entry's name (the module deploys one group per entry, addressed by
+  # that name).
+  values:
+    - name: vpn_server_configuration_id
+      derivations:
+        - from_stack_output: vpn_server_configuration_id
+      where_to_find: >-
+        Portal -> VPN server configurations (search the resource type)
+        -> the configuration -> Properties -> Resource ID, or `az
+        network vpn-server-config show -g <rg> -n <name> --query id`.
+    - name: policy_group_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The group's name in the spec's policyGroups list (the module
+        keys one ARM child per name); `az network vpn-server-config
+        policy-group list --vpn-server-configuration-name <name> -g
+        <rg>` shows what exists cloud-side.

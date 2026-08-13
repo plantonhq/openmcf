@@ -8,9 +8,11 @@ resource "aws_route53_zone" "this" {
   # block — both couplings are CEL-enforced in the spec.
   delegation_set_id = local.delegation_set_id
 
-  # Public zones only; the provider requires an explicit false to switch it
-  # back off once set, so only emit it when enabled.
-  enable_accelerated_recovery = var.spec.enable_accelerated_recovery ? true : null
+  # Public zones only. Tri-state pass-through: AWS keeps the feature's
+  # current state when the argument is absent and requires an EXPLICIT false
+  # to switch it back off, so the spec's presence travels as-is (null when
+  # unset, true/false when the manifest says so).
+  enable_accelerated_recovery = var.spec.enable_accelerated_recovery
 
   # A private zone is defined by its VPC set: AWS creates the zone attached to
   # the first VPC and associates the rest; the provider manages the whole set
@@ -35,7 +37,9 @@ resource "aws_route53_key_signing_key" "this" {
   hosted_zone_id             = aws_route53_zone.this.zone_id
   key_management_service_arn = var.spec.dnssec.kms_key_arn
   name                       = local.ksk_name
-  status                     = "ACTIVE"
+  # ACTIVE unless the spec deactivates the key (the diagnostics lever);
+  # spec default and provider default agree, so this is always sent.
+  status = local.ksk_status
 }
 
 # Signing only flips on after the KSK exists — an explicit dependency, not

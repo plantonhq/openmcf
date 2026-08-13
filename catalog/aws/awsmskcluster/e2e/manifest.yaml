@@ -19,3 +19,27 @@ spec:
     auto.create.topics.enable: "false"
     default.replication.factor: "3"
     min.insync.replicas: "2"
+  topics:
+    - name: orders.events
+      partitionCount: 6
+      replicationFactor: 3
+      configs:
+        retention.ms: "604800000"
+        cleanup.policy: delete
+        min.insync.replicas: "2"
+    - name: orders.events.dlq
+      partitionCount: 1
+      replicationFactor: 3
+  clusterPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowPartnerVpcConnection
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::444455556666:root
+        Action:
+          - kafka:CreateVpcConnection
+          - kafka:GetBootstrapBrokers
+          - kafka:DescribeCluster
+          - kafka:DescribeClusterV2
+        Resource: "*"

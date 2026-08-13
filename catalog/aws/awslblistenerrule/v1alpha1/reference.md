@@ -175,6 +175,11 @@ assigns the next free priority after the current highest -- fine for
 append-only routing, but set explicit priorities when rules shadow each
 other (a "/api/*" rule must outrank a catch-all "/*" rule).
 
+The provider nominally also admits 99999 -- the slot reserved for the
+listener's own default rule -- but AWS rejects creating a rule there,
+so this spec deliberately keeps the 1-50000 domain (the default action
+lives on the listener, not here).
+
 ### spec.conditions
 
 `[]AwsLbListenerRuleCondition` · required
@@ -209,8 +214,10 @@ matches when ANY pattern matches.
 `[]string`
 
 Regular-expression hostname patterns, each up to 128 characters. Regex
-matching must be enabled on the load balancer's attributes; prefer
-wildcards when they express the intent.
+matching is an opt-in load balancer attribute that the Terraform
+provider does not expose -- enable it on the ALB via the AWS console or
+CLI before regex rules can match. Prefer wildcards when they express
+the intent.
 
 - rule: {"repeated":{"items":{"string":{"maxLen":"128"}}}}
 
@@ -236,8 +243,10 @@ condition matches when ANY pattern matches.
 `[]string`
 
 Regular-expression path patterns, each up to 128 characters. Regex
-matching must be enabled on the load balancer's attributes; prefer
-wildcards when they express the intent.
+matching is an opt-in load balancer attribute that the Terraform
+provider does not expose -- enable it on the ALB via the AWS console or
+CLI before regex rules can match. Prefer wildcards when they express
+the intent.
 
 - rule: {"repeated":{"items":{"string":{"maxLen":"128"}}}}
 
@@ -253,9 +262,11 @@ Match on an arbitrary request header.
 
 `string` · required
 
-The header name to inspect, 1-40 characters (RFC 7230 token characters).
+The header name to inspect, 1-40 characters of RFC 7230 token
+characters (alphanumerics and !#$%&'*+,.^_`|~-), mirroring the
+provider's own validation. Wildcards are not supported in the name.
 
-- rule: {"required":true,"string":{"maxLen":"40"}}
+- rule: {"required":true,"string":{"maxLen":"40","pattern":"^[0-9A-Za-z_!#$%&'*+,.^`|~-]{1,40}$"}}
 
 ### spec.conditions[].httpHeader.values
 
@@ -271,8 +282,9 @@ condition matches when ANY pattern matches.
 `[]string`
 
 Regular-expression patterns for the header value, each up to 128
-characters. Regex matching must be enabled on the load balancer's
-attributes.
+characters. Regex matching is an opt-in load balancer attribute that
+the Terraform provider does not expose -- enable it on the ALB via the
+AWS console or CLI before regex rules can match.
 
 - rule: {"repeated":{"items":{"string":{"maxLen":"128"}}}}
 
@@ -328,13 +340,16 @@ The value pattern (wildcards allowed).
 Match on the client source IP (CIDR blocks). Uses the address that
 connected to the ALB, not X-Forwarded-For entries.
 
+- rule: each source_ip value must be an IPv4 or IPv6 CIDR block like 10.0.0.0/8 or 2001:db8::/32
+
 ### spec.conditions[].sourceIp.values
 
 `[]string` · required
 
 CIDR blocks to match (IPv4 or IPv6), e.g. "10.0.0.0/8",
-"203.0.113.0/24". The condition matches when the client address falls in
-ANY block.
+"203.0.113.0/24", "2001:db8::/32". The condition matches when the
+client address falls in ANY block. A bare address is not accepted --
+give it a full prefix length (e.g. "203.0.113.7/32").
 
 - rule: {"required":true,"repeated":{"minItems":"1"}}
 

@@ -32,6 +32,24 @@ resource "aws_lb" "this" {
   desync_mitigation_mode                      = var.spec.desync_mitigation_mode != "" ? var.spec.desync_mitigation_mode : null
   enable_tls_version_and_cipher_suite_headers = var.spec.tls_version_and_cipher_suite_headers_enabled ? true : null
 
+  # LCU reservation: pre-provisioned capacity that bills while set. Rendered
+  # only when reserved so removing the field releases the reservation.
+  dynamic "minimum_load_balancer_capacity" {
+    for_each = var.spec.minimum_load_balancer_capacity_units > 0 ? [var.spec.minimum_load_balancer_capacity_units] : []
+    content {
+      capacity_units = minimum_load_balancer_capacity.value
+    }
+  }
+
+  # BYOIP addressing: the ALB's public IPv4 addresses come from the given
+  # VPC IPAM pool instead of AWS's own ranges.
+  dynamic "ipam_pools" {
+    for_each = var.spec.ipv4_ipam_pool_id != "" ? [var.spec.ipv4_ipam_pool_id] : []
+    content {
+      ipv4_ipam_pool_id = ipam_pools.value
+    }
+  }
+
   # The three S3 log streams share one shape; "enabled" is implied by the
   # block's presence in the spec (a bucket with logging off is meaningless).
   # The bucket must carry the ELB log-delivery bucket policy or delivery

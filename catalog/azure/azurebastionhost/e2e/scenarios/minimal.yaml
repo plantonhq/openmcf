@@ -1,0 +1,39 @@
+# Minimal AzureBastionHost scenario: the default BASIC shape on
+# dedicated infrastructure -- the fixture network's AzureBastionSubnet
+# (the exact ARM name Bastion demands, /26) and the lane's own fixture
+# public IP (a Bastion host binds its address EXCLUSIVELY). Basic is GA
+# in every region and proves the ip_configuration mainline the
+# Standard/Premium tiers share; the create is Bastion's ~10-minute
+# class and the host bills ~$0.19/h while up. The free Developer SKU
+# stays offline-proven: it deploys onto Azure-SHARED infrastructure
+# offered in a limited region set, so a live lane would pin the whole
+# suite's region choice to Developer-enabled regions.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBastionHost
+metadata:
+  name: planton-oss-e2e-azurebastionhost-smoke
+  id: planton-oss-e2e-azurebastionhost-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurebastionhost
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-bastion-smoke
+  sku: BASIC
+  ipConfiguration:
+    name: bastion-ip-config
+    subnetId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-bastion-subnet
+    publicIpAddressId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-bastion-pip

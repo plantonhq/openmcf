@@ -14,6 +14,14 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+
+	// The hermetic tests assemble their descriptor set from the LINKED
+	// registry, and only the served version reaches a binary through the
+	// kind registry -- the torture kind's deprecated v1alpha1 must be linked
+	// explicitly or the deprecation existence check refuses the bundle. (The
+	// real bundle is buf-built from the proto tree and carries every version
+	// regardless of linkage.)
+	_ "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha1"
 )
 
 // The full bundle lifecycle, hermetically: a descriptor set built from the

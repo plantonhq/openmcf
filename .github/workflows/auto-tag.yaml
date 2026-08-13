@@ -2,23 +2,23 @@
 # Auto-Tag Creator
 # =============================================================================
 # Detects changes in monitored paths and creates appropriate tags, then
-# triggers auto-release.yaml via workflow_dispatch for each tag.
+# triggers the per-module auto-release workflows via workflow_dispatch for
+# each tag.
 #
 # This workflow CREATES TAGS and TRIGGERS RELEASES - but does not build.
-# The actual build/release is handled by auto-release.yaml.
+# The actual build/release is handled by the auto-release workflows.
 #
 # Tag Formats (pre-release of NEXT version):
-#   - CLI: v{next}-cli.{YYYYMMDD}.{N}
-#   - Website: v{next}-website.{YYYYMMDD}.{N}
 #   - Pulumi: v{next}-pulumi.{component}.{YYYYMMDD}.{N}
 #   - Terraform: v{next}-terraform.{component}.{YYYYMMDD}.{N}
 #
-# Example: If latest release is v0.3.4, auto-releases become v0.3.5-cli.20260108.0
-# This ensures auto-release tags sort ABOVE the current release in GitHub's UI.
+# Example: If latest release is v0.3.4, auto-releases become
+# v0.3.5-pulumi.awsvpc.20260108.0. This ensures auto-release tags sort ABOVE
+# the current release in GitHub's UI.
 #
 # Mass-change guard: pushes that change MODULE_AUTO_TAG_THRESHOLD or more
-# unique components skip Pulumi/Terraform module tags (CLI/Website unaffected)
-# - a mass change means a proper full release will follow. See docs/auto-tags.md.
+# unique components skip Pulumi/Terraform module tags - a mass change means a
+# proper full release will follow. See docs/auto-tags.md.
 #
 # Trigger: Push to main with changes in monitored paths
 # =============================================================================
@@ -30,28 +30,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'cmd/**'
-      - 'internal/**'
-      - 'pkg/**'
-      - 'site/**'
       - 'catalog/**/iac/pulumi/**'
       - 'catalog/**/iac/tf/**'
-      - 'main.go'
-      - 'go.mod'
-      - 'go.sum'
 
   workflow_dispatch:
     inputs:
-      force_cli:
-        description: 'Force CLI tag'
-        required: false
-        type: boolean
-        default: false
-      force_website:
-        description: 'Force Website tag'
-        required: false
-        type: boolean
-        default: false
       force_pulumi_all:
         description: 'Force all Pulumi modules tags'
         required: false
@@ -80,8 +63,6 @@ jobs:
   create-tags:
     runs-on: ubuntu-latest
     outputs:
-      cli_tag: ${{ steps.detect.outputs.cli_tag }}
-      website_tag: ${{ steps.detect.outputs.website_tag }}
       pulumi_modules: ${{ steps.detect.outputs.pulumi_modules }}
       terraform_modules: ${{ steps.detect.outputs.terraform_modules }}
       any_tags_created: ${{ steps.detect.outputs.any_tags_created }}
@@ -195,66 +176,6 @@ jobs:
           fi
 
           # =================================================================
-          # CLI Tag
-          # =================================================================
-          CLI_CHANGED="false"
-          if [ "${{ inputs.force_cli }}" = "true" ]; then
-            CLI_CHANGED="true"
-            echo "CLI: forced via manual dispatch"
-          elif echo "$CHANGED_FILES" | grep -qE '^(cmd/|internal/|pkg/|main\.go|go\.mod|go\.sum)'; then
-            CLI_CHANGED="true"
-            echo "CLI: changes detected"
-          fi
-
-          if [ "$CLI_CHANGED" = "true" ]; then
-            CLI_PREFIX="${NEXT_SEMVER}-cli.${TODAY}"
-            CLI_LATEST=$(git tag -l "${CLI_PREFIX}.*" 2>/dev/null | sort -t. -k2 -n | tail -1)
-            if [ -z "$CLI_LATEST" ]; then
-              CLI_SEQ=0
-            else
-              CLI_SEQ=$(echo "$CLI_LATEST" | sed "s/${CLI_PREFIX}\.//")
-              CLI_SEQ=$((CLI_SEQ + 1))
-            fi
-            CLI_TAG="${CLI_PREFIX}.${CLI_SEQ}"
-            
-            echo "Creating CLI tag: ${CLI_TAG}"
-            git tag -a "${CLI_TAG}" -m "Auto-tag CLI ${CLI_TAG}"
-            git push origin "${CLI_TAG}"
-            echo "cli_tag=${CLI_TAG}" >> $GITHUB_OUTPUT
-            ANY_TAGS_CREATED="true"
-          fi
-
-          # =================================================================
-          # Website Tag
-          # =================================================================
-          WEBSITE_CHANGED="false"
-          if [ "${{ inputs.force_website }}" = "true" ]; then
-            WEBSITE_CHANGED="true"
-            echo "Website: forced via manual dispatch"
-          elif echo "$CHANGED_FILES" | grep -qE '^site/'; then
-            WEBSITE_CHANGED="true"
-            echo "Website: changes detected"
-          fi
-
-          if [ "$WEBSITE_CHANGED" = "true" ]; then
-            WEBSITE_PREFIX="${NEXT_SEMVER}-website.${TODAY}"
-            WEBSITE_LATEST=$(git tag -l "${WEBSITE_PREFIX}.*" 2>/dev/null | sort -t. -k2 -n | tail -1)
-            if [ -z "$WEBSITE_LATEST" ]; then
-              WEBSITE_SEQ=0
-            else
-              WEBSITE_SEQ=$(echo "$WEBSITE_LATEST" | sed "s/${WEBSITE_PREFIX}\.//")
-              WEBSITE_SEQ=$((WEBSITE_SEQ + 1))
-            fi
-            WEBSITE_TAG="${WEBSITE_PREFIX}.${WEBSITE_SEQ}"
-            
-            echo "Creating Website tag: ${WEBSITE_TAG}"
-            git tag -a "${WEBSITE_TAG}" -m "Auto-tag Website ${WEBSITE_TAG}"
-            git push origin "${WEBSITE_TAG}"
-            echo "website_tag=${WEBSITE_TAG}" >> $GITHUB_OUTPUT
-            ANY_TAGS_CREATED="true"
-          fi
-
-          # =================================================================
           # Pulumi Modules Tags
           # =================================================================
           # Output JSON array with full module info for triggering releases.
@@ -356,34 +277,6 @@ jobs:
     if: needs.create-tags.outputs.any_tags_created == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger CLI release
-        if: needs.create-tags.outputs.cli_tag != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'auto-release.cli.yaml',
-              ref: 'main',
-              inputs: { tag: '${{ needs.create-tags.outputs.cli_tag }}' }
-            });
-            console.log('Triggered auto-release.cli for: ${{ needs.create-tags.outputs.cli_tag }}');
-
-      - name: Trigger Website release
-        if: needs.create-tags.outputs.website_tag != ''
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'auto-release.website.yaml',
-              ref: 'main',
-              inputs: { tag: '${{ needs.create-tags.outputs.website_tag }}' }
-            });
-            console.log('Triggered auto-release.website for: ${{ needs.create-tags.outputs.website_tag }}');
-
       - name: Trigger Pulumi releases
         if: needs.create-tags.outputs.pulumi_modules != '[]'
         uses: actions/github-script@v7
@@ -448,14 +341,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
           echo "|-----------|-----|" >> $GITHUB_STEP_SUMMARY
-
-          if [ -n "${{ needs.create-tags.outputs.cli_tag }}" ]; then
-            echo "| CLI | \`${{ needs.create-tags.outputs.cli_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          if [ -n "${{ needs.create-tags.outputs.website_tag }}" ]; then
-            echo "| Website | \`${{ needs.create-tags.outputs.website_tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          fi
 
           PULUMI_MODULES='${{ needs.create-tags.outputs.pulumi_modules }}'
           if [ "$PULUMI_MODULES" != "[]" ] && [ -n "$PULUMI_MODULES" ]; then

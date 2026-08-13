@@ -1,0 +1,73 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_apigatewayv2_domain_name:
+    mappings:
+      # The spec flattens the provider's domain_name_configuration wrapper:
+      # the certificate, IP addressing, and ownership-verification fields
+      # live at the spec root.
+      - spec: spec.certificate_arn
+        arg: domain_name_configuration.certificate_arn
+      - spec: spec.ip_address_type
+        arg: domain_name_configuration.ip_address_type
+      - spec: spec.ownership_verification_certificate_arn
+        arg: domain_name_configuration.ownership_verification_certificate_arn
+      # The provider suffixes the block name with _authentication; the spec
+      # keeps the shorter concept name. Leaves match exactly below.
+      - spec: spec.mutual_tls
+        arg: mutual_tls_authentication
+    exclusions:
+      - arg: domain_name_configuration.endpoint_type
+        reason: wired by the module to "REGIONAL" -- the only endpoint type API Gateway v2 domains support (edge-optimized is a REST v1 feature), so there is no configuration decision to surface
+      - arg: domain_name_configuration.security_policy
+        reason: wired by the module to "TLS_1_2" -- the only security policy API Gateway v2 domains accept, so there is no configuration decision to surface
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_apigatewayv2_api_mapping:
+    # Instantiated per spec.api_mappings entry: one mapping resource binds
+    # one API's stage onto the domain under a path key.
+    specRoot: spec.api_mappings
+    exclusions:
+      - arg: domain_name
+        reason: wired by the module to the domain it creates -- a mapping lives on its domain, never user surface
+      - arg: region
+        reason: wired by the module to the domain's region -- a mapping lives where its domain lives, never user surface
+
+  aws_apigatewayv2_routing_rule:
+    # Instantiated per spec.routing_rules entry: one rule resource matches
+    # requests on base path or header and invokes one API stage.
+    specRoot: spec.routing_rules
+    mappings:
+      # The provider nests the target under action/invoke_api (invoke_api is
+      # the only action type API Gateway supports); the spec flattens it to
+      # the rule's own fields.
+      - spec: spec.routing_rules.api_id
+        arg: action.invoke_api.api_id
+      - spec: spec.routing_rules.stage
+        arg: action.invoke_api.stage
+      - spec: spec.routing_rules.strip_base_path
+        arg: action.invoke_api.strip_base_path
+      # The spec flattens each condition's single-use any_of wrappers: a
+      # base-path condition is the list itself, and a header condition is
+      # one name/glob pair (the provider caps match_headers.any_of at one
+      # entry).
+      - spec: spec.routing_rules.conditions.base_paths
+        arg: condition.match_base_paths.any_of
+      - spec: spec.routing_rules.conditions.header.name
+        arg: condition.match_headers.any_of.header
+      - spec: spec.routing_rules.conditions.header.value_glob
+        arg: condition.match_headers.any_of.value_glob
+    exclusions:
+      - arg: domain_name
+        reason: wired by the module to the domain it creates -- a rule lives on its domain, never user surface
+      - arg: region
+        reason: wired by the module to the domain's region -- a rule lives where its domain lives, never user surface

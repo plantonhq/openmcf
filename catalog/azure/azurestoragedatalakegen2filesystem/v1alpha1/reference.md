@@ -275,6 +275,14 @@ Fields that can point at another resource's outputs:
 | `spec.group` | AzureUserAssignedIdentity | `status.outputs.principal_id` |
 | `spec.aces[].objectId` | AzureUserAssignedIdentity | `status.outputs.principal_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureMachineLearningDatastore | `spec.dataLakeGen2.storageContainerId` | `status.outputs.filesystem_id` |
+
 ## See Also
 
 - [Overview](../README.md)

@@ -121,9 +121,17 @@ spec:
 | `definition` | Struct | Yes | ASL workflow definition as native YAML. Serialized to JSON by the IaC module. |
 | `roleArn` | StringValueOrRef | Yes | IAM execution role ARN. Must trust `states.amazonaws.com`. |
 | `publish` | bool | No | Publish an immutable version on create and on every configuration change. The latest version ARN is exported in stack outputs. Default: false. |
-| `tracingEnabled` | bool | No | Enable AWS X-Ray tracing. Default: false. |
-| `logging` | AwsStepFunctionLoggingConfig | No | Execution history logging configuration. |
-| `encryption` | AwsStepFunctionEncryptionConfig | No | Customer-managed KMS encryption. |
+| `aliases` | AwsStepFunctionAlias[] | No | Named aliases routing 100% of traffic to the version this deployment published (requires `publish: true`). Alias ARNs are exported keyed by name. |
+| `tracingEnabled` | optional bool | No | Enable AWS X-Ray tracing. Tri-state: unset keeps the AWS default (off); an explicit `false` is what turns tracing OFF on a machine that had it on. |
+| `logging` | AwsStepFunctionLoggingConfig | No | Execution history logging configuration. Keep the block with `level: OFF` to explicitly turn logging off on a machine that had it on -- removing the block reverts nothing. |
+| `encryption` | AwsStepFunctionEncryptionConfig | No | Customer-managed KMS encryption. One-way in practice: removing the block does not revert to AWS-owned keys. |
+
+### AwsStepFunctionAlias
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Alias name (1-80 chars of `[0-9A-Za-z_-]`); keys the provider resource. |
+| `description` | string | No | Human-readable description (up to 256 chars). |
 
 ### AwsStepFunctionLoggingConfig
 

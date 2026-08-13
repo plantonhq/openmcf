@@ -56,6 +56,7 @@ variable "spec" {
     provisioned_pollers = optional(object({
       minimum_pollers = optional(number, 0)
       maximum_pollers = optional(number, 0)
+      poller_group_name = string
     }))
     mq_queue = optional(string, "")
     document_db = optional(object({

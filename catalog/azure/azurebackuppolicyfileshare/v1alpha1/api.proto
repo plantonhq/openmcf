@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurebackuppolicyfileshare.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurebackuppolicyfileshare/v1alpha1/outputs.proto";
+import "catalog/azure/azurebackuppolicyfileshare/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureBackupPolicyFileShare is the top-level API resource describing
+// an Azure Backup policy for Azure Files shares -- the schedule and
+// retention rules that govern file-share backups in a Recovery
+// Services vault.
+message AzureBackupPolicyFileShare {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureBackupPolicyFileShare".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureBackupPolicyFileShare'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Backup policy specification.
+  AzureBackupPolicyFileShareSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureBackupPolicyFileShareStatus status = 5;
+}
+
+// AzureBackupPolicyFileShareStatus holds the deployment outputs.
+message AzureBackupPolicyFileShareStatus {
+  // Stack outputs from the IaC deployment.
+  AzureBackupPolicyFileShareStackOutputs outputs = 1;
+}

@@ -24,6 +24,7 @@ variable "spec" {
     }))
     image_uri = optional(string, "")
     source_code_hash = optional(string, "")
+    code_sha256 = optional(string, "")
     source_kms_key_arn = optional(string, "")
     runtime = optional(string, "")
     handler = optional(string, "")
@@ -49,8 +50,19 @@ variable "spec" {
     }))
     layer_arns = optional(list(string), [])
     publish = optional(bool, false)
+    publish_to = optional(string, "")
     reserved_concurrent_executions = optional(number)
     snap_start = optional(bool, false)
+    managed_instances = optional(object({
+      capacity_provider_arn = string
+      memory_gib_per_vcpu = optional(number, 0)
+      max_concurrency_per_environment = optional(number, 0)
+    }))
+    durable_config = optional(object({
+      execution_timeout_seconds = optional(number, 0)
+      retention_period_days = optional(number, 0)
+    }))
+    tenant_isolation_mode = optional(string, "")
     logging_config = optional(object({
       log_format = optional(string, "")
       application_log_level = optional(string, "")
@@ -76,6 +88,7 @@ variable "spec" {
         expose_headers = optional(list(string), [])
         max_age_seconds = optional(number, 0)
       }))
+      qualifier = optional(string, "")
     }))
     invoke_permissions = optional(list(object({
       statement_id = string
@@ -85,17 +98,27 @@ variable "spec" {
       source_account = optional(string, "")
       principal_org_id = optional(string, "")
       function_url_auth_type = optional(string, "")
+      qualifier = optional(string, "")
+      event_source_token = optional(string, "")
+      invoked_via_function_url = optional(bool, false)
     })), [])
     async_invoke_config = optional(object({
       maximum_retry_attempts = optional(number)
       maximum_event_age_seconds = optional(number, 0)
       on_success_destination_arn = optional(string, "")
       on_failure_destination_arn = optional(string, "")
+      qualifier = optional(string, "")
     }))
     recursive_loop = optional(string, "")
     runtime_management = optional(object({
       update_runtime_on = string
       runtime_version_arn = optional(string, "")
+      qualifier = optional(string, "")
     }))
+    scaling_configs = optional(list(object({
+      qualifier = string
+      min_execution_environments = optional(number)
+      max_execution_environments = optional(number)
+    })), [])
   })
 }

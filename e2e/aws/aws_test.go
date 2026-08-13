@@ -1017,7 +1017,12 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		switch cp.Spec.Status {
 		case componentv1.ComponentE2EProfileSpec_deferred,
 			componentv1.ComponentE2EProfileSpec_skip,
-			componentv1.ComponentE2EProfileSpec_stub:
+			componentv1.ComponentE2EProfileSpec_stub,
+			// pending_proof: fully authored, offline-validated, awaiting its
+			// first live proof. The proving session flips the profile to green
+			// immediately before executing the lanes; until then a sweep must
+			// never run it.
+			componentv1.ComponentE2EProfileSpec_pending_proof:
 			reason := cp.Spec.DeferredReason
 			if reason == "" {
 				reason = cp.Spec.Status.String()
@@ -1075,11 +1080,9 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 	}
 
 	if engine == "pulumi" {
-		stackName := runner.GenerateStackName(component+"-"+scenario.Name, runID)
-		if len(stackName) > 50 {
-			stackName = stackName[:50]
-		}
-		tc.StackName = stackName
+		// GenerateStackName enforces the length cap uniqueness-preservingly
+		// (blind truncation here would collide long kind names' scenarios).
+		tc.StackName = runner.GenerateStackName(component+"-"+scenario.Name, runID)
 	}
 
 	ctx := context.Background()

@@ -8,4 +8,5 @@ const (
 	OpConsoleUrl      = "console_url"
 	OpUserName        = "user_name"
 	OpUserId          = "user_id"
+	OpAccessKeyStatus = "access_key_status"
 )

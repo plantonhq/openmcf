@@ -132,6 +132,10 @@ When omitted, each table must specify its own storage location explicitly.
 Setting this is recommended for organized data lakes where all tables in a
 database share a common S3 prefix.
 
+One-way in practice: once applied, REMOVING this field does not clear the
+location at AWS -- the provider keeps the last-known value. Point it at a
+new prefix to change it.
+
 This is a plain string (not StringValueOrRef) because it is an S3 URI with
 a user-defined path prefix, not a direct resource identifier.
 

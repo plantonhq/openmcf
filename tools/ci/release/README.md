@@ -1,6 +1,7 @@
 # Release Tooling
 
-Scripts and utilities for managing Planton CLI releases.
+Scripts and utilities for managing Planton releases (IaC modules, content
+distribution zips, the InfraChart catalog, and definitions).
 
 ## Quick Start
 
@@ -24,49 +25,21 @@ When you run `make release`, here's what happens:
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │  Local (make release)                                                       │
-│  ├── Calculate next version using tools/ci/release/next_version.py         │
+│  ├── Calculate next version using tools/ci/release/next_version.py          │
 │  ├── Create git tag (e.g., v1.0.0)                                          │
 │  └── Push tag to origin                                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  GitHub Actions (.github/workflows/release.yml)                             │
-│  ├── GoReleaser v2 builds CLI binaries for all platforms:                   │
-│  │   ├── darwin-amd64, darwin-arm64                                         │
-│  │   ├── linux-amd64, linux-arm64                                           │
-│  │   └── windows-amd64, windows-arm64                                       │
-│  └── Create GitHub Release with auto-generated notes                        │
+│  GitHub Actions (.github/workflows/release.yaml)                            │
+│  ├── Create the GitHub Release with auto-generated notes                    │
+│  ├── Pulumi module binaries    -> Cloudflare R2 (downloads.planton.dev)     │
+│  ├── Terraform module zips     -> Cloudflare R2 (downloads.planton.dev)     │
+│  ├── Content distribution zips -> Cloudflare R2 (downloads.planton.dev)     │
+│  ├── Definitions               -> Cloudflare R2 (downloads.planton.dev)     │
+│  └── InfraChart catalog zip    -> attached to the GitHub Release            │
 └─────────────────────────────────────────────────────────────────────────────┘
-```
-
-## CLI Distribution
-
-CLI binaries are distributed as GitHub Release assets. Go users can also build
-from source with `go install github.com/plantonhq/planton@latest`.
-
-### Install via Direct Download
-
-Download binaries from the [GitHub Releases](https://github.com/plantonhq/planton/releases) page.
-
-```bash
-# macOS (Apple Silicon)
-curl -Lo planton https://github.com/plantonhq/planton/releases/latest/download/planton_VERSION_darwin_arm64.tar.gz
-tar -xzf planton_VERSION_darwin_arm64.tar.gz
-chmod +x planton
-sudo mv planton /usr/local/bin/
-
-# macOS (Intel)
-curl -Lo planton https://github.com/plantonhq/planton/releases/latest/download/planton_VERSION_darwin_amd64.tar.gz
-tar -xzf planton_VERSION_darwin_amd64.tar.gz
-chmod +x planton
-sudo mv planton /usr/local/bin/
-
-# Linux (x86_64)
-curl -Lo planton https://github.com/plantonhq/planton/releases/latest/download/planton_VERSION_linux_amd64.tar.gz
-tar -xzf planton_VERSION_linux_amd64.tar.gz
-chmod +x planton
-sudo mv planton /usr/local/bin/
 ```
 
 ## Scripts
@@ -90,10 +63,23 @@ The script:
 - Defaults to `v0.0.0` if no tags exist
 - Outputs the next version to stdout
 
+### detect_module_dirs.sh
+
+Single source of truth for which changed files count as Pulumi/Terraform
+module changes (maturity-grammar-aware). Used by `auto-tag.yaml`, which runs
+its `--self-test` before every detection pass.
+
+### package_content.sh
+
+Packages the content distribution zips (presets, IaC source, catalog pages,
+proto source, the component reference pack) for the release's R2 upload.
+
 ## Required GitHub Secrets
 
-The CLI release workflow needs no repository secrets: `GITHUB_TOKEN` is
-automatically provided by GitHub Actions.
+The module/content/definitions release workflows upload to Cloudflare R2 and
+need `CLOUDFLARE_R2_ACCESS_KEY_ID`, `CLOUDFLARE_R2_SECRET_ACCESS_KEY`, and
+`CLOUDFLARE_R2_ENDPOINT`. The GitHub Release itself and the chart-catalog
+attachment need only the automatically provided `GITHUB_TOKEN`.
 
 ## Troubleshooting
 
@@ -110,12 +96,3 @@ The script only recognizes strict `vX.Y.Z` tags. Tags with suffixes (like `v1.0.
 # Check what tag will be used as base
 git tag --list 'v*' --sort=-v:refname | head -5
 ```
-
-### GoReleaser errors
-
-Run a local snapshot build to debug:
-
-```bash
-goreleaser release --snapshot --clean --skip=publish
-```
-

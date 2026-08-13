@@ -48,11 +48,6 @@ metadata:
   org: test-org
   env: dev
   id: test-cpu-alarm-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsCloudwatchAlarm.test-cpu-alarm
 spec:
   region: us-west-2
   comparisonOperator: GreaterThanThreshold
@@ -359,6 +354,8 @@ CloudWatch rather than computing a value from other queries.
 Mutually exclusive with `expression`.
 
 - rule: period must be 1, 5, 10, 20, 30, or a multiple of 60
+- rule: stat must be a standard statistic (SampleCount, Average, Sum, Minimum, Maximum) or a percentile/trimmed statistic, e.g. 'p95', 'IQM', 'TM(10%:90%)'
+- rule: namespace must not start with a colon
 
 ### spec.metricQueries[].metric.metricName
 
@@ -456,7 +453,10 @@ Actions to execute when the alarm transitions to ALARM state. Each action
 is an ARN — typically an SNS topic ARN, but can also be an Auto Scaling
 policy, EC2 automation action, Lambda function, or SSM OpsItem.
 
-Maximum 5 actions.
+Maximum 5 actions — AWS's quota is 5 actions per alarm state. (The
+provider caps only ok_actions and insufficient_data_actions; the missing
+cap on alarm_actions is provider looseness — the spec holds AWS's
+contract.)
 
 - references: AwsSnsTopic (`status.outputs.topic_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSnsTopic, name: <that resource's name>, fieldPath: status.outputs.topic_arn}} -- a bare string does not parse
@@ -590,6 +590,10 @@ of 60. When unset, AWS uses its default evaluation interval.
 - `alarm_actions_max_5`: maximum 5 alarm_actions allowed
 - `ok_actions_max_5`: maximum 5 ok_actions allowed
 - `insufficient_data_actions_max_5`: maximum 5 insufficient_data_actions allowed
+- `threshold_conflicts_with_threshold_metric_id`: threshold and threshold_metric_id are mutually exclusive — use a static threshold or an anomaly detection band, not both
+- `metric_queries_forbid_simple_metric_fields`: namespace, period, statistic, extended_statistic, dimensions, and unit must not be set together with metric_queries — define them inside each query's metric instead
+- `extended_statistic_format`: extended_statistic must be a percentile or trimmed statistic, e.g. 'p95', 'tm99', 'IQM', 'TM(10%:90%)', 'PR(:300)'
+- `namespace_no_leading_colon`: namespace must not start with a colon
 
 ## Outputs
 

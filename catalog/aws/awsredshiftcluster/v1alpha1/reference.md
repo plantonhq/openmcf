@@ -38,6 +38,37 @@ spec:
   masterUsername: hackadmin
   manageMasterPassword: true
   skipFinalSnapshot: true
+  # Governance: cap what individual features may spend, pause the
+  # warehouse outside business hours, and cap Spectrum scans.
+  usageLimits:
+    - featureType: spectrum
+      limitType: data-scanned
+      amount: 5
+    - featureType: concurrency-scaling
+      limitType: time
+      amount: 60
+      period: daily
+      breachAction: disable
+  scheduledActions:
+    - name: awsredshiftcluster-demo-nightly-pause
+      schedule: cron(0 4 * * ? *)
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/redshift-scheduler
+      pauseCluster: true
+    - name: awsredshiftcluster-demo-morning-resume
+      schedule: cron(0 13 * * ? *)
+      iamRoleArn:
+        value: arn:aws:iam::123456789012:role/redshift-scheduler
+      resumeCluster: true
+  # Cross-VPC access: a managed endpoint in the cluster's own subnet
+  # group, plus a grant letting another account create endpoints.
+  endpointAccesses:
+    - endpointName: analytics-consumers
+  endpointAuthorizations:
+    - account: "210987654321"
+  # Replace the default snapshot cadence with an existing account-level
+  # schedule.
+  snapshotScheduleIdentifier: every-12h
 ```
 
 ## Spec Fields
@@ -94,6 +125,36 @@ spec:
 | `spec.parameters[].name` | `string` | yes |  |  |
 | `spec.parameters[].value` | `string` | yes |  |  |
 | `spec.parameterGroupFamily` | `string` |  |  |  |
+| `spec.snapshotScheduleIdentifier` | `string` |  |  |  |
+| `spec.usageLimits` | `[]AwsRedshiftClusterUsageLimit` |  |  |  |
+| `spec.usageLimits[].featureType` | `string` | yes |  |  |
+| `spec.usageLimits[].limitType` | `string` | yes |  |  |
+| `spec.usageLimits[].amount` | `int64` |  |  |  |
+| `spec.usageLimits[].period` | `string` |  |  |  |
+| `spec.usageLimits[].breachAction` | `string` |  |  |  |
+| `spec.scheduledActions` | `[]AwsRedshiftClusterScheduledAction` |  |  |  |
+| `spec.scheduledActions[].name` | `string` | yes |  |  |
+| `spec.scheduledActions[].description` | `string` |  |  |  |
+| `spec.scheduledActions[].disabled` | `bool` |  |  |  |
+| `spec.scheduledActions[].schedule` | `string` | yes |  |  |
+| `spec.scheduledActions[].startTime` | `string` |  |  |  |
+| `spec.scheduledActions[].endTime` | `string` |  |  |  |
+| `spec.scheduledActions[].iamRoleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.scheduledActions[].pauseCluster` | `bool` |  |  |  |
+| `spec.scheduledActions[].resumeCluster` | `bool` |  |  |  |
+| `spec.scheduledActions[].resizeCluster` | `AwsRedshiftClusterResizeAction` |  |  |  |
+| `spec.scheduledActions[].resizeCluster.classic` | `bool` |  |  |  |
+| `spec.scheduledActions[].resizeCluster.clusterType` | `string` |  |  |  |
+| `spec.scheduledActions[].resizeCluster.nodeType` | `string` |  |  |  |
+| `spec.scheduledActions[].resizeCluster.numberOfNodes` | `int32` |  |  |  |
+| `spec.endpointAccesses` | `[]AwsRedshiftClusterEndpointAccess` |  |  |  |
+| `spec.endpointAccesses[].endpointName` | `string` | yes |  |  |
+| `spec.endpointAccesses[].subnetGroupName` | `string` |  |  |  |
+| `spec.endpointAccesses[].vpcSecurityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
+| `spec.endpointAuthorizations` | `[]AwsRedshiftClusterEndpointAuthorization` |  |  |  |
+| `spec.endpointAuthorizations[].account` | `string` | yes |  |  |
+| `spec.endpointAuthorizations[].vpcIds` | `[]string \| valueFrom` |  |  | AwsVpc (`status.outputs.vpc_id`) |
+| `spec.endpointAuthorizations[].forceDelete` | `bool` |  |  |  |
 
 ## Field Details
 
@@ -241,17 +302,24 @@ patches ride maintenance_track_name and allow_version_upgrade.
 `string`
 
 The name of the first database created in the cluster. Empty keeps
-the AWS default ("dev"). 1-64 lowercase alphanumeric/underscore
-characters.
+the AWS default ("dev"). 1-64 characters: lowercase alphanumeric,
+underscore, or dollar sign, starting with a letter or underscore
+(AWS's CreateCluster contract).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z_][0-9a-z_$]{0,63}$"}}
 
 ### spec.masterUsername
 
 `string`
 
 The admin username. Required for a brand-new cluster -- AWS has no
-default and rejects a blank value at CreateCluster. Only clusters
-restored from a snapshot leave it empty and inherit the source's
-credentials. Create-time only -- changing it replaces the cluster.
+default and rejects a blank value at CreateCluster. 1-128
+characters starting with a letter; letters, digits, and _.@+- are
+legal. Only clusters restored from a snapshot leave it empty and
+inherit the source's credentials. Create-time only -- changing it
+replaces the cluster.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z][0-9A-Za-z_.@+-]{0,127}$"}}
 
 ### spec.manageMasterPassword
 
@@ -587,22 +655,318 @@ with the Redshift patch 2.0 generation (new clusters' default
 group is default.redshift-2.0); set it here when the managed group
 should track that family. Only meaningful alongside `parameters`.
 
+### spec.snapshotScheduleIdentifier
+
+`string`
+
+The identifier of an existing snapshot schedule to associate with
+this cluster (AWS allows exactly ONE schedule per cluster -- the
+schedule replaces the default automated-snapshot cadence with
+explicit cron/rate definitions). The schedule itself is an
+account-scoped resource shared by many clusters and is not created
+here. Empty keeps AWS's default snapshot cadence.
+
+### spec.usageLimits
+
+`[]AwsRedshiftClusterUsageLimit`
+
+Usage limits capping what individual Redshift features may consume
+on this cluster -- Spectrum data scanned, concurrency-scaling time,
+cross-region datasharing transfer -- each with a breach action from
+logging to hard disable. Cluster-scoped settings keyed by the
+cluster itself (folded, never standalone nodes).
+
+- rule: limit_type must be 'data-scanned' for spectrum/cross-region-datasharing and 'time' for concurrency-scaling/extra-compute-for-automatic-optimization (AWS's CreateUsageLimit contract)
+
+### spec.usageLimits[].featureType
+
+`string` · required
+
+The Redshift feature the limit applies to: "spectrum" (external S3
+scans), "concurrency-scaling" (burst clusters),
+"cross-region-datasharing" (data transferred to consumers in other
+regions), or "extra-compute-for-automatic-optimization". Required;
+changing it replaces the limit.
+
+- rule: {"required":true,"string":{"in":["spectrum","concurrency-scaling","cross-region-datasharing","extra-compute-for-automatic-optimization"]}}
+
+### spec.usageLimits[].limitType
+
+`string` · required
+
+How the limit is measured: "time" (minutes of feature usage) or
+"data-scanned" (terabytes). AWS's contract pairs spectrum and
+cross-region-datasharing with "data-scanned", concurrency-scaling
+and extra-compute-for-automatic-optimization with "time"
+(CEL-enforced). Required; changing it replaces the limit.
+
+- rule: {"required":true,"string":{"in":["time","data-scanned"]}}
+
+### spec.usageLimits[].amount
+
+`int64`
+
+The limit amount: minutes when limit_type is "time", terabytes
+when it is "data-scanned". Must be positive.
+
+- rule: {"int64":{"gt":"0"}}
+
+### spec.usageLimits[].period
+
+`string`
+
+The period the amount applies to: "daily", "weekly", or "monthly".
+Empty keeps the AWS default (monthly). A weekly period begins on
+Sunday. Changing it replaces the limit.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["daily","weekly","monthly"]}}
+
+### spec.usageLimits[].breachAction
+
+`string`
+
+What Redshift does when the limit is breached: "log" writes an
+event to the system table, "emit-metric" additionally publishes a
+CloudWatch metric, "disable" turns the feature off until the
+period resets (spectrum and concurrency-scaling only -- AWS
+rejects disable for cross-region datasharing). Empty keeps the AWS
+default (log).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["log","emit-metric","disable"]}}
+
+### spec.scheduledActions
+
+`[]AwsRedshiftClusterScheduledAction`
+
+Scheduled actions that pause, resume, or resize this cluster on a
+cron/at schedule -- the standard nights-and-weekends cost lever for
+non-production warehouses. Each entry keys one scheduled action
+targeting this cluster.
+
+- rule: exactly one of pause_cluster, resume_cluster, or resize_cluster must be set
+- rule: start_time must be an RFC 3339 timestamp (e.g., '2026-09-01T00:00:00Z') when set
+- rule: end_time must be an RFC 3339 timestamp (e.g., '2026-09-30T00:00:00Z') when set
+
+### spec.scheduledActions[].name
+
+`string` · required
+
+The scheduled action's name: 1-63 lowercase alphanumeric/hyphen
+characters. NOTE: names are unique per AWS ACCOUNT (not per
+cluster) -- include something cluster-specific to avoid collisions
+across clusters. Changing it replaces the action.
+
+- rule: {"required":true,"string":{"pattern":"^[0-9a-z-]{1,63}$"}}
+
+### spec.scheduledActions[].description
+
+`string`
+
+An optional description of what the action does and why.
+
+### spec.scheduledActions[].disabled
+
+`bool`
+
+Suspend the action without deleting it. The zero value (false)
+keeps the AWS default: the action is enabled and fires on
+schedule.
+
+### spec.scheduledActions[].schedule
+
+`string` · required
+
+When the action fires, in at() or cron() format -- e.g.
+"cron(0 22 * * ? *)" (daily 22:00 UTC) or
+"at(2026-09-01T03:00:00)". Cron fields are
+Minutes Hours Day-of-month Month Day-of-week Year, in UTC.
+
+- rule: {"required":true,"string":{"pattern":"^(at|cron)\\(.+\\)$"}}
+
+### spec.scheduledActions[].startTime
+
+`string`
+
+When the schedule becomes active (RFC 3339, e.g.
+"2026-09-01T00:00:00Z"). Empty activates it immediately.
+
+### spec.scheduledActions[].endTime
+
+`string`
+
+When the schedule expires (RFC 3339). Empty keeps it active until
+deleted.
+
+### spec.scheduledActions[].iamRoleArn
+
+`string | valueFrom` · required
+
+The IAM role Redshift assumes to perform the action. The role's
+TRUST POLICY must allow the "scheduler.redshift.amazonaws.com"
+service principal to sts:AssumeRole (AWS validates the trust at
+create -- a role trusting only redshift.amazonaws.com or ec2 is
+rejected; the provider retries briefly on trust-propagation
+delays). Reference an AwsIamRole role_arn output or pass a literal
+role ARN.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.scheduledActions[].pauseCluster
+
+`bool`
+
+Pause the cluster (compute stops billing; storage persists).
+Exactly one action arm must be set (CEL-enforced).
+
+### spec.scheduledActions[].resumeCluster
+
+`bool`
+
+Resume a paused cluster. Exactly one action arm must be set
+(CEL-enforced).
+
+### spec.scheduledActions[].resizeCluster
+
+`AwsRedshiftClusterResizeAction`
+
+Resize the cluster to a new node count/type. Exactly one action
+arm must be set (CEL-enforced).
+
+### spec.scheduledActions[].resizeCluster.classic
+
+`bool`
+
+Force a CLASSIC resize (full data redistribution -- hours, but
+works between any topologies) instead of the default elastic
+resize (minutes, but constrained to compatible node counts).
+
+### spec.scheduledActions[].resizeCluster.clusterType
+
+`string`
+
+The target cluster type. Empty keeps the current type; AWS derives
+it from the node count otherwise.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["single-node","multi-node"]}}
+
+### spec.scheduledActions[].resizeCluster.nodeType
+
+`string`
+
+The target node class (e.g. "ra3.large"). Empty keeps the current
+class.
+
+### spec.scheduledActions[].resizeCluster.numberOfNodes
+
+`int32`
+
+The target node count. 0 keeps the current count.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.endpointAccesses
+
+`[]AwsRedshiftClusterEndpointAccess`
+
+Redshift-managed VPC endpoints that expose this cluster inside
+another subnet group (same-account cross-VPC access without
+peering; requires RA3 node types). Each entry keys one managed
+endpoint; its private address and port are exported per endpoint on
+the outputs contract.
+
+### spec.endpointAccesses[].endpointName
+
+`string` · required
+
+The endpoint's name: 1-30 lowercase alphanumeric/hyphen
+characters, unique within the cluster. Changing it replaces the
+endpoint.
+
+- rule: {"required":true,"string":{"pattern":"^[0-9a-z-]{1,30}$"}}
+
+### spec.endpointAccesses[].subnetGroupName
+
+`string`
+
+The Redshift subnet group the endpoint lands in -- typically a
+group in the CONSUMING VPC. Empty reuses the cluster's own subnet
+group (module-managed or referenced), which yields an extra
+endpoint in the cluster's own VPC. Changing it replaces the
+endpoint.
+
+### spec.endpointAccesses[].vpcSecurityGroupIds
+
+`[]string | valueFrom`
+
+Security groups attached to the endpoint's network interfaces.
+Empty uses the VPC's default security group. Reference
+AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+
+- references: AwsSecurityGroup (`status.outputs.security_group_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
+
+### spec.endpointAuthorizations
+
+`[]AwsRedshiftClusterEndpointAuthorization`
+
+Grants that authorize OTHER AWS accounts to create managed VPC
+endpoints to this cluster (the grantor side of cross-account
+access; the grantee creates its endpoint in its own account). Each
+entry keys one per-account authorization.
+
+### spec.endpointAuthorizations[].account
+
+`string` · required
+
+The AWS account ID being authorized (12 digits). Changing it
+replaces the authorization.
+
+- rule: {"required":true,"string":{"pattern":"^[0-9]{12}$"}}
+
+### spec.endpointAuthorizations[].vpcIds
+
+`[]string | valueFrom`
+
+Restrict the grant to specific VPCs in the grantee account. Empty
+authorizes ALL of the account's VPCs. Reference AwsVpc vpc_id
+outputs or pass literal VPC IDs.
+
+- references: AwsVpc (`status.outputs.vpc_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
+
+### spec.endpointAuthorizations[].forceDelete
+
+`bool`
+
+Revoke the authorization on delete even if the grantee still has
+live endpoints against the cluster (their endpoints are deleted
+too). Off by default: delete fails while grantee endpoints exist.
+
 ## Validation Rules
 
 - `subnets_or_group`: provide at least two subnet_ids (distinct AZs) or an existing cluster_subnet_group_name
 - `port_range`: port must be between 1115 and 65535 when set -- 0 keeps the AWS default (5439)
 - `number_of_nodes_range`: number_of_nodes must be between 1 and 128 when set -- 0 keeps the AWS default (1, single-node)
 - `password_xor_managed`: master_password cannot be set when manage_master_password is true -- pick one password strategy
+- `master_password_complexity`: master_password must be 8-64 characters with at least one lowercase letter, one uppercase letter, and one digit, and must not contain /, @, quotes, or spaces
+- `secret_kms_requires_managed`: master_password_secret_kms_key_id is only meaningful with manage_master_password -- it encrypts the AWS-managed secret
 - `master_username_required_unless_derived`: master_username is required for a new cluster -- AWS rejects a blank username; only snapshot restores inherit credentials from their source
 - `relocation_xor_multi_az`: availability_zone_relocation_enabled and multi_az are mutually exclusive -- relocation moves the single cluster between zones, Multi-AZ fails over to a standby
 - `elastic_ip_requires_public`: elastic_ip requires publicly_accessible -- a private cluster has no public IP to bind the address to
 - `manual_snapshot_retention_range`: manual_snapshot_retention_period must be -1 (indefinite) or between 1 and 3653 when set -- 0 keeps the AWS default (indefinite)
 - `final_snapshot_id_required_when_not_skipping`: final_snapshot_identifier is required when skip_final_snapshot is false -- AWS refuses to delete the cluster without a final snapshot name
+- `final_snapshot_identifier_format`: final_snapshot_identifier must be 1-255 alphanumeric/hyphen characters with no consecutive hyphens and no trailing hyphen
 - `snapshot_id_xor_arn`: snapshot_identifier and snapshot_arn are mutually exclusive create-time restore sources
 - `snapshot_cluster_requires_snapshot_id`: snapshot_cluster_identifier is only meaningful alongside snapshot_identifier -- it disambiguates a snapshot NAME, never an ARN
 - `owner_account_requires_restore`: owner_account is only meaningful alongside a restore source (snapshot_identifier or snapshot_arn)
 - `own_parameters_xor_existing_group`: parameters and cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group
 - `family_requires_parameters`: parameter_group_family is only meaningful alongside inline parameters -- an existing group carries its own family
+- `usage_limits_unique`: usage_limits must be unique per (feature_type, limit_type, period) -- AWS allows one limit per feature/type/period combination, and an empty period means monthly
+- `scheduled_action_names_unique`: scheduled action names must be unique
+- `endpoint_access_names_unique`: endpoint access names must be unique
+- `endpoint_authorization_accounts_unique`: endpoint authorization grantee accounts must be unique -- AWS keeps one authorization per account
 
 ## Outputs
 
@@ -615,11 +979,13 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRedshiftClust
 | `status.outputs.cluster_namespace_arn` | `string` | The namespace ARN of the cluster, used by Redshift data sharing and the Redshift Data API. |
 | `status.outputs.endpoint` | `string` | The connection endpoint in "address:port" form, for SQL client connection strings. |
 | `status.outputs.dns_name` | `string` | The DNS hostname of the cluster's leader node (without port), for building connection strings and DNS alias records. |
-| `status.outputs.database_name` | `string` | The name of the first database in the cluster. |
+| `status.outputs.database_name` | `string` | The name of the first database in the cluster. Populated only when the spec set database_name: with it omitted, AWS creates its documented default initial database ("dev") but DescribeClusters echoes no name back, so both engines surface an empty string here (live-verified) -- clients relying on the default should connect to "dev". |
 | `status.outputs.port` | `int32` | The port the cluster accepts connections on. |
 | `status.outputs.subnet_group_name` | `string` | The name of the Redshift subnet group the cluster runs in (module-managed from subnet_ids or the referenced existing group). |
 | `status.outputs.parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed from inline parameters or the referenced existing group). |
 | `status.outputs.master_password_secret_arn` | `string` | The ARN of the AWS-managed admin-password secret in Secrets Manager. Populated only when manage_master_password is true -- the handle applications use to fetch credentials at runtime. |
+| `status.outputs.endpoint_access_addresses` | `map<string, string>` | The private DNS addresses of the cluster's managed VPC endpoints, keyed by endpoint name (spec.endpoint_accesses entries) -- what consumers inside the endpoint's VPC put in connection strings. |
+| `status.outputs.usage_limit_ids` | `map<string, string>` | The AWS-generated usage-limit IDs, keyed exactly as the module keys each limit: "<feature_type>/<limit_type>/<period>", with an unset period rendered as "monthly" (the AWS default). These are the handles `aws redshift delete-usage-limit` and state import take; AWS generates them at creation time. |
 
 ## References
 
@@ -634,6 +1000,9 @@ Fields that can point at another resource's outputs:
 | `spec.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.iamRoles` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.defaultIamRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.scheduledActions[].iamRoleArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.endpointAccesses[].vpcSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.endpointAuthorizations[].vpcIds` | AwsVpc | `status.outputs.vpc_id` |
 
 ## See Also
 

@@ -20,3 +20,9 @@ spec:
     bucket:
       value: demo-alb-logs-bucket
     prefix: alb/demo
+  # LCU reservation and IPAM-pool addressing are offline-proven arms: the
+  # reservation BILLS while set, and no IPAM pool fixture exists, so live
+  # scenarios never carry them. This fixture proves both render in plan.
+  minimumLoadBalancerCapacityUnits: 500
+  ipv4IpamPoolId:
+    value: ipam-pool-0123456789abcdef0

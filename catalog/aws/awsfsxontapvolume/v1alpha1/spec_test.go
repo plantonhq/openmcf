@@ -445,6 +445,12 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects a tiering policy without a name (name is required when the block is present)", func() {
+		spec.TieringPolicy = &AwsFsxOntapVolumeTieringPolicy{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
 	// CEL validation failures — SnapLock
 	// -------------------------------------------------------------------------
@@ -500,6 +506,115 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects an autocommit period without a type (the AWS API requires it)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Value: 30},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an autocommit value below its unit's AWS floor (MINUTES < 5)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Type: "MINUTES", Value: 4},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an autocommit value above its unit's AWS ceiling (DAYS > 3650)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Type: "DAYS", Value: 3651},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an autocommit value above its unit's AWS ceiling (YEARS > 10)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Type: "YEARS", Value: 11},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a value alongside autocommit type NONE (dead configuration)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Type: "NONE", Value: 1},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts autocommit MINUTES at the AWS floor (5)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType:     "ENTERPRISE",
+			AutocommitPeriod: &AwsFsxOntapVolumeAutocommitPeriod{Type: "MINUTES", Value: 5},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a retention duration without a type (the AWS API requires it)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				DefaultRetention: &AwsFsxOntapVolumeRetentionDuration{Value: 5},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a retention value above its unit's AWS ceiling (HOURS > 24)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				MinimumRetention: &AwsFsxOntapVolumeRetentionDuration{Type: "HOURS", Value: 25},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a retention value above its unit's AWS ceiling (YEARS > 100)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				MaximumRetention: &AwsFsxOntapVolumeRetentionDuration{Type: "YEARS", Value: 101},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a value alongside retention type INFINITE (AWS takes no value)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				MaximumRetention: &AwsFsxOntapVolumeRetentionDuration{Type: "INFINITE", Value: 1},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a zero-value retention duration for a unit type (0 days is meaningful)", func() {
+		spec.SnaplockConfiguration = &AwsFsxOntapVolumeSnaplockConfiguration{
+			SnaplockType: "COMPLIANCE",
+			RetentionPeriod: &AwsFsxOntapVolumeRetentionPeriod{
+				MinimumRetention: &AwsFsxOntapVolumeRetentionDuration{Type: "DAYS", Value: 0},
+			},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
 	// CEL validation failures — aggregate configuration
 	// -------------------------------------------------------------------------
@@ -534,6 +649,22 @@ var _ = ginkgo.Describe("AwsFsxOntapVolumeSpec validations", func() {
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects any aggregate_configuration on a FLEXVOL volume (even an empty one)", func() {
+		spec.VolumeStyle = stringPtr("FLEXVOL")
+		spec.AggregateConfiguration = &AwsFsxOntapVolumeAggregateConfiguration{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts constituents_per_aggregate without aggregates on FLEXGROUP (AWS picks the aggregates)", func() {
+		spec.VolumeStyle = stringPtr("FLEXGROUP")
+		spec.AggregateConfiguration = &AwsFsxOntapVolumeAggregateConfiguration{
+			ConstituentsPerAggregate: 8,
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	// -------------------------------------------------------------------------

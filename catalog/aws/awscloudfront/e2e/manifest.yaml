@@ -4,12 +4,28 @@ metadata:
   name: awscloudfront-demo
 spec:
   region: us-east-1
-  comment: Demo distribution on the default CloudFront certificate
+  comment: Demo distribution exercising the full edge-delivery surface
+  aliases:
+    - cdn.example.com
   origins:
     - originId: s3-assets
       domainName: demo-assets.s3.us-east-1.amazonaws.com
       s3Origin:
         createOriginAccessControl: true
+    - originId: api-backend
+      domainName: api.example.com
+      # Cap the complete origin response (headers + body) at two minutes;
+      # must be >= the read timeout below.
+      responseCompletionTimeoutSeconds: 120
+      customOrigin:
+        protocolPolicy: https-only
+        readTimeoutSeconds: 60
+        # Resolve the origin over IPv6 with IPv4 fallback.
+        ipAddressType: dualstack
+        # Origin-side mTLS: CloudFront presents this client certificate, so
+        # only CloudFront (never the open internet) can reach the backend.
+        mtlsClientCertificateArn:
+          value: "arn:aws:acm:us-east-1:123456789012:certificate/2f3a4b5c-6d7e-8f90-a1b2-c3d4e5f6a7b8"
   defaultCacheBehavior:
     targetOriginId: s3-assets
     viewerProtocolPolicy: redirect-to-https
@@ -17,4 +33,41 @@ spec:
     # Managed-CachingOptimized: the AWS managed cache policy for static
     # content (respects origin cache headers, compresses the cache key).
     cachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+  orderedCacheBehaviors:
+    - pathPattern: /api/*
+      behavior:
+        targetOriginId: api-backend
+        viewerProtocolPolicy: https-only
+        # Managed-CachingDisabled -- APIs are not cached.
+        cachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+  viewerCertificate:
+    acmCertificateArn:
+      value: "arn:aws:acm:us-east-1:123456789012:certificate/9e8d7c6b-5a49-3827-1605-f4e3d2c1b0a9"
+    minimumProtocolVersion: TLSv1.2_2021
+  # Viewer-side mutual TLS: request client certificates and validate them
+  # against a CloudFront trust store; unauthenticated viewers still pass
+  # ("optional" mode) and origins see the validation result in headers.
+  viewerMtls:
+    mode: optional
+    trustStoreId: ts-0a1b2c3d4e5f6a7b8
+    advertiseTrustStoreCaNames: true
+  # Tag-based invalidation: origin responses label objects through this
+  # header; an invalidation by tag purges every object carrying the label.
+  cacheTagHeaderName: cache-tag
+  # A connection function runs at TCP establishment -- the earliest
+  # programmable point in the request path.
+  connectionFunctionId: EDFDVBD632BHDS5
+  # Dedicated static edge IPs from a provisioned Anycast list (paid).
+  anycastIpListId: aip-0a1b2c3d4e5f6a7b8
+  # Blue/green rollout: send 10% of production traffic to the staging
+  # distribution (one deployed with staging: true), pinning each viewer to
+  # one side for their session.
+  continuousDeployment:
+    stagingDistributionDnsNames:
+      - value: "d111111abcdef8.cloudfront.net"
+    singleWeight:
+      weight: 0.10
+      sessionStickiness:
+        idleTtlSeconds: 300
+        maximumTtlSeconds: 600
   defaultRootObject: index.html

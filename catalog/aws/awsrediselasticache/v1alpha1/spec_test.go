@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsRedisElasticacheSpec(t *testing.T) {
@@ -69,8 +70,8 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 	})
 
 	ginkgo.It("accepts encryption settings", func() {
-		spec.AtRestEncryptionEnabled = true
-		spec.TransitEncryptionEnabled = true
+		spec.AtRestEncryptionEnabled = proto.Bool(true)
+		spec.TransitEncryptionEnabled = proto.Bool(true)
 		spec.TransitEncryptionMode = "required"
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
 		err := protovalidate.Validate(spec)
@@ -78,7 +79,7 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 	})
 
 	ginkgo.It("accepts auth_token authentication", func() {
-		spec.TransitEncryptionEnabled = true
+		spec.TransitEncryptionEnabled = proto.Bool(true)
 		spec.AuthToken = strRef("my-secret-auth-token-at-least-16-chars")
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
@@ -135,8 +136,8 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 		spec.NumCacheClusters = 3
 		spec.AutomaticFailoverEnabled = true
 		spec.MultiAzEnabled = true
-		spec.AtRestEncryptionEnabled = true
-		spec.TransitEncryptionEnabled = true
+		spec.AtRestEncryptionEnabled = proto.Bool(true)
+		spec.TransitEncryptionEnabled = proto.Bool(true)
 		spec.TransitEncryptionMode = "required"
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
 		spec.SubnetIds = []*foreignkeyv1.StringValueOrRef{
@@ -309,7 +310,14 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 
 	ginkgo.It("fails when transit_encryption_mode is set without transit_encryption_enabled", func() {
 		spec.TransitEncryptionMode = "required"
-		spec.TransitEncryptionEnabled = false
+		spec.TransitEncryptionEnabled = nil
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when transit_encryption_mode is set with transit_encryption_enabled explicitly false", func() {
+		spec.TransitEncryptionMode = "required"
+		spec.TransitEncryptionEnabled = proto.Bool(false)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
@@ -319,8 +327,138 @@ var _ = ginkgo.Describe("AwsRedisElasticacheSpec validations", func() {
 	// -------------------------------------------------------------------------
 
 	ginkgo.It("fails when transit_encryption_mode has an invalid value", func() {
-		spec.TransitEncryptionEnabled = true
+		spec.TransitEncryptionEnabled = proto.Bool(true)
 		spec.TransitEncryptionMode = "optional"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: auth_token_update_strategy vs auth_token (ROTATE/SET require the
+	// token; DELETE removes AUTH and requires the token to be absent)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts ROTATE strategy alongside auth_token", func() {
+		spec.TransitEncryptionEnabled = proto.Bool(true)
+		spec.AuthToken = strRef("my-secret-auth-token-at-least-16-chars")
+		spec.AuthTokenUpdateStrategy = "ROTATE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ROTATE strategy is set without auth_token", func() {
+		spec.AuthTokenUpdateStrategy = "ROTATE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts DELETE strategy without auth_token (the AUTH-to-RBAC migration)", func() {
+		spec.AuthTokenUpdateStrategy = "DELETE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when DELETE strategy is combined with auth_token", func() {
+		spec.TransitEncryptionEnabled = proto.Bool(true)
+		spec.AuthToken = strRef("my-secret-auth-token-at-least-16-chars")
+		spec.AuthTokenUpdateStrategy = "DELETE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when auth_token_update_strategy has an invalid value", func() {
+		spec.AuthTokenUpdateStrategy = "REPLACE"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: global datastore membership (engine/version/node_type/encryption
+	// are inherited from the primary; presence of the encryption booleans is
+	// what the provider rejects, so even explicit false must not be sent)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts a global-datastore secondary (inherited engine, node type, and encryption)", func() {
+		spec.GlobalReplicationGroupId = "ldgnf-my-global-group"
+		spec.Engine = ""
+		spec.NodeType = ""
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a global-datastore secondary sets engine", func() {
+		spec.GlobalReplicationGroupId = "ldgnf-my-global-group"
+		spec.NodeType = ""
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a global-datastore secondary pins at_rest_encryption_enabled — even to false", func() {
+		spec.GlobalReplicationGroupId = "ldgnf-my-global-group"
+		spec.Engine = ""
+		spec.NodeType = ""
+		spec.AtRestEncryptionEnabled = proto.Bool(false)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a global-datastore secondary pins transit_encryption_enabled — even to false", func() {
+		spec.GlobalReplicationGroupId = "ldgnf-my-global-group"
+		spec.Engine = ""
+		spec.NodeType = ""
+		spec.TransitEncryptionEnabled = proto.Bool(false)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a global-datastore secondary sets num_node_groups", func() {
+		spec.GlobalReplicationGroupId = "ldgnf-my-global-group"
+		spec.Engine = ""
+		spec.NodeType = ""
+		spec.NumCacheClusters = 0
+		spec.NumNodeGroups = 2
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: engine_version format per engine
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts Redis 6+ major.minor engine versions", func() {
+		spec.EngineVersion = "7.1"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts the Redis '6.x' engine version form", func() {
+		spec.EngineVersion = "6.x"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts Redis <6 three-part engine versions", func() {
+		spec.EngineVersion = "5.0.6"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a three-part Redis 6+ engine version", func() {
+		spec.EngineVersion = "7.1.5"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts Valkey major.minor engine versions", func() {
+		spec.Engine = "valkey"
+		spec.EngineVersion = "8.0"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails on a Valkey engine version below 7", func() {
+		spec.Engine = "valkey"
+		spec.EngineVersion = "6.2"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

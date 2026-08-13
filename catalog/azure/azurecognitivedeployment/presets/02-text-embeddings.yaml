@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveDeployment
+metadata:
+  name: embeddings
+spec:
+  cognitiveAccountId:
+    value: "<your-cognitive-account-id>"
+  name: embeddings
+  model:
+    format: OpenAI
+    name: text-embedding-3-large
+  sku:
+    name: Standard
+    # Thousands of tokens per minute -- embedding pipelines batch well,
+    # so a modest rate limit goes far.
+    capacity: 120
+  # Embedding outputs are deterministic per version -- pin it so stored
+  # vectors stay comparable, and upgrade deliberately.
+  versionUpgradeOption: NO_AUTO_UPGRADE

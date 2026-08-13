@@ -33,9 +33,13 @@ type AwsSecurityGroupStackOutputs struct {
 	// the AWS account ID that owns the security group. Needed when another
 	// account references this group in a cross-account rule
 	// ("<owner_id>/<group_id>").
-	OwnerId       string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OwnerId string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	// association IDs of the group's shares into other VPCs, keyed by the
+	// resolved VPC id from spec.additional_vpc_ids (import id form
+	// "<group_id>,<vpc_id>"); empty when the group lives in one VPC.
+	AdditionalVpcAssociationIds map[string]string `protobuf:"bytes,4,rep,name=additional_vpc_association_ids,json=additionalVpcAssociationIds,proto3" json:"additional_vpc_association_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields               protoimpl.UnknownFields
+	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *AwsSecurityGroupStackOutputs) Reset() {
@@ -89,15 +93,26 @@ func (x *AwsSecurityGroupStackOutputs) GetOwnerId() string {
 	return ""
 }
 
+func (x *AwsSecurityGroupStackOutputs) GetAdditionalVpcAssociationIds() map[string]string {
+	if x != nil {
+		return x.AdditionalVpcAssociationIds
+	}
+	return nil
+}
+
 var File_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awssecuritygroup/v1alpha1/outputs.proto\x12)dev.planton.aws.awssecuritygroup.v1alpha1\"\x93\x01\n" +
+	"3catalog/aws/awssecuritygroup/v1alpha1/outputs.proto\x12)dev.planton.aws.awssecuritygroup.v1alpha1\"\x93\x03\n" +
 	"\x1cAwsSecurityGroupStackOutputs\x12*\n" +
 	"\x11security_group_id\x18\x01 \x01(\tR\x0fsecurityGroupId\x12,\n" +
 	"\x12security_group_arn\x18\x02 \x01(\tR\x10securityGroupArn\x12\x19\n" +
-	"\bowner_id\x18\x03 \x01(\tR\aownerIdB\xe3\x02\n" +
+	"\bowner_id\x18\x03 \x01(\tR\aownerId\x12\xad\x01\n" +
+	"\x1eadditional_vpc_association_ids\x18\x04 \x03(\v2h.dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupStackOutputs.AdditionalVpcAssociationIdsEntryR\x1badditionalVpcAssociationIds\x1aN\n" +
+	" AdditionalVpcAssociationIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xe3\x02\n" +
 	"-com.dev.planton.aws.awssecuritygroup.v1alpha1B\fOutputsProtoP\x01Z[github.com/plantonhq/planton/catalog/aws/awssecuritygroup/v1alpha1;awssecuritygroupv1alpha1\xa2\x02\x04DPAA\xaa\x02)Dev.Planton.Aws.Awssecuritygroup.V1alpha1\xca\x02)Dev\\Planton\\Aws\\Awssecuritygroup\\V1alpha1\xe2\x025Dev\\Planton\\Aws\\Awssecuritygroup\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Aws::Awssecuritygroup::V1alpha1b\x06proto3"
 
 var (
@@ -112,16 +127,18 @@ func file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_rawDescGZIP() []by
 	return file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsSecurityGroupStackOutputs)(nil), // 0: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupStackOutputs
+	nil,                                  // 1: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupStackOutputs.AdditionalVpcAssociationIdsEntry
 }
 var file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupStackOutputs.additional_vpc_association_ids:type_name -> dev.planton.aws.awssecuritygroup.v1alpha1.AwsSecurityGroupStackOutputs.AdditionalVpcAssociationIdsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_init() }
@@ -135,7 +152,7 @@ func file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awssecuritygroup_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -1,0 +1,112 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Both resources instantiate one-per-entry of spec.objects (keyed by the
+# object key); the source oneof picks which resource type renders an entry --
+# inline content is aws_s3_object, a copy_from source is aws_s3_object_copy.
+
+resources:
+  aws_s3_object:
+    specRoot: spec.objects
+    mappings:
+      - spec: spec.region
+        arg: region
+      - spec: spec.bucket
+        arg: bucket
+      - spec: spec.objects.kms_key
+        arg: kms_key_id
+      - spec: spec.objects.tags
+        arg: tags
+    exclusions:
+      - arg: source
+        reason: uploads a file from the deploy host's disk -- N/A by design; this kind carries content IN the manifest (content/content_base64) or copies server-side (copy_from)
+      - arg: source_hash
+        reason: change-detection companion to the file-path source -- N/A with manifest-carried content, whose changes are visible in the plan diff directly
+      - arg: etag
+        reason: content-hash trigger for file-path uploads (and broken by design with SSE-KMS, per the provider's own schema comment) -- manifest-carried content changes are visible in the plan diff directly
+      - arg: override_provider.default_tags.tags
+        reason: Terraform-machinery escape hatch to suppress provider-level default_tags -- the module manages tags explicitly and sets no provider default_tags, so there is nothing to override
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_s3_object_copy:
+    specRoot: spec.objects
+    mappings:
+      - spec: spec.region
+        arg: region
+      - spec: spec.bucket
+        arg: bucket
+      - spec: spec.objects.kms_key
+        arg: kms_key_id
+      - spec: spec.objects.tags
+        arg: tags
+      # The copy source is one packed provider argument ("bucket/key", or
+      # "arn.../object/key" for access-point sources); the bucket field owns
+      # the mapping and source_key is accounted beneath it (specExclusion).
+      - spec: spec.objects.copy_from.source_bucket
+        arg: source
+      # replace_metadata IS the metadata directive: true renders REPLACE,
+      # false omits the argument (the provider's COPY default).
+      - spec: spec.objects.copy_from.replace_metadata
+        arg: metadata_directive
+      - spec: spec.objects.copy_from.copy_if_match
+        arg: copy_if_match
+      - spec: spec.objects.copy_from.copy_if_none_match
+        arg: copy_if_none_match
+      - spec: spec.objects.copy_from.copy_if_modified_since
+        arg: copy_if_modified_since
+      - spec: spec.objects.copy_from.copy_if_unmodified_since
+        arg: copy_if_unmodified_since
+      - spec: spec.objects.copy_from.expires
+        arg: expires
+      - spec: spec.objects.copy_from.request_payer
+        arg: request_payer
+    exclusions:
+      - arg: tagging_directive
+        reason: module-wired constant REPLACE -- the set's identity tags always reach the copy, and the provider never derives the directive itself (tags sent under the AWS-default COPY directive are silently ignored)
+      - arg: grant.email
+        reason: legacy fine-grained ACL grants -- the catalog's recorded legacy-grants exclusion class (canned ACLs are modeled; bucket policies are the modern access path, per the AwsS3Bucket precedent)
+      - arg: grant.id
+        reason: legacy fine-grained ACL grants -- see grant.email
+      - arg: grant.permissions
+        reason: legacy fine-grained ACL grants -- see grant.email
+      - arg: grant.type
+        reason: legacy fine-grained ACL grants -- see grant.email
+      - arg: grant.uri
+        reason: legacy fine-grained ACL grants -- see grant.email
+      - arg: customer_algorithm
+        reason: SSE-C (customer-supplied encryption keys) -- raw key material has no safe manifest carrier; the modeled SSE-S3/SSE-KMS arms cover encrypted destinations
+      - arg: customer_key
+        reason: SSE-C destination key material -- see customer_algorithm
+      - arg: customer_key_md5
+        reason: SSE-C destination key checksum -- see customer_algorithm
+      - arg: source_customer_algorithm
+        reason: SSE-C for READING the source object -- see customer_algorithm; an SSE-C-encrypted source is unreadable without raw key material in the manifest
+      - arg: source_customer_key
+        reason: SSE-C source key material -- see customer_algorithm
+      - arg: source_customer_key_md5
+        reason: SSE-C source key checksum -- see customer_algorithm
+      - arg: expected_bucket_owner
+        reason: cross-account bucket-ownership assertion -- the catalog's recorded exclusion class (the AwsS3Bucket precedent); the destination bucket is the set's own
+      - arg: expected_source_bucket_owner
+        reason: cross-account source-ownership assertion -- same class as expected_bucket_owner
+      - arg: kms_encryption_context
+        reason: provider-sensitive KMS encryption context whose upstream validation demands an ARN while the CopyObject API's contract is base64-encoded JSON key-value pairs (verified at 6.58.0, object_copy.go) -- unusable as configuration at this pin; the kms_key arm covers encrypted copies
+      - arg: override_provider.default_tags.tags
+        reason: Terraform-machinery escape hatch to suppress provider-level default_tags -- the module manages tags explicitly and sets no provider default_tags, so there is nothing to override
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # Set-level tags merge into every object's tags argument BENEATH
+  # object-level tags (the per-object field owns the arg mapping above).
+  - field: spec.tags
+    reason: merged into every rendered object's tags argument beneath object-level tags -- the per-object spec.objects.tags field carries the argument mapping
+  # The copy source is one packed argument; the bucket field owns its mapping.
+  - field: spec.objects.copy_from.source_key
+    reason: packed with source_bucket into the provider's single source argument ("bucket/key", or "arn.../object/key" for access-point sources)

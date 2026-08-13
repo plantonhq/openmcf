@@ -1,0 +1,82 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_security_group:
+    mappings:
+      # The inline rule sets are each ONE provider argument in the schema
+      # artifact (the provider declares them attribute-mode). One provider
+      # argument, many spec homes -- the redrive-policy pattern: the rule's
+      # required core (protocol) carries the mapping; every sibling member
+      # is recorded under specExclusions with the inline member it renders
+      # to.
+      - spec: spec.ingress.protocol
+        arg: ingress
+      - spec: spec.egress.protocol
+        arg: egress
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group name is platform naming, never free-form spec surface
+      - arg: name_prefix
+        reason: provider-side alternative to name (generated suffix) -- the module always names deterministically from metadata.name
+      - arg: tags
+        reason: wired by the module from metadata (planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The group's shares into additional VPCs -- one association per
+  # spec.additional_vpc_ids entry, keyed by the resolved VPC id.
+  aws_vpc_security_group_vpc_association:
+    mappings:
+      - spec: spec.additional_vpc_ids
+        arg: vpc_id
+    exclusions:
+      - arg: security_group_id
+        reason: wired by the module to the id of the group this kind creates -- never free-form user surface
+
+specExclusions:
+  # One provider argument, many spec homes: every member of a rule entry
+  # renders into the group's ingress (or egress) inline argument. The
+  # identity member (protocol) carries the mapping above; each sibling is
+  # recorded here with the inline member it renders to.
+  - field: spec.ingress.from_port
+    reason: renders into the ingress inline rule (from_port)
+  - field: spec.ingress.to_port
+    reason: renders into the ingress inline rule (to_port)
+  - field: spec.ingress.ipv4_cidrs
+    reason: renders into the ingress inline rule (cidr_blocks)
+  - field: spec.ingress.ipv6_cidrs
+    reason: renders into the ingress inline rule (ipv6_cidr_blocks)
+  - field: spec.ingress.prefix_list_ids
+    reason: renders into the ingress inline rule (prefix_list_ids)
+  - field: spec.ingress.source_security_group_ids
+    reason: renders into the ingress inline rule (security_groups)
+  - field: spec.ingress.destination_security_group_ids
+    reason: egress-direction field on the shared rule message -- CEL forbids it on ingress rules (dead-config guard); renders nowhere in this direction
+  - field: spec.ingress.self_reference
+    reason: renders into the ingress inline rule (self)
+  - field: spec.ingress.description
+    reason: renders into the ingress inline rule (description)
+  - field: spec.egress.from_port
+    reason: renders into the egress inline rule (from_port)
+  - field: spec.egress.to_port
+    reason: renders into the egress inline rule (to_port)
+  - field: spec.egress.ipv4_cidrs
+    reason: renders into the egress inline rule (cidr_blocks)
+  - field: spec.egress.ipv6_cidrs
+    reason: renders into the egress inline rule (ipv6_cidr_blocks)
+  - field: spec.egress.prefix_list_ids
+    reason: renders into the egress inline rule (prefix_list_ids)
+  - field: spec.egress.destination_security_group_ids
+    reason: renders into the egress inline rule (security_groups)
+  - field: spec.egress.source_security_group_ids
+    reason: ingress-direction field on the shared rule message -- CEL forbids it on egress rules (dead-config guard); renders nowhere in this direction
+  - field: spec.egress.self_reference
+    reason: renders into the egress inline rule (self)
+  - field: spec.egress.description
+    reason: renders into the egress inline rule (description)

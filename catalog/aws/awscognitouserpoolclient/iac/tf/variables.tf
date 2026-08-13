@@ -36,7 +36,7 @@ variable "spec" {
     }))
     refresh_token_rotation = optional(object({
       feature = string
-      retry_grace_period_seconds = optional(number, 0)
+      retry_grace_period_seconds = optional(number)
     }))
     enable_token_revocation = optional(bool)
     enable_propagate_additional_user_context_data = optional(bool, false)
@@ -49,6 +49,50 @@ variable "spec" {
       external_id = optional(string, "")
       role_arn = optional(string, "")
       user_data_shared = optional(bool, false)
+    }))
+    risk_configuration = optional(object({
+      account_takeover = optional(object({
+        low_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        medium_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        high_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        notify_configuration = optional(object({
+          source_arn = string
+          from = optional(string, "")
+          reply_to = optional(string, "")
+          block_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+          mfa_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+          no_action_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+        }))
+      }))
+      compromised_credentials = optional(object({
+        event_action = string
+        event_filter = optional(list(string), [])
+      }))
+      risk_exception = optional(object({
+        blocked_ip_ranges = optional(list(string), [])
+        skipped_ip_ranges = optional(list(string), [])
+      }))
     }))
   })
 }

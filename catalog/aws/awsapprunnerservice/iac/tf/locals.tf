@@ -32,4 +32,8 @@ locals {
   # independently (a keyed set, not an ordered list -- reordering the spec
   # never touches AWS).
   custom_domains = { for d in var.spec.custom_domains : d.domain_name => d }
+
+  # VPC Ingress Connections keyed by connection name -- the same keyed-set
+  # semantics as custom_domains.
+  vpc_ingress_connections = { for c in var.spec.vpc_ingress_connections : c.name => c }
 }

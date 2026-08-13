@@ -54,16 +54,17 @@ metadata:
   org: test-org
   env: dev
   id: test-memcached-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsMemcachedElasticache.test-memcached
 spec:
   region: us-west-2
   engineVersion: "1.6.22"
   nodeType: cache.t3.micro
   numCacheNodes: 1
+  # Pin all nodes to one AZ (mutually exclusive with the per-node
+  # preferred_availability_zones list and with az_mode "cross-az").
+  availabilityZone: us-west-2a
+  # Presence-typed: unset lets AWS's enabled-by-default stand; an explicit
+  # value pins it.
+  autoMinorVersionUpgrade: true
 ```
 
 ## Spec Fields
@@ -92,6 +93,7 @@ spec:
 | `spec.autoMinorVersionUpgrade` | `bool` |  | `true` |  |
 | `spec.notificationTopicArn` | `string \| valueFrom` |  |  | AwsSnsTopic (`status.outputs.topic_arn`) |
 | `spec.preferredAvailabilityZones` | `[]string` |  |  |  |
+| `spec.availabilityZone` | `string` |  |  |  |
 
 ## Field Details
 
@@ -112,6 +114,8 @@ Memcached engine version to deploy. Uses three-part versioning:
 "1.6.22", "1.6.17", "1.5.16", etc. Leave empty to use the AWS default —
 a versionless manifest never goes stale.
 Transit encryption requires version 1.6.12 or later.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^\\d+\\.\\d+\\.\\d+$"}}
 
 ### spec.nodeType
 
@@ -267,10 +271,13 @@ window. May cause brief downtime for some operations.
 
 ### spec.autoMinorVersionUpgrade
 
-`bool`
+`bool` · optional (explicit presence)
 
 Automatically apply minor engine version upgrades during maintenance
-windows. Recommended for staying on supported versions.
+windows. AWS enables this by default: leave unset to keep the default,
+set false to pin the running minor version explicitly, set true to pin
+the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+never as false.
 
 - default: `true`
 
@@ -290,7 +297,19 @@ maintenance events, etc.).
 
 Preferred Availability Zones for the cache nodes. When provided, the list
 length must match num_cache_nodes. Nodes are placed in the specified AZs
-in order. Leave empty for AWS-managed AZ distribution.
+in order. Leave empty for AWS-managed AZ distribution. Mutually exclusive
+with `availability_zone` (the single-AZ pin).
+
+### spec.availabilityZone
+
+`string`
+
+Pin ALL cache nodes to one Availability Zone (e.g. "us-west-2a") —
+AZ-local latency for a client fleet that lives in a single zone.
+ForceNew — changing the pin replaces the cluster. Leave empty for an
+AWS-chosen AZ. Mutually exclusive with `preferred_availability_zones`
+(per-node placement) and with az_mode "cross-az" — a single-AZ pin IS
+single-az mode.
 
 ## Validation Rules
 
@@ -302,6 +321,8 @@ in order. Leave empty for AWS-managed AZ distribution.
 - `ip_discovery_valid_values`: ip_discovery must be 'ipv4' or 'ipv6' when set
 - `subnet_arms_mutual_exclusion`: subnet_ids and subnet_group_name are mutually exclusive — build a subnet group from subnets or bring an existing group
 - `parameter_arms_mutual_exclusion`: parameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group
+- `az_placement_mutual_exclusion`: availability_zone and preferred_availability_zones are mutually exclusive placement controls — pin all nodes to one AZ or place nodes per-AZ
+- `az_pin_forbids_cross_az`: availability_zone pins all nodes to one AZ — it cannot be combined with az_mode 'cross-az'; use preferred_availability_zones for cross-AZ placement
 
 ## Outputs
 

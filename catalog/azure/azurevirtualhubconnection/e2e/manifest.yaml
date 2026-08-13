@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVirtualHubConnection
+metadata:
+  name: test-virtual-hub-connection
+spec:
+  name: spoke-app
+  virtualHubId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualHubs/hub-eastus
+  remoteVirtualNetworkId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Network/virtualNetworks/spoke-app
+  # Unset routing applies ARM's default: associate with and propagate
+  # to the hub's built-in default route table (any-to-any). The block
+  # below exercises the propagation shape instead.
+  routing:
+    propagatedRouteTable:
+      labels:
+        - default

@@ -4,15 +4,16 @@
 # connection's Azure side). The harness deploys this document (via the
 # kind's Pulumi module) after its own prerequisite chain -- fixture
 # resource group -> fixture VNet -> the gateway-shaped subnet instance
-# (ARM name exactly "GatewaySubnet") -> the dedicated no-zone public IP
-# (a gateway binds its address exclusively) -- and captures its outputs,
+# (ARM name exactly "GatewaySubnet") -> the dedicated zone-redundant
+# public IP (a gateway binds its address exclusively, and AZ gateway
+# SKUs require zones on it) -- and captures its outputs,
 # virtual_network_gateway_id in particular, for dependents' references to
 # resolve against.
 #
 # THE SLOW FIXTURE OF THE AZURE SUITE: a VPN gateway takes 25-45 minutes
 # to create and 10-20 to delete, so every lane that chains through this
-# profile pays that cycle. VpnGw1 keeps the hourly cost trivial while the
-# lane runs.
+# profile pays that cycle. VpnGw1AZ keeps the hourly cost trivial while
+# the lane runs.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkGateway
 metadata:
@@ -33,7 +34,9 @@ spec:
     valueFrom:
       name: planton-oss-e2e-azure-fixture-rg
   name: planton-oss-e2e-azure-fixture-vng
-  sku: VPN_GW_1
+  # VPN_GW_1_AZ: Azure retired new non-AZ VpnGw creates
+  # (NonAzSkusNotAllowedForVPNGateway, live-confirmed 2026-08-11).
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     - subnetId:
         valueFrom:

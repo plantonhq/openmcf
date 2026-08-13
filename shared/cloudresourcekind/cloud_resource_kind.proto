@@ -19,10 +19,11 @@ message CloudResourceKindMeta {
   //(e.g. "aws.planton.dev/v1alpha1" carries version "v1"). the value must match
   //the maturity grammar ^v\d+((alpha|beta)\d+)?$ (v1alpha1 → v1beta1 → v1):
   //the name declares the compatibility channel. this is the kind's sole
-  //served version; per-version metadata blocks arrive additively if a kind
-  //ever serves multiple versions at once. enum-value options are
-  //compile-time data, so the grammar is enforced by the crkreflect
-  //registry tests rather than protovalidate.
+  //served version; per-version metadata arrives additively beside it (see
+  //deprecations), and richer blocks follow if a kind ever serves multiple
+  //versions at once. enum-value options are compile-time data, so the
+  //grammar is enforced by the crkreflect registry tests rather than
+  //protovalidate.
   string version = 2;
 
   //name of the kind as written in manifests. set only when it differs from the
@@ -98,6 +99,37 @@ message CloudResourceKindMeta {
   //are the UPSTREAM CRD's group-version-kind, distinct from the Planton
   //groupVersion returned by crkreflect.GroupVersion.
   KubernetesManifestProjection kubernetes_manifest_projection = 8;
+
+  //schema versions of this kind announced as deprecated. a deprecated version
+  //keeps working exactly as before -- documents authored at it are accepted
+  //and converted like any known version; deprecation is advice, never a gate,
+  //and REMOVING a version stays a separate, telemetry-gated decision. what
+  //changes is visibility: every surface that speaks versions (the discovery
+  //API, dashboards, CLI listings) announces the version as on its way out.
+  //each entry must name a version this release actually ships a schema for,
+  //must not name the served version (there would be nothing to upgrade to),
+  //and must have an authored conversion path to the served version -- the
+  //bundle conformance gate refuses dead ends, so a deprecation can never
+  //outlive its version or strand its writers. the upgrade target is never
+  //authored: it is always the kind's served version, derived, so it cannot
+  //drift. like every kind_meta field this is compile-time data enforced by
+  //the crkreflect registry tests and the bundle conformance gate.
+  repeated CloudResourceKindVersionDeprecation deprecations = 9;
+}
+
+//marks one of a kind's schema versions as deprecated. carried on
+//CloudResourceKindMeta.deprecations; see that field for the contract.
+message CloudResourceKindVersionDeprecation {
+  //the deprecated schema version, e.g. "v1alpha1". must match the maturity
+  //grammar, resolve to a schema this release ships for the kind, and differ
+  //from the kind's served version.
+  string version = 1;
+
+  //optional plain-language context appended to the derived deprecation
+  //notice. surfaces compose the base sentence ("deprecated -- upgrade to
+  //<served version>") from data; this adds the why, or a migration caveat
+  //worth a sentence. empty is legal and common.
+  string note = 2;
 }
 
 //identifies the upstream Kubernetes custom resource that a CloudResourceKind
@@ -139,6 +171,13 @@ enum CloudResourceKind {
     provider: _test
     version: "v1alpha2"
     id_prefix: "tcrg"
+    // The permanent deprecation fixture: the kind graduated to v1alpha2 with
+    // an authored conversion bridge, so v1alpha1 exercises the deprecation
+    // lane through every gate (registry tests, bundle conformance, discovery).
+    deprecations: {
+      version: "v1alpha1"
+      note: "superseded by the v1alpha2 shape"
+    }
   }];
   TestCloudResourceKubernetes = 2 [(kind_meta) = {
     provider: _test
@@ -614,11 +653,14 @@ enum CloudResourceKind {
   // AwsInternetGateway is a prerequisite because a public NAT gateway can only
   // become available once the VPC it sits in has an internet gateway attached
   // (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+  // AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode
+  // = regional) references the VPC directly instead of a subnet.
   AwsNatGateway = 1086 [(kind_meta) = {
     provider: aws
     version: "v1alpha1"
     id_prefix: "awsnat"
     prerequisites: [
+      AwsVpc,
       AwsSubnet,
       AwsElasticIp,
       AwsInternetGateway
@@ -1346,6 +1388,18 @@ enum CloudResourceKind {
     provider: azure
     version: "v1alpha1"
     id_prefix: "azkvcert"
+    prerequisites: [AzureKeyVault]
+  }];
+  // AzureKeyVault is a prerequisite because a secret is a data-plane
+  // object inside a referenced vault -- the vault must exist before the
+  // secret can be written (the resource group chains transitively
+  // through the vault's own prerequisite). Part of the Key Vault family
+  // (2005, 2025-2026) despite the out-of-run number -- enum numbers are
+  // pinned by the registry snapshot; never renumber.
+  AzureKeyVaultSecret = 2183 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azkvsecret"
     prerequisites: [AzureKeyVault]
   }];
   // AzureResourceGroup is a prerequisite because a WAF policy is created
@@ -2085,7 +2139,8 @@ enum CloudResourceKind {
   // with that exact ARM name. AzurePublicIp is a prerequisite because a
   // VPN-type gateway (the default shape) requires a public IP per ip
   // configuration; the address install profile publishes a dedicated
-  // no-zone instance (a gateway binds its address exclusively).
+  // zone-redundant instance (a gateway binds its address exclusively,
+  // and the AZ gateway SKUs require zones on it).
   AzureVirtualNetworkGateway = 2140 [(kind_meta) = {
     provider: azure
     version: "v1alpha1"
@@ -2115,6 +2170,492 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "azlngw"
     prerequisites: [AzureResourceGroup]
+  }];
+
+  // AzureSubnet is the sole prerequisite: every NAT ip configuration
+  // draws its address from a subnet with private-link-service network
+  // policies disabled (the subnet install profile publishes a fixture
+  // instance with that flag off). The Standard load balancer whose
+  // frontend the service typically fronts is NOT a registry
+  // prerequisite -- the spec's destination is an exactly-one-of (load
+  // balancer frontend OR fixed destination IP), so scenarios that use
+  // the load-balancer shape declare it via the
+  // planton.dev/e2e-prerequisites annotation instead.
+  AzurePrivateLinkService = 2143 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpls"
+    prerequisites: [AzureSubnet]
+  }];
+
+  AzureExpressRouteCircuit = 2144 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azerc"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // The circuit is the prerequisite: a peering is an ARM child of the
+  // circuit, addressed by the circuit's name (the resource group chains
+  // transitively through the circuit).
+  AzureExpressRouteCircuitPeering = 2145 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azercp"
+    prerequisites: [AzureExpressRouteCircuit]
+  }];
+
+  // The hub is the prerequisite: ARM requires an ExpressRoute Gateway
+  // to be deployed INTO a Virtual WAN hub (the WAN and resource group
+  // chain transitively through the hub).
+  AzureExpressRouteGateway = 2146 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azergw"
+    prerequisites: [AzureVirtualHub]
+  }];
+
+  // ExpressRoute Port: your own physical port pair on a Microsoft edge
+  // router (ExpressRoute Direct), from whose bandwidth circuits are
+  // carved. Self-contained -- only the resource group is required.
+  AzureExpressRoutePort = 2147 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azerpt"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // Virtual WAN: the umbrella of Azure's managed hub-and-spoke
+  // networking, under which virtual hubs and their gateways are
+  // created. Self-contained -- only the resource group is required.
+  AzureVirtualWan = 2148 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvwan"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // The WAN is the prerequisite: this kind models the Virtual WAN hub
+  // (virtual_wan_id is required; standalone hubs are the legacy Route
+  // Server construction, which has its own ARM surface). The resource
+  // group chains transitively through the WAN.
+  AzureVirtualHub = 2149 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvhub"
+    prerequisites: [AzureVirtualWan]
+  }];
+
+  // Both sides of the attachment are prerequisites: the hub being
+  // joined and the spoke virtual network being attached.
+  AzureVirtualHubConnection = 2150 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvhubc"
+    prerequisites: [
+      AzureVirtualHub,
+      AzureVirtualNetwork
+    ]
+  }];
+
+  // The hub is the prerequisite: ARM deploys a Virtual WAN VPN gateway
+  // INTO a virtual hub (virtual_hub_id is required and immutable; the
+  // WAN and resource group chain transitively through the hub). ARM
+  // allows one VPN gateway per hub.
+  AzureVpnGateway = 2151 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpngw"
+    prerequisites: [AzureVirtualHub]
+  }];
+
+  // Both ends of the tunnel are prerequisites: a connection is an ARM
+  // child of the VPN gateway and pins each of its links to a specific
+  // link of the remote VPN site (the hub, WAN, and resource group
+  // chain transitively through the gateway).
+  AzureVpnGatewayConnection = 2152 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpngwc"
+    prerequisites: [
+      AzureVpnGateway,
+      AzureVpnSite
+    ]
+  }];
+
+  // The WAN is the prerequisite: a VPN site is the Virtual WAN world's
+  // address-book entry for one branch location (virtual_wan_id is
+  // required; the classic-world sibling without a WAN is
+  // AzureLocalNetworkGateway). The resource group chains transitively
+  // through the WAN.
+  AzureVpnSite = 2153 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpnsite"
+    prerequisites: [AzureVirtualWan]
+  }];
+
+  // The hub and the server configuration are both prerequisites: a
+  // point-to-site VPN gateway deploys INTO a virtual hub (one P2S
+  // gateway per hub, a slot separate from the hub's site-to-site VPN
+  // gateway) and is born pointing at the VPN server configuration
+  // that defines how its users authenticate -- both ARM-required and
+  // fixed at creation. The WAN and resource group chain transitively
+  // through the hub.
+  AzurePointToSiteVpnGateway = 2154 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azp2sgw"
+    prerequisites: [
+      AzureVirtualHub,
+      AzureVpnServerConfiguration
+    ]
+  }];
+
+  // Self-contained -- only the resource group is required: a VPN
+  // server configuration is the reusable "who may connect and how"
+  // authentication policy (Entra ID / certificate / RADIUS) that
+  // point-to-site VPN gateways attach to; it references no other
+  // Azure resource.
+  AzureVpnServerConfiguration = 2155 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azvpnsc"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // Self-contained -- only the resource group is required: an Azure
+  // AI services account (Azure OpenAI, the multi-service AIServices
+  // account, the single-service accounts) needs no other Azure
+  // resource; subnets (network rules), Key Vault keys (CMK), storage
+  // accounts and user-assigned identities are optional references.
+  AzureCognitiveAccount = 2160 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcog"
+    prerequisites: [AzureResourceGroup]
+  }];
+
+  // An ARM child of its account: a model deployment (which model
+  // runs, at which throughput class) exists only on an Azure AI
+  // services account of kind "OpenAI" or "AIServices".
+  AzureCognitiveDeployment = 2161 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcogd"
+    prerequisites: [AzureCognitiveAccount]
+  }];
+
+  // An ARM child of its account: an AI Foundry project exists only
+  // on an "AIServices"-kind account with project management enabled.
+  AzureCognitiveAccountProject = 2162 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcogp"
+    prerequisites: [AzureCognitiveAccount]
+  }];
+  // The workspace REQUIRES all three companion services at creation
+  // (default storage, secrets vault, telemetry) -- genuine
+  // deploy-order prerequisites, each with its own fixture profile.
+  AzureMachineLearningWorkspace = 2163 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlw"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureStorageAccount,
+      AzureKeyVault,
+      AzureApplicationInsights
+    ]
+  }];
+  // An ARM child of its workspace. The storage target (container,
+  // filesystem or share) is scenario-declared via the
+  // e2e-prerequisites annotation -- only the blob scenario needs a
+  // container, so it is not a kind-wide prerequisite.
+  AzureMachineLearningDatastore = 2164 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlds"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its workspace (.../computes/{name}) -- the
+  // auto-scaling pool of VMs training jobs run on.
+  AzureMachineLearningComputeCluster = 2165 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlcc"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its workspace (.../computes/{name}) -- a single
+  // always-on VM serving as one data scientist's cloud workstation.
+  AzureMachineLearningComputeInstance = 2166 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlci"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // The hub REQUIRES both companion services at creation (secrets
+  // vault, default storage) -- genuine deploy-order prerequisites,
+  // each with its own fixture profile.
+  AzureAiFoundry = 2167 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaif"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureKeyVault,
+      AzureStorageAccount
+    ]
+  }];
+  // Deploys into its hub's resource group (the provider derives the
+  // group from the hub reference -- the project spec carries none).
+  AzureAiFoundryProject = 2168 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaifp"
+    prerequisites: [AzureAiFoundry]
+  }];
+  AzureSearchService = 2169 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azsrch"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // An ARM child of its workspace (.../onlineEndpoints/{name}) -- the
+  // stable scoring address applications call. azurerm carries no ML
+  // endpoint resources; the modules write the raw ARM shape at a
+  // pinned api-version (azapi / azure-native).
+  AzureMachineLearningOnlineEndpoint = 2170 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmloe"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its endpoint (.../deployments/{name}) -- the
+  // running copy of a model the endpoint's traffic map routes to.
+  AzureMachineLearningOnlineDeployment = 2171 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlod"
+    prerequisites: [AzureMachineLearningOnlineEndpoint]
+  }];
+  // An ARM child of its workspace (.../batchEndpoints/{name}) -- the
+  // stable address batch scoring jobs are submitted to. azurerm
+  // carries no ML endpoint resources; the modules write the raw ARM
+  // shape at a pinned api-version (azapi / azure-native).
+  AzureMachineLearningBatchEndpoint = 2172 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlbe"
+    prerequisites: [AzureMachineLearningWorkspace]
+  }];
+  // An ARM child of its endpoint (.../deployments/{name}) -- the
+  // job recipe (model, compute, batching behavior) the endpoint's
+  // default-deployment pointer routes submissions to.
+  AzureMachineLearningBatchDeployment = 2173 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmlbd"
+    prerequisites: [AzureMachineLearningBatchEndpoint]
+  }];
+
+  // --- Backup and data protection (2175-2182, +2213-2214) ---
+
+  // The Recovery Services vault (Microsoft.RecoveryServices/vaults) --
+  // the safe that classic Azure Backup data and Site Recovery
+  // configuration live in. Backup policies and protected items are
+  // ARM children of a vault.
+  AzureRecoveryServicesVault = 2175 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azrsv"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // An ARM child of its vault (.../backupPolicies/{name}) -- the
+  // schedule and retention rules that govern IaaS VM backups.
+  AzureBackupPolicyVm = 2176 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbpv"
+    prerequisites: [AzureRecoveryServicesVault]
+  }];
+  // An ARM child of its vault (.../protectedItems/...) -- the binding
+  // that puts one virtual machine under a backup policy's protection.
+  AzureBackupProtectedVm = 2177 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbprv"
+    prerequisites: [
+      AzureBackupPolicyVm,
+      AzureVirtualMachine
+    ]
+  }];
+  // An ARM child of its vault (.../backupPolicies/{name}) -- the
+  // schedule and retention rules that govern Azure Files share
+  // backups (snapshot or vaulted).
+  AzureBackupPolicyFileShare = 2178 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbpfs"
+    prerequisites: [AzureRecoveryServicesVault]
+  }];
+  // An ARM child of its vault (.../protectedItems/AzureFileShare;...)
+  // -- the binding that puts one Azure Files share under a backup
+  // policy's protection. The share's storage account must already be
+  // registered with the vault (AzureBackupContainerStorageAccount).
+  AzureBackupProtectedFileShare = 2179 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbprfs"
+    prerequisites: [
+      AzureBackupContainerStorageAccount,
+      AzureBackupPolicyFileShare,
+      AzureStorageShare
+    ]
+  }];
+  // The Data Protection backup vault (Microsoft.DataProtection/
+  // backupVaults) -- the safe that MODERN Azure Backup data lives in
+  // (managed disks, blob storage, AKS clusters, MySQL/PostgreSQL
+  // flexible servers, Data Lake storage). Backup policies and backup
+  // instances are ARM children of a vault.
+  AzureDataProtectionBackupVault = 2180 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdpbv"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // An ARM child of its vault (.../backupPolicies/{name}) -- the
+  // schedule and retention rules for ONE Data Protection datasource
+  // type (blob storage, disk, Kubernetes cluster, MySQL/PostgreSQL
+  // flexible server, or Data Lake storage), modeled as one kind with
+  // variant blocks.
+  AzureDataProtectionBackupPolicy = 2181 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdpbp"
+    prerequisites: [AzureDataProtectionBackupVault]
+  }];
+  // An ARM child of its vault (.../backupInstances/{name}) -- the
+  // binding that puts ONE datasource (a managed disk, a storage
+  // account's blob services, an AKS cluster, a MySQL/PostgreSQL
+  // flexible server, or a Data Lake storage account) under a Data
+  // Protection backup policy, modeled as one kind with variant
+  // blocks. The vault's managed identity must hold the datasource
+  // roles Azure Backup requires BEFORE the instance is created.
+  AzureDataProtectionBackupInstance = 2182 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdpbi"
+    prerequisites: [
+      AzureDataProtectionBackupVault,
+      AzureDataProtectionBackupPolicy
+    ]
+  }];
+  // AzureSubnet and AzurePublicIp are prerequisites because a
+  // dedicated-infrastructure Bastion host (Basic/Standard/Premium --
+  // the default shapes) deploys into a subnet named exactly
+  // "AzureBastionSubnet" and binds a Standard static public IP
+  // EXCLUSIVELY (the virtual network and resource group chain
+  // transitively through the subnet). The Developer SKU instead
+  // attaches to a virtual network directly and uses neither.
+  AzureBastionHost = 2184 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbastion"
+    prerequisites: [
+      AzureSubnet,
+      AzurePublicIp
+    ]
+  }];
+  // AzureVirtualNetwork and AzureStorageAccount are prerequisites
+  // because a flow log records a network-scoped target (a virtual
+  // network in the common case; subnets and network interfaces chain
+  // through the network) into a referenced storage account. The
+  // regional Network Watcher parent is NOT a prerequisite: Azure
+  // auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG")
+  // the moment the region hosts a virtual network, and the flow log
+  // references it by name. Traffic Analytics' Log Analytics workspace
+  // is an optional arm, declared by scenarios that use it.
+  AzureNetworkWatcherFlowLog = 2185 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfwlog"
+    prerequisites: [
+      AzureVirtualNetwork,
+      AzureStorageAccount
+    ]
+  }];
+  // AzureVirtualNetwork and AzureSubnet are prerequisites because a
+  // DNS Private Resolver anchors to a referenced virtual network (at
+  // most ONE resolver per network -- Azure enforces it) and each of
+  // its inbound/outbound endpoints occupies its own dedicated subnet
+  // delegated to "Microsoft.Network/dnsResolvers" (the resource group
+  // chains transitively through the network and subnets).
+  AzurePrivateDnsResolver = 2186 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsr"
+    prerequisites: [
+      AzureVirtualNetwork,
+      AzureSubnet
+    ]
+  }];
+  // AzurePrivateDnsResolver is a prerequisite because a DNS
+  // forwarding ruleset steers a resolver's OUTBOUND endpoints -- it
+  // binds their ARM ids (at most 2, same resolver) at creation. (The
+  // resource group and network chain transitively through the
+  // resolver's own prerequisite declarations.)
+  AzurePrivateDnsResolverForwardingRuleset = 2187 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsfrs"
+    prerequisites: [AzurePrivateDnsResolver]
+  }];
+  // Registers a storage account with a Recovery Services vault as a
+  // backup container (.../protectionContainers/StorageContainer;...)
+  // -- one registration per storage-account-and-vault pair, required
+  // BEFORE any of the account's file shares can be protected. Part of
+  // the backup family (2175-2179) despite the out-of-run number --
+  // enum numbers are pinned by the registry snapshot; never renumber.
+  AzureBackupContainerStorageAccount = 2213 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azbcsa"
+    prerequisites: [
+      AzureRecoveryServicesVault,
+      AzureStorageAccount
+    ]
+  }];
+  // The Data Protection Resource Guard (Microsoft.DataProtection/
+  // resourceGuards) -- the approval gate behind Multi-User
+  // Authorization: privileged vault operations (disabling soft delete,
+  // reducing retention) require an approval through a guard, which
+  // typically lives in a DIFFERENT administrator's scope. Vaults
+  // reference a guard by its ARM ID. Part of the backup family
+  // (2175-2182) despite the out-of-run number -- enum numbers are
+  // pinned by the registry snapshot; never renumber.
+  AzureDataProtectionResourceGuard = 2214 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdprg"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The attachment that makes a DNS forwarding ruleset take effect in
+  // one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) --
+  // one link per ruleset-network pair, up to 500 per ruleset, spokes
+  // joining and leaving independently (which is why the link is a
+  // standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+  // Part of the DNS Private Resolver family (2186-2187) despite the
+  // out-of-run number -- enum numbers are pinned by the registry
+  // snapshot; never renumber.
+  AzurePrivateDnsResolverVirtualNetworkLink = 2215 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsrlink"
+    prerequisites: [
+      AzurePrivateDnsResolverForwardingRuleset,
+      AzureVirtualNetwork
+    ]
   }];
 
   // 3000–3999: GCP resources

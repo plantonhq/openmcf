@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureExpressRoutePort
+metadata:
+  name: test-express-route-port
+spec:
+  region: eastus
+  resourceGroup:
+    value: test-rg
+  name: hq-port
+  # The ExpressRoute DIRECT location vocabulary (narrower than circuit
+  # peering locations): `az network express-route port location list`.
+  peeringLocation: "Equinix-Ashburn-DC2"
+  # 10 or 100 at real locations. The port bills its full monthly rate
+  # from creation -- cross-connects or not.
+  bandwidthInGbps: 10
+  # DOT1Q: one VLAN tag per circuit (the common choice). Fixed at
+  # creation, together with location and bandwidth.
+  encapsulation: DOT1Q
+  # Links always exist as a pair; these blocks manipulate them. They
+  # start administratively disabled -- enable once the facility
+  # completes the cross-connects.
+  link1:
+    adminEnabled: true
+  link2:
+    adminEnabled: true
+  # One issued authorization: its ARM-generated key (sensitive)
+  # surfaces in the authorization_keys output under this name.
+  authorizations:
+    - name: partner-team
+  tags:
+    purpose: hack-test

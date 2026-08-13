@@ -1,0 +1,41 @@
+# AzureMachineLearningOnlineEndpoint install profile used as a fixture
+# by dependent components (declared via prerequisites:
+# [AzureMachineLearningOnlineEndpoint] in the kind registry -- the
+# online-deployment lane). The harness deploys this document after the
+# fixture workspace chain and captures its outputs --
+# online_endpoint_id in particular -- for dependents' references to
+# resolve against.
+#
+# COST AND TIME: the endpoint object is free at rest (instances bill
+# only when a deployment attaches) and provisions in a few minutes.
+# The cloud-side name is deliberately STABLE: the fixture is deployed
+# once per proof lane against the shared fixture workspace, and a
+# stable name keeps dependent references simple -- the region-wide
+# name-reservation concern belongs to per-engine SCENARIO endpoints,
+# which carry the run-id token instead.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineEndpoint
+metadata:
+  name: planton-oss-e2e-azure-fixture-mloe
+  id: planton-oss-e2e-azure-fixture-mloe
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremachinelearningonlineendpoint
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  workspaceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-mlw
+  name: planton-oss-e2e-fixture-mloe
+  region: eastus
+  authMode: Key
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    e2e-suite: azure
+    purpose: fixture

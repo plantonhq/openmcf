@@ -10,9 +10,11 @@ terraform {
       #
       # Feature floor: native blue/green deployments
       # (deployment_configuration, load_balancer.advanced_configuration),
-      # alarm-gated rollbacks, Service Connect access logs, and managed EBS
-      # task volumes all landed across the provider's v6 line -- this floor
-      # is the first release carrying the full surface this module drives.
+      # alarm-gated rollbacks, Service Connect access logs
+      # (service_connect_configuration.access_log_configuration, 6.34.0),
+      # and managed EBS task volumes all landed across the provider's v6
+      # line -- this floor is the first release carrying the full surface
+      # this module drives.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

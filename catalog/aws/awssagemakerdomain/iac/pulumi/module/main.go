@@ -24,8 +24,19 @@ func Resources(ctx *pulumi.Context, stackInput *awssagemakerdomainv1alpha1.AwsSa
 		return errors.Wrap(err, "sagemaker domain")
 	}
 
+	// Folded satellites: per-person user profiles and named spaces, both
+	// keyed by name.
+	profileArns, createdProfiles, err := userProfiles(ctx, locals, createdDomain, provider)
+	if err != nil {
+		return errors.Wrap(err, "user profiles")
+	}
+	spaceArns, spaceUrls, err := spaces(ctx, locals, createdDomain, createdProfiles, provider)
+	if err != nil {
+		return errors.Wrap(err, "spaces")
+	}
+
 	// Export outputs
-	outputs(ctx, createdDomain)
+	outputs(ctx, createdDomain, profileArns, spaceArns, spaceUrls)
 
 	return nil
 }

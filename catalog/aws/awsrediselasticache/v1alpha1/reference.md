@@ -50,11 +50,6 @@ metadata:
   org: test-org
   env: dev
   id: test-redis-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsRedisElasticache.test-redis
 spec:
   region: us-west-2
   engine: redis
@@ -62,8 +57,12 @@ spec:
   description: Test Redis cluster for development
   nodeType: cache.t3.micro
   numCacheClusters: 1
+  # Presence-typed encryption and upgrade flags: unset omits the argument
+  # (AWS decides, and a global-datastore secondary MUST leave them unset);
+  # explicit values pin the choice.
   atRestEncryptionEnabled: true
   transitEncryptionEnabled: true
+  autoMinorVersionUpgrade: true
 ```
 
 ## Spec Fields
@@ -150,7 +149,9 @@ is inherited from the primary and must be left empty.
 `string`
 
 Engine version to deploy. Examples: "7.1", "7.0", "6.2" for Redis;
-"7.2", "8.0" for Valkey. Leave empty to use the provider default.
+"7.2", "8.0" for Valkey. Redis 6+ and Valkey use major.minor ("7.1");
+Redis 5 and earlier use full three-part versions ("5.0.6"). Leave empty
+to use the provider default.
 Must be left empty when joining a global datastore (inherited).
 
 ### spec.description
@@ -187,7 +188,10 @@ This is a ForceNew attribute — changing it destroys and recreates the cluster.
 
 Total number of cache clusters (nodes) in the replication group. This includes
 the primary and all read replicas. For example, 3 means 1 primary + 2 replicas.
-Range: 1–6 (AWS caps a non-clustered group at 1 primary + 5 replicas).
+Range: 1–6 — AWS's CreateReplicationGroup contract caps a non-clustered
+group at 1 primary + 5 replicas (the Terraform provider stopped
+validating this cap in 6.35.0; the spec deliberately mirrors AWS's
+contract, not the provider's looseness).
 Mutually exclusive with `num_node_groups`.
 
 ### spec.preferredCacheClusterAzs
@@ -213,8 +217,11 @@ shard layout).
 
 `int32`
 
-Number of read replicas per shard. Range: 0–5. Only valid when
-`num_node_groups` is set.
+Number of read replicas per shard. Range: 0–5 — AWS's
+CreateReplicationGroup contract ("Valid values are 0 to 5"; the
+Terraform provider stopped validating the ceiling in 6.35.0 — the spec
+deliberately mirrors AWS's contract, not the provider's looseness).
+Only valid when `num_node_groups` is set.
 
 - rule: {"int32":{"lte":5,"gte":0}}
 
@@ -360,20 +367,29 @@ clients migrate address families without replacing the cluster.
 
 ### spec.atRestEncryptionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable encryption at rest for data stored on disk and in snapshots.
-ForceNew — changing this destroys and recreates the cluster.
+Presence matters: leave unset to let AWS apply its engine default,
+set true/false to pin it explicitly. Must be left UNSET when joining a
+global datastore — the setting is inherited from the primary, and the
+provider rejects the argument's presence alongside
+global_replication_group_id. ForceNew — changing it destroys and
+recreates the cluster.
 
 - default: `true`
 
 ### spec.transitEncryptionEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable encryption in transit (TLS) for all client connections and
 replication traffic. Strongly recommended for production; required for
-AUTH tokens and IAM-authenticated RBAC users.
+AUTH tokens and IAM-authenticated RBAC users. Presence matters: leave
+unset to let AWS apply its default (disabled), set true/false to pin it
+explicitly. Must be left UNSET when joining a global datastore — the
+setting is inherited from the primary, and the provider rejects the
+argument's presence alongside global_replication_group_id.
 
 - default: `true`
 
@@ -414,8 +430,10 @@ be true. 16–128 printable characters. Mutually exclusive with
 How an auth-token CHANGE is applied to the running cluster. Values:
 "ROTATE" (old and new tokens both work until the rotation completes —
 zero-downtime), "SET" (the new token replaces the old immediately),
-"DELETE" (remove the token entirely and turn AUTH off). Only meaningful
-alongside `auth_token`.
+"DELETE" (remove the token entirely and turn AUTH off — the migration
+step from AUTH to RBAC user groups). ROTATE and SET require
+`auth_token`; DELETE requires it to be ABSENT (the provider rejects a
+token alongside DELETE — you are removing it).
 
 ### spec.userGroupIds
 
@@ -586,9 +604,13 @@ configuration changes, etc.).
 
 ### spec.autoMinorVersionUpgrade
 
-`bool`
+`bool` · optional (explicit presence)
 
-Automatically apply minor engine version upgrades during maintenance windows.
+Automatically apply minor engine version upgrades during maintenance
+windows. AWS enables this by default: leave unset to keep the default,
+set false to pin the running minor version explicitly, set true to pin
+the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+never as false.
 
 ### spec.dataTieringEnabled
 
@@ -613,6 +635,7 @@ decide (the common case).
 
 - `engine_required_or_inherited`: set engine to 'redis' or 'valkey' — or leave it empty only when joining a global datastore (global_replication_group_id), where the primary's engine is inherited
 - `engine_version_inherited_with_global`: leave engine_version empty when joining a global datastore — the primary's engine version is inherited
+- `engine_version_format`: engine_version format is invalid — Redis uses '5.0.6'-style below 6, '6.x' or '7.1'-style from 6; Valkey uses '7.2'-style
 - `node_type_required_or_inherited`: node_type is required — unless joining a global datastore (global_replication_group_id), where the primary's node type is inherited
 - `topology_mode_selection`: specify either num_cache_clusters (non-clustered) or num_node_groups (clustered), not both and not neither — a global-datastore secondary may set only num_cache_clusters
 - `num_cache_clusters_range`: num_cache_clusters must be between 1 and 6 when set (1 primary + up to 5 read replicas)
@@ -629,8 +652,8 @@ decide (the common case).
 - `ip_discovery_valid_values`: ip_discovery must be 'ipv4' or 'ipv6' when set
 - `auth_mutual_exclusion`: auth_token and user_group_ids are mutually exclusive; choose one authentication method (user groups are the recommended RBAC model)
 - `auth_strategy_valid_values`: auth_token_update_strategy must be 'ROTATE', 'SET', or 'DELETE' when set
-- `auth_strategy_requires_token`: auth_token_update_strategy only applies alongside auth_token — it controls how a token change rolls out
-- `transit_mode_requires_encryption`: transit_encryption_mode requires transit_encryption_enabled to be true
+- `auth_strategy_requires_token`: auth_token_update_strategy ROTATE/SET require auth_token; DELETE removes AUTH and requires auth_token to be absent
+- `transit_mode_requires_encryption`: transit_encryption_mode requires transit_encryption_enabled to be explicitly true
 - `transit_mode_valid_values`: transit_encryption_mode must be 'preferred' or 'required' when set
 - `restore_sources_mutual_exclusion`: snapshot_arns and snapshot_name are alternative restore sources — seed from S3 RDB files or from an ElastiCache snapshot, not both
 - `restore_forbidden_with_global`: a global-datastore secondary receives its data from the primary — snapshot_arns and snapshot_name cannot be combined with global_replication_group_id

@@ -9,7 +9,6 @@ package awsroute53healthcheckv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
-	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -72,7 +71,12 @@ type AwsRoute53HealthCheckSpec struct {
 	Fqdn string `protobuf:"bytes,3,opt,name=fqdn,proto3" json:"fqdn,omitempty"`
 	// IPv4 or IPv6 address of the endpoint to probe. Use for endpoints whose
 	// address is static; use fqdn alone when the address changes (e.g. behind
-	// DNS-based scaling).
+	// DNS-based scaling). The address must be publicly routable: AWS rejects
+	// local, private, non-routable, multicast, AND documentation/reserved
+	// ranges at CreateHealthCheck with InvalidInput ("IPv4 address x.x.x.x is
+	// forbidden" — proven live against RFC 5737 192.0.2.x, even on a disabled
+	// check). The contract is server-side only — no schema mirrors it — so a
+	// placeholder manifest must use fqdn instead of a made-up address.
 	IpAddress string `protobuf:"bytes,4,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
 	// TCP port of the endpoint. Defaults: 80 for HTTP/HTTP_STR_MATCH, 443 for
 	// HTTPS/HTTPS_STR_MATCH. Required for TCP checks (there is no default).
@@ -83,12 +87,15 @@ type AwsRoute53HealthCheckSpec struct {
 	// String that must appear in the first 5,120 bytes of the response body.
 	// Required for (and only valid with) HTTP_STR_MATCH / HTTPS_STR_MATCH.
 	SearchString string `protobuf:"bytes,7,opt,name=search_string,json=searchString,proto3" json:"search_string,omitempty"`
-	// Seconds between probes from each checker: 10 or 30 (default 30).
-	// Create-time immutable (ForceNew). Fast (10s) checks cost more but detect
-	// failures ~3x sooner.
+	// Seconds between probes from each checker: 10 or 30. AWS defaults to 30
+	// when omitted — no default is materialized here, because the field only
+	// exists for endpoint checks and a manufactured value would be dead
+	// configuration on every other type. Create-time immutable (ForceNew).
+	// Fast (10s) checks cost more but detect failures ~3x sooner.
 	RequestInterval *int32 `protobuf:"varint,8,opt,name=request_interval,json=requestInterval,proto3,oneof" json:"request_interval,omitempty"`
-	// Consecutive probe results required to flip the health state (1–10,
-	// default 3). Lower reacts faster; higher rides out blips.
+	// Consecutive probe results required to flip the health state (1–10; AWS
+	// defaults to 3 when omitted). Lower reacts faster; higher rides out
+	// blips. Endpoint checks only.
 	FailureThreshold *int32 `protobuf:"varint,9,opt,name=failure_threshold,json=failureThreshold,proto3,oneof" json:"failure_threshold,omitempty"`
 	// Measure and graph endpoint latency in the Route 53 console.
 	// Create-time immutable (ForceNew); small extra cost.
@@ -114,13 +121,18 @@ type AwsRoute53HealthCheckSpec struct {
 	// Can reference other AwsRoute53HealthCheck resources.
 	ChildHealthChecks []*v1.StringValueOrRef `protobuf:"bytes,15,rep,name=child_health_checks,json=childHealthChecks,proto3" json:"child_health_checks,omitempty"`
 	// Minimum number of healthy children for this check to report healthy
-	// (1–256). Defaults to the number of children when omitted (all must be
-	// healthy).
-	ChildHealthThreshold int32 `protobuf:"varint,16,opt,name=child_health_threshold,json=childHealthThreshold,proto3" json:"child_health_threshold,omitempty"`
+	// (0–256). AWS's contract (per the CreateHealthCheck API): an explicit 0
+	// makes the check ALWAYS HEALTHY; a value greater than the number of
+	// children makes it always unhealthy; when omitted, Route 53 applies its
+	// own server-side default. Explicit 0 and omitted are therefore different
+	// configurations — presence carries the distinction.
+	ChildHealthThreshold *int32 `protobuf:"varint,16,opt,name=child_health_threshold,json=childHealthThreshold,proto3,oneof" json:"child_health_threshold,omitempty"`
 	// Name of the CloudWatch alarm whose state this check mirrors.
 	CloudwatchAlarmName string `protobuf:"bytes,17,opt,name=cloudwatch_alarm_name,json=cloudwatchAlarmName,proto3" json:"cloudwatch_alarm_name,omitempty"`
 	// Region the CloudWatch alarm lives in (alarms are regional even though
 	// the health check is global). Example: "us-west-2".
+	// Format-checked rather than enumerated on purpose: the provider's region
+	// enum grows with every AWS region launch; AWS rejects unknown regions.
 	CloudwatchAlarmRegion string `protobuf:"bytes,18,opt,name=cloudwatch_alarm_region,json=cloudwatchAlarmRegion,proto3" json:"cloudwatch_alarm_region,omitempty"`
 	// What to report while the alarm is in INSUFFICIENT_DATA state:
 	// "Healthy", "Unhealthy", or "LastKnownStatus".
@@ -268,8 +280,8 @@ func (x *AwsRoute53HealthCheckSpec) GetChildHealthChecks() []*v1.StringValueOrRe
 }
 
 func (x *AwsRoute53HealthCheckSpec) GetChildHealthThreshold() int32 {
-	if x != nil {
-		return x.ChildHealthThreshold
+	if x != nil && x.ChildHealthThreshold != nil {
+		return *x.ChildHealthThreshold
 	}
 	return 0
 }
@@ -306,22 +318,23 @@ var File_catalog_aws_awsroute53healthcheck_v1alpha1_spec_proto protoreflect.File
 
 const file_catalog_aws_awsroute53healthcheck_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awsroute53healthcheck/v1alpha1/spec.proto\x12.dev.planton.aws.awsroute53healthcheck.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x9a\x1f\n" +
+	"5catalog/aws/awsroute53healthcheck/v1alpha1/spec.proto\x12.dev.planton.aws.awsroute53healthcheck.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xed \n" +
 	"\x19AwsRoute53HealthCheckSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x8b\x01\n" +
 	"\n" +
 	"check_type\x18\x02 \x01(\tBl\xbaHi\xc8\x01\x01rdR\x04HTTPR\x05HTTPSR\x0eHTTP_STR_MATCHR\x0fHTTPS_STR_MATCHR\x03TCPR\n" +
 	"CALCULATEDR\x11CLOUDWATCH_METRICR\x10RECOVERY_CONTROLR\tcheckType\x12\x1c\n" +
-	"\x04fqdn\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x04fqdn\x12&\n" +
+	"\x04fqdn\x18\x03 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x04fqdn\x12)\n" +
 	"\n" +
-	"ip_address\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18-R\tipAddress\x12\x1f\n" +
+	"ip_address\x18\x04 \x01(\tB\n" +
+	"\xbaH\a\xd8\x01\x01r\x02p\x01R\tipAddress\x12\x1f\n" +
 	"\x04port\x18\x05 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00R\x04port\x12-\n" +
 	"\rresource_path\x18\x06 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\fresourcePath\x12-\n" +
-	"\rsearch_string\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\fsearchString\x12?\n" +
-	"\x10request_interval\x18\b \x01(\x05B\x0f\xbaH\x06\x1a\x040\n" +
-	"0\x1e\x8a\xa6\x1d\x0230H\x00R\x0frequestInterval\x88\x01\x01\x12@\n" +
-	"\x11failure_threshold\x18\t \x01(\x05B\x0e\xbaH\x06\x1a\x04\x18\n" +
-	"(\x01\x8a\xa6\x1d\x013H\x01R\x10failureThreshold\x88\x01\x01\x12'\n" +
+	"\rsearch_string\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\fsearchString\x129\n" +
+	"\x10request_interval\x18\b \x01(\x05B\t\xbaH\x06\x1a\x040\n" +
+	"0\x1eH\x00R\x0frequestInterval\x88\x01\x01\x12;\n" +
+	"\x11failure_threshold\x18\t \x01(\x05B\t\xbaH\x06\x1a\x04\x18\n" +
+	"(\x01H\x01R\x10failureThreshold\x88\x01\x01\x12'\n" +
 	"\x0fmeasure_latency\x18\n" +
 	" \x01(\bR\x0emeasureLatency\x12\"\n" +
 	"\n" +
@@ -329,26 +342,27 @@ const file_catalog_aws_awsroute53healthcheck_v1alpha1_spec_proto_rawDesc = "" +
 	"\aregions\x18\f \x03(\tBq\xbaHn\x92\x01k\"irgR\tus-east-1R\tus-west-1R\tus-west-2R\teu-west-1R\x0eap-southeast-1R\x0eap-southeast-2R\x0eap-northeast-1R\tsa-east-1R\aregions\x12-\n" +
 	"\x12invert_healthcheck\x18\r \x01(\bR\x11invertHealthcheck\x12\x1a\n" +
 	"\bdisabled\x18\x0e \x01(\bR\bdisabled\x12\x94\x01\n" +
-	"\x13child_health_checks\x18\x0f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x06\x92\x01\x03\x10\x80\x02\x88\xd4a\x98\t\x92\xd4a\x1estatus.outputs.health_check_idR\x11childHealthChecks\x12@\n" +
+	"\x13child_health_checks\x18\x0f \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\xbaH\x06\x92\x01\x03\x10\x80\x02\x88\xd4a\x98\t\x92\xd4a\x1estatus.outputs.health_check_idR\x11childHealthChecks\x12E\n" +
 	"\x16child_health_threshold\x18\x10 \x01(\x05B\n" +
-	"\xbaH\a\x1a\x05\x18\x80\x02(\x00R\x14childHealthThreshold\x122\n" +
-	"\x15cloudwatch_alarm_name\x18\x11 \x01(\tR\x13cloudwatchAlarmName\x126\n" +
-	"\x17cloudwatch_alarm_region\x18\x12 \x01(\tR\x15cloudwatchAlarmRegion\x12s\n" +
-	"\x1finsufficient_data_health_status\x18\x13 \x01(\tB,\xbaH)r'R\x00R\aHealthyR\tUnhealthyR\x0fLastKnownStatusR\x1cinsufficientDataHealthStatus\x12.\n" +
-	"\x13routing_control_arn\x18\x14 \x01(\tR\x11routingControlArn:\xbb\x14\xbaH\xb7\x14\x1a\x82\x02\n" +
+	"\xbaH\a\x1a\x05\x18\x80\x02(\x00H\x03R\x14childHealthThreshold\x88\x01\x01\x122\n" +
+	"\x15cloudwatch_alarm_name\x18\x11 \x01(\tR\x13cloudwatchAlarmName\x12_\n" +
+	"\x17cloudwatch_alarm_region\x18\x12 \x01(\tB'\xbaH$\xd8\x01\x01r\x1f2\x1d^[a-z]{2,4}(-[a-z]+)+-[0-9]+$R\x15cloudwatchAlarmRegion\x12s\n" +
+	"\x1finsufficient_data_health_status\x18\x13 \x01(\tB,\xbaH)r'R\x00R\aHealthyR\tUnhealthyR\x0fLastKnownStatusR\x1cinsufficientDataHealthStatus\x12Z\n" +
+	"\x13routing_control_arn\x18\x14 \x01(\tB*\xbaH'\xd8\x01\x01r\"2 ^arn:[^:]+:[^:]+:[^:]*:[^:]*:.+$R\x11routingControlArn:\xa1\x15\xbaH\x9d\x15\x1a\x82\x02\n" +
 	"\x1eendpoint_checks_require_target\x12_fqdn or ip_address is required for HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, and TCP checks\x1a\x7f!(this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP']) || this.fqdn != '' || this.ip_address != ''\x1a\xcc\x02\n" +
 	"\x1etarget_requires_endpoint_check\x12{fqdn, ip_address, port, and resource_path only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)\x1a\xac\x01this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP'] || (this.fqdn == '' && this.ip_address == '' && this.port == 0 && this.resource_path == '')\x1a\x9e\x01\n" +
 	"\x11tcp_requires_port\x12^port is required for TCP checks (HTTP defaults to 80 and HTTPS to 443, but TCP has no default)\x1a)this.check_type != 'TCP' || this.port > 0\x1a\xd7\x01\n" +
 	"\x17resource_path_http_only\x12Uresource_path only applies to HTTP, HTTPS, HTTP_STR_MATCH, and HTTPS_STR_MATCH checks\x1aethis.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH'] || this.resource_path == ''\x1a\xf3\x01\n" +
-	"\x1bsearch_string_for_str_match\x12dsearch_string is required for HTTP_STR_MATCH/HTTPS_STR_MATCH checks and not valid for any other type\x1anthis.check_type in ['HTTP_STR_MATCH', 'HTTPS_STR_MATCH'] ? this.search_string != '' : this.search_string == ''\x1a\x9a\x02\n" +
-	"\x1ccalculated_requires_children\x12echild_health_checks (at least one) is required for CALCULATED checks and not valid for any other type\x1a\x92\x01this.check_type == 'CALCULATED' ? this.child_health_checks.size() > 0 : (this.child_health_checks.size() == 0 && this.child_health_threshold == 0)\x1a\x86\x03\n" +
+	"\x1bsearch_string_for_str_match\x12dsearch_string is required for HTTP_STR_MATCH/HTTPS_STR_MATCH checks and not valid for any other type\x1anthis.check_type in ['HTTP_STR_MATCH', 'HTTPS_STR_MATCH'] ? this.search_string != '' : this.search_string == ''\x1a\x9b\x02\n" +
+	"\x1ccalculated_requires_children\x12echild_health_checks (at least one) is required for CALCULATED checks and not valid for any other type\x1a\x93\x01this.check_type == 'CALCULATED' ? this.child_health_checks.size() > 0 : (this.child_health_checks.size() == 0 && !has(this.child_health_threshold))\x1a\x86\x03\n" +
 	"\x19cloudwatch_requires_alarm\x12|cloudwatch_alarm_name and cloudwatch_alarm_region are required for CLOUDWATCH_METRIC checks and not valid for any other type\x1a\xea\x01this.check_type == 'CLOUDWATCH_METRIC' ? (this.cloudwatch_alarm_name != '' && this.cloudwatch_alarm_region != '') : (this.cloudwatch_alarm_name == '' && this.cloudwatch_alarm_region == '' && this.insufficient_data_health_status == '')\x1a\xe6\x01\n" +
-	"\x1drecovery_control_requires_arn\x12\\routing_control_arn is required for RECOVERY_CONTROL checks and not valid for any other type\x1agthis.check_type == 'RECOVERY_CONTROL' ? this.routing_control_arn != '' : this.routing_control_arn == ''\x1a\xbb\x02\n" +
-	"\x1aprobe_tuning_endpoint_only\x12zregions, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)\x1a\xa0\x01this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP'] || (this.regions.size() == 0 && !this.measure_latency && !has(this.enable_sni))\x1a\xa2\x01\n" +
+	"\x1drecovery_control_requires_arn\x12\\routing_control_arn is required for RECOVERY_CONTROL checks and not valid for any other type\x1agthis.check_type == 'RECOVERY_CONTROL' ? this.routing_control_arn != '' : this.routing_control_arn == ''\x1a\xa0\x03\n" +
+	"\x1aprobe_tuning_endpoint_only\x12\x9f\x01regions, request_interval, failure_threshold, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)\x1a\xdf\x01this.check_type in ['HTTP', 'HTTPS', 'HTTP_STR_MATCH', 'HTTPS_STR_MATCH', 'TCP'] || (this.regions.size() == 0 && !has(this.request_interval) && !has(this.failure_threshold) && !this.measure_latency && !has(this.enable_sni))\x1a\xa2\x01\n" +
 	"\x11regions_min_three\x12Wregions must list at least 3 checker regions when set (AWS minimum for reliable quorum)\x1a4this.regions.size() == 0 || this.regions.size() >= 3B\x13\n" +
 	"\x11_request_intervalB\x14\n" +
 	"\x12_failure_thresholdB\r\n" +
-	"\v_enable_sniB\x83\x03\n" +
+	"\v_enable_sniB\x19\n" +
+	"\x17_child_health_thresholdB\x83\x03\n" +
 	"2com.dev.planton.aws.awsroute53healthcheck.v1alpha1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/catalog/aws/awsroute53healthcheck/v1alpha1;awsroute53healthcheckv1alpha1\xa2\x02\x04DPAA\xaa\x02.Dev.Planton.Aws.Awsroute53healthcheck.V1alpha1\xca\x02.Dev\\Planton\\Aws\\Awsroute53healthcheck\\V1alpha1\xe2\x02:Dev\\Planton\\Aws\\Awsroute53healthcheck\\V1alpha1\\GPBMetadata\xea\x022Dev::Planton::Aws::Awsroute53healthcheck::V1alpha1b\x06proto3"
 
 var (

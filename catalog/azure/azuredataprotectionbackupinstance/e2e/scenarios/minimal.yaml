@@ -1,0 +1,47 @@
+# Minimal AzureDataProtectionBackupInstance scenario: the disk variant
+# protecting the fixture managed disk under the fixture disk policy --
+# the ONE variant whose full fixture chain exists in the estate today
+# (the policy kind's install manifest is the disk shape by design).
+#
+# The scenario-declared prerequisites carry the two seams the registry
+# chain cannot: the fixture managed disk (disk attachment is optional
+# on kinds, so AzureManagedDisk is nobody's registry prerequisite) and
+# the RBAC grants (this kind's consumer-scoped
+# e2e/prerequisites/azureroleassignment.yaml binds the fixture vault's
+# identity to the disk and the snapshot resource group -- Azure
+# validates those grants when THIS instance is created; grant
+# propagation lag is the lane's expected retry class, never a module
+# defect). REQUIRES the fixture vault to carry a system-assigned
+# identity (the grants' principal) and soft delete Off (a destroyed
+# instance must not ghost and wedge the vault's teardown).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupInstance
+metadata:
+  name: planton-oss-e2e-azuredataprotectionbackupinstance-smoke
+  id: planton-oss-e2e-azuredataprotectionbackupinstance-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredataprotectionbackupinstance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureManagedDisk,AzureRoleAssignment"
+  tags:
+    - planton-e2e
+spec:
+  vaultId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-dpbv
+  name: planton-oss-e2e-dpbi-smoke
+  region: eastus
+  backupPolicyId:
+    valueFrom:
+      name: planton-oss-e2e-azuredataprotectionbackuppolicy-smoke
+  disk:
+    diskId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-disk
+    snapshotResourceGroupName:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-rg

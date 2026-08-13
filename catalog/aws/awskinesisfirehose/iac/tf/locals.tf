@@ -90,6 +90,10 @@ locals {
         p.lambda.buffer_size_in_mbs > 0 ? [{ name = "BufferSizeInMBs", value = tostring(p.lambda.buffer_size_in_mbs) }] : [],
         p.lambda.buffer_interval_in_seconds > 0 ? [{ name = "BufferIntervalInSeconds", value = tostring(p.lambda.buffer_interval_in_seconds) }] : [],
         p.lambda.number_of_retries > 0 ? [{ name = "NumberOfRetries", value = tostring(p.lambda.number_of_retries) }] : [],
+        # Only sent when set: AWS defaults RoleArn to the delivery role and
+        # the provider drops default-valued parameters from state, so
+        # sending the delivery role itself would cause perpetual diffs.
+        p.lambda.role_arn != "" ? [{ name = "RoleArn", value = p.lambda.role_arn }] : [],
       )
       } : p.metadata_extraction != null ? {
       type = "MetadataExtraction"

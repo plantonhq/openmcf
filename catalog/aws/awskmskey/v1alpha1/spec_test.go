@@ -6,11 +6,18 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 )
 
 func TestAwsKmsKeySpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "AwsKmsKeySpec Validation Suite")
+}
+
+func newStringValueOrRef(value string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
 }
 
 var _ = ginkgo.Describe("AwsKmsKeySpec validations", func() {
@@ -72,6 +79,48 @@ var _ = ginkgo.Describe("AwsKmsKeySpec validations", func() {
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 
+	ginkgo.It("accepts a post-quantum ML-DSA signing key", func() {
+		spec.KeySpec = "ML_DSA_65"
+		spec.KeyUsage = "SIGN_VERIFY"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an Ed25519 signing key", func() {
+		spec.KeySpec = "ECC_NIST_EDWARDS25519"
+		spec.KeyUsage = "SIGN_VERIFY"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a NIST ECC key-agreement key", func() {
+		spec.KeySpec = "ECC_NIST_P256"
+		spec.KeyUsage = "KEY_AGREEMENT"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a symmetric key in a custom key store", func() {
+		spec.CustomKeyStoreId = "cks-1234567890abcdef0"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts an external key store key with an XKS key id", func() {
+		spec.CustomKeyStoreId = "cks-1234567890abcdef0"
+		spec.XksKeyId = "bb8562717f809024"
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a grant to a role with context constraints", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			Name:             "orders-worker-encrypt",
+			GranteePrincipal: newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:       []string{"Encrypt", "Decrypt", "GenerateDataKey", "DescribeKey"},
+			RetiringPrincipal: newStringValueOrRef(
+				"arn:aws:iam::123456789012:role/platform-admin"),
+			EncryptionContextSubset: map[string]string{"app": "orders"},
+			RetireOnDelete:          true,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
 	// -----------------------------------------------------------------
 	// Shape validation
 	// -----------------------------------------------------------------
@@ -82,7 +131,7 @@ var _ = ginkgo.Describe("AwsKmsKeySpec validations", func() {
 	})
 
 	ginkgo.It("rejects an unknown key usage", func() {
-		spec.KeyUsage = "KEY_AGREEMENT"
+		spec.KeyUsage = "WRAP_UNWRAP"
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 
@@ -142,6 +191,118 @@ var _ = ginkgo.Describe("AwsKmsKeySpec validations", func() {
 
 	ginkgo.It("rejects an ECC key without SIGN_VERIFY", func() {
 		spec.KeySpec = "ECC_NIST_P384"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects ENCRYPT_DECRYPT on an ML-DSA key", func() {
+		spec.KeySpec = "ML_DSA_44"
+		spec.KeyUsage = "ENCRYPT_DECRYPT"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects KEY_AGREEMENT on an RSA key", func() {
+		spec.KeySpec = "RSA_2048"
+		spec.KeyUsage = "KEY_AGREEMENT"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects KEY_AGREEMENT on an Ed25519 key", func() {
+		spec.KeySpec = "ECC_NIST_EDWARDS25519"
+		spec.KeyUsage = "KEY_AGREEMENT"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -----------------------------------------------------------------
+	// Custom key store couplings
+	// -----------------------------------------------------------------
+
+	ginkgo.It("rejects an asymmetric key in a custom key store", func() {
+		spec.CustomKeyStoreId = "cks-1234567890abcdef0"
+		spec.KeySpec = "RSA_2048"
+		spec.KeyUsage = "ENCRYPT_DECRYPT"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects rotation on a custom key store key", func() {
+		spec.CustomKeyStoreId = "cks-1234567890abcdef0"
+		spec.EnableKeyRotation = true
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a multi-Region custom key store key", func() {
+		spec.CustomKeyStoreId = "cks-1234567890abcdef0"
+		spec.MultiRegion = true
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects an XKS key id without a custom key store", func() {
+		spec.XksKeyId = "bb8562717f809024"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	// -----------------------------------------------------------------
+	// Grants
+	// -----------------------------------------------------------------
+
+	ginkgo.It("rejects a grant without a grantee principal", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			Operations: []string{"Decrypt"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a grant to a bare service principal", func() {
+		// AWS's CreateGrant takes service principals through a separate
+		// parameter the provider does not expose; a bare service principal
+		// on grantee_principal fails live with InvalidArnException
+		// (live-verified 2026-08-11).
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal: newStringValueOrRef("logs.us-west-2.amazonaws.com"),
+			Operations:       []string{"Decrypt"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a retiring principal that is not an ARN", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal:  newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:        []string{"Decrypt"},
+			RetiringPrincipal: newStringValueOrRef("kms.amazonaws.com"),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a grant with no operations", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal: newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a grant with an unknown operation", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal: newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:       []string{"DecryptEverything"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a grant with both encryption context constraints", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			GranteePrincipal:        newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:              []string{"Decrypt"},
+			EncryptionContextEquals: map[string]string{"app": "orders"},
+			EncryptionContextSubset: map[string]string{"app": "orders"},
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a grant name with illegal characters", func() {
+		spec.Grants = []*AwsKmsKeyGrant{{
+			Name:             "orders worker!",
+			GranteePrincipal: newStringValueOrRef("arn:aws:iam::123456789012:role/orders-worker"),
+			Operations:       []string{"Decrypt"},
+		}}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
 

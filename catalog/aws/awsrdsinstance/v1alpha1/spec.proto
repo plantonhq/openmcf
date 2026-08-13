@@ -244,8 +244,13 @@ message AwsRdsInstanceSpec {
   bool skip_final_snapshot = 35;
 
   // The name for the final snapshot taken on deletion. Required when
-  // skip_final_snapshot is false.
-  string final_snapshot_identifier = 36;
+  // skip_final_snapshot is false. Must start with a letter, contain
+  // only letters, numbers, and hyphens, with no consecutive or
+  // trailing hyphens -- AWS's snapshot-identifier rules.
+  string final_snapshot_identifier = 36 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[A-Za-z][0-9A-Za-z]*(-[0-9A-Za-z]+)*$"
+  ];
 
   // Refuse deletion of the instance while enabled. Turn this on for
   // anything holding data you cannot recreate.
@@ -321,15 +326,16 @@ message AwsRdsInstanceSpec {
   // (standard).
   string database_insights_mode = 45;
 
-  // The DB parameter group to associate. Empty keeps the engine default
-  // group. A literal name -- parameter groups have no standalone
-  // Planton kind (a named parameter list is configuration, not
-  // infrastructure).
+  // The name of an existing DB parameter group to associate. Mutually
+  // exclusive with `parameters` -- either bring your own group or let
+  // the module manage one from inline parameters. Empty (with
+  // `parameters` also empty) keeps the engine default group.
   string parameter_group_name = 46;
 
-  // The option group to associate (engine features like Oracle TDE or
-  // SQL Server native backup). Empty keeps the engine default. A
-  // literal name.
+  // The name of an existing option group to associate. Mutually
+  // exclusive with `options` -- either bring your own group or let the
+  // module manage one from inline options. Empty (with `options` also
+  // empty) keeps the engine default group.
   string option_group_name = 47;
 
   // Microsoft Active Directory domain join, for Windows/Kerberos
@@ -337,9 +343,12 @@ message AwsRdsInstanceSpec {
   // Oracle).
   AwsRdsInstanceActiveDirectory active_directory = 48;
 
-  // The license model, for engines that carry one: "license-included",
-  // "bring-your-own-license", or "general-public-license". Empty keeps
-  // the engine default.
+  // The license model, for engines that carry one. Per AWS's contract:
+  // MySQL/MariaDB use "general-public-license"; PostgreSQL uses
+  // "postgresql-license"; Oracle uses "bring-your-own-license" or
+  // "license-included"; SQL Server uses "license-included" or
+  // "bring-your-own-media"; Db2 uses "bring-your-own-license" or
+  // "marketplace-license". Empty keeps the engine default.
   string license_model = 49;
 
   // The character set for Oracle and SQL Server instances (e.g.
@@ -380,6 +389,47 @@ message AwsRdsInstanceSpec {
   // maintenance window. Immediate changes can interrupt connections;
   // deferred changes wait quietly. AWS defaults to deferred.
   bool apply_immediately = 57;
+
+  // Extended support posture when the engine version leaves standard
+  // support: "open-source-rds-extended-support" (AWS default -- paid
+  // extended support kicks in automatically) or
+  // "open-source-rds-extended-support-disabled" (the instance must be
+  // upgraded before end of standard support; opts out of the extra
+  // cost).
+  string engine_lifecycle_support = 58;
+
+  // Upgrade the storage file system configuration on a read replica or
+  // snapshot restore, when the source still runs the older 32-bit file
+  // system. One-way and create/restore-scoped.
+  bool upgrade_storage_config = 59;
+
+  // Create the instance by restoring a Percona XtraBackup stored in S3
+  // -- the on-ramp for migrating a self-managed MySQL database into
+  // RDS without a logical dump. Create-time only; mutually exclusive
+  // with replicate_source_db, snapshot_identifier, and
+  // restore_to_point_in_time.
+  AwsRdsInstanceS3Import s3_import = 60;
+
+  // IAM roles the instance assumes for engine features that reach into
+  // other AWS services (e.g. S3 import/export, Lambda invocation).
+  // Each entry associates one role to one named engine feature -- the
+  // roles own their policies; this instance only associates them. Both
+  // IaC modules manage each entry as its own role-association
+  // resource, so roles attach and detach without touching the
+  // instance.
+  repeated AwsRdsInstanceIamRole iam_roles = 61;
+
+  // Instance-level engine parameters, managed as a dedicated DB
+  // parameter group owned by this instance (the group is glue -- a
+  // named parameter list -- so it stays folded). Mutually exclusive
+  // with parameter_group_name.
+  repeated AwsRdsInstanceParameter parameters = 62;
+
+  // Engine options (e.g. Oracle TDE/OEM, SQL Server native backup),
+  // managed as a dedicated option group owned by this instance (the
+  // group is glue -- a named option list -- so it stays folded).
+  // Mutually exclusive with option_group_name.
+  repeated AwsRdsInstanceOption options = 63;
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -429,8 +479,26 @@ message AwsRdsInstanceSpec {
 
   option (buf.validate.message).cel = {
     id: "one_create_source"
-    message: "replicate_source_db, snapshot_identifier, and restore_to_point_in_time are mutually exclusive create sources"
-    expression: "(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) <= 1"
+    message: "replicate_source_db, snapshot_identifier, restore_to_point_in_time, and s3_import are mutually exclusive create sources"
+    expression: "(this.replicate_source_db != '' ? 1 : 0) + (this.snapshot_identifier != '' ? 1 : 0) + (has(this.restore_to_point_in_time) ? 1 : 0) + (has(this.s3_import) ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "s3_import_is_mysql"
+    message: "s3_import (Percona XtraBackup restore) is a MySQL feature -- engine must be 'mysql'"
+    expression: "!has(this.s3_import) || this.engine == 'mysql'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "charset_conflicts_with_create_sources"
+    message: "character_set_name only applies to a brand-new instance -- it cannot be combined with replicate_source_db, snapshot_identifier, restore_to_point_in_time, or s3_import"
+    expression: "this.character_set_name == '' || (this.replicate_source_db == '' && this.snapshot_identifier == '' && !has(this.restore_to_point_in_time) && !has(this.s3_import))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "timezone_not_with_s3_import"
+    message: "timezone (SQL Server) cannot be combined with s3_import (a MySQL restore)"
+    expression: "this.timezone == '' || !has(this.s3_import)"
   };
 
   option (buf.validate.message).cel = {
@@ -507,8 +575,38 @@ message AwsRdsInstanceSpec {
 
   option (buf.validate.message).cel = {
     id: "license_model_valid"
-    message: "license_model must be 'license-included', 'bring-your-own-license', or 'general-public-license' when set"
-    expression: "this.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license']"
+    message: "license_model must be one of 'license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', or 'bring-your-own-media' when set"
+    expression: "this.license_model == '' || this.license_model in ['license-included', 'bring-your-own-license', 'general-public-license', 'postgresql-license', 'marketplace-license', 'bring-your-own-media']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "engine_lifecycle_support_valid"
+    message: "engine_lifecycle_support must be 'open-source-rds-extended-support' or 'open-source-rds-extended-support-disabled' when set"
+    expression: "this.engine_lifecycle_support == '' || this.engine_lifecycle_support in ['open-source-rds-extended-support', 'open-source-rds-extended-support-disabled']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "own_parameters_xor_existing_group"
+    message: "parameters and parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group"
+    expression: "this.parameter_group_name == '' || this.parameters.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "parameters_require_engine_and_version"
+    message: "inline parameters require engine and a pinned engine_version -- the managed parameter group's family is derived from them and must match the running engine"
+    expression: "this.parameters.size() == 0 || (this.engine != '' && this.engine_version != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "own_options_xor_existing_group"
+    message: "options and option_group_name are mutually exclusive -- manage options here or bring an existing group"
+    expression: "this.option_group_name == '' || this.options.size() == 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "options_require_engine_and_version"
+    message: "inline options require engine and a pinned engine_version -- the managed option group's engine name and major version are derived from them and must match the running engine"
+    expression: "this.options.size() == 0 || (this.engine != '' && this.engine_version != '')"
   };
 }
 
@@ -597,4 +695,123 @@ message AwsRdsInstanceRestoreToPointInTime {
     message: "exactly one of restore_time or use_latest_restorable_time must be set"
     expression: "(this.restore_time != '') != this.use_latest_restorable_time"
   };
+}
+
+// AwsRdsInstanceS3Import restores the instance from a Percona
+// XtraBackup stored in S3 (MySQL only). Every field is create-time
+// only.
+message AwsRdsInstanceS3Import {
+  // The S3 bucket holding the backup files. Required.
+  string bucket_name = 1 [(buf.validate.field).required = true];
+
+  // The key prefix of the backup files within the bucket. Empty reads
+  // from the bucket root.
+  string bucket_prefix = 2;
+
+  // The IAM role RDS assumes to read the backup from S3. Reference an
+  // AwsIamRole role_arn output or pass a literal role ARN. Required.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ingestion_role = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The engine of the source backup. AWS accepts only "mysql" for
+  // instance S3 restores. Required.
+  string source_engine = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["mysql"]
+    }
+  ];
+
+  // The version of the source engine the backup was taken from (e.g.
+  // "8.0"). Required.
+  string source_engine_version = 5 [(buf.validate.field).required = true];
+}
+
+// AwsRdsInstanceIamRole associates one IAM role with the instance,
+// linked to a named engine feature. Managed as its own role-association
+// resource so roles attach and detach without touching the instance.
+message AwsRdsInstanceIamRole {
+  // The IAM role to associate. Reference an AwsIamRole role_arn output
+  // or pass a literal role ARN. The role owns its policies; the
+  // instance only assumes it. The role's trust policy MUST allow
+  // rds.amazonaws.com to assume it -- AWS validates that server-side at
+  // association time and rejects the call with InvalidParameterValue
+  // ("IAM role ARN value is invalid or does not include the required
+  // permissions") otherwise; no plan-time check catches it. Required.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The engine feature the role is linked to (e.g. "s3Import",
+  // "s3Export", "Lambda", "S3_INTEGRATION" -- the valid set is
+  // engine-specific). Required -- AWS rejects an instance role
+  // association without a feature name. Changing it replaces the
+  // association (the instance is untouched).
+  string feature_name = 2 [(buf.validate.field).required = true];
+}
+
+// AwsRdsInstanceParameter is one instance-level engine parameter,
+// applied through the module-managed DB parameter group.
+message AwsRdsInstanceParameter {
+  // The parameter name (e.g. "max_connections",
+  // "rds.force_ssl"). Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The parameter value. Required.
+  string value = 2 [(buf.validate.field).required = true];
+
+  // When the change lands: "immediate" (AWS default -- dynamic
+  // parameters apply now) or "pending-reboot" (static parameters wait
+  // for the next instance reboot).
+  string apply_method = 3;
+
+  option (buf.validate.message).cel = {
+    id: "apply_method_valid"
+    message: "apply_method must be 'immediate' or 'pending-reboot' when set"
+    expression: "this.apply_method == '' || this.apply_method in ['immediate', 'pending-reboot']"
+  };
+}
+
+// AwsRdsInstanceOption is one option-group option -- an engine feature
+// activated on the instance (e.g. Oracle TDE/OEM, SQL Server native
+// backup), applied through the module-managed option group.
+message AwsRdsInstanceOption {
+  // The option name (e.g. "TDE", "OEM", "SQLSERVER_BACKUP_RESTORE").
+  // Required.
+  string option_name = 1 [(buf.validate.field).required = true];
+
+  // Settings the option exposes, as name/value pairs (e.g. the
+  // IAM_ROLE_ARN setting of SQLSERVER_BACKUP_RESTORE).
+  repeated AwsRdsInstanceOptionSetting option_settings = 2;
+
+  // The port the option listens on, for options that open one (e.g.
+  // OEM's 1158). 0 omits the port.
+  int32 port = 3 [
+    (buf.validate.field).int32.gte = 0,
+    (buf.validate.field).int32.lte = 65535
+  ];
+
+  // The option version, for options that carry one.
+  string version = 4;
+
+  // Security groups granting access to the option's port. Reference
+  // AwsSecurityGroup security_group_id outputs or pass literal SG IDs.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_security_group_memberships = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}
+
+// AwsRdsInstanceOptionSetting is one name/value setting of an option.
+message AwsRdsInstanceOptionSetting {
+  // The setting name. Required.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The setting value. Required.
+  string value = 2 [(buf.validate.field).required = true];
 }

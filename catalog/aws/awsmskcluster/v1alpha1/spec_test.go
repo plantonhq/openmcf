@@ -9,6 +9,7 @@ import (
 	"github.com/plantonhq/planton/shared"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsMskClusterSpec(t *testing.T) {
@@ -205,7 +206,42 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 
 		ginkgo.It("should accept a cluster resource policy", func() {
 			input := validMinimalSpec()
-			input.Spec.ClusterPolicy = `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"AWS":"arn:aws:iam::444455556666:root"},"Action":["kafka:CreateVpcConnection"],"Resource":"*"}]}`
+			policy, buildErr := structpb.NewStruct(map[string]any{
+				"Version": "2012-10-17",
+				"Statement": []any{
+					map[string]any{
+						"Effect":    "Allow",
+						"Principal": map[string]any{"AWS": "arn:aws:iam::444455556666:root"},
+						"Action":    []any{"kafka:CreateVpcConnection"},
+						"Resource":  "*",
+					},
+				},
+			})
+			gomega.Expect(buildErr).To(gomega.BeNil())
+			input.Spec.ClusterPolicy = policy
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept declared topics with per-topic configs", func() {
+			input := validMinimalSpec()
+			input.Spec.Topics = []*AwsMskClusterTopic{
+				{
+					Name:              "orders.events",
+					PartitionCount:    6,
+					ReplicationFactor: 3,
+					Configs: map[string]string{
+						"retention.ms":        "604800000",
+						"cleanup.policy":      "delete",
+						"min.insync.replicas": "2",
+					},
+				},
+				{
+					Name:              "orders.events.dlq",
+					PartitionCount:    1,
+					ReplicationFactor: 3,
+				},
+			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -541,6 +577,61 @@ var _ = ginkgo.Describe("AwsMskClusterSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 				gomega.Expect(err.Error()).To(gomega.ContainSubstring("bucket is required"))
+			})
+		})
+
+		ginkgo.Context("topic validations", func() {
+			validTopic := func(name string) *AwsMskClusterTopic {
+				return &AwsMskClusterTopic{
+					Name:              name,
+					PartitionCount:    3,
+					ReplicationFactor: 3,
+				}
+			}
+
+			ginkgo.It("should fail on duplicate topic names", func() {
+				input := validMinimalSpec()
+				input.Spec.Topics = []*AwsMskClusterTopic{
+					validTopic("orders.events"),
+					validTopic("orders.events"),
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("topic names must be unique"))
+			})
+
+			ginkgo.It("should fail when replication_factor exceeds broker count", func() {
+				input := validMinimalSpec() // 3 brokers
+				topic := validTopic("orders.events")
+				topic.ReplicationFactor = 4
+				input.Spec.Topics = []*AwsMskClusterTopic{topic}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("cannot exceed number_of_broker_nodes"))
+			})
+
+			ginkgo.It("should fail on an illegal topic name character", func() {
+				input := validMinimalSpec()
+				input.Spec.Topics = []*AwsMskClusterTopic{validTopic("orders/events")}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should fail on the reserved '..' topic name", func() {
+				input := validMinimalSpec()
+				input.Spec.Topics = []*AwsMskClusterTopic{validTopic("..")}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+				gomega.Expect(err.Error()).To(gomega.ContainSubstring("cannot be '.' or '..'"))
+			})
+
+			ginkgo.It("should fail when partition_count is zero", func() {
+				input := validMinimalSpec()
+				topic := validTopic("orders.events")
+				topic.PartitionCount = 0
+				input.Spec.Topics = []*AwsMskClusterTopic{topic}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
 

@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremachinelearningbatchdeployment.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMachineLearningBatchDeploymentSpec** defines a batch
+// deployment on an Azure Machine Learning batch endpoint (ARM:
+// Microsoft.MachineLearningServices/workspaces/{ws}/
+// batchEndpoints/{endpoint}/deployments/{name}) -- the job RECIPE
+// behind the endpoint's address: which model to run, on which compute
+// pool, and how to split, retry, and collect the work. Nothing runs
+// or bills at create time; each endpoint invocation materializes a
+// job from this recipe.
+//
+// **The contract here is the ARM specification itself** (pinned
+// api-version 2025-06-01): azurerm carries no resource for ML
+// deployments, so both engines write the raw ARM shape and this
+// spec's validation rules carry the full contract burden -- there is
+// no provider-side schema behind them.
+//
+// **Everything in the recipe updates in place** via full PUT (ARM
+// flags nothing immutable on this surface -- unlike the online
+// deployment's ForceNew instance type); name, region and endpoint
+// replace the deployment.
+message AzureMachineLearningBatchDeploymentSpec {
+  // The batch endpoint the deployment serves, by ARM ID. The
+  // deployment's name is what the endpoint's default-deployment
+  // pointer routes submissions to. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef endpoint_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningBatchEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.batch_endpoint_id"
+  ];
+
+  // The deployment's name, unique on its endpoint (ARM's own rule,
+  // mirrored from the pinned specification: starts with a letter or
+  // digit, then letters, digits, hyphens and underscores) -- the key
+  // the endpoint's default-deployment pointer routes by. Changing
+  // the name replaces the deployment.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9-_]{0,254}$"
+  ];
+
+  // The Azure region the deployment lives in, e.g. "eastus". Must be
+  // its endpoint's own region. Fixed at creation.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The compute pool jobs run on, by ARM ID
+  // (.../workspaces/{ws}/computes/{name}) -- typically an
+  // AzureMachineLearningComputeCluster that scales to zero between
+  // jobs. Unset lets the service run jobs on serverless compute
+  // (where the workspace supports it).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef compute_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureMachineLearningComputeCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.machine_learning_compute_cluster_id"
+  ];
+
+  // Per-job compute sizing -- how many nodes a job spreads across
+  // and what VM size they run (within what the compute pool offers).
+  AzureMachineLearningBatchDeploymentResources resources = 5;
+
+  // The model the recipe runs -- a registered model asset referenced
+  // one of three ways (exactly one when the block is present). Unset
+  // is legal at the ARM layer for recipes whose environment embeds
+  // the model or whose pipeline component carries it.
+  AzureMachineLearningBatchDeploymentModel model = 6;
+
+  // The scoring code the recipe runs -- a registered code asset and
+  // the script inside it that processes each mini-batch. Unset is
+  // legal for MLflow models (the service generates scoring code).
+  AzureMachineLearningBatchDeploymentCodeConfiguration code_configuration = 7;
+
+  // The environment (container image + dependencies) the scoring
+  // code runs in: the ARM ID of a registered environment version or
+  // an azureml:// asset URI. Unset lets MLflow models infer one.
+  string environment_id = 8;
+
+  // Environment variables set in the scoring containers.
+  map<string, string> environment_variables = 9;
+
+  // How many files (file data) or bytes (tabular data) each scoring
+  // invocation receives. Unspecified applies 10 (the service's
+  // default).
+  optional int64 mini_batch_size = 10 [
+    (buf.validate.field).int64.gte = 1,
+    (dev.planton.shared.options.default) = "10"
+  ];
+
+  // Parallel scoring invocations per node. Unspecified applies 1
+  // (the service's default) -- raise it when the scoring code is
+  // I/O-bound.
+  optional int32 max_concurrency_per_instance = 11 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // Failures tolerated before the whole job aborts: file failures
+  // for file data, record failures for tabular data. Unspecified
+  // applies -1 (the service's default: ignore all failures and
+  // finish the job).
+  optional int32 error_threshold = 12 [
+    (buf.validate.field).int32.gte = -1,
+    (dev.planton.shared.options.default) = "-1"
+  ];
+
+  // Per-mini-batch retry behavior.
+  AzureMachineLearningBatchDeploymentRetrySettings retry_settings = 13;
+
+  // How job output is organized: "AppendRow" concatenates every
+  // invocation's returned rows into one output file (the service's
+  // default -- predictions-style output); "SummaryOnly" writes no
+  // aggregated file (the scoring code persists its own outputs).
+  string output_action = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AppendRow",
+        "SummaryOnly"
+      ]
+    }
+  ];
+
+  // The aggregated output file's name -- meaningful only with the
+  // AppendRow output action. Unset applies the service's default
+  // ("predictions.csv").
+  string output_file_name = 15;
+
+  // Log verbosity for job runs, the service's vocabulary exactly
+  // (increasing verbosity: Warning, Info, Debug). Unset applies the
+  // service's default (Info).
+  string logging_level = 16 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Warning",
+        "Info",
+        "Debug"
+      ]
+    }
+  ];
+
+  // Runs a registered PIPELINE COMPONENT per job instead of a model
+  // scoring recipe (ARM's PipelineComponent deployment type; absent
+  // means the default Model type). A pipeline-component recipe
+  // carries its own steps -- the model / code / environment fields
+  // above describe the Model type and do not feed a pipeline run.
+  AzureMachineLearningBatchDeploymentPipelineComponent pipeline_component = 17;
+
+  // The deployment's ARM property dictionary -- free-form key/value
+  // pairs some tooling reads. ARM allows ADDING entries but never
+  // removing or altering existing ones (the service's own contract;
+  // removals are ignored on update).
+  map<string, string> properties = 18;
+
+  // What the recipe does. Updatable in place.
+  string description = 19;
+
+  // Free-form tags applied to the deployment, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins. Updatable in
+  // place.
+  map<string, string> tags = 20;
+}
+
+// Per-job compute sizing.
+//
+// ARM's resources object also carries an untyped "properties" bag
+// (arbitrary JSON objects, no documented keys) -- deliberately NOT
+// modeled: a string-keyed message cannot carry arbitrary JSON values
+// faithfully, and no documented setting lives there.
+message AzureMachineLearningBatchDeploymentResources {
+  // Nodes a job spreads across. Unspecified applies 1 (the
+  // service's default). The compute pool's max node count is the
+  // real ceiling -- ARM accepts any positive count here.
+  optional int32 instance_count = 1 [
+    (buf.validate.field).int32.gte = 1,
+    (dev.planton.shared.options.default) = "1"
+  ];
+
+  // The VM size jobs request, e.g. "Standard_DS3_v2". Unset uses
+  // the compute pool's own size. Meaningful mainly for serverless
+  // compute -- a cluster pool already fixes its VM size.
+  string instance_type = 2;
+}
+
+// The model a batch recipe runs: a registered asset referenced one
+// of three ways. The block set IS the reference type (no
+// discriminator field) -- exactly one must be present.
+message AzureMachineLearningBatchDeploymentModel {
+  // Reference by asset ID -- the standard arm: a registered model
+  // version's ARM resource ID or azureml:// asset URI.
+  AzureMachineLearningBatchDeploymentModelIdReference id = 1;
+
+  // Reference by datastore path -- a model stored at a path in a
+  // workspace datastore (the legacy addressing arm).
+  AzureMachineLearningBatchDeploymentModelDataPathReference data_path = 2;
+
+  // Reference by job output -- a model produced by a training job's
+  // output (the lineage arm).
+  AzureMachineLearningBatchDeploymentModelOutputPathReference output_path = 3;
+
+  option (buf.validate.message).cel = {
+    id: "ml_batch_deployment_model_exactly_one"
+    message: "exactly one of id, data_path or output_path must be set"
+    expression: "(has(this.id) ? 1 : 0) + (has(this.data_path) ? 1 : 0) + (has(this.output_path) ? 1 : 0) == 1"
+  };
+}
+
+// A model referenced by registered asset ID.
+message AzureMachineLearningBatchDeploymentModelIdReference {
+  // The registered model version's ARM resource ID
+  // (.../workspaces/{ws}/models/{name}/versions/{v}) or azureml://
+  // asset URI -- required whenever this arm is used (ARM's own
+  // contract).
+  string asset_id = 1 [(buf.validate.field).required = true];
+}
+
+// A model referenced by datastore path.
+message AzureMachineLearningBatchDeploymentModelDataPathReference {
+  // The workspace datastore holding the model, by ARM resource ID
+  // (.../workspaces/{ws}/datastores/{name}).
+  string datastore_id = 1;
+
+  // The file or directory path inside the datastore.
+  string path = 2;
+}
+
+// A model referenced by a training job's output.
+message AzureMachineLearningBatchDeploymentModelOutputPathReference {
+  // The training job that produced the model, by ARM resource ID.
+  string job_id = 1;
+
+  // The file or directory path inside the job's output.
+  string path = 2;
+}
+
+// The scoring code a batch recipe runs.
+message AzureMachineLearningBatchDeploymentCodeConfiguration {
+  // The registered code asset holding the scoring script, by ARM ID
+  // (.../workspaces/{ws}/codes/{name}/versions/{v}). Unset runs the
+  // script from the environment image alone.
+  string code_id = 1;
+
+  // The script that processes each mini-batch, e.g. "score.py" --
+  // required whenever the block is present (ARM's own contract).
+  string scoring_script = 2 [(buf.validate.field).required = true];
+}
+
+// Per-mini-batch retry behavior.
+message AzureMachineLearningBatchDeploymentRetrySettings {
+  // Retries per failed mini-batch. Unspecified applies 3 (the
+  // service's default).
+  optional int32 max_retries = 1 [
+    (buf.validate.field).int32.gte = 0,
+    (dev.planton.shared.options.default) = "3"
+  ];
+
+  // Per-mini-batch invocation timeout, as an ISO-8601 duration
+  // (e.g. "PT30S"). Unset applies the service default (PT30S).
+  string timeout = 2 [(buf.validate.field).cel = {
+    id: "ml_batch_deployment_retry_timeout_iso8601"
+    message: "timeout must be an ISO-8601 duration, e.g. PT30S"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+}
+
+// A pipeline-component batch recipe: each endpoint invocation runs a
+// registered pipeline component as a pipeline job.
+message AzureMachineLearningBatchDeploymentPipelineComponent {
+  // The registered pipeline component to run, by ARM resource ID
+  // (.../workspaces/{ws}/components/{name}/versions/{v}) --
+  // required whenever this block is present: ARM marks it optional
+  // but a pipeline recipe with no component runs nothing (a
+  // recorded tightening).
+  string component_id = 1 [(buf.validate.field).required = true];
+
+  // Run-time settings applied to each pipeline job, string-valued
+  // (e.g. "default_compute": the compute pool pipeline steps run on,
+  // "continue_on_step_failure": "false"). String values are the
+  // typed engine SDK's own shape for this bag; both engines send
+  // them verbatim.
+  map<string, string> settings = 2;
+
+  // Tags applied to each pipeline JOB the recipe creates (distinct
+  // from the deployment's own ARM tags).
+  map<string, string> job_tags = 3;
+
+  // A description applied to each pipeline job.
+  string job_description = 4;
+}

@@ -9,14 +9,40 @@ spec:
   # nothing, since unset networking falls back to the default VPC), then
   # runs deploy -> DescribeInstances verify -> destroy ->
   # verify-destroyed on both provisioners. The scenario launches one
-  # t3.micro with IMDSv2 required, an encrypted gp3 root volume, and a
-  # template-introducer-bearing user-data script, so a full lane runs in
-  # minutes at nano-instance cost. Deliberately not in the live
-  # scenario: launch-template composition (proven by the auto-scaling
-  # group's live chain), Spot/placement/dedicated-host arms (account-
-  # capacity-dependent), and secondary network interfaces (need
-  # multi-card instance types) -- all proven by CEL spec tests and the
-  # offline gate.
+  # t3.micro with IMDSv2 required, an encrypted gp3 root volume carrying
+  # a per-volume tag (verify via DescribeVolumes), source_dest_check
+  # deliberately UNSET (the omit path must leave AWS's default ON -- the
+  # field is presence-typed), and a template-introducer-bearing user-data
+  # script, so a full lane runs in minutes at nano-instance cost.
+  # Deliberately not in the live scenario, each with its unblock
+  # condition: launch-template composition (proven by the auto-scaling
+  # group's live chain); Spot/placement/dedicated-host arms
+  # (account-capacity-dependent); secondary network interfaces (need
+  # multi-card instance types); the pre-provisioned primary-ENI arm
+  # (needs a standalone ENI fixture -- unblocks when an
+  # AwsNetworkInterface kind ships; proven offline via the
+  # 04-static-eni-identity preset's plan/preview on both engines -- the
+  # shape that previously died on the provider's source_dest_check
+  # ConflictsWith); the capacity-block / interruptible-reservation
+  # markets and capacity-reservations-only preference (need purchased
+  # capacity -- owner budget decision; proven offline via the
+  # 05-capacity-block-ml preset); force_destroy-under-protection (the
+  # 2026-08-12 proof session DECIDED this deferral: pairing
+  # disable_api_termination with force_destroy live risks a protected
+  # orphan if the disable step fails mid-destroy, and no lane budget
+  # justifies that manual-cleanup exposure -- the canonical manifest
+  # carries the pairing for offline proof; unblock: an owner-accepted
+  # manual-cleanup window).
+  #
+  # Proven 2026-08-12 (both engines, all eight phases): Pulumi 5m50s /
+  # Terraform 5m14s. Live evidence on BOTH lanes' instances:
+  # DescribeInstanceAttribute reports SourceDestCheck true with
+  # source_dest_check UNSET in the spec (the presence-typed omit path
+  # leaves AWS's default on -- the provider applies its own schema
+  # default, visible in the Terraform plan as source_dest_check = true),
+  # and DescribeVolumes shows the volume-role=boot tag on the encrypted
+  # gp3 root volume itself (per-volume tags apply post-creation by a
+  # separate call; a tags-missing read right at launch is timing).
   tier: 1
   status: green
   validated_provisioners:

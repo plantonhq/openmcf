@@ -10,6 +10,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Secrets Encryption Configuration** -- configured only when `kmsKeyArn` is provided; enables envelope encryption of Kubernetes secrets using your customer-managed KMS key (a one-way door: it cannot be disabled on a live cluster)
 - **Control Plane Log Streams** -- created for each log type in `enabledClusterLogTypes`; streams to CloudWatch Logs
 - **Auto Mode Capabilities** -- when `autoMode.enabled` is set, AWS manages compute, block storage, and load balancing for the cluster's workloads without any node group
+- **Provisioned Control-Plane Capacity** -- when `controlPlaneScalingTier` names a provisioned tier, the API server runs on pre-provisioned capacity instead of EKS's reactive scaling
+- **Hybrid-Node Remote Networks** -- when `remoteNetworks` declares on-premises node/pod CIDR ranges, machines in those ranges can register as workers over VPN or Direct Connect
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -103,6 +105,10 @@ These are the most important decisions when configuring an EKS cluster. Explore 
 
 **Operational guard rails** -- `deletionProtection` blocks accidental control-plane deletion; `zonalShiftEnabled` lets Amazon Application Recovery Controller drain an impaired Availability Zone; `bootstrapSelfManagedAddons: false` yields a bring-your-own-add-ons cluster for GitOps flows.
 
+**Control-plane scale** -- `controlPlaneScalingTier` pre-provisions API-server capacity (`tier-xl` through `tier-8xl`, billed hourly on top of the cluster fee) for very large or bursty clusters; `standard` keeps the free reactive default. Updates in place.
+
+**Hybrid nodes** -- `remoteNetworks.nodeCidrs` (and optionally `podCidrs`) declare the on-premises private ranges allowed to join. Declaring ranges is free; AWS bills per vCPU only when hybrid nodes register. Ranges update in place, so adding a site later is a plain update.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -138,6 +144,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Private endpoint cluster** -- `endpointPublicAccess: false` with `endpointPrivateAccess: true`: the API server is reachable only inside the VPC (VPN, Direct Connect, or bastion). Required for compliance-sensitive environments (PCI-DSS, HIPAA). Start from the **Private Endpoint** preset.
 
 **Hands-off compute** -- `autoMode.enabled: true` with the `general-purpose` and `system` built-in pools and an Auto Mode node role: AWS operates the compute so there are no node groups to patch or scale.
+
+**Hybrid fleet** -- `remoteNetworks` with your on-prem node/pod CIDRs plus regular AwsEksNodeGroup resources for the cloud side: one Kubernetes API over cloud and on-premises capacity. Start from the **Hybrid Nodes** preset.
 
 ## Works With
 

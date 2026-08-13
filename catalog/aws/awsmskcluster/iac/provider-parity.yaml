@@ -1,0 +1,153 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_msk_cluster:
+    mappings:
+      # --- Broker placement: the spec flattens broker_node_group_info's
+      # one-broker-group shape to top-level fields (there is exactly one
+      # broker group per cluster).
+      - spec: spec.instance_type
+        arg: broker_node_group_info.instance_type
+      - spec: spec.subnet_ids
+        arg: broker_node_group_info.client_subnets
+      - spec: spec.security_group_ids
+        arg: broker_node_group_info.security_groups
+      # --- Storage: the ebs_storage_info wrapper flattened.
+      - spec: spec.ebs_volume_size_gib
+        arg: broker_node_group_info.storage_info.ebs_storage_info.volume_size
+      - spec: spec.provisioned_throughput_enabled
+        arg: broker_node_group_info.storage_info.ebs_storage_info.provisioned_throughput.enabled
+      - spec: spec.provisioned_throughput_mbs
+        arg: broker_node_group_info.storage_info.ebs_storage_info.provisioned_throughput.volume_throughput
+      # --- Connectivity: the connectivity_info wrapper flattened; the
+      # public_access block collapses to its one leaf.
+      - spec: spec.network_type
+        arg: broker_node_group_info.connectivity_info.network_type
+      - spec: spec.public_access_type
+        arg: broker_node_group_info.connectivity_info.public_access.type
+      # PrivateLink auth schemes: the spec names the scheme toggles for what
+      # they enable; tls is a plain bool on the provider side.
+      - spec: spec.vpc_connectivity.sasl_iam_enabled
+        arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.iam
+      - spec: spec.vpc_connectivity.sasl_scram_enabled
+        arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.sasl.scram
+      - spec: spec.vpc_connectivity.tls_enabled
+        arg: broker_node_group_info.connectivity_info.vpc_connectivity.client_authentication.tls
+      # --- Client authentication: the spec names the scheme toggles.
+      - spec: spec.authentication.sasl_iam_enabled
+        arg: client_authentication.sasl.iam
+      - spec: spec.authentication.sasl_scram_enabled
+        arg: client_authentication.sasl.scram
+      - spec: spec.authentication.tls_certificate_authority_arns
+        arg: client_authentication.tls.certificate_authority_arns
+      - spec: spec.authentication.unauthenticated
+        arg: client_authentication.unauthenticated
+      # --- Encryption: the encryption_info wrapper flattened.
+      - spec: spec.kms_key_arn
+        arg: encryption_info.encryption_at_rest_kms_key_arn
+      - spec: spec.client_broker_encryption
+        arg: encryption_info.encryption_in_transit.client_broker
+      - spec: spec.in_cluster_encryption
+        arg: encryption_info.encryption_in_transit.in_cluster
+      # --- External configuration reference.
+      - spec: spec.configuration_arn
+        arg: configuration_info.arn
+      - spec: spec.configuration_revision
+        arg: configuration_info.revision
+      # --- Logging: the logging_info.broker_logs wrapper flattened to
+      # spec.logging.
+      - spec: spec.logging.cloudwatch_logs.enabled
+        arg: logging_info.broker_logs.cloudwatch_logs.enabled
+      - spec: spec.logging.cloudwatch_logs.log_group
+        arg: logging_info.broker_logs.cloudwatch_logs.log_group
+      - spec: spec.logging.firehose.enabled
+        arg: logging_info.broker_logs.firehose.enabled
+      - spec: spec.logging.firehose.delivery_stream
+        arg: logging_info.broker_logs.firehose.delivery_stream
+      - spec: spec.logging.s3.enabled
+        arg: logging_info.broker_logs.s3.enabled
+      - spec: spec.logging.s3.bucket
+        arg: logging_info.broker_logs.s3.bucket
+      - spec: spec.logging.s3.prefix
+        arg: logging_info.broker_logs.s3.prefix
+      # --- Open monitoring: the prometheus wrapper flattened to two toggles.
+      - spec: spec.jmx_exporter_enabled
+        arg: open_monitoring.prometheus.jmx_exporter.enabled_in_broker
+      - spec: spec.node_exporter_enabled
+        arg: open_monitoring.prometheus.node_exporter.enabled_in_broker
+      # --- Express-broker rebalancing: the one-leaf block collapses.
+      - spec: spec.rebalancing_status
+        arg: rebalancing.status
+    exclusions:
+      - arg: cluster_name
+        reason: wired by the module from metadata.name -- the cluster name is platform naming, never free-form spec surface
+      - arg: broker_node_group_info.az_distribution
+        reason: DEFAULT is the enum's only valid value at the pin -- a knob with one position carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata (planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The module-managed MSK Configuration for inline spec.server_properties --
+  # pure glue (a named server.properties document consumed by exactly one
+  # cluster). server_properties exact-matches spec.server_properties under
+  # the default root.
+  aws_msk_configuration:
+    mappings:
+      # The module pins the configuration to the cluster's own Kafka version
+      # (one spec field, two provider homes).
+      - spec: spec.kafka_version
+        arg: kafka_versions
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the configuration is owned by exactly one cluster
+      - arg: description
+        reason: not rendered -- the folded configuration is identified by the cluster's name; a free-form description carries no configuration
+
+  # A resource-based IAM policy on the cluster -- the grant behind
+  # cross-account PrivateLink access.
+  aws_msk_cluster_policy:
+    mappings:
+      - spec: spec.cluster_policy
+        arg: policy
+    exclusions:
+      - arg: cluster_arn
+        reason: wired by the module to the ARN of the cluster this kind creates -- never free-form user surface
+
+  # SASL/SCRAM credential associations: one per Secrets Manager ARN in
+  # spec.scram_secret_arns.
+  aws_msk_single_scram_secret_association:
+    mappings:
+      - spec: spec.scram_secret_arns
+        arg: secret_arn
+    exclusions:
+      - arg: cluster_arn
+        reason: wired by the module to the ARN of the cluster this kind creates -- never free-form user surface
+
+  # Declared Kafka topics -- one aws_msk_topic per spec.topics entry, keyed
+  # by topic name; name, partition_count, replication_factor, and configs
+  # exact-match below the subtree (configs is the JSON serialization of the
+  # entry's map).
+  aws_msk_topic:
+    specRoot: spec.topics
+    mappings:
+      # v6 per-resource region override -- the module deploys every resource
+      # in spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: cluster_arn
+        reason: wired by the module to the ARN of the cluster this kind creates -- topics are cluster-scoped children, never free-form user surface
+
+specExclusions:
+  # Block-presence toggle: true renders the provider's client_authentication
+  # tls{} block (whose one leaf maps from tls_certificate_authority_arns) --
+  # block presence IS the configuration, so there is no argument to match.
+  - field: spec.authentication.tls_enabled
+    reason: renders the provider's client_authentication tls{} block -- block presence is the configuration; its one leaf maps from tls_certificate_authority_arns

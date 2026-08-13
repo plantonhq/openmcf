@@ -6,3 +6,17 @@ spec:
   region: us-west-2
   cidrBlock: 10.0.0.0/16
   enableDnsHostnames: true
+  # Additional address space grows in place: an explicit block, an IPAM-sized
+  # allocation, or a pool-pinned block per entry.
+  secondaryIpv4Cidrs:
+    - cidrBlock: 10.1.0.0/16
+    - ipamPoolId:
+        value: ipam-pool-0demo1234abcd
+      netmaskLength: 20
+  # Additional IPv6 ranges: one source per entry (Amazon-provided here).
+  secondaryIpv6Cidrs:
+    - assignGenerated: true
+  # VPC Encryption Control: observe unencrypted traffic paths before
+  # enforcing (move to enforce with exclusions once findings are clean).
+  encryptionControl:
+    mode: monitor

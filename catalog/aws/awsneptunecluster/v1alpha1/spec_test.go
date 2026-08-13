@@ -334,4 +334,112 @@ var _ = ginkgo.Describe("AwsNeptuneClusterSpec Custom Validation Tests", func() 
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("allow_major_version_upgrade requires neptune_instance_parameter_group_name"))
 		})
 	})
+
+	ginkgo.Describe("custom endpoint validations", func() {
+
+		ginkgo.It("accepts a reader custom endpoint with static members", func() {
+			input := validCluster()
+			input.Spec.CustomEndpoints = []*AwsNeptuneClusterCustomEndpoint{{
+				Name:          "analytics",
+				EndpointType:  "READER",
+				StaticMembers: []string{input.Spec.Instances[0].Name},
+			}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an endpoint that pins and excludes members at once", func() {
+			input := validCluster()
+			input.Spec.CustomEndpoints = []*AwsNeptuneClusterCustomEndpoint{{
+				Name:            "analytics",
+				EndpointType:    "READER",
+				StaticMembers:   []string{input.Spec.Instances[0].Name},
+				ExcludedMembers: []string{input.Spec.Instances[0].Name},
+			}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+		})
+
+		ginkgo.It("rejects duplicate endpoint names", func() {
+			input := validCluster()
+			input.Spec.CustomEndpoints = []*AwsNeptuneClusterCustomEndpoint{
+				{Name: "analytics", EndpointType: "READER"},
+				{Name: "analytics", EndpointType: "ANY"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must be unique"))
+		})
+
+		ginkgo.It("rejects a member that names no instance entry", func() {
+			input := validCluster()
+			input.Spec.CustomEndpoints = []*AwsNeptuneClusterCustomEndpoint{{
+				Name:          "analytics",
+				EndpointType:  "READER",
+				StaticMembers: []string{"ghost"},
+			}}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must name entries of spec.instances"))
+		})
+	})
+
+	ginkgo.Describe("instance parameter validations", func() {
+
+		ginkgo.It("accepts inline instance parameters with a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "1.4.5.1"
+			input.Spec.InstanceParameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_query_timeout", Value: "120000"},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects inline instance parameters alongside an existing instance group name", func() {
+			input := validCluster()
+			input.Spec.EngineVersion = "1.4.5.1"
+			input.Spec.NeptuneInstanceParameterGroupName = "existing-group"
+			input.Spec.InstanceParameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_query_timeout", Value: "120000"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("instance_parameters and neptune_instance_parameter_group_name are mutually exclusive"))
+		})
+
+		ginkgo.It("rejects inline instance parameters without a pinned engine version", func() {
+			input := validCluster()
+			input.Spec.InstanceParameters = []*AwsNeptuneClusterParameter{
+				{Name: "neptune_query_timeout", Value: "120000"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("inline instance_parameters require a pinned engine_version"))
+		})
+	})
+
+	ginkgo.Describe("identifier format validations", func() {
+
+		ginkgo.It("rejects an instance name with a trailing hyphen -- the provider's identifier rule", func() {
+			input := validCluster()
+			input.Spec.Instances[0].Name = "reader-"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a final snapshot identifier with a double hyphen", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "final--snap"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a global cluster identifier that starts with a digit", func() {
+			input := validCluster()
+			input.Spec.GlobalClusterIdentifier = "1global"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
 })

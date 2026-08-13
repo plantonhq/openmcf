@@ -385,6 +385,9 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationGateway | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzureApplicationGateway | `spec.frontendIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureApplicationGateway | `spec.privateLinkConfigurations[].ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| AzureBastionHost | `spec.ipConfiguration.subnetId` | `status.outputs.subnet_id` |
+| AzureCognitiveAccount | `spec.networkAcls.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
+| AzureCognitiveAccount | `spec.networkInjection.subnetId` | `status.outputs.subnet_id` |
 | AzureContainerAppEnvironment | `spec.infrastructureSubnetId` | `status.outputs.subnet_id` |
 | AzureCosmosdbAccount | `spec.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureEventHubNamespace | `spec.networkRuleSets.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
@@ -398,11 +401,17 @@ Fields on other kinds that can point at this resource:
 | AzureLinuxWebApp | `spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureLinuxWebApp | `spec.virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureLoadBalancer | `spec.frontendIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
+| AzureMachineLearningComputeCluster | `spec.subnetId` | `status.outputs.subnet_id` |
+| AzureMachineLearningComputeInstance | `spec.subnetId` | `status.outputs.subnet_id` |
+| AzureMachineLearningWorkspace | `spec.serverlessCompute.subnetId` | `status.outputs.subnet_id` |
 | AzureMssqlServer | `spec.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureMysqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |
 | AzureNetworkInterface | `spec.ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzurePostgresqlFlexibleServer | `spec.delegatedSubnetId` | `status.outputs.subnet_id` |
+| AzurePrivateDnsResolver | `spec.inboundEndpoints[].subnetId` | `status.outputs.subnet_id` |
+| AzurePrivateDnsResolver | `spec.outboundEndpoints[].subnetId` | `status.outputs.subnet_id` |
 | AzurePrivateEndpoint | `spec.subnetId` | `status.outputs.subnet_id` |
+| AzurePrivateLinkService | `spec.natIpConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureRedisCache | `spec.subnetId` | `status.outputs.subnet_id` |
 | AzureServiceBusNamespace | `spec.networkRuleSet.networkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureStorageAccount | `spec.networkRules.virtualNetworkSubnetIds` | `status.outputs.subnet_id` |

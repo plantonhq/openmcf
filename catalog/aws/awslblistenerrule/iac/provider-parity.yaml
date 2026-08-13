@@ -1,0 +1,49 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lb_listener_rule:
+    mappings:
+      # Repeated-message fields are plural per proto style; provider blocks
+      # are singular. Exact matching resumes below each mapped subtree.
+      - spec: spec.actions
+        arg: action
+      - spec: spec.conditions
+        arg: condition
+      - spec: spec.transforms
+        arg: transform
+      - spec: spec.actions.forward.target_groups
+        arg: action.forward.target_group
+      - spec: spec.actions.jwt_validation.additional_claims
+        arg: action.jwt_validation.additional_claim
+      # The provider nests each rewrite under a single-purpose *_config
+      # wrapper block; the spec names the transform directly.
+      - spec: spec.transforms.host_header_rewrite
+        arg: transform.host_header_rewrite_config.rewrite
+      - spec: spec.transforms.url_rewrite
+        arg: transform.url_rewrite_config.rewrite
+      # The provider's query_string is a bare set of key/value blocks; the
+      # spec names the collection for what it holds.
+      - spec: spec.conditions.query_string.pairs
+        arg: condition.query_string
+      # The spec carries the unit suffix the provider leaves implicit.
+      - spec: spec.actions.forward.stickiness.duration_seconds
+        arg: action.forward.stickiness.duration
+      - spec: spec.actions.authenticate_cognito.session_timeout_seconds
+        arg: action.authenticate_cognito.session_timeout
+      - spec: spec.actions.authenticate_oidc.session_timeout_seconds
+        arg: action.authenticate_oidc.session_timeout
+    exclusions:
+      # Covered-alternative shorthand.
+      - arg: action.target_group_arn
+        reason: single-target shorthand for the forward block -- the spec models the general form (actions.forward.target_groups), which expresses the same routing plus weights and stickiness
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

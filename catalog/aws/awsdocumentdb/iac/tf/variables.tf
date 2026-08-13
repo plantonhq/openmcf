@@ -34,6 +34,8 @@ variable "spec" {
       preferred_maintenance_window = optional(string, "")
       ca_cert_identifier = optional(string, "")
       copy_tags_to_snapshot = optional(bool, false)
+      certificate_rotation_restart = optional(bool)
+      apply_immediately = optional(bool, false)
     })), [])
     serverless_v2_scaling = optional(object({
       min_capacity = number

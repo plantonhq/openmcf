@@ -1,0 +1,37 @@
+# Offline-plan test manifest. Exercises the deep seams: the AMLToken
+# auth vocabulary, a dual system+user identity, both traffic maps, the
+# public-network bool -> Enabled/Disabled wire mapping, bring-your-own
+# initial keys through the write-only sensitive overlay, and the ARM
+# property dictionary.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineEndpoint
+metadata:
+  name: test-ml-online-endpoint
+  org: test-org
+  env: dev
+spec:
+  workspaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.MachineLearningServices/workspaces/test-ml-workspace
+  name: test-fraud-scoring
+  region: eastus
+  authMode: Key
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/test-uai
+  traffic:
+    blue: 90
+    green: 10
+  mirrorTraffic:
+    shadow: 25
+  publicNetworkAccessEnabled: false
+  initialAuthKeys:
+    primaryKey:
+      value: offline-plan-placeholder-primary-key
+    secondaryKey:
+      value: offline-plan-placeholder-secondary-key
+  properties:
+    team: ml-platform
+  description: Offline-plan endpoint exercising the full surface
+  tags:
+    cost-center: ml-platform

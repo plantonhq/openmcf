@@ -823,6 +823,62 @@ var _ = ginkgo.Describe("AwsCodeBuildProjectSpec validations", func() {
 			})
 		})
 
+		ginkgo.Context("with a fleet_arn that is not a CodeBuild fleet ARN", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.Environment.FleetArn = "my-fleet"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a host kernel on a Linux container environment", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.Environment.HostKernel = "LINUX_KERNEL_6"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a host kernel on an EC2 environment", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.Environment = &AwsCodeBuildEnvironment{
+					Type:        "ARM_EC2",
+					ComputeType: "ATTRIBUTE_BASED_COMPUTE",
+					Image:       "aws/codebuild/amazonlinux2-aarch64-standard:3.0",
+					FleetArn:    "arn:aws:codebuild:us-west-2:123456789012:fleet/my-fleet",
+					HostKernel:  "LINUX_KERNEL_LATEST",
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a host kernel on a Windows environment", func() {
+			ginkgo.It("should return a validation error (kernel selection is Linux container/EC2 only)", func() {
+				spec := minimalGitHubSpec()
+				spec.Environment = &AwsCodeBuildEnvironment{
+					Type:        "WINDOWS_SERVER_2022_CONTAINER",
+					ComputeType: "BUILD_GENERAL1_MEDIUM",
+					Image:       "aws/codebuild/windows-base:2022-1.0",
+					HostKernel:  "LINUX_KERNEL_6",
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an invalid host kernel value", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.Environment.HostKernel = "LINUX_KERNEL_5"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with a registry credential without SERVICE_ROLE pulls", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalGitHubSpec()

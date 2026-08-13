@@ -17,3 +17,13 @@ spec:
     - audit
     - authenticator
   upgradeSupportType: STANDARD
+  # Provisioned control-plane capacity for large/bursty clusters (billed
+  # hourly on top of the cluster fee; "standard" is the free default).
+  controlPlaneScalingTier: tier-xl
+  # EKS Hybrid Nodes: the on-premises node/pod ranges allowed to join over
+  # VPN/Direct Connect. Declaring ranges is free.
+  remoteNetworks:
+    nodeCidrs:
+      - 10.80.0.0/16
+    podCidrs:
+      - 10.85.0.0/16

@@ -98,11 +98,16 @@ func createEndpointGroup(
 			epArgs := &globalaccelerator.EndpointGroupEndpointConfigurationArgs{
 				EndpointId: pulumi.StringPtr(ep.EndpointId.GetValue()),
 			}
-			// Omitted lets AWS assign the default weight (128); an explicit 0
-			// stops routing to the endpoint without removing it.
+			// AWS's documented default weight is 128, but the provider has no
+			// default of its own and materializes an omitted weight as 0 —
+			// the "route no traffic" value, silently draining the endpoint.
+			// The module therefore materializes 128 itself; an explicit 0
+			// still stops routing to the endpoint without removing it.
+			weight := 128
 			if ep.Weight != nil {
-				epArgs.Weight = pulumi.IntPtr(int(ep.GetWeight()))
+				weight = int(ep.GetWeight())
 			}
+			epArgs.Weight = pulumi.IntPtr(weight)
 			// Tri-state: omitted lets AWS apply its per-endpoint-type default;
 			// an explicit value pins it. Only meaningful for ALB and EC2
 			// endpoints.

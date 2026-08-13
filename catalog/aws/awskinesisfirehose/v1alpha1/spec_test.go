@@ -193,9 +193,70 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 	ginkgo.It("accepts Extended S3 with data format conversion to Parquet", func() {
 		s3 := minimalExtendedS3()
 		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
-			Enabled:      true,
-			InputFormat:  "OPENX_JSON",
-			OutputFormat: "PARQUET",
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "analytics",
+				TableName:    "events",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/firehose-glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts fully tuned Parquet and Hive JSON serde arms", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled: true,
+			HiveJson: &AwsKinesisFirehoseHiveJsonDeserializer{
+				TimestampFormats: []string{"yyyy-MM-dd'T'HH:mm:ss", "millis"},
+			},
+			Parquet: &AwsKinesisFirehoseParquetSerializer{
+				Compression:                 "GZIP",
+				BlockSizeBytes:              134217728,
+				PageSizeBytes:               2097152,
+				MaxPaddingBytes:             1048576,
+				EnableDictionaryCompression: true,
+				WriterVersion:               "V2",
+			},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "analytics",
+				TableName:    "events",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/firehose-glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a fully tuned ORC serializer with OpenX key mappings", func() {
+		s3 := minimalExtendedS3()
+		caseSensitive := false
+		fpp := 0.01
+		tolerance := 0.0
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled: true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{
+				CaseInsensitive:                    &caseSensitive,
+				ColumnToJsonKeyMappings:            map[string]string{"ts": "timestamp"},
+				ConvertDotsInJsonKeysToUnderscores: true,
+			},
+			Orc: &AwsKinesisFirehoseOrcSerializer{
+				Compression:                         "ZLIB",
+				BlockSizeBytes:                      134217728,
+				StripeSizeBytes:                     16777216,
+				BloomFilterColumns:                  []string{"customer_id", "event_type"},
+				BloomFilterFalsePositiveProbability: &fpp,
+				DictionaryKeyThreshold:              0.8,
+				EnablePadding:                       true,
+				PaddingTolerance:                    &tolerance,
+				FormatVersion:                       "V0_12",
+				RowIndexStride:                      5000,
+			},
 			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
 				DatabaseName: "analytics",
 				TableName:    "events",
@@ -592,10 +653,11 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 				RetryDurationInSeconds: 600,
 			},
 			DataFormatConversion: &AwsKinesisFirehoseDataFormatConversion{
-				Enabled:            true,
-				InputFormat:        "OPENX_JSON",
-				OutputFormat:       "PARQUET",
-				ParquetCompression: "SNAPPY",
+				Enabled:   true,
+				OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+				Parquet: &AwsKinesisFirehoseParquetSerializer{
+					Compression: "SNAPPY",
+				},
 				Schema: &AwsKinesisFirehoseGlueSchemaConfig{
 					DatabaseName: "analytics",
 					TableName:    "events_v2",
@@ -731,6 +793,18 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("fails when MSK read_from_timestamp is not RFC 3339", func() {
+		spec.MskSource = &AwsKinesisFirehoseMskSource{
+			MskClusterArn:     strRef("arn:aws:kafka:us-east-1:123456789012:cluster/my-cluster/abc"),
+			TopicName:         "events",
+			Connectivity:      "PRIVATE",
+			RoleArn:           strRef("arn:aws:iam::123456789012:role/firehose-msk"),
+			ReadFromTimestamp: "2026-05-01 00:00:00",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	// =========================================================================
 	// Failure: Extended S3 validations
 	// =========================================================================
@@ -773,10 +847,27 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 	// Failure: Data format conversion validations
 	// =========================================================================
 
-	ginkgo.It("fails when data format conversion is enabled without output_format", func() {
+	ginkgo.It("fails when data format conversion is enabled without a serializer arm", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when data format conversion is enabled without a deserializer arm", func() {
 		s3 := minimalExtendedS3()
 		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
 			Enabled: true,
+			Parquet: &AwsKinesisFirehoseParquetSerializer{},
 			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
 				DatabaseName: "db",
 				TableName:    "tbl",
@@ -791,19 +882,22 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 	ginkgo.It("fails when data format conversion is enabled without schema", func() {
 		s3 := minimalExtendedS3()
 		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
-			Enabled:      true,
-			OutputFormat: "PARQUET",
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{},
 		}
 		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when data format conversion has invalid output_format", func() {
+	ginkgo.It("fails when both serializer arms are set", func() {
 		s3 := minimalExtendedS3()
 		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
-			Enabled:      true,
-			OutputFormat: "AVRO",
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{},
+			Orc:       &AwsKinesisFirehoseOrcSerializer{},
 			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
 				DatabaseName: "db",
 				TableName:    "tbl",
@@ -815,12 +909,116 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
-	ginkgo.It("fails when parquet_compression is set with ORC output_format", func() {
+	ginkgo.It("fails when both deserializer arms are set", func() {
 		s3 := minimalExtendedS3()
 		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
-			Enabled:            true,
-			OutputFormat:       "ORC",
-			ParquetCompression: "SNAPPY",
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			HiveJson:  &AwsKinesisFirehoseHiveJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when parquet compression is not a legal codec", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{Compression: "ZLIB"},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when parquet page size is below the 64 KiB floor", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Parquet:   &AwsKinesisFirehoseParquetSerializer{PageSizeBytes: 4096},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ORC stripe size is below the 8 MiB floor", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Orc:       &AwsKinesisFirehoseOrcSerializer{StripeSizeBytes: 1048576},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ORC bloom filter probability is above 1", func() {
+		s3 := minimalExtendedS3()
+		fpp := 1.5
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Orc:       &AwsKinesisFirehoseOrcSerializer{BloomFilterFalsePositiveProbability: &fpp},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ORC row index stride is below 1000", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Orc:       &AwsKinesisFirehoseOrcSerializer{RowIndexStride: 500},
+			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
+				DatabaseName: "db",
+				TableName:    "tbl",
+				RoleArn:      strRef("arn:aws:iam::123456789012:role/glue"),
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when ORC format version is not V0_11 or V0_12", func() {
+		s3 := minimalExtendedS3()
+		s3.DataFormatConversion = &AwsKinesisFirehoseDataFormatConversion{
+			Enabled:   true,
+			OpenXJson: &AwsKinesisFirehoseOpenXJsonDeserializer{},
+			Orc:       &AwsKinesisFirehoseOrcSerializer{FormatVersion: "V1"},
 			Schema: &AwsKinesisFirehoseGlueSchemaConfig{
 				DatabaseName: "db",
 				TableName:    "tbl",
@@ -914,6 +1112,54 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a Lambda processor with a fractional sub-1-MiB buffer size", func() {
+		s3 := minimalExtendedS3()
+		s3.Processing = &AwsKinesisFirehoseProcessing{
+			Enabled: true,
+			Processors: []*AwsKinesisFirehoseProcessor{
+				{Lambda: &AwsKinesisFirehoseLambdaProcessor{
+					LambdaArn:       strRef("arn:aws:lambda:us-east-1:123456789012:function:fn"),
+					BufferSizeInMbs: 0.5,
+				}},
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when a Lambda processor buffer_size_in_mbs is below 0.2", func() {
+		s3 := minimalExtendedS3()
+		s3.Processing = &AwsKinesisFirehoseProcessing{
+			Enabled: true,
+			Processors: []*AwsKinesisFirehoseProcessor{
+				{Lambda: &AwsKinesisFirehoseLambdaProcessor{
+					LambdaArn:       strRef("arn:aws:lambda:us-east-1:123456789012:function:fn"),
+					BufferSizeInMbs: 0.1,
+				}},
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a Lambda processor with a dedicated invocation role", func() {
+		s3 := minimalExtendedS3()
+		s3.Processing = &AwsKinesisFirehoseProcessing{
+			Enabled: true,
+			Processors: []*AwsKinesisFirehoseProcessor{
+				{Lambda: &AwsKinesisFirehoseLambdaProcessor{
+					LambdaArn: strRef("arn:aws:lambda:us-east-1:123456789012:function:fn"),
+					RoleArn:   strRef("arn:aws:iam::123456789012:role/firehose-lambda-invoke"),
+				}},
+			},
+		}
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_ExtendedS3{ExtendedS3: s3}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	ginkgo.It("fails when a metadata extraction processor has an invalid parsing engine", func() {

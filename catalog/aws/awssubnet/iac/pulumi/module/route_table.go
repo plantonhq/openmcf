@@ -9,20 +9,24 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// configureRouting attaches a route table to the subnet. Inline routes create a
-// dedicated, subnet-owned table; route_table_id adopts an external one. When
-// neither is set, the subnet stays on the VPC main route table and route_table_id
-// is exported empty.
+// configureRouting attaches a route table to the subnet. Inline routes and/or
+// VGW route propagation create a dedicated, subnet-owned table; route_table_id
+// adopts an external one. When neither is set, the subnet stays on the VPC main
+// route table and route_table_id is exported empty.
 func configureRouting(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderResource, createdSubnet *ec2.Subnet) error {
 	spec := locals.AwsSubnet.Spec
 
-	if spec.RouteTableId == nil && len(spec.Routes) == 0 {
+	// Propagation without inline routes is a legal owned-table shape: the
+	// table's contents then come entirely from the virtual private gateway.
+	ownsRouteTable := len(spec.Routes) > 0 || len(spec.PropagatingVgws) > 0
+
+	if spec.RouteTableId == nil && !ownsRouteTable {
 		ctx.Export(OpRouteTableId, pulumi.String(""))
 		return nil
 	}
 
 	var routeTableId pulumi.StringInput
-	if len(spec.Routes) > 0 {
+	if ownsRouteTable {
 		createdRouteTable, err := routeTable(ctx, locals, provider)
 		if err != nil {
 			return err
@@ -53,12 +57,20 @@ func routeTable(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderRes
 		routes[i] = routeArgs(route)
 	}
 
-	createdRouteTable, err := ec2.NewRouteTable(ctx, name, &ec2.RouteTableArgs{
+	routeTableArgs := &ec2.RouteTableArgs{
 		VpcId:  pulumi.String(spec.VpcId.GetValue()),
 		Routes: routes,
 		Tags: convertstringmaps.ConvertGoStringMapToPulumiStringMap(
 			stringmaps.AddEntry(locals.AwsTags, "Name", name)),
-	}, pulumi.Provider(provider))
+	}
+
+	// Site-to-Site VPN / Direct Connect routes propagate in from these
+	// virtual private gateways instead of being declared route by route.
+	if len(spec.PropagatingVgws) > 0 {
+		routeTableArgs.PropagatingVgws = pulumi.ToStringArray(spec.PropagatingVgws)
+	}
+
+	createdRouteTable, err := ec2.NewRouteTable(ctx, name, routeTableArgs, pulumi.Provider(provider))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create route table")
 	}
@@ -97,6 +109,17 @@ func routeArgs(route *awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute) ec2.RouteT
 		args.NetworkInterfaceId = pulumi.StringPtr(targetID)
 	case awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute_egress_only_internet_gateway:
 		args.EgressOnlyGatewayId = pulumi.StringPtr(targetID)
+	case awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute_carrier_gateway:
+		args.CarrierGatewayId = pulumi.StringPtr(targetID)
+	// core_network and odb_network targets are ARNs, not ids. For ODB routes
+	// AWS reports a gateway id alongside the ARN; providers before 6.53.0
+	// surfaced that as perpetual drift -- the pinned provider handles it.
+	case awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute_core_network:
+		args.CoreNetworkArn = pulumi.StringPtr(targetID)
+	case awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute_local_gateway:
+		args.LocalGatewayId = pulumi.StringPtr(targetID)
+	case awssubnetv1alpha1.AwsSubnetSpec_AwsSubnetRoute_odb_network:
+		args.OdbNetworkArn = pulumi.StringPtr(targetID)
 	}
 
 	return args

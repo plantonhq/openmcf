@@ -8,6 +8,8 @@ go_library(
         "log_delivery.go",
         "main.go",
         "outputs.go",
+        "risk_configuration.go",
+        "user_groups.go",
         "user_pool.go",
     ],
     importpath = "github.com/plantonhq/planton/catalog/aws/awscognitouserpool/iac/pulumi/module",

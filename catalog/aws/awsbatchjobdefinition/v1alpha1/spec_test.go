@@ -46,6 +46,25 @@ func minimalFargateSpec() *AwsBatchJobDefinitionSpec {
 	}
 }
 
+func boolPtr(v bool) *bool    { return &v }
+func int64Ptr(v int64) *int64 { return &v }
+
+func minimalEksSpec() *AwsBatchJobDefinitionSpec {
+	return &AwsBatchJobDefinitionSpec{
+		Region: "us-west-2",
+		Eks: &AwsBatchJobDefinitionEks{
+			Containers: []*AwsBatchJobDefinitionEksContainer{
+				{
+					Image: "public.ecr.aws/amazonlinux/amazonlinux:2023",
+					Resources: &AwsBatchJobDefinitionEksResources{
+						Limits: map[string]string{"cpu": "1", "memory": "2Gi"},
+					},
+				},
+			},
+		},
+	}
+}
+
 var _ = ginkgo.Describe("AwsBatchJobDefinitionSpec validations", func() {
 
 	ginkgo.Describe("When valid input is passed", func() {
@@ -161,13 +180,95 @@ var _ = ginkgo.Describe("AwsBatchJobDefinitionSpec validations", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("with a minimal EKS pod job", func() {
+			ginkgo.It("should not return a validation error", func() {
+				err := protovalidate.Validate(minimalEksSpec())
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with the full EKS pod surface", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].Name = "main"
+				spec.Eks.Containers[0].Command = []string{"python"}
+				spec.Eks.Containers[0].Args = []string{"process.py", "Ref::input_path"}
+				spec.Eks.Containers[0].Env = map[string]string{"MODE": "batch"}
+				spec.Eks.Containers[0].ImagePullPolicy = "IfNotPresent"
+				spec.Eks.Containers[0].Resources.Requests = map[string]string{"cpu": "500m", "memory": "1Gi"}
+				spec.Eks.Containers[0].SecurityContext = &AwsBatchJobDefinitionEksSecurityContext{
+					RunAsUser:                int64Ptr(1000),
+					RunAsGroup:               int64Ptr(1000),
+					RunAsNonRoot:             true,
+					AllowPrivilegeEscalation: boolPtr(false),
+					ReadOnlyRootFileSystem:   true,
+				}
+				spec.Eks.Containers[0].VolumeMounts = []*AwsBatchJobDefinitionEksVolumeMount{
+					{Name: "scratch", MountPath: "/tmp/scratch"},
+					{Name: "config", MountPath: "/etc/config", ReadOnly: true},
+				}
+				spec.Eks.InitContainers = []*AwsBatchJobDefinitionEksContainer{
+					{
+						Image:     "public.ecr.aws/amazonlinux/amazonlinux:2023",
+						Name:      "fetch-data",
+						Command:   []string{"sh", "-c", "echo ready"},
+						Resources: &AwsBatchJobDefinitionEksResources{Requests: map[string]string{"cpu": "250m", "memory": "256Mi"}},
+					},
+				}
+				spec.Eks.HostNetwork = boolPtr(false)
+				spec.Eks.DnsPolicy = "ClusterFirst"
+				spec.Eks.ServiceAccountName = "batch-jobs"
+				spec.Eks.PodLabels = map[string]string{"team": "genomics"}
+				spec.Eks.ImagePullSecretNames = []string{"registry-creds"}
+				spec.Eks.ShareProcessNamespace = true
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{
+					{Name: "scratch", EmptyDir: &AwsBatchJobDefinitionEksEmptyDir{Medium: "Memory", SizeLimit: "1Gi"}},
+					{Name: "config", Secret: &AwsBatchJobDefinitionEksSecretVolume{SecretName: "job-config", Optional: true}},
+					{Name: "node-cache", HostPath: "/mnt/cache"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an EKS container running explicitly as root", func() {
+			ginkgo.It("should accept run_as_user 0 (presence, not zero-value)", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].SecurityContext = &AwsBatchJobDefinitionEksSecurityContext{
+					RunAsUser: int64Ptr(0),
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with retry strategy and timeout on an EKS job", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalEksSpec()
+				spec.RetryStrategy = &AwsBatchJobDefinitionRetryStrategy{Attempts: 2}
+				spec.Timeout = &AwsBatchJobDefinitionTimeout{AttemptDurationSeconds: 600}
+				spec.SchedulingPriority = 10
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
 
-		ginkgo.Context("with no container", func() {
+		ginkgo.Context("with neither workload arm", func() {
 			ginkgo.It("should return a validation error", func() {
 				err := protovalidate.Validate(&AwsBatchJobDefinitionSpec{Region: "us-west-2"})
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with both workload arms set", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalEc2Spec()
+				spec.Eks = minimalEksSpec().Eks
+				err := protovalidate.Validate(spec)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
@@ -399,6 +500,145 @@ var _ = ginkgo.Describe("AwsBatchJobDefinitionSpec validations", func() {
 				}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with ECS-only toggles on an EKS job", func() {
+			ginkgo.It("should reject platform_capabilities", func() {
+				spec := minimalEksSpec()
+				spec.PlatformCapabilities = []string{"EC2"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject propagate_tags", func() {
+				spec := minimalEksSpec()
+				spec.PropagateTags = true
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an invalid EKS container set", func() {
+			ginkgo.It("should reject an empty containers list", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers = nil
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject more than 10 containers", func() {
+				spec := minimalEksSpec()
+				for i := 0; i < 10; i++ {
+					spec.Eks.Containers = append(spec.Eks.Containers, &AwsBatchJobDefinitionEksContainer{
+						Image: "public.ecr.aws/amazonlinux/amazonlinux:2023",
+					})
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a container without an image", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].Image = ""
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a container name that is not a DNS-1123 label", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].Name = "Main_Container"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a reserved environment variable name", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].Env = map[string]string{"AWS_BATCH_JOB_ID": "x"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject an invalid image pull policy", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].ImagePullPolicy = "Sometimes"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject an empty resources block", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].Resources = &AwsBatchJobDefinitionEksResources{}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with invalid EKS pod settings", func() {
+			ginkgo.It("should reject an invalid dns_policy", func() {
+				spec := minimalEksSpec()
+				spec.Eks.DnsPolicy = "NodeFirst"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with invalid EKS volumes", func() {
+			ginkgo.It("should reject a volume mount referencing an undeclared volume", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Containers[0].VolumeMounts = []*AwsBatchJobDefinitionEksVolumeMount{
+					{Name: "missing", MountPath: "/mnt/data"},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject an init container's dangling volume mount", func() {
+				spec := minimalEksSpec()
+				spec.Eks.InitContainers = []*AwsBatchJobDefinitionEksContainer{
+					{
+						Image:        "public.ecr.aws/amazonlinux/amazonlinux:2023",
+						Resources:    &AwsBatchJobDefinitionEksResources{Requests: map[string]string{"cpu": "250m"}},
+						VolumeMounts: []*AwsBatchJobDefinitionEksVolumeMount{{Name: "missing", MountPath: "/mnt"}},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a volume with no backing", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{{Name: "scratch"}}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a volume with two backings", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{
+					{
+						Name:     "scratch",
+						EmptyDir: &AwsBatchJobDefinitionEksEmptyDir{SizeLimit: "1Gi"},
+						HostPath: "/mnt/scratch",
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject a volume name that is not a DNS-1123 label", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{
+					{Name: "Scratch Vol", EmptyDir: &AwsBatchJobDefinitionEksEmptyDir{SizeLimit: "1Gi"}},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject an invalid emptyDir medium", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{
+					{Name: "scratch", EmptyDir: &AwsBatchJobDefinitionEksEmptyDir{Medium: "Disk", SizeLimit: "1Gi"}},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+			ginkgo.It("should reject an emptyDir without a size limit and a bad quantity", func() {
+				spec := minimalEksSpec()
+				spec.Eks.Volumes = []*AwsBatchJobDefinitionEksVolume{
+					{Name: "scratch", EmptyDir: &AwsBatchJobDefinitionEksEmptyDir{}},
+				}
+				gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+				spec.Eks.Volumes[0].EmptyDir.SizeLimit = "one-gig"
+				gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
 			})
 		})
 	})

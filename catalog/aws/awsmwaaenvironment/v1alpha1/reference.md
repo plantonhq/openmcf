@@ -122,8 +122,13 @@ Minor version upgrades are applied in-place; major version changes force environ
 airflow_configuration_options overrides specific Apache Airflow configuration properties.
 Keys use the Airflow "section.property" format, e.g., "core.default_timezone",
 "webserver.dag_default_view", "celery.worker_autoscale".
-Values may contain sensitive information (database URIs, API keys) -- treat as confidential.
-See https://docs.aws.amazon.com/mwaa/latest/userguide/configuring-env-variables.html for allowed keys.
+Values may contain sensitive information (database URIs, API keys) -- treat as
+confidential. The Terraform provider marks the whole map Sensitive and redacts it in
+plan output; prefer Airflow connections/variables backed by Secrets Manager for real
+credentials rather than pasting them here.
+Machinery note: the platform's sensitive marker cannot attach to map
+fields (and the coverage gate scopes to name-flagged fields), so the
+Terraform provider's Sensitive treatment is the redaction this map gets.
 
 ### spec.sourceBucketArn
 
@@ -313,9 +318,11 @@ supported range for Airflow 2.x on standard environment classes.
 webserver_access_mode controls how the Airflow web UI is accessed.
 "PRIVATE_ONLY" (default): accessible only within the VPC via VPC endpoint.
 "PUBLIC_ONLY": accessible over the internet with IAM-based login.
+"PUBLIC_AND_PRIVATE": reachable both over the internet and privately from
+within the VPC.
 
 - default: `PRIVATE_ONLY`
-- rule: {"string":{"in":["PRIVATE_ONLY","PUBLIC_ONLY"]}}
+- rule: {"string":{"in":["PRIVATE_ONLY","PUBLIC_ONLY","PUBLIC_AND_PRIVATE"]}}
 
 ### spec.endpointManagement
 
@@ -467,6 +474,8 @@ log_level sets the minimum severity of log messages delivered.
 weekly_maintenance_window_start is the preferred start time for weekly maintenance.
 Format: "DAY:HH:MM" in UTC (e.g., "TUE:03:30", "SUN:00:00").
 During maintenance, MWAA may apply patches or updates. If omitted, AWS selects a window.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(MON|TUE|WED|THU|FRI|SAT|SUN):([01][0-9]|2[0-3]):[0-5][0-9]$"}}
 
 ### spec.workerReplacementStrategy
 

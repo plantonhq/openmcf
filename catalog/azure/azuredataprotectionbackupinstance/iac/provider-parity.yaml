@@ -1,0 +1,79 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers six provider resources as variants -- exactly one of
+# the spec's blob_storage / disk / kubernetes_cluster /
+# mysql_flexible_server / postgresql_flexible_server /
+# data_lake_storage blocks is set, and the module creates the matching
+# resource. Shared fields (name, vault_id, backup_policy_id) live at
+# the spec root and match by exact name where the provider uses them;
+# region carries the family-wide rename to the provider's location;
+# variant-scoped arguments map into their variant block below.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_protection_backup_instance_blob_storage:
+    mappings:
+      - spec: spec.region
+        arg: location
+      - spec: spec.blob_storage.storage_account_id
+        arg: storage_account_id
+      - spec: spec.blob_storage.storage_account_container_names
+        arg: storage_account_container_names
+
+  azurerm_data_protection_backup_instance_disk:
+    mappings:
+      - spec: spec.region
+        arg: location
+      - spec: spec.disk.disk_id
+        arg: disk_id
+      - spec: spec.disk.snapshot_resource_group_name
+        arg: snapshot_resource_group_name
+      - spec: spec.disk.snapshot_subscription_id
+        arg: snapshot_subscription_id
+
+  azurerm_data_protection_backup_instance_kubernetes_cluster:
+    mappings:
+      - spec: spec.region
+        arg: location
+      - spec: spec.kubernetes_cluster.kubernetes_cluster_id
+        arg: kubernetes_cluster_id
+      - spec: spec.kubernetes_cluster.snapshot_resource_group_name
+        arg: snapshot_resource_group_name
+      # Prefix mapping: every nested filter/switch argument derives
+      # through it (the nested field names match the provider's).
+      - spec: spec.kubernetes_cluster.backup_datasource_parameters
+        arg: backup_datasource_parameters
+
+  azurerm_data_protection_backup_instance_mysql_flexible_server:
+    mappings:
+      - spec: spec.region
+        arg: location
+      - spec: spec.mysql_flexible_server.server_id
+        arg: server_id
+
+  azurerm_data_protection_backup_instance_postgresql_flexible_server:
+    mappings:
+      - spec: spec.region
+        arg: location
+      - spec: spec.postgresql_flexible_server.server_id
+        arg: server_id
+
+  azurerm_data_protection_backup_instance_data_lake_storage:
+    mappings:
+      - spec: spec.region
+        arg: location
+      # This resource names the same vault and policy arguments its
+      # own way -- same values, provider-side renames.
+      - spec: spec.vault_id
+        arg: data_protection_backup_vault_id
+      - spec: spec.backup_policy_id
+        arg: backup_policy_data_lake_storage_id
+      - spec: spec.data_lake_storage.storage_account_id
+        arg: storage_account_id
+      - spec: spec.data_lake_storage.storage_container_names
+        arg: storage_container_names

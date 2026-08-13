@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpnsite.v1alpha1;
+
+// **AzureVpnSiteStackOutputs** captures the outputs of provisioning a
+// VPN site.
+message AzureVpnSiteStackOutputs {
+  // The Azure Resource Manager ID of the VPN site -- what a
+  // connection references as its remote_vpn_site_id.
+  // Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Network/vpnSites/{name}
+  string vpn_site_id = 1;
+
+  // The name of the VPN site.
+  string vpn_site_name = 2;
+
+  // The ARM ID of each link on the site, keyed by the link's name from
+  // the spec -- what a connection's vpn_links reference as their
+  // vpn_site_link_id.
+  // Example valueFrom fieldPath: status.outputs.link_ids.primary-isp
+  map<string, string> link_ids = 3;
+}

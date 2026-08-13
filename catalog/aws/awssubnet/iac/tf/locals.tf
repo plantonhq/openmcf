@@ -16,4 +16,9 @@ locals {
       "planton.ai/resource-id"   = var.metadata.id
     }
   )
+
+  # The subnet owns a dedicated route table when it declares inline routes
+  # and/or VGW propagation (spec CEL forbids either alongside an external
+  # route_table_id).
+  owns_route_table = length(var.spec.routes) > 0 || length(var.spec.propagating_vgws) > 0
 }

@@ -76,20 +76,42 @@ message AwsStepFunctionSpec {
   // the latest saved revision.
   bool publish = 5;
 
+  // Named aliases for the state machine. Each alias points at the version
+  // published by this deployment (requires publish: true) and exposes a
+  // stable ARN consumers can invoke while the underlying version advances
+  // on every configuration change. Aliases are keyed by name: renaming an
+  // entry replaces that alias without touching its siblings.
+  //
+  // Weighted canary routing between two specific versions is an imperative
+  // deployment-shift operation (the routing weights change DURING a
+  // rollout, not in a declarative snapshot) and is deliberately not
+  // modeled; each alias here routes 100% of traffic to the version this
+  // deployment published.
+  repeated AwsStepFunctionAlias aliases = 9;
+
   // ---------------------------------------------------------------------------
   // Observability
   // ---------------------------------------------------------------------------
 
-  // Logging configuration for execution history events. When omitted, logging
-  // is disabled (level OFF). Logging is supported for both STANDARD and EXPRESS
-  // state machines.
+  // Logging configuration for execution history events. When omitted, no
+  // logging configuration is sent (new state machines default to level OFF).
+  // To explicitly turn logging OFF on a state machine that previously had it
+  // on, keep this block with level: "OFF" — removing the block entirely
+  // sends nothing and the provider keeps the last applied logging state.
+  // Logging is supported for both STANDARD and EXPRESS state machines.
   AwsStepFunctionLoggingConfig logging = 6;
 
   // Enable AWS X-Ray tracing for the state machine. When true, Step Functions
   // sends trace data to X-Ray for visualizing request flows. Ensure the
   // execution role has xray:PutTraceSegments and xray:PutTelemetryRecords
   // permissions.
-  bool tracing_enabled = 7;
+  //
+  // Tri-state: leave unset to keep the AWS default (tracing off, and no
+  // tracing configuration is sent). Set explicitly to true or false to pin
+  // the state — an explicit false is what turns tracing OFF on a state
+  // machine that previously had it on (simply removing a true value sends
+  // nothing, and the provider keeps the last applied state).
+  optional bool tracing_enabled = 7;
 
   // ---------------------------------------------------------------------------
   // Encryption
@@ -99,6 +121,11 @@ message AwsStepFunctionSpec {
   // AWS-owned keys (default, no additional cost). Provide this block to
   // use a customer-managed KMS key for encrypting state machine data,
   // execution history, and input/output payloads.
+  //
+  // One-way in practice: once a customer-managed key has been applied,
+  // REMOVING this block does not revert the state machine to AWS-owned
+  // keys — the provider suppresses the block's removal and keeps the last
+  // applied key. Reverting requires an out-of-band update today.
   AwsStepFunctionEncryptionConfig encryption = 8;
 
   // ---------------------------------------------------------------------------
@@ -119,6 +146,44 @@ message AwsStepFunctionSpec {
     message: "logging.log_destination is required when logging.level is not 'OFF'"
     expression: "!has(this.logging) || this.logging.level == '' || this.logging.level == 'OFF' || has(this.logging.log_destination)"
   };
+
+  // Aliases are snapshots of published versions — without publish there is
+  // no version for an alias to route to.
+  option (buf.validate.message).cel = {
+    id: "aliases_require_publish"
+    message: "aliases require publish: true (an alias routes to the published version)"
+    expression: "this.aliases.size() == 0 || this.publish"
+  };
+
+  // Alias names key their provider resources; duplicates would silently
+  // collapse into one alias.
+  option (buf.validate.message).cel = {
+    id: "alias_names_unique"
+    message: "aliases[].name must be unique"
+    expression: "this.aliases.map(a, a.name).unique()"
+  };
+
+  // Mirrors the provider's role ARN validation for literal values so a typo
+  // fails at manifest validation instead of plan time (references resolve at
+  // deploy time and are exempt).
+  option (buf.validate.message).cel = {
+    id: "role_arn_format"
+    message: "role_arn literal value must be an IAM role ARN (arn:...)"
+    expression: "!has(this.role_arn) || this.role_arn.value == '' || this.role_arn.value.startsWith('arn:')"
+  };
+}
+
+// AwsStepFunctionAlias defines one named alias on the state machine. The
+// alias routes 100% of traffic to the version published by this deployment
+// and its ARN is exported in stack outputs keyed by name.
+message AwsStepFunctionAlias {
+  // Alias name. 1-80 characters matching [0-9A-Za-z_-]. The name keys the
+  // provider resource: renaming replaces this alias without touching
+  // siblings.
+  string name = 1 [(buf.validate.field).string.pattern = "^[0-9A-Za-z_-]{1,80}$"];
+
+  // Optional human-readable description of the alias (up to 256 characters).
+  string description = 2 [(buf.validate.field).string.max_len = 256];
 }
 
 // AwsStepFunctionLoggingConfig configures execution history logging to

@@ -130,19 +130,21 @@ spec:
 | `spec.contributorInsights.enabled` | `bool` |  |  |  |
 | `spec.contributorInsights.mode` | `string` |  |  |  |
 | `spec.contributorInsights.gsiIndexNames` | `[]string` |  |  |  |
-| `spec.resourcePolicy` | `string` |  |  |  |
+| `spec.resourcePolicy` | `AwsDynamodbResourcePolicy` |  |  |  |
+| `spec.resourcePolicy.policy` | `object` | yes |  |  |
+| `spec.resourcePolicy.confirmRemoveSelfResourceAccess` | `bool` |  |  |  |
 | `spec.kinesisStreamingDestination` | `AwsDynamodbKinesisStreamingDestination` |  |  |  |
 | `spec.kinesisStreamingDestination.streamArn` | `string \| valueFrom` | yes |  | AwsKinesisStream (`status.outputs.stream_arn`) |
 | `spec.kinesisStreamingDestination.approximateCreationDateTimePrecision` | `string` |  |  |  |
 | `spec.replicas` | `[]AwsDynamodbReplica` |  |  |  |
-| `spec.replicas[].regionName` | `string` | yes |  |  |
+| `spec.replicas[].regionName` | `string` |  |  |  |
 | `spec.replicas[].kmsKeyArn` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.replicas[].pointInTimeRecovery` | `bool` |  |  |  |
 | `spec.replicas[].deletionProtectionEnabled` | `bool` |  |  |  |
 | `spec.replicas[].propagateTags` | `bool` |  |  |  |
 | `spec.replicas[].consistencyMode` | `string` |  |  |  |
 | `spec.globalTableWitness` | `AwsDynamodbGlobalTableWitness` |  |  |  |
-| `spec.globalTableWitness.regionName` | `string` | yes |  |  |
+| `spec.globalTableWitness.regionName` | `string` |  |  |  |
 | `spec.restoreSourceName` | `string` |  |  |  |
 | `spec.restoreSourceTableArn` | `string` |  |  |  |
 | `spec.restoreDateTime` | `string` |  |  |  |
@@ -157,6 +159,28 @@ spec:
 | `spec.importTable.csv` | `AwsDynamodbImportTableCsv` |  |  |  |
 | `spec.importTable.csv.delimiter` | `string` |  |  |  |
 | `spec.importTable.csv.headerList` | `[]string` |  |  |  |
+| `spec.autoscaling` | `AwsDynamodbAutoscaling` |  |  |  |
+| `spec.autoscaling.read` | `AwsDynamodbCapacityAutoscaling` |  |  |  |
+| `spec.autoscaling.read.minCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.read.maxCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.read.targetUtilizationPercent` | `int32` |  |  |  |
+| `spec.autoscaling.read.scaleInCooldownSeconds` | `int32` |  |  |  |
+| `spec.autoscaling.read.scaleOutCooldownSeconds` | `int32` |  |  |  |
+| `spec.autoscaling.write` | `AwsDynamodbCapacityAutoscaling` |  |  |  |
+| `spec.autoscaling.write.minCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.write.maxCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.write.targetUtilizationPercent` | `int32` |  |  |  |
+| `spec.autoscaling.write.scaleInCooldownSeconds` | `int32` |  |  |  |
+| `spec.autoscaling.write.scaleOutCooldownSeconds` | `int32` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments` | `[]AwsDynamodbScheduledAdjustment` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].name` | `string` | yes |  |  |
+| `spec.autoscaling.scheduledAdjustments[].dimension` | `string` | yes |  |  |
+| `spec.autoscaling.scheduledAdjustments[].schedule` | `string` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].timezone` | `string` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].minCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].maxCapacity` | `int64` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].startTime` | `string` |  |  |  |
+| `spec.autoscaling.scheduledAdjustments[].endTime` | `string` |  |  |  |
 
 ## Field Details
 
@@ -243,9 +267,11 @@ The declared attribute this key element uses.
 
 Reserved read/write capacity for the table. Required when the
 effective billing mode is PROVISIONED; must stay unset for
-PAY_PER_REQUEST. Pair with auto-scaling needs by sizing for the
-sustained baseline -- on-demand is usually the better answer for
-spiky traffic.
+PAY_PER_REQUEST. On provisioned tables the modules enforce this
+capacity through an Application Auto Scaling target (pinned
+min = max) so that capacity changes here always land -- and so that
+adding the autoscaling block later never replaces the table. With
+autoscaling configured, these values are the initial capacity only.
 
 ### spec.provisionedThroughput.readCapacityUnits
 
@@ -330,7 +356,7 @@ on PROVISIONED tables -- their own capacity. Added, modified, and
 removed in place on a live table (one GSI mutation at a time, an
 AWS serialization rule).
 
-- rule: GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements
+- rule: GSI key_schema must carry 1-4 HASH elements first, then at most 4 RANGE elements -- no HASH may follow a RANGE
 
 ### spec.globalSecondaryIndexes[].name
 
@@ -349,7 +375,7 @@ keys), then 0-4 RANGE elements (multi-attribute sort keys). Every
 element names a declared attribute. The common case is one HASH
 and at most one RANGE.
 
-- rule: {"repeated":{"minItems":"1"}}
+- rule: {"repeated":{"minItems":"1","maxItems":"8"}}
 
 ### spec.globalSecondaryIndexes[].keySchema[].attributeName
 
@@ -531,7 +557,7 @@ not need to be declared in attribute_definitions.
 Time-to-live: DynamoDB deletes items (within ~48h, free of write
 cost) once the epoch-seconds value in the named attribute passes.
 
-- rule: attribute_name is required when TTL is enabled and must stay empty when disabled
+- rule: attribute_name is required when TTL is enabled
 
 ### spec.ttl.enabled
 
@@ -544,7 +570,10 @@ Turn TTL on.
 `string`
 
 The attribute holding the expiry time as epoch seconds. Required
-when enabled; must stay empty when disabled.
+when enabled. MAY (and should) stay set when flipping enabled to
+false: AWS's UpdateTimeToLive call requires the attribute name when
+DISABLING TTL too, so keeping it is what makes the disable
+expressible.
 
 ### spec.streamEnabled
 
@@ -601,6 +630,7 @@ aws/dynamodb key or a customer-managed KMS key you control
 policies of your own).
 
 - rule: kms_key_arn only applies when server-side encryption is enabled
+- rule: kms_key_arn literal value must be a KMS key ARN (arn:...)
 
 ### spec.serverSideEncryption.enabled
 
@@ -679,11 +709,31 @@ addition to the table.
 
 ### spec.resourcePolicy
 
-`string`
+`AwsDynamodbResourcePolicy`
 
-A resource-based IAM policy attached to the table, as a JSON
-document -- cross-account access grants without assuming roles.
-Table-scoped only (stream policies are a separate niche surface).
+A resource-based IAM policy attached to the table -- cross-account
+access grants without assuming roles. Table-scoped only (stream
+policies are a separate niche surface).
+
+### spec.resourcePolicy.policy
+
+`object` · required
+
+The policy document, written as native YAML (serialized to JSON for
+the AWS API). Statements address the table ARN and, for index
+access, "{table_arn}/index/*".
+
+- rule: {"required":true}
+
+### spec.resourcePolicy.confirmRemoveSelfResourceAccess
+
+`bool`
+
+Allow this policy to remove the applying caller's OWN access to the
+table. AWS refuses such a policy unless this is set -- the guard
+against locking yourself out. Set it deliberately for lockdown and
+hand-off policies where the deploying principal is meant to lose
+access.
 
 ### spec.kinesisStreamingDestination
 
@@ -693,6 +743,8 @@ A Kinesis Data Stream that receives the table's item-level change
 data -- the fan-out path for analytics and search-indexing
 pipelines (independent of DynamoDB Streams and usable alongside
 it). AWS allows exactly one Kinesis destination per table.
+
+- rule: stream_arn literal value must be a Kinesis stream ARN (arn:...)
 
 ### spec.kinesisStreamingDestination.streamArn
 
@@ -725,14 +777,16 @@ region's replica in place. For Multi-Region Strong Consistency,
 set consistency_mode STRONG on every replica (exactly two
 replicas, or one replica plus global_table_witness).
 
+- rule: kms_key_arn literal value must be a KMS key ARN (arn:...)
+
 ### spec.replicas[].regionName
 
-`string` · required
+`string`
 
 The region the replica lives in. Must differ from the table's own
 region.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"string":{"pattern":"^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$"}}
 
 ### spec.replicas[].kmsKeyArn
 
@@ -791,12 +845,12 @@ alternative is two STRONG replicas and no witness).
 
 ### spec.globalTableWitness.regionName
 
-`string` · required
+`string`
 
 The witness region. Must differ from the table's region and the
 replica's region.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"string":{"pattern":"^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$"}}
 
 ### spec.restoreSourceName
 
@@ -816,6 +870,8 @@ cross-region / cross-account form of point-in-time restore.
 Server-side encryption must be configured on the restored table.
 Mutually exclusive with the other restore/import sources.
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:"}}
+
 ### spec.restoreDateTime
 
 `string`
@@ -823,6 +879,8 @@ Mutually exclusive with the other restore/import sources.
 The point in time to restore, as a UTC RFC3339 timestamp (e.g.
 "2026-07-04T06:00:00Z"). Exactly one of restore_date_time or
 restore_to_latest_time accompanies a point-in-time restore source.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"}}
 
 ### spec.restoreToLatestTime
 
@@ -838,6 +896,8 @@ instead of a specific timestamp.
 Create this table by restoring an on-demand or AWS Backup backup,
 by ARN. Key schema and attributes are inherited from the backup.
 Mutually exclusive with the other restore/import sources.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:"}}
 
 ### spec.importTable
 
@@ -912,6 +972,216 @@ The field delimiter. Empty keeps the AWS default (",").
 Column names, when the files carry no header row. Empty treats the
 first row of each file as the header.
 
+### spec.autoscaling
+
+`AwsDynamodbAutoscaling`
+
+Application Auto Scaling for PROVISIONED tables: target-tracking
+policies that hold read/write capacity utilization near a target,
+plus optional scheduled capacity adjustments. Application Auto
+Scaling owns the table's live capacity on EVERY provisioned table
+(without this block the modules register pinned min = max targets
+from provisioned_throughput, so declared capacity still lands),
+which is what lets this block be added or removed in place -- the
+table resource itself never changes shape. Per-GSI autoscaling is
+deliberately not modeled: neither engine can exempt only the inline
+indexes' capacity from reconciliation, so an autoscaled GSI would
+fight the scaler on every apply (the provider's standalone GSI
+resource exists for that shape).
+
+- rule: configure autoscaling for at least one dimension (read or write)
+- rule: scheduled_adjustments[].name must be unique
+
+### spec.autoscaling.read
+
+`AwsDynamodbCapacityAutoscaling`
+
+Target tracking for read capacity. At least one of read/write must
+be configured.
+
+- rule: max_capacity must be greater than or equal to min_capacity
+
+### spec.autoscaling.read.minCapacity
+
+`int64`
+
+The capacity floor the scaler never goes below.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.autoscaling.read.maxCapacity
+
+`int64`
+
+The capacity ceiling the scaler never exceeds -- also the cost
+guardrail.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.autoscaling.read.targetUtilizationPercent
+
+`int32`
+
+The consumed-to-provisioned utilization percentage to hold. AWS
+accepts 20-90 for DynamoDB. 70 is the usual production sweet spot:
+headroom for spikes without paying for idle.
+
+- rule: {"int32":{"lte":90,"gte":20}}
+
+### spec.autoscaling.read.scaleInCooldownSeconds
+
+`int32`
+
+Seconds to wait after a scale-in before another may follow. 0 keeps
+the AWS default.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.autoscaling.read.scaleOutCooldownSeconds
+
+`int32`
+
+Seconds to wait after a scale-out before another may follow. 0 keeps
+the AWS default.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.autoscaling.write
+
+`AwsDynamodbCapacityAutoscaling`
+
+Target tracking for write capacity.
+
+- rule: max_capacity must be greater than or equal to min_capacity
+
+### spec.autoscaling.write.minCapacity
+
+`int64`
+
+The capacity floor the scaler never goes below.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.autoscaling.write.maxCapacity
+
+`int64`
+
+The capacity ceiling the scaler never exceeds -- also the cost
+guardrail.
+
+- rule: {"int64":{"gte":"1"}}
+
+### spec.autoscaling.write.targetUtilizationPercent
+
+`int32`
+
+The consumed-to-provisioned utilization percentage to hold. AWS
+accepts 20-90 for DynamoDB. 70 is the usual production sweet spot:
+headroom for spikes without paying for idle.
+
+- rule: {"int32":{"lte":90,"gte":20}}
+
+### spec.autoscaling.write.scaleInCooldownSeconds
+
+`int32`
+
+Seconds to wait after a scale-in before another may follow. 0 keeps
+the AWS default.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.autoscaling.write.scaleOutCooldownSeconds
+
+`int32`
+
+Seconds to wait after a scale-out before another may follow. 0 keeps
+the AWS default.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.autoscaling.scheduledAdjustments
+
+`[]AwsDynamodbScheduledAdjustment`
+
+Scheduled capacity adjustments (e.g. raise the floor before a
+nightly batch job, lower it after). Each entry is keyed by name and
+targets one dimension's registered scalable target.
+
+- rule: a scheduled adjustment must set min_capacity, max_capacity, or both
+- rule: max_capacity must be greater than or equal to min_capacity when both are set
+
+### spec.autoscaling.scheduledAdjustments[].name
+
+`string` · required
+
+The adjustment name -- keys the provider resource; renaming replaces
+this adjustment without touching siblings.
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.autoscaling.scheduledAdjustments[].dimension
+
+`string` · required
+
+Which capacity dimension this adjustment changes: "READ" or "WRITE".
+The dimension's autoscaling target (read/write above) must be
+configured.
+
+- rule: {"required":true,"string":{"in":["READ","WRITE"]}}
+
+### spec.autoscaling.scheduledAdjustments[].schedule
+
+`string`
+
+The schedule: "cron(...)" (recurring, e.g. "cron(0 6 * * ? *)"),
+"rate(...)" (fixed interval), or "at(yyyy-mm-ddThh:mm:ss)"
+(one-shot).
+
+- rule: {"string":{"pattern":"^(cron|rate|at)\\(.+\\)$"}}
+
+### spec.autoscaling.scheduledAdjustments[].timezone
+
+`string`
+
+IANA timezone for the schedule (e.g. "America/Los_Angeles"). Empty
+keeps the AWS default (UTC).
+
+### spec.autoscaling.scheduledAdjustments[].minCapacity
+
+`int64`
+
+The new capacity floor when the schedule fires. At least one of
+min_capacity/max_capacity must be set. 0 leaves the floor unchanged.
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.autoscaling.scheduledAdjustments[].maxCapacity
+
+`int64`
+
+The new capacity ceiling when the schedule fires. 0 leaves the
+ceiling unchanged.
+
+- rule: {"int64":{"gte":"0"}}
+
+### spec.autoscaling.scheduledAdjustments[].startTime
+
+`string`
+
+RFC3339 UTC timestamp the schedule takes effect (e.g.
+"2026-09-01T00:00:00Z"). Empty starts immediately.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"}}
+
+### spec.autoscaling.scheduledAdjustments[].endTime
+
+`string`
+
+RFC3339 UTC timestamp the schedule stops firing. Empty never
+expires.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"}}
+
 ## Validation Rules
 
 - `key_schema_required_unless_restored`: key_schema and attribute_definitions are required -- omit them only when the table is created by restore (restore_source_name, restore_source_table_arn, or restore_backup_arn), which inherits them from the source
@@ -929,6 +1199,9 @@ first row of each file as the header.
 - `restore_import_sources_exclusive`: at most one create source may be set: restore_source_name, restore_source_table_arn, restore_backup_arn, or import_table
 - `restore_point_requires_pitr_source`: restore_date_time / restore_to_latest_time require a point-in-time restore source (restore_source_name or restore_source_table_arn), and exactly one of the two must be chosen
 - `insights_indexes_exist`: contributor_insights.gsi_index_names must name global secondary indexes defined on this table
+- `attributes_all_indexed`: every declared attribute must be used by the table key schema, a GSI key schema, or an LSI range key -- DynamoDB rejects unused attribute definitions
+- `autoscaling_requires_provisioned`: autoscaling applies to PROVISIONED tables only (on-demand tables scale natively) and requires provisioned_throughput for the initial capacity
+- `scheduled_adjustments_require_dimension_target`: each scheduled adjustment's dimension (READ/WRITE) must have its autoscaling target configured (autoscaling.read / autoscaling.write)
 
 ## Outputs
 

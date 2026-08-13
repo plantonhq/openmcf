@@ -101,7 +101,9 @@ message GcpRouterNatRouterBgp {
   // advertised_ip_ranges. The API accepts exactly one group value:
   // ALL_SUBNETS (re-adds the default subnet advertisement on top of the
   // custom ranges).
-  repeated string advertised_groups = 3 [(buf.validate.field).repeated.items.string = {in: ["ALL_SUBNETS"]}];
+  repeated string advertised_groups = 3 [(buf.validate.field).repeated.items.string = {
+    in: ["ALL_SUBNETS"]
+  }];
 
   // Individual IP ranges to advertise in CUSTOM mode, sent to all peers
   // of the router in addition to any advertised_groups.

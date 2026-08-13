@@ -28,10 +28,15 @@ locals {
   comment           = var.spec.comment != "" ? var.spec.comment : null
   delegation_set_id = var.spec.delegation_set_id != "" ? var.spec.delegation_set_id : null
 
-  # DNSSEC — the KSK name defaults to a zone-derived name when omitted.
+  # DNSSEC — the KSK name defaults to a zone-derived name when omitted, and
+  # the KSK status defaults to ACTIVE (the provider default; INACTIVE is the
+  # documented diagnostics lever).
   dnssec_enabled = var.spec.dnssec != null
   ksk_name = local.dnssec_enabled ? (
     var.spec.dnssec.key_signing_key_name != "" ? var.spec.dnssec.key_signing_key_name : "${replace(local.zone_name, ".", "-")}-ksk"
+  ) : null
+  ksk_status = local.dnssec_enabled ? (
+    var.spec.dnssec.key_signing_key_status != "" ? var.spec.dnssec.key_signing_key_status : "ACTIVE"
   ) : null
 
   query_logging_enabled = var.spec.query_logging != null

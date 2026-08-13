@@ -553,7 +553,7 @@ message AzureFrontDoorFirewallPolicyManagedRuleSet {
   option (buf.validate.message).cel = {
     id: "front_door_firewall_policy_js_challenge_bot_manager_only"
     message: "the OVERRIDE_JS_CHALLENGE action is only valid on bot-manager rule sets (Microsoft_BotManagerRuleSet)"
-    expression: "this.type.lowerAscii().contains('botmanagerruleset') || this.overrides.all(o, o.rules.all(r, r.action != 5))"
+    expression: "this.type.matches('(?i)botmanagerruleset') || this.overrides.all(o, o.rules.all(r, r.action != 5))"
   };
 }
 

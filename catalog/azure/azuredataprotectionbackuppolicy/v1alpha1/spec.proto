@@ -1,0 +1,1183 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackuppolicy.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDataProtectionBackupPolicySpec** defines a Data Protection
+// backup policy (ARM: Microsoft.DataProtection/backupVaults/{vault}/
+// backupPolicies/{name}) -- WHEN backups run (ISO-8601 repeating
+// intervals) and HOW LONG they are kept (a default retention plus
+// optional named rules that tag specific backups -- first of day,
+// first of week -- for longer keeps). ONE kind covers the six
+// datasource types as variants: blob storage, managed disks,
+// Kubernetes (AKS) clusters, MySQL flexible servers, PostgreSQL
+// flexible servers and Data Lake storage. Exactly one variant block
+// is set; the block IS the datasource type.
+//
+// **A policy is immutable**: every field on every variant is fixed at
+// creation (the provider ships no update path -- its own contract).
+// Changing anything replaces the policy; backup instances then
+// re-bind to the replacement.
+//
+// **The policy itself is a free configuration object** -- cost
+// follows the protected instances and their backup storage.
+//
+// **Retention grammar, shared by all variants**: durations are
+// ISO-8601 ("P7D" = 7 days, "P4M" = 4 months, "P10Y" = 10 years);
+// backup schedules are ISO-8601 repeating intervals
+// ("R/2024-01-01T00:00:00+00:00/P1D" = daily from that instant).
+// Named retention rules carry a priority (lower wins when several
+// rules tag the same backup) and criteria choosing WHICH backups the
+// rule keeps (absolute markers like FirstOfDay/FirstOfWeek, or
+// calendar selectors).
+message AzureDataProtectionBackupPolicySpec {
+  // The Data Protection backup vault the policy lives in, by ARM ID
+  // (a policy is an ARM child of its vault). Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataProtectionBackupVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.backup_vault_id"
+  ];
+
+  // The policy's name, unique on the vault: 3-150 characters,
+  // letters, digits and hyphens (the provider's own rule; the
+  // data_lake_storage variant additionally requires the name to START
+  // with a letter -- enforced below). Changing the name replaces the
+  // policy.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[-a-zA-Z0-9]{3,150}$"
+  ];
+
+  // The blob-storage variant: backs up a storage account's blob
+  // services. The only variant with TWO retention homes -- an
+  // operational tier (continuous, in the storage account) and a
+  // vault tier (scheduled copies in the vault); configure either or
+  // both.
+  AzureDataProtectionBackupPolicyBlobStorage blob_storage = 3;
+
+  // The managed-disk variant: scheduled incremental snapshots kept on
+  // the operational tier.
+  AzureDataProtectionBackupPolicyDisk disk = 4;
+
+  // The Kubernetes (AKS) cluster variant: scheduled cluster backups
+  // kept on the operational tier.
+  AzureDataProtectionBackupPolicyKubernetesCluster kubernetes_cluster = 5;
+
+  // The MySQL flexible-server variant: scheduled full backups kept on
+  // the vault tier.
+  AzureDataProtectionBackupPolicyMysqlFlexibleServer mysql_flexible_server = 6;
+
+  // The PostgreSQL flexible-server variant: scheduled full backups
+  // kept on the vault tier.
+  AzureDataProtectionBackupPolicyPostgresqlFlexibleServer postgresql_flexible_server = 7;
+
+  // The Data Lake storage variant: scheduled backups of a
+  // hierarchical-namespace storage account's ADLS blob services,
+  // kept on the vault tier.
+  AzureDataProtectionBackupPolicyDataLakeStorage data_lake_storage = 8;
+
+  option (buf.validate.message).cel = {
+    id: "exactly_one_variant"
+    message: "exactly one of blob_storage, disk, kubernetes_cluster, mysql_flexible_server, postgresql_flexible_server or data_lake_storage must be set -- the block is the datasource type"
+    expression: "(has(this.blob_storage) ? 1 : 0) + (has(this.disk) ? 1 : 0) + (has(this.kubernetes_cluster) ? 1 : 0) + (has(this.mysql_flexible_server) ? 1 : 0) + (has(this.postgresql_flexible_server) ? 1 : 0) + (has(this.data_lake_storage) ? 1 : 0) == 1"
+  };
+
+  // The data-lake resource's own tighter name rule (must start with a
+  // letter) -- the other variants accept a leading digit or hyphen.
+  option (buf.validate.message).cel = {
+    id: "data_lake_name_starts_with_letter"
+    message: "the data_lake_storage variant requires the policy name to start with a letter (the provider's own rule for this datasource)"
+    expression: "!has(this.data_lake_storage) || this.name.matches('^[a-zA-Z]')"
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Blob storage
+// ---------------------------------------------------------------------------
+
+// The blob-storage variant. Operational-tier protection (continuous,
+// restore-to-point-in-time inside the storage account) is configured
+// by operational_default_retention_duration alone; vault-tier
+// protection (scheduled copies into the vault) needs
+// vault_default_retention_duration PLUS backup_repeating_time_intervals.
+// At least one of the two tiers must be configured (the provider's
+// own contract, front-loaded below).
+message AzureDataProtectionBackupPolicyBlobStorage {
+  // How long operational-tier (in-account) backups are kept, as an
+  // ISO-8601 duration (e.g. "P30D"). Setting this enables the
+  // operational tier.
+  string operational_default_retention_duration = 1 [(buf.validate.field).cel = {
+    id: "dpbp_blob_operational_duration_iso8601"
+    message: "operational_default_retention_duration must be an ISO-8601 duration, e.g. P30D"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+
+  // How long vault-tier backups are kept by default, as an ISO-8601
+  // duration (e.g. "P90D"). Setting this enables the vault tier and
+  // requires backup_repeating_time_intervals (the schedule the vault
+  // copies run on).
+  string vault_default_retention_duration = 2 [(buf.validate.field).cel = {
+    id: "dpbp_blob_vault_duration_iso8601"
+    message: "vault_default_retention_duration must be an ISO-8601 duration, e.g. P90D"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+
+  // When vault-tier backups run: ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T00:00:00+00:00/P1D" (daily). Required with (and
+  // only meaningful for) the vault tier.
+  repeated string backup_repeating_time_intervals = 3 [(buf.validate.field).repeated.items = {
+    cel: [
+      {
+        id: "dpbp_blob_interval_iso8601_repeating"
+        message: "each interval must be an ISO-8601 repeating interval, e.g. R/2024-01-01T00:00:00+00:00/P1D"
+        expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+      }
+    ]
+  }];
+
+  // The Windows time zone the schedule is interpreted in, e.g. "UTC"
+  // or "Pacific Standard Time". Unspecified leaves the service
+  // interpretation (UTC).
+  string time_zone = 4;
+
+  // Named vault-tier retention rules that keep SPECIFIC backups
+  // longer than the default (e.g. first-of-week for 12 weeks).
+  // Requires the vault tier.
+  repeated AzureDataProtectionBackupPolicyBlobStorageRetentionRule retention_rules = 5;
+
+  // The provider's own cross-field contracts, front-loaded so the
+  // error lands in seconds instead of at apply time.
+  option (buf.validate.message).cel = {
+    id: "dpbp_blob_at_least_one_tier"
+    message: "at least one of operational_default_retention_duration or vault_default_retention_duration must be set -- a blob policy without either tier protects nothing"
+    expression: "this.operational_default_retention_duration != '' || this.vault_default_retention_duration != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "dpbp_blob_vault_tier_needs_intervals"
+    message: "vault_default_retention_duration requires backup_repeating_time_intervals -- the vault tier is scheduled, not continuous"
+    expression: "this.vault_default_retention_duration == '' || this.backup_repeating_time_intervals.size() > 0"
+  };
+  option (buf.validate.message).cel = {
+    id: "dpbp_blob_rules_need_vault_tier"
+    message: "retention_rules require vault_default_retention_duration -- the operational tier cannot carry named retention rules"
+    expression: "this.retention_rules.size() == 0 || this.vault_default_retention_duration != ''"
+  };
+}
+
+// A named vault-tier retention rule on the blob-storage variant.
+message AzureDataProtectionBackupPolicyBlobStorageRetentionRule {
+  // The rule's name (also the tag ARM stamps on the backups it
+  // keeps).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // WHICH backups this rule keeps.
+  AzureDataProtectionBackupPolicyBlobStorageCriteria criteria = 2 [(buf.validate.field).required = true];
+
+  // HOW LONG the matched backups are kept, on which store.
+  AzureDataProtectionBackupPolicyBlobStorageLifeCycle life_cycle = 3 [(buf.validate.field).required = true];
+
+  // The rule's priority -- when several rules tag the same backup,
+  // the LOWEST priority number wins. Required (the provider's own
+  // contract); modeled with explicit presence so 0 stays expressible.
+  optional int32 priority = 4 [(buf.validate.field).required = true];
+}
+
+// Selects which backups a blob retention rule keeps. Set any
+// combination; a backup matches when it satisfies all set selectors.
+message AzureDataProtectionBackupPolicyBlobStorageCriteria {
+  // An absolute marker (the wire values): AllBackup keeps everything;
+  // FirstOfDay/FirstOfWeek/FirstOfMonth/FirstOfYear keep the first
+  // backup of each period.
+  string absolute_criteria = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AllBackup",
+        "FirstOfDay",
+        "FirstOfWeek",
+        "FirstOfMonth",
+        "FirstOfYear"
+      ]
+    }
+  ];
+
+  // Days of the month, 1-28; 0 means the LAST day of the month (the
+  // provider's own encoding).
+  repeated int32 days_of_month = 2 [(buf.validate.field).repeated.items = {
+    int32: {
+      gte: 0
+      lte: 28
+    }
+  }];
+
+  // Days of the week, e.g. "Sunday".
+  repeated string days_of_week = 3 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  }];
+
+  // Months of the year, e.g. "January".
+  repeated string months_of_year = 4 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  }];
+
+  // Specific backup times as RFC-3339 timestamps (only the time of
+  // day is honored), e.g. "2024-01-01T05:30:00Z".
+  repeated string scheduled_backup_times = 5;
+
+  // Weeks of the month (the wire values).
+  repeated string weeks_of_month = 6 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Last"
+      ]
+    }
+  }];
+}
+
+// How long matched blob backups are kept and where.
+message AzureDataProtectionBackupPolicyBlobStorageLifeCycle {
+  // The store the retention applies to. "VaultStore" is the only
+  // value the service accepts today (the provider mirrors the service
+  // team's own statement; the vocabulary widens if ArchiveStore ever
+  // arrives).
+  string data_store_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["VaultStore"]
+    }
+  ];
+
+  // The retention duration, ISO-8601 (e.g. "P12W").
+  string duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_blob_lifecycle_duration_iso8601"
+      message: "duration must be an ISO-8601 duration, e.g. P12W"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Managed disks
+// ---------------------------------------------------------------------------
+
+// The managed-disk variant: scheduled incremental snapshots on the
+// operational tier (the provider pins the store; there is no vault
+// tier for disks).
+message AzureDataProtectionBackupPolicyDisk {
+  // When backups run: ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T02:00:00+00:00/P1D" (daily at 02:00 UTC). At least
+  // one interval is required.
+  repeated string backup_repeating_time_intervals = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dpbp_disk_interval_iso8601_repeating"
+          message: "each interval must be an ISO-8601 repeating interval, e.g. R/2024-01-01T02:00:00+00:00/P1D"
+          expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+        }
+      ]
+    }
+  ];
+
+  // How long backups are kept by default, as an ISO-8601 duration
+  // (e.g. "P7D").
+  string default_retention_duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_disk_default_duration_iso8601"
+      message: "default_retention_duration must be an ISO-8601 duration, e.g. P7D"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // Named retention rules that keep SPECIFIC backups longer than the
+  // default. Disk rules select by absolute marker only (the
+  // provider's own surface -- no calendar selectors here).
+  repeated AzureDataProtectionBackupPolicyDiskRetentionRule retention_rules = 3;
+
+  // The Windows time zone the schedule is interpreted in, e.g. "UTC".
+  // Unspecified leaves the service interpretation (UTC).
+  string time_zone = 4;
+}
+
+// A named retention rule on the disk variant.
+message AzureDataProtectionBackupPolicyDiskRetentionRule {
+  // The rule's name (also the tag ARM stamps on the backups it
+  // keeps).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The retention duration for matched backups, ISO-8601 (e.g.
+  // "P90D"). Disks retain on the operational store (the provider pins
+  // it).
+  string duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_disk_rule_duration_iso8601"
+      message: "duration must be an ISO-8601 duration, e.g. P90D"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // WHICH backups this rule keeps.
+  AzureDataProtectionBackupPolicyDiskCriteria criteria = 3 [(buf.validate.field).required = true];
+
+  // The rule's priority -- when several rules tag the same backup,
+  // the LOWEST priority number wins. Required (the provider's own
+  // contract); modeled with explicit presence so 0 stays expressible.
+  optional int32 priority = 4 [(buf.validate.field).required = true];
+}
+
+// Selects which backups a disk retention rule keeps (absolute markers
+// only -- the provider's own surface for disks).
+message AzureDataProtectionBackupPolicyDiskCriteria {
+  // An absolute marker (the wire values).
+  string absolute_criteria = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AllBackup",
+        "FirstOfDay",
+        "FirstOfWeek",
+        "FirstOfMonth",
+        "FirstOfYear"
+      ]
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Kubernetes (AKS) clusters
+// ---------------------------------------------------------------------------
+
+// The Kubernetes-cluster variant: scheduled AKS cluster backups on
+// the operational tier (the provider pins the store; the vault tier
+// for AKS rides the service's own roadmap).
+message AzureDataProtectionBackupPolicyKubernetesCluster {
+  // When backups run: ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T00:00:00+00:00/PT4H" (every four hours). At least
+  // one interval is required.
+  repeated string backup_repeating_time_intervals = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dpbp_k8s_interval_iso8601_repeating"
+          message: "each interval must be an ISO-8601 repeating interval, e.g. R/2024-01-01T00:00:00+00:00/PT4H"
+          expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+        }
+      ]
+    }
+  ];
+
+  // The default retention applied to every backup no rule tags.
+  AzureDataProtectionBackupPolicyKubernetesClusterDefaultRetentionRule default_retention_rule = 2 [(buf.validate.field).required = true];
+
+  // Named retention rules that keep SPECIFIC backups longer than the
+  // default.
+  repeated AzureDataProtectionBackupPolicyKubernetesClusterRetentionRule retention_rules = 3;
+
+  // The Windows time zone the schedule is interpreted in, e.g. "UTC".
+  // Unspecified leaves the service interpretation (UTC).
+  string time_zone = 4;
+}
+
+// The default retention layer on the Kubernetes variant.
+message AzureDataProtectionBackupPolicyKubernetesClusterDefaultRetentionRule {
+  // How long default-retained backups live, per store.
+  repeated AzureDataProtectionBackupPolicyKubernetesClusterLifeCycle life_cycles = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// A named retention rule on the Kubernetes variant.
+message AzureDataProtectionBackupPolicyKubernetesClusterRetentionRule {
+  // The rule's name (also the tag ARM stamps on the backups it
+  // keeps).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // WHICH backups this rule keeps.
+  AzureDataProtectionBackupPolicyKubernetesClusterCriteria criteria = 2 [(buf.validate.field).required = true];
+
+  // HOW LONG the matched backups are kept, per store.
+  repeated AzureDataProtectionBackupPolicyKubernetesClusterLifeCycle life_cycles = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // The rule's priority -- when several rules tag the same backup,
+  // the LOWEST priority number wins. Required (the provider's own
+  // contract); modeled with explicit presence so 0 stays expressible.
+  optional int32 priority = 4 [(buf.validate.field).required = true];
+}
+
+// Selects which backups a Kubernetes retention rule keeps. Set any
+// combination (no days-of-month here -- the provider's own surface).
+message AzureDataProtectionBackupPolicyKubernetesClusterCriteria {
+  // An absolute marker (the wire values).
+  string absolute_criteria = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AllBackup",
+        "FirstOfDay",
+        "FirstOfWeek",
+        "FirstOfMonth",
+        "FirstOfYear"
+      ]
+    }
+  ];
+
+  // Days of the week, e.g. "Sunday".
+  repeated string days_of_week = 2 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  }];
+
+  // Months of the year, e.g. "January".
+  repeated string months_of_year = 3 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  }];
+
+  // Specific backup times as RFC-3339 timestamps (only the time of
+  // day is honored), e.g. "2024-01-01T05:30:00Z".
+  repeated string scheduled_backup_times = 4;
+
+  // Weeks of the month (the wire values).
+  repeated string weeks_of_month = 5 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Last"
+      ]
+    }
+  }];
+}
+
+// How long matched Kubernetes backups are kept and where.
+message AzureDataProtectionBackupPolicyKubernetesClusterLifeCycle {
+  // The store the retention applies to. "OperationalStore" is the
+  // only value the service accepts today (the provider mirrors the
+  // service team's own statement; the vocabulary widens when the AKS
+  // vault tier lands).
+  string data_store_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["OperationalStore"]
+    }
+  ];
+
+  // The retention duration, ISO-8601 (e.g. "P14D").
+  string duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_k8s_lifecycle_duration_iso8601"
+      message: "duration must be an ISO-8601 duration, e.g. P14D"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// MySQL / PostgreSQL flexible servers
+// ---------------------------------------------------------------------------
+// The provider's two flexible-server policy resources are schema
+// twins (verified by source diff at the pinned version) -- they share
+// the retention grammar below and differ only in the datasource they
+// bind and the validation on intervals/time_zone, mirrored on each
+// variant's own fields.
+
+// The MySQL flexible-server variant: scheduled full backups on the
+// vault tier.
+message AzureDataProtectionBackupPolicyMysqlFlexibleServer {
+  // When backups run: ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T00:00:00+00:00/P1W" (weekly). At least one interval
+  // is required.
+  repeated string backup_repeating_time_intervals = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dpbp_mysql_interval_iso8601_repeating"
+          message: "each interval must be an ISO-8601 repeating interval, e.g. R/2024-01-01T00:00:00+00:00/P1W"
+          expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+        }
+      ]
+    }
+  ];
+
+  // The default retention applied to every backup no rule tags.
+  AzureDataProtectionBackupPolicyFlexibleServerDefaultRetentionRule default_retention_rule = 2 [(buf.validate.field).required = true];
+
+  // Named retention rules that keep SPECIFIC backups longer than the
+  // default.
+  repeated AzureDataProtectionBackupPolicyFlexibleServerRetentionRule retention_rules = 3;
+
+  // The Windows time zone the schedule is interpreted in (the
+  // provider validates this variant against the Windows time-zone
+  // catalog). Unspecified leaves the service interpretation (UTC).
+  string time_zone = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Afghanistan Standard Time",
+        "Alaskan Standard Time",
+        "Aleutian Standard Time",
+        "Altai Standard Time",
+        "Arab Standard Time",
+        "Arabian Standard Time",
+        "Arabic Standard Time",
+        "Argentina Standard Time",
+        "Astrakhan Standard Time",
+        "Atlantic Standard Time",
+        "AUS Central Standard Time",
+        "Aus Central W. Standard Time",
+        "AUS Eastern Standard Time",
+        "Azerbaijan Standard Time",
+        "Azores Standard Time",
+        "Bahia Standard Time",
+        "Bangladesh Standard Time",
+        "Belarus Standard Time",
+        "Bougainville Standard Time",
+        "Canada Central Standard Time",
+        "Cape Verde Standard Time",
+        "Caucasus Standard Time",
+        "Cen. Australia Standard Time",
+        "Central America Standard Time",
+        "Central Asia Standard Time",
+        "Central Brazilian Standard Time",
+        "Central Europe Standard Time",
+        "Central European Standard Time",
+        "Central Pacific Standard Time",
+        "Central Standard Time",
+        "Central Standard Time (Mexico)",
+        "Chatham Islands Standard Time",
+        "China Standard Time",
+        "Cuba Standard Time",
+        "Dateline Standard Time",
+        "E. Africa Standard Time",
+        "E. Australia Standard Time",
+        "E. Europe Standard Time",
+        "E. South America Standard Time",
+        "Easter Island Standard Time",
+        "Eastern Standard Time",
+        "Eastern Standard Time (Mexico)",
+        "Egypt Standard Time",
+        "Ekaterinburg Standard Time",
+        "Fiji Standard Time",
+        "FLE Standard Time",
+        "Georgian Standard Time",
+        "GMT Standard Time",
+        "Greenland Standard Time",
+        "Greenwich Standard Time",
+        "GTB Standard Time",
+        "Haiti Standard Time",
+        "Hawaiian Standard Time",
+        "India Standard Time",
+        "Iran Standard Time",
+        "Israel Standard Time",
+        "Jordan Standard Time",
+        "Kaliningrad Standard Time",
+        "Kamchatka Standard Time",
+        "Korea Standard Time",
+        "Libya Standard Time",
+        "Line Islands Standard Time",
+        "Lord Howe Standard Time",
+        "Magadan Standard Time",
+        "Magallanes Standard Time",
+        "Marquesas Standard Time",
+        "Mauritius Standard Time",
+        "Mid-Atlantic Standard Time",
+        "Middle East Standard Time",
+        "Montevideo Standard Time",
+        "Morocco Standard Time",
+        "Mountain Standard Time",
+        "Mountain Standard Time (Mexico)",
+        "Myanmar Standard Time",
+        "N. Central Asia Standard Time",
+        "Namibia Standard Time",
+        "Nepal Standard Time",
+        "New Zealand Standard Time",
+        "Newfoundland Standard Time",
+        "Norfolk Standard Time",
+        "North Asia East Standard Time",
+        "North Asia Standard Time",
+        "North Korea Standard Time",
+        "Omsk Standard Time",
+        "Pacific SA Standard Time",
+        "Pacific Standard Time",
+        "Pacific Standard Time (Mexico)",
+        "Pakistan Standard Time",
+        "Paraguay Standard Time",
+        "Qyzylorda Standard Time",
+        "Romance Standard Time",
+        "Russia Time Zone 10",
+        "Russia Time Zone 11",
+        "Russia Time Zone 3",
+        "Russian Standard Time",
+        "SA Eastern Standard Time",
+        "SA Pacific Standard Time",
+        "SA Western Standard Time",
+        "Saint Pierre Standard Time",
+        "Sakhalin Standard Time",
+        "Samoa Standard Time",
+        "Sao Tome Standard Time",
+        "Saratov Standard Time",
+        "SE Asia Standard Time",
+        "Singapore Standard Time",
+        "South Africa Standard Time",
+        "South Sudan Standard Time",
+        "Sri Lanka Standard Time",
+        "Sudan Standard Time",
+        "Syria Standard Time",
+        "Taipei Standard Time",
+        "Tasmania Standard Time",
+        "Tocantins Standard Time",
+        "Tokyo Standard Time",
+        "Tomsk Standard Time",
+        "Tonga Standard Time",
+        "Transbaikal Standard Time",
+        "Turkey Standard Time",
+        "Turks And Caicos Standard Time",
+        "Ulaanbaatar Standard Time",
+        "US Eastern Standard Time",
+        "US Mountain Standard Time",
+        "UTC",
+        "UTC-02",
+        "UTC-08",
+        "UTC-09",
+        "UTC-11",
+        "UTC+12",
+        "UTC+13",
+        "Venezuela Standard Time",
+        "Vladivostok Standard Time",
+        "Volgograd Standard Time",
+        "W. Australia Standard Time",
+        "W. Central Africa Standard Time",
+        "W. Europe Standard Time",
+        "W. Mongolia Standard Time",
+        "West Asia Standard Time",
+        "West Bank Standard Time",
+        "West Pacific Standard Time",
+        "Yakutsk Standard Time",
+        "Yukon Standard Time"
+      ]
+    }
+  ];
+}
+
+// The PostgreSQL flexible-server variant: scheduled full backups on
+// the vault tier.
+message AzureDataProtectionBackupPolicyPostgresqlFlexibleServer {
+  // When backups run: ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T00:00:00+00:00/P1W" (weekly). At least one interval
+  // is required.
+  repeated string backup_repeating_time_intervals = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dpbp_pg_interval_iso8601_repeating"
+          message: "each interval must be an ISO-8601 repeating interval, e.g. R/2024-01-01T00:00:00+00:00/P1W"
+          expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+        }
+      ]
+    }
+  ];
+
+  // The default retention applied to every backup no rule tags.
+  AzureDataProtectionBackupPolicyFlexibleServerDefaultRetentionRule default_retention_rule = 2 [(buf.validate.field).required = true];
+
+  // Named retention rules that keep SPECIFIC backups longer than the
+  // default.
+  repeated AzureDataProtectionBackupPolicyFlexibleServerRetentionRule retention_rules = 3;
+
+  // The Windows time zone the schedule is interpreted in, e.g. "UTC".
+  // Unspecified leaves the service interpretation (UTC).
+  string time_zone = 4;
+}
+
+// The default retention layer shared by the two flexible-server
+// variants.
+message AzureDataProtectionBackupPolicyFlexibleServerDefaultRetentionRule {
+  // How long default-retained backups live, per store.
+  repeated AzureDataProtectionBackupPolicyFlexibleServerLifeCycle life_cycles = 1 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// A named retention rule shared by the two flexible-server variants.
+message AzureDataProtectionBackupPolicyFlexibleServerRetentionRule {
+  // The rule's name (also the tag ARM stamps on the backups it
+  // keeps).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // WHICH backups this rule keeps.
+  AzureDataProtectionBackupPolicyFlexibleServerCriteria criteria = 2 [(buf.validate.field).required = true];
+
+  // HOW LONG the matched backups are kept, per store.
+  repeated AzureDataProtectionBackupPolicyFlexibleServerLifeCycle life_cycles = 3 [(buf.validate.field).repeated.min_items = 1];
+
+  // The rule's priority -- when several rules tag the same backup,
+  // the LOWEST priority number wins. Required (the provider's own
+  // contract); modeled with explicit presence so 0 stays expressible.
+  optional int32 priority = 4 [(buf.validate.field).required = true];
+}
+
+// Selects which backups a flexible-server retention rule keeps. Set
+// any combination (no days-of-month here -- the provider's own
+// surface).
+message AzureDataProtectionBackupPolicyFlexibleServerCriteria {
+  // An absolute marker (the wire values).
+  string absolute_criteria = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AllBackup",
+        "FirstOfDay",
+        "FirstOfWeek",
+        "FirstOfMonth",
+        "FirstOfYear"
+      ]
+    }
+  ];
+
+  // Days of the week, e.g. "Sunday".
+  repeated string days_of_week = 2 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  }];
+
+  // Months of the year, e.g. "January".
+  repeated string months_of_year = 3 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  }];
+
+  // Specific backup times as RFC-3339 timestamps (only the time of
+  // day is honored), e.g. "2024-01-01T05:30:00Z".
+  repeated string scheduled_backup_times = 4;
+
+  // Weeks of the month (the wire values).
+  repeated string weeks_of_month = 5 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Last"
+      ]
+    }
+  }];
+}
+
+// How long matched flexible-server backups are kept and where.
+message AzureDataProtectionBackupPolicyFlexibleServerLifeCycle {
+  // The store the retention applies to. "VaultStore" is the only
+  // value the service accepts today (the provider mirrors the service
+  // team's own statement; the vocabulary widens if ArchiveStore ever
+  // arrives).
+  string data_store_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["VaultStore"]
+    }
+  ];
+
+  // The retention duration, ISO-8601 (e.g. "P3M").
+  string duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_flex_lifecycle_duration_iso8601"
+      message: "duration must be an ISO-8601 duration, e.g. P3M"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Data Lake storage
+// ---------------------------------------------------------------------------
+
+// The Data Lake storage variant: scheduled vault-tier backups of a
+// hierarchical-namespace account's ADLS blob services. Retention
+// rules here are FLAT (criteria fields sit directly on the rule --
+// the provider's own shape for this datasource) and rule priorities
+// are assigned by ORDER: the first rule gets priority 1, the second
+// 2, and so on (the provider's own encoding -- there is no priority
+// field).
+message AzureDataProtectionBackupPolicyDataLakeStorage {
+  // When backups run: 1-5 ISO-8601 repeating intervals, e.g.
+  // "R/2024-01-01T00:00:00+00:00/P1D" (daily).
+  repeated string backup_schedule = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5,
+    (buf.validate.field).repeated.items = {
+      cel: [
+        {
+          id: "dpbp_adls_schedule_iso8601_repeating"
+          message: "each backup_schedule entry must be an ISO-8601 repeating interval, e.g. R/2024-01-01T00:00:00+00:00/P1D"
+          expression: "this.matches('^R/.+/P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+        }
+      ]
+    }
+  ];
+
+  // How long backups are kept by default, as an ISO-8601 duration
+  // (e.g. "P30D").
+  string default_retention_duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_adls_default_duration_iso8601"
+      message: "default_retention_duration must be an ISO-8601 duration, e.g. P30D"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // Named retention rules that keep SPECIFIC backups longer than the
+  // default, in priority order (first = highest priority).
+  repeated AzureDataProtectionBackupPolicyDataLakeStorageRetentionRule retention_rules = 3;
+
+  // The Windows time zone the schedule is interpreted in (the
+  // provider validates this variant against the Windows time-zone
+  // catalog, which here includes "Coordinated Universal Time").
+  // Unspecified leaves the service interpretation (UTC).
+  string time_zone = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Afghanistan Standard Time",
+        "Alaskan Standard Time",
+        "Aleutian Standard Time",
+        "Altai Standard Time",
+        "Arab Standard Time",
+        "Arabian Standard Time",
+        "Arabic Standard Time",
+        "Argentina Standard Time",
+        "Astrakhan Standard Time",
+        "Atlantic Standard Time",
+        "AUS Central Standard Time",
+        "Aus Central W. Standard Time",
+        "AUS Eastern Standard Time",
+        "Azerbaijan Standard Time",
+        "Azores Standard Time",
+        "Bahia Standard Time",
+        "Bangladesh Standard Time",
+        "Belarus Standard Time",
+        "Bougainville Standard Time",
+        "Canada Central Standard Time",
+        "Cape Verde Standard Time",
+        "Caucasus Standard Time",
+        "Cen. Australia Standard Time",
+        "Central America Standard Time",
+        "Central Asia Standard Time",
+        "Central Brazilian Standard Time",
+        "Central Europe Standard Time",
+        "Central European Standard Time",
+        "Central Pacific Standard Time",
+        "Central Standard Time",
+        "Central Standard Time (Mexico)",
+        "Chatham Islands Standard Time",
+        "China Standard Time",
+        "Coordinated Universal Time",
+        "Cuba Standard Time",
+        "Dateline Standard Time",
+        "E. Africa Standard Time",
+        "E. Australia Standard Time",
+        "E. Europe Standard Time",
+        "E. South America Standard Time",
+        "Easter Island Standard Time",
+        "Eastern Standard Time",
+        "Eastern Standard Time (Mexico)",
+        "Egypt Standard Time",
+        "Ekaterinburg Standard Time",
+        "Fiji Standard Time",
+        "FLE Standard Time",
+        "Georgian Standard Time",
+        "GMT Standard Time",
+        "Greenland Standard Time",
+        "Greenwich Standard Time",
+        "GTB Standard Time",
+        "Haiti Standard Time",
+        "Hawaiian Standard Time",
+        "India Standard Time",
+        "Iran Standard Time",
+        "Israel Standard Time",
+        "Jordan Standard Time",
+        "Kaliningrad Standard Time",
+        "Kamchatka Standard Time",
+        "Korea Standard Time",
+        "Libya Standard Time",
+        "Line Islands Standard Time",
+        "Lord Howe Standard Time",
+        "Magadan Standard Time",
+        "Magallanes Standard Time",
+        "Marquesas Standard Time",
+        "Mauritius Standard Time",
+        "Mid-Atlantic Standard Time",
+        "Middle East Standard Time",
+        "Montevideo Standard Time",
+        "Morocco Standard Time",
+        "Mountain Standard Time",
+        "Mountain Standard Time (Mexico)",
+        "Myanmar Standard Time",
+        "N. Central Asia Standard Time",
+        "Namibia Standard Time",
+        "Nepal Standard Time",
+        "New Zealand Standard Time",
+        "Newfoundland Standard Time",
+        "Norfolk Standard Time",
+        "North Asia East Standard Time",
+        "North Asia Standard Time",
+        "North Korea Standard Time",
+        "Omsk Standard Time",
+        "Pacific SA Standard Time",
+        "Pacific Standard Time",
+        "Pacific Standard Time (Mexico)",
+        "Pakistan Standard Time",
+        "Paraguay Standard Time",
+        "Qyzylorda Standard Time",
+        "Romance Standard Time",
+        "Russia Time Zone 10",
+        "Russia Time Zone 11",
+        "Russia Time Zone 3",
+        "Russian Standard Time",
+        "SA Eastern Standard Time",
+        "SA Pacific Standard Time",
+        "SA Western Standard Time",
+        "Saint Pierre Standard Time",
+        "Sakhalin Standard Time",
+        "Samoa Standard Time",
+        "Sao Tome Standard Time",
+        "Saratov Standard Time",
+        "SE Asia Standard Time",
+        "Singapore Standard Time",
+        "South Africa Standard Time",
+        "South Sudan Standard Time",
+        "Sri Lanka Standard Time",
+        "Sudan Standard Time",
+        "Syria Standard Time",
+        "Taipei Standard Time",
+        "Tasmania Standard Time",
+        "Tocantins Standard Time",
+        "Tokyo Standard Time",
+        "Tomsk Standard Time",
+        "Tonga Standard Time",
+        "Transbaikal Standard Time",
+        "Turkey Standard Time",
+        "Turks And Caicos Standard Time",
+        "Ulaanbaatar Standard Time",
+        "US Eastern Standard Time",
+        "US Mountain Standard Time",
+        "UTC",
+        "UTC-02",
+        "UTC-08",
+        "UTC-09",
+        "UTC-11",
+        "UTC+12",
+        "UTC+13",
+        "Venezuela Standard Time",
+        "Vladivostok Standard Time",
+        "Volgograd Standard Time",
+        "W. Australia Standard Time",
+        "W. Central Africa Standard Time",
+        "W. Europe Standard Time",
+        "W. Mongolia Standard Time",
+        "West Asia Standard Time",
+        "West Bank Standard Time",
+        "West Pacific Standard Time",
+        "Yakutsk Standard Time",
+        "Yukon Standard Time"
+      ]
+    }
+  ];
+}
+
+// A named retention rule on the Data Lake variant -- criteria fields
+// sit directly on the rule (the provider's own flat shape for this
+// datasource). Each rule requires absolute_criteria or days_of_week
+// (the provider's create contract, front-loaded below).
+message AzureDataProtectionBackupPolicyDataLakeStorageRetentionRule {
+  // The rule's name (also the tag ARM stamps on the backups it
+  // keeps).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The retention duration for matched backups, ISO-8601 (e.g.
+  // "P12W"). Data Lake retains on the vault store (the provider pins
+  // it).
+  string duration = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "dpbp_adls_rule_duration_iso8601"
+      message: "duration must be an ISO-8601 duration, e.g. P12W"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // An absolute marker (the wire values).
+  string absolute_criteria = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AllBackup",
+        "FirstOfDay",
+        "FirstOfWeek",
+        "FirstOfMonth",
+        "FirstOfYear"
+      ]
+    }
+  ];
+
+  // Days of the week, e.g. "Sunday".
+  repeated string days_of_week = 4 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  }];
+
+  // Months of the year, e.g. "January".
+  repeated string months_of_year = 5 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ]
+    }
+  }];
+
+  // Specific backup times as RFC-3339 timestamps (only the time of
+  // day is honored), e.g. "2024-01-01T05:30:00Z".
+  repeated string scheduled_backup_times = 6;
+
+  // Weeks of the month (the wire values).
+  repeated string weeks_of_month = 7 [(buf.validate.field).repeated.items = {
+    string: {
+      in: [
+        "First",
+        "Second",
+        "Third",
+        "Fourth",
+        "Last"
+      ]
+    }
+  }];
+
+  // The provider's create-time contract for this datasource,
+  // front-loaded so the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "dpbp_adls_rule_needs_absolute_or_days"
+    message: "each Data Lake retention rule requires absolute_criteria or days_of_week (the provider's own contract)"
+    expression: "this.absolute_criteria != '' || this.days_of_week.size() > 0"
+  };
+}

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurenetworkwatcherflowlog.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurenetworkwatcherflowlog/v1alpha1/outputs.proto";
+import "catalog/azure/azurenetworkwatcherflowlog/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureNetworkWatcherFlowLog is the top-level API resource describing
+// a Network Watcher flow log -- the recorder that writes network
+// traffic metadata for one virtual network, subnet, or network
+// interface into a storage account.
+message AzureNetworkWatcherFlowLog {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureNetworkWatcherFlowLog".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureNetworkWatcherFlowLog'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // Network Watcher flow log specification.
+  AzureNetworkWatcherFlowLogSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureNetworkWatcherFlowLogStatus status = 5;
+}
+
+// AzureNetworkWatcherFlowLogStatus holds the deployment outputs.
+message AzureNetworkWatcherFlowLogStatus {
+  // Stack outputs from the IaC deployment.
+  AzureNetworkWatcherFlowLogStackOutputs outputs = 1;
+}

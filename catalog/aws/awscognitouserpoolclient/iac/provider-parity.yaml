@@ -1,0 +1,52 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cognito_user_pool_client:
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+
+  # Threat protection's automated responses for THIS client only. The pool
+  # kind (AwsCognitoUserPool) is the PRIMARY owner of
+  # aws_cognito_risk_configuration and renders the pool-wide configuration;
+  # this kind renders the client-scoped one, wired to its own client ID.
+  aws_cognito_risk_configuration:
+    specRoot: spec.risk_configuration
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The spec flattens the provider's single-purpose actions wrapper; the
+      # per-level actions and the notify templates keep their shape below
+      # each subtree.
+      - spec: spec.risk_configuration.account_takeover.low_action
+        arg: account_takeover_risk_configuration.actions.low_action
+      - spec: spec.risk_configuration.account_takeover.medium_action
+        arg: account_takeover_risk_configuration.actions.medium_action
+      - spec: spec.risk_configuration.account_takeover.high_action
+        arg: account_takeover_risk_configuration.actions.high_action
+      - spec: spec.risk_configuration.account_takeover.notify_configuration
+        arg: account_takeover_risk_configuration.notify_configuration
+      - spec: spec.risk_configuration.compromised_credentials.event_action
+        arg: compromised_credentials_risk_configuration.actions.event_action
+      - spec: spec.risk_configuration.compromised_credentials.event_filter
+        arg: compromised_credentials_risk_configuration.event_filter
+      # The spec names the lists for what they hold; the provider suffixes
+      # "_list".
+      - spec: spec.risk_configuration.risk_exception.blocked_ip_ranges
+        arg: risk_exception_configuration.blocked_ip_range_list
+      - spec: spec.risk_configuration.risk_exception.skipped_ip_ranges
+        arg: risk_exception_configuration.skipped_ip_range_list
+    exclusions:
+      - arg: user_pool_id
+        reason: module-wired to the pool this client belongs to (spec.user_pool_id) -- never free-form on the satellite
+      - arg: client_id
+        reason: module-wired to the client this kind creates -- the client-scoped configuration always attaches to its own client, never free-form user surface

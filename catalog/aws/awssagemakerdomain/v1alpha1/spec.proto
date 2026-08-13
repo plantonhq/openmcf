@@ -107,7 +107,7 @@ message AwsSagemakerDomainSpec {
   // in the domain. These settings control the execution environment, per-IDE app
   // configurations, security boundaries, and storage defaults. Individual user profiles
   // can override these defaults.
-  AwsSagemakerDomainDefaultUserSettings default_user_settings = 10 [(buf.validate.field).required = true];
+  AwsSagemakerDomainUserSettings default_user_settings = 10 [(buf.validate.field).required = true];
 
   // default_space_settings defines the default configuration inherited by all shared
   // (collaborative) spaces in the domain. Spaces are workspaces multiple users can attach
@@ -156,6 +156,25 @@ message AwsSagemakerDomainSpec {
   // Domains with AWS IAM Identity Center enabled"), even when set to "DISABLED".
   // Leave unset on IAM domains.
   optional string trusted_identity_propagation_status = 16;
+
+  // --- Folded domain satellites ---
+
+  // user_profiles are the per-person workspaces inside the domain, keyed by
+  // name. Each profile inherits `default_user_settings` and may override any
+  // of it via its own `user_settings`. Profiles add/remove in place as the
+  // list changes; removing an entry deletes that profile AND its apps and
+  // data surfaces, so treat removals as destructive. Profiles created
+  // outside this manifest (IAM Identity Center auto-provisioning, console)
+  // are not managed or removed by it.
+  repeated AwsSagemakerDomainUserProfile user_profiles = 17;
+
+  // spaces are named shared (or private) workspaces inside the domain, keyed
+  // by name — the collaboration plane, where a JupyterLab or Code Editor
+  // runtime is shared rather than per-user. Spaces inherit
+  // `default_space_settings` and may override via their own
+  // `space_settings`. Add/remove in place; removing an entry deletes the
+  // space and its EBS volume.
+  repeated AwsSagemakerDomainSpace spaces = 18;
 
   // --- Cross-field validations ---
 
@@ -212,12 +231,26 @@ message AwsSagemakerDomainSpec {
     message: "trusted_identity_propagation_status requires auth_mode 'SSO' (AWS rejects the setting on IAM-auth domains, even 'DISABLED')"
     expression: "!has(this.trusted_identity_propagation_status) || this.auth_mode == 'SSO'"
   };
+
+  // Names key the satellite resources in both IaC modules — validate-time
+  // uniqueness IS the modules' for_each-key uniqueness.
+  option (buf.validate.message).cel = {
+    id: "user_profile_names_unique"
+    message: "user_profiles names must be unique — each name keys one user profile"
+    expression: "this.user_profiles.map(p, p.user_profile_name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "space_names_unique"
+    message: "spaces names must be unique — each name keys one space"
+    expression: "this.spaces.map(s, s.space_name).unique()"
+  };
 }
 
-// AwsSagemakerDomainDefaultUserSettings defines the default configuration inherited by all
-// user profiles in the domain. Each setting establishes a baseline that individual user
-// profiles inherit unless explicitly overridden.
-message AwsSagemakerDomainDefaultUserSettings {
+// AwsSagemakerDomainUserSettings is the per-user configuration tree — the same shape
+// serves two homes: the domain's `default_user_settings` (the baseline every profile
+// inherits) and each entry in `user_profiles` (per-user overrides). AWS uses one
+// UserSettings type for both, and so does this spec.
+message AwsSagemakerDomainUserSettings {
   // execution_role_arn is the IAM role assumed by SageMaker when running notebooks,
   // training jobs, and other ML workloads on behalf of users. This role determines what
   // AWS resources (S3 buckets, ECR repos, Secrets Manager, etc.) users can access from
@@ -382,6 +415,227 @@ message AwsSagemakerDomainDefaultSpaceSettings {
 
   // custom_posix_user_config sets the POSIX identity that shared-space apps run as.
   AwsSagemakerDomainCustomPosixUserConfig custom_posix_user_config = 8;
+}
+
+// AwsSagemakerDomainUserProfile is one per-person workspace inside the domain —
+// the folded aws_sagemaker_user_profile satellite. A profile is the identity apps
+// run under: it carries the user's home EFS directory, their settings overrides,
+// and (on SSO domains) the link to the IAM Identity Center user.
+message AwsSagemakerDomainUserProfile {
+  // The profile name — unique within the domain, and the key both IaC modules
+  // use for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+  // starting and ending alphanumeric. ForceNew: renaming replaces the profile
+  // (and its home directory association).
+  string user_profile_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).string.pattern = "^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$"
+  ];
+
+  // For SSO-auth domains: the IAM Identity Center attribute that identifies the
+  // user. AWS supports exactly one identifier scheme, "UserName". Set together
+  // with `single_sign_on_user_value`. ForceNew.
+  string single_sign_on_user_identifier = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.const = "UserName"
+  ];
+
+  // For SSO-auth domains: the Identity Center username this profile belongs to.
+  // Set together with `single_sign_on_user_identifier`. ForceNew.
+  string single_sign_on_user_value = 3;
+
+  // Per-user overrides of the domain's `default_user_settings` — the same
+  // settings tree, applied on top of the domain baseline. Unset means the
+  // profile inherits the baseline unchanged. `execution_role_arn` is required
+  // inside this block whenever it is set (the AWS contract for UserSettings).
+  AwsSagemakerDomainUserSettings user_settings = 4;
+
+  // the SSO pair travels together.
+  option (buf.validate.message).cel = {
+    id: "sso_pair_together"
+    message: "single_sign_on_user_identifier and single_sign_on_user_value must be set together"
+    expression: "(this.single_sign_on_user_identifier == '') == (this.single_sign_on_user_value == '')"
+  };
+}
+
+// AwsSagemakerDomainSpace is one named workspace inside the domain — the folded
+// aws_sagemaker_space satellite. Spaces are the collaboration plane: a space's
+// JupyterLab or Code Editor runtime (and its EBS volume) is shared by everyone
+// with access, unlike the per-user plane of `user_profiles`. Note the space's
+// settings tree is DELIBERATELY different from the domain's
+// `default_space_settings` — AWS uses distinct types (SpaceSettings vs
+// DefaultSpaceSettings), and so does this spec.
+message AwsSagemakerDomainSpace {
+  // The space name — unique within the domain, and the key both IaC modules use
+  // for the satellite resource. 1-63 characters: alphanumeric and hyphens,
+  // starting alphanumeric. ForceNew.
+  string space_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 63,
+    (buf.validate.field).string.pattern = "^[0-9A-Za-z](-*[0-9A-Za-z]){0,62}$"
+  ];
+
+  // Display name shown in Studio (the space name itself is immutable; this is
+  // not). Maximum 64 characters. Updates in place.
+  string display_name = 2 [(buf.validate.field).string.max_len = 64];
+
+  // Ownership: names the user profile that owns this space. Required for
+  // PRIVATE spaces and for shared spaces alike when sharing is configured —
+  // AWS requires ownership and sharing to be declared together (or neither,
+  // which creates a legacy unscoped space). The owner profile must exist in
+  // the domain; it is usually one of `user_profiles`, but profiles provisioned
+  // outside this manifest (SSO auto-provisioning) are equally valid owners.
+  // Not updatable after create — the provider never sends changes to it.
+  AwsSagemakerDomainSpaceOwnership ownership_settings = 3;
+
+  // Sharing posture: "Private" (one owner, one runtime) or "Shared"
+  // (collaborative). Declared together with `ownership_settings`. Not
+  // updatable after create.
+  AwsSagemakerDomainSpaceSharing space_sharing_settings = 4;
+
+  // The space's own settings — app type, per-app configuration, storage, and
+  // mounted file systems.
+  AwsSagemakerDomainSpaceSettings space_settings = 5;
+
+  // AWS requires ownership_settings and space_sharing_settings together.
+  option (buf.validate.message).cel = {
+    id: "ownership_and_sharing_together"
+    message: "ownership_settings and space_sharing_settings must be set together — AWS requires both (or neither, for a legacy unscoped space)"
+    expression: "has(this.ownership_settings) == has(this.space_sharing_settings)"
+  };
+}
+
+// AwsSagemakerDomainSpaceOwnership names the user profile that owns a space.
+message AwsSagemakerDomainSpaceOwnership {
+  // The owning user profile's name (not ARN).
+  string owner_user_profile_name = 1 [(buf.validate.field).required = true];
+}
+
+// AwsSagemakerDomainSpaceSharing declares a space's sharing posture.
+message AwsSagemakerDomainSpaceSharing {
+  // "Private" or "Shared".
+  string sharing_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Private",
+        "Shared"
+      ]
+    }
+  ];
+}
+
+// AwsSagemakerDomainSpaceSettings is a space's own configuration. AWS's
+// SpaceSettings type differs from the domain-default tree: it adds `app_type`
+// and per-space Code Editor settings, requires a resource spec on each
+// configured app, carries a slimmer idle-shutdown dial (timeout only, no
+// min/max guardrails), and mounts existing EFS file systems directly by id.
+message AwsSagemakerDomainSpaceSettings {
+  // Which app this space runs: "JupyterLab", "CodeEditor", "JupyterServer",
+  // or "KernelGateway". Spaces are single-app workspaces; the matching
+  // app-settings block below configures it.
+  optional string app_type = 1;
+
+  // JupyterLab configuration for the space. `default_resource_spec` is
+  // required here (unlike the domain baseline) — AWS's space contract.
+  AwsSagemakerDomainSpaceJupyterLabAppSettings jupyter_lab_app_settings = 2;
+
+  // Code Editor (VS Code / Code-OSS) configuration for the space.
+  AwsSagemakerDomainSpaceCodeEditorAppSettings code_editor_app_settings = 3;
+
+  // Classic Jupyter Server configuration for the space. Same shape as the
+  // domain baseline, but `default_resource_spec` is required here.
+  AwsSagemakerDomainJupyterServerAppSettings jupyter_server_app_settings = 4;
+
+  // KernelGateway configuration for the space. Same shape as the domain
+  // baseline, but `default_resource_spec` is required here.
+  AwsSagemakerDomainKernelGatewayAppSettings kernel_gateway_app_settings = 5;
+
+  // Existing EFS file systems mounted into the space's apps (by id — the
+  // space form has no per-mount path, unlike the domain baseline's config).
+  repeated AwsSagemakerDomainSpaceCustomFileSystem custom_file_systems = 6;
+
+  // The space's EBS boot/work volume size, in GB (5-16384). Persists across
+  // app restarts; deleted with the space.
+  AwsSagemakerDomainSpaceStorage space_storage_settings = 7;
+
+  option (buf.validate.message).cel = {
+    id: "app_type_valid"
+    message: "app_type must be 'JupyterLab', 'CodeEditor', 'JupyterServer', or 'KernelGateway'"
+    expression: "!has(this.app_type) || this.app_type in ['JupyterLab', 'CodeEditor', 'JupyterServer', 'KernelGateway']"
+  };
+
+  // AWS requires a resource spec on each app block configured on a SPACE
+  // (the domain-baseline forms of these blocks leave it optional).
+  option (buf.validate.message).cel = {
+    id: "space_jupyter_server_requires_resource_spec"
+    message: "jupyter_server_app_settings.default_resource_spec is required on a space"
+    expression: "!has(this.jupyter_server_app_settings) || has(this.jupyter_server_app_settings.default_resource_spec)"
+  };
+  option (buf.validate.message).cel = {
+    id: "space_kernel_gateway_requires_resource_spec"
+    message: "kernel_gateway_app_settings.default_resource_spec is required on a space"
+    expression: "!has(this.kernel_gateway_app_settings) || has(this.kernel_gateway_app_settings.default_resource_spec)"
+  };
+}
+
+// AwsSagemakerDomainSpaceJupyterLabAppSettings configures JupyterLab on one
+// space. The space form differs from the domain baseline: the resource spec is
+// required, and idle shutdown carries only the timeout (no min/max guardrails).
+message AwsSagemakerDomainSpaceJupyterLabAppSettings {
+  // The compute instance type and image for the space's JupyterLab runtime.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1 [(buf.validate.field).required = true];
+
+  // Git repositories cloned into the space's JupyterLab on startup. Maximum 10.
+  repeated AwsSagemakerDomainCodeRepository code_repositories = 2 [(buf.validate.field).repeated.max_items = 10];
+
+  // Automatic shutdown of the space's JupyterLab when idle.
+  AwsSagemakerDomainSpaceIdleSettings idle_settings = 3;
+}
+
+// AwsSagemakerDomainSpaceCodeEditorAppSettings configures Code Editor on one
+// space (the space form: required resource spec, timeout-only idle shutdown).
+message AwsSagemakerDomainSpaceCodeEditorAppSettings {
+  // The compute instance type and image for the space's Code Editor runtime.
+  AwsSagemakerDomainResourceSpec default_resource_spec = 1 [(buf.validate.field).required = true];
+
+  // Automatic shutdown of the space's Code Editor when idle.
+  AwsSagemakerDomainSpaceIdleSettings idle_settings = 2;
+}
+
+// AwsSagemakerDomainSpaceIdleSettings is the space-scoped idle-shutdown dial.
+// Spaces carry only the timeout — the min/max user-override guardrails and the
+// lifecycle_management switch exist only on the domain/user plane.
+message AwsSagemakerDomainSpaceIdleSettings {
+  // Minutes of inactivity before the space's app shuts down. Range: 60-525600.
+  optional int32 idle_timeout_in_minutes = 1 [
+    (buf.validate.field).int32.gte = 60,
+    (buf.validate.field).int32.lte = 525600
+  ];
+}
+
+// AwsSagemakerDomainSpaceCustomFileSystem mounts one existing EFS file system
+// into a space's apps.
+message AwsSagemakerDomainSpaceCustomFileSystem {
+  // The EFS file system to mount. The file system must have mount targets in
+  // the domain's VPC.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef file_system_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsElasticFileSystem,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.file_system_id"
+  ];
+}
+
+// AwsSagemakerDomainSpaceStorage is a space's EBS volume sizing (the space
+// form is a single concrete size — the domain baseline's default/maximum pair
+// governs what spaces may pick).
+message AwsSagemakerDomainSpaceStorage {
+  // The EBS volume size in GB. Range: 5-16384.
+  int32 ebs_volume_size_in_gb = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 5,
+    (buf.validate.field).int32.lte = 16384
+  ];
 }
 
 // AwsSagemakerDomainJupyterLabAppSettings configures the JupyterLab IDE.
@@ -747,7 +1001,13 @@ message AwsSagemakerDomainResourceSpec {
   //   "ml.g4dn.xlarge" - GPU workloads (1 GPU, 4 vCPU, 16 GB)
   //   "ml.p3.2xlarge" - heavy training (1 V100 GPU, 8 vCPU, 61 GB)
   //   "system" - lightweight system-managed instance for JupyterServer
-  string instance_type = 1;
+  // The shape is checked here ("system" or an "ml."-prefixed type) so a typo
+  // fails at manifest time; membership in AWS's instance-type list grows with
+  // every hardware launch and is validated by AWS at deploy time.
+  string instance_type = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(system|ml\\.[a-z0-9]+(\\.[a-z0-9]+)+)$"
+  ];
 
   // lifecycle_config_arn is the ARN of a lifecycle configuration script that runs
   // when this specific app type starts.
@@ -817,6 +1077,14 @@ message AwsSagemakerDomainCodeRepository {
 // and rejects the request ("Member must have value greater than or equal to 60"), so a
 // partial block can never deploy.
 message AwsSagemakerDomainIdleSettings {
+  // lifecycle_management is the enforcement switch: "ENABLED" (the default when
+  // this block is present) turns automatic idle shutdown on; "DISABLED" keeps
+  // the block's timeout values as published guardrails users may adopt WITHOUT
+  // forcing auto-shutdown on — the defined-but-disabled state. Both engines
+  // send the explicit value, so flipping to "DISABLED" genuinely turns
+  // enforcement off.
+  optional string lifecycle_management = 4 [(dev.planton.shared.options.default) = "ENABLED"];
+
   // idle_timeout_in_minutes is the duration of inactivity (in minutes) before an instance
   // is automatically shut down. Range: 60-525600 (1 hour to 365 days).
   // A reasonable production default is 120 (2 hours).
@@ -850,6 +1118,12 @@ message AwsSagemakerDomainIdleSettings {
     id: "max_gte_min"
     message: "max_idle_timeout_in_minutes must be >= min_idle_timeout_in_minutes"
     expression: "this.max_idle_timeout_in_minutes >= this.min_idle_timeout_in_minutes"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "lifecycle_management_valid"
+    message: "lifecycle_management must be 'ENABLED' or 'DISABLED'"
+    expression: "!has(this.lifecycle_management) || this.lifecycle_management in ['ENABLED', 'DISABLED']"
   };
 }
 
@@ -1002,8 +1276,14 @@ message AwsSagemakerDomainDockerSettings {
   // vpc_only_trusted_accounts restricts Docker image pulling to images from specified
   // AWS account IDs when app_network_access_type is "VpcOnly". This prevents users from
   // pulling arbitrary images from public registries, enforcing approved image sources.
-  // Maximum 20 account IDs.
-  repeated string vpc_only_trusted_accounts = 2 [(buf.validate.field).repeated.max_items = 20];
+  // Maximum 20 account IDs, each exactly 12 digits — a malformed entry would make this
+  // security control silently not match the intended account.
+  repeated string vpc_only_trusted_accounts = 2 [
+    (buf.validate.field).repeated.max_items = 20,
+    (buf.validate.field).repeated.items = {
+      string: {pattern: "^[0-9]{12}$"}
+    }
+  ];
 
   // --- Cross-field validations ---
 

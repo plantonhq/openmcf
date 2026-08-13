@@ -27,3 +27,8 @@ spec:
     pulumi preview per engine). Artifacts are complete and the lanes stay
     re-runnable.
   timeout_minutes: 60
+  # 2026-08-13 tag-convergence sweep: the Terraform module's metadata.labels
+  # merge into cloud tags was dropped (the canonical six-key identity map).
+  # The change rides this kind's recorded deferral; the offline gate (tofu
+  # plan + pulumi preview) re-covers it, and the class is live-proven via
+  # Q31 (awscloudwatchloggroup represents it).

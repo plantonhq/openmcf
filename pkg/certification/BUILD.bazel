@@ -22,6 +22,7 @@ go_test(
         "//pkg/catalogbundle",
         "//pkg/conversion",
         "//pkg/crkreflect",
+        "//shared/cloudresourcekind",
         "@io_k8s_sigs_yaml//:yaml",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protodesc",

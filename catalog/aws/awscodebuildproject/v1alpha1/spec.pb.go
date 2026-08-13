@@ -810,7 +810,17 @@ type AwsCodeBuildEnvironment struct {
 	// time; required for MAC_ARM and the EC2 environment types). The fleet is
 	// a shared, account-level resource managed outside this project; reference
 	// it by ARN.
-	FleetArn      string `protobuf:"bytes,10,opt,name=fleet_arn,json=fleetArn,proto3" json:"fleet_arn,omitempty"`
+	FleetArn string `protobuf:"bytes,10,opt,name=fleet_arn,json=fleetArn,proto3" json:"fleet_arn,omitempty"`
+	// host_kernel selects the Linux kernel version for the build hosts.
+	//
+	//	LINUX_KERNEL_4:      Kernel 4.x (the long-standing default)
+	//	LINUX_KERNEL_6:      Kernel 6.x (newer eBPF/io_uring features)
+	//	LINUX_KERNEL_LATEST: Always the newest kernel CodeBuild offers
+	//
+	// Applies only to the LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and
+	// ARM_EC2 environment types — AWS's contract; Windows, Lambda, and Mac
+	// environments have no kernel selection. Omit to let AWS choose.
+	HostKernel    string `protobuf:"bytes,11,opt,name=host_kernel,json=hostKernel,proto3" json:"host_kernel,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -911,6 +921,13 @@ func (x *AwsCodeBuildEnvironment) GetDockerServer() *AwsCodeBuildDockerServer {
 func (x *AwsCodeBuildEnvironment) GetFleetArn() string {
 	if x != nil {
 		return x.FleetArn
+	}
+	return ""
+}
+
+func (x *AwsCodeBuildEnvironment) GetHostKernel() string {
+	if x != nil {
+		return x.HostKernel
 	}
 	return ""
 }
@@ -2263,7 +2280,7 @@ const file_catalog_aws_awscodebuildproject_v1alpha1_spec_proto_rawDesc = "" +
 	"\bresource\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bresource\"\x9e\x01\n" +
 	"\"AwsCodeBuildSecondarySourceVersion\x12I\n" +
 	"\x11source_identifier\x18\x01 \x01(\tB\x1c\xbaH\x19\xc8\x01\x01r\x14\x18\x80\x012\x0f^[A-Za-z0-9_]+$R\x10sourceIdentifier\x12-\n" +
-	"\x0esource_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rsourceVersion\"\xe6\t\n" +
+	"\x0esource_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rsourceVersion\"\x8a\r\n" +
 	"\x17AwsCodeBuildEnvironment\x12\xfd\x01\n" +
 	"\x04type\x18\x01 \x01(\tB\xe8\x01\xbaH\xe4\x01\xc8\x01\x01r\xde\x01R\x0fLINUX_CONTAINERR\x13LINUX_GPU_CONTAINERR\rARM_CONTAINERR\x11WINDOWS_CONTAINERR\x1dWINDOWS_SERVER_2019_CONTAINERR\x1dWINDOWS_SERVER_2022_CONTAINERR\x16LINUX_LAMBDA_CONTAINERR\x14ARM_LAMBDA_CONTAINERR\tLINUX_EC2R\aARM_EC2R\vWINDOWS_EC2R\aMAC_ARMR\x04type\x12\xaa\x02\n" +
 	"\fcompute_type\x18\x02 \x01(\tB\x86\x02\xbaH\x82\x02\xc8\x01\x01r\xfc\x01R\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\x10BUILD_LAMBDA_1GBR\x10BUILD_LAMBDA_2GBR\x10BUILD_LAMBDA_4GBR\x10BUILD_LAMBDA_8GBR\x11BUILD_LAMBDA_10GBR\x17ATTRIBUTE_BASED_COMPUTER\x14CUSTOM_INSTANCE_TYPER\vcomputeType\x12\x1c\n" +
@@ -2273,9 +2290,12 @@ const file_catalog_aws_awscodebuildproject_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1bimage_pull_credentials_type\x18\x06 \x01(\tB+\xbaH\x1br\x19R\tCODEBUILDR\fSERVICE_ROLE\x8a\xa6\x1d\tCODEBUILDH\x00R\x18imagePullCredentialsType\x88\x01\x01\x12\x82\x01\n" +
 	"\x15environment_variables\x18\a \x03(\v2M.dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildEnvironmentVariableR\x14environmentVariables\x12}\n" +
 	"\x13registry_credential\x18\b \x01(\v2L.dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildRegistryCredentialR\x12registryCredential\x12k\n" +
-	"\rdocker_server\x18\t \x01(\v2F.dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildDockerServerR\fdockerServer\x12\x1b\n" +
+	"\rdocker_server\x18\t \x01(\v2F.dev.planton.aws.awscodebuildproject.v1alpha1.AwsCodeBuildDockerServerR\fdockerServer\x12b\n" +
 	"\tfleet_arn\x18\n" +
-	" \x01(\tR\bfleetArnB\x1e\n" +
+	" \x01(\tBE\xbaHB\xd8\x01\x01r=2;^arn:aws[a-zA-Z-]*:codebuild:[a-z0-9-]+:[0-9]{12}:fleet/.+$R\bfleetArn\x12^\n" +
+	"\vhost_kernel\x18\v \x01(\tB=\xbaH:\xd8\x01\x01r5R\x0eLINUX_KERNEL_4R\x0eLINUX_KERNEL_6R\x13LINUX_KERNEL_LATESTR\n" +
+	"hostKernel:\xfa\x01\xbaH\xf6\x01\x1a\xf3\x01\n" +
+	"&host_kernel_requires_linux_environment\x12dhost_kernel applies only to LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and ARM_EC2 environment types\x1acthis.host_kernel == '' || this.type in ['LINUX_CONTAINER', 'ARM_CONTAINER', 'LINUX_EC2', 'ARM_EC2']B\x1e\n" +
 	"\x1c_image_pull_credentials_type\"\xd0\x02\n" +
 	"\x18AwsCodeBuildDockerServer\x12\x9d\x01\n" +
 	"\fcompute_type\x18\x01 \x01(\tBz\xbaHw\xc8\x01\x01rrR\x14BUILD_GENERAL1_SMALLR\x15BUILD_GENERAL1_MEDIUMR\x14BUILD_GENERAL1_LARGER\x15BUILD_GENERAL1_XLARGER\x16BUILD_GENERAL1_2XLARGER\vcomputeType\x12\x93\x01\n" +

@@ -1,0 +1,79 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sns_topic:
+    mappings:
+      # The spec names the field for what it references (an AwsKmsKey, chart-
+      # wired via StringValueOrRef); the provider carries the legacy
+      # "master key" API name.
+      - spec: spec.kms_key_id
+        arg: kms_master_key_id
+      # Per-protocol delivery-status logging: the provider flattens five
+      # protocols x three knobs into fifteen top-level arguments; the spec
+      # groups them as delivery_feedback.<protocol>.<knob> so each protocol
+      # block reads as one unit and the roles chart-wire to AwsIamRole.
+      - spec: spec.delivery_feedback.application.success_feedback_role
+        arg: application_success_feedback_role_arn
+      - spec: spec.delivery_feedback.application.failure_feedback_role
+        arg: application_failure_feedback_role_arn
+      - spec: spec.delivery_feedback.application.success_feedback_sample_rate
+        arg: application_success_feedback_sample_rate
+      - spec: spec.delivery_feedback.firehose.success_feedback_role
+        arg: firehose_success_feedback_role_arn
+      - spec: spec.delivery_feedback.firehose.failure_feedback_role
+        arg: firehose_failure_feedback_role_arn
+      - spec: spec.delivery_feedback.firehose.success_feedback_sample_rate
+        arg: firehose_success_feedback_sample_rate
+      - spec: spec.delivery_feedback.http.success_feedback_role
+        arg: http_success_feedback_role_arn
+      - spec: spec.delivery_feedback.http.failure_feedback_role
+        arg: http_failure_feedback_role_arn
+      - spec: spec.delivery_feedback.http.success_feedback_sample_rate
+        arg: http_success_feedback_sample_rate
+      - spec: spec.delivery_feedback.lambda.success_feedback_role
+        arg: lambda_success_feedback_role_arn
+      - spec: spec.delivery_feedback.lambda.failure_feedback_role
+        arg: lambda_failure_feedback_role_arn
+      - spec: spec.delivery_feedback.lambda.success_feedback_sample_rate
+        arg: lambda_success_feedback_sample_rate
+      - spec: spec.delivery_feedback.sqs.success_feedback_role
+        arg: sqs_success_feedback_role_arn
+      - spec: spec.delivery_feedback.sqs.failure_feedback_role
+        arg: sqs_failure_feedback_role_arn
+      - spec: spec.delivery_feedback.sqs.success_feedback_sample_rate
+        arg: sqs_success_feedback_sample_rate
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (with the .fifo suffix appended for FIFO topics) -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The topic's data protection policy (PII/PHI detection with
+  # audit/mask/deny operations) -- AWS models it as its own
+  # PutDataProtectionPolicy call, so it materializes as a satellite resource
+  # rendered from spec.data_protection_policy.
+  aws_sns_topic_data_protection_policy:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The explicit mapping also keeps the satellite's policy from
+      # coincidentally exact-matching the topic's own spec.policy.
+      - arg: policy
+        spec: spec.data_protection_policy
+    exclusions:
+      - arg: arn
+        reason: module-wired to the ARN of the topic this kind creates -- the satellite always attaches to its own topic, never free-form user surface

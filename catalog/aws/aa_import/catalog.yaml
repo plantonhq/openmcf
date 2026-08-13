@@ -91,6 +91,30 @@ spec:
         The colon-joined second segment is the per-configuration name (the
         module keys these off spec.intelligent_tiering_configurations[].name;
         it also appears in the enumerated address's for_each key).
+    - terraform_type: aws_s3_bucket_abac
+      pulumi_type: aws:s3/bucketAbac:BucketAbac
+      id_format: "{bucket}"
+    - terraform_type: aws_s3_bucket_analytics_configuration
+      pulumi_type: aws:s3/analyticsConfiguration:AnalyticsConfiguration
+      id_format: "{bucket}:{analytics_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.analytics_configurations[].name).
+    - terraform_type: aws_s3_bucket_inventory
+      pulumi_type: aws:s3/inventory:Inventory
+      id_format: "{bucket}:{inventory_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.inventory_configurations[].name).
+    - terraform_type: aws_s3_bucket_metric
+      pulumi_type: aws:s3/bucketMetric:BucketMetric
+      id_format: "{bucket}:{metric_name}"
+      notes: >-
+        Same name-keyed convention as intelligent tiering (the module keys
+        these off spec.metrics_configurations[].name).
+    - terraform_type: aws_s3_bucket_metadata_configuration
+      pulumi_type: aws:s3/bucketMetadataConfiguration:BucketMetadataConfiguration
+      id_format: "{bucket}"
 
     # --- VPC -----------------------------------------------------------------
     - terraform_type: aws_vpc
@@ -103,6 +127,20 @@ spec:
       notes: >-
         The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
         each association under CidrBlockAssociationSet).
+    - terraform_type: aws_vpc_ipv6_cidr_block_association
+      pulumi_type: aws:ec2/vpcIpv6CidrBlockAssociation:VpcIpv6CidrBlockAssociation
+      id_format: "{cidr_association_id}"
+      notes: >-
+        The "vpc-cidr-assoc-..." association id (aws ec2 describe-vpcs shows
+        each association under Ipv6CidrBlockAssociationSet). The provider also
+        accepts an optional ",ipam-pool-id,netmask" suffix for IPAM-allocated
+        blocks; the bare association id is the canonical form.
+    - terraform_type: aws_vpc_encryption_control
+      pulumi_type: aws:ec2/vpcEncryptionControl:VpcEncryptionControl
+      id_format: "{vpc_encryption_control_id}"
+      notes: >-
+        The "vpcec-..." VPC Encryption Control id (aws ec2
+        describe-vpc-encryption-controls).
 
     # --- Security group ------------------------------------------------------
     - terraform_type: aws_security_group
@@ -113,6 +151,11 @@ spec:
       # before deleting, for groups other groups reference) -- EC2 never
       # reports it, so it can never round-trip through import.
       config_only_attributes: [revoke_rules_on_delete]
+    # The group's share into another VPC (spec.additional_vpc_ids) imports
+    # by both halves of its config-time identity, comma-separated.
+    - terraform_type: aws_vpc_security_group_vpc_association
+      pulumi_type: aws:vpc/securityGroupVpcAssociation:SecurityGroupVpcAssociation
+      id_format: "{security_group_id},{vpc_id}"
 
     # --- ECR -----------------------------------------------------------------
     - terraform_type: aws_ecr_repository
@@ -226,6 +269,12 @@ spec:
       # deletion_window_in_days only exists as scheduling input to
       # ScheduleKeyDeletion; KMS never reports it back.
       config_only_attributes: [deletion_window_in_days]
+    - terraform_type: aws_kms_grant
+      pulumi_type: aws:kms/grant:Grant
+      id_format: "{kms_key_id}:{grant_id}"
+      notes: >-
+        Key ID and Grant ID separated by a colon (aws kms list-grants
+        --key-id shows each grant's GrantId).
     - terraform_type: aws_kms_alias
       pulumi_type: aws:kms/alias:Alias
       id_format: "{kms_alias_name}"

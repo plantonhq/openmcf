@@ -1,0 +1,36 @@
+# Consumer-scoped AwsIamRole install profile for the RDS cluster's E2E
+# chain, replacing the kind's shared multi-role profile for THIS consumer
+# only. RDS engine-feature role associations are validated SERVER-SIDE at
+# AddRoleToDBCluster: the role's trust policy must allow rds.amazonaws.com
+# to assume it, or AWS rejects the call with InvalidParameterValue ("IAM
+# role ARN value is invalid or does not include the required permissions")
+# -- a contract no provider schema or offline plan carries (live-caught
+# 2026-08-12). The shared profile's composition role trusts
+# ec2.amazonaws.com, so this consumer ships its own RDS-trusting shape.
+# The role carries no policies on purpose: association validates trust
+# only, and the feature's actual S3/Lambda permissions are the workload's
+# concern, not this fixture's.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-rds-feature-role
+  id: planton-oss-e2e-rds-feature-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for RDS engine-feature association
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: rds.amazonaws.com
+        Action: sts:AssumeRole

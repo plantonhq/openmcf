@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurevpngatewayconnection.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurevpngatewayconnection/v1alpha1/outputs.proto";
+import "catalog/azure/azurevpngatewayconnection/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureVpnGatewayConnection is the top-level API resource describing a
+// VPN gateway connection -- the tunnel bundle joining one branch (an
+// AzureVpnSite) to a Virtual WAN hub's VPN gateway.
+message AzureVpnGatewayConnection {
+  // API version identifier. Must be "azure.planton.dev/v1alpha1".
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // Resource kind. Must be "AzureVpnGatewayConnection".
+  string kind = 2 [(buf.validate.field).string.const = 'AzureVpnGatewayConnection'];
+
+  // Standard Planton metadata (name, org, env, labels, tags).
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // VPN gateway connection specification.
+  AzureVpnGatewayConnectionSpec spec = 4 [(buf.validate.field).required = true];
+
+  // Deployment status containing stack outputs. Populated after deployment.
+  AzureVpnGatewayConnectionStatus status = 5;
+}
+
+// AzureVpnGatewayConnectionStatus holds the deployment outputs.
+message AzureVpnGatewayConnectionStatus {
+  // Stack outputs from the IaC deployment.
+  AzureVpnGatewayConnectionStackOutputs outputs = 1;
+}

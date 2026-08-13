@@ -120,13 +120,18 @@ proto-tools: $(PROTOC_STAMP) $(GRPC_JAVA_STAMP) $(PROTOC_GEN_GO_STAMP) $(PROTOC_
 
 .PHONY: buf-fmt
 buf-fmt:
-	buf format -w
+	buf format -w --disable-symlinks
 
 .PHONY: protos
 protos: buf-lint buf-fmt proto-tools
 	rm -rf generated/stubs
 	mkdir -p generated/stubs
-	buf generate
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. --timeout 20m: with LOCAL plugins the full tree outruns
+	# buf's 2-minute default.
+	buf generate --disable-symlinks --timeout 20m
 	cp -R generated/stubs/go/github.com/plantonhq/planton/. .
 	rm -rf generated/stubs/go
 	# Generate a BUILD.bazel for the Java stubs so Bazel can compile them.
@@ -136,6 +141,15 @@ protos: buf-lint buf-fmt proto-tools
 	@printf '# gazelle:ignore\njava_library(\n    name = "java",\n    srcs = glob(["**/*.java"]),\n    visibility = ["//visibility:public"],\n    deps = [\n        "@maven//:build_buf_protovalidate",\n        "@maven//:com_google_guava_guava",\n        "@maven//:com_google_protobuf_protobuf_java",\n        "@maven//:io_grpc_grpc_api",\n        "@maven//:io_grpc_grpc_protobuf",\n        "@maven//:io_grpc_grpc_stub",\n        "@maven//:javax_annotation_javax_annotation_api",\n    ],\n)\n' > generated/stubs/java/BUILD.bazel
 	@echo "Verifying generated Java stubs compile..."
 	${BAZEL} build ${BAZEL_REMOTE_FLAGS} //generated/stubs/java:java
+	# Rule-engine conformance gate: every CEL validation rule must COMPILE on
+	# protovalidate-java (the platform control plane's engine, and the
+	# strictest of the consumer engines). Walks every message descriptor --
+	# rules compile lazily per validated type, so anything narrower silently
+	# skips nested types (a rule the Java engine could not evaluate once
+	# shipped in a release and emptied every fresh local instance's chart
+	# catalog). See hack/javagate/ProtovalidateConformanceGate.java.
+	@echo "Verifying every CEL rule compiles on protovalidate-java..."
+	${BAZEL} test ${BAZEL_REMOTE_FLAGS} //hack/javagate:protovalidate_conformance_gate
 	${BAZEL} run //:gazelle
 
 .PHONY: build-optional-linter-plugin
@@ -145,7 +159,10 @@ build-optional-linter-plugin:
 
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
-	buf lint
+	# --disable-symlinks keeps local runs immune to the bazel-* convenience
+	# symlinks (bazel run //:gazelle recreates them), whose tree duplication
+	# otherwise fails the module compile with duplicate-symbol errors.
+	buf lint --disable-symlinks
 
 .PHONY: buf-breaking
 # Compares the module's protos against the main branch, classified by the
@@ -217,6 +234,29 @@ build-catalog-bundle:
 verify-catalog-bundle:
 	go run ./pkg/catalogbundle/cli verify --bundle build/catalog-bundle.zip
 
+.PHONY: build-catalog-schema-plugin
+build-catalog-schema-plugin:
+	go build -o $(shell go env GOPATH)/bin/protoc-gen-catalog-schema ./pkg/catalogschema/protoc-gen-catalog-schema
+
+# Builds the catalog-schemas artifact -- one JSON schema document per catalog
+# .proto (the pkg/catalogschema published contract, authored source included),
+# for consoles and tools that render API contracts without compiling protos.
+# The tree is regenerated wholesale into build/ (never committed) and zipped
+# deterministically. See pkg/catalogschema/types.go for the contract.
+.PHONY: build-catalog-schemas
+build-catalog-schemas: build-catalog-schema-plugin
+	rm -rf build/catalog-schemas
+	buf generate --template buf.gen.catalog-schema.yaml
+	go run ./pkg/catalogschema/cli package --dir build/catalog-schemas --out build/catalog-schemas.zip
+
+# Verifies the built schema artifact: every user-facing registry kind's four
+# contract documents are present at its declared version, nothing from the
+# _test provider ships, and every document reads back under the published
+# contract. An artifact that fails must never ship.
+.PHONY: verify-catalog-schemas
+verify-catalog-schemas:
+	go run ./pkg/catalogschema/cli verify --zip build/catalog-schemas.zip
+
 .PHONY: generate-cloud-resource-kind-map
 generate-cloud-resource-kind-map:
 	rm -f pkg/crkreflect/kind_map_gen.go
@@ -230,10 +270,17 @@ generate-kubernetes-types:
 # `planton explain` serves offline. Generated protobuf code strips comments,
 # so the prose is distilled from a descriptor image built with source info.
 # Deterministic: unchanged protos regenerate a byte-identical artifact.
+# If `buf build` fails with "symbol already defined at bazel-<repo>/...",
+# stale Bazel output symlinks at the repo root are leaking a duplicate
+# proto tree into the module walk -- delete the bazel-* symlinks and rerun.
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build
-	buf build -o build/proto-docs-image.binpb
+	# --disable-symlinks: after any bazel run, the bazel-* convenience
+	# symlinks point at an execroot carrying a full copy of the proto
+	# tree; buf follows symlinks by default and fails on the duplicated
+	# symbols. The module has no legitimate protos behind symlinks.
+	buf build --disable-symlinks -o build/proto-docs-image.binpb
 	go run ./pkg/protodocs/distiller \
 		--image build/proto-docs-image.binpb \
 		--out pkg/protodocs/index.json.gz
@@ -251,7 +298,9 @@ generate-provider-schemas:
 	go run ./pkg/providerparity/distiller \
 		--out-dir pkg/providerparity/schemas \
 		--provider 'google=hashicorp/google@~> 7.43' \
-		--provider 'google-beta=hashicorp/google-beta@~> 7.43'
+		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
+		--provider 'azurerm=hashicorp/azurerm@5.0.0' \
+		--provider 'aws=hashicorp/aws@~> 6.58'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this
@@ -349,10 +398,6 @@ release-buf:
 next-version:  ## show what the next version would be
 	@python3 tools/ci/release/next_version.py $(bump)
 
-.PHONY: snapshot
-snapshot: deps  ## build a local snapshot using GoReleaser
-	goreleaser release --snapshot --clean --skip=publish
-
 .PHONY: release
 release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: patch). Override with version=vX.Y.Z
 	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
@@ -375,19 +420,6 @@ run-docs:
 .PHONY: build-docs
 build-docs:
 	$(MAKE) -C docs build
-
-# ── website (site/) ────────────────────────────────────────────────────────────
-.PHONY: run-site
-run-site:
-	$(MAKE) -C site dev
-
-.PHONY: build-site
-build-site:
-	$(MAKE) -C site build
-
-.PHONY: preview-site
-preview-site:
-	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies

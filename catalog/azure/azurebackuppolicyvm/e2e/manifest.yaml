@@ -1,0 +1,50 @@
+# Offline-plan test manifest. Exercises the deep seams: a V2 (enhanced)
+# policy with an HOURLY schedule (interval/duration dials), crash-only
+# consistency (V2-gated), instant restore at a V2-only depth, the
+# named instant-restore resource group, a TierAfter archive rule with
+# its age, and all four retention layers -- monthly in the month-days
+# form and yearly in the week-of-month form, so both exclusive
+# grammars render.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBackupPolicyVm
+metadata:
+  name: test-backup-policy-vm
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: test-rg
+  recoveryVaultName:
+    value: test-backup-vault
+  name: hourly-enhanced-policy
+  policyType: V2
+  backup:
+    frequency: Hourly
+    time: "08:00"
+    hourInterval: 4
+    hourDuration: 12
+  instantRestoreRetentionDays: 10
+  instantRestoreResourceGroup:
+    prefix: backup-snapshots
+    suffix: dev
+  tieringPolicy:
+    archivedRestorePoint:
+      mode: TierAfter
+      duration: 3
+      durationType: Months
+  consistencyType: OnlyCrashConsistent
+  timezone: UTC
+  retentionDaily:
+    count: 30
+  retentionWeekly:
+    count: 12
+    weekdays: [Sunday]
+  retentionMonthly:
+    count: 12
+    days: [1, 15]
+    includeLastDays: true
+  retentionYearly:
+    count: 7
+    months: [January]
+    weeks: [First]
+    weekdays: [Sunday]

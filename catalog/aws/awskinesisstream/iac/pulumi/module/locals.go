@@ -24,6 +24,7 @@ func initializeLocals(ctx *pulumi.Context, in *awskinesisstream.AwsKinesisStream
 	locals.StreamName = in.Target.Metadata.Name
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.Target.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.Target.Metadata.Org,
 		awstagkeys.Environment:  locals.Target.Metadata.Env,

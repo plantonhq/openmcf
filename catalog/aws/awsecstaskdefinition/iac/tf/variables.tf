@@ -97,8 +97,23 @@ variable "spec" {
         root_directory = optional(string, "")
         access_point_id = optional(string, "")
         iam_authorization = optional(bool, false)
+        transit_encryption_port = optional(number, 0)
       }))
       host_path = optional(string, "")
+      configure_at_launch = optional(bool, false)
+      docker = optional(object({
+        autoprovision = optional(bool, false)
+        driver = optional(string, "")
+        driver_opts = optional(map(string), {})
+        labels = optional(map(string), {})
+        scope = optional(string, "")
+      }))
+      s3files = optional(object({
+        file_system_arn = string
+        access_point_arn = optional(string, "")
+        root_directory = optional(string, "")
+        transit_encryption_port = optional(number, 0)
+      }))
     })), [])
     logging = optional(object({
       disabled = optional(bool, false)
@@ -106,5 +121,12 @@ variable "spec" {
       retention_days = optional(number)
     }))
     skip_destroy = optional(bool, false)
+    enable_fault_injection = optional(bool, false)
+    ipc_mode = optional(string, "")
+    pid_mode = optional(string, "")
+    placement_constraints = optional(list(object({
+      type = optional(string, "")
+      expression = string
+    })), [])
   })
 }

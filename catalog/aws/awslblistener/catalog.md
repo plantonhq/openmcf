@@ -1,6 +1,6 @@
 # AWS LB Listener
 
-Deploys an ELBv2 listener — the port/protocol entry point on a load balancer, owning the TLS material clients see and the default action taken when no listener rule matches. A listener is a first-class node in the routing graph: one load balancer carries many listeners (80 and 443 at minimum on most ALBs), and listener rules attach to a specific listener as services deploy. The same kind serves both families — ALB listeners (HTTP/HTTPS) take the full action set including authentication; NLB listeners (TCP/UDP/TCP_UDP/TLS) forward only.
+Deploys an ELBv2 listener — the port/protocol entry point on a load balancer, owning the TLS material clients see and the default action taken when no listener rule matches. A listener is a first-class node in the routing graph: one load balancer carries many listeners (80 and 443 at minimum on most ALBs), and listener rules attach to a specific listener as services deploy. The same kind serves both families — ALB listeners (HTTP/HTTPS) take the full action set including authentication; NLB listeners (TCP/UDP/TCP_UDP/TLS/QUIC/TCP_QUIC) forward only.
 
 ## What Gets Created
 
@@ -82,7 +82,7 @@ These are the most important decisions when configuring a listener. Explore the 
 
 **The attachment is a one-way door** -- moving a listener to another load balancer replaces it. Port, protocol, certificates, and actions all update in place.
 
-**The protocol decides everything** -- HTTP/HTTPS listeners take the full action set (forward, redirect, fixed-response, Cognito, OIDC, JWT validation) plus mTLS and header policy; NLB protocols (TCP/UDP/TCP_UDP/TLS) forward to exactly one target group — AWS rejects everything else at Layer 4.
+**The protocol decides everything** -- HTTP/HTTPS listeners take the full action set (forward, redirect, fixed-response, Cognito, OIDC, JWT validation) plus mTLS and header policy; NLB protocols (TCP/UDP/TCP_UDP/TLS, and QUIC/TCP_QUIC for HTTP/3 with TCP fallback) forward to exactly one target group — AWS rejects everything else at Layer 4.
 
 **Certificates live here, not on the load balancer** -- the default certificate serves clients matching no SNI certificate; additional certificates multiplex several domains on one listener. Reference AwsCertManagerCert outputs so ACM renewals never go stale.
 

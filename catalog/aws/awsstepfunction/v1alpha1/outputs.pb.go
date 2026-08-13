@@ -47,7 +47,12 @@ type AwsStepFunctionStackOutputs struct {
 	// (e.g. "ACTIVE", "DELETING").
 	Status string `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
 	// RFC3339 timestamp of when the state machine was created.
-	CreationDate  string `protobuf:"bytes,6,opt,name=creation_date,json=creationDate,proto3" json:"creation_date,omitempty"`
+	CreationDate string `protobuf:"bytes,6,opt,name=creation_date,json=creationDate,proto3" json:"creation_date,omitempty"`
+	// Alias ARNs keyed by alias name (spec.aliases[].name), e.g.
+	// "prod" -> "...:stateMachine:orders:prod". Each alias routes to the
+	// version this deployment published; consumers invoke the alias ARN to
+	// follow deployments without repointing.
+	AliasArns     map[string]string `protobuf:"bytes,7,rep,name=alias_arns,json=aliasArns,proto3" json:"alias_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -124,11 +129,18 @@ func (x *AwsStepFunctionStackOutputs) GetCreationDate() string {
 	return ""
 }
 
+func (x *AwsStepFunctionStackOutputs) GetAliasArns() map[string]string {
+	if x != nil {
+		return x.AliasArns
+	}
+	return nil
+}
+
 var File_catalog_aws_awsstepfunction_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awsstepfunction/v1alpha1/outputs.proto\x12(dev.planton.aws.awsstepfunction.v1alpha1\"\x90\x02\n" +
+	"2catalog/aws/awsstepfunction/v1alpha1/outputs.proto\x12(dev.planton.aws.awsstepfunction.v1alpha1\"\xc3\x03\n" +
 	"\x1bAwsStepFunctionStackOutputs\x12*\n" +
 	"\x11state_machine_arn\x18\x01 \x01(\tR\x0fstateMachineArn\x12,\n" +
 	"\x12state_machine_name\x18\x02 \x01(\tR\x10stateMachineName\x129\n" +
@@ -136,7 +148,12 @@ const file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDesc = "" +
 	"\vrevision_id\x18\x04 \x01(\tR\n" +
 	"revisionId\x12\x16\n" +
 	"\x06status\x18\x05 \x01(\tR\x06status\x12#\n" +
-	"\rcreation_date\x18\x06 \x01(\tR\fcreationDateB\xdc\x02\n" +
+	"\rcreation_date\x18\x06 \x01(\tR\fcreationDate\x12s\n" +
+	"\n" +
+	"alias_arns\x18\a \x03(\v2T.dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionStackOutputs.AliasArnsEntryR\taliasArns\x1a<\n" +
+	"\x0eAliasArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xdc\x02\n" +
 	",com.dev.planton.aws.awsstepfunction.v1alpha1B\fOutputsProtoP\x01ZYgithub.com/plantonhq/planton/catalog/aws/awsstepfunction/v1alpha1;awsstepfunctionv1alpha1\xa2\x02\x04DPAA\xaa\x02(Dev.Planton.Aws.Awsstepfunction.V1alpha1\xca\x02(Dev\\Planton\\Aws\\Awsstepfunction\\V1alpha1\xe2\x024Dev\\Planton\\Aws\\Awsstepfunction\\V1alpha1\\GPBMetadata\xea\x02,Dev::Planton::Aws::Awsstepfunction::V1alpha1b\x06proto3"
 
 var (
@@ -151,16 +168,18 @@ func file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsStepFunctionStackOutputs)(nil), // 0: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionStackOutputs
+	nil,                                 // 1: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionStackOutputs.AliasArnsEntry
 }
 var file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionStackOutputs.alias_arns:type_name -> dev.planton.aws.awsstepfunction.v1alpha1.AwsStepFunctionStackOutputs.AliasArnsEntry
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_init() }
@@ -174,7 +193,7 @@ func file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsstepfunction_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

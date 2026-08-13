@@ -38,8 +38,10 @@ func neptuneCluster(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 		DeletionProtection: pulumi.Bool(spec.DeletionProtection),
 
 		// Storage encryption is a one-way door: it can only be chosen at
-		// create time, which is why the spec recommends it on by default.
-		StorageEncrypted: pulumi.Bool(spec.StorageEncrypted),
+		// create time, which is why the spec defaults it to TRUE (the
+		// platform materializes the default; an explicit false is for
+		// restore/global-join shapes whose source is unencrypted).
+		StorageEncrypted: pulumi.Bool(spec.GetStorageEncrypted()),
 
 		// SigV4-signed requests from IAM identities -- Neptune's only
 		// credential mechanism.

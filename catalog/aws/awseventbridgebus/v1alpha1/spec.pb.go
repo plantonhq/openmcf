@@ -85,8 +85,20 @@ type AwsEventBridgeBusSpec struct {
 	// express per-account/per-org grants). When unset, only the owning
 	// account can put events.
 	ResourcePolicy *structpb.Struct `protobuf:"bytes,7,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Event archives on this bus. An archive continuously records events
+	// delivered to the bus (all events, or the subset matching its event
+	// pattern) so they can be replayed later — the disaster-recovery and
+	// backfill lever for event-driven systems. Replay itself is an on-demand
+	// operation (EventBridge StartReplay), not declarative configuration; the
+	// archive defines what is recorded and for how long.
+	//
+	// Each entry materializes one archive sourced from THIS bus. Archives are
+	// bus-scoped children: they cannot outlive the bus and cannot record from
+	// any other source. An empty archive costs nothing — storage is billed
+	// per GB of archived events.
+	Archives      []*AwsEventBridgeBusArchive `protobuf:"bytes,8,rep,name=archives,proto3" json:"archives,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsEventBridgeBusSpec) Reset() {
@@ -168,6 +180,114 @@ func (x *AwsEventBridgeBusSpec) GetResourcePolicy() *structpb.Struct {
 	return nil
 }
 
+func (x *AwsEventBridgeBusSpec) GetArchives() []*AwsEventBridgeBusArchive {
+	if x != nil {
+		return x.Archives
+	}
+	return nil
+}
+
+// AwsEventBridgeBusArchive declares one event archive recorded from this bus.
+// The archive stores delivered events for later replay (EventBridge
+// StartReplay); it is created against the bus's own ARN and deleted with the
+// bus.
+type AwsEventBridgeBusArchive struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Name of the archive. Unique per AWS account and region; at most 48
+	// characters of letters, digits, dots, hyphens, and underscores.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Human-readable description of the archive.
+	// Maximum length is 512 characters.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// Maximum number of days to retain archived events. Leave at 0 to retain
+	// events indefinitely (the AWS default).
+	RetentionDays int32 `protobuf:"varint,3,opt,name=retention_days,json=retentionDays,proto3" json:"retention_days,omitempty"`
+	// Event pattern selecting which of the bus's events are archived,
+	// expressed as the standard EventBridge pattern structure. When omitted,
+	// EVERY event delivered to the bus is archived.
+	//
+	// Example:
+	//
+	//	source: ["orders.service"]
+	//	detail-type: ["OrderPlaced"]
+	EventPattern *structpb.Struct `protobuf:"bytes,4,opt,name=event_pattern,json=eventPattern,proto3" json:"event_pattern,omitempty"`
+	// KMS key for encrypting this archive. Accepts a KMS key ARN, key ID, key
+	// alias, or key alias ARN. When omitted, the archive is encrypted with an
+	// AWS-owned key at no additional cost. Note: this is the ARCHIVE's key —
+	// it is independent of the bus's own kms_key_identifier, and AWS applies
+	// it only to events at rest in the archive.
+	//
+	// Accepts a direct value or a reference to an AwsKmsKey resource.
+	KmsKeyIdentifier *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=kms_key_identifier,json=kmsKeyIdentifier,proto3" json:"kms_key_identifier,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeBusArchive) Reset() {
+	*x = AwsEventBridgeBusArchive{}
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeBusArchive) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeBusArchive) ProtoMessage() {}
+
+func (x *AwsEventBridgeBusArchive) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeBusArchive.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeBusArchive) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsEventBridgeBusArchive) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeBusArchive) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeBusArchive) GetRetentionDays() int32 {
+	if x != nil {
+		return x.RetentionDays
+	}
+	return 0
+}
+
+func (x *AwsEventBridgeBusArchive) GetEventPattern() *structpb.Struct {
+	if x != nil {
+		return x.EventPattern
+	}
+	return nil
+}
+
+func (x *AwsEventBridgeBusArchive) GetKmsKeyIdentifier() *v1.StringValueOrRef {
+	if x != nil {
+		return x.KmsKeyIdentifier
+	}
+	return nil
+}
+
 // AwsEventBridgeBusDeadLetterConfig configures a dead letter queue for the event bus.
 // Events that fail delivery to any rule target are routed to the specified queue.
 type AwsEventBridgeBusDeadLetterConfig struct {
@@ -183,7 +303,7 @@ type AwsEventBridgeBusDeadLetterConfig struct {
 
 func (x *AwsEventBridgeBusDeadLetterConfig) Reset() {
 	*x = AwsEventBridgeBusDeadLetterConfig{}
-	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -195,7 +315,7 @@ func (x *AwsEventBridgeBusDeadLetterConfig) String() string {
 func (*AwsEventBridgeBusDeadLetterConfig) ProtoMessage() {}
 
 func (x *AwsEventBridgeBusDeadLetterConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -208,7 +328,7 @@ func (x *AwsEventBridgeBusDeadLetterConfig) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use AwsEventBridgeBusDeadLetterConfig.ProtoReflect.Descriptor instead.
 func (*AwsEventBridgeBusDeadLetterConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *AwsEventBridgeBusDeadLetterConfig) GetArn() *v1.StringValueOrRef {
@@ -246,7 +366,7 @@ type AwsEventBridgeBusLogConfig struct {
 
 func (x *AwsEventBridgeBusLogConfig) Reset() {
 	*x = AwsEventBridgeBusLogConfig{}
-	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -258,7 +378,7 @@ func (x *AwsEventBridgeBusLogConfig) String() string {
 func (*AwsEventBridgeBusLogConfig) ProtoMessage() {}
 
 func (x *AwsEventBridgeBusLogConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -271,7 +391,7 @@ func (x *AwsEventBridgeBusLogConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEventBridgeBusLogConfig.ProtoReflect.Descriptor instead.
 func (*AwsEventBridgeBusLogConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *AwsEventBridgeBusLogConfig) GetLevel() string {
@@ -292,7 +412,7 @@ var File_catalog_aws_awseventbridgebus_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awseventbridgebus/v1alpha1/spec.proto\x12*dev.planton.aws.awseventbridgebus.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xc4\x06\n" +
+	"1catalog/aws/awseventbridgebus/v1alpha1/spec.proto\x12*dev.planton.aws.awseventbridgebus.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x92\b\n" +
 	"\x15AwsEventBridgeBusSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\x12\x81\x01\n" +
@@ -301,8 +421,16 @@ const file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12dead_letter_config\x18\x05 \x01(\v2M.dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfigR\x10deadLetterConfig\x12e\n" +
 	"\n" +
 	"log_config\x18\x06 \x01(\v2F.dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusLogConfigR\tlogConfig\x12@\n" +
-	"\x0fresource_policy\x18\a \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy:\x87\x02\xbaH\x83\x02\x1a\x80\x02\n" +
-	"\x19event_source_name_pattern\x12xevent_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)\x1aithis.event_source_name == '' || this.event_source_name.matches('^aws\\\\.partner(/[.\\\\-_A-Za-z0-9]+){2,}$')\"\x92\x01\n" +
+	"\x0fresource_policy\x18\a \x01(\v2\x17.google.protobuf.StructR\x0eresourcePolicy\x12`\n" +
+	"\barchives\x18\b \x03(\v2D.dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchiveR\barchives:\xf3\x02\xbaH\xef\x02\x1a\x80\x02\n" +
+	"\x19event_source_name_pattern\x12xevent_source_name must match the pattern aws.partner/{partner}/{...} (e.g., aws.partner/example.com/tenant/event-source)\x1aithis.event_source_name == '' || this.event_source_name.matches('^aws\\\\.partner(/[.\\\\-_A-Za-z0-9]+){2,}$')\x1aj\n" +
+	"\x14archive_names_unique\x12+archive names must be unique within the bus\x1a%this.archives.map(a, a.name).unique()\"\xec\x02\n" +
+	"\x18AwsEventBridgeBusArchive\x122\n" +
+	"\x04name\x18\x01 \x01(\tB\x1e\xbaH\x1b\xc8\x01\x01r\x16\x1802\x12^[.\\-_A-Za-z0-9]+$R\x04name\x12*\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x04R\vdescription\x12.\n" +
+	"\x0eretention_days\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\rretentionDays\x12<\n" +
+	"\revent_pattern\x18\x04 \x01(\v2\x17.google.protobuf.StructR\feventPattern\x12\x81\x01\n" +
+	"\x12kms_key_identifier\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\x10kmsKeyIdentifier\"\x92\x01\n" +
 	"!AwsEventBridgeBusDeadLetterConfig\x12m\n" +
 	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xe7\x02\n" +
 	"\x1aAwsEventBridgeBusLogConfig\x12\x1c\n" +
@@ -324,25 +452,29 @@ func file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescGZIP() []byte
 	return file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsEventBridgeBusSpec)(nil),             // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec
-	(*AwsEventBridgeBusDeadLetterConfig)(nil), // 1: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig
-	(*AwsEventBridgeBusLogConfig)(nil),        // 2: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusLogConfig
-	(*v1.StringValueOrRef)(nil),               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),                   // 4: google.protobuf.Struct
+	(*AwsEventBridgeBusArchive)(nil),          // 1: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchive
+	(*AwsEventBridgeBusDeadLetterConfig)(nil), // 2: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig
+	(*AwsEventBridgeBusLogConfig)(nil),        // 3: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusLogConfig
+	(*v1.StringValueOrRef)(nil),               // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                   // 5: google.protobuf.Struct
 }
 var file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.kms_key_identifier:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.dead_letter_config:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig
-	2, // 2: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.log_config:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusLogConfig
-	4, // 3: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.resource_policy:type_name -> google.protobuf.Struct
-	3, // 4: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.kms_key_identifier:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.dead_letter_config:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig
+	3, // 2: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.log_config:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusLogConfig
+	5, // 3: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.resource_policy:type_name -> google.protobuf.Struct
+	1, // 4: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusSpec.archives:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchive
+	5, // 5: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchive.event_pattern:type_name -> google.protobuf.Struct
+	4, // 6: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchive.kms_key_identifier:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 7: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_init() }
@@ -356,7 +488,7 @@ func file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awseventbridgebus_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -118,6 +118,86 @@ var _ = ginkgo.Describe("AwsLaunchTemplateSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
+			ginkgo.It("should not return a validation error for a reserved-fleet capacity-block template", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.MarketType = "capacity-block"
+				input.Spec.CapacityReservation = &AwsLaunchTemplateCapacityReservation{
+					CapacityReservationId: "cr-0123456789abcdef0",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a dedicated-host BYOL template", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.Placement = &AwsLaunchTemplatePlacement{
+					Tenancy:  "host",
+					HostId:   "h-0123456789abcdef0",
+					Affinity: "host",
+				}
+				input.Spec.LicenseConfigurationArns = []string{
+					"arn:aws:license-manager:us-west-2:123456789012:license-configuration:lic-abc",
+				}
+				input.Spec.CpuOptions = &AwsLaunchTemplateCpuOptions{
+					CoreCount:            8,
+					ThreadsPerCore:       1,
+					NestedVirtualization: "enabled",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for advanced interface networking", func() {
+				input := minimalValidLaunchTemplate()
+				primaryIpv6 := true
+				carrierIp := true
+				input.Spec.BandwidthWeighting = "vpc-1"
+				input.Spec.NetworkInterfaces = []*AwsLaunchTemplateNetworkInterface{
+					{
+						DeviceIndex: 0,
+						ConnectionTracking: &AwsLaunchTemplateConnectionTracking{
+							TcpEstablishedTimeoutSeconds: 3600,
+							UdpStreamTimeoutSeconds:      120,
+							UdpTimeoutSeconds:            45,
+						},
+						EnaSrd: &AwsLaunchTemplateEnaSrd{
+							Enabled:    true,
+							UdpEnabled: true,
+						},
+						EnaQueueCount:             4,
+						PrimaryIpv6:               &primaryIpv6,
+						AssociateCarrierIpAddress: &carrierIp,
+					},
+				}
+				input.Spec.SecondaryInterfaces = []*AwsLaunchTemplateSecondaryInterface{
+					{
+						DeviceIndex:           1,
+						NetworkCardIndex:      1,
+						DeleteOnTermination:   true,
+						SecondarySubnetId:     literalRef("subnet-0123456789abcdef1"),
+						PrivateIpAddressCount: 2,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a snapshot-hydrated volume", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvdb",
+						Ebs: &AwsLaunchTemplateEbs{
+							SnapshotId:                    "snap-0123456789abcdef0",
+							VolumeType:                    "gp3",
+							VolumeInitializationRateMibps: 200,
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should not return a validation error for placement and cpu tuning", func() {
 				input := minimalValidLaunchTemplate()
 				input.Spec.Placement = &AwsLaunchTemplatePlacement{
@@ -326,6 +406,30 @@ var _ = ginkgo.Describe("AwsLaunchTemplateSpec Validation Tests", func() {
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})
 
+			ginkgo.It("should accept gp3 throughput in the raised 1001-2000 range", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvda",
+						Ebs:        &AwsLaunchTemplateEbs{VolumeType: "gp3", ThroughputMibps: 1500},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for gp3 throughput above 2000", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvda",
+						Ebs:        &AwsLaunchTemplateEbs{VolumeType: "gp3", ThroughputMibps: 2500},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
 			ginkgo.It("should return an error for iops on an unsupported volume type", func() {
 				input := minimalValidLaunchTemplate()
 				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
@@ -398,6 +502,159 @@ var _ = ginkgo.Describe("AwsLaunchTemplateSpec Validation Tests", func() {
 			ginkgo.It("should return an error for invalid threads_per_core", func() {
 				input := minimalValidLaunchTemplate()
 				input.Spec.CpuOptions = &AwsLaunchTemplateCpuOptions{ThreadsPerCore: 4}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when group_name and group_id are both set", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.Placement = &AwsLaunchTemplatePlacement{
+					GroupName: "cluster-pg",
+					GroupId:   "pg-0123456789abcdef0",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when host targeting is used without host tenancy", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.Placement = &AwsLaunchTemplatePlacement{
+					Tenancy: "dedicated",
+					HostId:  "h-0123456789abcdef0",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when host_id and host_resource_group_arn are both set", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.Placement = &AwsLaunchTemplatePlacement{
+					Tenancy:              "host",
+					HostId:               "h-0123456789abcdef0",
+					HostResourceGroupArn: "arn:aws:resource-groups:us-west-2:123456789012:group/hosts",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an invalid nested_virtualization value", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.CpuOptions = &AwsLaunchTemplateCpuOptions{NestedVirtualization: "on"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("market and capacity reservation rules", func() {
+
+			ginkgo.It("should return an error for an unknown market type", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.MarketType = "reserved"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when spot_options is combined with the capacity-block market", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.MarketType = "capacity-block"
+				input.Spec.CapacityReservation = &AwsLaunchTemplateCapacityReservation{
+					CapacityReservationId: "cr-0123456789abcdef0",
+				}
+				input.Spec.SpotOptions = &AwsLaunchTemplateSpotOptions{SpotInstanceType: "one-time"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for the capacity-block market without a reservation target", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.MarketType = "capacity-block"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when reservation id and resource group are both set", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.CapacityReservation = &AwsLaunchTemplateCapacityReservation{
+					CapacityReservationId:               "cr-0123456789abcdef0",
+					CapacityReservationResourceGroupArn: "arn:aws:resource-groups:us-west-2:123456789012:group/crs",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an unknown capacity reservation preference", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.CapacityReservation = &AwsLaunchTemplateCapacityReservation{Preference: "always"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("advanced networking rules", func() {
+
+			ginkgo.It("should return an error for an invalid bandwidth weighting", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BandwidthWeighting = "ebs-2"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when SRD UDP is enabled without SRD itself", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.NetworkInterfaces = []*AwsLaunchTemplateNetworkInterface{
+					{EnaSrd: &AwsLaunchTemplateEnaSrd{UdpEnabled: true}},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an out-of-range UDP timeout", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.NetworkInterfaces = []*AwsLaunchTemplateNetworkInterface{
+					{ConnectionTracking: &AwsLaunchTemplateConnectionTracking{UdpTimeoutSeconds: 120}},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when a secondary interface sets both IP count and addresses", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.SecondaryInterfaces = []*AwsLaunchTemplateSecondaryInterface{
+					{
+						PrivateIpAddressCount: 2,
+						PrivateIpAddresses:    []string{"10.0.1.10"},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("volume initialization rules", func() {
+
+			ginkgo.It("should return an error for an initialization rate without a snapshot", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvdb",
+						Ebs:        &AwsLaunchTemplateEbs{VolumeInitializationRateMibps: 200},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an out-of-range initialization rate", func() {
+				input := minimalValidLaunchTemplate()
+				input.Spec.BlockDeviceMappings = []*AwsLaunchTemplateBlockDeviceMapping{
+					{
+						DeviceName: "/dev/xvdb",
+						Ebs: &AwsLaunchTemplateEbs{
+							SnapshotId:                    "snap-0123456789abcdef0",
+							VolumeInitializationRateMibps: 500,
+						},
+					},
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

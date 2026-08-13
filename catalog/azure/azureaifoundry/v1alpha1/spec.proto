@@ -1,0 +1,249 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureaifoundry.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureAiFoundrySpec** defines an Azure AI Foundry hub (ARM:
+// Microsoft.MachineLearningServices/workspaces with kind "Hub") --
+// the shared foundation a company sets up ONCE for its AI teams. The
+// hub owns the security and connectivity posture (identity, key
+// vault, storage, optional CMK encryption, managed network, public
+// access) that every AzureAiFoundryProject created inside it
+// inherits; teams then work in projects, not in the hub itself.
+//
+// The hub REQUIRES two companion services at creation -- a key vault
+// (hub secrets and connection credentials) and a storage account
+// (artifacts) -- and optionally wires an application-insights
+// component (telemetry) and a container registry (environment
+// images). The key vault and storage attachments are fixed at
+// creation (ForceNew); insights and registry can be attached or
+// re-pointed in place (unlike the classic ML workspace, where the
+// registry is ForceNew).
+//
+// **Deletion is a soft delete.** Like the classic ML workspace, a
+// deleted hub becomes a purgeable ghost that keeps holding the hub
+// name; recreating under the same name fails until the ghost is
+// purged.
+message AzureAiFoundrySpec {
+  // The Azure region the hub lives in, e.g. "eastus". Projects created
+  // in the hub live in their own region field but deploy into the
+  // hub's resource group. Changing the region replaces the hub.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the hub is created in. Can be a literal
+  // resource-group name or a reference to an AzureResourceGroup's
+  // name output. Projects created in this hub are placed in THIS
+  // resource group (the provider derives it from the hub).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The hub's name, unique within the resource group: 3-33
+  // characters, starting with an alphanumeric character, then
+  // alphanumerics, hyphens or underscores (the provider's own code
+  // regex -- its error text omits the underscore the regex accepts).
+  // Changing the name replaces the hub -- and the OLD name stays held
+  // by the soft-deleted ghost until purged.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9][a-zA-Z0-9_-]{2,32}$"
+  ];
+
+  // The Key Vault the hub stores its secrets in (connection
+  // credentials, project secrets), by ARM ID. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The storage account backing the hub's artifacts and file shares,
+  // by ARM ID. Use a general-purpose account WITHOUT hierarchical
+  // namespace -- the hub is an ML workspace at ARM, which rejects
+  // Data Lake Gen2 accounts as default storage. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The hub's managed identity. REQUIRED -- the hub accesses its
+  // companion services (key vault, storage, insights, registry)
+  // through this identity, and projects inherit the access posture.
+  AzureAiFoundryIdentity identity = 6 [(buf.validate.field).required = true];
+
+  // The Application Insights component the hub sends telemetry to,
+  // by ARM ID. Attachable and re-pointable in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef application_insights_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureApplicationInsights,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.application_insights_id"
+  ];
+
+  // The container registry the hub stores its environment images in,
+  // by ARM ID. Attachable and re-pointable in place (unlike the
+  // classic ML workspace, where the registry attachment is fixed at
+  // creation).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef container_registry_id = 8 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerRegistry,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.container_registry_id"
+  ];
+
+  // For hubs with a user-assigned identity: which of the attached
+  // identities the hub uses as its primary, by ARM ID. The provider
+  // requires this when identity.type is USER_ASSIGNED (documented
+  // contract; ARM rejects the create without it).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef primary_user_assigned_identity = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Whether the hub's endpoint answers the public internet.
+  // Unspecified applies true (the provider's default, wire value
+  // "Enabled"). Set false to make the hub reachable only through
+  // private endpoints (wire value "Disabled"). Updates in place.
+  optional bool public_network_access_enabled = 10 [(dev.planton.shared.options.default) = "true"];
+
+  // Encrypt the hub's data with your own Key Vault key instead of
+  // Microsoft-managed keys. The whole block is fixed at creation.
+  // The hub's identity needs wrap/unwrap access on the key BEFORE
+  // this is configured, and enabling encryption may force
+  // high_business_impact_enabled true service-side.
+  AzureAiFoundryEncryption encryption = 11;
+
+  // The hub's managed virtual network -- Azure-managed network
+  // isolation for the hub's (and its projects') compute and
+  // endpoints. Unspecified leaves the mode to ARM (isolation
+  // disabled); the isolation mode is then read back rather than
+  // defaulted here. Updates in place.
+  AzureAiFoundryManagedNetwork managed_network = 12;
+
+  // Marks the hub as handling sensitive business data ("high
+  // business impact") -- Azure reduces the diagnostic data it
+  // collects. Fixed at creation. False means "leave it to the
+  // service": the modules omit the property when false because the
+  // service itself flips it true when encryption is enabled, and a
+  // pinned false would fight that (the provider reads the value
+  // back).
+  bool high_business_impact_enabled = 13;
+
+  // What the hub is for.
+  string description = 14;
+
+  // The display name shown in the Azure AI Foundry portal.
+  string friendly_name = 15;
+
+  // Free-form tags applied to the hub, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 16;
+}
+
+// The hub's managed identity.
+message AzureAiFoundryIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the hub; USER_ASSIGNED brings identities you manage
+  // (grantable key vault / storage access BEFORE the hub exists --
+  // pair with primary_user_assigned_identity);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureAiFoundryIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the hub, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so key vault / storage grants
+  // can be composed before the hub is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The hub's managed-identity flavor.
+enum AzureAiFoundryIdentityType {
+  // Not specified: rejected -- the hub requires an identity.
+  azure_ai_foundry_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the hub.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Customer-managed-key encryption for the hub's data at rest. The
+// whole block is fixed at creation.
+message AzureAiFoundryEncryption {
+  // The Key Vault holding the encryption key, by ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+
+  // The Key Vault key as a VERSIONED data-plane URL
+  // ("https://{vault}.vault.azure.net/keys/{name}/{version}").
+  // Reference an AzureKeyVaultKey's key_id output (the versioned
+  // URL). NOTE this deliberately DIVERGES from the classic ML
+  // workspace's versionless guidance: the provider validates the
+  // hub's key as a versioned key URI and rejects versionless URLs,
+  // so key rotation does NOT auto-propagate here -- re-point the
+  // field to rotate (the provider's hub contract, not a choice).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The USER-ASSIGNED identity that unwraps the key, by ARM ID.
+  // Leave unset to use the hub's system-assigned identity. Required
+  // when the hub's identity is USER_ASSIGNED only (documented
+  // provider contract -- checked at apply, since the pairing spans
+  // the identity block).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// The hub's managed virtual network.
+message AzureAiFoundryManagedNetwork {
+  // The isolation mode. Unspecified omits the property (ARM leaves
+  // isolation disabled and the value is read back).
+  AzureAiFoundryIsolationMode isolation_mode = 1;
+}
+
+// A managed-network isolation mode.
+enum AzureAiFoundryIsolationMode {
+  // Not specified: the property is omitted and ARM applies its
+  // default (isolation disabled).
+  azure_ai_foundry_isolation_mode_unspecified = 0;
+
+  // No network isolation (wire value "Disabled").
+  DISABLED = 1;
+
+  // The managed network allows all outbound traffic (wire value
+  // "AllowInternetOutbound").
+  ALLOW_INTERNET_OUTBOUND = 2;
+
+  // The managed network allows only approved outbound traffic (wire
+  // value "AllowOnlyApprovedOutbound"). Outbound rules are managed
+  // from the Azure AI Foundry portal or API -- the azurerm provider
+  // models no outbound-rule children for hubs.
+  ALLOW_ONLY_APPROVED_OUTBOUND = 3;
+}

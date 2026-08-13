@@ -8,9 +8,10 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Launch Template** -- the named, versioned blueprint. Versions are immutable in AWS: every spec change publishes a NEW version, and the module promotes it to the template's default so consumers following `$Default` pick it up on their next launch or instance refresh
 - **Block Device Mappings** -- attached only when `blockDeviceMappings` entries exist; each entry reshapes the AMI's root volume, attaches a data volume, maps instance store, or suppresses an AMI-baked device
-- **Network Interface Specifications** -- attached only when `networkInterfaces` are declared; explicit interfaces control public-IP association, static addressing, prefix delegation, multiple NICs, and EFA
+- **Network Interface Specifications** -- attached only when `networkInterfaces` are declared; explicit interfaces control public-IP association, static addressing, prefix delegation, multiple NICs, EFA, connection-tracking timeouts, ENA Express (SRD), and Wavelength carrier IPs; `secondaryInterfaces` adds launch-time interfaces for multi-homed instances
 - **IMDS Configuration** -- attached only when `metadataOptions` is set; `httpTokens: required` enforces IMDSv2 on every launch
-- **Spot Request Configuration** -- attached only when `spotOptions` is set; every launch from the template becomes a Spot request
+- **Purchase Market Configuration** -- attached when `spotOptions` (Spot requests) or `marketType: capacity-block` (pre-purchased ML Capacity Blocks) is set; `capacityReservation` targets On-Demand Capacity Reservations for reserved fleets
+- **Launch-Time Tag Specifications** -- always attached; the platform's identity tags render onto the instances and volumes each launch creates, since template tags do not propagate on their own
 
 ## Before You Deploy
 
@@ -137,6 +138,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Spot-flexible blueprint** -- Attribute-based requirements (memory/vCPU ranges, current generation, no bare metal) instead of a named type — the shape a diversified Spot fleet draws pools from. Start from the **Spot Flexible** preset.
 
 **Hardened pet** -- Stop/termination protection, a customer-managed KMS key on the root volume, and tags in metadata — for standalone instances that must survive fat fingers. Start from the **Hardened** preset.
+
+**Capacity Block training fleet** -- `marketType: capacity-block` plus the reservation target, with a dataset volume pre-warmed from its snapshot at a paid initialization rate — GPU training that starts on time and reads at full speed inside the paid window. Start from the **Capacity Block ML** preset.
 
 ## Works With
 

@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionResourceGuard
+metadata:
+  name: backup-mua-guard
+spec:
+  region: eastus
+  # Deploy the guard where a DIFFERENT administrator controls it than
+  # the vaults it protects -- that separation IS the security model.
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<security-team-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  # 1-260 characters.
+  name: backup-mua-guard
+  # No exclusions: EVERY critical vault operation (disabling soft
+  # delete, deleting protection, reducing retention) requires an
+  # approval through this guard -- the strongest posture.

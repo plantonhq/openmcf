@@ -1,0 +1,39 @@
+# Minimal AzureCognitiveAccountProject scenario: a system-identity
+# project on the fixture account -- the flagship proof of the
+# parent-shape contract resolving live (the fixture account is
+# AIServices with project management enabled and an identity, exactly
+# what ARM requires) and of the endpoints map populating. The project
+# is a free workspace object and provisions in seconds to a couple of
+# minutes; the chain pays the fixture account's cycle.
+#
+# As the only project the lane creates, ARM will mark it the fixture
+# account's DEFAULT project -- the is_default output should read true
+# (asserted by inspection, not hard-wired: the harness's fixture
+# account is created fresh per lane).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccountProject
+metadata:
+  name: planton-oss-e2e-azurecognitiveaccountproject-smoke
+  id: planton-oss-e2e-azurecognitiveaccountproject-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecognitiveaccountproject
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  cognitiveAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-cogacc
+  name: planton-oss-e2e-project-smoke
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  displayName: Planton E2E Smoke
+  description: E2E smoke project (no agents or data-plane assets are created).
+  tags:
+    e2e-suite: azure
+    purpose: smoke

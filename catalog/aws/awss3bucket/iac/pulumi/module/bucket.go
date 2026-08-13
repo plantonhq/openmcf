@@ -23,7 +23,7 @@ import (
 func bucket(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*s3.BucketV2, *s3.BucketVersioningV2, error) {
 	spec := locals.Spec
 
-	createdBucket, err := s3.NewBucketV2(ctx, "bucket", &s3.BucketV2Args{
+	bucketArgs := &s3.BucketV2Args{
 		Bucket: pulumi.String(locals.BucketName),
 		// force_destroy empties the bucket (all versions and delete markers)
 		// before deletion — without it a non-empty bucket fails the destroy.
@@ -33,7 +33,14 @@ func bucket(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*s3.Bu
 		// the object-lock satellite.
 		ObjectLockEnabled: pulumi.Bool(spec.ObjectLockEnabled),
 		Tags:              pulumi.ToStringMap(locals.AwsTags),
-	}, pulumi.Provider(provider))
+	}
+	// Namespace is create-time identity like the name itself: unset keeps
+	// the classic global namespace; "account-regional" scopes the name to
+	// this account+region. Changing it replaces the bucket.
+	if spec.BucketNamespace != "" {
+		bucketArgs.BucketNamespace = pulumi.StringPtr(spec.BucketNamespace)
+	}
+	createdBucket, err := s3.NewBucketV2(ctx, "bucket", bucketArgs, pulumi.Provider(provider))
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to create S3 bucket")
 	}
@@ -76,6 +83,11 @@ func bucket(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*s3.Bu
 				SseAlgorithm:   pulumi.String(sseAlgorithm),
 				KmsMasterKeyId: pulumi.String(spec.Encryption.KmsKeyId.GetValue()),
 			}
+		}
+		// Encryption types PUTs may no longer use (e.g. "SSE-C"); sent only
+		// when the manifest states a posture so unset keeps AWS's default.
+		if len(spec.Encryption.BlockedEncryptionTypes) > 0 {
+			rule.BlockedEncryptionTypes = pulumi.ToStringArray(spec.Encryption.BlockedEncryptionTypes)
 		}
 		_, err = s3.NewBucketServerSideEncryptionConfigurationV2(ctx, "encryption", &s3.BucketServerSideEncryptionConfigurationV2Args{
 			Bucket: createdBucket.ID(),

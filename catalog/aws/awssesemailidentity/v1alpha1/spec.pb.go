@@ -70,9 +70,17 @@ type AwsSesEmailIdentitySpec struct {
 	// AwsRoute53DnsRecord) aligns the envelope with the sending domain.
 	MailFrom *AwsSesEmailIdentityMailFrom `protobuf:"bytes,5,opt,name=mail_from,json=mailFrom,proto3" json:"mail_from,omitempty"`
 	// Whether bounce and complaint notifications are forwarded by email to
-	// the identity's mailbox. Defaults to true (the AWS default). Turn it
-	// off once event destinations or SNS feedback handle bounces --
-	// forwarding is the fallback channel, not the production one.
+	// the identity's mailbox. Tri-state: leave UNSET to accept AWS's own
+	// default (forwarding on) with no managed setting at all; set true or
+	// false to pin the position explicitly -- the modules materialize the
+	// feedback sub-resource only when a position is taken. Turn it off once
+	// event destinations or SNS feedback handle bounces -- forwarding is the
+	// fallback channel, not the production one. One retention caveat
+	// (live-verified 2026-08-12): SES remembers the LAST-WRITTEN forwarding
+	// value per identity name, surviving even DeleteEmailIdentity and
+	// re-creation -- so on an identity that was ever explicitly managed,
+	// clearing this field stops managing the setting but does NOT restore
+	// AWS's default; set true explicitly to turn forwarding back on.
 	EmailForwardingEnabled *bool `protobuf:"varint,6,opt,name=email_forwarding_enabled,json=emailForwardingEnabled,proto3,oneof" json:"email_forwarding_enabled,omitempty"`
 	// Named authorization policies on this identity -- the cross-account
 	// sending grants that let another AWS account or role send mail AS this
@@ -178,7 +186,7 @@ type AwsSesEmailIdentityDkimSigning struct {
 	// -- "RSA_1024_BIT" or "RSA_2048_BIT" (prefer 2048, the AWS default;
 	// 1024 exists for DNS providers with 255-character TXT limits).
 	// Setting it on a live identity rotates the key. Mutually exclusive
-	// with the BYODKIM pair.
+	// with the BYODKIM pair (empty when BYODKIM is used).
 	NextSigningKeyLength string `protobuf:"bytes,1,opt,name=next_signing_key_length,json=nextSigningKeyLength,proto3" json:"next_signing_key_length,omitempty"`
 	// BYODKIM: the base64-encoded RSA PRIVATE key SES signs with (PKCS #8,
 	// headers stripped). A signing secret -- never logged, never exported.
@@ -373,23 +381,24 @@ var File_catalog_aws_awssesemailidentity_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_aws_awssesemailidentity_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awssesemailidentity/v1alpha1/spec.proto\x12,dev.planton.aws.awssesemailidentity.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf6\a\n" +
+	"3catalog/aws/awssesemailidentity/v1alpha1/spec.proto\x12,dev.planton.aws.awssesemailidentity.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xec\a\n" +
 	"\x17AwsSesEmailIdentitySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x124\n" +
 	"\x0eemail_identity\x18\x02 \x01(\tB\r\xbaH\n" +
 	"\xc8\x01\x01r\x05\x10\x01\x18\xfd\x01R\remailIdentity\x12\x8f\x01\n" +
 	"\x11configuration_set\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x8e\t\x92\xd4a%status.outputs.configuration_set_nameR\x10configurationSet\x12o\n" +
 	"\fdkim_signing\x18\x04 \x01(\v2L.dev.planton.aws.awssesemailidentity.v1alpha1.AwsSesEmailIdentityDkimSigningR\vdkimSigning\x12f\n" +
-	"\tmail_from\x18\x05 \x01(\v2I.dev.planton.aws.awssesemailidentity.v1alpha1.AwsSesEmailIdentityMailFromR\bmailFrom\x12G\n" +
-	"\x18email_forwarding_enabled\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x16emailForwardingEnabled\x88\x01\x01\x12c\n" +
+	"\tmail_from\x18\x05 \x01(\v2I.dev.planton.aws.awssesemailidentity.v1alpha1.AwsSesEmailIdentityMailFromR\bmailFrom\x12=\n" +
+	"\x18email_forwarding_enabled\x18\x06 \x01(\bH\x00R\x16emailForwardingEnabled\x88\x01\x01\x12c\n" +
 	"\bpolicies\x18\a \x03(\v2G.dev.planton.aws.awssesemailidentity.v1alpha1.AwsSesEmailIdentityPolicyR\bpolicies:\xcd\x02\xbaH\xc9\x02\x1a\xc6\x01\n" +
 	"\x1ddkim_requires_domain_identity\x12fdkim_signing can only be set on a domain identity (email-address identities inherit the domain's DKIM)\x1a=!has(this.dkim_signing) || !this.email_identity.contains('@')\x1a~\n" +
 	"\x13policy_names_unique\x12@each identity policy must have a unique name within the identity\x1a%this.policies.map(p, p.name).unique()B\x1b\n" +
-	"\x19_email_forwarding_enabled\"\x92\x05\n" +
-	"\x1eAwsSesEmailIdentityDkimSigning\x12X\n" +
-	"\x17next_signing_key_length\x18\x01 \x01(\tB!\xbaH\x1er\x1cR\fRSA_1024_BITR\fRSA_2048_BITR\x14nextSigningKeyLength\x12J\n" +
+	"\x19_email_forwarding_enabled\"\x97\a\n" +
+	"\x1eAwsSesEmailIdentityDkimSigning\x12[\n" +
+	"\x17next_signing_key_length\x18\x01 \x01(\tB$\xbaH!\xd8\x01\x01r\x1cR\fRSA_1024_BITR\fRSA_2048_BITR\x14nextSigningKeyLength\x12J\n" +
 	"\x1adomain_signing_private_key\x18\x02 \x01(\tB\r\xbaH\x06r\x04\x18\x80\xa0\x01\xa0\xa6\x1d\x01R\x17domainSigningPrivateKey\x12?\n" +
-	"\x17domain_signing_selector\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18?R\x15domainSigningSelector:\x88\x03\xbaH\x84\x03\x1a\xbf\x01\n" +
+	"\x17domain_signing_selector\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x18?R\x15domainSigningSelector:\x8a\x05\xbaH\x86\x05\x1a\xff\x01\n" +
+	"\x11dkim_arm_required\x12\x9c\x01dkim_signing must configure an arm -- next_signing_key_length (Easy DKIM) or the BYODKIM key/selector pair; omit the block to accept AWS's Easy DKIM default\x1aKthis.next_signing_key_length != '' || this.domain_signing_private_key != ''\x1a\xbf\x01\n" +
 	"\fbyodkim_pair\x12^domain_signing_private_key and domain_signing_selector must be set together (the BYODKIM pair)\x1aO(this.domain_signing_private_key == '') == (this.domain_signing_selector == '')\x1a\xbf\x01\n" +
 	"\x15easy_dkim_xor_byodkim\x12Ynext_signing_key_length (Easy DKIM) cannot be combined with the BYODKIM key/selector pair\x1aKthis.next_signing_key_length == '' || this.domain_signing_private_key == ''\"\xe8\x01\n" +
 	"\x1bAwsSesEmailIdentityMailFrom\x125\n" +

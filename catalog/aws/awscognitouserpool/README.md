@@ -176,7 +176,17 @@ All trigger fields accept a Lambda ARN or a reference to an `AwsLambda` resource
 |-------|------|-------------|
 | `userPoolAddOns.advancedSecurityMode` | `string` | `OFF`, `AUDIT`, `ENFORCED`. AUDIT/ENFORCED require the PLUS tier. |
 | `userPoolAddOns.customAuthMode` | `string` | Extends threat protection to custom auth flows. |
+| `riskConfiguration` | `object` | The POOL-WIDE automated-response policy threat protection acts on (requires `advancedSecurityMode` AUDIT/ENFORCED; responses fire only in ENFORCED). Applies to every app client without a client-scoped policy of its own -- a client overrides on its `AwsCognitoUserPoolClient` spec. |
+| `riskConfiguration.accountTakeover` | `object` | Per-risk-level responses (`lowAction`/`mediumAction`/`highAction`, each `BLOCK`, `MFA_IF_CONFIGURED`, `MFA_REQUIRED`, or `NO_ACTION` with a `notify` flag) plus `notifyConfiguration` (SES identity ref + block/MFA/no-action email templates). |
+| `riskConfiguration.compromisedCredentials` | `object` | `BLOCK` or `NO_ACTION` when credentials appear in known breach data; `eventFilter` narrows which events are checked (default: all). |
+| `riskConfiguration.riskException` | `object` | `blockedIpRanges` (always reject) / `skippedIpRanges` (skip risk evaluation), CIDR notation, up to 200 each. |
 | `logConfigurations[]` | `object[]` | Route `userNotification` (ERROR) or `userAuthEvents` (INFO, PLUS tier) to exactly one destination: CloudWatch log group, Firehose stream, or S3 bucket (all refs). |
+
+### User groups
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `userGroups[]` | `object[]` | Groups in this pool: `name` (unique; renaming replaces the group), `description`, `precedence` (LOWEST wins for the `cognito:preferred_role` claim; AWS accepts 0 but the provider cannot send it -- use 1 as the strongest expressible priority), `roleArn` (ref to `AwsIamRole` -- lands in members' tokens and identity-pool federation). Membership itself is data-plane content managed at runtime, never here. |
 
 ### Hosted-UI domain (folded; one per pool)
 
@@ -222,13 +232,17 @@ authorizers:
 
 ## Deliberately Omitted
 
-- **Users and group memberships** (`aws_cognito_user`, `aws_cognito_user_in_group`): directory CONTENT, not infrastructure shape -- and user passwords would land in state.
-- **User groups**: joins later via the exported pool ID if demand appears.
-- **UI customization / managed-login branding**: branding-asset satellites with their own lifecycle.
-- **Risk configuration** (`aws_cognito_risk_configuration`): the PLUS-tier threat-response tuning satellite; the pool models the protection MODE.
+- **Users and group memberships** (`aws_cognito_user`, `aws_cognito_user_in_group`): directory CONTENT, not infrastructure shape -- and user passwords would land in state. (Groups THEMSELVES are modeled -- `userGroups` above.)
+- **UI customization** (classic hosted UI CSS/images): superseded by managed login's branding designer.
+- **Managed-login branding**: client-scoped design-asset payloads with their own artifact lifecycle -- a future kind.
 - **Cognito Identity Pools** (`cognitoidentity` service): a separate product surface (AWS-credential federation); composes later as its own kind.
 - **Legacy top-level verification message fields**: the `verificationMessageTemplate` block is the one honest spelling (the provider keeps both in sync).
 - **Per-kind tags**: identity tags derive from metadata; custom user tags are a platform-wide concern.
+
+## Worth Knowing
+
+- `passwordPolicy.temporaryPasswordValidityDays: 0` is NOT "no expiration" -- AWS treats a submitted 0 as null and applies its 7-day default. There is no way to make temporary passwords permanent.
+- Group `precedence` 0 (AWS's strongest priority) is unsendable through the Terraform provider on either engine -- a recorded provider asymmetry; 1 is the strongest expressible value.
 
 ---
 

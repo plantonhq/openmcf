@@ -82,13 +82,14 @@ func lifecycle(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 		if len(r.Transitions) > 0 {
 			transitions := s3.BucketLifecycleConfigurationV2RuleTransitionArray{}
 			for _, t := range r.Transitions {
-				// CEL enforces exactly-one of days/date; days uses > 0 as
-				// presence because proto3 zero-fills unset numbers.
+				// days is presence-typed in the contract so an explicit 0 —
+				// AWS's "transition on the upload day" — passes through; CEL
+				// enforces exactly-one of days/date.
 				transition := &s3.BucketLifecycleConfigurationV2RuleTransitionArgs{
 					StorageClass: pulumi.String(t.StorageClass),
 				}
-				if t.Days > 0 {
-					transition.Days = pulumi.IntPtr(int(t.Days))
+				if t.Days != nil {
+					transition.Days = pulumi.IntPtr(int(*t.Days))
 				}
 				if t.Date != "" {
 					transition.Date = pulumi.StringPtr(t.Date)

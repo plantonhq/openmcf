@@ -1,0 +1,35 @@
+# Offline-plan test manifest. Exercises the full dedicated-
+# infrastructure surface: STANDARD with the feature knobs, explicit
+# scale units, zone redundancy, clipboard disabled, and user tags
+# merged over the derived ones. (The Developer shape is exercised by
+# its own offline plan -- its virtual_network_id arm is exclusive with
+# this one's ip_configuration by SKU.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBastionHost
+metadata:
+  name: test-bastion-host
+  org: test-org
+  env: dev
+spec:
+  region: eastus
+  resourceGroup:
+    value: platform-rg
+  name: test-bastion
+  sku: STANDARD
+  ipConfiguration:
+    name: bastion-ip-config
+    subnetId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/virtualNetworks/platform-vnet/subnets/AzureBastionSubnet
+    publicIpAddressId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/publicIPAddresses/bastion-pip
+  scaleUnits: 4
+  copyPasteEnabled: false
+  fileCopyEnabled: true
+  ipConnectEnabled: true
+  tunnelingEnabled: true
+  zones:
+    - "1"
+    - "2"
+    - "3"
+  tags:
+    cost-center: platform

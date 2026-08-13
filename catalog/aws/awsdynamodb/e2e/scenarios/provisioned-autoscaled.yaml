@@ -1,0 +1,44 @@
+# Provisioned table with Application Auto Scaling: read capacity under
+# target tracking (bounds 5-20, target 70%) plus a named scheduled
+# adjustment, write capacity pinned (no write config, so the module
+# registers the min = max target from the declared capacity). This lane
+# proves the capacity-fold's THREE live behaviors: the user-bounds
+# target with its tracking policy, the pinned min = max target, and the
+# scheduled action -- all on a zero-data table that completes in minutes
+# at negligible cost.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsDynamodb
+metadata:
+  name: planton-oss-e2e-dyn-scaled
+  id: planton-oss-e2e-dyn-scaled
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsdynamodb
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  billingMode: PROVISIONED
+  attributeDefinitions:
+    - name: pk
+      type: S
+  keySchema:
+    - attributeName: pk
+      keyType: HASH
+  provisionedThroughput:
+    readCapacityUnits: 5
+    writeCapacityUnits: 5
+  autoscaling:
+    read:
+      minCapacity: 5
+      maxCapacity: 20
+      targetUtilizationPercent: 70
+    scheduledAdjustments:
+      - name: weekday-morning-floor
+        dimension: READ
+        schedule: "cron(0 6 ? * MON-FRI *)"
+        minCapacity: 10

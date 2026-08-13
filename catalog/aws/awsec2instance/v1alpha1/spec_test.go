@@ -72,6 +72,11 @@ var _ = ginkgo.Describe("AwsEc2InstanceSpec validations", func() {
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("fails when the launch template block names no template", func() {
+			spec.LaunchTemplate = &AwsEc2InstanceLaunchTemplate{Version: "$Latest"}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts a launch template identified by name", func() {
 			spec.LaunchTemplate = &AwsEc2InstanceLaunchTemplate{
 				Name:    "golden-template",
@@ -105,6 +110,42 @@ var _ = ginkgo.Describe("AwsEc2InstanceSpec validations", func() {
 			spec.SubnetId = nil
 			spec.SecurityGroupIds = nil
 			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when a primary ENI is combined with source_dest_check -- presence conflicts, either value", func() {
+			spec.PrimaryNetworkInterfaceId = "eni-0123456789abcdef0"
+			spec.SubnetId = nil
+			spec.SecurityGroupIds = nil
+			spec.SourceDestCheck = proto.Bool(true)
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			spec.SourceDestCheck = proto.Bool(false)
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an explicit source_dest_check false without a primary ENI (the NAT posture)", func() {
+			spec.SourceDestCheck = proto.Bool(false)
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on a malformed private_ip", func() {
+			spec.PrivateIp = "10.0.1"
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a well-formed private_ip and secondary IPs", func() {
+			spec.PrivateIp = "10.0.1.5"
+			spec.SecondaryPrivateIps = []string{"10.0.1.6", "10.0.1.7"}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on a malformed secondary private IP", func() {
+			spec.SecondaryPrivateIps = []string{"not-an-ip"}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on a malformed ipv6 address", func() {
+			spec.Ipv6Addresses = []string{"10.0.1.5"}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("fails when ipv6_address_count and ipv6_addresses are both set", func() {
@@ -197,6 +238,56 @@ var _ = ginkgo.Describe("AwsEc2InstanceSpec validations", func() {
 				DeviceName:  "/dev/sdc",
 				VirtualName: "ephemeral0",
 				NoDevice:    true,
+			}}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a gp3 root volume at the 2000 MiB/s throughput ceiling", func() {
+			spec.RootBlockDevice = &AwsEc2InstanceRootBlockDevice{
+				VolumeSizeGb:    100,
+				VolumeType:      "gp3",
+				Iops:            10000,
+				ThroughputMibps: 2000,
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails above the 2000 MiB/s throughput ceiling", func() {
+			spec.RootBlockDevice = &AwsEc2InstanceRootBlockDevice{
+				VolumeType:      "gp3",
+				ThroughputMibps: 2500,
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts uniform volume_tags alone", func() {
+			spec.VolumeTags = map[string]string{"cost-center": "ml-platform"}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts per-device tags alone", func() {
+			spec.RootBlockDevice = &AwsEc2InstanceRootBlockDevice{
+				VolumeSizeGb: 30,
+				Tags:         map[string]string{"role": "boot"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when volume_tags is combined with root device tags", func() {
+			spec.VolumeTags = map[string]string{"cost-center": "ml-platform"}
+			spec.RootBlockDevice = &AwsEc2InstanceRootBlockDevice{
+				VolumeSizeGb: 30,
+				Tags:         map[string]string{"role": "boot"},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when volume_tags is combined with an EBS device's tags", func() {
+			spec.VolumeTags = map[string]string{"cost-center": "ml-platform"}
+			spec.EbsBlockDevices = []*AwsEc2InstanceEbsBlockDevice{{
+				DeviceName:   "/dev/sdf",
+				VolumeSizeGb: 100,
+				Tags:         map[string]string{"role": "data"},
 			}}
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})
@@ -293,6 +384,67 @@ var _ = ginkgo.Describe("AwsEc2InstanceSpec validations", func() {
 				CapacityReservationResourceGroupArn: "arn:aws:resource-groups:us-west-2:123456789012:group/crg",
 			}
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when the capacity reservation block sets no arm", func() {
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the capacity-reservations-only preference", func() {
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{
+				Preference: "capacity-reservations-only",
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails on an invalid market_type", func() {
+			spec.MarketType = "on-demand"
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a capacity-block launch targeting its reservation", func() {
+			spec.MarketType = "capacity-block"
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{
+				CapacityReservationId: "cr-0123456789abcdef0",
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts an interruptible-capacity-reservation launch targeting its reservation", func() {
+			spec.MarketType = "interruptible-capacity-reservation"
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{
+				CapacityReservationId: "cr-0123456789abcdef0",
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("fails a capacity-block launch without a reservation target", func() {
+			spec.MarketType = "capacity-block"
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails a capacity-block launch whose reservation sets only a preference", func() {
+			spec.MarketType = "capacity-block"
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{
+				Preference: "capacity-reservations-only",
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("fails when spot_options rides a capacity-block market", func() {
+			spec.MarketType = "capacity-block"
+			spec.CapacityReservation = &AwsEc2InstanceCapacityReservation{
+				CapacityReservationId: "cr-0123456789abcdef0",
+			}
+			spec.SpotOptions = &AwsEc2InstanceSpotOptions{SpotInstanceType: "one-time"}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts spot_options with an explicit spot market_type", func() {
+			spec.MarketType = "spot"
+			spec.SpotOptions = &AwsEc2InstanceSpotOptions{SpotInstanceType: "one-time"}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
 

@@ -167,6 +167,56 @@ var _ = ginkgo.Describe("AwsCloudwatchCompositeAlarmSpec validations", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	ginkgo.It("fails when more than 5 ok_actions are provided", func() {
+		actions := make([]*fkv1.StringValueOrRef, 6)
+		for i := range actions {
+			actions[i] = &fkv1.StringValueOrRef{
+				LiteralOrRef: &fkv1.StringValueOrRef_Value{
+					Value: "arn:aws:sns:us-west-2:123456789012:topic",
+				},
+			}
+		}
+		input := &AwsCloudwatchCompositeAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchCompositeAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-ok-actions",
+			},
+			Spec: &AwsCloudwatchCompositeAlarmSpec{
+				Region:    "us-west-2",
+				AlarmRule: `ALARM("cpu-high")`,
+				OkActions: actions,
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when more than 5 insufficient_data_actions are provided", func() {
+		actions := make([]*fkv1.StringValueOrRef, 6)
+		for i := range actions {
+			actions[i] = &fkv1.StringValueOrRef{
+				LiteralOrRef: &fkv1.StringValueOrRef_Value{
+					Value: "arn:aws:sns:us-west-2:123456789012:topic",
+				},
+			}
+		}
+		input := &AwsCloudwatchCompositeAlarm{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCloudwatchCompositeAlarm",
+			Metadata: &shared.CloudResourceMetadata{
+				Name: "too-many-insufficient-actions",
+			},
+			Spec: &AwsCloudwatchCompositeAlarmSpec{
+				Region:                  "us-west-2",
+				AlarmRule:               `ALARM("cpu-high")`,
+				InsufficientDataActions: actions,
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	ginkgo.It("fails when the actions suppressor has no alarm", func() {
 		input := &AwsCloudwatchCompositeAlarm{
 			ApiVersion: "aws.planton.dev/v1alpha1",

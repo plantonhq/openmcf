@@ -159,16 +159,11 @@ func rdsCluster(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 		args.BacktrackWindow = pulumi.Int(int(spec.BacktrackWindowSeconds))
 	}
 
-	// Roles the ENGINE assumes for S3 import/export, Lambda, and ML
-	// integrations. The roles own their policies -- this cluster only
-	// associates them (a module never mutates a resource it references).
-	if len(spec.IamRoles) > 0 {
-		iamRoles := pulumi.StringArray{}
-		for _, iamRole := range spec.IamRoles {
-			iamRoles = append(iamRoles, pulumi.String(iamRole.GetValue()))
-		}
-		args.IamRoles = iamRoles
-	}
+	// Engine feature roles are managed as one association resource per
+	// spec.iam_roles entry (role_associations.go) -- never this
+	// resource's inline IamRoles argument, which cannot carry feature
+	// names and, per the provider's own warning, overwrites association
+	// resources when the two are mixed.
 
 	if len(spec.EnabledCloudwatchLogsExports) > 0 {
 		args.EnabledCloudwatchLogsExports = pulumi.ToStringArray(spec.EnabledCloudwatchLogsExports)
@@ -234,11 +229,41 @@ func rdsCluster(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 		args.ScalingConfiguration = scalingArgs
 	}
 
+	// Kerberos authentication through an AWS Managed Microsoft AD --
+	// clusters only support the managed-directory shape (the pair is
+	// CEL-coupled; self-managed AD is an instance-kind capability).
+	if spec.Domain != "" {
+		args.Domain = pulumi.String(spec.Domain)
+	}
+	if spec.DomainIamRoleName != "" {
+		args.DomainIamRoleName = pulumi.String(spec.DomainIamRoleName)
+	}
+
+	// Tri-state: unset keeps the AWS default (true). Per-instance
+	// auto_minor_version_upgrade on the folded instances overrides this
+	// for that instance.
+	if spec.AutoMinorVersionUpgrade != nil {
+		args.AutoMinorVersionUpgrade = pulumi.Bool(spec.GetAutoMinorVersionUpgrade())
+	}
+
 	// Create-time restore sources (mutually exclusive, CEL-enforced):
-	// from a snapshot, or from another cluster's continuous backup
-	// (point-in-time restore / copy-on-write fast clone).
+	// from a snapshot, from another cluster's continuous backup
+	// (point-in-time restore / copy-on-write fast clone), or from a
+	// Percona XtraBackup in S3 (aurora-mysql migration on-ramp).
 	if spec.SnapshotIdentifier != "" {
 		args.SnapshotIdentifier = pulumi.String(spec.SnapshotIdentifier)
+	}
+	if spec.S3Import != nil {
+		s3ImportArgs := &rds.ClusterS3ImportArgs{
+			BucketName:          pulumi.String(spec.S3Import.BucketName),
+			IngestionRole:       pulumi.String(spec.S3Import.IngestionRole.GetValue()),
+			SourceEngine:        pulumi.String(spec.S3Import.SourceEngine),
+			SourceEngineVersion: pulumi.String(spec.S3Import.SourceEngineVersion),
+		}
+		if spec.S3Import.BucketPrefix != "" {
+			s3ImportArgs.BucketPrefix = pulumi.String(spec.S3Import.BucketPrefix)
+		}
+		args.S3Import = s3ImportArgs
 	}
 	if spec.RestoreToPointInTime != nil {
 		restoreArgs := &rds.ClusterRestoreToPointInTimeArgs{}

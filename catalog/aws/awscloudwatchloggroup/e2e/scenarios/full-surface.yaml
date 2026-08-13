@@ -2,9 +2,14 @@
 # filter (default_value arm — dimensions are CEL-exclusive with it) + a field
 # index policy + a data protection policy (audit + mask, no findings
 # destination) + a subscription filter streaming into the composed Kinesis
-# fixture through the CloudWatch-Logs delivery role. The stream and role are
-# OPTIONAL references, so they compose via the e2e-prerequisites annotation
-# while the kind's registry stays honest (a plain log group is a leaf).
+# fixture through the CloudWatch-Logs delivery role (with @source.log
+# enrichment — the 6.56.0 value) + a pre-created log stream + an ingest-time
+# transformer (parse_json first, then a rename — the first-must-be-parser
+# contract live) + EXPLICIT-FALSE deletion protection (the presence-typed
+# send path; a fresh group is unprotected either way, so the arm is free and
+# the destroy leg still passes). The stream and role are OPTIONAL references,
+# so they compose via the e2e-prerequisites annotation while the kind's
+# registry stays honest (a plain log group is a leaf).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
@@ -23,9 +28,13 @@ metadata:
 spec:
   region: us-west-2
   retentionInDays: 30
+  deletionProtectionEnabled: false
+  logStreams:
+    - e2e-agent-stream
   metricFilters:
     - name: error-count
       pattern: "ERROR"
+      applyOnTransformedLogs: true
       transformation:
         metricName: ErrorCount
         metricNamespace: PlantonE2E/Errors
@@ -46,6 +55,17 @@ spec:
           fieldPath: status.outputs.role_arn
       filterPattern: ""
       distribution: ByLogStream
+      emitSystemFields:
+        - "@aws.account"
+        - "@aws.region"
+        - "@source.log"
+  transformer:
+    processors:
+      - parseJson: {}
+      - renameKeys:
+          entries:
+            - key: msg
+              renameTo: message
   dataProtectionPolicy:
     Name: planton-e2e-data-protection
     Version: "2021-06-01"

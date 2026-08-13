@@ -64,3 +64,7 @@ Attach the `map_uri` output to a GcpTargetHttpsProxy's `certificate_map` argumen
 - **GcpCertManagerCert** -- the certificates entries bind (via `certificate_id`)
 - **GcpCertManagerDnsAuthorization** -- proves domain ownership for managed certificates
 - **GcpProject** -- provides the GCP project the map lives in
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

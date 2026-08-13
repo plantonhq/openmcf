@@ -1,0 +1,22 @@
+# Offline-plan test manifest. Exercises the full surface: the
+# sensitive value (a literal here -- offline plans never reach Azure;
+# production manifests reference a managed secret instead), content
+# type, both RFC 3339 attributes, and user tags merged over the
+# derived ones.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureKeyVaultSecret
+metadata:
+  name: test-key-vault-secret
+  org: test-org
+  env: dev
+spec:
+  name: test-db-password
+  keyVaultId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.KeyVault/vaults/platform-kv
+  value:
+    value: test-secret-value
+  contentType: text/plain
+  notBeforeDate: "2027-01-01T00:00:00Z"
+  expirationDate: "2028-01-01T00:00:00Z"
+  tags:
+    cost-center: platform

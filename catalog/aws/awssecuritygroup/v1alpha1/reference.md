@@ -40,6 +40,10 @@ spec:
       ipv4Cidrs:
         - 0.0.0.0/0
       description: Allow HTTPS outbound
+  # Share the same group into another VPC (same account and region) --
+  # resources there attach it instead of maintaining a per-VPC copy.
+  additionalVpcIds:
+    - value: vpc-0f9e8d7c6b5a43210
 ```
 
 ## Spec Fields
@@ -72,6 +76,7 @@ spec:
 | `spec.egress[].selfReference` | `bool` |  |  |  |
 | `spec.egress[].description` | `string` |  |  |  |
 | `spec.revokeRulesOnDelete` | `bool` |  |  |  |
+| `spec.additionalVpcIds` | `[]string \| valueFrom` |  |  | AwsVpc (`status.outputs.vpc_id`) |
 
 ## Field Details
 
@@ -339,6 +344,30 @@ fails with a DependencyViolation. Enable for groups that are referenced
 cross-group (e.g. an app tier referenced by a database tier) so teardown
 never requires manual rule surgery. Safe to toggle in place.
 
+### spec.additionalVpcIds
+
+`[]string | valueFrom`
+
+additional_vpc_ids shares this security group into OTHER VPCs beyond its
+home vpc_id, so resources in those VPCs can attach the same group instead
+of maintaining copied groups per VPC (one firewall definition, many VPCs).
+Each entry must be a different VPC in the same account and region as the
+group's own VPC, and must not repeat vpc_id or another entry — AWS rejects
+duplicates at apply (entries may be references, so this is not validated
+here). Reference AwsVpc vpc_id outputs or pass literal "vpc-..." ids.
+Adding or removing an entry associates/disassociates in place; the group
+itself is never replaced. Rules referencing security groups from a
+DIFFERENT VPC than the one a packet traverses are ignored by AWS in that
+VPC — prefer CIDR/prefix-list rules on multi-VPC groups.
+
+- references: AwsVpc (`status.outputs.vpc_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
+
+## Validation Rules
+
+- `ingress_rules_use_source_groups`: ingress rules take source_security_group_ids -- destination_security_group_ids applies only to egress rules
+- `egress_rules_use_destination_groups`: egress rules take destination_security_group_ids -- source_security_group_ids applies only to ingress rules
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: AwsSecurityGroup, name: <resource-name>, fieldPath: status.outputs.<output>}`.
@@ -348,6 +377,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSecurityGroup
 | `status.outputs.security_group_id` | `string` | the unique ID of the security group (sg-...). The join key other resources reference to attach this group. |
 | `status.outputs.security_group_arn` | `string` | the ARN of the security group -- the form IAM policy conditions and resource-level permissions expect. |
 | `status.outputs.owner_id` | `string` | the AWS account ID that owns the security group. Needed when another account references this group in a cross-account rule ("<owner_id>/<group_id>"). |
+| `status.outputs.additional_vpc_association_ids` | `map<string, string>` | association IDs of the group's shares into other VPCs, keyed by the resolved VPC id from spec.additional_vpc_ids (import id form "<group_id>,<vpc_id>"); empty when the group lives in one VPC. |
 
 ## References
 
@@ -360,6 +390,7 @@ Fields that can point at another resource's outputs:
 | `spec.ingress[].destinationSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.egress[].sourceSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.egress[].destinationSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
+| `spec.additionalVpcIds` | AwsVpc | `status.outputs.vpc_id` |
 
 ## Referenced By
 
@@ -375,6 +406,7 @@ Fields on other kinds that can point at this resource:
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsDocumentDb | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEc2Instance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.networkConfiguration.securityGroups` | `status.outputs.security_group_id` |
 | AwsEcsService | `spec.network.securityGroups` | `status.outputs.security_group_id` |
 | AwsEksCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsEksNodeGroup | `spec.remoteAccess.sourceSecurityGroupIds` | `status.outputs.security_group_id` |
@@ -393,7 +425,7 @@ Fields on other kinds that can point at this resource:
 | AwsMemcachedElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMemorydbCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMskCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
-| AwsMskServerlessCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsMskServerlessCluster | `spec.vpcConfigs[].securityGroupIds` | `status.outputs.security_group_id` |
 | AwsMwaaEnvironment | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsNeptuneCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsNlb | `spec.securityGroups` | `status.outputs.security_group_id` |
@@ -401,12 +433,16 @@ Fields on other kinds that can point at this resource:
 | AwsPlantonRunner | `spec.securityGroups` | `status.outputs.security_group_id` |
 | AwsRdsCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRdsInstance | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRdsInstance | `spec.options[].vpcSecurityGroupMemberships` | `status.outputs.security_group_id` |
 | AwsRedisElasticache | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftCluster | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRedshiftCluster | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.defaultSpaceSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSagemakerDomain | `spec.domainSecurityGroupIds` | `status.outputs.security_group_id` |
+| AwsSagemakerDomain | `spec.userProfiles[].userSettings.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.ingress[].destinationSecurityGroupIds` | `status.outputs.security_group_id` |
 | AwsSecurityGroup | `spec.egress[].sourceSecurityGroupIds` | `status.outputs.security_group_id` |

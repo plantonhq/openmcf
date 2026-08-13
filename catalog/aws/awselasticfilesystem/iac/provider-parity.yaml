@@ -1,0 +1,83 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_efs_file_system:
+    mappings:
+      # The provider nests the three lifecycle transitions in repeated
+      # lifecycle_policy blocks (one rule per block); the spec carries them
+      # flat -- the modules build the blocks from the trio.
+      - spec: spec.transition_to_ia
+        arg: lifecycle_policy.transition_to_ia
+      - spec: spec.transition_to_archive
+        arg: lifecycle_policy.transition_to_archive
+      - spec: spec.transition_to_primary_storage_class
+        arg: lifecycle_policy.transition_to_primary_storage_class
+      # The provider wraps overwrite protection in a protection block; the
+      # spec carries the single leaf flat.
+      - spec: spec.replication_overwrite_protection
+        arg: protection.replication_overwrite
+    exclusions:
+      - arg: creation_token
+        reason: wired by the module from metadata.name -- the idempotency token doubles as the cross-engine physical-identity anchor, never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_efs_mount_target:
+    # One mount target per spec.mount_targets entry, keyed by subnet (AWS
+    # allows at most one mount target per AZ).
+    specRoot: spec.mount_targets
+    mappings:
+      # Security groups apply per mount target in the provider; the spec
+      # models one list shared by all targets (the common deployment shape).
+      - spec: spec.security_group_ids
+        arg: security_groups
+    exclusions:
+      - arg: file_system_id
+        reason: wired by the module to the file system it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- mount targets follow the file system's spec.region through the provider connection
+
+  aws_efs_backup_policy:
+    mappings:
+      # The provider's ENABLED/DISABLED status string is the spec's boolean;
+      # the module renders the resource only when backups are enabled
+      # (removing it PUTs DISABLED -- the provider has no true delete).
+      - spec: spec.backup_enabled
+        arg: backup_policy.status
+    exclusions:
+      - arg: file_system_id
+        reason: wired by the module to the file system it creates -- never user surface
+
+  aws_efs_file_system_policy:
+    exclusions:
+      - arg: file_system_id
+        reason: wired by the module to the file system it creates -- never user surface
+
+  aws_efs_replication_configuration:
+    # The file system's one replication configuration (AWS's own model),
+    # folded as a singular sub-message.
+    specRoot: spec.replication
+    mappings:
+      # The provider nests the destination in a block with bare leaf names;
+      # the spec's sub-message carries destination_-prefixed leaves.
+      - spec: spec.replication.destination_region
+        arg: destination.region
+      - spec: spec.replication.destination_availability_zone_name
+        arg: destination.availability_zone_name
+      - spec: spec.replication.destination_kms_key_id
+        arg: destination.kms_key_id
+      - spec: spec.replication.destination_file_system_id
+        arg: destination.file_system_id
+    exclusions:
+      - arg: source_file_system_id
+        reason: wired by the module to the file system it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the replication configuration follows the source file system's spec.region through the provider connection

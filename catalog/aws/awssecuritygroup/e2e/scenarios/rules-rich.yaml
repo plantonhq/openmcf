@@ -8,7 +8,12 @@
 # the region), and an explicit all-traffic egress (inline rules revoke
 # AWS's default allow-all, so outbound must be declared).
 # revoke_rules_on_delete proves the teardown path for groups that other
-# groups reference. Full metadata is supplied for tagging/orphan cleanup.
+# groups reference. The multi-VPC share arm (spec.additional_vpc_ids) rides
+# this lane: a second VPC fixture (path-form e2e-prerequisites -- the
+# extra-instance seam) receives the same group, proving the association
+# render path on both engines -- the evidence bar is
+# DescribeSecurityGroupVpcAssociations echoing the second VPC with state
+# associated. Full metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
@@ -21,6 +26,7 @@ metadata:
     e2e-component: awssecuritygroup
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/aws/awssecuritygroup/e2e/fixture-second-vpc.yaml"
   tags:
     - planton-e2e
 spec:
@@ -30,6 +36,11 @@ spec:
       kind: AwsVpc
       name: planton-oss-e2e-awsvpc-prereq
       fieldPath: status.outputs.vpc_id
+  additionalVpcIds:
+    - valueFrom:
+        kind: AwsVpc
+        name: planton-oss-e2e-awssg-second-vpc
+        fieldPath: status.outputs.vpc_id
   description: Planton E2E rules-rich group; every rule source type in one lane
   revokeRulesOnDelete: true
   ingress:

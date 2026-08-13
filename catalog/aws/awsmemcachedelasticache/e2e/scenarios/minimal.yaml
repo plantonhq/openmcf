@@ -1,6 +1,10 @@
 # Minimal single-node Memcached cluster: cheapest footprint for live E2E.
 # Subnet pair prerequisite satisfies the subnet group requirement. Engine
 # version is unpinned so the scenario rides AWS's current default.
+# Two zero-cost arms ride the smoke node: the single-AZ pin (the subnet
+# prerequisites' AZs are fixed literals, so us-west-2a is deterministic)
+# and an EXPLICIT auto-upgrade opt-out — proving the presence-typed field's
+# send path (unset omits the argument and AWS's enabled-by-default stands).
 # Full metadata is supplied for tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMemcachedElasticache
@@ -20,6 +24,8 @@ spec:
   region: us-west-2
   nodeType: cache.t4g.micro
   numCacheNodes: 1
+  availabilityZone: us-west-2a
+  autoMinorVersionUpgrade: false
   subnetIds:
     - valueFrom:
         kind: AwsSubnet

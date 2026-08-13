@@ -5,6 +5,7 @@ import (
 	awssecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecuritygroup/v1alpha1"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/ec2"
+	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws/vpc"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -43,6 +44,32 @@ func securityGroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) 
 	ctx.Export(OpSecurityGroupId, sg.ID())
 	ctx.Export(OpSecurityGroupArn, sg.Arn)
 	ctx.Export(OpOwnerId, sg.OwnerId)
+
+	// Share the group into additional VPCs (same account and region), keyed
+	// by the resolved VPC id -- mirrors the Terraform module's for_each. AWS
+	// ignores rules that reference a security group from a different VPC
+	// than the one a packet traverses, so multi-VPC groups should prefer
+	// CIDR or prefix-list rules (documented on the spec field).
+	associationIds := pulumi.StringMap{}
+	for _, v := range spec.AdditionalVpcIds {
+		vpcId := v.GetValue()
+		if vpcId == "" {
+			continue
+		}
+		_, err := vpc.NewSecurityGroupVpcAssociation(ctx,
+			locals.AwsSecurityGroup.Metadata.Name+"-"+vpcId,
+			&vpc.SecurityGroupVpcAssociationArgs{
+				SecurityGroupId: sg.ID(),
+				VpcId:           pulumi.String(vpcId),
+			}, pulumi.Provider(provider), pulumi.Parent(sg))
+		if err != nil {
+			return errors.Wrapf(err, "unable to associate security group with vpc %s", vpcId)
+		}
+		// Import id form: <group_id>,<vpc_id> (the provider's documented
+		// comma-separated import key).
+		associationIds[vpcId] = pulumi.Sprintf("%s,%s", sg.ID(), vpcId)
+	}
+	ctx.Export(OpAdditionalVpcAssociationIds, associationIds)
 
 	return nil
 }

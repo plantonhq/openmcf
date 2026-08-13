@@ -24,3 +24,10 @@ spec:
   updateConfig:
     maxUnavailable: 1
     updateStrategy: MINIMAL
+  # Pre-initialized nodes that cut scale-out from minutes to seconds.
+  # STOPPED pooled instances cost only their EBS storage.
+  warmPoolConfig:
+    poolState: STOPPED
+    minSize: 1
+    maxGroupPreparedCapacity: 2
+    reuseOnScaleIn: true

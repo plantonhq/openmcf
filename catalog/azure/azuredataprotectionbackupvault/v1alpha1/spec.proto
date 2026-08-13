@@ -1,0 +1,236 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredataprotectionbackupvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDataProtectionBackupVaultSpec** defines a Data Protection
+// backup vault (ARM: Microsoft.DataProtection/backupVaults) -- the
+// safe that MODERN Azure Backup data lives in: managed disks, blob
+// storage, AKS clusters, MySQL/PostgreSQL flexible servers and Data
+// Lake storage. Backup policies and backup instances are ARM children
+// of a vault. This is the newer generation alongside the classic
+// Recovery Services vault (which serves VM and file-share backup).
+//
+// A vault is FREE at rest -- cost accrues per protected instance and
+// per GB of backup storage, not for the vault object itself.
+//
+// **Three settings are one-way doors** (the provider replaces the
+// vault to walk them back): cross-region restore once enabled,
+// immutability once Locked, and soft delete once AlwaysOn. Each is
+// documented on its field.
+//
+// **Deletion outlives the API's answer**: Azure's delete call returns
+// before the vault is fully gone, so the provider polls until the
+// name is actually free (its own workaround for the service bug).
+// Expect destroy to take a little longer than the API suggests.
+message AzureDataProtectionBackupVaultSpec {
+  // The Azure region the vault lives in, e.g. "eastus". Backup data
+  // is stored in this region (and its pair, under geo-redundant
+  // storage). Changing the region replaces the vault.
+  string region = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure resource group the vault is created in. Can be a
+  // literal resource-group name or a reference to an
+  // AzureResourceGroup's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The vault's name, unique within its resource group: 2-50
+  // characters, letters, digits and hyphens (the provider's own
+  // rule). Backup policies and backup instances address the vault
+  // through its ARM ID. Changing the name replaces the vault.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[-a-zA-Z0-9]{2,50}$"
+  ];
+
+  // The datastore tier backups in this vault land on (the wire
+  // values). "VaultStore" is the standard tier and the right choice
+  // for almost everything; "OperationalStore" serves
+  // operational-tier-only datasources; "ArchiveStore" is the
+  // long-term cold tier. Fixed at creation -- changing it replaces
+  // the vault. NOTE: policies choose per-rule stores independently;
+  // this setting is the vault's storage-settings tier.
+  string datastore_type = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "VaultStore",
+        "OperationalStore",
+        "ArchiveStore"
+      ]
+    }
+  ];
+
+  // How the vault's backup storage replicates (the wire values).
+  // GeoRedundant keeps a copy in the paired region (the production
+  // posture, and the only redundancy cross-region restore works
+  // with); LocallyRedundant is the cheapest; ZoneRedundant replicates
+  // across availability zones in-region. Fixed at creation --
+  // changing it replaces the vault.
+  string redundancy = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "GeoRedundant",
+        "LocallyRedundant",
+        "ZoneRedundant"
+      ]
+    }
+  ];
+
+  // Whether backup data can be restored in the paired region
+  // (cross-region restore). Requires GeoRedundant redundancy.
+  // Enabling is an in-place update; ONCE ENABLED IT CANNOT BE
+  // DISABLED without replacing the vault (the provider's one-way
+  // ForceNew).
+  bool cross_region_restore_enabled = 6;
+
+  // How many days soft-deleted backup data is retained before
+  // permanent removal (this is the SOFT-DELETE retention window --
+  // how long backups survive a deletion -- NOT how long backups are
+  // kept; backup retention lives on policies). 14-180 days.
+  // Unspecified applies 14 (the provider's default).
+  optional int32 retention_duration_in_days = 7 [
+    (dev.planton.shared.options.default) = "14",
+    (buf.validate.field).int32 = {
+      gte: 14
+      lte: 180
+    }
+  ];
+
+  // The vault's soft-delete posture (the wire values). "On" (the
+  // default) retains deleted backup data for the retention window;
+  // "AlwaysOn" locks soft delete on PERMANENTLY -- leaving AlwaysOn
+  // replaces the vault (the provider's one-way ForceNew); "Off"
+  // disables it (privileged when a Resource Guard governs the vault).
+  // Unspecified applies On.
+  optional string soft_delete = 8 [
+    (dev.planton.shared.options.default) = "On",
+    (buf.validate.field).string = {
+      in: [
+        "On",
+        "Off",
+        "AlwaysOn"
+      ]
+    }
+  ];
+
+  // The vault's immutability posture (the wire values). Immutability
+  // stops backup data being deleted or retention being reduced --
+  // ransomware protection. Disabled <-> Unlocked moves freely; LOCKED
+  // IS PERMANENT (leaving Locked replaces the vault -- the provider's
+  // one-way ForceNew). Unspecified applies Disabled.
+  optional string immutability = 9 [
+    (dev.planton.shared.options.default) = "Disabled",
+    (buf.validate.field).string = {
+      in: [
+        "Disabled",
+        "Unlocked",
+        "Locked"
+      ]
+    }
+  ];
+
+  // The vault's managed identity -- required for customer-managed-key
+  // encryption (the key is always unwrapped by the SYSTEM-assigned
+  // identity) and for granting the vault access to datasources it
+  // backs up.
+  AzureDataProtectionBackupVaultIdentity identity = 10;
+
+  // Encryption of backup data with your OWN Key Vault key
+  // (customer-managed key) instead of Microsoft-managed keys.
+  // Requires a system-assigned identity with wrap/unwrap access on
+  // the key. ONCE ENABLED IT CAN NEVER BE REMOVED (Azure's own
+  // contract -- the provider's delete is a documented no-op; only
+  // deleting the vault removes CMK). The key itself CAN be rotated in
+  // place.
+  AzureDataProtectionBackupVaultEncryption encryption = 11;
+
+  // Free-form tags applied to the vault, merged over the
+  // Planton-derived resource tags (organization, environment,
+  // resource id); a user tag with the same key wins.
+  map<string, string> tags = 12;
+
+  // The provider enforces this pairing at plan time; front-loaded so
+  // the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "dpbv_crr_requires_geo_redundant"
+    message: "cross_region_restore_enabled requires redundancy GeoRedundant -- cross-region restore only exists on geo-redundant backup storage"
+    expression: "!this.cross_region_restore_enabled || this.redundancy == 'GeoRedundant'"
+  };
+
+  // Azure unwraps the CMK with the vault's SYSTEM-assigned identity
+  // (the provider hardcodes it) -- a user-assigned-only identity
+  // cannot serve encryption here.
+  option (buf.validate.message).cel = {
+    id: "dpbv_encryption_requires_system_assigned_identity"
+    message: "encryption requires the identity block with SYSTEM_ASSIGNED or SYSTEM_AND_USER_ASSIGNED -- Azure unwraps the key with the vault's system-assigned identity"
+    expression: "!has(this.encryption) || (has(this.identity) && (this.identity.type == 1 || this.identity.type == 3))"
+  };
+}
+
+// The vault's managed identity.
+message AzureDataProtectionBackupVaultIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the vault (required for customer-managed-key encryption);
+  // USER_ASSIGNED brings identities you manage;
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureDataProtectionBackupVaultIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED / SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the vault, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so access grants can be
+  // composed before the vault is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The vault's managed-identity flavor.
+enum AzureDataProtectionBackupVaultIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_data_protection_backup_vault_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the vault.
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+
+  // Both a system-assigned and user-assigned identities.
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Customer-managed-key encryption of the vault's backup data.
+message AzureDataProtectionBackupVaultEncryption {
+  // The Key Vault KEY that encrypts the vault's backup data.
+  // Versionless and versioned key URIs are BOTH accepted by the
+  // provider; the versionless form (this reference's default) is the
+  // right choice -- key rotation then propagates automatically,
+  // without touching the vault. The vault's system-assigned identity
+  // needs wrap/unwrap access on the key. The key is the ONLY part of
+  // encryption that updates in place -- encryption itself can never
+  // be removed once enabled.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+}

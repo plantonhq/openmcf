@@ -7,7 +7,7 @@ Terraform module for provisioning AWS MSK (Managed Streaming for Apache Kafka) c
 This module creates:
 - An MSK Cluster (`aws_msk_cluster`) with configurable brokers, encryption, authentication, connectivity, logging, and monitoring. The referenced `security_group_ids` (required, ≥1) attach directly to the broker network interfaces; ingress rules live on those first-class security-group nodes, never on a module-managed shadow group.
 - An inline MSK Configuration (`aws_msk_configuration`) from `server_properties` — conditional on the map being non-empty.
-- SCRAM secret associations (`aws_msk_single_scram_secret_association`, one per ARN in `scram_secret_arns`) and a cluster policy (`aws_msk_cluster_policy` from `cluster_policy`) — folded satellites in `satellites.tf`.
+- SCRAM secret associations (`aws_msk_single_scram_secret_association`, one per ARN in `scram_secret_arns`), a cluster policy (`aws_msk_cluster_policy` from `cluster_policy`, serialized to JSON), and declared Kafka topics (`aws_msk_topic` per `topics` entry, keyed by name, exported as the `topic_arns` map) — folded satellites in `satellites.tf`.
 
 ## Usage
 
@@ -86,7 +86,7 @@ See `variables.tf` for the complete type definition of `spec`, including all opt
 | `variables.tf` | Generator-owned input variable definitions (do not edit by hand) |
 | `locals.tf` | Tags, configuration condition, server_properties serialization |
 | `cluster.tf` | MSK Configuration + MSK Cluster resources |
-| `satellites.tf` | SCRAM secret associations + cluster policy |
+| `satellites.tf` | SCRAM secret associations + cluster policy + declared topics |
 | `outputs.tf` | 17 output definitions |
 
 ## Prerequisites

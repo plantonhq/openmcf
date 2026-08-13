@@ -14,6 +14,7 @@ go_library(
     deps = [
         "//catalog/aws/awsnlb/v1alpha1",
         "//internal/valuefrom",
+        "//pkg/iac/pulumi/pulumimodule/datatypes/stringmaps",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/awstagkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/aws/pulumiawsprovider",
         "//shared/cloudresourcekind",

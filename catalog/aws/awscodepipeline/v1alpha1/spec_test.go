@@ -222,6 +222,38 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 			})
 		})
 
+		ginkgo.Context("with a Compute action carrying commands, output variables, and compute artifacts", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions = append(spec.Stages[1].Actions, &AwsCodePipelineAction{
+					Name:            "InlineChecks",
+					Category:        "Compute",
+					Owner:           "AWS",
+					Provider:        "Commands",
+					Version:         "1",
+					RunOrder:        2,
+					InputArtifacts:  []string{"SourceOutput"},
+					Commands:        []string{"npm ci", "npm test"},
+					Namespace:       "ComputeVars",
+					OutputVariables: []string{"TEST_REPORT_URL"},
+					OutputArtifactsForComputeAction: []*AwsCodePipelineComputeOutputArtifact{
+						{Name: "TestReports", Files: []string{"reports/junit.xml"}},
+					},
+				})
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with commands on a Build action (AWS ignores them outside Compute; no invented restriction)", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions[0].Commands = []string{"echo build-side command"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with action role_arn for cross-account", func() {
 			ginkgo.It("should not return a validation error", func() {
 				spec := minimalV2Spec()
@@ -689,6 +721,90 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("with plain output_artifacts on a Compute action", func() {
+			ginkgo.It("should return a validation error (Compute actions export via output_artifacts_for_compute_action)", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions = append(spec.Stages[1].Actions, &AwsCodePipelineAction{
+					Name:            "InlineChecks",
+					Category:        "Compute",
+					Owner:           "AWS",
+					Provider:        "Commands",
+					Version:         "1",
+					RunOrder:        2,
+					Commands:        []string{"make verify"},
+					OutputArtifacts: []string{"ComputeOutput"},
+				})
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with output_artifacts_for_compute_action on a Build action", func() {
+			ginkgo.It("should return a validation error (file-based artifacts are Compute-only)", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions[0].OutputArtifactsForComputeAction = []*AwsCodePipelineComputeOutputArtifact{
+					{Name: "BuildFiles", Files: []string{"dist/app.zip"}},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a compute output artifact name carrying illegal characters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				spec.Stages[1].Actions = append(spec.Stages[1].Actions, &AwsCodePipelineAction{
+					Name:     "InlineChecks",
+					Category: "Compute",
+					Owner:    "AWS",
+					Provider: "Commands",
+					Version:  "1",
+					RunOrder: 2,
+					Commands: []string{"make verify"},
+					OutputArtifactsForComputeAction: []*AwsCodePipelineComputeOutputArtifact{
+						{Name: "bad name!", Files: []string{"out.txt"}},
+					},
+				})
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with more than 15 output variables on a Compute action", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				vars := make([]string, 16)
+				for i := range vars {
+					vars[i] = "VAR_" + string(rune('A'+i))
+				}
+				spec.Stages[1].Actions = append(spec.Stages[1].Actions, &AwsCodePipelineAction{
+					Name:            "InlineChecks",
+					Category:        "Compute",
+					Owner:           "AWS",
+					Provider:        "Commands",
+					Version:         "1",
+					RunOrder:        2,
+					Commands:        []string{"make verify"},
+					OutputVariables: vars,
+				})
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an action configuration key longer than 50 characters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				longKey := ""
+				for range 51 {
+					longKey += "k"
+				}
+				spec.Stages[1].Actions[0].Configuration[longKey] = "v"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
 	})
 
 	// =========================================================================
@@ -844,6 +960,36 @@ var _ = ginkgo.Describe("AwsCodePipelineSpec validations", func() {
 				spec := minimalV2Spec()
 				rule := deploymentWindowRule()
 				rule.TimeoutInMinutes = 3
+				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{rule},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a rule input artifact name carrying illegal characters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				rule := deploymentWindowRule()
+				rule.InputArtifacts = []string{"has spaces"}
+				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
+					Rules: []*AwsCodePipelineRule{rule},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a rule configuration value longer than 10000 characters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalV2Spec()
+				rule := deploymentWindowRule()
+				longValue := make([]byte, 10001)
+				for i := range longValue {
+					longValue[i] = 'v'
+				}
+				rule.Configuration = map[string]string{"Cron": string(longValue)}
 				spec.Stages[1].OnSuccess = &AwsCodePipelineStageCondition{
 					Rules: []*AwsCodePipelineRule{rule},
 				}

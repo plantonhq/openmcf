@@ -86,7 +86,14 @@ func emailIdentity(
 	}
 
 	// Bounce/complaint email forwarding -- materialized only when the manifest
-	// takes an explicit position.
+	// takes an explicit position. Absent, the setting is UNMANAGED: a fresh
+	// identity gets AWS's default (forwarding ON), but SES retains the
+	// last-written value per identity name across even identity deletion
+	// (live-verified 2026-08-12), so a previously-managed name keeps its old
+	// position. The provider's DESTROY of this satellite writes
+	// forwarding=false (the API's unset/zero value), which then persists for
+	// the name -- removing an explicit position is a one-way write to false
+	// until a new explicit true.
 	if spec.EmailForwardingEnabled != nil {
 		if _, err := sesv2.NewEmailIdentityFeedbackAttributes(
 			ctx,
