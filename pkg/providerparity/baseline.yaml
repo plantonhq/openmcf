@@ -18,4 +18,3 @@ entries:
   - kind:CloudflareEmailRoutingZone
   - kind:CloudflareLoadBalancer
   - kind:CloudflareRuleset
-  - kind:CloudflareWorker

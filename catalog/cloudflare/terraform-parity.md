@@ -31,7 +31,7 @@ that has progressed.
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
 | Kinds in the catalog | 30 |
 | Distinct provider resources consumed | 49 |
-| Spec fields authored across all kinds | 1061 |
+| Spec fields authored across all kinds | 1161 |
 | Module pins on `aws` | `~> 5.0` × 1 |
 | Module pins on `cloudflare` | `~> 5.23` × 30 |
 | Module pins on `tls` | `~> 4.0` × 1 |
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**23 of 30 kinds are at total accounting; 0 proven live.**
+**24 of 30 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -74,7 +74,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
 | CloudflareRuleset | 7 | 5 | 0 | 0 | 169 | ❌ | — |
 | CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
-| CloudflareWorker | 40 | 10 | 0 | 0 | 83 | ❌ | — |
+| CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | — |
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | — |

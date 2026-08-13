@@ -1769,12 +1769,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -1784,17 +1784,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -2642,12 +2642,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -2657,17 +2657,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -4664,12 +4664,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -4679,17 +4679,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -5537,12 +5537,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -5552,17 +5552,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -7600,12 +7600,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -7615,17 +7615,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`
@@ -8473,12 +8473,12 @@ Allowed values (use exactly as shown):
 - `CloudflareKvNamespace`
 - `CloudflareR2Bucket`
 - `CloudflareWorker`
-- `CloudflareLoadBalancer`
+- `CloudflareLoadBalancer` -- CloudflareDnsZone and CloudflareLoadBalancerPool are prerequisites because a load balancer is a DNS-level construct inside a zone (the spec's zone_id reference must resolve) and traffic must land somewhere (the required fallback_pool reference must resolve to a live pool).
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
-- `CloudflareDnsRecord`
+- `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
 - `CloudflareRuleset`
-- `CloudflareWorkersKvPair`
+- `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
 - `CloudflareLoadBalancerMonitor`
@@ -8488,17 +8488,17 @@ Allowed values (use exactly as shown):
 - `CloudflarePagesProject`
 - `CloudflareZeroTrustTunnel`
 - `CloudflareZeroTrustTunnelVirtualNetwork`
-- `CloudflareZeroTrustTunnelRoute`
+- `CloudflareZeroTrustTunnelRoute` -- CloudflareZeroTrustTunnel is a prerequisite because a route steers a CIDR through an existing tunnel -- the spec's tunnel_id reference must resolve first. (The optional virtual_network_id is scenario-declared, not a registry prerequisite.)
 - `CloudflareList`
-- `CloudflareListItem`
+- `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
-- `CloudflareEmailRoutingZone`
-- `CloudflareEmailRoutingRule`
+- `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
-- `CloudflareCertificatePack`
-- `CloudflareCustomHostname`
-- `CloudflareCustomHostnameFallbackOrigin`
+- `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostname` -- CloudflareDnsZone is a prerequisite because a custom hostname (SSL for SaaS) is provisioned inside a zone -- the spec's zone_id reference must resolve first.
+- `CloudflareCustomHostnameFallbackOrigin` -- CloudflareDnsZone is a prerequisite because the fallback origin is a zone-level SSL-for-SaaS setting -- the spec's zone_id reference must resolve first.
 - `Auth0Connection` -- 8000–8999: Auth0 resources
 - `Auth0Client`
 - `Auth0EventStream`

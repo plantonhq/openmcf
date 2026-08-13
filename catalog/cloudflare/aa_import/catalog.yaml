@@ -21,3 +21,19 @@ spec:
     - terraform_type: cloudflare_dns_record
       pulumi_type: cloudflare:index/dnsRecord:DnsRecord
       id_format: "{zone_id}/{dns_record_id}"
+    # --- Workers --------------------------------------------------------------
+    - terraform_type: cloudflare_workers_script
+      pulumi_type: cloudflare:index/workersScript:WorkersScript
+      id_format: "{account_id}/{script_name}"
+    - terraform_type: cloudflare_workers_script_subdomain
+      pulumi_type: cloudflare:index/workersScriptSubdomain:WorkersScriptSubdomain
+      id_format: "{account_id}/{script_name}"
+    - terraform_type: cloudflare_workers_custom_domain
+      pulumi_type: cloudflare:index/workersCustomDomain:WorkersCustomDomain
+      id_format: "{account_id}/{domain_id}"
+    - terraform_type: cloudflare_workers_route
+      pulumi_type: cloudflare:index/workersRoute:WorkersRoute
+      id_format: "{zone_id}/{route_id}"
+    - terraform_type: cloudflare_workers_cron_trigger
+      pulumi_type: cloudflare:index/workersCronTrigger:WorkersCronTrigger
+      id_format: "{account_id}/{script_name}"

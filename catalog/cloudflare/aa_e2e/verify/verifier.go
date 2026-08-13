@@ -133,6 +133,14 @@ var verifiers = map[string]Verifier{
 		pathFormat: "zones/%s/dns_records/%s",
 		outputKeys: []string{"zone_id", "record_id"},
 	},
+	// Existence GET is the provider Read path (accounts/.../workers/services/{name}),
+	// not workers/scripts/{name}. Account comes from the harness, never from outputs.
+	"cloudflareworker": &apiPathVerifier{
+		component:     "cloudflareworker",
+		pathFormat:    "accounts/%s/workers/services/%s",
+		outputKeys:    []string{"script_name"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

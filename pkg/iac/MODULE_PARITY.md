@@ -184,10 +184,18 @@ uniform objects via `merge(null_attrs, ...)`, Pulumi appends `WorkersScriptBindi
 resource binding resolving a `StringValueOrRef` to a plain id. The script source is a oneof — inline
 `content` or an R2 `r2_bundle` fetched through the S3-compatible provider (the AWS provider is only
 configured on the bundle path). Routing folds onto the worker as `cloudflare_workers_script_subdomain`
-(workers.dev), `cloudflare_workers_custom_domain` (one per hostname, `environment = "production"`),
+(workers.dev), `cloudflare_workers_custom_domain` (one per hostname; `environment` is deprecated and omitted),
 and `cloudflare_workers_route` (one per pattern); cron schedules fold onto
 `cloudflare_workers_cron_trigger`. Stack outputs are `script_id`, `script_name`,
-`custom_domain_hostnames`, and `route_patterns`. **Workers Static Assets** (`spec.assets`)
+`custom_domain_hostnames`, `route_patterns`, plus keyed maps `custom_domain_ids` (by hostname),
+`route_ids` and `route_zone_ids` (by list index) so import can reassemble `{account_id}/{domain_id}`
+and `{zone_id}/{route_id}`. Bindings cover the provider's full type list (wrangler.toml grain);
+`r2_bundle.bucket`, Durable Object `script_name`, `tail_consumers.service`, dispatch outbound
+`service`, transferred-class `from_script`, and VPC `tunnel_id` are Worker/R2/tunnel FKs.
+`migrations` (Durable Object class create/rename/transfer/delete) and nested `observability.logs` /
+`observability.traces` are honored by both engines. **PARITY-EXCEPTION**: Pulumi SDK v6.17.0 has no
+inputs for `cache_options`, `exports`, `package_dependencies`, rate-limit `mitigation_timeout`, or
+traces `propagation_policy` — tofu honors them; Pulumi logs and skips. **Workers Static Assets** (`spec.assets`)
 fold onto the same `cloudflare_workers_script` as the `assets` block: both engines set
 `directory` and the `config` sub-fields (`html_handling`, `not_found_handling`, `headers`,
 `redirects`) identically, and model `run_worker_first` as the provider's dynamic field — a

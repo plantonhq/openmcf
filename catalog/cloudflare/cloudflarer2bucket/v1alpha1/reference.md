@@ -634,6 +634,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | CloudflarePagesProject | `spec.deploymentConfigs.preview.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.production.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
+| CloudflareWorker | `spec.r2Bundle.bucket` | `status.outputs.bucket_name` |
 | CloudflareWorker | `spec.r2Buckets[].bucketName` | `status.outputs.bucket_name` |
 
 ## See Also

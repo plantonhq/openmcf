@@ -483,6 +483,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareWorker | `spec.vpcNetworks[].tunnelId` | `status.outputs.tunnel_id` |
 | CloudflareZeroTrustTunnelRoute | `spec.tunnelId` | `status.outputs.tunnel_id` |
 
 ## See Also

@@ -1,0 +1,44 @@
+# Observability CloudflareWorker scenario: the nested logs + traces subtree
+# (destinations, invocation logs, persist, sampling). Proves the depth wave's
+# observability expansion beyond the original enabled + headSamplingRate pair.
+# No migrations here — those are a one-shot Cloudflare tag and live in
+# e2e/migrations-plan.yaml for offline plan only.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareWorker
+metadata:
+  name: planton-oss-e2e-cloudflareworker-observability
+  id: planton-oss-e2e-cloudflareworker-observability
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareworker
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  workerName: e2e-cfw-obs-${E2E_RUN_ID}
+  content: |
+    export default {
+      async fetch() {
+        return new Response("observed");
+      }
+    };
+  compatibilityDate: "2025-01-15"
+  workersDev:
+    enabled: true
+  observability:
+    enabled: true
+    headSamplingRate: 1
+    logs:
+      enabled: true
+      invocationLogs: true
+      persist: true
+      headSamplingRate: 1
+    traces:
+      enabled: true
+      persist: true
+      headSamplingRate: 1
+      propagationPolicy: authenticated

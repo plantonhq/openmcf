@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("CloudflareWorkerSpec Custom Validation Tests", func() {
 
 		ginkgo.It("accepts an r2_bundle source", func() {
 			in := validWorker()
-			in.Spec.Source = &CloudflareWorkerSpec_R2Bundle{R2Bundle: &CloudflareWorkerScriptBundle{Bucket: "builds", Path: "worker.js"}}
+			in.Spec.Source = &CloudflareWorkerSpec_R2Bundle{R2Bundle: &CloudflareWorkerScriptBundle{Bucket: ref("builds"), Path: "worker.js"}}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 
@@ -75,6 +75,75 @@ var _ = ginkgo.Describe("CloudflareWorkerSpec Custom Validation Tests", func() {
 		ginkgo.It("accepts run_worker_first as a global switch", func() {
 			in := validWorker()
 			in.Spec.Assets = &CloudflareWorkerAssets{Directory: "dist", Config: &CloudflareWorkerAssetsConfig{RunWorkerFirst: true}}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts targeted placement", func() {
+			in := validWorker()
+			in.Spec.Placement = &CloudflareWorkerPlacement{Mode: "targeted"}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts observability logs and traces", func() {
+			in := validWorker()
+			in.Spec.Observability = &CloudflareWorkerObservability{
+				Enabled:          true,
+				HeadSamplingRate: 0.5,
+				Logs: &CloudflareWorkerObservabilityLogs{
+					Enabled:          true,
+					InvocationLogs:   true,
+					Destinations:     []string{"otel"},
+					HeadSamplingRate: 0.2,
+					Persist:          true,
+				},
+				Traces: &CloudflareWorkerObservabilityTraces{
+					Enabled:            true,
+					Destinations:       []string{"otel"},
+					HeadSamplingRate:   0.1,
+					Persist:            true,
+					PropagationPolicy:  "accept",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a Durable Object migration plan", func() {
+			in := validWorker()
+			in.Spec.Migrations = &CloudflareWorkerMigrations{
+				NewSqliteClasses: []string{"Counter"},
+				NewTag:           "v1",
+			}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts the new binding families", func() {
+			in := validWorker()
+			in.Spec.MtlsCertificates = []*CloudflareWorkerMtlsCertificateBinding{{Name: "CERT", CertificateId: "abc"}}
+			in.Spec.DispatchNamespaces = []*CloudflareWorkerDispatchNamespaceBinding{{
+				Name:      "DISPATCH",
+				Namespace: "customers",
+				Outbound: &CloudflareWorkerDispatchOutbound{
+					Params: []string{"account"},
+					Worker: &CloudflareWorkerDispatchOutboundWorker{Service: ref("outbound-worker")},
+				},
+			}}
+			in.Spec.RateLimits = []*CloudflareWorkerRateLimitBinding{{
+				Name:      "RL",
+				Namespace: "rl-ns",
+				Simple:    &CloudflareWorkerRateLimitSimple{Limit: 10, Period: 60},
+			}}
+			in.Spec.SendEmail = []*CloudflareWorkerSendEmailBinding{{Name: "EMAIL", DestinationAddress: "ops@example.com"}}
+			in.Spec.SecretsStoreSecrets = []*CloudflareWorkerSecretsStoreBinding{{Name: "STORE", StoreId: "store-1", SecretName: "api-key"}}
+			in.Spec.SecretKeys = []*CloudflareWorkerSecretKeyBinding{{Name: "KEY", Algorithm: `{"name":"HMAC","hash":"SHA-256"}`, Format: "raw", Usages: []string{"sign"}, KeyBase64: "YQ=="}}
+			in.Spec.Workflows = []*CloudflareWorkerWorkflowBinding{{Name: "WF", WorkflowName: "orders"}}
+			in.Spec.Pipelines = []*CloudflareWorkerPipelineBinding{{Name: "PIPE", Pipeline: "events"}}
+			in.Spec.JsonBindings = []*CloudflareWorkerJsonBinding{{Name: "CFG", Json: `{"a":1}`}}
+			in.Spec.InheritBindings = []*CloudflareWorkerInheritBinding{{Name: "OLD", VersionId: "latest"}}
+			in.Spec.DataBlobs = []*CloudflareWorkerBlobBinding{{Name: "DATA", Part: "data.bin"}}
+			in.Spec.Browsers = []*CloudflareWorkerNamedBinding{{Name: "BROWSER"}}
+			in.Spec.AiSearch = []*CloudflareWorkerAiSearchBinding{{Name: "SEARCH", InstanceName: "docs"}}
+			in.Spec.VpcNetworks = []*CloudflareWorkerVpcNetworkBinding{{Name: "NET", NetworkId: "cf1:network"}}
+			in.Spec.TailConsumerBindings = []*CloudflareWorkerTailConsumerBinding{{Name: "TAIL", Service: ref("tail-worker")}}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 
@@ -177,6 +246,37 @@ var _ = ginkgo.Describe("CloudflareWorkerSpec Custom Validation Tests", func() {
 		ginkgo.It("rejects a bad compatibility_date format", func() {
 			in := validWorker()
 			in.Spec.CompatibilityDate = "2024/01/01"
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects body_part set together with main_module", func() {
+			in := validWorker()
+			in.Spec.BodyPart = "worker.js"
+			in.Spec.MainModule = "index.js"
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid content_type", func() {
+			in := validWorker()
+			in.Spec.ContentType = "text/plain"
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid usage_model", func() {
+			in := validWorker()
+			in.Spec.UsageModel = "enterprise"
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a secret_key with an invalid format", func() {
+			in := validWorker()
+			in.Spec.SecretKeys = []*CloudflareWorkerSecretKeyBinding{{Name: "KEY", Algorithm: "{}", Format: "pem"}}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a vpc_network with both network_id and tunnel_id", func() {
+			in := validWorker()
+			in.Spec.VpcNetworks = []*CloudflareWorkerVpcNetworkBinding{{Name: "NET", NetworkId: "cf1:network", TunnelId: ref("tun-1")}}
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 	})

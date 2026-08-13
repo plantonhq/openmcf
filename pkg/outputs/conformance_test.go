@@ -5278,8 +5278,9 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"monitor_id", "monitor_type"},
 		},
 		{
-			// CloudflareWorker: both engines emit the script id and name (scalars)
-			// and the custom-domain hostnames / route patterns (repeated strings).
+			// CloudflareWorker: both engines emit the script id and name (scalars),
+			// the custom-domain hostnames / route patterns (repeated strings), and
+			// the keyed maps import needs for custom domains and routes.
 			name: "CloudflareWorker",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareWorker,
 			rawOutputs: map[string]interface{}{
@@ -5287,8 +5288,11 @@ func TestStackOutputsConformance(t *testing.T) {
 				"script_name":             "my-worker",
 				"custom_domain_hostnames": []interface{}{"api.example.com"},
 				"route_patterns":          []interface{}{"api.example.com/*"},
+				"custom_domain_ids":       map[string]interface{}{"api.example.com": "dom-1"},
+				"route_ids":               map[string]interface{}{"0": "route-1"},
+				"route_zone_ids":          map[string]interface{}{"0": "023e105f4ecef8ad9ca31a8372d0c353"},
 			},
-			mustPopulate: []string{"script_id", "script_name", "custom_domain_hostnames", "route_patterns"},
+			mustPopulate: []string{"script_id", "script_name", "custom_domain_hostnames", "route_patterns", "custom_domain_ids", "route_ids", "route_zone_ids"},
 		},
 		{
 			// CloudflareZeroTrustAccessApplication: both engines emit the
