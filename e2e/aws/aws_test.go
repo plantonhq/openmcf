@@ -1173,6 +1173,80 @@ func TestAwsBedrockAgentCoreTools_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbedrockagentcoretools", "terraform")
 }
 
+// --- AWS SageMaker (models, serving, MLOps) ---
+
+func TestAwsSagemakerModel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodel", "pulumi")
+}
+
+func TestAwsSagemakerModel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodel", "terraform")
+}
+
+func TestAwsSagemakerEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerendpoint", "pulumi")
+}
+
+func TestAwsSagemakerEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerendpoint", "terraform")
+}
+
+func TestAwsSagemakerNotebookInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakernotebookinstance", "pulumi")
+}
+
+func TestAwsSagemakerNotebookInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakernotebookinstance", "terraform")
+}
+
+func TestAwsSagemakerFeatureGroup_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerfeaturegroup", "pulumi")
+}
+
+func TestAwsSagemakerFeatureGroup_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerfeaturegroup", "terraform")
+}
+
+func TestAwsSagemakerModelRegistry_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodelregistry", "pulumi")
+}
+
+func TestAwsSagemakerModelRegistry_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermodelregistry", "terraform")
+}
+
+func TestAwsSagemakerPipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerpipeline", "pulumi")
+}
+
+func TestAwsSagemakerPipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerpipeline", "terraform")
+}
+
+func TestAwsSagemakerImage_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerimage", "pulumi")
+}
+
+func TestAwsSagemakerImage_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakerimage", "terraform")
+}
+
+func TestAwsSagemakerMlflowServer_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowserver", "pulumi")
+}
+
+func TestAwsSagemakerMlflowServer_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowserver", "terraform")
+}
+
+func TestAwsSagemakerMlflowApp_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowapp", "pulumi")
+}
+
+func TestAwsSagemakerMlflowApp_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssagemakermlflowapp", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

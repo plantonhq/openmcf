@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerNotebookInstance
+metadata:
+  name: my-gpu-notebook
+spec:
+  region: us-west-2
+  instanceType: ml.g4dn.xlarge
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  volumeSizeGb: 100
+  rootAccess: Disabled
+  imdsMinimumVersion: "2"
+  platformIdentifier: notebook-al2023-v1
+  defaultCodeRepository: https://github.com/example/ml-experiments.git

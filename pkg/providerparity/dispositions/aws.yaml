@@ -3140,15 +3140,6 @@ resources:
   - resource: aws_sagemaker_device_fleet
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations)"
-  - resource: aws_sagemaker_endpoint_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations)"
-  - resource: aws_sagemaker_feature_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerFeatureGroup kind"
   - resource: aws_sagemaker_flow_definition
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -3164,48 +3155,18 @@ resources:
   - resource: aws_sagemaker_hyper_parameter_tuning_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_image
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerImage kind (images with versions)"
-  - resource: aws_sagemaker_image_version
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerImage kind (images with versions)"
   - resource: aws_sagemaker_labeling_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_mlflow_app
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerMlflowServer kind (tracking servers with apps)"
-  - resource: aws_sagemaker_mlflow_tracking_server
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerMlflowServer kind (tracking servers with apps)"
-  - resource: aws_sagemaker_model
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModel kind"
   - resource: aws_sagemaker_model_card
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
   - resource: aws_sagemaker_model_card_export_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_model_package_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModelRegistry kind (package groups with policies)"
-  - resource: aws_sagemaker_model_package_group_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModelRegistry kind (package groups with policies)"
   - resource: aws_sagemaker_monitoring_schedule
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_notebook_instance
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations)"
-  - resource: aws_sagemaker_notebook_instance_lifecycle_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations)"
-  - resource: aws_sagemaker_pipeline
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerPipeline kind"
   - resource: aws_sagemaker_project
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"

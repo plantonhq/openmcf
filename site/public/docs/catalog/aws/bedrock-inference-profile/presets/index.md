@@ -11,7 +11,7 @@ presets:
   - slug: "01-per-application-tracking"
     rank: "01"
     title: "Per-Application Tracking"
-    excerpt: "This preset creates one application inference profile routing straight to a foundation model — the per-consumer attribution unit: give each service its own copy of this preset (named after the..."
+    excerpt: "This preset creates one application inference profile — the per-consumer attribution unit: give each service its own copy of this preset (named after the service) and every service's Bedrock usage..."
   - slug: "02-cross-region-routing"
     rank: "02"
     title: "Cross-Region Routing"

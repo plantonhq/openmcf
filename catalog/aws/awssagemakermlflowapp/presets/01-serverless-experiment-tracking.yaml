@@ -1,0 +1,9 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowApp
+metadata:
+  name: serverless-mlflow
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://team-mlflow/artifacts
+  roleArn:
+    value: arn:aws:iam::123456789012:role/mlflow-app

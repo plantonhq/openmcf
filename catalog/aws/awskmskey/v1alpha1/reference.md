@@ -482,6 +482,14 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.defaultUserSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.workspaceSettings.s3KmsKeyId` | `status.outputs.key_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.sharingSettings.s3KmsKeyId` | `status.outputs.key_arn` |
+| AwsSagemakerEndpoint | `spec.productionVariants[].coreDump.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerEndpoint | `spec.shadowVariants[].coreDump.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerEndpoint | `spec.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerEndpoint | `spec.asyncInference.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerEndpoint | `spec.dataCapture.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerFeatureGroup | `spec.onlineStore.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerFeatureGroup | `spec.offlineStore.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsSagemakerNotebookInstance | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsSecretsManagerSecret | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSecretsManagerSecret | `spec.replicaRegions[].kmsKeyId` | `status.outputs.key_arn` |
 | AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |

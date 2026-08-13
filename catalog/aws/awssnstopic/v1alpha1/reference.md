@@ -467,6 +467,8 @@ Fields on other kinds that can point at this resource:
 | AwsMemorydbCluster | `spec.snsTopicArn` | `status.outputs.topic_arn` |
 | AwsRedisElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
 | AwsS3Bucket | `spec.notification.topics[].topicArn` | `status.outputs.topic_arn` |
+| AwsSagemakerEndpoint | `spec.asyncInference.successTopicArn` | `status.outputs.topic_arn` |
+| AwsSagemakerEndpoint | `spec.asyncInference.errorTopicArn` | `status.outputs.topic_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].snsTopic` | `status.outputs.topic_arn` |
 | AwsSnsSubscription | `spec.topicArn` | `status.outputs.topic_arn` |
 

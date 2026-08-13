@@ -1,0 +1,56 @@
+# AwsSagemakerModel full-surface scenario: an inference PIPELINE of two
+# containers (both the AWS-owned scikit-learn image - content is
+# irrelevant, the shape is the claim) with Serial execution, hostnames,
+# environments, network isolation, and VPC attachment through the
+# shared VPC/subnet/security-group fixtures. Deliberately not live: the
+# private-registry image config (needs a credentials Lambda), model
+# packages (need a registered package), and gated-model EULA artifacts
+# - all offline-proven via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModel
+metadata:
+  name: planton-oss-e2e-awssgmmd-full
+  id: planton-oss-e2e-awssgmmd-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermodel
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsVpc,AwsSubnet,AwsSecurityGroup"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  enableNetworkIsolation: true
+  inferenceExecutionMode: Serial
+  containers:
+    - image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+      containerHostname: stage-one
+      environment:
+        STAGE: preprocess
+    - image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+      containerHostname: stage-two
+      environment:
+        STAGE: score
+  vpcConfig:
+    subnetIds:
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-a
+          fieldPath: status.outputs.subnet_id
+      - valueFrom:
+          kind: AwsSubnet
+          name: planton-oss-e2e-awssubnet-prereq-b
+          fieldPath: status.outputs.subnet_id
+    securityGroupIds:
+      - valueFrom:
+          kind: AwsSecurityGroup
+          name: planton-oss-e2e-awssg-prereq
+          fieldPath: status.outputs.security_group_id

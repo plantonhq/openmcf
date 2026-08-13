@@ -516,6 +516,17 @@ spec:
       id_format: "{prompt_id}"
       notes: >-
         The bare prompt id (`aws bedrock-agent list-prompts` shows id).
+      # Bedrock stores variant inference floats as float32: a value that is
+      # not float32-exact (0.9, 0.7, ...) reads back widened
+      # (0.8999999761581421), and the pinned provider has no semantic float
+      # equality on the import path, so a blind import plans a one-time
+      # in-place update on exactly these leaves (live-caught 2026-08-14:
+      # top_p 0.9). Post-APPLY state keeps the config value (idempotency
+      # holds), and the reconcile apply is a server-side no-op -- the wart
+      # is import-only.
+      write_normalized_attributes:
+        - variant.inference_configuration.text.temperature
+        - variant.inference_configuration.text.top_p
     # --- Bedrock AgentCore -----------------------------------------------------
     # The AgentCore composites join parts with a comma (formats read from the
     # provider's ImportState parsers). None of the bedrockagentcore
@@ -637,4 +648,97 @@ spec:
       notes: >-
         The bare interpreter id (`aws bedrock-agentcore-control
         list-code-interpreters` shows codeInterpreterId).
+      config_only_attributes: [timeouts]
+
+    # --- SageMaker (models, serving, MLOps) --------------------------------------
+    # Every SDKv2 SageMaker resource here imports by plain name
+    # passthrough; image versions compose a two-part comma id and the
+    # MLflow app imports by its ARN (the Plugin Framework identity).
+    - terraform_type: aws_sagemaker_model
+      pulumi_type: aws:sagemaker/model:Model
+      id_format: "{model_name}"
+      notes: >-
+        The bare model name (`aws sagemaker list-models` shows
+        ModelName).
+    - terraform_type: aws_sagemaker_endpoint
+      pulumi_type: aws:sagemaker/endpoint:Endpoint
+      id_format: "{endpoint_name}"
+      notes: >-
+        The bare endpoint name (`aws sagemaker list-endpoints` shows
+        EndpointName). deployment_config reads back from the LAST
+        applied deployment.
+    - terraform_type: aws_sagemaker_endpoint_configuration
+      pulumi_type: aws:sagemaker/endpointConfiguration:EndpointConfiguration
+      id_format: "{endpoint_config_name}"
+      notes: >-
+        The bare configuration name (`aws sagemaker
+        list-endpoint-configs` shows EndpointConfigName); the provider
+        back-fills name_prefix from the resolved name on read.
+    - terraform_type: aws_sagemaker_notebook_instance
+      pulumi_type: aws:sagemaker/notebookInstance:NotebookInstance
+      id_format: "{notebook_instance_name}"
+      notes: >-
+        The bare instance name (`aws sagemaker list-notebook-instances`
+        shows NotebookInstanceName).
+    - terraform_type: aws_sagemaker_notebook_instance_lifecycle_configuration
+      pulumi_type: aws:sagemaker/notebookInstanceLifecycleConfiguration:NotebookInstanceLifecycleConfiguration
+      id_format: "{lifecycle_config_name}"
+      notes: >-
+        The bare configuration name (`aws sagemaker
+        list-notebook-instance-lifecycle-configs` shows
+        NotebookInstanceLifecycleConfigName).
+    - terraform_type: aws_sagemaker_feature_group
+      pulumi_type: aws:sagemaker/featureGroup:FeatureGroup
+      id_format: "{feature_group_name}"
+      notes: >-
+        The bare group name (`aws sagemaker list-feature-groups` shows
+        FeatureGroupName).
+    - terraform_type: aws_sagemaker_model_package_group
+      pulumi_type: aws:sagemaker/modelPackageGroup:ModelPackageGroup
+      id_format: "{model_package_group_name}"
+      notes: >-
+        The bare group name (`aws sagemaker list-model-package-groups`
+        shows ModelPackageGroupName).
+    - terraform_type: aws_sagemaker_model_package_group_policy
+      pulumi_type: aws:sagemaker/modelPackageGroupPolicy:ModelPackageGroupPolicy
+      id_format: "{model_package_group_name}"
+      notes: >-
+        The policy's ID IS the group name (one policy per group;
+        GetModelPackageGroupPolicy keys on it).
+    - terraform_type: aws_sagemaker_pipeline
+      pulumi_type: aws:sagemaker/pipeline:Pipeline
+      id_format: "{pipeline_name}"
+      notes: >-
+        The bare pipeline name (`aws sagemaker list-pipelines` shows
+        PipelineName).
+      # DescribePipeline returns only the RESOLVED definition, never the
+      # S3 location -- a post-import plan on the S3 form showing only
+      # this block is clean.
+      config_only_attributes: [pipeline_definition_s3_location]
+    - terraform_type: aws_sagemaker_image
+      pulumi_type: aws:sagemaker/image:Image
+      id_format: "{image_name}"
+      notes: >-
+        The bare image name (`aws sagemaker list-images` shows
+        ImageName).
+    - terraform_type: aws_sagemaker_image_version
+      pulumi_type: aws:sagemaker/imageVersion:ImageVersion
+      id_format: "{image_name},{version}"
+      notes: >-
+        Image name and AWS-assigned version number separated by a comma
+        (`aws sagemaker list-image-versions --image-name <name>` shows
+        Version).
+    - terraform_type: aws_sagemaker_mlflow_tracking_server
+      pulumi_type: aws:sagemaker/mlflowTrackingServer:MlflowTrackingServer
+      id_format: "{tracking_server_name}"
+      notes: >-
+        The bare server name (`aws sagemaker
+        list-mlflow-tracking-servers` shows TrackingServerName).
+    - terraform_type: aws_sagemaker_mlflow_app
+      pulumi_type: aws:sagemaker/mlflowApp:MlflowApp
+      id_format: "{app_arn}"
+      notes: >-
+        The app's ARN - its AWS identity (`aws sagemaker
+        list-mlflow-apps` shows Arn); names are mutable and never the
+        import key.
       config_only_attributes: [timeouts]

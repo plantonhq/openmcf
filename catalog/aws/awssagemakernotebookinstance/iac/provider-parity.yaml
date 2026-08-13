@@ -1,0 +1,53 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_notebook_instance:
+    mappings:
+      # Unit-suffixed spec names; KMS as an ARN reference.
+      - arg: volume_size
+        spec: spec.volume_size_gb
+      - arg: kms_key_id
+        spec: spec.kms_key_arn
+      - arg: security_groups
+        spec: spec.security_group_ids
+      # The single-member IMDS wrapper flattens to one enum field.
+      - arg: instance_metadata_service_configuration
+        spec: spec.imds_minimum_version
+      - arg: instance_metadata_service_configuration.minimum_instance_metadata_service_version
+        spec: spec.imds_minimum_version
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the notebook instance name
+      - arg: lifecycle_config_name
+        reason: wired by the module to the folded lifecycle configuration (metadata.name + "-lifecycle"); never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sagemaker_notebook_instance_lifecycle_configuration:
+    specRoot: spec.lifecycle_config
+    mappings:
+      # v6 per-resource region override -- the module wires every
+      # resource to spec.region.
+      - arg: region
+        spec: spec.region
+      # The spec carries plain shell; the module base64-encodes on send
+      # (AWS's transport encoding, never authoring surface).
+      - arg: on_create
+        spec: spec.lifecycle_config.on_create
+      - arg: on_start
+        spec: spec.lifecycle_config.on_start
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name + "-lifecycle" (the folded satellite's stable derived name); never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

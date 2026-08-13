@@ -1308,6 +1308,92 @@ enum CloudResourceKind {
     id_prefix: "awsactl"
   }];
 
+  // The immutable serving definition (container image + artifacts +
+  // execution role) that endpoints deploy - one container or an
+  // inference pipeline.
+  AwsSagemakerModel = 1220 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmd"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A real-time inference endpoint WITH its folded endpoint
+  // configuration - the configuration is immutable upstream, so the
+  // modules roll name-suffixed configurations create-before-destroy
+  // and repoint the endpoint.
+  AwsSagemakerEndpoint = 1221 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmep"
+    prerequisites: [AwsSagemakerModel]
+  }];
+
+  // A managed Jupyter notebook EC2 instance with its folded lifecycle
+  // configuration (bootstrap scripts).
+  AwsSagemakerNotebookInstance = 1222 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmnb"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A Feature Store feature group - online and/or offline stores over
+  // a declared feature schema.
+  AwsSagemakerFeatureGroup = 1223 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmfg"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A model registry package group with its folded resource policy -
+  // model package VERSIONS register into it imperatively (training
+  // pipelines), never declaratively.
+  AwsSagemakerModelRegistry = 1224 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmr"
+  }];
+
+  // An ML workflow DAG (the SageMaker pipeline-definition JSON) that
+  // executions run against - free to create, billed per execution.
+  AwsSagemakerPipeline = 1225 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmpl"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A named registry entry exposing YOUR container images to Studio,
+  // with folded AWS-numbered versions (append-only by position).
+  AwsSagemakerImage = 1226 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmim"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // The classic hourly-billed managed MLflow tracking server (~25 min
+  // to provision; Small ~$0.6/hour). The serverless successor is
+  // AwsSagemakerMlflowApp.
+  AwsSagemakerMlflowServer = 1227 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmmf"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // The serverless MLflow 3.x deployment (billed per use) - standalone,
+  // associating with SageMaker domains; NOT a tracking-server
+  // satellite.
+  AwsSagemakerMlflowApp = 1228 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awssgmma"
+    prerequisites: [AwsIamRole]
+  }];
+
   // 2000–2999: Azure resources
   AzureResourceGroup = 2000 [(kind_meta) = {
     provider: azure

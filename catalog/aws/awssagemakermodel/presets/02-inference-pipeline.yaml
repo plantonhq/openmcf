@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModel
+metadata:
+  name: my-inference-pipeline
+spec:
+  region: us-west-2
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  inferenceExecutionMode: Serial
+  containers:
+    - image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/feature-transform:1.0
+      containerHostname: preprocess
+      modelDataUrl: s3://my-models/pipeline/preprocess/model.tar.gz
+      environment:
+        LOG_LEVEL: info
+    - image: 123456789012.dkr.ecr.us-west-2.amazonaws.com/churn-score:1.0
+      containerHostname: score
+      modelDataUrl: s3://my-models/pipeline/score/model.tar.gz
+      environment:
+        LOG_LEVEL: info

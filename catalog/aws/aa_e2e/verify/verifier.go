@@ -169,6 +169,16 @@ var verifiers = map[string]Verifier{
 	"awsfsxdatarepositoryassociation":  &fsxDataRepositoryAssociationVerifier{},
 	"awssagemakerdomain":               &sageMakerDomainVerifier{},
 
+	"awssagemakermodel":            &sageMakerModelVerifier{},
+	"awssagemakerendpoint":         &sageMakerEndpointVerifier{},
+	"awssagemakernotebookinstance": &sageMakerNotebookInstanceVerifier{},
+	"awssagemakerfeaturegroup":     &sageMakerFeatureGroupVerifier{},
+	"awssagemakermodelregistry":    &sageMakerModelRegistryVerifier{},
+	"awssagemakerpipeline":         &sageMakerPipelineVerifier{},
+	"awssagemakerimage":            &sageMakerImageVerifier{},
+	"awssagemakermlflowserver":     &sageMakerMlflowServerVerifier{},
+	"awssagemakermlflowapp":        &sageMakerMlflowAppVerifier{},
+
 	"awssecretsmanagersecret":           &secretsManagerSecretVerifier{},
 	"awsopensearchserverlesscollection": &openSearchServerlessCollectionVerifier{},
 }

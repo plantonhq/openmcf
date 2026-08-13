@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerImage
+metadata:
+  name: my-training-image
+spec:
+  region: us-west-2
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  displayName: PyTorch Training
+  description: GPU training environment for the ML team
+  versions:
+    - baseImage: 123456789012.dkr.ecr.us-west-2.amazonaws.com/ml-training:pytorch-2.4
+      aliases:
+        - latest
+        - stable
+      jobType: TRAINING
+      mlFramework: PyTorch 2.4
+      processor: GPU
+      programmingLang: python 3.12
+      vendorGuidance: STABLE

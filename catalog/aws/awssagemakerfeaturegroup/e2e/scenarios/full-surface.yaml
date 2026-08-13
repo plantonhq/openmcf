@@ -1,0 +1,49 @@
+# AwsSagemakerFeatureGroup full-surface scenario: BOTH stores - the
+# online store with a 30-day TTL (the one in-place-updateable online
+# arm), the offline store on the shared bucket fixture with Glue table
+# auto-creation. NOTE: destroying the group does NOT remove offline
+# S3 objects (AWS-documented) - the lane's data set is empty so no
+# residue accrues, but the sweep tolerates the fixture-bucket prefix.
+# Deliberately not live: InMemory storage + vector collections
+# (InMemory bills an at-rest floor), KMS arms (ForceNew), Iceberg
+# format and provisioned throughput (billing) - offline-proven via
+# e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerFeatureGroup
+metadata:
+  name: planton-oss-e2e-awssgmfg-full
+  id: planton-oss-e2e-awssgmfg-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerfeaturegroup
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  recordIdentifierFeatureName: customer_id
+  eventTimeFeatureName: event_time
+  description: e2e full-surface feature group
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  featureDefinitions:
+    - name: customer_id
+      type: String
+    - name: event_time
+      type: Fractional
+    - name: lifetime_value
+      type: Fractional
+  onlineStore:
+    enabled: true
+    ttl:
+      unit: Days
+      value: 30
+  offlineStore:
+    s3Uri: s3://planton-oss-e2e-awss3bucket-prereq/feature-store/

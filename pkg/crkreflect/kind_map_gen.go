@@ -158,6 +158,15 @@ import (
 	awss3bucketv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3bucket/v1alpha1"
 	awss3objectsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awss3objectset/v1alpha1"
 	awssagemakerdomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1"
+	awssagemakerendpointv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerendpoint/v1alpha1"
+	awssagemakerfeaturegroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerfeaturegroup/v1alpha1"
+	awssagemakerimagev1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerimage/v1alpha1"
+	awssagemakermlflowappv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakermlflowapp/v1alpha1"
+	awssagemakermlflowserverv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakermlflowserver/v1alpha1"
+	awssagemakermodelv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakermodel/v1alpha1"
+	awssagemakermodelregistryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakermodelregistry/v1alpha1"
+	awssagemakernotebookinstancev1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakernotebookinstance/v1alpha1"
+	awssagemakerpipelinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awssagemakerpipeline/v1alpha1"
 	awssecretsmanagersecretv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecretsmanagersecret/v1alpha1"
 	awssecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecuritygroup/v1alpha1"
 	awsserverlesselasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsserverlesselasticache/v1alpha1"
@@ -879,6 +888,15 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsS3Bucket:                            &awss3bucketv1alpha1.AwsS3Bucket{},
 	cloudresourcekind.CloudResourceKind_AwsS3ObjectSet:                         &awss3objectsetv1alpha1.AwsS3ObjectSet{},
 	cloudresourcekind.CloudResourceKind_AwsSagemakerDomain:                     &awssagemakerdomainv1alpha1.AwsSagemakerDomain{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerEndpoint:                   &awssagemakerendpointv1alpha1.AwsSagemakerEndpoint{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerFeatureGroup:               &awssagemakerfeaturegroupv1alpha1.AwsSagemakerFeatureGroup{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerImage:                      &awssagemakerimagev1alpha1.AwsSagemakerImage{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerMlflowApp:                  &awssagemakermlflowappv1alpha1.AwsSagemakerMlflowApp{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerMlflowServer:               &awssagemakermlflowserverv1alpha1.AwsSagemakerMlflowServer{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerModel:                      &awssagemakermodelv1alpha1.AwsSagemakerModel{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerModelRegistry:              &awssagemakermodelregistryv1alpha1.AwsSagemakerModelRegistry{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerNotebookInstance:           &awssagemakernotebookinstancev1alpha1.AwsSagemakerNotebookInstance{},
+	cloudresourcekind.CloudResourceKind_AwsSagemakerPipeline:                   &awssagemakerpipelinev1alpha1.AwsSagemakerPipeline{},
 	cloudresourcekind.CloudResourceKind_AwsSecretsManagerSecret:                &awssecretsmanagersecretv1alpha1.AwsSecretsManagerSecret{},
 	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                       &awssecuritygroupv1alpha1.AwsSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:               &awsserverlesselasticachev1alpha1.AwsServerlessElasticache{},

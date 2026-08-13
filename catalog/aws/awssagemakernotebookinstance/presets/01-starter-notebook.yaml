@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerNotebookInstance
+metadata:
+  name: my-starter-notebook
+spec:
+  region: us-west-2
+  instanceType: ml.t3.medium
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  volumeSizeGb: 20
+  lifecycleConfig:
+    onCreate: |
+      #!/bin/bash
+      set -e
+      pip install --quiet pandas scikit-learn matplotlib

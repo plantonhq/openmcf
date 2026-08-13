@@ -1,0 +1,23 @@
+# Canonical AwsSagemakerPipeline example (hack/dev manifest and refgen
+# Example source): an S3-located definition with parallelism and
+# display metadata. Literal ARNs stand in for composed references so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerPipeline
+metadata:
+  name: churn-training
+  id: churn-training
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  displayName: churn-training-nightly
+  description: Nightly churn-model retraining
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-pipeline-execution
+  definitionS3Location:
+    bucket:
+      value: my-pipeline-definitions
+    objectKey: pipelines/churn-training.json
+    versionId: 3sL4kqtJlcpXroDTDmJ+rmSpXd3dIbrHY+MTRCxf3vjVBH40Nr8X8gdRQBpUMLUo
+  parallelismMaxSteps: 4

@@ -1,0 +1,53 @@
+# Canonical AwsSagemakerFeatureGroup example (hack/dev manifest and
+# refgen Example source): a dual-store group exercising every arm -
+# online store with InMemory storage, KMS, and TTL; offline store with
+# Iceberg, KMS, and a named Glue catalog entry; a vector feature;
+# provisioned throughput. Literal ARNs stand in for composed references
+# so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerFeatureGroup
+metadata:
+  name: customer-features
+  id: customer-features
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  recordIdentifierFeatureName: customer_id
+  eventTimeFeatureName: event_time
+  description: Customer features for churn scoring
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  featureDefinitions:
+    - name: customer_id
+      type: String
+    - name: event_time
+      type: Fractional
+    - name: lifetime_value
+      type: Fractional
+    - name: embedding
+      type: Fractional
+      collectionType: Vector
+      vectorDimension: 256
+  onlineStore:
+    enabled: true
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    storageType: InMemory
+    ttl:
+      unit: Days
+      value: 30
+  offlineStore:
+    s3Uri: s3://my-feature-store/customers/
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    tableFormat: Iceberg
+    disableGlueTableCreation: false
+    dataCatalog:
+      catalog: AwsDataCatalog
+      database: feature_store
+      tableName: customer_features
+  throughput:
+    mode: Provisioned
+    provisionedReadCapacityUnits: 100
+    provisionedWriteCapacityUnits: 50

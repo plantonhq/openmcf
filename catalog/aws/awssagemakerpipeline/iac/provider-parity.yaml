@@ -1,0 +1,33 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_pipeline:
+    mappings:
+      - arg: pipeline_display_name
+        spec: spec.display_name
+      - arg: pipeline_description
+        spec: spec.description
+      # The spec carries the definition as structured JSON; the module
+      # serializes on send.
+      - arg: pipeline_definition
+        spec: spec.definition
+      - arg: pipeline_definition_s3_location
+        spec: spec.definition_s3_location
+      # The single-member parallelism wrapper flattens to one field.
+      - arg: parallelism_configuration
+        spec: spec.parallelism_max_steps
+      - arg: parallelism_configuration.max_parallel_execution_steps
+        spec: spec.parallelism_max_steps
+    exclusions:
+      - arg: pipeline_name
+        reason: wired by the module from metadata.name -- the component's name IS the pipeline name
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

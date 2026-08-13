@@ -434,6 +434,14 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.emrServerlessSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.generativeAiBedrockRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.userProfiles[].userSettings.canvasAppSettings.timeSeriesForecastingSettings.amazonForecastRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerEndpoint | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerFeatureGroup | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerImage | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerMlflowApp | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerMlflowServer | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerModel | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsSagemakerNotebookInstance | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsSagemakerPipeline | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsSecretsManagerSecret | `spec.rotation.externalRotationRoleArn` | `status.outputs.role_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].firehose.iamRole` | `status.outputs.role_arn` |
 | AwsSnsSubscription | `spec.subscriptionRoleArn` | `status.outputs.role_arn` |

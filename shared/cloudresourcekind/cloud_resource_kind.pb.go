@@ -404,6 +404,39 @@ const (
 	// bundle; AWS exposes no update - every field change recreates the
 	// tool.
 	CloudResourceKind_AwsBedrockAgentCoreTools CloudResourceKind = 1214
+	// The immutable serving definition (container image + artifacts +
+	// execution role) that endpoints deploy - one container or an
+	// inference pipeline.
+	CloudResourceKind_AwsSagemakerModel CloudResourceKind = 1220
+	// A real-time inference endpoint WITH its folded endpoint
+	// configuration - the configuration is immutable upstream, so the
+	// modules roll name-suffixed configurations create-before-destroy
+	// and repoint the endpoint.
+	CloudResourceKind_AwsSagemakerEndpoint CloudResourceKind = 1221
+	// A managed Jupyter notebook EC2 instance with its folded lifecycle
+	// configuration (bootstrap scripts).
+	CloudResourceKind_AwsSagemakerNotebookInstance CloudResourceKind = 1222
+	// A Feature Store feature group - online and/or offline stores over
+	// a declared feature schema.
+	CloudResourceKind_AwsSagemakerFeatureGroup CloudResourceKind = 1223
+	// A model registry package group with its folded resource policy -
+	// model package VERSIONS register into it imperatively (training
+	// pipelines), never declaratively.
+	CloudResourceKind_AwsSagemakerModelRegistry CloudResourceKind = 1224
+	// An ML workflow DAG (the SageMaker pipeline-definition JSON) that
+	// executions run against - free to create, billed per execution.
+	CloudResourceKind_AwsSagemakerPipeline CloudResourceKind = 1225
+	// A named registry entry exposing YOUR container images to Studio,
+	// with folded AWS-numbered versions (append-only by position).
+	CloudResourceKind_AwsSagemakerImage CloudResourceKind = 1226
+	// The classic hourly-billed managed MLflow tracking server (~25 min
+	// to provision; Small ~$0.6/hour). The serverless successor is
+	// AwsSagemakerMlflowApp.
+	CloudResourceKind_AwsSagemakerMlflowServer CloudResourceKind = 1227
+	// The serverless MLflow 3.x deployment (billed per use) - standalone,
+	// associating with SageMaker domains; NOT a tracking-server
+	// satellite.
+	CloudResourceKind_AwsSagemakerMlflowApp CloudResourceKind = 1228
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1738,6 +1771,15 @@ var (
 		1212:  "AwsBedrockAgentCoreMemory",
 		1213:  "AwsBedrockAgentCoreIdentity",
 		1214:  "AwsBedrockAgentCoreTools",
+		1220:  "AwsSagemakerModel",
+		1221:  "AwsSagemakerEndpoint",
+		1222:  "AwsSagemakerNotebookInstance",
+		1223:  "AwsSagemakerFeatureGroup",
+		1224:  "AwsSagemakerModelRegistry",
+		1225:  "AwsSagemakerPipeline",
+		1226:  "AwsSagemakerImage",
+		1227:  "AwsSagemakerMlflowServer",
+		1228:  "AwsSagemakerMlflowApp",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2435,6 +2477,15 @@ var (
 		"AwsBedrockAgentCoreMemory":                      1212,
 		"AwsBedrockAgentCoreIdentity":                    1213,
 		"AwsBedrockAgentCoreTools":                       1214,
+		"AwsSagemakerModel":                              1220,
+		"AwsSagemakerEndpoint":                           1221,
+		"AwsSagemakerNotebookInstance":                   1222,
+		"AwsSagemakerFeatureGroup":                       1223,
+		"AwsSagemakerModelRegistry":                      1224,
+		"AwsSagemakerPipeline":                           1225,
+		"AwsSagemakerImage":                              1226,
+		"AwsSagemakerMlflowServer":                       1227,
+		"AwsSagemakerMlflowApp":                          1228,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3376,7 +3427,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xaa\xb7\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ɻ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3517,7 +3568,16 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAwsBedrockAgentCoreGateway\x10\xbb\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacgw:\x02\xf0\a\x12:\n" +
 	"\x19AwsBedrockAgentCoreMemory\x10\xbc\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacmem\x12;\n" +
 	"\x1bAwsBedrockAgentCoreIdentity\x10\xbd\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacid\x128\n" +
-	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x121\n" +
+	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x126\n" +
+	"\x11AwsSagemakerModel\x10\xc4\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmd:\x02\xf0\a\x129\n" +
+	"\x14AwsSagemakerEndpoint\x10\xc5\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmep:\x02\xc4\t\x12A\n" +
+	"\x1cAwsSagemakerNotebookInstance\x10\xc6\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmnb:\x02\xf0\a\x12=\n" +
+	"\x18AwsSagemakerFeatureGroup\x10\xc7\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmfg:\x02\xf0\a\x12:\n" +
+	"\x19AwsSagemakerModelRegistry\x10\xc8\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssgmmr\x129\n" +
+	"\x14AwsSagemakerPipeline\x10\xc9\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmpl:\x02\xf0\a\x126\n" +
+	"\x11AwsSagemakerImage\x10\xca\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmim:\x02\xf0\a\x12=\n" +
+	"\x18AwsSagemakerMlflowServer\x10\xcb\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmf:\x02\xf0\a\x12:\n" +
+	"\x15AwsSagemakerMlflowApp\x10\xcc\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmma:\x02\xf0\a\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

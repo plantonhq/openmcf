@@ -433,6 +433,8 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftServerlessWorkgroup | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsRedshiftServerlessWorkgroup | `spec.endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
 | AwsSagemakerDomain | `spec.subnetIds` | `status.outputs.subnet_id` |
+| AwsSagemakerModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
+| AwsSagemakerNotebookInstance | `spec.subnetId` | `status.outputs.subnet_id` |
 | AwsServerlessElasticache | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsTransitGatewayVpcAttachment | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsVpcEndpoint | `spec.routeTableIds` | `status.outputs.route_table_id` |

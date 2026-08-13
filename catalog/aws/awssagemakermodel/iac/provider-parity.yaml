@@ -1,0 +1,88 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_model:
+    mappings:
+      # The single-member wrapper flattens to one enum field.
+      - arg: inference_execution_config
+        spec: spec.inference_execution_mode
+      - arg: inference_execution_config.mode
+        spec: spec.inference_execution_mode
+      # The pipeline form (repeated containers).
+      - arg: container
+        spec: spec.containers
+      # Model packages are ARNs -- the spec names the identifier's shape.
+      - arg: container.model_package_name
+        spec: spec.containers.model_package_arn
+      # The single-valued s3_data_source wrapper flattens (upstream's
+      # expander reads index 0 only).
+      - arg: container.model_data_source
+        spec: spec.containers.model_data_source
+      - arg: container.model_data_source.s3_data_source
+        spec: spec.containers.model_data_source
+      - arg: container.model_data_source.s3_data_source.model_access_config
+        spec: spec.containers.model_data_source.accept_eula
+      - arg: container.model_data_source.s3_data_source.model_access_config.accept_eula
+        spec: spec.containers.model_data_source.accept_eula
+      # The provider's singular block name; the spec pluralizes the list.
+      - arg: container.additional_model_data_source
+        spec: spec.containers.additional_model_data_sources
+      - arg: container.additional_model_data_source.s3_data_source
+        spec: spec.containers.additional_model_data_sources.source
+      - arg: container.additional_model_data_source.s3_data_source.model_access_config
+        spec: spec.containers.additional_model_data_sources.source.accept_eula
+      - arg: container.additional_model_data_source.s3_data_source.model_access_config.accept_eula
+        spec: spec.containers.additional_model_data_sources.source.accept_eula
+      # The one-field wrapper flattens to one enum field.
+      - arg: container.multi_model_config
+        spec: spec.containers.multi_model_cache
+      - arg: container.multi_model_config.model_cache_setting
+        spec: spec.containers.multi_model_cache
+      # The one-field auth wrapper flattens to the Lambda ARN.
+      - arg: container.image_config.repository_auth_config
+        spec: spec.containers.image_config.repository_credentials_provider_arn
+      - arg: container.image_config.repository_auth_config.repository_credentials_provider_arn
+        spec: spec.containers.image_config.repository_credentials_provider_arn
+      # Same shape on the single-container form.
+      - arg: primary_container.model_package_name
+        spec: spec.primary_container.model_package_arn
+      - arg: primary_container.model_data_source
+        spec: spec.primary_container.model_data_source
+      - arg: primary_container.model_data_source.s3_data_source
+        spec: spec.primary_container.model_data_source
+      - arg: primary_container.model_data_source.s3_data_source.model_access_config
+        spec: spec.primary_container.model_data_source.accept_eula
+      - arg: primary_container.model_data_source.s3_data_source.model_access_config.accept_eula
+        spec: spec.primary_container.model_data_source.accept_eula
+      - arg: primary_container.additional_model_data_source
+        spec: spec.primary_container.additional_model_data_sources
+      - arg: primary_container.additional_model_data_source.s3_data_source
+        spec: spec.primary_container.additional_model_data_sources.source
+      - arg: primary_container.additional_model_data_source.s3_data_source.model_access_config
+        spec: spec.primary_container.additional_model_data_sources.source.accept_eula
+      - arg: primary_container.additional_model_data_source.s3_data_source.model_access_config.accept_eula
+        spec: spec.primary_container.additional_model_data_sources.source.accept_eula
+      - arg: primary_container.multi_model_config
+        spec: spec.primary_container.multi_model_cache
+      - arg: primary_container.multi_model_config.model_cache_setting
+        spec: spec.primary_container.multi_model_cache
+      - arg: primary_container.image_config.repository_auth_config
+        spec: spec.primary_container.image_config.repository_credentials_provider_arn
+      - arg: primary_container.image_config.repository_auth_config.repository_credentials_provider_arn
+        spec: spec.primary_container.image_config.repository_credentials_provider_arn
+      # The provider calls the subnet list "subnets".
+      - arg: vpc_config.subnets
+        spec: spec.vpc_config.subnet_ids
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the model name
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

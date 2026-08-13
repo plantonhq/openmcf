@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssagemakermodel
+spec:
+  # A SageMaker model under live E2E: two lanes, both free (models are
+  # metadata - only endpoints deploying them bill). The minimal lane
+  # proves the single-container form on the AWS-owned scikit-learn
+  # registry path; the full-surface lane proves the inference-pipeline
+  # form (two containers, Serial execution, network isolation, VPC
+  # attachment via the shared fixtures). Verification is DescribeModel
+  # keyed on model_name.
+  #
+  # Deliberately not exercised live: the private-registry image config
+  # (unblock: a credentials-provider Lambda fixture), model-package
+  # containers (unblock: a registered model package - pairs with the
+  # AwsSagemakerModelRegistry kind's future package tooling), and
+  # gated-model EULA artifacts (unblock: an account-subscribed gated
+  # model) - all offline-proven via e2e/manifest.yaml.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q36
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20
