@@ -1665,6 +1665,36 @@ func TestAzureFabricCapacity_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefabriccapacity", "terraform")
 }
 
+// --- Compute galleries, placement, snapshots (fixture RG -> gallery -> image definition; the image's version scenario chains an OS-typed disk -> snapshot -> version; the availability set and snapshot lanes stand alone -- everything free or pennies at rest) ---
+
+func TestAzureComputeGallery_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegallery", "pulumi")
+}
+func TestAzureComputeGallery_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegallery", "terraform")
+}
+
+func TestAzureComputeGalleryImage_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegalleryimage", "pulumi")
+}
+func TestAzureComputeGalleryImage_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegalleryimage", "terraform")
+}
+
+func TestAzureAvailabilitySet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureavailabilityset", "pulumi")
+}
+func TestAzureAvailabilitySet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureavailabilityset", "terraform")
+}
+
+func TestAzureDiskSnapshot_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredisksnapshot", "pulumi")
+}
+func TestAzureDiskSnapshot_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredisksnapshot", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

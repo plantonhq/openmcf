@@ -1036,6 +1036,27 @@ const (
 	// registration (which issues the authorization keys agents join
 	// with).
 	CloudResourceKind_AzureDataFactoryIntegrationRuntime CloudResourceKind = 2204
+	// The Azure Compute Gallery -- the shared library an organization
+	// keeps its approved VM images in. Image definitions
+	// (AzureComputeGalleryImage) live inside it; VMs and scale sets
+	// deploy from their published, region-replicated versions.
+	CloudResourceKind_AzureComputeGallery CloudResourceKind = 2205
+	// A gallery image ({gallery_id}/images/{name}) -- one image
+	// definition inside a Compute Gallery (marketplace-style identity,
+	// OS type, security posture) plus its published versions, each
+	// replicated to its own target regions. VMs deploy from a version's
+	// ARM ID or from the definition's ID to get the latest version.
+	CloudResourceKind_AzureComputeGalleryImage CloudResourceKind = 2206
+	// The availability set -- the classic pre-zones placement grouping
+	// that spreads VMs across separate fault and update domains so one
+	// hardware failure or maintenance window cannot take them all down.
+	// VMs join the set at creation.
+	CloudResourceKind_AzureAvailabilitySet CloudResourceKind = 2207
+	// The managed disk snapshot -- a point-in-time copy of a disk used
+	// for backup, cloning, and as the source of gallery image versions.
+	// Incremental snapshots store only the delta since the previous
+	// snapshot of the same disk.
+	CloudResourceKind_AzureDiskSnapshot CloudResourceKind = 2208
 	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
 	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
 	// with sharding, zone-redundant HA, and point-in-time restore.
@@ -1905,6 +1926,10 @@ var (
 		2202:  "AzureDataFactoryDataset",
 		2203:  "AzureDataFactoryTrigger",
 		2204:  "AzureDataFactoryIntegrationRuntime",
+		2205:  "AzureComputeGallery",
+		2206:  "AzureComputeGalleryImage",
+		2207:  "AzureAvailabilitySet",
+		2208:  "AzureDiskSnapshot",
 		2211:  "AzureMongoCluster",
 		2212:  "AzureFabricCapacity",
 		2213:  "AzureBackupContainerStorageAccount",
@@ -2590,6 +2615,10 @@ var (
 		"AzureDataFactoryDataset":                        2202,
 		"AzureDataFactoryTrigger":                        2203,
 		"AzureDataFactoryIntegrationRuntime":             2204,
+		"AzureComputeGallery":                            2205,
+		"AzureComputeGalleryImage":                       2206,
+		"AzureAvailabilitySet":                           2207,
+		"AzureDiskSnapshot":                              2208,
 		"AzureMongoCluster":                              2211,
 		"AzureFabricCapacity":                            2212,
 		"AzureBackupContainerStorageAccount":             2213,
@@ -3264,7 +3293,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xee\xb2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*մ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3564,7 +3593,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1dAzureDataFactoryLinkedService\x10\x99\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfls:\x02\x96\x11\x12:\n" +
 	"\x17AzureDataFactoryDataset\x10\x9a\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfds:\x02\x99\x11\x12>\n" +
 	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x12E\n" +
-	"\"AzureDataFactoryIntegrationRuntime\x10\x9c\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfir:\x02\x96\x11\x125\n" +
+	"\"AzureDataFactoryIntegrationRuntime\x10\x9c\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfir:\x02\x96\x11\x126\n" +
+	"\x13AzureComputeGallery\x10\x9d\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcgal:\x02\xd0\x0f\x12<\n" +
+	"\x18AzureComputeGalleryImage\x10\x9e\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazcgimg:\x02\x9d\x11\x128\n" +
+	"\x14AzureAvailabilitySet\x10\x9f\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazavset:\x02\xd0\x0f\x125\n" +
+	"\x11AzureDiskSnapshot\x10\xa0\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazdsnap:\x02\xe7\x0f\x125\n" +
 	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
 	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +

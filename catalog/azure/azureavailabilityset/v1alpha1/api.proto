@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureavailabilityset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureavailabilityset/v1alpha1/outputs.proto";
+import "catalog/azure/azureavailabilityset/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureAvailabilitySet represents an availability set -- the classic
+// placement grouping that spreads VMs across separate fault and
+// update domains so one hardware failure or maintenance window cannot
+// take them all down.
+message AzureAvailabilitySet {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureAvailabilitySet'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureAvailabilitySetSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureAvailabilitySetStatus status = 5;
+}
+
+// AzureAvailabilitySetStatus represents the status of an availability
+// set deployment.
+message AzureAvailabilitySetStatus {
+  //stack-outputs
+  //  azure-availability-set stack-outputs
+  AzureAvailabilitySetStackOutputs outputs = 1;
+}

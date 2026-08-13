@@ -168,6 +168,7 @@ import (
 	azureapplicationinsightsv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsights/v1alpha1"
 	azureapplicationinsightsstandardwebtestv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1"
 	azureapplicationsecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationsecuritygroup/v1alpha1"
+	azureavailabilitysetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureavailabilityset/v1alpha1"
 	azurebackupcontainerstorageaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackupcontainerstorageaccount/v1alpha1"
 	azurebackuppolicyfilesharev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyfileshare/v1alpha1"
 	azurebackuppolicyvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyvm/v1alpha1"
@@ -177,6 +178,8 @@ import (
 	azurecognitiveaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccount/v1alpha1"
 	azurecognitiveaccountprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccountproject/v1alpha1"
 	azurecognitivedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitivedeployment/v1alpha1"
+	azurecomputegalleryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecomputegallery/v1alpha1"
+	azurecomputegalleryimagev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecomputegalleryimage/v1alpha1"
 	azurecontainerappv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerapp/v1alpha1"
 	azurecontainerappcustomdomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappcustomdomain/v1alpha1"
 	azurecontainerappenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironment/v1alpha1"
@@ -205,6 +208,7 @@ import (
 	azuredataprotectionbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupvault/v1alpha1"
 	azuredataprotectionresourceguardv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionresourceguard/v1alpha1"
 	azurediskencryptionsetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurediskencryptionset/v1alpha1"
+	azuredisksnapshotv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredisksnapshot/v1alpha1"
 	azurednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednsrecord/v1alpha1"
 	azurednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednszone/v1alpha1"
 	azureeventgriddomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomain/v1alpha1"
@@ -880,6 +884,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:                       &azureapplicationinsightsv1alpha1.AzureApplicationInsights{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest:        &azureapplicationinsightsstandardwebtestv1alpha1.AzureApplicationInsightsStandardWebTest{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup:                  &azureapplicationsecuritygroupv1alpha1.AzureApplicationSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzureAvailabilitySet:                           &azureavailabilitysetv1alpha1.AzureAvailabilitySet{},
 	cloudresourcekind.CloudResourceKind_AzureBackupContainerStorageAccount:             &azurebackupcontainerstorageaccountv1alpha1.AzureBackupContainerStorageAccount{},
 	cloudresourcekind.CloudResourceKind_AzureBackupPolicyFileShare:                     &azurebackuppolicyfilesharev1alpha1.AzureBackupPolicyFileShare{},
 	cloudresourcekind.CloudResourceKind_AzureBackupPolicyVm:                            &azurebackuppolicyvmv1alpha1.AzureBackupPolicyVm{},
@@ -889,6 +894,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccount:                          &azurecognitiveaccountv1alpha1.AzureCognitiveAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccountProject:                   &azurecognitiveaccountprojectv1alpha1.AzureCognitiveAccountProject{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveDeployment:                       &azurecognitivedeploymentv1alpha1.AzureCognitiveDeployment{},
+	cloudresourcekind.CloudResourceKind_AzureComputeGallery:                            &azurecomputegalleryv1alpha1.AzureComputeGallery{},
+	cloudresourcekind.CloudResourceKind_AzureComputeGalleryImage:                       &azurecomputegalleryimagev1alpha1.AzureComputeGalleryImage{},
 	cloudresourcekind.CloudResourceKind_AzureContainerApp:                              &azurecontainerappv1alpha1.AzureContainerApp{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppCustomDomain:                  &azurecontainerappcustomdomainv1alpha1.AzureContainerAppCustomDomain{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:                   &azurecontainerappenvironmentv1alpha1.AzureContainerAppEnvironment{},
@@ -917,6 +924,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupVault:                 &azuredataprotectionbackupvaultv1alpha1.AzureDataProtectionBackupVault{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionResourceGuard:               &azuredataprotectionresourceguardv1alpha1.AzureDataProtectionResourceGuard{},
 	cloudresourcekind.CloudResourceKind_AzureDiskEncryptionSet:                         &azurediskencryptionsetv1alpha1.AzureDiskEncryptionSet{},
+	cloudresourcekind.CloudResourceKind_AzureDiskSnapshot:                              &azuredisksnapshotv1alpha1.AzureDiskSnapshot{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                                 &azurednsrecordv1alpha1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                                   &azurednszonev1alpha1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureEventHub:                                  &azureeventhubv1alpha1.AzureEventHub{},

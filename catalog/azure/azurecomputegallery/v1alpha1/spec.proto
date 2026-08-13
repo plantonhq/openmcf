@@ -1,0 +1,136 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecomputegallery.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureComputeGallerySpec** defines an Azure Compute Gallery -- the
+// shared library an organization keeps its approved VM images in.
+// Image definitions (AzureComputeGalleryImage) live inside a gallery,
+// each with published, region-replicated versions; VMs and scale sets
+// deploy from those versions.
+//
+// A gallery is free at rest: it bills nothing itself (image versions
+// bill for the storage their replicas consume). By default a gallery
+// is private to the subscriptions it is shared with through RBAC; the
+// optional sharing block opens it to a community audience.
+message AzureComputeGallerySpec {
+  // The Azure Resource Group the gallery lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the gallery.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The gallery's name -- up to 80 characters of letters, numbers,
+  // dots, and underscores. Dashes are NOT allowed (unlike most Azure
+  // names); dots separate logical segments by convention
+  // (e.g. "platform.images").
+  //
+  // **ForceNew**: changing this destroys and recreates the gallery.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "compute_gallery_name_format"
+      message: "Gallery names allow up to 80 letters, numbers, dots, and underscores (no dashes)"
+      expression: "this.matches('^[A-Za-z0-9._]{1,80}$')"
+    }
+  ];
+
+  // The Azure region the gallery is created in, e.g. "eastus". Image
+  // versions replicate to their own target regions independently --
+  // the gallery's region is where the definition metadata lives.
+  //
+  // **ForceNew**: changing this destroys and recreates the gallery.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // A description of the gallery's purpose shown in the portal and
+  // returned by the API. Updatable in place.
+  string description = 4;
+
+  // How the gallery is shared beyond RBAC. Omitted means Private
+  // (RBAC-only) -- the right posture for almost every gallery.
+  //
+  // **ForceNew**: the ENTIRE sharing configuration is fixed at
+  // creation -- changing any part of it destroys and recreates the
+  // gallery.
+  AzureComputeGallerySharing sharing = 5;
+
+  // Tags to apply to the gallery, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 6;
+}
+
+// The gallery's sharing profile -- who can see and deploy from it
+// beyond RBAC.
+message AzureComputeGallerySharing {
+  // The sharing mode: "Private" (RBAC only), "Groups" (shared to
+  // subscriptions/tenants added as sharing groups), or "Community"
+  // (published publicly under a community gallery name -- requires
+  // the community_gallery block).
+  string permission = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Community",
+        "Groups",
+        "Private"
+      ]
+    }
+  ];
+
+  // The community-gallery publishing details. Required when
+  // permission is "Community" (the provider rejects Community sharing
+  // without it); ignored by Azure for the other modes.
+  AzureComputeGalleryCommunitySharing community_gallery = 2;
+
+  option (buf.validate.message).cel = {
+    id: "compute_gallery_community_requires_block"
+    message: "community_gallery must be set when permission is Community"
+    expression: "this.permission != 'Community' || has(this.community_gallery)"
+  };
+}
+
+// Community-gallery publishing details: the public identity a
+// Community-shared gallery is published under. Azure generates the
+// final public name from the prefix (exposed as the
+// community_gallery_name stack output).
+message AzureComputeGalleryCommunitySharing {
+  // The end-user license agreement URL or text shown to community
+  // consumers before they deploy from the gallery.
+  string eula = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The public name prefix -- 5-16 letters and numbers. Azure appends
+  // a generated suffix to form the gallery's public community name.
+  string prefix = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "compute_gallery_community_prefix_format"
+      message: "The community prefix must be 5-16 letters and numbers"
+      expression: "this.matches('^[A-Za-z0-9]{5,16}$')"
+    }
+  ];
+
+  // The publisher's contact email shown to community consumers.
+  string publisher_email = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The publisher's URI (homepage or documentation) shown to
+  // community consumers.
+  string publisher_uri = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

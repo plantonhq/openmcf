@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecomputegalleryimage
+spec:
+  # The image definition imports by its ARM resource ID; composed
+  # versions derive their ids from it plus each version's name (the
+  # address key in the spec's versions list).
+  values:
+    - name: image_id
+      derivations:
+        - from_stack_output: image_id
+      where_to_find: >-
+        Portal -> the Compute Gallery -> Definitions -> the image ->
+        Properties -> Resource ID, or `az sig image-definition show
+        --gallery-name <gallery> --gallery-image-definition <name>
+        -g <rg> --query id`.
+    - name: version_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The version's name in the spec's versions list (the module keys
+        one ARM child per version name -- the name is its address
+        segment, {image_id}/versions/{name}).

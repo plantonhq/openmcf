@@ -1,0 +1,23 @@
+# Deep-shape example for docs and offline validation: an availability
+# set with explicit domain counts, managed alignment, and a proximity
+# placement group. References are literal values so the manifest
+# validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAvailabilitySet
+metadata:
+  name: test-availability-set
+  id: test-availability-set
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: web-avset
+  region: eastus
+  platformUpdateDomainCount: 5
+  platformFaultDomainCount: 3
+  managed: true
+  proximityPlacementGroupId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/proximityPlacementGroups/web-ppg
+  tags:
+    tier: web

@@ -1,0 +1,23 @@
+# Minimal AzureAvailabilitySet scenario: the provider-default shape (5
+# update domains, 3 fault domains, managed alignment) in the shared
+# fixture resource group -- free at rest, near-instant create/delete.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAvailabilitySet
+metadata:
+  name: planton-oss-e2e-azureavailabilityset-smoke
+  id: planton-oss-e2e-azureavailabilityset-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureavailabilityset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-avset-${E2E_RUN_ID}
+  region: eastus

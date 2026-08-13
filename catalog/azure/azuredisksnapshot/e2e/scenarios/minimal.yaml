@@ -1,0 +1,30 @@
+# Minimal AzureDiskSnapshot scenario: an incremental Copy snapshot of
+# the standard fixture disk (which arrives through the registry
+# prerequisite chain -- AzureManagedDisk publishes
+# e2e/prerequisite.yaml). Costs pennies: the snapshot stores the delta
+# of an EMPTY 16GB disk on standard storage for the lane's minutes.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskSnapshot
+metadata:
+  name: planton-oss-e2e-azuredisksnapshot-smoke
+  id: planton-oss-e2e-azuredisksnapshot-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredisksnapshot
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-snap-${E2E_RUN_ID}
+  region: eastus
+  createOption: Copy
+  sourceResourceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-disk
+  incrementalEnabled: true

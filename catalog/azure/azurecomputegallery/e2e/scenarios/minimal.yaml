@@ -1,0 +1,29 @@
+# Minimal AzureComputeGallery scenario: a private (RBAC-only) gallery
+# in the shared fixture resource group -- free at rest. Gallery names
+# forbid dashes, so the cloud-side name carries the UNDERSCORE run-id
+# token variant. The Community-sharing arm is deliberately not live:
+# it publishes a PUBLIC community gallery under a generated name --
+# not honestly standable in a test lane -- and is offline-proven (the
+# canonical manifest exercises the whole sharing tree through the
+# offline plan).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGallery
+metadata:
+  name: planton-oss-e2e-azurecomputegallery-smoke
+  id: planton-oss-e2e-azurecomputegallery-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecomputegallery
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton_oss_e2e_gallery_${E2E_RUN_ID_UNDERSCORE}
+  region: eastus
+  description: Planton E2E smoke gallery

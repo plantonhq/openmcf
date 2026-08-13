@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredisksnapshot.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredisksnapshot/v1alpha1/outputs.proto";
+import "catalog/azure/azuredisksnapshot/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDiskSnapshot represents a managed disk snapshot -- a
+// point-in-time copy of a disk used for backup, cloning, and as the
+// source of gallery image versions.
+message AzureDiskSnapshot {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDiskSnapshot'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDiskSnapshotSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDiskSnapshotStatus status = 5;
+}
+
+// AzureDiskSnapshotStatus represents the status of a disk snapshot
+// deployment.
+message AzureDiskSnapshotStatus {
+  //stack-outputs
+  //  azure-disk-snapshot stack-outputs
+  AzureDiskSnapshotStackOutputs outputs = 1;
+}

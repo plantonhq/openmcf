@@ -1,0 +1,35 @@
+# Deep-shape example for docs and offline validation: an incremental
+# Copy-mode snapshot of a managed disk with a private network posture
+# and legacy ADE encryption settings carried from the source.
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskSnapshot
+metadata:
+  name: test-disk-snapshot
+  id: test-disk-snapshot
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: app-disk-snap
+  region: eastus
+  createOption: Copy
+  sourceResourceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/disks/app-disk
+  incrementalEnabled: true
+  networkAccessPolicy: AllowPrivate
+  diskAccessId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/diskAccesses/app-disk-access
+  publicNetworkAccessEnabled: false
+  encryptionSettings:
+    diskEncryptionKey:
+      secretUrl: https://app-vault.vault.azure.net/secrets/app-disk-dek/0000000000000000
+      sourceVaultId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/app-vault
+    keyEncryptionKey:
+      keyUrl: https://app-vault.vault.azure.net/keys/app-disk-kek/0000000000000000
+      sourceVaultId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.KeyVault/vaults/app-vault
+  tags:
+    backupChain: app-disk

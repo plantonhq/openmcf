@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskSnapshot
+metadata:
+  name: imported-vhd-snap
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: imported-vhd-snap
+  region: eastus
+  # Import reads sourceUri (a page-blob VHD) with storageAccountId
+  # carrying the read grant.
+  createOption: Import
+  sourceUri: https://myorgvhds.blob.core.windows.net/vhds/uploaded.vhd
+  storageAccountId:
+    valueFrom:
+      name: <your-storage-account>
+  # The imported snapshot's size; unset inherits from the VHD.
+  diskSizeGb: 64

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecomputegalleryimage.v1alpha1;
+
+// **AzureComputeGalleryImageStackOutputs** captures the outputs from
+// provisioning a gallery image definition and its versions.
+message AzureComputeGalleryImageStackOutputs {
+  // The image definition's Azure Resource Manager ID. VMs deploying
+  // from it get the image's latest (non-excluded) version.
+  string image_id = 1;
+
+  // The image definition's name within its gallery.
+  string image_name = 2;
+
+  // The ARM IDs of the image's published versions, keyed by version
+  // name ({image_id}/versions/{name}). VMs pin to an exact release
+  // through these.
+  map<string, string> version_ids = 3;
+}

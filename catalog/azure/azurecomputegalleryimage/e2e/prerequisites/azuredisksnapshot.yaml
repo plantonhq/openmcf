@@ -1,0 +1,30 @@
+# Consumer-scoped AzureDiskSnapshot override for the image kind's
+# version scenario: an incremental snapshot of the OS-typed fixture
+# disk (deployed by the sibling azuremanageddisk.yaml override -- the
+# annotation lists the disk first). The snapshot inherits the disk's
+# Linux os_type, which is what makes it a legal image-version source.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskSnapshot
+metadata:
+  name: planton-oss-e2e-azure-fixture-ossnap
+  id: planton-oss-e2e-azure-fixture-ossnap
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredisksnapshot
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azure-fixture-ossnap
+  region: eastus
+  createOption: Copy
+  sourceResourceId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-osdisk
+  incrementalEnabled: true

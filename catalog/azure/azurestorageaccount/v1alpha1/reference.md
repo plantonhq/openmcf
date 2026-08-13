@@ -1790,6 +1790,7 @@ Fields on other kinds that can point at this resource:
 | AzureAiFoundry | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureBackupContainerStorageAccount | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureCognitiveAccount | `spec.storage[].storageAccountId` | `status.outputs.storage_account_id` |
+| AzureComputeGalleryImage | `spec.versions[].storageAccountId` | `status.outputs.storage_account_id` |
 | AzureContainerAppEnvironmentStorage | `spec.accountName` | `status.outputs.storage_account_name` |
 | AzureContainerAppEnvironmentStorage | `spec.accessKey` | `status.outputs.primary_access_key` |
 | AzureDataFactoryLinkedService | `spec.azureBlobStorage.serviceEndpoint` | `status.outputs.primary_blob_endpoint` |
@@ -1797,6 +1798,7 @@ Fields on other kinds that can point at this resource:
 | AzureDataFactoryTrigger | `spec.blobEvent.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureDataProtectionBackupInstance | `spec.blobStorage.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureDataProtectionBackupInstance | `spec.dataLakeStorage.storageAccountId` | `status.outputs.storage_account_id` |
+| AzureDiskSnapshot | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventHub | `spec.captureDescription.destination.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventgridEventSubscription | `spec.destination.storageQueue.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureEventgridEventSubscription | `spec.deadLetter.storageAccountId` | `status.outputs.storage_account_id` |

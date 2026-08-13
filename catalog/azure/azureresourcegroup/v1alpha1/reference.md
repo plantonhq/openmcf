@@ -86,6 +86,7 @@ Fields on other kinds that can point at this resource:
 | AzureApplicationInsights | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationInsightsStandardWebTest | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureApplicationSecurityGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureAvailabilitySet | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupContainerStorageAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupPolicyFileShare | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBackupPolicyVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -93,6 +94,8 @@ Fields on other kinds that can point at this resource:
 | AzureBackupProtectedVm | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureBastionHost | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureCognitiveAccount | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureComputeGallery | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureComputeGalleryImage | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppEnvironment | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureContainerAppJob | `spec.resourceGroup` | `status.outputs.resource_group_name` |
@@ -104,6 +107,7 @@ Fields on other kinds that can point at this resource:
 | AzureDataProtectionBackupVault | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDataProtectionResourceGuard | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDiskEncryptionSet | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureDiskSnapshot | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDnsRecord | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureDnsZone | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureEventHubCluster | `spec.resourceGroup` | `status.outputs.resource_group_name` |

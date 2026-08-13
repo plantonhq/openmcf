@@ -608,11 +608,14 @@ message AzureVirtualMachineAvailability {
     ]
   }];
 
-  // The classic pre-zones fault/update-domain grouping, by ARM ID.
-  // Prefer zones in zoned regions. Plain ARM ID: availability sets are
-  // not modeled as a Planton kind. Conflicts with zone and
-  // capacity_reservation_group_id. Fixed at creation.
-  string availability_set_id = 2;
+  // The classic pre-zones fault/update-domain grouping. Prefer zones
+  // in zoned regions. Can be a literal ARM ID or a reference to an
+  // AzureAvailabilitySet's availability_set_id output. Conflicts with
+  // zone and capacity_reservation_group_id. Fixed at creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef availability_set_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureAvailabilitySet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.availability_set_id"
+  ];
 
   // Co-locates the VM with its group for minimal inter-VM latency
   // (HPC/low-latency clusters), by ARM ID. Plain ARM ID.
@@ -649,7 +652,7 @@ message AzureVirtualMachineAvailability {
   option (buf.validate.message).cel = {
     id: "vm_zone_conflicts_availability_set"
     message: "zone and availability_set_id are mutually exclusive placement strategies"
-    expression: "this.zone == '' || this.availability_set_id == ''"
+    expression: "this.zone == '' || !has(this.availability_set_id)"
   };
 
   option (buf.validate.message).cel = {
@@ -661,7 +664,7 @@ message AzureVirtualMachineAvailability {
   option (buf.validate.message).cel = {
     id: "vm_capacity_reservation_conflicts"
     message: "capacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id"
-    expression: "this.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')"
+    expression: "this.capacity_reservation_group_id == '' || (!has(this.availability_set_id) && this.proximity_placement_group_id == '')"
   };
 
   option (buf.validate.message).cel = {

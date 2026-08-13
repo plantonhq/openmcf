@@ -2755,6 +2755,47 @@ enum CloudResourceKind {
     id_prefix: "azdfir"
     prerequisites: [AzureDataFactory]
   }];
+  // The Azure Compute Gallery -- the shared library an organization
+  // keeps its approved VM images in. Image definitions
+  // (AzureComputeGalleryImage) live inside it; VMs and scale sets
+  // deploy from their published, region-replicated versions.
+  AzureComputeGallery = 2205 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcgal"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // A gallery image ({gallery_id}/images/{name}) -- one image
+  // definition inside a Compute Gallery (marketplace-style identity,
+  // OS type, security posture) plus its published versions, each
+  // replicated to its own target regions. VMs deploy from a version's
+  // ARM ID or from the definition's ID to get the latest version.
+  AzureComputeGalleryImage = 2206 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcgimg"
+    prerequisites: [AzureComputeGallery]
+  }];
+  // The availability set -- the classic pre-zones placement grouping
+  // that spreads VMs across separate fault and update domains so one
+  // hardware failure or maintenance window cannot take them all down.
+  // VMs join the set at creation.
+  AzureAvailabilitySet = 2207 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azavset"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The managed disk snapshot -- a point-in-time copy of a disk used
+  // for backup, cloning, and as the source of gallery image versions.
+  // Incremental snapshots store only the delta since the previous
+  // snapshot of the same disk.
+  AzureDiskSnapshot = 2208 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdsnap"
+    prerequisites: [AzureManagedDisk]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.

@@ -709,3 +709,22 @@ spec:
     - terraform_type: azurerm_fabric_capacity
       pulumi_type: azure:fabric/capacity:Capacity
       id_format: "{fabric_capacity_id}"
+
+    # --- Compute: galleries, placement, snapshots ----------------------------------
+    - terraform_type: azurerm_shared_image_gallery
+      pulumi_type: azure:compute/sharedImageGallery:SharedImageGallery
+      id_format: "{gallery_id}"
+    - terraform_type: azurerm_shared_image
+      pulumi_type: azure:compute/sharedImage:SharedImage
+      id_format: "{image_id}"
+    - terraform_type: azurerm_shared_image_version
+      pulumi_type: azure:compute/sharedImageVersion:SharedImageVersion
+      id_format: "{image_id}/versions/{version_name}"
+      # The module publishes one version per spec entry, keyed by version
+      # name -- the address's instance key supplies {version_name}.
+    - terraform_type: azurerm_availability_set
+      pulumi_type: azure:compute/availabilitySet:AvailabilitySet
+      id_format: "{availability_set_id}"
+    - terraform_type: azurerm_snapshot
+      pulumi_type: azure:compute/snapshot:Snapshot
+      id_format: "{snapshot_id}"

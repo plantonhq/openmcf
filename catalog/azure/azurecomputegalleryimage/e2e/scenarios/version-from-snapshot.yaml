@@ -1,0 +1,52 @@
+# Version-publishing AzureComputeGalleryImage scenario: the definition
+# PLUS one version built from an OS-typed disk snapshot -- the
+# chart-native golden-image chain proven live. The scenario-declared
+# prerequisites stand up the chain (an EMPTY 16GB disk with os_type
+# Linux, then an incremental snapshot of it -- consumer-scoped
+# overrides in e2e/prerequisites/); the fixture gallery arrives
+# through the registry chain. ARM accepts image versions from
+# snapshots of never-attached OS-typed disks at create; if the live
+# lane disproves that, the fallback recorded in the profile is the
+# definition-only lane with the version arm offline-proven.
+# Costs pennies: the version stores one replica of a mostly-empty
+# 16GB snapshot for the lane's minutes.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGalleryImage
+metadata:
+  name: planton-oss-e2e-azurecomputegalleryimage-version
+  id: planton-oss-e2e-azurecomputegalleryimage-version
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecomputegalleryimage
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureManagedDisk,AzureDiskSnapshot"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  galleryName:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-gallery
+  name: planton-oss-e2e-imgver-${E2E_RUN_ID}
+  region: eastus
+  identifier:
+    publisher: planton-e2e
+    offer: smoke
+    sku: version-${E2E_RUN_ID}
+  osType: Linux
+  hyperVGeneration: V2
+  versions:
+    # Version names are strict semver -- no run-id token fits; the
+    # whole subtree is unique per run through the image's own name.
+    - name: 1.0.0
+      osDiskSnapshotId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-ossnap
+      targetRegions:
+        - name: eastus
+          regionalReplicaCount: 1

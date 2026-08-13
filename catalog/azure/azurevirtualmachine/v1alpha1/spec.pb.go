@@ -2266,11 +2266,11 @@ type AzureVirtualMachineAvailability struct {
 	// zonal disks must match the zone. Conflicts with availability_set_id.
 	// Fixed at creation.
 	Zone string `protobuf:"bytes,1,opt,name=zone,proto3" json:"zone,omitempty"`
-	// The classic pre-zones fault/update-domain grouping, by ARM ID.
-	// Prefer zones in zoned regions. Plain ARM ID: availability sets are
-	// not modeled as a Planton kind. Conflicts with zone and
-	// capacity_reservation_group_id. Fixed at creation.
-	AvailabilitySetId string `protobuf:"bytes,2,opt,name=availability_set_id,json=availabilitySetId,proto3" json:"availability_set_id,omitempty"`
+	// The classic pre-zones fault/update-domain grouping. Prefer zones
+	// in zoned regions. Can be a literal ARM ID or a reference to an
+	// AzureAvailabilitySet's availability_set_id output. Conflicts with
+	// zone and capacity_reservation_group_id. Fixed at creation.
+	AvailabilitySetId *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=availability_set_id,json=availabilitySetId,proto3" json:"availability_set_id,omitempty"`
 	// Co-locates the VM with its group for minimal inter-VM latency
 	// (HPC/low-latency clusters), by ARM ID. Plain ARM ID.
 	ProximityPlacementGroupId string `protobuf:"bytes,3,opt,name=proximity_placement_group_id,json=proximityPlacementGroupId,proto3" json:"proximity_placement_group_id,omitempty"`
@@ -2335,11 +2335,11 @@ func (x *AzureVirtualMachineAvailability) GetZone() string {
 	return ""
 }
 
-func (x *AzureVirtualMachineAvailability) GetAvailabilitySetId() string {
+func (x *AzureVirtualMachineAvailability) GetAvailabilitySetId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.AvailabilitySetId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureVirtualMachineAvailability) GetProximityPlacementGroupId() string {
@@ -3126,19 +3126,19 @@ const file_catalog_azure_azurevirtualmachine_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17AzureVirtualMachineSpot\x12\x82\x01\n" +
 	"\x0feviction_policy\x18\x01 \x01(\x0e2Q.dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineEvictionPolicyB\x06\xbaH\x03\xc8\x01\x01R\x0eevictionPolicy\x127\n" +
 	"\rmax_bid_price\x18\x02 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\xf0\xbfH\x00R\vmaxBidPrice\x88\x01\x01B\x10\n" +
-	"\x0e_max_bid_price\"\x91\v\n" +
+	"\x0e_max_bid_price\"\xf3\v\n" +
 	"\x1fAzureVirtualMachineAvailability\x12$\n" +
-	"\x04zone\x18\x01 \x01(\tB\x10\xbaH\rr\vR\x00R\x011R\x012R\x013R\x04zone\x12.\n" +
-	"\x13availability_set_id\x18\x02 \x01(\tR\x11availabilitySetId\x12?\n" +
+	"\x04zone\x18\x01 \x01(\tB\x10\xbaH\rr\vR\x00R\x011R\x012R\x013R\x04zone\x12\x8f\x01\n" +
+	"\x13availability_set_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\x88\xd4a\x9f\x11\x92\xd4a\"status.outputs.availability_set_idR\x11availabilitySetId\x12?\n" +
 	"\x1cproximity_placement_group_id\x18\x03 \x01(\tR\x19proximityPlacementGroupId\x12A\n" +
 	"\x1dcapacity_reservation_group_id\x18\x04 \x01(\tR\x1acapacityReservationGroupId\x12*\n" +
 	"\x11dedicated_host_id\x18\x05 \x01(\tR\x0fdedicatedHostId\x125\n" +
 	"\x17dedicated_host_group_id\x18\x06 \x01(\tR\x14dedicatedHostGroupId\x12\x98\x01\n" +
 	"\x1cvirtual_machine_scale_set_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\xe8\x0f\x92\xd4a\x1bstatus.outputs.scale_set_idR\x18virtualMachineScaleSetId\x12@\n" +
 	"\x15platform_fault_domain\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00H\x00R\x13platformFaultDomain\x88\x01\x01:\xb9\x06\xbaH\xb5\x06\x1a\xa1\x01\n" +
-	"\"vm_zone_conflicts_availability_set\x12Hzone and availability_set_id are mutually exclusive placement strategies\x1a1this.zone == '' || this.availability_set_id == ''\x1a\xd7\x01\n" +
+	"\"vm_zone_conflicts_availability_set\x12Hzone and availability_set_id are mutually exclusive placement strategies\x1a1this.zone == '' || !has(this.availability_set_id)\x1a\xd7\x01\n" +
 	"\x1bvm_dedicated_host_exclusive\x12tdedicated_host_id and dedicated_host_group_id are mutually exclusive (pin a host or let Azure pick within the group)\x1aBthis.dedicated_host_id == '' || this.dedicated_host_group_id == ''\x1a\x87\x02\n" +
-	"!vm_capacity_reservation_conflicts\x12icapacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id\x1awthis.capacity_reservation_group_id == '' || (this.availability_set_id == '' && this.proximity_placement_group_id == '')\x1a\xaa\x01\n" +
+	"!vm_capacity_reservation_conflicts\x12icapacity_reservation_group_id cannot be combined with availability_set_id or proximity_placement_group_id\x1awthis.capacity_reservation_group_id == '' || (!has(this.availability_set_id) && this.proximity_placement_group_id == '')\x1a\xaa\x01\n" +
 	"\x1fvm_fault_domain_needs_scale_set\x12;platform_fault_domain requires virtual_machine_scale_set_id\x1aJ!has(this.platform_fault_domain) || has(this.virtual_machine_scale_set_id)B\x18\n" +
 	"\x16_platform_fault_domain\"\xad\x01\n" +
 	"\x1bAzureVirtualMachineSecurity\x12.\n" +
@@ -3373,16 +3373,17 @@ var file_catalog_azure_azurevirtualmachine_v1alpha1_spec_proto_depIdxs = []int32
 	4,  // 43: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineIdentity.type:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineIdentityType
 	40, // 44: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineIdentity.identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	5,  // 45: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSpot.eviction_policy:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineEvictionPolicy
-	40, // 46: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineAvailability.virtual_machine_scale_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 47: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatching.assessment_mode:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatchAssessmentMode
-	9,  // 48: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatching.reboot_setting:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineRebootSetting
-	40, // 49: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	38, // 50: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecret.certificates:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecretCertificate
-	51, // [51:51] is the sub-list for method output_type
-	51, // [51:51] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	40, // 46: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineAvailability.availability_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	40, // 47: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineAvailability.virtual_machine_scale_set_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 48: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatching.assessment_mode:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatchAssessmentMode
+	9,  // 49: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachinePatching.reboot_setting:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineRebootSetting
+	40, // 50: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecret.key_vault_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	38, // 51: dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecret.certificates:type_name -> dev.planton.azure.azurevirtualmachine.v1alpha1.AzureVirtualMachineSecretCertificate
+	52, // [52:52] is the sub-list for method output_type
+	52, // [52:52] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_catalog_azure_azurevirtualmachine_v1alpha1_spec_proto_init() }
