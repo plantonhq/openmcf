@@ -1,0 +1,30 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "verify",
+    srcs = [
+        "apps.go",
+        "bucket.go",
+        "certificate.go",
+        "container_registry.go",
+        "database_cluster.go",
+        "domains.go",
+        "droplet.go",
+        "firewall.go",
+        "kubernetes.go",
+        "loadbalancer.go",
+        "verifier.go",
+        "volume.go",
+        "vpc.go",
+    ],
+    importpath = "github.com/plantonhq/planton/catalog/digitalocean/aa_e2e/verify",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_aws_aws_sdk_go_v2_credentials//:credentials",
+        "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
+        "@com_github_aws_aws_sdk_go_v2_service_s3//types",
+        "@com_github_digitalocean_godo//:godo",
+        "@com_github_pkg_errors//:errors",
+    ],
+)

@@ -1518,16 +1518,33 @@ const (
 	CloudResourceKind_DigitalOceanContainerRegistry  CloudResourceKind = 5002
 	CloudResourceKind_DigitalOceanDatabaseCluster    CloudResourceKind = 5003
 	CloudResourceKind_DigitalOceanDnsZone            CloudResourceKind = 5004
-	CloudResourceKind_DigitalOceanDroplet            CloudResourceKind = 5005
-	CloudResourceKind_DigitalOceanFirewall           CloudResourceKind = 5006
-	CloudResourceKind_DigitalOceanFunction           CloudResourceKind = 5007
-	CloudResourceKind_DigitalOceanKubernetesCluster  CloudResourceKind = 5008
+	// DigitalOceanVpc is a prerequisite because the droplet spec's vpc
+	// reference is required: every droplet attaches its private network
+	// interface into one VPC, resolved to the DigitalOceanVpc's exported
+	// vpc_id output.
+	CloudResourceKind_DigitalOceanDroplet  CloudResourceKind = 5005
+	CloudResourceKind_DigitalOceanFirewall CloudResourceKind = 5006
+	CloudResourceKind_DigitalOceanFunction CloudResourceKind = 5007
+	// DigitalOceanVpc is a prerequisite because the cluster spec's vpc
+	// reference is required: the control plane and every node pool live inside
+	// one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
+	CloudResourceKind_DigitalOceanKubernetesCluster CloudResourceKind = 5008
+	// DigitalOceanKubernetesCluster is a prerequisite because a node pool is
+	// API-addressed under its owning cluster: the spec's cluster reference is
+	// required and the pool cannot exist first.
 	CloudResourceKind_DigitalOceanKubernetesNodePool CloudResourceKind = 5009
-	CloudResourceKind_DigitalOceanLoadBalancer       CloudResourceKind = 5010
-	CloudResourceKind_DigitalOceanVolume             CloudResourceKind = 5011
-	CloudResourceKind_DigitalOceanVpc                CloudResourceKind = 5012
-	CloudResourceKind_DigitalOceanCertificate        CloudResourceKind = 5013
-	CloudResourceKind_DigitalOceanDnsRecord          CloudResourceKind = 5014
+	// DigitalOceanVpc is a prerequisite because the load balancer spec's vpc
+	// reference is required: the balancer fronts backends over one VPC's
+	// private network, resolved to the DigitalOceanVpc's exported vpc_id
+	// output.
+	CloudResourceKind_DigitalOceanLoadBalancer CloudResourceKind = 5010
+	CloudResourceKind_DigitalOceanVolume       CloudResourceKind = 5011
+	CloudResourceKind_DigitalOceanVpc          CloudResourceKind = 5012
+	CloudResourceKind_DigitalOceanCertificate  CloudResourceKind = 5013
+	// DigitalOceanDnsZone is a prerequisite because a record is API-addressed
+	// under its domain: the spec's domain reference is required, resolved to
+	// the DigitalOceanDnsZone's exported zone_name output.
+	CloudResourceKind_DigitalOceanDnsRecord CloudResourceKind = 5014
 	// 6000–6999: Civo resources
 	CloudResourceKind_CivoBucket             CloudResourceKind = 6000
 	CloudResourceKind_CivoCertificate        CloudResourceKind = 6001
@@ -3511,7 +3528,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8f\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa3\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4076,17 +4093,17 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12DigitalOceanBucket\x10\x89'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dobkt\x12:\n" +
 	"\x1dDigitalOceanContainerRegistry\x10\x8a'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04docr\x128\n" +
 	"\x1bDigitalOceanDatabaseCluster\x10\x8b'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dodb\x123\n" +
-	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dodns0\x01\x122\n" +
-	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06dodrop\x121\n" +
+	"\x13DigitalOceanDnsZone\x10\x8c'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dodns0\x01\x126\n" +
+	"\x13DigitalOceanDroplet\x10\x8d'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x06dodrop:\x02\x94'\x121\n" +
 	"\x14DigitalOceanFirewall\x10\x8e'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofw\x121\n" +
-	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12<\n" +
-	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x04dokc0\x01\x12<\n" +
-	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05doknp\x125\n" +
-	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dolb\x120\n" +
+	"\x14DigitalOceanFunction\x10\x8f'\x1a\x16\xa2\xf7\x04\x12\b\x11\x12\bv1alpha1\"\x04dofn\x12@\n" +
+	"\x1dDigitalOceanKubernetesCluster\x10\x90'\x1a\x1c\xa2\xf7\x04\x18\b\x11\x12\bv1alpha1\"\x04dokc0\x01:\x02\x94'\x12@\n" +
+	"\x1eDigitalOceanKubernetesNodePool\x10\x91'\x1a\x1b\xa2\xf7\x04\x17\b\x11\x12\bv1alpha1\"\x05doknp:\x02\x90'\x129\n" +
+	"\x18DigitalOceanLoadBalancer\x10\x92'\x1a\x1a\xa2\xf7\x04\x16\b\x11\x12\bv1alpha1\"\x04dolb:\x02\x94'\x120\n" +
 	"\x12DigitalOceanVolume\x10\x93'\x1a\x17\xa2\xf7\x04\x13\b\x11\x12\bv1alpha1\"\x05dovol\x12/\n" +
 	"\x0fDigitalOceanVpc\x10\x94'\x1a\x19\xa2\xf7\x04\x15\b\x11\x12\bv1alpha1\"\x05dovpc0\x01\x126\n" +
-	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x126\n" +
-	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1a\xa2\xf7\x04\x16\b\x11\x12\bv1alpha1\"\bdodnsrec\x12(\n" +
+	"\x17DigitalOceanCertificate\x10\x95'\x1a\x18\xa2\xf7\x04\x14\b\x11\x12\bv1alpha1\"\x06docert\x12:\n" +
+	"\x15DigitalOceanDnsRecord\x10\x96'\x1a\x1e\xa2\xf7\x04\x1a\b\x11\x12\bv1alpha1\"\bdodnsrec:\x02\x8c'\x12(\n" +
 	"\n" +
 	"CivoBucket\x10\xf0.\x1a\x17\xa2\xf7\x04\x13\b\x0e\x12\bv1alpha1\"\x05cibkt\x12.\n" +
 	"\x0fCivoCertificate\x10\xf1.\x1a\x18\xa2\xf7\x04\x14\b\x0e\x12\bv1alpha1\"\x06cicert\x122\n" +

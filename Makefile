@@ -494,16 +494,33 @@ e2e-test-gcp-pulumi:  ## Run GCP Pulumi E2E tests only
 e2e-test-gcp-terraform:  ## Run GCP Terraform E2E tests only
 	go test -tags=e2e -timeout=30m -v -count=1 -run ".*_Terraform" ./e2e/gcp/...
 
+# ── DigitalOcean E2E targets ─────────────────────────────────────────────────
+
+.PHONY: e2e-test-digitalocean
+e2e-test-digitalocean:  ## Run all DigitalOcean E2E tests (requires DIGITALOCEAN_TOKEN; bucket lanes also need SPACES_ACCESS_KEY_ID/SPACES_SECRET_ACCESS_KEY)
+	go test -tags=e2e -timeout=60m -v -count=1 ./e2e/digitalocean/...
+
+.PHONY: e2e-test-digitalocean-pulumi
+e2e-test-digitalocean-pulumi:  ## Run DigitalOcean Pulumi E2E tests only
+	go test -tags=e2e -timeout=60m -v -count=1 -run ".*_Pulumi" ./e2e/digitalocean/...
+
+.PHONY: e2e-test-digitalocean-terraform
+e2e-test-digitalocean-terraform:  ## Run DigitalOcean Terraform E2E tests only
+	go test -tags=e2e -timeout=60m -v -count=1 -run ".*_Terraform" ./e2e/digitalocean/...
+
 # ── Generic component E2E targets ────────────────────────────────────────────
 
 # Resolve the component name's provider prefix to the test package that owns it
 # (see the harness-setup note at the top of the E2E section for why runs must
 # never sweep ./e2e/...). Unknown prefixes fall back to the full sweep.
-e2e_component_pkg = $(if $(findstring Kubernetes,$(component)),./e2e/,\
+# DigitalOcean is matched before Kubernetes: DigitalOceanKubernetesCluster
+# contains "Kubernetes", so prefix order is load-bearing.
+e2e_component_pkg = $(if $(findstring DigitalOcean,$(component)),./e2e/digitalocean/...,\
+$(if $(findstring Kubernetes,$(component)),./e2e/,\
 $(if $(findstring Aws,$(component)),./e2e/aws/...,\
 $(if $(findstring Gcp,$(component)),./e2e/gcp/...,\
 $(if $(findstring Azure,$(component)),./e2e/azure/...,\
-$(if $(findstring Auth0,$(component)),./e2e/auth0/...,./e2e/...)))))
+$(if $(findstring Auth0,$(component)),./e2e/auth0/...,./e2e/...))))))
 
 .PHONY: e2e-test-component
 e2e-test-component:  ## Single component E2E test (usage: make e2e-test-component component=KubernetesNamespace)

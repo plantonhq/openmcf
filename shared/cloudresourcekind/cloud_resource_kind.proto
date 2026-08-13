@@ -4584,10 +4584,15 @@ enum CloudResourceKind {
     id_prefix: "dodns"
     container_kind: true
   }];
+  // DigitalOceanVpc is a prerequisite because the droplet spec's vpc
+  // reference is required: every droplet attaches its private network
+  // interface into one VPC, resolved to the DigitalOceanVpc's exported
+  // vpc_id output.
   DigitalOceanDroplet = 5005 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dodrop"
+    prerequisites: [DigitalOceanVpc]
   }];
   DigitalOceanFirewall = 5006 [(kind_meta) = {
     provider: digital_ocean
@@ -4599,21 +4604,34 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "dofn"
   }];
+  // DigitalOceanVpc is a prerequisite because the cluster spec's vpc
+  // reference is required: the control plane and every node pool live inside
+  // one VPC, resolved to the DigitalOceanVpc's exported vpc_id output.
   DigitalOceanKubernetesCluster = 5008 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dokc"
     container_kind: true
+    prerequisites: [DigitalOceanVpc]
   }];
+  // DigitalOceanKubernetesCluster is a prerequisite because a node pool is
+  // API-addressed under its owning cluster: the spec's cluster reference is
+  // required and the pool cannot exist first.
   DigitalOceanKubernetesNodePool = 5009 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "doknp"
+    prerequisites: [DigitalOceanKubernetesCluster]
   }];
+  // DigitalOceanVpc is a prerequisite because the load balancer spec's vpc
+  // reference is required: the balancer fronts backends over one VPC's
+  // private network, resolved to the DigitalOceanVpc's exported vpc_id
+  // output.
   DigitalOceanLoadBalancer = 5010 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dolb"
+    prerequisites: [DigitalOceanVpc]
   }];
   DigitalOceanVolume = 5011 [(kind_meta) = {
     provider: digital_ocean
@@ -4631,10 +4649,14 @@ enum CloudResourceKind {
     version: "v1alpha1"
     id_prefix: "docert"
   }];
+  // DigitalOceanDnsZone is a prerequisite because a record is API-addressed
+  // under its domain: the spec's domain reference is required, resolved to
+  // the DigitalOceanDnsZone's exported zone_name output.
   DigitalOceanDnsRecord = 5014 [(kind_meta) = {
     provider: digital_ocean
     version: "v1alpha1"
     id_prefix: "dodnsrec"
+    prerequisites: [DigitalOceanDnsZone]
   }];
 
   // 6000–6999: Civo resources

@@ -34,7 +34,6 @@ go_deps.gazelle_override(
     build_file_generation = "clean",
     path = "github.com/stigmer/stigmer/sdk/go/v3",
 )
-
 use_repo(
     go_deps,
     "build_buf_gen_go_bufbuild_protovalidate_protocolbuffers_go",
