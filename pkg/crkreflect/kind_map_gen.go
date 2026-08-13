@@ -59,6 +59,11 @@ import (
 	awsbatchjobdefinitionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobdefinition/v1alpha1"
 	awsbatchjobqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobqueue/v1alpha1"
 	awsbatchschedulingpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchschedulingpolicy/v1alpha1"
+	awsbedrockcustommodelv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockcustommodel/v1alpha1"
+	awsbedrockguardrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockguardrail/v1alpha1"
+	awsbedrockinferenceprofilev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockinferenceprofile/v1alpha1"
+	awsbedrockmodelaccessv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockmodelaccess/v1alpha1"
+	awsbedrockprovisionedthroughputv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprovisionedthroughput/v1alpha1"
 	awscertmanagercertv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscertmanagercert/v1alpha1"
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
@@ -766,6 +771,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition:                  &awsbatchjobdefinitionv1alpha1.AwsBatchJobDefinition{},
 	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1alpha1.AwsBatchJobQueue{},
 	cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy:               &awsbatchschedulingpolicyv1alpha1.AwsBatchSchedulingPolicy{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockCustomModel:                  &awsbedrockcustommodelv1alpha1.AwsBedrockCustomModel{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockGuardrail:                    &awsbedrockguardrailv1alpha1.AwsBedrockGuardrail{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockInferenceProfile:             &awsbedrockinferenceprofilev1alpha1.AwsBedrockInferenceProfile{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess:                  &awsbedrockmodelaccessv1alpha1.AwsBedrockModelAccess{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockProvisionedThroughput:        &awsbedrockprovisionedthroughputv1alpha1.AwsBedrockProvisionedThroughput{},
 	cloudresourcekind.CloudResourceKind_AwsCertManagerCert:                     &awscertmanagercertv1alpha1.AwsCertManagerCert{},
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},

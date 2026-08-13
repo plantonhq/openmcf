@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockguardrail
+spec:
+  # A Bedrock guardrail under live E2E: two free, seconds-scale lanes
+  # (guardrails bill per text unit at INVOCATION time -- create/delete is
+  # $0). The minimal lane proves the guardrail lifecycle with one content
+  # filter. The full-surface lane exercises every policy family (content
+  # filters incl. modalities and a detect-only action, a denied topic, the
+  # managed profanity list plus a custom word, PII + regex handling, both
+  # contextual grounding checks) AND the versions fold: one published
+  # version whose AWS-assigned number must land in the version_numbers
+  # output map keyed by the entry name. Verification is GetGuardrail keyed
+  # on guardrail_id (status READY, policy families echoed as authored) plus
+  # a version-numbered GetGuardrail for the published entry.
+  #
+  # Deliberately not exercised live: cross_region_profile_arn (needs an
+  # AWS-provided guardrail profile enabled for the account geography --
+  # offline plans/previews prove the render arm-for-arm; unblock: verify
+  # the account's us.guardrail.v1:0 profile visibility live) and kms_key_arn
+  # (optional composition -- the e2e-prerequisites KMS fixture chain; the
+  # arm is a single string faithfully forwarded).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q33
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

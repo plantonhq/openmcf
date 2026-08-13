@@ -1,0 +1,24 @@
+# AwsBedrockProvisionedThroughput minimal scenario: the smallest legal
+# purchase -- one model unit, NO commitment (hourly billing, deletable
+# immediately). The model ARN names a custom model the way real usage
+# would; the live lane (when its recorded unblock lands) composes it from
+# an AwsBedrockCustomModel fixture or a provisionable foundation model.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockProvisionedThroughput
+metadata:
+  name: planton-oss-e2e-awsbrpt-min
+  id: planton-oss-e2e-awsbrpt-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockprovisionedthroughput
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  modelArn:
+    value: arn:aws:bedrock:us-east-1:123456789012:custom-model/amazon.titan-text-lite-v1/abc123def456
+  modelUnits: 1

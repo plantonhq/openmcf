@@ -379,6 +379,7 @@ Fields on other kinds that can point at this resource:
 | AwsAppRunnerVpcConnector | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsAutoScalingGroup | `spec.subnets` | `status.outputs.subnet_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockCustomModel | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsClientVpn | `spec.routes[].targetSubnetId` | `status.outputs.subnet_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.subnetIds` | `status.outputs.subnet_id` |

@@ -1157,6 +1157,50 @@ enum CloudResourceKind {
     id_prefix: "awsoss"
   }];
 
+  // A dependency-free leaf: the KMS key reference is optional composition
+  // (e2e-prerequisites annotation); published versions are folded
+  // satellites of the guardrail itself.
+  AwsBedrockGuardrail = 1190 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrgrd"
+  }];
+
+  // AwsIamRole is a prerequisite because Bedrock assumes the job role to
+  // read training data and write outputs; the S3 locations and KMS key
+  // are optional composition (e2e-prerequisites annotation).
+  AwsBedrockCustomModel = 1191 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrcm"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf: the model source is a foundation model or an
+  // AWS system-defined cross-region profile, never a customer resource.
+  AwsBedrockInferenceProfile = 1192 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrip"
+  }];
+
+  // A dependency-free leaf in the registry: capacity is typically bought
+  // for an AwsBedrockCustomModel (the default reference), but foundation
+  // model ARNs are equally legal, so the edge is optional composition.
+  AwsBedrockProvisionedThroughput = 1193 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrpt"
+  }];
+
+  // A dependency-free leaf: the agreement covers an AWS-listed foundation
+  // model, never a customer resource.
+  AwsBedrockModelAccess = 1194 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsbrma"
+  }];
+
   // 2000–2999: Azure resources
   AzureResourceGroup = 2000 [(kind_meta) = {
     provider: azure

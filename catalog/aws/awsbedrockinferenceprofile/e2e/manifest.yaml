@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInferenceProfile
+metadata:
+  name: test-checkout-nova
+  id: test-checkout-nova
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Cost tracking for the checkout service
+  sourceArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.nova-micro-v1:0

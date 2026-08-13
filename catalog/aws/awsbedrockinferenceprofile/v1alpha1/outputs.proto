@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockinferenceprofile.v1alpha1;
+
+// AwsBedrockInferenceProfileStackOutputs captures observable identifiers
+// from a provisioned Bedrock application inference profile.
+message AwsBedrockInferenceProfileStackOutputs {
+  // ARN of the inference profile - the modelId applications pass to
+  // InvokeModel/Converse and the resource IAM policies scope to.
+  string inference_profile_arn = 1;
+
+  // The inference profile's unique identifier.
+  string inference_profile_id = 2;
+
+  // Profile status as reported by AWS (ACTIVE when usable).
+  string status = 3;
+
+  // Profile type as reported by AWS - always APPLICATION for profiles
+  // this component creates (SYSTEM_DEFINED profiles are AWS-owned).
+  string type = 4;
+}

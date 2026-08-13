@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockprovisionedthroughput
+spec:
+  # The provisioned throughput imports by the provisioned model ARN (the
+  # provider's ArnIdentity).
+  values:
+    - name: provisioned_model_arn
+      derivations:
+        - from_stack_output: provisioned_model_arn
+      where_to_find: >-
+        `aws bedrock list-provisioned-model-throughputs`
+        (provisionedModelArn), or Bedrock console -> Provisioned
+        throughput -> <purchase> (the ARN).

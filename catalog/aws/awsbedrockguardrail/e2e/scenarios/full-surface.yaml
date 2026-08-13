@@ -1,0 +1,73 @@
+# AwsBedrockGuardrail full-surface scenario: every policy family plus the
+# versions fold. First-live arms to watch: the STANDARD content tier, the
+# detect-only (NONE) output action on PROMPT_ATTACK, image modalities on
+# VIOLENCE, PII ANONYMIZE vs BLOCK, the managed profanity list, both
+# contextual grounding checks, and the published version's AWS-assigned
+# number landing in version_numbers["prod"].
+#
+# Deliberately not exercised here: cross_region_profile_arn and kms_key_arn
+# (offline-proven only -- see the profile).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockGuardrail
+metadata:
+  name: planton-oss-e2e-awsbrgrd-full
+  id: planton-oss-e2e-awsbrgrd-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockguardrail
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E full-surface guardrail
+  blockedInputMessaging: Sorry, I can't help with that request.
+  blockedOutputsMessaging: Sorry, I can't provide that response.
+  contentPolicy:
+    tier: STANDARD
+    filters:
+      - type: HATE
+        inputStrength: HIGH
+        outputStrength: HIGH
+      - type: VIOLENCE
+        inputStrength: MEDIUM
+        outputStrength: MEDIUM
+        inputModalities: [TEXT, IMAGE]
+        outputModalities: [TEXT]
+      - type: PROMPT_ATTACK
+        inputStrength: HIGH
+        outputStrength: NONE
+        outputAction: NONE
+  topicPolicy:
+    topics:
+      - name: investment-advice
+        definition: Providing investment advice or recommending specific financial products.
+        examples:
+          - Should I buy this stock?
+  wordPolicy:
+    profanityFilter: {}
+    customWords:
+      - text: codename-atlas
+  sensitiveInformationPolicy:
+    piiEntities:
+      - type: EMAIL
+        action: ANONYMIZE
+      - type: US_SOCIAL_SECURITY_NUMBER
+        action: BLOCK
+    regexes:
+      - name: employee-id
+        pattern: EMP-[0-9]{6}
+        description: Internal employee identifiers
+        action: ANONYMIZE
+  contextualGroundingPolicy:
+    filters:
+      - type: GROUNDING
+        threshold: 0.75
+      - type: RELEVANCE
+        threshold: 0.5
+  versions:
+    - name: prod
+      description: Initial production pin

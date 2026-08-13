@@ -1306,6 +1306,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -2152,6 +2157,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4149,6 +4159,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4995,6 +5010,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7030,6 +7050,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7876,6 +7901,11 @@ Allowed values (use exactly as shown):
 - `AwsSesEmailIdentity`
 - `AwsSecretsManagerSecret` -- A dependency-free leaf: the KMS key, rotation Lambda, and external rotation role references are all optional composition -- scenarios declare them via the e2e-prerequisites annotation, never registry edges.
 - `AwsOpenSearchServerlessCollection` -- A dependency-free leaf: the collection-scoped encryption/network/ data-access/retention policies are module-rendered, and the KMS key and data-access principal references are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockGuardrail` -- A dependency-free leaf: the KMS key reference is optional composition (e2e-prerequisites annotation); published versions are folded satellites of the guardrail itself.
+- `AwsBedrockCustomModel` -- AwsIamRole is a prerequisite because Bedrock assumes the job role to read training data and write outputs; the S3 locations and KMS key are optional composition (e2e-prerequisites annotation).
+- `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
+- `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
+- `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.

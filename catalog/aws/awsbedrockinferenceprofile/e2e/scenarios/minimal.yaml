@@ -1,0 +1,21 @@
+# AwsBedrockInferenceProfile minimal scenario: an application profile
+# routing straight to a foundation model. Free -- the profile is metadata;
+# nothing is invoked.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInferenceProfile
+metadata:
+  name: planton-oss-e2e-awsbrip-min
+  id: planton-oss-e2e-awsbrip-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockinferenceprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E minimal inference profile
+  sourceArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.nova-micro-v1:0

@@ -1,0 +1,31 @@
+# AwsBedrockGuardrail minimal scenario: the smallest useful guardrail --
+# one content filter (HATE at HIGH both directions) and the two required
+# blocked messagings. Free to create; charged only per invocation.
+#
+# Deliberately not exercised here: the other policy families, tiers,
+# versions (the full-surface scenario), cross-region profile and KMS
+# (offline-proven only -- see the profile).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockGuardrail
+metadata:
+  name: planton-oss-e2e-awsbrgrd-min
+  id: planton-oss-e2e-awsbrgrd-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockguardrail
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E minimal guardrail
+  blockedInputMessaging: Sorry, I can't help with that request.
+  blockedOutputsMessaging: Sorry, I can't provide that response.
+  contentPolicy:
+    filters:
+      - type: HATE
+        inputStrength: HIGH
+        outputStrength: HIGH

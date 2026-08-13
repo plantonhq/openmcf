@@ -1,0 +1,38 @@
+# AwsBedrockCustomModel minimal scenario: the cheapest known customization
+# shape -- a Titan Text Lite fine-tune, epochCount=1, one validation set.
+# The role composes the consumer-scoped AwsIamRole fixture (it must trust
+# bedrock.amazonaws.com); the S3 URIs name the harness's seeded training
+# fixture (the live lane's recorded unblock -- see the profile).
+#
+# The job name carries a run-scoped suffix at the lane level: job names
+# are unique per account FOREVER, so a fixed name would break re-runs.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockCustomModel
+metadata:
+  name: planton-oss-e2e-awsbrcm-min
+  id: planton-oss-e2e-awsbrcm-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockcustommodel
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  baseModelArn: arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-text-lite-v1
+  customizationType: FINE_TUNING
+  hyperparameters:
+    epochCount: "1"
+    batchSize: "1"
+    learningRate: "0.00001"
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awsiamrole-prereq
+      fieldPath: status.outputs.role_arn
+  trainingDataS3Uri: s3://planton-e2e-cat-s3/bedrock/train.jsonl
+  outputDataS3Uri: s3://planton-e2e-cat-s3/bedrock/output/

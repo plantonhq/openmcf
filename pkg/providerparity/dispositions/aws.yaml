@@ -428,33 +428,12 @@ resources:
   - resource: aws_bcmdataexports_export
     disposition: model-planned
     reason: "billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition)"
-  - resource: aws_bedrock_custom_model
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockCustomModel kind"
   - resource: aws_bedrock_evaluation_job
     disposition: deferred
     reason: "model evaluation jobs are imperative run-once workloads, a poor declarative fit; deferred"
-  - resource: aws_bedrock_foundation_model_agreement
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
-  - resource: aws_bedrock_guardrail
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockGuardrail kind (guardrail with versions)"
-  - resource: aws_bedrock_guardrail_version
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockGuardrail kind (guardrail with versions)"
-  - resource: aws_bedrock_inference_profile
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockInferenceProfile kind"
   - resource: aws_bedrock_model_invocation_logging_configuration
     disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
-  - resource: aws_bedrock_provisioned_model_throughput
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockProvisionedThroughput kind"
-  - resource: aws_bedrock_use_case_for_model_access
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
+    reason: "judged as a planned AwsBedrockInvocationLogging kind (region singleton: PutModelInvocationLoggingConfiguration, identity = the region) -- folding a region-wide observability singleton into the per-model AwsBedrockModelAccess would make multiple access instances fight over one logging object"
   - resource: aws_bedrockagent_agent
     disposition: model-planned
     reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"

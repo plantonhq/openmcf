@@ -1,0 +1,58 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockGuardrail
+metadata:
+  name: test-assistant-guardrail
+  id: test-assistant-guardrail
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Full-surface Bedrock guardrail hack manifest
+  blockedInputMessaging: Sorry, I can't help with that request.
+  blockedOutputsMessaging: Sorry, I can't provide that response.
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/abc-123
+  contentPolicy:
+    tier: STANDARD
+    filters:
+      - type: HATE
+        inputStrength: HIGH
+        outputStrength: HIGH
+      - type: VIOLENCE
+        inputStrength: MEDIUM
+        outputStrength: MEDIUM
+        inputModalities: [TEXT, IMAGE]
+        outputModalities: [TEXT]
+      - type: PROMPT_ATTACK
+        inputStrength: HIGH
+        outputStrength: NONE
+  topicPolicy:
+    topics:
+      - name: investment-advice
+        definition: Providing investment advice or recommending specific financial products.
+        examples:
+          - Should I buy this stock?
+  wordPolicy:
+    profanityFilter: {}
+    customWords:
+      - text: codename-atlas
+  sensitiveInformationPolicy:
+    piiEntities:
+      - type: EMAIL
+        action: ANONYMIZE
+      - type: US_SOCIAL_SECURITY_NUMBER
+        action: BLOCK
+    regexes:
+      - name: employee-id
+        pattern: EMP-[0-9]{6}
+        description: Internal employee identifiers
+        action: ANONYMIZE
+  contextualGroundingPolicy:
+    filters:
+      - type: GROUNDING
+        threshold: 0.75
+      - type: RELEVANCE
+        threshold: 0.5
+  versions:
+    - name: prod
+      description: Initial production pin

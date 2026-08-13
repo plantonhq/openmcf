@@ -129,6 +129,12 @@ var verifiers = map[string]Verifier{
 	"awsapprunnervpcconnector":               &appRunnerVpcConnectorVerifier{},
 	"awsapprunnerobservabilityconfiguration": &appRunnerObservabilityConfigurationVerifier{},
 
+	"awsbedrockguardrail":             &bedrockGuardrailVerifier{},
+	"awsbedrockcustommodel":           &bedrockCustomModelVerifier{},
+	"awsbedrockinferenceprofile":      &bedrockInferenceProfileVerifier{},
+	"awsbedrockprovisionedthroughput": &bedrockProvisionedThroughputVerifier{},
+	"awsbedrockmodelaccess":           &bedrockModelAccessVerifier{},
+
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},

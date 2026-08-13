@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockguardrail.v1alpha1;
+
+// AwsBedrockGuardrailStackOutputs captures observable identifiers from a
+// provisioned Bedrock guardrail. These outputs are used by downstream
+// resources (agents, application inference configs) to wire dependencies
+// via StringValueOrRef.
+message AwsBedrockGuardrailStackOutputs {
+  // The unique guardrail identifier (e.g. "gr-abc123..."). The join key
+  // model invocations and agents use together with a version.
+  string guardrail_id = 1;
+
+  // The Amazon Resource Name of the guardrail - the canonical key for IAM
+  // policies and cross-account references.
+  string guardrail_arn = 2;
+
+  // The guardrail's mutable working version - always the literal "DRAFT".
+  // Production consumers should pin an entry from `version_numbers`
+  // instead.
+  string draft_version = 3;
+
+  // AWS-assigned numbers of the versions published through spec.versions,
+  // keyed by each entry's `name`. Example: {"prod": "1", "canary": "2"}.
+  map<string, string> version_numbers = 4;
+}

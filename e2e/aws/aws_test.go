@@ -1017,6 +1017,46 @@ func TestAwsSecretsManagerSecret_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssecretsmanagersecret", "terraform")
 }
 
+func TestAwsBedrockGuardrail_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockguardrail", "pulumi")
+}
+
+func TestAwsBedrockGuardrail_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockguardrail", "terraform")
+}
+
+func TestAwsBedrockCustomModel_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockcustommodel", "pulumi")
+}
+
+func TestAwsBedrockCustomModel_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockcustommodel", "terraform")
+}
+
+func TestAwsBedrockInferenceProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinferenceprofile", "pulumi")
+}
+
+func TestAwsBedrockInferenceProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinferenceprofile", "terraform")
+}
+
+func TestAwsBedrockProvisionedThroughput_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprovisionedthroughput", "pulumi")
+}
+
+func TestAwsBedrockProvisionedThroughput_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockprovisionedthroughput", "terraform")
+}
+
+func TestAwsBedrockModelAccess_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockmodelaccess", "pulumi")
+}
+
+func TestAwsBedrockModelAccess_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockmodelaccess", "terraform")
+}
+
 func TestAwsOpenSearchServerlessCollection_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "awsopensearchserverlesscollection", "pulumi")
 }

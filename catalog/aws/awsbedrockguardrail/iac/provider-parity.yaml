@@ -1,0 +1,80 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrock_guardrail:
+    mappings:
+      # The provider suffixes every policy family "_config"; the spec drops
+      # the redundant suffix. Exact matching resumes below each subtree.
+      - arg: content_policy_config
+        spec: spec.content_policy
+      - arg: topic_policy_config
+        spec: spec.topic_policy
+      - arg: word_policy_config
+        spec: spec.word_policy
+      - arg: sensitive_information_policy_config
+        spec: spec.sensitive_information_policy
+      - arg: contextual_grounding_policy_config
+        spec: spec.contextual_grounding_policy
+      # The provider nests each safeguard tier under a one-element
+      # tier_config block; the spec carries the tier leaf directly.
+      - arg: content_policy_config.tier_config
+        spec: spec.content_policy.tier
+      - arg: topic_policy_config.tier_config
+        spec: spec.topic_policy.tier
+      # Repeated families drop the provider's "_config" suffix too.
+      - arg: content_policy_config.filters_config
+        spec: spec.content_policy.filters
+      - arg: topic_policy_config.topics_config
+        spec: spec.topic_policy.topics
+      - arg: word_policy_config.managed_word_lists_config
+        spec: spec.word_policy.profanity_filter
+      - arg: word_policy_config.words_config
+        spec: spec.word_policy.custom_words
+      - arg: sensitive_information_policy_config.pii_entities_config
+        spec: spec.sensitive_information_policy.pii_entities
+      - arg: sensitive_information_policy_config.regexes_config
+        spec: spec.sensitive_information_policy.regexes
+      - arg: contextual_grounding_policy_config.filters_config
+        spec: spec.contextual_grounding_policy.filters
+      # The provider nests the cross-region profile ARN under a
+      # one-element block; the spec carries the ARN leaf directly.
+      - arg: cross_region_config
+        spec: spec.cross_region_profile_arn
+      - arg: cross_region_config.guardrail_profile_identifier
+        spec: spec.cross_region_profile_arn
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the guardrail name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: topic_policy_config.topics_config.type
+        reason: wired by the module (DENY is the only topic type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: word_policy_config.managed_word_lists_config.type
+        reason: wired by the module (PROFANITY is the only managed list type AWS defines at the pin) -- presence of spec.word_policy.profanity_filter IS the enablement
+
+  aws_bedrock_guardrail_version:
+    specRoot: spec.versions
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider frames delete behavior as "skip destroy"; the spec
+      # frames the same switch as what the user keeps.
+      - arg: skip_destroy
+        spec: spec.versions.keep_on_delete
+    exclusions:
+      - arg: guardrail_arn
+        reason: wired by the module to the guardrail it creates -- parent linkage, never user surface
+
+specExclusions:
+  # The version entry's name is the stable local for_each key on both
+  # engines and the version_numbers output key -- never sent to AWS.
+  - field: spec.versions.name
+    reason: local instance key (for_each identity and the version_numbers output key) -- AWS assigns the actual version number

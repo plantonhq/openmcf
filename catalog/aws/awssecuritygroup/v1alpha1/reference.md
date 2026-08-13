@@ -401,6 +401,7 @@ Fields on other kinds that can point at this resource:
 | AwsAlb | `spec.securityGroups` | `status.outputs.security_group_id` |
 | AwsAppRunnerVpcConnector | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockCustomModel | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsClientVpn | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.environment.dockerServer.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |

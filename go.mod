@@ -20,6 +20,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/athena v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.68.1
 	github.com/aws/aws-sdk-go-v2/service/batch v1.67.0
+	github.com/aws/aws-sdk-go-v2/service/bedrock v1.66.2
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0

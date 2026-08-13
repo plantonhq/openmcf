@@ -368,3 +368,74 @@ spec:
     - terraform_type: aws_opensearchserverless_lifecycle_policy
       pulumi_type: aws:opensearch/serverlessLifecyclePolicy:ServerlessLifecyclePolicy
       id_format: "{policy_name}/{lifecycle_policy_type}"
+
+    # --- Bedrock ----------------------------------------------------------------
+    # The guardrail imports by "{id},{version}" (DRAFT for the managed
+    # draft); its published versions by "{arn},{version}". The custom model
+    # imports by its JOB ARN (the provider's ArnIdentity -- the job is the
+    # tracked object), provisioned throughput by the provisioned-model ARN,
+    # the agreement by the bare model id, and the account use-case form by
+    # the account id (a singleton). None of the Bedrock control-plane types
+    # are Cloud Control-listable at the pin, so no scan correspondences.
+    - terraform_type: aws_bedrock_guardrail
+      pulumi_type: aws:bedrock/guardrail:Guardrail
+      id_format: "{guardrail_id},{version}"
+      notes: >-
+        Guardrail id and version separated by a comma; the mutable working
+        draft imports with the literal version DRAFT
+        (`aws bedrock list-guardrails` shows each guardrail's id).
+      # timeouts is Terraform plan/apply scheduling input, never echoed.
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrock_guardrail_version
+      pulumi_type: aws:bedrock/guardrailVersion:GuardrailVersion
+      id_format: "{guardrail_arn},{version}"
+      notes: >-
+        Guardrail ARN and the published version number separated by a comma
+        (`aws bedrock list-guardrails --guardrail-identifier <arn>` lists
+        the numbered versions).
+      # skip_destroy is delete-time behavior input; GetGuardrail never
+      # reports it.
+      config_only_attributes: [skip_destroy, timeouts]
+    - terraform_type: aws_bedrock_custom_model
+      pulumi_type: aws:bedrock/customModel:CustomModel
+      id_format: "{job_arn}"
+      notes: >-
+        The model-customization JOB ARN, not the model ARN
+        (`aws bedrock list-model-customization-jobs` shows jobArn). The
+        provider re-derives the model from the job.
+      # base_model_identifier is create-request input; the job echo carries
+      # the resolved base model ARN instead (the provider importIgnores it).
+      config_only_attributes: [base_model_identifier, timeouts]
+    - terraform_type: aws_bedrock_inference_profile
+      pulumi_type: aws:bedrock/inferenceProfile:InferenceProfile
+      id_format: "{inference_profile_id}"
+      notes: >-
+        The application inference profile's id/name
+        (`aws bedrock list-inference-profiles
+        --type-equals APPLICATION` shows inferenceProfileId).
+      # model_source is create input AWS never echoes back (GetInferenceProfile
+      # reports the resolved models list); the provider importIgnores it.
+      config_only_attributes: [model_source, timeouts]
+    - terraform_type: aws_bedrock_provisioned_model_throughput
+      pulumi_type: aws:bedrock/provisionedModelThroughput:ProvisionedModelThroughput
+      id_format: "{provisioned_model_arn}"
+      notes: >-
+        The provisioned model ARN
+        (`aws bedrock list-provisioned-model-throughputs` shows
+        provisionedModelArn).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrock_foundation_model_agreement
+      pulumi_type: aws:bedrockfoundation/modelAgreement:ModelAgreement
+      id_format: "{model_id}"
+      notes: >-
+        The bare foundation model id the agreement covers (e.g.
+        "mistral.mistral-7b-instruct-v0:2").
+      # offer_token is a short-lived create-request credential; nothing
+      # echoes it back (the provider importIgnores it).
+      config_only_attributes: [offer_token, timeouts]
+    - terraform_type: aws_bedrock_use_case_for_model_access
+      pulumi_type: aws:bedrock/useCaseForModelAccess:UseCaseForModelAccess
+      id_format: "{aws_account_id}"
+      notes: >-
+        The 12-digit AWS account id -- the form is an account-global
+        singleton.

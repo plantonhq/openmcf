@@ -7644,6 +7644,83 @@ func TestStackOutputsConformance(t *testing.T) {
 				"collection_endpoint", "dashboard_endpoint", "kms_key_arn",
 			},
 		},
+		{
+			// AwsBedrockGuardrail: guardrail_id keys the E2E verifier;
+			// consumers pin guardrail_id + a version_numbers entry (the
+			// name-keyed published-version map -- AWS assigns the numbers);
+			// draft_version is the literal DRAFT.
+			name: "AwsBedrockGuardrail",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockGuardrail,
+			rawOutputs: map[string]interface{}{
+				"guardrail_id":  "gr1a2b3c4d5e",
+				"guardrail_arn": "arn:aws:bedrock:us-west-2:123456789012:guardrail/gr1a2b3c4d5e",
+				"draft_version": "DRAFT",
+				"version_numbers": map[string]interface{}{
+					"prod": "1",
+				},
+			},
+			mustPopulate: []string{
+				"guardrail_id", "guardrail_arn", "draft_version", "version_numbers",
+			},
+		},
+		{
+			// AwsBedrockCustomModel: job_arn keys the E2E verifier (the job
+			// is the tracked object); custom_model_arn is what provisioned
+			// throughput references; job_status reports the async training
+			// outcome.
+			name: "AwsBedrockCustomModel",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockCustomModel,
+			rawOutputs: map[string]interface{}{
+				"custom_model_arn":  "arn:aws:bedrock:us-east-1:123456789012:custom-model/amazon.titan-text-lite-v1/abc123def456",
+				"custom_model_name": "support-titan-ft",
+				"job_arn":           "arn:aws:bedrock:us-east-1:123456789012:model-customization-job/amazon.titan-text-lite-v1/xyz789",
+				"job_status":        "InProgress",
+			},
+			mustPopulate: []string{
+				"custom_model_arn", "custom_model_name", "job_arn", "job_status",
+			},
+		},
+		{
+			// AwsBedrockInferenceProfile: inference_profile_id keys the E2E
+			// verifier; the ARN is the modelId applications invoke through.
+			name: "AwsBedrockInferenceProfile",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockInferenceProfile,
+			rawOutputs: map[string]interface{}{
+				"inference_profile_arn": "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/checkout-nova",
+				"inference_profile_id":  "checkout-nova",
+				"status":                "ACTIVE",
+				"type":                  "APPLICATION",
+			},
+			mustPopulate: []string{
+				"inference_profile_arn", "inference_profile_id", "status", "type",
+			},
+		},
+		{
+			// AwsBedrockProvisionedThroughput: provisioned_model_arn keys
+			// the E2E verifier and is the modelId applications invoke
+			// through.
+			name: "AwsBedrockProvisionedThroughput",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockProvisionedThroughput,
+			rawOutputs: map[string]interface{}{
+				"provisioned_model_arn":  "arn:aws:bedrock:us-east-1:123456789012:provisioned-model/1y5n57gh5y2e",
+				"provisioned_model_name": "support-model-capacity",
+			},
+			mustPopulate: []string{
+				"provisioned_model_arn", "provisioned_model_name",
+			},
+		},
+		{
+			// AwsBedrockModelAccess: model_id keys the E2E verifier and is
+			// the chart-ordering join key for model-consuming components.
+			name: "AwsBedrockModelAccess",
+			kind: cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess,
+			rawOutputs: map[string]interface{}{
+				"model_id": "mistral.mistral-7b-instruct-v0:2",
+			},
+			mustPopulate: []string{
+				"model_id",
+			},
+		},
 	}
 
 	for _, tc := range cases {
