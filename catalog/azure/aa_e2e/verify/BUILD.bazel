@@ -38,6 +38,7 @@ go_library(
         "cosmosdb_sql_role_definition.go",
         "data_factory.go",
         "data_factory_data_flow.go",
+        "data_factory_dataset.go",
         "data_factory_linked_service.go",
         "data_factory_pipeline.go",
         "data_factory_trigger.go",

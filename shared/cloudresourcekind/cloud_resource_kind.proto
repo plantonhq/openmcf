@@ -2713,6 +2713,19 @@ enum CloudResourceKind {
     id_prefix: "azdfls"
     prerequisites: [AzureDataFactory]
   }];
+  // A Data Factory dataset ({factory_id}/datasets/{name}) -- a named
+  // view of data inside a system a linked service already connects
+  // to: which container and path, which table, which file format.
+  // One kind covers every data shape Azure models as a first-class
+  // dataset resource (delimited text/CSV, JSON, Parquet, binary,
+  // blob, HTTP, the SQL family, Snowflake, Cosmos DB) as variants in
+  // one factory-scoped name namespace, plus the raw-JSON custom form.
+  AzureDataFactoryDataset = 2202 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfds"
+    prerequisites: [AzureDataFactoryLinkedService]
+  }];
   // A Data Factory trigger ({factory_id}/triggers/{name}) -- the
   // instruction that starts pipelines automatically: on a clock
   // schedule, per contiguous tumbling window, on storage blob events,

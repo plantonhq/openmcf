@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: sql-table
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: orders-sql
+  description: The orders table in Azure SQL -- a copy activity source and sink.
+  # The one dataset shape that references its linked service by ARM ID
+  # (the connection must live in the SAME factory).
+  azureSqlTable:
+    linkedServiceId:
+      valueFrom:
+        name: <your-sql-linked-service>
+        fieldPath: status.outputs.linked_service_id
+    schema: dbo
+    table: orders

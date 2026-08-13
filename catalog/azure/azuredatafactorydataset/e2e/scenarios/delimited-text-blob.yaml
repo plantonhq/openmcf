@@ -1,0 +1,54 @@
+# The flagship lane: a delimited text (CSV) dataset on a blob storage
+# location, referencing the blob linked service instance by NAME (the
+# wire form 11 of the 13 variants share). Proves the union plumbing,
+# the location block, the parse-setting surface, the typed
+# linked-service name reference through the chain, and the import
+# round-trip. Dataset names are factory-scoped (no run-id needed --
+# the parent factory's name carries it). Free at rest; creates in
+# seconds.
+# WATCH: saving does not read the data -- Azure accepts the
+# definition without checking the container or file exists, so this
+# lane proves the management-plane contract (create/read/import/
+# destroy), not data movement.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataset-dtext
+  id: planton-oss-e2e-azuredatafactorydataset-dtext
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataset
+  annotations:
+    planton.dev/e2e: "true"
+    # The blob linked service instance this dataset reads through --
+    # a scenario-declared extra instance (the linked service kind
+    # publishes no install profile).
+    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/blob-managed-identity.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-orders-csv
+  description: E2E smoke CSV dataset -- blob location with a dynamic path expression.
+  linkedServiceName:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  parameters:
+    runDate: ""
+  delimitedText:
+    azureBlobStorageLocation:
+      container: landing
+      path: raw/orders/@{dataset().runDate}
+      dynamicPathEnabled: true
+      filename: orders.csv
+    firstRowAsHeader: true
+    encoding: UTF-8
+    schemaColumn:
+      - name: order_id
+        type: Int64
+      - name: placed_at
+        type: DateTime

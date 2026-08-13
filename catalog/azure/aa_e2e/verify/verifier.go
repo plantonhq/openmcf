@@ -65,6 +65,7 @@ var verifiers = map[string]Verifier{
 	"azuredatafactory":                               &dataFactoryVerifier{},
 	"azuredatafactorypipeline":                       &dataFactoryPipelineVerifier{},
 	"azuredatafactorydataflow":                       &dataFactoryDataFlowVerifier{},
+	"azuredatafactorydataset":                        &dataFactoryDatasetVerifier{},
 	"azuredatafactorylinkedservice":                  &dataFactoryLinkedServiceVerifier{},
 	"azuredatafactorytrigger":                        &dataFactoryTriggerVerifier{},
 	"azuredataprotectionbackupinstance":              &dataProtectionBackupInstanceVerifier{},

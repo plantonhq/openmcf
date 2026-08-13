@@ -1,0 +1,36 @@
+# Scenario-local fixture: an Azure SQL Database linked service whose
+# connection string lives in the fixture Key Vault (referenced through
+# the Key Vault linked service instance) -- ZERO secret material in
+# configuration, and Azure saves the definition without dialing the
+# database or resolving the secret. Deployed only by the
+# sql-table-by-id dataset scenario, which needs a same-factory linked
+# service to reference by ARM ID.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataset-sqlls
+  id: planton-oss-e2e-azuredatafactorydataset-sqlls
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataset
+  annotations:
+    planton.dev/e2e: "true"
+    # The Key Vault linked service (and its vault chain) must exist
+    # before this connection references it by name.
+    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/key-vault.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-sqldb
+  description: E2E smoke SQL connection -- Key-Vault-held connection string, no secret material.
+  azureSqlDatabase:
+    keyVaultConnectionString:
+      linkedServiceName:
+        valueFrom:
+          name: planton-oss-e2e-azuredatafactorylinkedservice-kv
+      secretName: sqldb-connection-string

@@ -1,0 +1,749 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorydataset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDataFactoryDatasetSpec** defines an Azure Data Factory
+// dataset -- a named view of data inside a system a linked service
+// already connects to: which container and path, which table, which
+// file format. Pipelines and data flows read from and write to
+// datasets; the dataset itself stores only metadata and carries no
+// secret material.
+//
+// The data shape is declared by which variant block is present: set
+// exactly ONE of the 13 blocks below. All shapes share one
+// factory-scoped name namespace ({factory_id}/datasets/{name}).
+// File formats (delimited text/CSV, JSON, Parquet, binary) locate
+// their files through a location block (blob storage, Data Lake
+// Gen2, an HTTP server, or SFTP for binary); table forms (Azure SQL,
+// SQL Server, MySQL, PostgreSQL, Snowflake, Cosmos DB) name a table
+// or collection; the raw-JSON `custom` form covers every dataset
+// type Azure Data Factory speaks that has no first-class block here.
+//
+// Every dataset points at the linked service that carries its
+// connection: 11 variants reference it by NAME through the shared
+// `linked_service_name` field; the `azure_sql_table` variant
+// references it by ARM ID inside its own block, and `custom` carries
+// its own reference block (the only form that can pass
+// reference-level parameter values).
+message AzureDataFactoryDatasetSpec {
+  // The Data Factory the dataset lives in, by ARM ID. Can be a
+  // literal string or a reference to an AzureDataFactory output.
+  //
+  // **ForceNew**: changing this destroys and recreates the dataset.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_factory_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_factory_id"
+  ];
+
+  // The dataset's name -- unique within the factory across all
+  // dataset shapes. Azure's own rule is deliberately loose: a name
+  // is rejected only when it consists ENTIRELY of the characters
+  // - . + ? / < > * % & : \ (mirrored exactly; not tightened).
+  //
+  // **ForceNew**: changing this destroys and recreates the dataset.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_dataset_name_format"
+      message: "Dataset names must not consist entirely of the characters - . + ? / < > * % & : \\"
+      expression: "!this.matches('^[-.+?/<>*%&:\\\\\\\\]+$')"
+    }
+  ];
+
+  // The linked service the dataset reads through, by name -- defaults
+  // to referencing an AzureDataFactoryLinkedService's
+  // linked_service_name output. Required for every variant EXCEPT
+  // azure_sql_table (which references its linked service by ARM ID
+  // inside its own block) and custom (which carries its own reference
+  // block with parameter values).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef linked_service_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_name"
+  ];
+
+  // A human-readable description of what the dataset is for.
+  string description = 4;
+
+  // Free-form annotation strings stored on the dataset.
+  repeated string annotations = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Dataset parameters, keyed by parameter name (string values only
+  // -- the wire grammar Data Factory accepts through this surface).
+  // Pipelines and data flows can override them per use.
+  map<string, string> parameters = 6;
+
+  // Additional top-level properties passed through to Azure as-is --
+  // Data Factory's escape hatch for dataset properties the schema
+  // does not model. Applies to every variant.
+  map<string, string> additional_properties = 7;
+
+  // The Data Factory Studio folder the dataset appears under -- a
+  // display path only ("/" separated), with no effect on the wire
+  // behavior. Omit for the factory root.
+  string folder = 8;
+
+  // Azure Blob Storage files addressed by a flat path + filename
+  // pair. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetAzureBlob azure_blob = 9;
+
+  // An Azure SQL Database table. The one variant that references its
+  // linked service by ARM ID (same factory enforced). Set exactly one
+  // variant block on this spec.
+  AzureDataFactoryDatasetAzureSqlTable azure_sql_table = 10;
+
+  // Opaque binary files (no column structure). Set exactly one
+  // variant block on this spec.
+  AzureDataFactoryDatasetBinary binary = 11;
+
+  // An Azure Cosmos DB (SQL API) collection. Set exactly one variant
+  // block on this spec.
+  AzureDataFactoryDatasetCosmosdbSqlapi cosmosdb_sqlapi = 12;
+
+  // Any other dataset type, as raw type-properties JSON -- the escape
+  // hatch for the many Data Factory dataset types azurerm has no
+  // first-class resource for. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryDatasetCustom custom = 13;
+
+  // Delimited text (CSV) files. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryDatasetDelimitedText delimited_text = 14;
+
+  // A file served by an HTTP endpoint (through a web linked service).
+  // Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetHttp http = 15;
+
+  // JSON files. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetJson json = 16;
+
+  // A MySQL table. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetMysql mysql = 17;
+
+  // Parquet files. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetParquet parquet = 18;
+
+  // A PostgreSQL table. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetPostgresql postgresql = 19;
+
+  // A Snowflake table. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetSnowflake snowflake = 20;
+
+  // A SQL Server table. Set exactly one variant block on this spec.
+  AzureDataFactoryDatasetSqlServerTable sql_server_table = 21;
+
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_dataset_exactly_one_variant"
+    message: "Set exactly one dataset variant block -- the variant determines the dataset type"
+    expression: "(has(this.azure_blob) ? 1 : 0) + (has(this.azure_sql_table) ? 1 : 0) + (has(this.binary) ? 1 : 0) + (has(this.cosmosdb_sqlapi) ? 1 : 0) + (has(this.custom) ? 1 : 0) + (has(this.delimited_text) ? 1 : 0) + (has(this.http) ? 1 : 0) + (has(this.json) ? 1 : 0) + (has(this.mysql) ? 1 : 0) + (has(this.parquet) ? 1 : 0) + (has(this.postgresql) ? 1 : 0) + (has(this.snowflake) ? 1 : 0) + (has(this.sql_server_table) ? 1 : 0) == 1"
+  };
+
+  // Eleven variants wire their linked service through the shared
+  // name field; the other two carry their own reference.
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_dataset_linked_service_name_required"
+    message: "linked_service_name is required for every variant except azure_sql_table and custom"
+    expression: "has(this.linked_service_name) || has(this.azure_sql_table) || has(this.custom)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_dataset_linked_service_name_conflicts"
+    message: "azure_sql_table and custom carry their own linked service reference -- do not also set linked_service_name"
+    expression: "!(has(this.linked_service_name) && (has(this.azure_sql_table) || has(this.custom)))"
+  };
+}
+
+// One declared column of the dataset's structure: name, an optional
+// Data Factory interim type, and an optional description. Declaring
+// columns is optional -- Data Factory can infer or map columns at
+// run time.
+message AzureDataFactoryDatasetSchemaColumn {
+  // The column's name.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The column's Data Factory interim data type -- omit to leave the
+  // type undeclared.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Byte",
+      "Byte[]",
+      "Boolean",
+      "Date",
+      "DateTime",
+      "DateTimeOffset",
+      "Decimal",
+      "Double",
+      "Guid",
+      "Int16",
+      "Int32",
+      "Int64",
+      "Single",
+      "String",
+      "TimeSpan"
+    ]
+  }];
+
+  // A human-readable description of the column.
+  string description = 3;
+}
+
+// One declared column of a Snowflake dataset's schema -- Snowflake's
+// own type vocabulary, with precision/scale for numeric types
+// (instead of the interim-type column form the other variants use).
+message AzureDataFactoryDatasetSnowflakeSchemaColumn {
+  // The column's name.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The column's Snowflake data type -- omit to leave the type
+  // undeclared.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "NUMBER",
+      "DECIMAL",
+      "NUMERIC",
+      "INT",
+      "INTEGER",
+      "BIGINT",
+      "SMALLINT",
+      "FLOAT",
+      "FLOAT4",
+      "FLOAT8",
+      "DOUBLE",
+      "DOUBLE PRECISION",
+      "REAL",
+      "VARCHAR",
+      "CHAR",
+      "CHARACTER",
+      "STRING",
+      "TEXT",
+      "BINARY",
+      "VARBINARY",
+      "BOOLEAN",
+      "DATE",
+      "DATETIME",
+      "TIME",
+      "TIMESTAMP",
+      "TIMESTAMP_LTZ",
+      "TIMESTAMP_NTZ",
+      "TIMESTAMP_TZ",
+      "VARIANT",
+      "OBJECT",
+      "ARRAY",
+      "GEOGRAPHY"
+    ]
+  }];
+
+  // The total number of digits, for numeric types.
+  int32 precision = 3 [(buf.validate.field).int32.gte = 0];
+
+  // The number of digits after the decimal point, for numeric types.
+  int32 scale = 4 [(buf.validate.field).int32.gte = 0];
+}
+
+// Files on an HTTP server, reached through a web linked service. The
+// dynamic_* flags mark the paired value as a Data Factory expression
+// (evaluated at run time, e.g. from dataset parameters) instead of a
+// literal.
+//
+// Requiredness of path and filename varies by format -- the variant
+// blocks carry the exact rule where it is stricter than this shape.
+message AzureDataFactoryDatasetHttpServerLocation {
+  // The URL path below the linked service's base URL.
+  string relative_url = 1 [(buf.validate.field).required = true];
+
+  // The folder path on the server. Required by the delimited text,
+  // JSON, and binary formats; optional for Parquet.
+  string path = 2;
+
+  // Treat path as a Data Factory expression instead of a literal.
+  bool dynamic_path_enabled = 3;
+
+  // The file's name. Required by every format that uses this
+  // location.
+  string filename = 4;
+
+  // Treat filename as a Data Factory expression instead of a literal.
+  bool dynamic_filename_enabled = 5;
+}
+
+// Files in Azure Blob Storage. The dynamic_* flags mark the paired
+// value as a Data Factory expression (evaluated at run time, e.g.
+// from dataset parameters) instead of a literal.
+//
+// Requiredness of path and filename varies by format -- the variant
+// blocks carry the exact rule where it is stricter than this shape.
+message AzureDataFactoryDatasetBlobStorageLocation {
+  // The blob container's name.
+  string container = 1 [(buf.validate.field).required = true];
+
+  // Treat container as a Data Factory expression instead of a
+  // literal.
+  bool dynamic_container_enabled = 2;
+
+  // The folder path inside the container -- omit to address the
+  // container root. Required by the JSON format.
+  string path = 3;
+
+  // Treat path as a Data Factory expression instead of a literal.
+  bool dynamic_path_enabled = 4;
+
+  // The file's name -- omit to address a folder (all files). Required
+  // by the JSON format.
+  string filename = 5;
+
+  // Treat filename as a Data Factory expression instead of a literal.
+  bool dynamic_filename_enabled = 6;
+}
+
+// Files in Azure Data Lake Storage Gen2 (a hierarchical-namespace
+// storage account), addressed by file system + path. The dynamic_*
+// flags mark the paired value as a Data Factory expression (evaluated
+// at run time, e.g. from dataset parameters) instead of a literal.
+message AzureDataFactoryDatasetBlobFsLocation {
+  // The Data Lake Gen2 file system's name.
+  string file_system = 1;
+
+  // Treat file_system as a Data Factory expression instead of a
+  // literal.
+  bool dynamic_file_system_enabled = 2;
+
+  // The folder path inside the file system.
+  string path = 3;
+
+  // Treat path as a Data Factory expression instead of a literal.
+  bool dynamic_path_enabled = 4;
+
+  // The file's name.
+  string filename = 5;
+
+  // Treat filename as a Data Factory expression instead of a literal.
+  bool dynamic_filename_enabled = 6;
+}
+
+// Files on an SFTP server, reached through an SFTP linked service
+// (binary format only). The dynamic_* flags mark the paired value as
+// a Data Factory expression (evaluated at run time, e.g. from dataset
+// parameters) instead of a literal.
+message AzureDataFactoryDatasetSftpServerLocation {
+  // The folder path on the server.
+  string path = 1 [(buf.validate.field).required = true];
+
+  // Treat path as a Data Factory expression instead of a literal.
+  bool dynamic_path_enabled = 2;
+
+  // The file's name.
+  string filename = 3 [(buf.validate.field).required = true];
+
+  // Treat filename as a Data Factory expression instead of a literal.
+  bool dynamic_filename_enabled = 4;
+}
+
+// Azure Blob Storage files addressed by a flat path + filename pair
+// (the original blob dataset shape -- no location block). Both values
+// are always sent to Azure, empty meaning the container root / all
+// files.
+message AzureDataFactoryDatasetAzureBlob {
+  // The folder path inside the container -- omit to address the
+  // container root.
+  string path = 1;
+
+  // The file's name -- omit to address a folder (all files).
+  string filename = 2;
+
+  // Treat path as a Data Factory expression (evaluated at run time,
+  // e.g. from dataset parameters) instead of a literal.
+  bool dynamic_path_enabled = 3;
+
+  // Treat filename as a Data Factory expression (evaluated at run
+  // time, e.g. from dataset parameters) instead of a literal.
+  bool dynamic_filename_enabled = 4;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 5;
+}
+
+// An Azure SQL Database table. The one variant that references its
+// linked service by ARM ID instead of by the shared name field --
+// the linked service must live in the SAME factory as the dataset
+// (Azure's own rule, enforced at deploy time).
+message AzureDataFactoryDatasetAzureSqlTable {
+  // The Azure SQL Database linked service, by ARM ID
+  // ({factory_id}/linkedservices/{name}) -- defaults to referencing
+  // an AzureDataFactoryLinkedService's linked_service_id output.
+  // Must belong to the same factory as this dataset.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef linked_service_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_id"
+  ];
+
+  // The table's schema name (e.g. dbo) -- omit to leave it
+  // undeclared.
+  string schema = 2;
+
+  // The table's name -- omit to leave it undeclared (e.g. when the
+  // pipeline supplies a query instead).
+  string table = 3;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 4;
+}
+
+// Opaque binary files -- no column structure, optionally compressed.
+// The one format that can also live on an SFTP server.
+message AzureDataFactoryDatasetBinary {
+  // Files on an HTTP server. Set exactly one location block. path and
+  // filename are both required for this format (see the message
+  // rule).
+  AzureDataFactoryDatasetHttpServerLocation http_server_location = 1;
+
+  // Files in Azure Blob Storage. Set exactly one location block.
+  AzureDataFactoryDatasetBlobStorageLocation azure_blob_storage_location = 2;
+
+  // Files on an SFTP server. Set exactly one location block.
+  AzureDataFactoryDatasetSftpServerLocation sftp_server_location = 3;
+
+  // How the files are compressed -- omit for uncompressed data.
+  AzureDataFactoryDatasetBinaryCompression compression = 4;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_binary_exactly_one_location"
+    message: "Set exactly one of http_server_location, azure_blob_storage_location, or sftp_server_location"
+    expression: "(has(this.http_server_location) ? 1 : 0) + (has(this.azure_blob_storage_location) ? 1 : 0) + (has(this.sftp_server_location) ? 1 : 0) == 1"
+  };
+
+  // The binary format's HTTP location declares both fields required
+  // (stricter than Parquet's use of the same shape).
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_binary_http_location_fields"
+    message: "http_server_location requires both path and filename for the binary format"
+    expression: "!has(this.http_server_location) || (this.http_server_location.path != '' && this.http_server_location.filename != '')"
+  };
+}
+
+// The compression applied to binary files.
+message AzureDataFactoryDatasetBinaryCompression {
+  // The compression codec.
+  string type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "BZip2",
+        "Deflate",
+        "GZip",
+        "Tar",
+        "TarGZip",
+        "ZipDeflate"
+      ]
+    }
+  ];
+
+  // The compression level -- applies to the TarGZip, GZip, and
+  // ZipDeflate codecs. Omit for the service default.
+  string level = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Optimal",
+      "Fastest"
+    ]
+  }];
+}
+
+// An Azure Cosmos DB (SQL API) collection.
+message AzureDataFactoryDatasetCosmosdbSqlapi {
+  // The collection's name -- omit to leave it undeclared (e.g. when
+  // the pipeline supplies a query instead).
+  string collection_name = 1;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 2;
+}
+
+// Any other dataset type, as raw JSON -- the escape hatch for the
+// many Data Factory dataset types azurerm has no first-class resource
+// for (Excel, XML, Avro, ORC, REST, SAP, and dozens more).
+message AzureDataFactoryDatasetCustom {
+  // The linked service the dataset reads through -- the only variant
+  // form that can pass reference-level parameter values.
+  AzureDataFactoryDatasetCustomLinkedService linked_service = 1 [(buf.validate.field).required = true];
+
+  // The Data Factory dataset type token, e.g. Excel, Xml, Avro --
+  // exactly as the Data Factory REST API names it.
+  //
+  // **ForceNew**: changing this destroys and recreates the dataset.
+  string type = 2 [(buf.validate.field).required = true];
+
+  // The dataset's typeProperties object, as raw JSON -- the payload
+  // is passed to Azure as-is, exactly as the Data Factory REST API
+  // documents it for the chosen type. Azure validates it at save
+  // time.
+  string type_properties_json = 3 [(buf.validate.field).required = true];
+
+  // The dataset's schema object, as raw JSON -- omit to leave the
+  // schema undeclared.
+  string schema_json = 4;
+}
+
+// The custom form's linked service reference: the name plus optional
+// parameter values passed to the linked service per use.
+message AzureDataFactoryDatasetCustomLinkedService {
+  // The linked service's name inside this factory -- defaults to
+  // referencing an AzureDataFactoryLinkedService's
+  // linked_service_name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_name"
+  ];
+
+  // Values for the linked service's parameters, keyed by parameter
+  // name.
+  map<string, string> parameters = 2;
+}
+
+// Delimited text (CSV) files: how the files are located and how the
+// text is parsed.
+message AzureDataFactoryDatasetDelimitedText {
+  // Files on an HTTP server. Set exactly one location block. path and
+  // filename are both required for this format (see the message
+  // rule).
+  AzureDataFactoryDatasetHttpServerLocation http_server_location = 1;
+
+  // Files in Azure Blob Storage. Set exactly one location block.
+  AzureDataFactoryDatasetBlobStorageLocation azure_blob_storage_location = 2;
+
+  // Files in Azure Data Lake Storage Gen2. Set exactly one location
+  // block.
+  AzureDataFactoryDatasetBlobFsLocation azure_blob_fs_location = 3;
+
+  // The column separator -- omit for the default ",".
+  string column_delimiter = 4;
+
+  // The row separator -- omit for the service's default (auto-detect
+  // \r, \n, or \r\n).
+  string row_delimiter = 5;
+
+  // The quote character wrapping values -- omit for the default '"'.
+  string quote_character = 6;
+
+  // The escape character -- omit for the default "\".
+  string escape_character = 7;
+
+  // The file encoding, e.g. UTF-8 -- omit for the service default.
+  string encoding = 8;
+
+  // Whether the first row carries column names. Unspecified applies
+  // false.
+  optional bool first_row_as_header = 9 [(dev.planton.shared.options.default) = "false"];
+
+  // The string that represents NULL values -- omit for the default
+  // (empty string).
+  string null_value = 10;
+
+  // The compression codec the files use -- omit for uncompressed
+  // data.
+  string compression_codec = 11 [(buf.validate.field).string = {
+    in: [
+      "",
+      "None",
+      "bzip2",
+      "gzip",
+      "deflate",
+      "ZipDeflate",
+      "TarGzip",
+      "Tar",
+      "snappy",
+      "lz4"
+    ]
+  }];
+
+  // The compression level -- omit for the service default.
+  string compression_level = 12 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Optimal",
+      "Fastest"
+    ]
+  }];
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 13;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_delimited_text_exactly_one_location"
+    message: "Set exactly one of http_server_location, azure_blob_storage_location, or azure_blob_fs_location"
+    expression: "(has(this.http_server_location) ? 1 : 0) + (has(this.azure_blob_storage_location) ? 1 : 0) + (has(this.azure_blob_fs_location) ? 1 : 0) == 1"
+  };
+
+  // The delimited text format's HTTP location declares both fields
+  // required (stricter than Parquet's use of the same shape).
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_delimited_text_http_location_fields"
+    message: "http_server_location requires both path and filename for the delimited text format"
+    expression: "!has(this.http_server_location) || (this.http_server_location.path != '' && this.http_server_location.filename != '')"
+  };
+}
+
+// A file served by an HTTP endpoint, reached through a web linked
+// service -- addressed by URL rather than a location block.
+message AzureDataFactoryDatasetHttp {
+  // The URL path below the linked service's base URL.
+  string relative_url = 1;
+
+  // The body sent with the HTTP request.
+  string request_body = 2;
+
+  // The HTTP method, e.g. GET or POST.
+  string request_method = 3;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 4;
+}
+
+// JSON files: where they live and how they are encoded.
+message AzureDataFactoryDatasetJson {
+  // Files on an HTTP server. Set exactly one location block. path and
+  // filename are both required for this format (see the message
+  // rule).
+  AzureDataFactoryDatasetHttpServerLocation http_server_location = 1;
+
+  // Files in Azure Blob Storage. Set exactly one location block. path
+  // and filename are both required for this format (see the message
+  // rule).
+  AzureDataFactoryDatasetBlobStorageLocation azure_blob_storage_location = 2;
+
+  // The file encoding, e.g. UTF-8 -- omit for the service default.
+  string encoding = 3;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 4;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_json_exactly_one_location"
+    message: "Set exactly one of http_server_location or azure_blob_storage_location"
+    expression: "(has(this.http_server_location) ? 1 : 0) + (has(this.azure_blob_storage_location) ? 1 : 0) == 1"
+  };
+
+  // The JSON format declares path and filename required in BOTH of
+  // its location shapes (stricter than the other formats).
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_json_http_location_fields"
+    message: "http_server_location requires both path and filename for the JSON format"
+    expression: "!has(this.http_server_location) || (this.http_server_location.path != '' && this.http_server_location.filename != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_json_blob_location_fields"
+    message: "azure_blob_storage_location requires both path and filename for the JSON format"
+    expression: "!has(this.azure_blob_storage_location) || (this.azure_blob_storage_location.path != '' && this.azure_blob_storage_location.filename != '')"
+  };
+}
+
+// A MySQL table, reached through a MySQL linked service.
+message AzureDataFactoryDatasetMysql {
+  // The table's name -- omit to leave it undeclared (e.g. when the
+  // pipeline supplies a query instead).
+  string table_name = 1;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 2;
+}
+
+// Parquet files: where they live and how they are compressed.
+message AzureDataFactoryDatasetParquet {
+  // Files on an HTTP server. Set exactly one location block. filename
+  // is required for this format (see the message rule); path is
+  // optional.
+  AzureDataFactoryDatasetHttpServerLocation http_server_location = 1;
+
+  // Files in Azure Blob Storage. Set exactly one location block.
+  AzureDataFactoryDatasetBlobStorageLocation azure_blob_storage_location = 2;
+
+  // Files in Azure Data Lake Storage Gen2. Set exactly one location
+  // block.
+  AzureDataFactoryDatasetBlobFsLocation azure_blob_fs_location = 3;
+
+  // The compression codec the files use -- omit for uncompressed
+  // data. Parquet natively favors snappy.
+  string compression_codec = 4 [(buf.validate.field).string = {
+    in: [
+      "",
+      "bzip2",
+      "gzip",
+      "deflate",
+      "ZipDeflate",
+      "TarGzip",
+      "Tar",
+      "snappy",
+      "lz4"
+    ]
+  }];
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 5;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_parquet_exactly_one_location"
+    message: "Set exactly one of http_server_location, azure_blob_storage_location, or azure_blob_fs_location"
+    expression: "(has(this.http_server_location) ? 1 : 0) + (has(this.azure_blob_storage_location) ? 1 : 0) + (has(this.azure_blob_fs_location) ? 1 : 0) == 1"
+  };
+
+  // Parquet's HTTP location requires the filename; the folder path
+  // may be omitted (the one format where it is optional).
+  option (buf.validate.message).cel = {
+    id: "data_factory_dataset_parquet_http_location_fields"
+    message: "http_server_location requires filename for the Parquet format"
+    expression: "!has(this.http_server_location) || this.http_server_location.filename != ''"
+  };
+}
+
+// A PostgreSQL table, reached through a PostgreSQL linked service.
+message AzureDataFactoryDatasetPostgresql {
+  // The table's name -- omit to leave it undeclared (e.g. when the
+  // pipeline supplies a query instead).
+  string table_name = 1;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 2;
+}
+
+// A Snowflake table, reached through a Snowflake linked service.
+message AzureDataFactoryDatasetSnowflake {
+  // The table's name -- omit to leave it undeclared (e.g. when the
+  // pipeline supplies a query instead).
+  string table_name = 1;
+
+  // The Snowflake schema the table lives in -- omit to leave it
+  // undeclared.
+  string schema_name = 2;
+
+  // Declared columns, in Snowflake's own type vocabulary -- omit to
+  // let Data Factory infer or map at run time.
+  repeated AzureDataFactoryDatasetSnowflakeSchemaColumn schema_column = 3;
+}
+
+// A SQL Server table, reached through a SQL Server linked service.
+message AzureDataFactoryDatasetSqlServerTable {
+  // The table's name -- omit to leave it undeclared (e.g. when the
+  // pipeline supplies a query instead).
+  string table_name = 1;
+
+  // Declared columns -- omit to let Data Factory infer or map at run
+  // time.
+  repeated AzureDataFactoryDatasetSchemaColumn schema_column = 2;
+}

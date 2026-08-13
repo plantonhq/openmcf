@@ -644,6 +644,51 @@ spec:
     - terraform_type: azurerm_data_factory_linked_service_web
       pulumi_type: azure:datafactory/linkedServiceWeb:LinkedServiceWeb
       id_format: "{linked_service_id}"
+    # AzureDataFactoryDataset covers all thirteen dataset resources --
+    # they share one factory-scoped namespace
+    # ({factory_id}/datasets/{name}) and one id shape; the spec's
+    # variant block decides which resource the module created, so the
+    # import addresses the matching type (each importer verifies the
+    # stored dataset's type discriminator).
+    - terraform_type: azurerm_data_factory_dataset_azure_blob
+      pulumi_type: azure:datafactory/datasetAzureBlob:DatasetAzureBlob
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_azure_sql_table
+      pulumi_type: azure:datafactory/datasetAzureSqlTable:DatasetAzureSqlTable
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_binary
+      pulumi_type: azure:datafactory/datasetBinary:DatasetBinary
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_cosmosdb_sqlapi
+      pulumi_type: azure:datafactory/datasetCosmosDBApi:DatasetCosmosDBApi
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_custom_dataset
+      pulumi_type: azure:datafactory/customDataset:CustomDataset
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_delimited_text
+      pulumi_type: azure:datafactory/datasetDelimitedText:DatasetDelimitedText
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_http
+      pulumi_type: azure:datafactory/datasetHttp:DatasetHttp
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_json
+      pulumi_type: azure:datafactory/datasetJson:DatasetJson
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_mysql
+      pulumi_type: azure:datafactory/datasetMysql:DatasetMysql
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_parquet
+      pulumi_type: azure:datafactory/datasetParquet:DatasetParquet
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_postgresql
+      pulumi_type: azure:datafactory/datasetPostgresql:DatasetPostgresql
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_snowflake
+      pulumi_type: azure:datafactory/datasetSnowflake:DatasetSnowflake
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_sql_server_table
+      pulumi_type: azure:datafactory/datasetSqlServerTable:DatasetSqlServerTable
+      id_format: "{dataset_id}"
 
     # --- Microsoft Fabric ---------------------------------------------------------
     - terraform_type: azurerm_fabric_capacity

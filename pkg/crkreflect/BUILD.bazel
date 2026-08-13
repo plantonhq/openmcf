@@ -212,6 +212,7 @@ go_library(
         "//catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1",
         "//catalog/azure/azuredatafactory/v1alpha1",
         "//catalog/azure/azuredatafactorydataflow/v1alpha1",
+        "//catalog/azure/azuredatafactorydataset/v1alpha1",
         "//catalog/azure/azuredatafactorylinkedservice/v1alpha1",
         "//catalog/azure/azuredatafactorypipeline/v1alpha1",
         "//catalog/azure/azuredatafactorytrigger/v1alpha1",

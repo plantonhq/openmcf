@@ -1,0 +1,38 @@
+# The flat blob form: path and filename travel as always-sent
+# expression-typed values (no location block) -- the wire shape most
+# likely to produce read-back diffs, which makes its blind import
+# round-trip the lane's proof point. Rides the same chain as the
+# delimited text lane. Free at rest; creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataset-blob
+  id: planton-oss-e2e-azuredatafactorydataset-blob
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataset
+  annotations:
+    planton.dev/e2e: "true"
+    # The blob linked service instance this dataset reads through --
+    # a scenario-declared extra instance (the linked service kind
+    # publishes no install profile).
+    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/blob-managed-identity.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-orders-blob
+  description: E2E smoke flat blob dataset -- the original blob shape, path + filename.
+  linkedServiceName:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  azureBlob:
+    path: raw/orders
+    filename: orders.csv
+    schemaColumn:
+      - name: order_id
+        type: Int64

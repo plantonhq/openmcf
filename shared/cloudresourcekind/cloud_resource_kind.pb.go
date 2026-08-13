@@ -1012,6 +1012,14 @@ const (
 	// Databricks, Key Vault, SFTP, web APIs, and more) as variants in
 	// one factory-scoped name namespace, plus the raw-JSON custom form.
 	CloudResourceKind_AzureDataFactoryLinkedService CloudResourceKind = 2201
+	// A Data Factory dataset ({factory_id}/datasets/{name}) -- a named
+	// view of data inside a system a linked service already connects
+	// to: which container and path, which table, which file format.
+	// One kind covers every data shape Azure models as a first-class
+	// dataset resource (delimited text/CSV, JSON, Parquet, binary,
+	// blob, HTTP, the SQL family, Snowflake, Cosmos DB) as variants in
+	// one factory-scoped name namespace, plus the raw-JSON custom form.
+	CloudResourceKind_AzureDataFactoryDataset CloudResourceKind = 2202
 	// A Data Factory trigger ({factory_id}/triggers/{name}) -- the
 	// instruction that starts pipelines automatically: on a clock
 	// schedule, per contiguous tumbling window, on storage blob events,
@@ -1885,6 +1893,7 @@ var (
 		2199:  "AzureDataFactoryPipeline",
 		2200:  "AzureDataFactoryDataFlow",
 		2201:  "AzureDataFactoryLinkedService",
+		2202:  "AzureDataFactoryDataset",
 		2203:  "AzureDataFactoryTrigger",
 		2211:  "AzureMongoCluster",
 		2212:  "AzureFabricCapacity",
@@ -2568,6 +2577,7 @@ var (
 		"AzureDataFactoryPipeline":                       2199,
 		"AzureDataFactoryDataFlow":                       2200,
 		"AzureDataFactoryLinkedService":                  2201,
+		"AzureDataFactoryDataset":                        2202,
 		"AzureDataFactoryTrigger":                        2203,
 		"AzureMongoCluster":                              2211,
 		"AzureFabricCapacity":                            2212,
@@ -3243,7 +3253,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xeb\xb1\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa7\xb2\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3540,7 +3550,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AzureDataFactory\x10\x96\x11\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\bv1alpha1\"\x04azdf:\x02\xd0\x0f\x12=\n" +
 	"\x18AzureDataFactoryPipeline\x10\x97\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfpipe:\x02\x96\x11\x12=\n" +
 	"\x18AzureDataFactoryDataFlow\x10\x98\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfflow:\x02\x96\x11\x12@\n" +
-	"\x1dAzureDataFactoryLinkedService\x10\x99\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfls:\x02\x96\x11\x12>\n" +
+	"\x1dAzureDataFactoryLinkedService\x10\x99\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfls:\x02\x96\x11\x12:\n" +
+	"\x17AzureDataFactoryDataset\x10\x9a\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfds:\x02\x99\x11\x12>\n" +
 	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x125\n" +
 	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
 	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +

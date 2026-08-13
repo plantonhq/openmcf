@@ -1,0 +1,34 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactorydataset
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plans green across five variant
+  # shapes); live dual-engine proof has not yet run. FOUR scenarios
+  # run -- one per WIRE FORM plus the diff-prone seams:
+  # delimited-text-blob (the shared linked_service_name reference and
+  # the location-block grammar), azure-blob-flat (the always-sent
+  # expression-typed path/filename -- the read-back-diff seam the
+  # blind import must survive), sql-table-by-id (the ARM-ID reference
+  # form and Azure's same-factory rule), and custom-excel-blob (the
+  # linked_service BLOCK form and the raw-JSON normalization seam).
+  # All four carry ZERO secret material. The other NINE variants are
+  # OFFLINE-PROVEN by design: their type-properties differences are
+  # save-time schema shapes ARM validates uniformly across one dataset
+  # namespace, several need a live external system (a Snowflake
+  # account, a MySQL server, an SFTP host) E2E cannot honestly stand
+  # up, and Azure saves dataset definitions without reading the data,
+  # so a live create would prove no more than the management-plane
+  # contract the four lanes already prove. Their tofu plans are
+  # render-inspected instead.
+  # Datasets are authoring metadata -- free at rest; the lanes pay
+  # only the factory chain.
+  # WATCH: whether ARM enforces linked-service reference EXISTENCE at
+  # save time (expected yes -- the chains deploy connections first
+  # either way); the custom form's JSON canonicalization on the
+  # import round-trip.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 60
