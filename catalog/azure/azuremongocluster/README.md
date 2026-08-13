@@ -23,3 +23,7 @@ The **AzureMongoCluster** component deploys an Azure Cosmos DB for MongoDB vCore
 ## Future Enhancements
 
 - Entra access grants live in AzureMongoClusterUser -- point its `mongo_cluster_id` at this component's ID output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

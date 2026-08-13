@@ -23,3 +23,7 @@ The **AzureEventgridNamespace** component deploys an Azure Event Grid namespace 
 ## Future Enhancements
 
 - Stream wiring lives in AzureEventgridNamespaceTopic -- point its `namespace_id` at this component's ID output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

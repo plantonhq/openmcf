@@ -25,3 +25,7 @@ The **AzureDataFactoryIntegrationRuntime** component deploys one integration run
 ## Future Enhancements
 
 - The Data Factory family's reference graph is complete with this kind; linked services gain their integration runtime reference wiring as the family's deferred upgrades land.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

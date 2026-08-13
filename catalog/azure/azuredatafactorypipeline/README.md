@@ -23,3 +23,7 @@ The **AzureDataFactoryPipeline** component deploys one pipeline inside an Azure 
 ## Future Enhancements
 
 - Triggers, datasets, linked services, and data flows arrive as their own kinds -- each referencing this pipeline's factory, with triggers naming this pipeline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

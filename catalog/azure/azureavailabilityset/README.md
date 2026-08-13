@@ -23,3 +23,7 @@ The **AzureAvailabilitySet** component deploys an availability set -- the classi
 ## Future Enhancements
 
 - Proximity placement groups are a P2 catalog kind; the `proximity_placement_group_id` reference gains its typed default when that kind lands.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

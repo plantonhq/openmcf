@@ -23,3 +23,7 @@ The **AzureMongoClusterUser** component grants a Microsoft Entra ID principal ac
 ## Future Enhancements
 
 - Azure's role vocabulary is "root" today; finer-grained built-in roles widen the `roles` field when the service ships them.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

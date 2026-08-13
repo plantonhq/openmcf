@@ -25,3 +25,7 @@ The **AzureDataFactoryDataset** component deploys one dataset inside an Azure Da
 ## Future Enhancements
 
 - The integration runtime kind completes the Data Factory family; dataset-to-dataflow wiring deepens as the family's reference graph closes.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

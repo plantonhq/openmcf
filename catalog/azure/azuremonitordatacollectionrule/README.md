@@ -23,3 +23,7 @@ The **AzureMonitorDataCollectionRule** component deploys an Azure Monitor data c
 ## Future Enhancements
 
 - The `data_collection_endpoint_id` and `monitor_account_id` references become typed references when the Data Collection Endpoint and Azure Monitor Workspace kinds enter the catalog (they are literal ARM ids today).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -23,3 +23,7 @@ The **AzureEventgridEventSubscription** component deploys an Azure Event Grid ev
 ## Future Enhancements
 
 - The Event Grid namespace family (MQTT, pull delivery) arrives as its own kinds; this subscription covers the classic push-delivery model end to end.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

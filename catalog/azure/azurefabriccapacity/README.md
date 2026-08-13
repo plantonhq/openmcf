@@ -23,3 +23,7 @@ The **AzureFabricCapacity** component deploys a Microsoft Fabric capacity -- the
 ## Future Enhancements
 
 - Fabric workspaces and items live in Microsoft's dedicated `fabric` Terraform provider -- a future per-provider catalog decision, deliberately outside this kind.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

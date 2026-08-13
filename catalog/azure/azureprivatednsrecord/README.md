@@ -23,3 +23,7 @@ The **AzurePrivateDnsRecord** component deploys one DNS record set in an Azure P
 ## Future Enhancements
 
 - The 1,024-character TXT value cap and per-zone record-set quotas stay documentation until service quotas can be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

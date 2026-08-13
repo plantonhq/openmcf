@@ -24,3 +24,7 @@ The **AzureDataFactoryTrigger** component deploys one trigger inside an Azure Da
 ## Future Enhancements
 
 - Datasets, linked services, and integration runtimes arrive as their own kinds, completing the Data Factory family.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

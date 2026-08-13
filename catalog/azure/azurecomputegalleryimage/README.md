@@ -23,3 +23,7 @@ The **AzureComputeGalleryImage** component deploys a gallery image: one image de
 ## Future Enhancements
 
 - Legacy managed images (`azurerm_image`) are deliberately excluded -- superseded by the gallery model this kind implements.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -23,3 +23,7 @@ The **AzureMonitorDataCollectionRuleAssociation** component attaches ONE machine
 ## Future Enhancements
 
 - The `data_collection_endpoint_id` reference becomes a typed reference when the Data Collection Endpoint kind enters the catalog (it is a literal ARM id today).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

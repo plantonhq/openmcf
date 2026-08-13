@@ -23,3 +23,7 @@ The **AzureEventgridDomain** component deploys an Azure Event Grid domain -- one
 ## Future Enhancements
 
 - Event subscriptions (the consumer side) arrive with the AzureEventgridEventSubscription kind, attaching per domain topic via AzureEventgridDomainTopic's ID output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

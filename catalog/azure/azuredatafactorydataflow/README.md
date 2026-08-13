@@ -23,3 +23,7 @@ The **AzureDataFactoryDataFlow** component deploys one data flow inside an Azure
 ## Future Enhancements
 
 - Datasets and linked services arrive as their own kinds -- the name references here upgrade in place to typed references when they exist.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

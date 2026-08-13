@@ -23,3 +23,7 @@ The **AzureEventgridSystemTopic** component deploys an Azure Event Grid system t
 ## Future Enhancements
 
 - Delivery wiring lives in AzureEventgridEventSubscription -- point its `system_topic_id` at this component's ID output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

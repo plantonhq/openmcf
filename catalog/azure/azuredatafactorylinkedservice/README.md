@@ -25,3 +25,7 @@ The **AzureDataFactoryLinkedService** component deploys one linked service insid
 ## Future Enhancements
 
 - Datasets and integration runtimes arrive as their own kinds, completing the Data Factory family (the shared `integration_runtime_name` reference upgrades in place when the runtime kind ships).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -23,3 +23,7 @@ The **AzureMonitorAutoscaleSetting** component deploys an Azure Monitor autoscal
 ## Future Enhancements
 
 - Predictive autoscale currently applies to VM Scale Set targets only (an Azure service boundary, documented on the field).
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

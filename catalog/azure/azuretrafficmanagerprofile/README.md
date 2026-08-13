@@ -23,3 +23,7 @@ The **AzureTrafficManagerProfile** component deploys a Traffic Manager profile -
 ## Future Enhancements
 
 - Endpoint objects are a separate component (AzureTrafficManagerEndpoint) by design -- one profile serves many endpoints with independent lifecycles.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

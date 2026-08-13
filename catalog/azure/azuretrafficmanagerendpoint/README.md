@@ -23,3 +23,7 @@ The **AzureTrafficManagerEndpoint** component deploys one destination of a Traff
 ## Future Enhancements
 
 - Geographic-hierarchy code validation (WORLD, GEO-EU, country codes) stays apply-time -- Azure validates claims against the live hierarchy, which cannot be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

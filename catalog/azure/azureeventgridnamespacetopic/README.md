@@ -23,3 +23,7 @@ The **AzureEventgridNamespaceTopic** component deploys one named CloudEvents str
 ## Future Enhancements
 
 - Azure models namespace-topic event subscriptions as their own resource; the pinned Terraform provider does not ship it yet -- delivery wiring for namespace topics arrives when it does.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

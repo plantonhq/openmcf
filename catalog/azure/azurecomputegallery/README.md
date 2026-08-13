@@ -23,3 +23,7 @@ The **AzureComputeGallery** component deploys an Azure Compute Gallery -- the sh
 ## Future Enhancements
 
 - Gallery applications (VM app packages) are deliberately deferred -- a niche surface (`gallery_application` ×2 + the VM assignment) that enters the catalog by its own decision when demand shows.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

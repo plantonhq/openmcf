@@ -23,3 +23,7 @@ The **AzureDataFactory** component deploys an Azure Data Factory -- the workspac
 ## Future Enhancements
 
 - Pipeline wiring lives in AzureDataFactoryPipeline -- point its `data_factory_id` at this component's ID output. Data flows, linked services, datasets, triggers, and integration runtimes follow as their own kinds.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

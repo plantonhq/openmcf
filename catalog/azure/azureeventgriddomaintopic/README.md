@@ -22,3 +22,7 @@ The **AzureEventgridDomainTopic** component deploys one named event stream insid
 ## Future Enhancements
 
 - Event subscriptions (the consumer side) arrive with the AzureEventgridEventSubscription kind, attaching to this kind's `domain_topic_id` output.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

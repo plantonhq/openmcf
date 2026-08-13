@@ -23,3 +23,7 @@ The **AzureDiskSnapshot** component deploys a managed disk snapshot -- a point-i
 ## Future Enhancements
 
 - Disk-access resources (private-endpoint export) are a P2 catalog kind; the `disk_access_id` reference gains its typed default when that kind lands.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
