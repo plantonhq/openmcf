@@ -19,16 +19,21 @@ peering; consumers connect through a service attachment that surfaces
 on the DEPLOYED INDEX's outputs, not here — the attachment exists only
 once an index is deployed.
 
-## PSC has two consumer stories; prefer the allowlist today
+## PSC has two consumer stories; only the allowlist works today
 
 `projectAllowlist` lets consumer projects create their own forwarding
 rules against the service attachment — explicit, auditable, and the
 proven path. `pscAutomationConfigs` asks Vertex AI to create the
-consumer-side endpoints itself (per project/network pair), but the
-provider documents the field as used by online inference (prediction)
-endpoints only — on index endpoints, treat automation as
-forward-looking surface and wire consumers through the allowlist until
-Google extends automation to vector search.
+consumer-side endpoints itself (per project/network pair), but on
+index endpoints the live API accepts the create and then silently
+drops the configs: the stored endpoint omits them and no consumer-side
+endpoint is ever provisioned (verified against the live API; the
+provider documents the field as used by online inference endpoints
+only). Because the PSC block is immutable, that silent drop would
+otherwise surface as a perpetual replacement diff on every re-plan —
+so the spec refuses the field on this kind. Wire consumers through the
+allowlist; the field unlocks if Google extends automation to vector
+search.
 
 ## One endpoint, many deployments — pool deliberately
 

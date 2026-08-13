@@ -254,7 +254,13 @@ var _ = ginkgo.Describe("GcpVertexAiIndexEndpointSpec", func() {
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 	})
 
-	ginkgo.It("should accept PSC automation configs on a PSC endpoint", func() {
+	// The Vertex AI API accepts psc_automation_configs on an index
+	// endpoint create but silently drops them (nothing stored, no
+	// consumer-side endpoint provisioned — API-verified live), and the
+	// immutable PSC block would turn that drop into a perpetual
+	// replacement diff. The spec therefore refuses the field on this
+	// kind; project_allowlist is the supported PSC consumption path.
+	ginkgo.It("should reject PSC automation configs (API silently drops them on index endpoints)", func() {
 		msg := minimal()
 		msg.Spec.PublicEndpointEnabled = false
 		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiIndexEndpointPrivateServiceConnectConfig{
@@ -274,24 +280,8 @@ var _ = ginkgo.Describe("GcpVertexAiIndexEndpointSpec", func() {
 			},
 		}
 		err := validator.Validate(msg)
-		gomega.Expect(err).ToNot(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("should reject a PSC automation config without a network", func() {
-		msg := minimal()
-		msg.Spec.PublicEndpointEnabled = false
-		msg.Spec.PrivateServiceConnectConfig = &GcpVertexAiIndexEndpointPrivateServiceConnectConfig{
-			EnablePrivateServiceConnect: true,
-			PscAutomationConfigs: []*GcpVertexAiIndexEndpointPscAutomationConfig{
-				{
-					ProjectId: &foreignkeyv1.StringValueOrRef{
-						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "consumer-project"},
-					},
-				},
-			},
-		}
-		err := validator.Validate(msg)
 		gomega.Expect(err).To(gomega.HaveOccurred())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("psc_automation_configs is not honored"))
 	})
 
 	ginkgo.It("should accept all deletion_policy values", func() {

@@ -17,7 +17,9 @@ metadata:
     - planton-e2e
 spec:
   subnetworkName: planton-oss-e2e-notebook-snw-${E2E_RUN_ID}
-  region: us-central1
+  # us-east1: region-matched to the notebook scenario's zone (relocated for
+  # capacity resilience — see the scenario's location comment).
+  region: us-east1
   ipCidrRange: 10.20.0.0/24
   vpcSelfLink:
     valueFrom:

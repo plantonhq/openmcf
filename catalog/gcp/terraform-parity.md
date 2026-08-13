@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 90 proven live.**
+**98 of 98 kinds are at total accounting; 95 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -85,7 +85,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
+| GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
@@ -138,11 +138,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
+| GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
-| GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
-| GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
+| GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |

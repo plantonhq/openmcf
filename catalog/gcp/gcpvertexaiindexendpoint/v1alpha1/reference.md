@@ -147,6 +147,8 @@ Private Service Connect configuration. When present, consumers
 reach deployed indexes through a PSC service attachment. Mutually
 exclusive with public_endpoint_enabled and network. Immutable.
 
+- rule: psc_automation_configs is not honored on index endpoints — the Vertex AI API accepts the create but silently drops the configs (nothing is stored and no consumer-side endpoint is ever provisioned); use project_allowlist with consumer-managed forwarding rules instead
+
 ### spec.privateServiceConnectConfig.enablePrivateServiceConnect
 
 `bool`
