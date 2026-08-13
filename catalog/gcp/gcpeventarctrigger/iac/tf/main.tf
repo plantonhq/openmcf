@@ -83,9 +83,12 @@ resource "google_eventarc_trigger" "this" {
       for_each = var.spec.destination.cloud_run_service != null ? [var.spec.destination.cloud_run_service] : []
       content {
         service = cloud_run_service.value.service
-        # Optional+Computed in the provider: sent only when set, so GCP
-        # resolves the region from the trigger's location otherwise.
-        region = cloud_run_service.value.region != "" ? cloud_run_service.value.region : null
+        # The API REQUIRES the region on every create (live-verified:
+        # 400 "cloud_run.region is empty" — it never infers it from the
+        # trigger's location), so an empty spec region defaults to the
+        # trigger's own location. A "global" trigger cannot self-default;
+        # the spec CEL forces an explicit region there.
+        region = cloud_run_service.value.region != "" ? cloud_run_service.value.region : var.spec.location
         path   = cloud_run_service.value.path != "" ? cloud_run_service.value.path : null
       }
     }

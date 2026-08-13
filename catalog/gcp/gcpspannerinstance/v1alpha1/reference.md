@@ -443,7 +443,7 @@ Reference an output from another manifest as `valueFrom: {kind: GcpSpannerInstan
 | `status.outputs.instance_id` | `string` | Fully qualified instance ID. Format: projects/{project}/instances/{instance_name} This is the canonical identifier used for IAM bindings and API calls. |
 | `status.outputs.instance_name` | `string` | Short instance name. This is the value that GcpSpannerDatabase, GcpSpannerBackupSchedule, and other downstream resources use to reference this instance. |
 | `status.outputs.state` | `string` | Instance state: CREATING or READY. CREATING indicates the instance is being provisioned. READY indicates the instance is available for use. |
-| `status.outputs.config` | `string` | The instance configuration the instance was created with (e.g. "regional-us-central1", "nam6") — the geographic topology handle auditors and capacity planners ask for. |
+| `status.outputs.config` | `string` | The instance configuration the instance was created with (e.g. "regional-us-central1", "nam6") — the geographic topology handle auditors and capacity planners ask for. Always the plain config name: the Spanner API reads the value back as the fully qualified projects/{project}/instanceConfigs/{name} path, and both engines normalize to the last path segment. |
 
 ## References
 

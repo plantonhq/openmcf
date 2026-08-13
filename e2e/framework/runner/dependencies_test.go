@@ -235,6 +235,68 @@ func TestTeardownDependencies_AggregatesFailures(t *testing.T) {
 	}
 }
 
+// TestTeardownDependencies_AnnotationRaisesAttempts guards the scoped
+// retry-budget seam: a prerequisite manifest carrying
+// planton.dev/e2e-teardown-attempts widens ITS OWN destroy budget (the
+// tens-of-minutes producer-release class, e.g. Cloud SQL's hold on the
+// service networking connection) while every other dependency keeps the
+// tight default. A malformed value must fall back to the default, never
+// fail the teardown.
+func TestTeardownDependencies_AnnotationRaisesAttempts(t *testing.T) {
+	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn
+	origBackoff := dependencyDestroyBackoff
+	dependencyDestroyBackoff = 0
+	t.Cleanup(func() {
+		pulumiDestroyFn, pulumiRemoveStackFn = origDestroy, origRemove
+		dependencyDestroyBackoff = origBackoff
+	})
+
+	dir := t.TempDir()
+	annotated := filepath.Join(dir, "snc.yaml")
+	if err := os.WriteFile(annotated, []byte(`apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpServiceNetworkingConnection
+metadata:
+  name: snc-prereq
+  annotations:
+    planton.dev/e2e-teardown-attempts: "9"
+spec: {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	malformed := filepath.Join(dir, "vpc.yaml")
+	if err := os.WriteFile(malformed, []byte(`apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVpcNetwork
+metadata:
+  name: vpc-prereq
+  annotations:
+    planton.dev/e2e-teardown-attempts: "soon"
+spec: {}
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	counts := map[string]int{}
+	pulumiDestroyFn = func(moduleDir, stackName, backendURL, stackInputFilePath string) (*PulumiResult, error) {
+		counts[stackName]++
+		return nil, errors.New("producer services are still using this connection")
+	}
+	pulumiRemoveStackFn = func(moduleDir, stackName, backendURL string) error { return nil }
+
+	deployed := []DependencyState{
+		{Dependency: Dependency{KindSlug: "gcpvpcnetwork", ManifestPath: malformed}, StackName: "stack-vpc"},
+		{Dependency: Dependency{KindSlug: "gcpservicenetworkingconnection", ManifestPath: annotated}, StackName: "stack-snc"},
+	}
+	if err := TeardownDependencies(deployed); err == nil {
+		t.Fatal("expected aggregated failure")
+	}
+	if counts["stack-snc"] != 9 {
+		t.Errorf("annotated dependency retried %d times, want 9", counts["stack-snc"])
+	}
+	if counts["stack-vpc"] != dependencyDestroyAttempts {
+		t.Errorf("malformed annotation should fall back to default %d, got %d", dependencyDestroyAttempts, counts["stack-vpc"])
+	}
+}
+
 // A fully clean teardown returns nil so healthy runs keep passing.
 func TestTeardownDependencies_AllCleanReturnsNil(t *testing.T) {
 	origDestroy, origRemove := pulumiDestroyFn, pulumiRemoveStackFn

@@ -1,7 +1,10 @@
 locals {
   project_id = var.spec.project_id != "" ? var.spec.project_id : null
 
-  instance_type     = var.spec.instance_type != "" ? var.spec.instance_type : "READ_POOL"
+  instance_type = var.spec.instance_type != "" ? var.spec.instance_type : "READ_POOL"
+  # Only ever non-empty for PRIMARY/SECONDARY instances (spec CEL): read
+  # pools derive availability from node_count and the API drops a sent
+  # value, which would re-plan dirty forever.
   availability_type = var.spec.availability_type != "" ? var.spec.availability_type : null
   display_name      = var.spec.display_name != "" ? var.spec.display_name : null
 

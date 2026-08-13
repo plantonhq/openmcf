@@ -224,6 +224,8 @@ message GcpDataprocClusterMasterConfig {
 
   // Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
   // If not specified, GCP selects a default machine type.
+  // Mutually exclusive with instance_flexibility_policy — a flexibility
+  // policy replaces the single machine type (see that field).
   string machine_type = 2;
 
   // Boot disk and local SSD configuration.
@@ -243,8 +245,11 @@ message GcpDataprocClusterMasterConfig {
 
   // Ranked machine-type preferences for master provisioning — keeps the
   // cluster creatable when the preferred type's zonal capacity dries up.
-  // Masters are on-demand capacity: provisioning_model_mix does not
-  // apply here (secondary workers only).
+  // REPLACES machine_type: with a flexibility policy present the API
+  // provisions solely from the ranked selections and drops a paired
+  // machineTypeUri from the stored config. Masters are on-demand
+  // capacity: provisioning_model_mix does not apply here (secondary
+  // workers only).
   GcpDataprocClusterInstanceFlexibilityPolicy instance_flexibility_policy = 7;
 
   // Masters have no standard/spot capacity mix — they are always
@@ -253,6 +258,18 @@ message GcpDataprocClusterMasterConfig {
     id: "master_flexibility_no_provisioning_mix"
     expression: "!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)"
     message: "provisioning_model_mix applies to secondary workers only"
+  };
+
+  // machine_type and instance_flexibility_policy are alternative
+  // provisioning contracts, never complements: the API silently drops a
+  // paired machineTypeUri from the stored config, and because
+  // machine_type is create-only the pairing re-plans as a whole-cluster
+  // REPLACEMENT on every subsequent apply (live-verified against the
+  // Dataproc API).
+  option (buf.validate.message).cel = {
+    id: "master_machine_type_xor_flexibility"
+    expression: "!(this.machine_type != '' && has(this.instance_flexibility_policy))"
+    message: "machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead"
   };
 }
 
@@ -270,6 +287,8 @@ message GcpDataprocClusterWorkerConfig {
 
   // Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
   // If not specified, GCP selects a default machine type.
+  // Mutually exclusive with instance_flexibility_policy — a flexibility
+  // policy replaces the single machine type (see that field).
   string machine_type = 2;
 
   // Boot disk and local SSD configuration.
@@ -291,8 +310,11 @@ message GcpDataprocClusterWorkerConfig {
 
   // Ranked machine-type preferences for primary-worker provisioning —
   // keeps scale-ups schedulable when the preferred type's zonal capacity
-  // dries up. Primary workers are on-demand capacity:
-  // provisioning_model_mix does not apply here (secondary workers only).
+  // dries up. REPLACES machine_type: with a flexibility policy present
+  // the API provisions solely from the ranked selections and drops a
+  // paired machineTypeUri from the stored config. Primary workers are
+  // on-demand capacity: provisioning_model_mix does not apply here
+  // (secondary workers only).
   GcpDataprocClusterInstanceFlexibilityPolicy instance_flexibility_policy = 8;
 
   // Primary workers have no standard/spot capacity mix — they are always
@@ -301,6 +323,18 @@ message GcpDataprocClusterWorkerConfig {
     id: "worker_flexibility_no_provisioning_mix"
     expression: "!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)"
     message: "provisioning_model_mix applies to secondary workers only"
+  };
+
+  // machine_type and instance_flexibility_policy are alternative
+  // provisioning contracts, never complements: the API silently drops a
+  // paired machineTypeUri from the stored config, and because
+  // machine_type is create-only the pairing re-plans as a whole-cluster
+  // REPLACEMENT on every subsequent apply (live-verified against the
+  // Dataproc API).
+  option (buf.validate.message).cel = {
+    id: "worker_machine_type_xor_flexibility"
+    expression: "!(this.machine_type != '' && has(this.instance_flexibility_policy))"
+    message: "machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead"
   };
 }
 

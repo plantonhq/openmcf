@@ -140,9 +140,11 @@ resource "google_memorystore_instance" "this" {
     content {
       weekly_maintenance_window {
         day = maintenance_policy.value.weekly_maintenance_window.day
+        # Hours only: the Memorystore API rejects a start_time carrying
+        # minutes (400 "Invalid start time, only hours are supported" —
+        # live-verified; narrower than Redis).
         start_time {
-          hours   = maintenance_policy.value.weekly_maintenance_window.hour
-          minutes = maintenance_policy.value.weekly_maintenance_window.minute
+          hours = maintenance_policy.value.weekly_maintenance_window.hour
         }
       }
     }

@@ -16,6 +16,19 @@ metadata:
 spec:
   policyName: planton-oss-e2e-cap-${E2E_RUN_ID}
   description: Ephemeral allowlist policy for Planton OSS E2E
+
+  # User labels arm the merge idiom (platform labels win on key conflicts).
+  labels:
+    team: platform
+
+  # The flagship advanced-options pairing from the canonical manifest:
+  # STANDARD JSON parsing with a deeper-than-default (8KB) body inspection
+  # size. request_body_inspection_size is Optional+Computed server-side, so
+  # the re-plan after apply is the echo probe.
+  advancedOptionsConfig:
+    jsonParsing: STANDARD
+    requestBodyInspectionSize: 16KB
+
   rules:
     - action: allow
       priority: 1000

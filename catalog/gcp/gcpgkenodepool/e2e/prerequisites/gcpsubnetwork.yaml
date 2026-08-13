@@ -3,6 +3,10 @@
 # subnetwork, so the cluster prerequisite's subnetwork reference resolves
 # identically whether the cluster is the component under test or a
 # prerequisite of this pool.
+#
+# Region us-east1 (2026-08-12): moved with the whole GKE chain after a
+# us-central1 GCE_STOCKOUT on cluster default-pool instances — the
+# recurring zonal-capacity class documented in e2e/README.md.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSubnetwork
 metadata:
@@ -24,7 +28,7 @@ spec:
       name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-gke-subnet
-  region: us-central1
+  region: us-east1
   ipCidrRange: 10.210.0.0/20
   privateIpGoogleAccess: true
   secondaryIpRanges:

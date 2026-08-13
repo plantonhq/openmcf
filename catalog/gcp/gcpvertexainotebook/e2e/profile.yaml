@@ -6,10 +6,21 @@ spec:
   # Composed scenario: VPC -> subnetwork chain before the notebook create.
   # Workbench instances take ~5-15 minutes per engine; batch runs with a
   # go test -timeout of at least 60m.
+  #
+  # The chain lives in us-east1 (relocated 2026-08-13): us-central1's
+  # zonal small-VM pools have stocked out on this exact machine class
+  # repeatedly (the documented ZONE_RESOURCE_POOL_EXHAUSTED class); the
+  # chain is self-contained, so region is a free variable pinned to
+  # measured capacity.
+  #
+  # Live-proven 2026-08-13 both engines under the apply-idempotency gate
+  # (deletion_policy DELETE round-trip included). Offline-proven-only arms
+  # with unblock conditions: the widened accelerator values
+  # (H100/H200/B200 need A3/A4 GPU capacity — quota-gated, expensive;
+  # unblock: a GPU quota grant on the test project) and the hyperdisk
+  # boot/data-disk types (need hyperdisk-capable machine series in the
+  # scenario; the widened CELs carry the provider ValidateEnum evidence).
   tier: 1
-  # The prior green predates the current spec shape (deletion_policy
-  # modeled from the spec instead of the Pulumi-side DELETE pin, the
-  # widened accelerator/hyperdisk value sets) — awaits live re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

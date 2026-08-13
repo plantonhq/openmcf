@@ -36,6 +36,21 @@ catch: the Identity Platform config's server-materialized
 only; prerequisite fixtures belong to other kinds' contracts. Arm it per
 provider after the catalog's known no-op re-plan classes are burned down.
 
+**The gate also catches OUTPUT-ONLY drift — an exported attribute whose
+read-back form differs from its apply-time form.** `terraform plan
+-detailed-exitcode` exits 2 for a plan whose only change is `Changes to
+Outputs` (zero resource changes), and some provider attributes are stored
+as the user's input at apply but read back normalized on the first refresh
+— typically a short name flipping to the fully qualified resource path
+(twice-seen: an Eventarc trigger's `name`, a Spanner instance's `config`
+flipping to `projects/{p}/instanceConfigs/{c}`). The resource itself
+re-plans clean (the provider diff-suppresses the attribute); only the
+module OUTPUT drifts, which users meet as a perpetual "changes to outputs"
+on every re-apply. The remedy is never to silence the gate: export a
+module-derived value (built from spec/identity), or normalize the
+attribute to the form the output contract documents — in BOTH engines, so
+stack outputs stay byte-identical.
+
 ## Directory Layout
 
 ### Component E2E Structure
@@ -133,6 +148,27 @@ service networking connection chain):
   the VPC, stranding a producer-side connection record that poisons the next
   scenario's same-named prerequisite chain (its connection create silently
   attaches to the stale record and no peering ever materializes).
+  **A prerequisite whose producer release is measured in TENS OF MINUTES
+  can declare its own wider budget** via `planton.dev/e2e-teardown-attempts:
+  "N"` on its install manifest (total attempts, same 60s spacing) — the
+  global default stays tight so genuinely failed teardowns keep reporting
+  fast. Know the class boundary before reaching for it: the Cloud SQL
+  chain's connection hold, historically ~4 minutes, was live-measured
+  UNRELEASED after 43 minutes of solo-verified retries (2026-08-12) — for
+  an EPHEMERAL fixture chain that unbounded wait buys nothing, so the
+  fixture instead sets `deletionPolicy: ABANDON` on the connection: the
+  teardown succeeds instantly, the (scenario+run-scoped, never-reused) VPC
+  delete clears the consumer-side peering, and the producer record is
+  unreachable, unbillable residue GCP reaps on its own schedule — the
+  undeletable-classes zero-orphan posture, chosen at the fixture, never
+  forced on customers (the kind's own DELETE semantics stay live-proven).
+  The ghost-poisoning above was ALSO live-confirmed the same day: after a
+  budget-exhausted teardown force-deleted the VPC, the NEXT scenario's
+  same-named fresh chain deployed clean but its connection teardown failed
+  "still using" with zero producer instances ever attached — the fix is
+  scenario-scoped cloud-side names (`${E2E_SCENARIO}` beside
+  `${E2E_RUN_ID}`) on the chain's VPC and range, so no scenario ever
+  recreates a predecessor's name.
 - **Dependency deploys run `pulumi up --refresh`** ([pulumi.go](framework/runner/pulumi.go)).
   Dependency stacks are keyed by run id, so every scenario in a run reuses the
   same stack name; if an earlier scenario's teardown half-completed, stale
@@ -225,7 +261,14 @@ record it as an E2E exclusion in the component's `e2e/profile.yaml` with the
 specific reason, and prove the surface offline instead. Fixed prerequisite
 names make this worse (a stranded subnet collides with the next run), so any
 scenario in an async-release blast radius should carry `${E2E_RUN_ID}` in its
-prerequisites' cloud-side names.
+prerequisites' cloud-side names. Probe-confirmed 2026-08-11: the hold applies
+even to an IDLE service (never scaled, deleted seconds after create) and
+equally to Cloud Functions Gen 2 (they run on Cloud Run infrastructure) — do
+not expect a short-lived fixture to dodge it, and budget beyond the old
+"1-2 hours" figure: the probe's reservation was still held at 2h35m and
+released somewhere before the 4h mark. When in doubt, the 10-minute probe
+is: scratch VPC + subnet, `gcloud run deploy --network/--subnet`, delete
+the service, attempt the subnet delete and read the error.
 
 ### Resolving `valueFrom` references in composed scenarios
 
@@ -1130,13 +1173,20 @@ API call with it (e.g. GET the test project via Cloud Resource Manager). The
 harness `Setup` itself fail-fasts correctly — this trap only bites pre-session
 checks that trust the exit code.
 
-**IAM service-account read-after-delete is eventually consistent:** a GET
-issued within seconds of a successful `serviceAccounts.delete` can still
-answer 200 from a stale replica (live-caught on the Terraform SA minimal
-scenario: destroy succeeded, VERIFY-CLN 1.5s later still saw the account;
-an identical cycle minutes earlier read 404 immediately). The SA verifier
-polls for up to 90s and treats 403 as a recently-deleted signal alongside
-404 — do not tighten VERIFY-CLN to a single GET for this kind.
+**Read-after-delete is eventually consistent on several GCP APIs — poll,
+never single-GET, in VERIFY-CLN.** Two live-caught members so far: IAM
+service accounts (a GET within seconds of a successful
+`serviceAccounts.delete` can still answer 200 from a stale replica —
+destroy succeeded, VERIFY-CLN 1.5s later still saw the account, while an
+identical cycle minutes earlier read 404 immediately) and Cloud Run
+domain mappings (the regional Knative API kept answering 200 for ~40s
+after the provider's destroy returned clean — the poll passed at 43.5s).
+Both verifiers poll for up to 90s at 10s intervals; the SA verifier
+additionally treats 403 as a recently-deleted signal alongside 404. When
+a new kind's VERIFY-CLN fails with "still exists" seconds after a clean
+destroy, probe the object manually before touching module code — if it
+is gone minutes later, the kind is a new member of this class and its
+verifier needs the poll posture, not the modules a fix.
 
 **Backend contract:** every scenario's test context must carry the run-scoped
 Pulumi file backend URL — even Terraform scenarios, because dependency
@@ -1297,6 +1347,58 @@ first joins the harness, pre-enable its APIs on the test project once
 (`gcloud services enable <api> --project <test-project>`) before the first
 live run; from then on the in-module enablement carries every future run.
 
+**The same class has a SERVICE-AGENT flavor:** some services also provision
+a per-project service agent asynchronously after enablement, and the first
+create can race it — Workflows rejects with 400 "Workflows service agent
+does not exist" minutes after the API itself reads ENABLED (live-caught:
+the very next scenario, 40 seconds later, passed). Alongside the API
+pre-enable, pre-provision the agent explicitly and idempotently via
+Service Usage (`POST .../v1beta1/projects/{p}/services/{api}:generateServiceIdentity`
+— also the right pre-step for Eventarc's P4SA); a failure of this shape on
+a first-ever run is environmental, never a module defect — re-run before
+touching code.
+
+**Fleet-backed managed services can fail on ZONAL CAPACITY, wearing an
+"internal error" mask:** a Serverless VPC Access connector create failed
+repeatedly with `Error code 13 ... VPC Access connector failed to get
+healthy. Please check GCE quotas, logs and org policies and recreate` while
+quotas, IAM, and org policies were all verified healthy. The truth was in
+the AUDIT LOG: every `v1.compute.instances.insert` for the connector's
+managed `aet-*` fleet failed with `ZONE_RESOURCE_POOL_EXHAUSTED` across
+us-central1-b/c/f — a GCP-side stockout of the zonal machine pools, hit for
+e2-micro AND e2-standard-4 in the same window, while the identical connector
+went READY in us-east1 minutes later. The diagnostic recipe: query Cloud
+Logging for `severity>=WARNING resource.type="gce_instance"` in the failure
+window and read the insert errors — never debug the module first. The fix
+is regional: a self-contained fixture chain (the connector's own VPC/subnet)
+moves to a quieter region; a chain shared with other kinds records the
+deferral with the stockout evidence instead. A failed connector also
+CASCADES: its dead fleet's auto-created `aet-*` firewalls and instance
+groups hold the VPC/subnetwork against deletion past the framework's
+6×60s teardown retries, so sweep connectors (state ERROR) FIRST, wait for
+GCP to reap the fleet, then delete subnets and networks.
+
+The same class has a GKE-CREATE flavor that needs no audit-log query — the
+create error itself carries `[GCE_STOCKOUT]` verbatim: a Standard cluster
+create boots TRANSIENT default-pool instances (one per zone on a regional
+cluster) even when the module removes the default pool, and the cluster
+create fails after ~35 minutes of IGM waiting ("Not all instances running
+in IGM ... [GCE_STOCKOUT] ... does not have enough resources available")
+when any zone is stocked out. A zonal cluster in the same region can pass
+minutes earlier while the regional shape fails — regional spreads across
+three zones, so ONE exhausted zone fails the whole create. The fix is the
+same regional relocation, and because clusters must be region-matched to
+their subnetwork fixture, the kind's WHOLE chain (all scenarios + the
+consumer-scoped subnetwork + the cluster install profile, including
+same-shaped copies under consuming kinds) moves together.
+
+The class also has a DATAPROC flavor, and auto-zone placement does NOT
+dodge it: with no zone pinned, Dataproc's own placement still chose the
+exhausted us-central1-a and the create failed with
+ZONE_RESOURCE_POOL_EXHAUSTED / "does not have enough resources" on
+e2-standard-2 (live-hit 2026-08-12; single-node AND multi-node shapes
+alike). Same response: relocate the kind's whole region-matched chain.
+
 **Some GCP APIs require a quota project on user-credential calls:** the
 Identity Toolkit API (Identity Platform) rejects calls made with plain
 user ADC — 403 "requires a quota project, which is not set by default" —
@@ -1333,6 +1435,45 @@ ADC-authenticated plain HTTP client (`Services.RestClient`) for exactly
 this: probe the service's documented REST GET path and decode the few
 fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
+
+**Shell harnesses can DOUBLE-SPAWN a lane invocation — and an interrupted
+invocation orphans the second spawn's fixtures.** Four-times-observed
+signature: one launch produces TWO OR MORE `go test` processes with
+different run ids; the first runs to a clean PASS while the second either
+409s on the first's fixtures or — if the invocation is interrupted/killed —
+dies mid-scenario with its run-scoped chain undestroyed. The third
+observation adds two facts: it strikes WITHOUT any interrupt (a chained
+`go test ... && go test ...` command was doubled whole, both siblings ran
+to clean completion), and the collision surface includes the SHARED module
+source directories — the sibling's dependency deploy overwrote the kind's
+`stack-input.yaml` between a lane's apply and its IDEMPOTENCY preview, so
+the preview compiled against the sibling's prerequisite manifest and
+reported a bogus replace (a different cloud-side name from a run id no
+logged lane used is the tell). The fourth observation adds a SERIAL
+flavor with two new tells: a single un-chained invocation was spawned
+THREE times back-to-back (edges overlapping), and because the launch
+piped through `tee` without `-a`, each respawn TRUNCATED the log — the
+surviving file and the reported wall-clock describe only the LAST spawn,
+so the invocation looks singular unless you reconstruct from the cloud
+audit log (query the service's create/delete methods for the window and
+group by the run-id embedded in resource names; every run id beyond the
+logged one is a phantom spawn). Mitigations: launch ONE `go test`
+invocation per shell command (never chain lanes — a doubled chain
+multiplies the overlap window), and smoke-check for a sibling process
+right after launch.
+When killing a sibling spawn, kill its PROCESS GROUP (`kill -- -<pgid>`),
+not just the `go test`/test-binary PIDs: an in-flight `pulumi up` child
+survives a parent-only kill and COMPLETES its deploy minutes later,
+leaving a fully-created orphan chain (live-observed: a killed secret
+lane's surviving child finished a 20-minute Composer environment create
+with nobody left to destroy it).
+Diagnosis and recovery:
+before sweeping anything after a lane failure or interrupt, `ps` for a
+concurrent sibling process (a live sibling's "orphans" are its own
+resources mid-teardown — racing it corrupts both runs); once no process
+remains, sweep BY RUN ID — list each fixture family and delete objects
+whose names carry a run-id suffix that matches no logged lane (creation
+timestamps from the audit log date the dead spawn precisely).
 
 **Run GCP e2e batches SEQUENTIALLY — never two `go test` processes at once:**
 the GCP dependency deploys write each prerequisite's stack-input into the
@@ -1406,6 +1547,19 @@ scenario is as simple as dropping a YAML file into the component's
    PascalCase trivially -- a `toPascalCase` entry in
    `pkg/e2e/profile/discover.go` so the CI matrix regex matches it
 6. The CI workflow picks up the new component automatically from the profile
+
+> **A prerequisite-only kind still needs steps 3 and 5 to be provable.** A
+> kind consumed by other kinds' chains gets deployed and verified as a
+> FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it
+> easy to believe it is covered -- but fixture duty proves another kind's
+> lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/`
+> (`DiscoverTestScenarios` returns nil when the directory is absent, and the
+> runner then skips), the canonical `e2e/manifest.yaml` is a documented
+> example and offline-plan fixture that never runs live, and a missing
+> `Test{Kind}_{Provisioner}` pair means a `-run` filter silently matches
+> zero tests. First caught on a kind whose only live exercise for weeks was
+> as a chained VIP fixture: its profile claimed testability while no lane
+> could ever run it.
 
 ## Adding a New Provider
 

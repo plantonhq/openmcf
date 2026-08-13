@@ -194,11 +194,12 @@ func spannerInstance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provi
 	ctx.Export(OpInstanceName, createdInstance.Name)
 	ctx.Export(OpState, createdInstance.State)
 
-	// The bridged provider returns config as the fully qualified
-	// projects/{p}/instanceConfigs/{name} path while the Terraform provider
-	// stores the plain name the spec passed in. The output contract is the
-	// plain config name (what spec authors and API callers use), so strip
-	// the path prefix for cross-engine parity.
+	// The Spanner API's read-back returns config as the fully qualified
+	// projects/{p}/instanceConfigs/{name} path (the bridged provider
+	// surfaces it at create; the Terraform provider's refresh does the
+	// same). The output contract is the plain config name (what spec
+	// authors and API callers use), so strip the path prefix — the
+	// Terraform module normalizes identically.
 	ctx.Export(OpConfig, createdInstance.Config.ApplyT(func(config string) string {
 		if idx := strings.LastIndex(config, "/"); idx >= 0 {
 			return config[idx+1:]

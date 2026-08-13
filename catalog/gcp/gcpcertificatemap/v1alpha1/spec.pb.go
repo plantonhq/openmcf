@@ -154,7 +154,11 @@ type GcpCertificateMapEntry struct {
 	EntryName string `protobuf:"bytes,1,opt,name=entry_name,json=entryName,proto3" json:"entry_name,omitempty"`
 	// The hostname this entry serves: a FQDN (example.com) or a wildcard
 	// expression (*.example.com) matched against the client's SNI. Exactly
-	// one of hostname or matcher. Immutable.
+	// one of hostname or matcher. Immutable. The API validates COVERAGE at
+	// entry-create time (live-verified 400: certificate "..." does not
+	// cover map entry hostname "...") — every attached certificate's
+	// domain set must cover this hostname, regardless of the
+	// certificate's provisioning state.
 	Hostname string `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
 	// A predefined matcher instead of a hostname. The API's documented
 	// value is "PRIMARY" — the fallback entry used when no hostname entry

@@ -22,10 +22,19 @@ where that hostname has no binding at the proxy.
 ## PROVISIONING certificates can be attached — serving is another matter
 
 Certificate Manager accepts map entries that reference managed
-certificates still in PROVISIONING; the handshake serves them only once
-they turn ACTIVE. Wire the map and proxy first, complete DNS
-authorization after — the order works, but watch the certificate's
-managed_state before declaring the domain live.
+certificates still in PROVISIONING (live-verified); the handshake
+serves them only once they turn ACTIVE. Wire the map and proxy first,
+complete DNS authorization after — the order works, but watch the
+certificate's managed_state before declaring the domain live.
+
+## Every attached certificate must COVER the entry hostname — at create
+
+The one check the API does run at entry-create time is coverage: each
+certificate in the entry's list must have the hostname in its domain
+set (wildcards count), or the create fails with `certificate "..." does
+not cover map entry hostname "..."` (live-verified 400 — provisioning
+state does not matter, coverage does). Renaming a domain therefore
+means a new certificate AND a matching entry change in the same plan.
 
 ## Detach from proxies BEFORE destroying
 

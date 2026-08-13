@@ -52,12 +52,23 @@ boot disk is the one disk this component creates inline (image/snapshot
 sources, size, type, tuning); `autoDelete: false` keeps it after the VM
 for forensics or re-attachment, and `replicaZones` (exactly two, one the
 instance's own zone) makes it a REGIONAL disk for zone-failure
-resilience. `forceAttach` exists for exactly one moment: regional-disk
+resilience — but only from a `sourceSnapshot` boot source: GCP cannot
+create a regional boot disk from an image (the API rejects it outright),
+so the regional-boot pattern is snapshot-a-golden-disk, then boot from
+the snapshot. The spec enforces the pairing before anything deploys. `forceAttach` exists for exactly one moment: regional-disk
 failover, when the disk is still attached to a failed instance —
 force-attaching a zonal disk is an API error, and setting the flag
 replaces the VM. Scratch disks are the opposite end of the spectrum:
 physically attached local SSDs whose contents vanish on stop or
 preemption — caches and temp space only.
+
+One boot-disk trap earns its own warning: `guestOsFeatures` is
+all-or-nothing. The API merges what you declare with the image's own
+features at create, but every later apply compares your list against the
+stored (merged) set and plans a full VM replacement on any difference —
+so declaring just the feature you wanted to add silently schedules your
+VM for recreation on the next apply. Either leave it unset (the image's
+features apply cleanly) or declare the image's complete feature set.
 
 ## deletion_protection vs deletion_policy
 

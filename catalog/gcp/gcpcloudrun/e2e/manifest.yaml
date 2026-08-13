@@ -56,7 +56,6 @@ spec:
           path: /
       readinessProbe:
         periodSeconds: 10
-        successThreshold: 2
         httpGet:
           path: /
       dependsOn:

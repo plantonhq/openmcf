@@ -18,7 +18,10 @@ metadata:
     - planton-e2e
 spec:
   policyId: e2e-dpc-policy-${E2E_RUN_ID}
-  location: us-central1
+  # Region-matched to the consuming cluster's scenarios — Dataproc
+  # accepts only same-region policies (us-east1 since the 2026-08-12
+  # us-central1 stockout relocation).
+  location: us-east1
   workerConfig:
     maxInstances: 4
     minInstances: 2

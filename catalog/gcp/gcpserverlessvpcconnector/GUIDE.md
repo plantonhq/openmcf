@@ -44,6 +44,22 @@ instance band, the two conflict, and it forces replacement on change.
 GCP builds and tears down a managed instance fleet: budget 3–5 minutes
 each way. In pipelines, do not treat a slow connector create as a hang.
 
+## "Failed to get healthy" is usually capacity, not configuration
+
+A create that ends in `Error code 13: ... VPC Access connector failed to
+get healthy. Please check GCE quotas, logs and org policies and recreate`
+points you at quotas and policies, but the most common cause is neither:
+the connector's managed fleet draws from the region's shared zonal machine
+pools, and a pool stockout fails every instance insert with
+`ZONE_RESOURCE_POOL_EXHAUSTED` (visible in Cloud Logging under
+`resource.type="gce_instance"`, `severity>=WARNING` — read those entries
+before changing anything). Verified live: the same connector spec failed
+for both e2-micro and e2-standard-4 in us-central1 during a stockout and
+went READY in us-east1 minutes later. If the region is stocked out, retry
+later or place the connector in another region; a failed connector must be
+deleted before its VPC or subnet can be, because its dead fleet's
+auto-created `aet-*` firewall rules hold the network.
+
 ## One connector serves the region
 
 Cloud Functions, Cloud Run, and App Engine in the same region share one

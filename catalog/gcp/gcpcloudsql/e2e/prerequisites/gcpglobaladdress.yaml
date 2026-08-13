@@ -18,7 +18,8 @@ metadata:
     - planton-e2e
 spec:
   description: Ephemeral VPC_PEERING range for the Cloud SQL E2E chain; safe to delete
-  addressName: planton-oss-e2e-gcpgip-${E2E_RUN_ID}
+  # Scenario-scoped alongside the VPC name (see the VPC fixture's comment).
+  addressName: planton-oss-e2e-gcpgip-${E2E_SCENARIO}-${E2E_RUN_ID}
   addressType: INTERNAL
   purpose: VPC_PEERING
   prefixLength: 16

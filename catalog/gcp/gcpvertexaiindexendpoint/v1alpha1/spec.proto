@@ -39,6 +39,12 @@ message GcpVertexAiIndexEndpointPscAutomationConfig {
 // once an index is deployed). The modern private-networking model —
 // no VPC peering required.
 message GcpVertexAiIndexEndpointPrivateServiceConnectConfig {
+  option (buf.validate.message).cel = {
+    id: "psc_automation_unsupported_on_index_endpoints"
+    expression: "size(this.psc_automation_configs) == 0"
+    message: "psc_automation_configs is not honored on index endpoints — the Vertex AI API accepts the create but silently drops the configs (nothing is stored and no consumer-side endpoint is ever provisioned); use project_allowlist with consumer-managed forwarding rules instead"
+  };
+
   // Must be true when this block is present — the API's enablement flag
   // for PSC on the endpoint. Modeled explicitly (not inferred from block
   // presence) because it is the API's own contract field. Immutable.
@@ -55,10 +61,16 @@ message GcpVertexAiIndexEndpointPrivateServiceConnectConfig {
 
   // PSC endpoints Vertex AI creates automatically in consumer
   // projects/networks (instead of consumers wiring forwarding rules by
-  // hand). The provider documents this field as used by online
-  // inference (prediction) endpoints only — on index endpoints, prefer
-  // project_allowlist with consumer-managed forwarding rules until
-  // Google extends automation to vector search. Immutable.
+  // hand). The provider models this field on index endpoints, but the
+  // live API does NOT honor it there: a create carrying automation
+  // configs succeeds while the stored endpoint omits them and no
+  // consumer-side endpoint is ever provisioned (API-verified against a
+  // live index endpoint; the provider documents the field as used by
+  // online inference endpoints only). Because the PSC block is
+  // immutable, that silent drop would surface to users as a perpetual
+  // replacement diff on every re-plan — so this field is refused by
+  // validation until Google extends automation to vector search. Use
+  // project_allowlist with consumer-managed forwarding rules. Immutable.
   repeated GcpVertexAiIndexEndpointPscAutomationConfig psc_automation_configs = 3;
 }
 

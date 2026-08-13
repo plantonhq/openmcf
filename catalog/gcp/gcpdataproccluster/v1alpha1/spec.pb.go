@@ -615,6 +615,8 @@ type GcpDataprocClusterMasterConfig struct {
 	NumInstances int32 `protobuf:"varint,1,opt,name=num_instances,json=numInstances,proto3" json:"num_instances,omitempty"`
 	// Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
 	// If not specified, GCP selects a default machine type.
+	// Mutually exclusive with instance_flexibility_policy — a flexibility
+	// policy replaces the single machine type (see that field).
 	MachineType string `protobuf:"bytes,2,opt,name=machine_type,json=machineType,proto3" json:"machine_type,omitempty"`
 	// Boot disk and local SSD configuration.
 	DiskConfig *GcpDataprocClusterDiskConfig `protobuf:"bytes,3,opt,name=disk_config,json=diskConfig,proto3" json:"disk_config,omitempty"`
@@ -629,8 +631,11 @@ type GcpDataprocClusterMasterConfig struct {
 	ImageUri string `protobuf:"bytes,6,opt,name=image_uri,json=imageUri,proto3" json:"image_uri,omitempty"`
 	// Ranked machine-type preferences for master provisioning — keeps the
 	// cluster creatable when the preferred type's zonal capacity dries up.
-	// Masters are on-demand capacity: provisioning_model_mix does not
-	// apply here (secondary workers only).
+	// REPLACES machine_type: with a flexibility policy present the API
+	// provisions solely from the ranked selections and drops a paired
+	// machineTypeUri from the stored config. Masters are on-demand
+	// capacity: provisioning_model_mix does not apply here (secondary
+	// workers only).
 	InstanceFlexibilityPolicy *GcpDataprocClusterInstanceFlexibilityPolicy `protobuf:"bytes,7,opt,name=instance_flexibility_policy,json=instanceFlexibilityPolicy,proto3" json:"instance_flexibility_policy,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
@@ -729,6 +734,8 @@ type GcpDataprocClusterWorkerConfig struct {
 	NumInstances int32 `protobuf:"varint,1,opt,name=num_instances,json=numInstances,proto3" json:"num_instances,omitempty"`
 	// Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
 	// If not specified, GCP selects a default machine type.
+	// Mutually exclusive with instance_flexibility_policy — a flexibility
+	// policy replaces the single machine type (see that field).
 	MachineType string `protobuf:"bytes,2,opt,name=machine_type,json=machineType,proto3" json:"machine_type,omitempty"`
 	// Boot disk and local SSD configuration.
 	DiskConfig *GcpDataprocClusterDiskConfig `protobuf:"bytes,3,opt,name=disk_config,json=diskConfig,proto3" json:"disk_config,omitempty"`
@@ -744,8 +751,11 @@ type GcpDataprocClusterWorkerConfig struct {
 	MinNumInstances int32 `protobuf:"varint,7,opt,name=min_num_instances,json=minNumInstances,proto3" json:"min_num_instances,omitempty"`
 	// Ranked machine-type preferences for primary-worker provisioning —
 	// keeps scale-ups schedulable when the preferred type's zonal capacity
-	// dries up. Primary workers are on-demand capacity:
-	// provisioning_model_mix does not apply here (secondary workers only).
+	// dries up. REPLACES machine_type: with a flexibility policy present
+	// the API provisions solely from the ranked selections and drops a
+	// paired machineTypeUri from the stored config. Primary workers are
+	// on-demand capacity: provisioning_model_mix does not apply here
+	// (secondary workers only).
 	InstanceFlexibilityPolicy *GcpDataprocClusterInstanceFlexibilityPolicy `protobuf:"bytes,8,opt,name=instance_flexibility_policy,json=instanceFlexibilityPolicy,proto3" json:"instance_flexibility_policy,omitempty"`
 	unknownFields             protoimpl.UnknownFields
 	sizeCache                 protoimpl.SizeCache
@@ -3036,7 +3046,7 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x88\x01\xbaH\x84\x01\x1a\x81\x01\n" +
-	"#network_subnetwork_mutual_exclusion\x12,only one of network or subnetwork may be set\x1a,!(has(this.network) && has(this.subnetwork))\"\xfb\x05\n" +
+	"#network_subnetwork_mutual_exclusion\x12,only one of network or subnetwork may be set\x1a,!(has(this.network) && has(this.subnetwork))\"\xfe\a\n" +
 	"\x1eGcpDataprocClusterMasterConfig\x12#\n" +
 	"\rnum_instances\x18\x01 \x01(\x05R\fnumInstances\x12!\n" +
 	"\fmachine_type\x18\x02 \x01(\tR\vmachineType\x12j\n" +
@@ -3045,8 +3055,9 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\faccelerators\x18\x04 \x03(\v2J.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterAcceleratorR\faccelerators\x12(\n" +
 	"\x10min_cpu_platform\x18\x05 \x01(\tR\x0eminCpuPlatform\x12\x1b\n" +
 	"\timage_uri\x18\x06 \x01(\tR\bimageUri\x12\x98\x01\n" +
-	"\x1binstance_flexibility_policy\x18\a \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
-	"&master_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\"\xa7\x06\n" +
+	"\x1binstance_flexibility_policy\x18\a \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd5\x03\xbaH\xd1\x03\x1a\xcb\x01\n" +
+	"&master_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\x1a\x80\x02\n" +
+	"#master_machine_type_xor_flexibility\x12\x93\x01machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead\x1aC!(this.machine_type != '' && has(this.instance_flexibility_policy))\"\xaa\b\n" +
 	"\x1eGcpDataprocClusterWorkerConfig\x12#\n" +
 	"\rnum_instances\x18\x01 \x01(\x05R\fnumInstances\x12!\n" +
 	"\fmachine_type\x18\x02 \x01(\tR\vmachineType\x12j\n" +
@@ -3056,8 +3067,9 @@ const file_catalog_gcp_gcpdataproccluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10min_cpu_platform\x18\x05 \x01(\tR\x0eminCpuPlatform\x12\x1b\n" +
 	"\timage_uri\x18\x06 \x01(\tR\bimageUri\x12*\n" +
 	"\x11min_num_instances\x18\a \x01(\x05R\x0fminNumInstances\x12\x98\x01\n" +
-	"\x1binstance_flexibility_policy\x18\b \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd2\x01\xbaH\xce\x01\x1a\xcb\x01\n" +
-	"&worker_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\"q\n" +
+	"\x1binstance_flexibility_policy\x18\b \x01(\v2X.dev.planton.gcp.gcpdataproccluster.v1alpha1.GcpDataprocClusterInstanceFlexibilityPolicyR\x19instanceFlexibilityPolicy:\xd5\x03\xbaH\xd1\x03\x1a\xcb\x01\n" +
+	"&worker_flexibility_no_provisioning_mix\x128provisioning_model_mix applies to secondary workers only\x1ag!has(this.instance_flexibility_policy) || !has(this.instance_flexibility_policy.provisioning_model_mix)\x1a\x80\x02\n" +
+	"#worker_machine_type_xor_flexibility\x12\x93\x01machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead\x1aC!(this.machine_type != '' && has(this.instance_flexibility_policy))\"q\n" +
 	"#GcpDataprocClusterInstanceSelection\x12-\n" +
 	"\rmachine_types\x18\x01 \x03(\tB\b\xbaH\x05\x92\x01\x02\b\x01R\fmachineTypes\x12\x1b\n" +
 	"\x04rank\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x04rank\"\xc2\x01\n" +

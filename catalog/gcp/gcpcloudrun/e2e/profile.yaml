@@ -18,6 +18,6 @@ spec:
   # endpoint -- each is an arm the proof lane designs live or records as a
   # deferral with its unblock condition.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

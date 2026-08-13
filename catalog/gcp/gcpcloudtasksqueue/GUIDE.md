@@ -16,10 +16,18 @@ this reason — choose one that outlives the current service name.
 `desiredState: PAUSED` holds every task in the queue while producers
 keep enqueueing — the right first move when the target is degraded:
 nothing is lost, nothing dispatches, and resuming is a one-line spec
-edit. The flip side of declarative: an out-of-band
-`gcloud tasks queues pause` is REVERTED on the next apply. Pause in the
-manifest, not in the console, or the next deploy resumes dispatch into
-the incident.
+edit (both directions live-verified).
+
+Know the limit of declarative here: an out-of-band
+`gcloud tasks queues pause` is NOT corrected by the next apply. The
+provider tracks `desiredState` as a config-only value and never reads
+the queue's live dispatch state back, so an apply whose spec value did
+not change plans zero changes and leaves the queue paused
+(live-verified). Two consequences: a console/CLI pause during an
+incident safely survives routine deploys — and it also means nobody's
+apply will resume the queue for you. Resume the way you paused, or
+flip the spec `PAUSED` → apply → `RUNNING` → apply so the value change
+triggers the provider's resume call.
 
 ## Rate limits are the target's contract, not the queue's
 

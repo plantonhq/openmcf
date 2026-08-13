@@ -32,7 +32,6 @@ spec:
   readPoolConfig:
     nodeCount: 2
   cpuCount: 4
-  availabilityType: REGIONAL
 ```
 
 ```shell

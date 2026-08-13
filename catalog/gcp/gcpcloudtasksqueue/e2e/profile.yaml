@@ -8,7 +8,15 @@ spec:
   # (the soft-delete-reserved identifier class). The http-target-oidc
   # scenario composes the GcpServiceAccount prerequisite live (OIDC token
   # FK resolution proof).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (4/4 lane runs). The declarative pause contract was live-proven
+  # via a throwaway apply cycle (2026-08-12): RUNNING -> PAUSED -> RUNNING
+  # spec edits each drove the real queue state, AND the same probe caught
+  # that an out-of-band gcloud pause is NOT reverted by an unchanged-spec
+  # apply (the provider tracks desired_state config-only; truth landed on
+  # the spec field comment, README, catalog.md, and GUIDE).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

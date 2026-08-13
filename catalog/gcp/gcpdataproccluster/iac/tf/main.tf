@@ -105,7 +105,11 @@ resource "google_dataproc_cluster" "cluster" {
       dynamic "master_config" {
         for_each = cluster_config.value.master_config != null ? [cluster_config.value.master_config] : []
         content {
-          num_instances    = master_config.value.num_instances > 0 ? master_config.value.num_instances : null
+          num_instances = master_config.value.num_instances > 0 ? master_config.value.num_instances : null
+          # machine_type never coexists with instance_flexibility_policy
+          # (spec CEL): the API drops a paired machineTypeUri from the
+          # stored config, and the create-only argument then re-plans as
+          # cluster replacement forever.
           machine_type     = master_config.value.machine_type != "" ? master_config.value.machine_type : null
           min_cpu_platform = master_config.value.min_cpu_platform != "" ? master_config.value.min_cpu_platform : null
           image_uri        = master_config.value.image_uri != "" ? master_config.value.image_uri : null
@@ -154,7 +158,9 @@ resource "google_dataproc_cluster" "cluster" {
       dynamic "worker_config" {
         for_each = cluster_config.value.worker_config != null ? [cluster_config.value.worker_config] : []
         content {
-          num_instances     = worker_config.value.num_instances > 0 ? worker_config.value.num_instances : null
+          num_instances = worker_config.value.num_instances > 0 ? worker_config.value.num_instances : null
+          # machine_type never coexists with instance_flexibility_policy
+          # (spec CEL) — see the master_config note.
           machine_type      = worker_config.value.machine_type != "" ? worker_config.value.machine_type : null
           min_cpu_platform  = worker_config.value.min_cpu_platform != "" ? worker_config.value.min_cpu_platform : null
           image_uri         = worker_config.value.image_uri != "" ? worker_config.value.image_uri : null

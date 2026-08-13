@@ -61,6 +61,9 @@ spec:
     maxUnavailable: 1
     strategy: SURGE
   deletionPolicy: DELETE
+  # Customized node drain requires per-project enablement from GCP support
+  # (the API rejects it otherwise) — shown here as the documented example
+  # of drain pacing on allowlisted projects.
   nodeDrainConfig:
     graceTerminationDuration: "60s"
     pdbTimeoutDuration: "600s"
@@ -112,8 +115,10 @@ spec:
         memoryAvailable: 200Mi
       evictionSoftGracePeriod:
         memoryAvailable: "90s"
+      # Percentage-only: GKE rejects absolute quantities for minimum
+      # reclaim (the soft thresholds above accept either form).
       evictionMinimumReclaim:
-        memoryAvailable: 100Mi
+        memoryAvailable: "10%"
       crashLoopBackOff:
         maxContainerRestartPeriod: "300s"
       topologyManager:
@@ -1481,37 +1486,49 @@ each eviction free at least this much of the signal's resource.
 
 `string`
 
-Minimum reclaim for memory.available.
+Minimum reclaim for memory.available, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.memory_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsAvailable
 
 `string`
 
-Minimum reclaim for nodefs.available.
+Minimum reclaim for nodefs.available, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.nodefs_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsInodesFree
 
 `string`
 
-Minimum reclaim for nodefs.inodesFree.
+Minimum reclaim for nodefs.inodesFree, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.nodefs_inodes_free must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsAvailable
 
 `string`
 
-Minimum reclaim for imagefs.available.
+Minimum reclaim for imagefs.available, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.imagefs_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsInodesFree
 
 `string`
 
-Minimum reclaim for imagefs.inodesFree.
+Minimum reclaim for imagefs.inodesFree, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.imagefs_inodes_free must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.pidAvailable
 
 `string`
 
-Minimum reclaim for pid.available.
+Minimum reclaim for pid.available, percentage like "10%".
+
+- rule: eviction_minimum_reclaim.pid_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.crashLoopBackOff
 
@@ -2176,7 +2193,11 @@ silences the read-side queries.
 How nodes drain when the POOL ITSELF is deleted or replaced: grace
 periods and whether PodDisruptionBudgets are honored during the
 teardown. Distinct from upgrade_settings, which paces upgrades of a
-pool that continues to exist.
+pool that continues to exist. NOTE: customized node drain requires
+project-level enablement from GCP support — on a project without it,
+the API rejects the create with "customized node drain timeout is not
+enabled for this project, please contact your account manager or open
+a support case to enable it".
 
 ### spec.nodeDrainConfig.graceTerminationDuration
 

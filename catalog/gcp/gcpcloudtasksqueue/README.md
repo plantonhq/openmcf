@@ -71,7 +71,7 @@ Note: `max_burst_size` is computed by GCP from `max_dispatches_per_second` and c
 - Cloud Tasks queues do **NOT** support GCP labels.
 - Queue name and location are **immutable** after creation, and a deleted queue's ID is reserved for up to 7 days.
 - This component manages the queue only. Individual tasks are created by your application code using the Cloud Tasks API.
-- Pause/resume is declarative: `desired_state` pins the queue to `RUNNING` (default) or `PAUSED` and is reconciled on every apply — an out-of-band `gcloud tasks queues pause` is reverted to the spec's value on the next apply.
+- Pause/resume is declarative for spec edits: changing `desired_state` (`RUNNING` default / `PAUSED`) and applying pauses or resumes the queue. It does NOT correct drift: the provider never reads the live dispatch state back, so an out-of-band `gcloud tasks queues pause` survives applies whose spec value is unchanged — resume out-of-band, or flip the spec `PAUSED` → apply → `RUNNING` → apply.
 - `deletion_policy` decides what destroy does: `DELETE` (default) removes the queue and its backlog, `PREVENT` fails the destroy, `ABANDON` leaves the queue running unmanaged.
 
 ## Outputs

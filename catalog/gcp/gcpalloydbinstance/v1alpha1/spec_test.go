@@ -60,6 +60,13 @@ var _ = ginkgo.Describe("GcpAlloydbInstanceSpec", func() {
 		}
 	}
 
+	minimalPrimary := func() *GcpAlloydbInstance {
+		r := minimalReadPool()
+		r.Spec.InstanceType = ptr("PRIMARY")
+		r.Spec.ReadPoolConfig = nil
+		return r
+	}
+
 	expectValid := func(r *GcpAlloydbInstance) {
 		gomega.Expect(validator.Validate(r)).To(gomega.Succeed())
 	}
@@ -154,24 +161,46 @@ var _ = ginkgo.Describe("GcpAlloydbInstanceSpec", func() {
 	})
 
 	ginkgo.It("accepts the UNSPECIFIED sentinels the provider validates", func() {
-		r := minimalReadPool()
+		r := minimalPrimary()
 		r.Spec.ActivationPolicy = "ACTIVATION_POLICY_UNSPECIFIED"
 		r.Spec.AvailabilityType = "AVAILABILITY_TYPE_UNSPECIFIED"
 		expectValid(r)
 	})
 
 	ginkgo.It("accepts gce_zone on a ZONAL instance", func() {
-		r := minimalReadPool()
+		r := minimalPrimary()
 		r.Spec.AvailabilityType = "ZONAL"
 		r.Spec.GceZone = "us-central1-a"
 		expectValid(r)
 	})
 
 	ginkgo.It("rejects gce_zone without ZONAL availability", func() {
-		r := minimalReadPool()
+		r := minimalPrimary()
 		r.Spec.AvailabilityType = "REGIONAL"
 		r.Spec.GceZone = "us-central1-a"
 		expectInvalid(r, "ZONAL")
+	})
+
+	ginkgo.It("accepts availability_type on PRIMARY and SECONDARY instances", func() {
+		for _, it := range []string{"PRIMARY", "SECONDARY"} {
+			r := minimalPrimary()
+			r.Spec.InstanceType = ptr(it)
+			r.Spec.AvailabilityType = "REGIONAL"
+			expectValid(r)
+		}
+	})
+
+	ginkgo.It("rejects availability_type on an explicit READ_POOL", func() {
+		r := minimalReadPool()
+		r.Spec.InstanceType = ptr("READ_POOL")
+		r.Spec.AvailabilityType = "ZONAL"
+		expectInvalid(r, "derived from node_count")
+	})
+
+	ginkgo.It("rejects availability_type on the default (read pool) instance type", func() {
+		r := minimalReadPool()
+		r.Spec.AvailabilityType = "REGIONAL"
+		expectInvalid(r, "derived from node_count")
 	})
 
 	ginkgo.It("accepts a managed connection pool", func() {

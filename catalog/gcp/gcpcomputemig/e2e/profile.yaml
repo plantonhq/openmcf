@@ -20,14 +20,20 @@ spec:
   #   - Autoscaler-vs-manager settling: the manager's target_size is
   #     autoscaler-owned in the regional lane — watch for perpetual
   #     diffs between applies while the autoscaler holds min_replicas.
-  #   - Quota: lanes need up to 3 concurrent e2-micro (2 regional + 1
-  #     surge) plus the zonal instance in us-central1.
+  #   - Quota: lanes need the autoscaler's 1-2 regional e2-micro plus
+  #     the zonal instance in us-east1 (rollout surge is fixed 3 — the
+  #     regional-fixed-surge floor — but applies only during template
+  #     rolls, not the lane's initial create). Scenarios moved to
+  #     us-east1 2026-08-11 after an audit-log-verified us-central1
+  #     ZONE_RESOURCE_POOL_EXHAUSTED stockout (the session's zonal IGM
+  #     cycled create/delete for 15m); the chain is self-contained, so
+  #     region is a free variable pinned to measured capacity.
   #   - Stateful configs, resize requests, and FLEX_START stay
   #     offline-proven (recorded): resize requests queue against DWS
   #     capacity that may never grant on a lane's clock, and stateful
   #     arms need multi-apply choreography the framework does not model
   #     yet.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

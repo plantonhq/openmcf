@@ -46,10 +46,12 @@ environment answer, and the pool must live in the instance's region.
 
 ## Maintenance and self-service patching
 
-The weekly window pins day + hour + minute (UTC) — stagger it against
-the systems this cache fronts. `maintenanceVersion` is update-only and
-forward-only: set it on an EXISTING instance to take a patch on your
-schedule; setting it at create is rejected by the API.
+The weekly window pins day + hour (UTC) and always starts on the hour —
+the API rejects finer start times, so stagger this cache against the
+systems it fronts in whole-hour steps (Redis, by contrast, takes
+minutes). `maintenanceVersion` is update-only and forward-only: set it
+on an EXISTING instance to take a patch on your schedule; setting it at
+create is rejected by the API.
 
 ## DR is a composition, not a flag
 

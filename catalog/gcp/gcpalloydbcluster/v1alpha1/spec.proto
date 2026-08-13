@@ -239,10 +239,13 @@ message GcpAlloydbClusterRestoreBackupSource {
 message GcpAlloydbClusterRestoreContinuousBackupSource {
   // The source cluster to restore from — its full resource name
   // "projects/{project}/locations/{location}/clusters/{cluster}", or a
-  // reference to a GcpAlloydbCluster resource.
+  // reference to a GcpAlloydbCluster resource. Restore provenance, not
+  // physical placement: the new cluster is seeded FROM the source, never
+  // contained IN it (containment_exempt).
   dev.planton.shared.foreignkey.v1.StringValueOrRef cluster = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpAlloydbCluster,
+    (dev.planton.shared.foreignkey.v1.containment_exempt) = true,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_id"
   ];
 

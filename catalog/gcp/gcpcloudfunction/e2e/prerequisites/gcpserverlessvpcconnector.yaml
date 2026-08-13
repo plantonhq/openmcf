@@ -2,6 +2,13 @@
 # scenario. Uses network+ipCidrRange on 10.8.2.0/28 (outside other E2E
 # ranges). metadata.name stays fixed for FK resolution from the function
 # scenario's valueFrom.
+#
+# 2026-08-11: region moved us-central1 → us-east1. Connector fleets are
+# e2-class VMs, and us-central1's e2 zonal pools answered
+# ZONE_RESOURCE_POOL_EXHAUSTED twice this week (audit-log verified; the
+# connector kind's own scenarios moved to us-east1 on the same evidence).
+# The whole function chain is self-contained, so its region is a free
+# variable — pinned to measured capacity.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServerlessVpcConnector
 metadata:
@@ -17,7 +24,7 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  region: us-east1
   connectorName: e2e-connp-${E2E_RUN_ID}
   network:
     valueFrom:

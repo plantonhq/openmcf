@@ -47,6 +47,13 @@ resource "google_vertex_ai_index_endpoint" "this" {
       # PSC endpoints Vertex AI provisions automatically in consumer
       # projects. The API wants the relative network form; references
       # arrive as self-links and are normalized in locals.tf.
+      # NOTE: spec validation refuses non-empty configs on this kind —
+      # the live API accepts an index endpoint create carrying them but
+      # silently drops them (nothing stored, no consumer endpoint ever
+      # provisioned; API-verified), and the immutable PSC block would
+      # turn that drop into a perpetual replacement diff. The rendering
+      # stays so the module is ready the day Google extends automation
+      # to vector search and the CEL relaxes.
       dynamic "psc_automation_configs" {
         for_each = private_service_connect_config.value.psc_automation_configs
         content {

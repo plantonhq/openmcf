@@ -7,7 +7,12 @@ spec:
   # GcpPubSubTopic prerequisite live (topic FK resolution proof through
   # the fully qualified topic_id path); the http-target scenario composes
   # the GcpServiceAccount prerequisite (OIDC token FK).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (4/4 lane runs — OIDC http target + pubsub target; the
+  # pubsub-target scenario also proves the metadata.name fallback with
+  # its run-scoped name, per the async-name-finalization rule).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

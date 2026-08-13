@@ -5,10 +5,20 @@ metadata:
 spec:
   # Fast control-plane object composed on the GcpPubSubTopic prerequisite
   # chain (schema -> topic -> subscription): the transitive-FK proof.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate, both scenarios, through the full transitive chain.
+  #
+  # OFFLINE-PROVEN ARMS (deferrals with unblock conditions):
+  #   - ai_inference message transform: needs a DEPLOYED Vertex AI
+  #     endpoint (expensive fixture; the topic carries the same arm).
+  #   - resource_manager_tags: the standing org-level tagKeys/tagValues
+  #     fixture item.
+  #   - dead-letter topic: a second GcpPubSubTopic instance cannot be
+  #     expressed live (one manifest per prerequisite kind — the
+  #     documented resolver contract); the reference mechanism is
+  #     identical to the live-proven parent-topic ref.
   tier: 1
-  # The prior green predates the current spec shape (deletion_policy,
-  # the ai_inference transform arm, resource-manager tags) — awaits
-  # live re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

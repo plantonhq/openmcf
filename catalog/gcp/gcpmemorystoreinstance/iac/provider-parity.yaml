@@ -22,24 +22,26 @@ resources:
       - spec: spec.psc_auto_connections
         arg: desired_auto_created_endpoints
       # The spec flattens the provider's start_time nesting: a window
-      # start is one concept (hour + minute), and a daily backup start
-      # is one hour-of-day field.
+      # start is one hour-of-day field, and a daily backup start is one
+      # hour-of-day field.
       - spec: spec.maintenance_policy.weekly_maintenance_window.hour
         arg: maintenance_policy.weekly_maintenance_window.start_time.hours
-      - spec: spec.maintenance_policy.weekly_maintenance_window.minute
-        arg: maintenance_policy.weekly_maintenance_window.start_time.minutes
       - spec: spec.automated_backup_config.start_hour
         arg: automated_backup_config.fixed_frequency_schedule.start_time.hours
     exclusions:
-      # Sub-minute precision on a fixed 1-hour maintenance window serves
-      # no configuration purpose: GCP schedules maintenance to the
-      # minute at most, and the provider passes seconds/nanos through to
-      # a TimeOfDay message whose finer fields the service ignores. The
-      # spec models the window start to the minute.
+      # The provider passes the full TimeOfDay message through, but the
+      # Memorystore service accepts ONLY whole-hour start times: a create
+      # carrying minutes is rejected with 400 "Invalid start time, only
+      # hours are supported" (field violation on
+      # weekly_maintenance_window.start_time; live-verified 2026-08-12 on
+      # both engines — narrower than Redis, whose window start takes
+      # minutes). The spec therefore models the start as hour-only.
+      - arg: maintenance_policy.weekly_maintenance_window.start_time.minutes
+        reason: the Memorystore API rejects non-zero minutes (live 400 "Invalid start time, only hours are supported"); the spec models the start hour-only
       - arg: maintenance_policy.weekly_maintenance_window.start_time.seconds
-        reason: sub-minute precision on a 1-hour maintenance window is meaningless; the spec models the start to the minute
+        reason: sub-minute precision on an hour-anchored 1-hour maintenance window; the service supports whole hours only
       - arg: maintenance_policy.weekly_maintenance_window.start_time.nanos
-        reason: sub-second precision on a 1-hour maintenance window is meaningless; the spec models the start to the minute
+        reason: sub-second precision on an hour-anchored 1-hour maintenance window; the service supports whole hours only
 
   google_project_service:
     internal: >-

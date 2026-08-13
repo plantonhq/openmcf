@@ -16,9 +16,13 @@ spec:
   # proves the event feed against a live topic (the GCS service agent's
   # publisher grant rides a consumer-scoped prerequisite through the
   # harness-resolved ${E2E_ENV:PLANTON_E2E_GCS_AGENT_EMAIL} token).
-  # pending_proof: the spec grew the companion surface (folders, managed
-  # folders, notifications) — the prior green described a smaller kind.
+  # Live-proven at the full companion surface on both engines: managed
+  # folders coexist with HNS on one bucket (API-accepted), folder destroy
+  # ordering holds (children before parents on both engines), and the
+  # immutable notification configs re-plan diff-free under the
+  # apply-idempotency gate (the module's projects/{p}/topics/{t} form
+  # matches the provider's read-back echo).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

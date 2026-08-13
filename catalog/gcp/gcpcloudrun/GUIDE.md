@@ -29,9 +29,13 @@ at 240 seconds: `failureThreshold × periodSeconds`); liveness restarts a
 broken instance (HTTP/gRPC only — the spec has no TCP arm because the
 API rejects it, and timing may stretch to 3600s for expensive checks);
 readiness pulls an instance from serving WITHOUT restarting it and
-re-admits it after `successThreshold` successes. Reach for readiness
-when the failure is recoverable (a saturated downstream, a cache warm)
-— restarting those instances (liveness) makes the incident worse.
+re-admits it as soon as a probe succeeds again. There is no
+success-threshold dial: the GA API's probe message carries no such
+field (the Terraform provider models one, but the control plane
+silently drops it — re-admission is single-success by design). Reach
+for readiness when the failure is recoverable (a saturated downstream,
+a cache warm) — restarting those instances (liveness) makes the
+incident worse.
 Never point liveness at an endpoint that calls your dependencies: one
 slow downstream becomes a fleet-wide restart storm.
 

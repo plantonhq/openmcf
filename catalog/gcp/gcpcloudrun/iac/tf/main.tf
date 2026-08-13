@@ -377,13 +377,15 @@ resource "google_cloud_run_v2_service" "main" {
         # Readiness probe: pulls a failing instance from serving (and
         # re-admits it on recovery) without restarting it. HTTP/gRPC only,
         # no initial delay — the API's readiness shape differs from the
-        # other probes deliberately.
+        # other probes deliberately. The provider's success_threshold
+        # argument is never sent: the GA API's probe message carries no
+        # such field and silently drops it, leaving a perpetual re-plan
+        # diff (live-verified; the spec has no such field).
         dynamic "readiness_probe" {
           for_each = containers.value.readiness_probe != null ? [containers.value.readiness_probe] : []
           content {
             timeout_seconds   = readiness_probe.value.timeout_seconds
             period_seconds    = readiness_probe.value.period_seconds
-            success_threshold = readiness_probe.value.success_threshold
             failure_threshold = readiness_probe.value.failure_threshold
 
             dynamic "http_get" {

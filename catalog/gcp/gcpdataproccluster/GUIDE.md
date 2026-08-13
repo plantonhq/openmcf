@@ -30,6 +30,14 @@ The flexibility policy is the capacity-crunch answer — ranked
 machine-type fallbacks on ALL three groups, with the standard/spot
 `provisioningModelMix` on secondaries only (masters and primary workers
 are always on-demand; the spec's validation enforces the boundary).
+A flexibility policy REPLACES `machineType` — never set both on one
+group. The API accepts the pairing but silently drops the machine type
+from the stored cluster, and because that field is create-only, every
+subsequent apply then plans a whole-cluster replacement. The spec
+rejects the pairing outright; put every acceptable type in the ranked
+`instanceSelectionList` instead (the first live run of this arm watched
+Dataproc pick the list's second type when the first was capacity-tight —
+the fallback working exactly as designed).
 
 ## Autoscaling is a policy attachment, not a property
 

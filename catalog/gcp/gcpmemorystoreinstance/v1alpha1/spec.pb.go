@@ -334,18 +334,19 @@ func (x *GcpMemorystoreInstanceZoneDistributionConfig) GetZone() string {
 }
 
 // GcpMemorystoreInstanceMaintenanceWindow defines when GCP may perform
-// maintenance on the instance. The window is fixed at 1 hour duration.
+// maintenance on the instance. The window is fixed at 1 hour duration and
+// starts on the hour: the Memorystore API accepts ONLY whole-hour start
+// times and rejects a start time carrying minutes with 400 "Invalid start
+// time, only hours are supported" (field violation on
+// weekly_maintenance_window.start_time; live-verified). This is narrower
+// than Redis, whose window start is settable to the minute.
 type GcpMemorystoreInstanceMaintenanceWindow struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Day of the week for the maintenance window.
 	Day string `protobuf:"bytes,1,opt,name=day,proto3" json:"day,omitempty"`
-	// Hour of day (0-23, UTC) when the maintenance window starts.
-	Hour int32 `protobuf:"varint,2,opt,name=hour,proto3" json:"hour,omitempty"`
-	// Minute of the hour (0-59, UTC) when the maintenance window starts.
-	// Combined with hour, this pins the window start to the exact minute —
-	// useful for coordinating with maintenance windows of dependent systems
-	// (e.g. start cache maintenance 30 minutes after the database's window).
-	Minute        int32 `protobuf:"varint,3,opt,name=minute,proto3" json:"minute,omitempty"`
+	// Hour of day (0-23, UTC) when the maintenance window starts. The window
+	// always starts on the hour — the API supports no finer granularity.
+	Hour          int32 `protobuf:"varint,2,opt,name=hour,proto3" json:"hour,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -390,13 +391,6 @@ func (x *GcpMemorystoreInstanceMaintenanceWindow) GetDay() string {
 func (x *GcpMemorystoreInstanceMaintenanceWindow) GetHour() int32 {
 	if x != nil {
 		return x.Hour
-	}
-	return 0
-}
-
-func (x *GcpMemorystoreInstanceMaintenanceWindow) GetMinute() int32 {
-	if x != nil {
-		return x.Minute
 	}
 	return 0
 }
@@ -1218,11 +1212,10 @@ const file_catalog_gcp_gcpmemorystoreinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04mode\x18\x01 \x01(\tB!\xbaH\x1e\xc8\x01\x01r\x19R\n" +
 	"MULTI_ZONER\vSINGLE_ZONER\x04mode\x12\x12\n" +
 	"\x04zone\x18\x02 \x01(\tR\x04zone:\x82\x01\xbaH\x7f\x1a}\n" +
-	"\x1dzone_required_for_single_zone\x12)zone is required when mode is SINGLE_ZONE\x1a1this.mode != 'SINGLE_ZONE' || size(this.zone) > 0\"\xc7\x01\n" +
+	"\x1dzone_required_for_single_zone\x12)zone is required when mode is SINGLE_ZONE\x1a1this.mode != 'SINGLE_ZONE' || size(this.zone) > 0\"\xa4\x01\n" +
 	"'GcpMemorystoreInstanceMaintenanceWindow\x12Z\n" +
 	"\x03day\x18\x01 \x01(\tBH\xbaHE\xc8\x01\x01r@R\x06MONDAYR\aTUESDAYR\tWEDNESDAYR\bTHURSDAYR\x06FRIDAYR\bSATURDAYR\x06SUNDAYR\x03day\x12\x1d\n" +
-	"\x04hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\x04hour\x12!\n" +
-	"\x06minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00R\x06minute\"\xc8\x01\n" +
+	"\x04hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00R\x04hour\"\xc8\x01\n" +
 	"'GcpMemorystoreInstanceMaintenancePolicy\x12\x9c\x01\n" +
 	"\x19weekly_maintenance_window\x18\x01 \x01(\v2X.dev.planton.gcp.gcpmemorystoreinstance.v1alpha1.GcpMemorystoreInstanceMaintenanceWindowB\x06\xbaH\x03\xc8\x01\x01R\x17weeklyMaintenanceWindow\"\x8a\x01\n" +
 	"+GcpMemorystoreInstanceAutomatedBackupConfig\x12(\n" +

@@ -24,13 +24,13 @@ spec:
       projectId:
         value: my-gcp-project-123
 
-  # Weekly maintenance window pinned to the minute (UTC) — stagger it
-  # against the systems this cache fronts.
+  # Weekly maintenance window (UTC), starting on the hour — the API
+  # supports no finer granularity. Stagger it against the systems this
+  # cache fronts.
   maintenancePolicy:
     weeklyMaintenanceWindow:
       day: SUNDAY
       hour: 3
-      minute: 30
 
   # Allow hack-manifest teardown without a two-step disable; the policy
   # then deletes the instance.

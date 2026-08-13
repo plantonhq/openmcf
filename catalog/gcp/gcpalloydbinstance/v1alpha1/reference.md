@@ -30,9 +30,9 @@ spec:
   instanceId: orders-read-pool
   instanceType: READ_POOL
   cpuCount: 2
+  # availabilityType stays empty on read pools — derived from nodeCount.
   readPoolConfig:
     nodeCount: 2
-  availabilityType: REGIONAL
   requireConnectors: true
   sslMode: ENCRYPTED_ONLY
 ```
@@ -152,9 +152,13 @@ Read capacity — number of nodes in the read pool instance.
 
 `string`
 
-ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
-unset.
+ZONAL or REGIONAL placement for PRIMARY/SECONDARY instances. GCP
+defaults to REGIONAL when unset. Must stay empty on READ_POOL
+instances: read-pool availability is DERIVED from node_count (1 node =
+ZONAL, 2+ nodes = REGIONAL spread across zones) and the AlloyDB API
+does not store a sent value — the stored object omits the field, so
+any explicit value produces a perpetual re-plan diff (live-verified
+against a single-node pool at google@7.43.0).
 
 - rule: availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED
 
@@ -376,6 +380,7 @@ What happens to the instance in GCP when this resource is destroyed.
 - `read_pool_requires_node_count`: READ_POOL instances require read_pool_config.node_count >= 1
 - `read_pool_config_only_for_read_pool`: read_pool_config applies to READ_POOL instances only
 - `authorized_networks_require_public_ip`: authorized_external_networks requires enable_public_ip
+- `availability_type_not_for_read_pool`: availability_type applies to PRIMARY/SECONDARY instances only — read-pool availability is derived from node_count (1 node = ZONAL, 2+ nodes = REGIONAL) and the API does not store a sent value
 - `gce_zone_requires_zonal`: gce_zone can only be set on ZONAL instances — GCP rejects it when availability_type is REGIONAL (the default)
 
 ## Outputs

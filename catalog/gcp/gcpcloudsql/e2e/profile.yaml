@@ -7,6 +7,29 @@ spec:
   # chain before every instance create. Cloud SQL instances are slow (~10–15
   # min each); run the package with a generous go test -timeout.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  # Live-proven 2026-08-13 on both engines at the total-accounting spec:
+  # private-postgres (PSA chain, GOOGLE_MANAGED_CAS_CA +
+  # AUTOMATIC_ROTATION_DURING_MAINTENANCE — echoed in the stored object)
+  # and public-postgres (final_backup 1-day retention verified to EXIST
+  # post-destroy, retentionUnit COUNT, DISALLOW_DATA_API) x 2 engines,
+  # all phases green under the apply-idempotency gate. The chain's
+  # fixtures are scenario+run-scoped and the connection fixture ABANDONs
+  # on teardown — Cloud SQL's producer hold on the peering was
+  # live-measured beyond 42 minutes (see the fixture comments and
+  # e2e/README.md).
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - restore provenance (clone, restore_backup_context,
+  #     point_in_time_restore_context, backupdr_backup) and DR pairing
+  #     (failover_dr_replica_name): need a pre-existing SOURCE instance
+  #     (and a Backup and DR vault for the backupdr arm). Unblock: a
+  #     dedicated restore lane composing a source-instance fixture.
+  #   - read pools (instance_type READ_POOL_INSTANCE, node_count,
+  #     read_pool_auto_scale): need an ENTERPRISE_PLUS primary — a real
+  #     cost step. Unblock: a dedicated read-pool lane on a throwaway
+  #     ENTERPRISE_PLUS primary.
+  #   - active_directory / entra_id: need a managed AD domain / Entra
+  #     tenant fixture the harness lacks.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

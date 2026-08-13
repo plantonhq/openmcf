@@ -9,9 +9,13 @@ spec:
   # pattern the health check uses. deploy -> compute sslPolicies get verify
   # -> destroy -> verify gone, on both provisioners.
   tier: 1
-  # The 6.x-era proof predates this spec surface (post-quantum key
-  # exchange, the FIPS_202205/TLS_1_3 pairings, deletion_policy) — the
-  # kind awaits live re-proof at the current shape.
-  status: pending_proof
-  validated_provisioners: []
+  # Proven live 2026-08-11 (both engines, both scenarios, idempotency gate):
+  # post_quantum_key_exchange ENABLED verified in the stored global policy.
+  # The pairing arms were ALSO proven live via throwaway applies verified in
+  # the stored API objects: FIPS_202205 + TLS_1_2 + DEFERRED (global) and
+  # TLS_1_3 + RESTRICTED (regional).
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 10

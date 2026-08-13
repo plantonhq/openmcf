@@ -33,7 +33,9 @@ spec:
     workerConfig:
       numInstances: 3
       minNumInstances: 2
-      machineType: n2-standard-4
+      # No machineType: the flexibility policy below replaces it — the
+      # API provisions from the ranked selections and drops a paired
+      # machineTypeUri (mutually exclusive, CEL-enforced).
       diskConfig:
         bootDiskSizeGb: 200
         bootDiskType: hyperdisk-balanced

@@ -21,7 +21,9 @@ metadata:
     - planton-e2e
 spec:
   description: Ephemeral Autopilot GKE cluster created by the Planton E2E harness; safe to delete
-  location: us-central1
+  # us-east1 with the whole GKE chain (2026-08-12 us-central1 GCE_STOCKOUT;
+  # the shared subnetwork fixture is regional, so all scenarios move together).
+  location: us-east1
   network:
     valueFrom:
       kind: GcpVpcNetwork

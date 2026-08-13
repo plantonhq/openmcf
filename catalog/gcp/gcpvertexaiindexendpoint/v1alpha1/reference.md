@@ -147,6 +147,8 @@ Private Service Connect configuration. When present, consumers
 reach deployed indexes through a PSC service attachment. Mutually
 exclusive with public_endpoint_enabled and network. Immutable.
 
+- rule: psc_automation_configs is not honored on index endpoints — the Vertex AI API accepts the create but silently drops the configs (nothing is stored and no consumer-side endpoint is ever provisioned); use project_allowlist with consumer-managed forwarding rules instead
+
 ### spec.privateServiceConnectConfig.enablePrivateServiceConnect
 
 `bool`
@@ -171,10 +173,16 @@ project number. Immutable.
 
 PSC endpoints Vertex AI creates automatically in consumer
 projects/networks (instead of consumers wiring forwarding rules by
-hand). The provider documents this field as used by online
-inference (prediction) endpoints only — on index endpoints, prefer
-project_allowlist with consumer-managed forwarding rules until
-Google extends automation to vector search. Immutable.
+hand). The provider models this field on index endpoints, but the
+live API does NOT honor it there: a create carrying automation
+configs succeeds while the stored endpoint omits them and no
+consumer-side endpoint is ever provisioned (API-verified against a
+live index endpoint; the provider documents the field as used by
+online inference endpoints only). Because the PSC block is
+immutable, that silent drop would surface to users as a perpetual
+replacement diff on every re-plan — so this field is refused by
+validation until Google extends automation to vector search. Use
+project_allowlist with consumer-managed forwarding rules. Immutable.
 
 ### spec.privateServiceConnectConfig.pscAutomationConfigs[].network
 

@@ -33,6 +33,35 @@ message GcpEventarcTriggerSpec {
     message: "retry_max_attempts can only be set with a cloud_run_service destination (the provider's own constraint)"
     expression: "this.retry_max_attempts == 0 || (has(this.destination) && has(this.destination.cloud_run_service))"
   };
+  // API truth (live-verified): a workflow destination create is rejected
+  // with 400 "trigger.service_account is empty" — Eventarc mints the
+  // workflow execution as the trigger's identity, so the account is
+  // mandatory for this arm (grant it roles/eventarc.eventReceiver +
+  // roles/workflows.invoker).
+  option (buf.validate.message).cel = {
+    id: "workflow_destination_requires_service_account"
+    message: "a workflow destination requires service_account (the API rejects the create without it; the account needs roles/eventarc.eventReceiver + roles/workflows.invoker)"
+    expression: "!(has(this.destination) && (this.destination.workflow.value != '' || has(this.destination.workflow.value_from))) || (this.service_account.value != '' || has(this.service_account.value_from))"
+  };
+  // API truth (live-verified): the API does NOT infer the Cloud Run
+  // destination region — a create without one is rejected with 400
+  // "trigger.destination.cloud_run.region is empty". The modules default
+  // it to the trigger's own location, which cannot work for a "global"
+  // trigger; that one case must say where the service lives.
+  option (buf.validate.message).cel = {
+    id: "global_trigger_cloud_run_region_required"
+    message: "a cloud_run_service destination on a global trigger needs an explicit region (regional triggers default to their own location)"
+    expression: "!(this.location == 'global' && has(this.destination) && has(this.destination.cloud_run_service)) || this.destination.cloud_run_service.region != ''"
+  };
+  // API truth (live-verified): a Pub/Sub (messagePublished) trigger
+  // create is rejected with 400 "Pub/Sub triggers do not accept any
+  // value for event_data_content_type" — the payload format of a Pub/Sub
+  // event is decided by the publisher, not the trigger.
+  option (buf.validate.message).cel = {
+    id: "pubsub_trigger_forbids_event_data_content_type"
+    message: "event_data_content_type cannot be set on a Pub/Sub (messagePublished) trigger — the API rejects it; the payload format is decided at publish time"
+    expression: "this.event_data_content_type == '' || !this.matching_criteria.exists(c, c.attribute == 'type' && c.value == 'google.cloud.pubsub.topic.v1.messagePublished')"
+  };
 
   // The GCP project to create the trigger in. Can be a literal project ID
   // or a reference to a GcpProject resource. If omitted, the provider's
@@ -70,9 +99,11 @@ message GcpEventarcTriggerSpec {
 
   // The IAM service account email the trigger runs as — it must hold
   // roles/eventarc.eventReceiver, plus roles/run.invoker for authenticated
-  // Cloud Run destinations (identity tokens are minted from this account).
-  // Audit-log triggers REQUIRE a service account. A literal email or a
-  // reference to a GcpServiceAccount resource.
+  // Cloud Run destinations (identity tokens are minted from this account)
+  // or roles/workflows.invoker for workflow destinations. Audit-log
+  // triggers and workflow destinations REQUIRE a service account (the
+  // workflow case is API-enforced at create — live-verified 400 without
+  // it). A literal email or a reference to a GcpServiceAccount resource.
   dev.planton.shared.foreignkey.v1.StringValueOrRef service_account = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpServiceAccount,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
@@ -90,8 +121,10 @@ message GcpEventarcTriggerSpec {
 
   // The MIME type the CloudEvent data field is delivered as (e.g.
   // application/json or application/protobuf). The API defaults to
-  // application/json when unset. Must be compatible with the event type —
-  // Pub/Sub events support application/json and application/protobuf.
+  // application/json when unset. NOT accepted on Pub/Sub
+  // (messagePublished) triggers — the API rejects any value there
+  // (live-verified 400; a Pub/Sub event's payload format is decided by
+  // the publisher). Spec-enforced above.
   string event_data_content_type = 8;
 
   // Delivery retry ceiling. The provider accepts only the value 1
@@ -184,7 +217,8 @@ message GcpEventarcTriggerDestination {
   // resource name (projects/{project}/locations/{location}/workflows/{name})
   // — a literal or a reference to a GcpWorkflow resource (its workflow_id
   // output is exactly this value). Must live in the same project as the
-  // trigger.
+  // trigger. This arm REQUIRES spec.service_account (spec-enforced; the
+  // API rejects the create without it).
   dev.planton.shared.foreignkey.v1.StringValueOrRef workflow = 3 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpWorkflow,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workflow_id"
@@ -206,9 +240,13 @@ message GcpEventarcTriggerCloudRunDestination {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.service_name"
   ];
 
-  // The region the Cloud Run service is deployed in. When empty, GCP
-  // resolves it from the trigger's location — set it explicitly when the
-  // service lives in a different region than the trigger.
+  // The region the Cloud Run service is deployed in. The API REQUIRES
+  // this on every create (live-verified: 400 "cloud_run.region is empty"
+  // — it never infers the region from the trigger). When empty, the
+  // MODULE defaults it to the trigger's location; set it explicitly when
+  // the service lives in a different region than the trigger, and always
+  // on a "global" trigger (spec-enforced — global is not a Cloud Run
+  // region).
   string region = 2;
 
   // The relative path on the service events are POSTed to (RFC2396 path

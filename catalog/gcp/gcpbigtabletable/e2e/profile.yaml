@@ -7,7 +7,14 @@ spec:
   # prerequisite chain. deploy -> table + column-family posture verify ->
   # destroy -> verify gone, on both provisioners. The table itself
   # creates in seconds; the chain cost is the instance prerequisite.
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - automated_backup_policy.locations: REQUIRES an ENTERPRISE_PLUS
+  #     parent instance (provider-documented) — deferred together with
+  #     the instance kind's ENTERPRISE_PLUS arm; both unblock via a
+  #     dedicated paid lane if adopter demand appears. The offline
+  #     throwaway plan rendered the field.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 45

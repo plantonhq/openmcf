@@ -9,7 +9,12 @@ spec:
   # origin reference from its outputs, then runs deploy -> compute
   # backendBuckets.get verify (incl. origin wiring) -> destroy -> verify 404,
   # on both provisioners.
+  #
+  # Offline-proven arms: the signed_url_key fan-out (key material is secret
+  # in both engines' state; no committed fixture carries keys) and
+  # params.resource_manager_tags (needs org-level tagKeys/tagValues the test
+  # project does not own — the standing org-fixture unblock condition).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

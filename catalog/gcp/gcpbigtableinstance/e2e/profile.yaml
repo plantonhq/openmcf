@@ -6,8 +6,20 @@ spec:
   # Self-contained scenarios (no prerequisites): minimal single-node
   # cluster and an autoscaling cluster, each deploy -> READY + cluster
   # posture verify -> destroy -> verify gone, on both provisioners.
-  # Instance create/destroy runs a few minutes each.
+  # Instance create/destroy runs a few minutes each. The minimal scenario
+  # arms edition ENTERPRISE explicitly (the provider default) to prove
+  # the explicit-send round-trip.
+  #
+  # Offline-proven-only arms (deferred, with unblock conditions):
+  #   - edition ENTERPRISE_PLUS: a real cost step (enterprise-plus
+  #     node pricing) proven offline with the table's backup locations
+  #     arm, which REQUIRES an ENTERPRISE_PLUS parent — the two unblock
+  #     together via a dedicated paid lane if adopter demand appears.
+  #   - resource_manager_tags: needs pre-existing org-level
+  #     tagKeys/tagValues the test project's credentials cannot create
+  #     (the standing org-fixture item); ForceNew on this resource, so a
+  #     live tag arm must be a fresh instance.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]  # live-proven 2026-08-12: full lifecycle + apply-idempotency on both engines
   timeout_minutes: 45

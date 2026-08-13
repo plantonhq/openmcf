@@ -125,11 +125,11 @@ variable "spec" {
       base_image_uri = optional(string, "")
 
       # Readiness probe: gates traffic without restarting. HTTP/gRPC only,
-      # no initial delay, plus a success threshold for re-admission.
+      # no initial delay. No success threshold — the GA API's probe
+      # message carries no such field (silently dropped; live-verified).
       readiness_probe = optional(object({
         timeout_seconds   = optional(number, null)
         period_seconds    = optional(number, null)
-        success_threshold = optional(number, null)
         failure_threshold = optional(number, null)
         http_get = optional(object({
           path = optional(string, "")

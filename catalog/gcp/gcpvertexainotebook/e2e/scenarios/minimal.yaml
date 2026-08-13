@@ -19,7 +19,13 @@ metadata:
     - planton-e2e
 spec:
   instanceName: planton-oss-e2e-vnb-${E2E_RUN_ID}
-  location: us-central1-a
+  # us-east1: capacity resilience. us-central1 zonal pools have stocked out
+  # on this exact machine class repeatedly (ZONE_RESOURCE_POOL_EXHAUSTED for
+  # e2-standard-2 in us-central1-a verified 2026-08-12; the same class hit
+  # connectors, MIGs, VMs, functions, GKE, and Dataproc through 2026-08).
+  # The whole region-matched chain (this scenario + the consumer-scoped
+  # subnetwork prerequisite) lives in us-east1 together.
+  location: us-east1-b
   machineType: e2-standard-2
   # Explicit DELETE proves the client-side lever round-trips (the
   # provider defaults it server-side; every scenario arms it).

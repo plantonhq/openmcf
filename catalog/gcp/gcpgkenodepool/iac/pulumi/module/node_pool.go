@@ -93,7 +93,8 @@ func nodePool(ctx *pulumi.Context,
 
 	// Drain pacing for pool deletion/replacement — distinct from
 	// upgrade_settings, which paces upgrades of a pool that keeps
-	// existing.
+	// existing. Allowlist-gated: GCP support must enable customized node
+	// drain on the project or the API rejects the create.
 	if drain := spec.NodeDrainConfig; drain != nil {
 		drainArgs := &container.NodePoolNodeDrainConfigArgs{}
 		if drain.GraceTerminationDuration != "" {
@@ -620,6 +621,8 @@ func buildNodeConfig(nodeConfig *gcpgkenodepoolv1alpha1.GcpGkeNodePoolNodeConfig
 			}
 			kubeletArgs.EvictionSoftGracePeriod = graceArgs
 		}
+		// Percentage-only values ("10%") — GKE rejects absolute quantities
+		// for minimum reclaim (the spec CEL enforces this upstream).
 		if reclaim := kubelet.EvictionMinimumReclaim; reclaim != nil {
 			reclaimArgs := &container.NodePoolNodeConfigKubeletConfigEvictionMinimumReclaimArgs{}
 			if reclaim.MemoryAvailable != "" {

@@ -115,7 +115,11 @@ var _ = ginkgo.Describe("GcpEventarcTriggerSpec", func() {
 			m.Spec.Destination = &GcpEventarcTriggerDestination{
 				Workflow: litRef("projects/p/locations/l/workflows/w"),
 			}
+			// A workflow destination requires the trigger identity (API
+			// truth, spec-enforced).
+			m.Spec.ServiceAccount = litRef("sa@p.iam.gserviceaccount.com")
 			gomega.Expect(validator.Validate(m)).To(gomega.Succeed(), "workflow arm")
+			m.Spec.ServiceAccount = nil
 
 			m.Spec.Destination = &GcpEventarcTriggerDestination{
 				Gke: &GcpEventarcTriggerGkeDestination{
@@ -155,6 +159,44 @@ var _ = ginkgo.Describe("GcpEventarcTriggerSpec", func() {
 				},
 			}
 			gomega.Expect(validator.Validate(m)).ToNot(gomega.Succeed())
+		})
+
+		ginkgo.It("workflow arm requires service_account (live-verified API truth)", func() {
+			m := minimal()
+			m.Spec.Destination = &GcpEventarcTriggerDestination{
+				Workflow: litRef("projects/p/locations/l/workflows/w"),
+			}
+			gomega.Expect(validator.Validate(m)).ToNot(gomega.Succeed(), "bare workflow arm")
+
+			m.Spec.ServiceAccount = litRef("sa@p.iam.gserviceaccount.com")
+			gomega.Expect(validator.Validate(m)).To(gomega.Succeed(), "with identity")
+		})
+
+		ginkgo.It("cloud_run arm on a global trigger requires an explicit region", func() {
+			m := minimal()
+			m.Spec.Location = "global"
+			gomega.Expect(validator.Validate(m)).ToNot(gomega.Succeed(), "global without region")
+
+			m.Spec.Destination.CloudRunService.Region = "us-central1"
+			gomega.Expect(validator.Validate(m)).To(gomega.Succeed(), "global with region")
+		})
+	})
+
+	ginkgo.Context("event_data_content_type", func() {
+		ginkgo.It("is rejected on Pub/Sub triggers (live-verified API truth)", func() {
+			m := minimal()
+			m.Spec.EventDataContentType = "application/json"
+			gomega.Expect(validator.Validate(m)).ToNot(gomega.Succeed(), "pubsub trigger with content type")
+		})
+
+		ginkgo.It("is accepted on non-Pub/Sub triggers", func() {
+			m := minimal()
+			m.Spec.MatchingCriteria = []*GcpEventarcTriggerMatchingCriterion{
+				{Attribute: "type", Value: "google.cloud.storage.object.v1.finalized"},
+				{Attribute: "bucket", Value: "my-bucket"},
+			}
+			m.Spec.EventDataContentType = "application/json"
+			gomega.Expect(validator.Validate(m)).To(gomega.Succeed())
 		})
 	})
 

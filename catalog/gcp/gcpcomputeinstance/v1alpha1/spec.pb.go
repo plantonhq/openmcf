@@ -546,12 +546,25 @@ type GcpComputeInstanceBootDisk struct {
 	// ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
 	// "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
 	// operating system features" in the Compute Engine docs. Create-time
-	// only.
+	// only. When set, list the image's COMPLETE feature set, never just
+	// the additions: the API merges this list with the image's own
+	// features at create and the stored disk echoes the merged set, which
+	// the provider then compares authoritatively with replace-on-change
+	// semantics — a partial list plans a VM REPLACEMENT on every re-apply
+	// (live-verified: debian-12's ["UEFI_COMPATIBLE", "GVNIC"] echoed back
+	// ["UEFI_COMPATIBLE", "VIRTIO_SCSI_MULTIQUEUE", "GVNIC", "SEV_CAPABLE",
+	// "SEV_LIVE_MIGRATABLE_V2"]). Leave unset to follow the image's own
+	// features cleanly.
 	GuestOsFeatures []string `protobuf:"bytes,19,rep,name=guest_os_features,json=guestOsFeatures,proto3" json:"guest_os_features,omitempty"`
 	// Zones for a REGIONAL boot disk (exactly two, one of which must be
 	// the instance's own zone; short names or self links). Setting this
 	// converts the boot disk to a regional disk replicated across both
-	// zones. Ignored when booting from an existing source_disk.
+	// zones. Only valid with a source_snapshot boot source (enforced
+	// pre-deploy): GCP rejects creating a regional boot disk from an
+	// image (live-verified API 400: "Creating a regional disk from a
+	// source image is not supported yet" — the snapshot path was
+	// live-verified to produce a true regional boot disk), and a
+	// pre-created source_disk already carries its own zones.
 	// Create-time only.
 	ReplicaZones []string `protobuf:"bytes,20,rep,name=replica_zones,json=replicaZones,proto3" json:"replica_zones,omitempty"`
 	// Resource Manager tags bound to the boot disk at create time. Keys in
@@ -2239,7 +2252,7 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"+confidential_requires_terminate_maintenance\x12\x88\x01confidential VMs cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when confidential_instance_config is configured\x1aw!has(this.confidential_instance_config) || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')\x1a\xb2\x02\n" +
 	"*accelerators_require_terminate_maintenance\x12\x8f\x01VMs with guest accelerators (GPUs) cannot live-migrate — set scheduling.on_host_maintenance to TERMINATE when guest_accelerators are attached\x1arsize(this.guest_accelerators) == 0 || (has(this.scheduling) && this.scheduling.on_host_maintenance == 'TERMINATE')\x1a\x85\x02\n" +
 	"0max_run_duration_conflicts_with_termination_time\x12^max_run_duration_seconds and termination_time both bound the VM's lifetime — set at most one\x1aq!has(this.scheduling) || !has(this.scheduling.max_run_duration_seconds) || this.scheduling.termination_time == ''B\x1c\n" +
-	"\x1a_allow_stopping_for_update\"\x83\x17\n" +
+	"\x1a_allow_stopping_for_update\"\xe6\x19\n" +
 	"\x1aGcpComputeInstanceBootDisk\x12\x14\n" +
 	"\x05image\x18\x01 \x01(\tR\x05image\x12'\n" +
 	"\x0fsource_snapshot\x18\x02 \x01(\tR\x0esourceSnapshot\x12v\n" +
@@ -2279,10 +2292,11 @@ const file_catalog_gcp_gcpcomputeinstance_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
 	"\x18ResourceManagerTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb7\x05\xbaH\xb3\x05\x1a\xd4\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x9a\b\xbaH\x96\b\x1a\xd4\x02\n" +
 	"\x1cboot_disk_exactly_one_source\x12\x81\x01exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)\x1a\xaf\x01(this.image != '' ? 1 : 0) + (this.source_snapshot != '' ? 1 : 0) + ((has(this.source_disk) && (has(this.source_disk.value) || has(this.source_disk.value_from))) ? 1 : 0) == 1\x1a\x9b\x01\n" +
 	"&source_image_encryption_requires_image\x129source_image_encryption is only valid together with image\x1a6!has(this.source_image_encryption) || this.image != ''\x1a\xbb\x01\n" +
-	",source_snapshot_encryption_requires_snapshot\x12Fsource_snapshot_encryption is only valid together with source_snapshot\x1aC!has(this.source_snapshot_encryption) || this.source_snapshot != ''B\x0e\n" +
+	",source_snapshot_encryption_requires_snapshot\x12Fsource_snapshot_encryption is only valid together with source_snapshot\x1aC!has(this.source_snapshot_encryption) || this.source_snapshot != ''\x1a\xe0\x02\n" +
+	"%replica_zones_require_snapshot_source\x12\xf9\x01replica_zones requires a source_snapshot boot source — GCP cannot create a regional boot disk from an image (API 400: \"Creating a regional disk from a source image is not supported yet\"), and a pre-created source_disk already carries its own zones\x1a;size(this.replica_zones) == 0 || this.source_snapshot != ''B\x0e\n" +
 	"\f_auto_deleteB\x13\n" +
 	"\x11_provisioned_iopsB\x19\n" +
 	"\x17_provisioned_throughput\"\x8d\x04\n" +

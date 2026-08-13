@@ -22,7 +22,10 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1 with the whole Dataproc chain (2026-08-12 us-central1
+  # ZONE_RESOURCE_POOL_EXHAUSTED on e2-standard-2 — Dataproc's auto-zone
+  # placement still chose the exhausted us-central1-a).
+  region: us-east1
   clusterName: e2e-dpc-${E2E_RUN_ID}
   labels:
     team: data-platform
