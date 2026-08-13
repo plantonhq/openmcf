@@ -256,6 +256,51 @@ var _ = ginkgo.Describe("AwsMemorydbClusterSpec validations", func() {
 			})
 		})
 
+		ginkgo.Context("with a snapshot ARN that is not an S3 object ARN", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalCluster()
+				spec.SnapshotArns = []string{"arn:aws:elasticache:us-west-2:123456789012:snapshot/my-snap"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a snapshot ARN containing a comma", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalCluster()
+				spec.SnapshotArns = []string{"arn:aws:s3:::bucket/snap,shard2.rdb"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a final_snapshot_name containing consecutive hyphens", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalCluster()
+				spec.FinalSnapshotName = "final--snap"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a final_snapshot_name ending in a hyphen", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalCluster()
+				spec.FinalSnapshotName = "final-snap-"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a final_snapshot_name containing uppercase characters", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalCluster()
+				spec.FinalSnapshotName = "Final-Snap"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with an invalid network_type", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalCluster()

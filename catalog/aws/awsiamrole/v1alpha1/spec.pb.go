@@ -367,11 +367,11 @@ var File_catalog_aws_awsiamrole_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsiamrole_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"*catalog/aws/awsiamrole/v1alpha1/spec.proto\x12#dev.planton.aws.awsiamrole.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf5\n" +
-	"\n" +
+	"*catalog/aws/awsiamrole/v1alpha1/spec.proto\x12#dev.planton.aws.awsiamrole.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb8\f\n" +
 	"\x0eAwsIamRoleSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
-	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xe8\aR\vdescription\x12\x19\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\xec\x01\n" +
+	"\vdescription\x18\x02 \x01(\tB\xc9\x01\xbaH\xc5\x01\xba\x01\xbc\x01\n" +
+	"\x1bdescription_no_curly_quotes\x12mdescription must not contain typographic (curly) quote characters -- AWS rejects them; use plain ASCII quotes\x1a.!this.contains('“') && !this.contains('‘')r\x03\x18\xe8\aR\vdescription\x12\x19\n" +
 	"\x04path\x18\x03 \x01(\tB\x05\x92\xa6\x1d\x01/R\x04path\x12<\n" +
 	"\ftrust_policy\x18\x04 \x01(\v2\x17.google.protobuf.StructH\x00R\vtrustPolicy\x12Y\n" +
 	"\n" +

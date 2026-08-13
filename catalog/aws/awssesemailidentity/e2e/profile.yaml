@@ -12,9 +12,10 @@ spec:
   # requires the document's Resource to be the identity's own ARN (account
   # + region embedded), which a static committed manifest cannot carry;
   # the fold is proven by spec/CEL tests and the offline plan gate.
+  # Also deliberately not live: BYODKIM (needs a real signing key pair --
+  # newly REACHABLE after the validation heal; proven by spec/CEL tests
+  # and the offline gate; reopen when a fixture key ships).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

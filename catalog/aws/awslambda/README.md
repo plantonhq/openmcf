@@ -43,18 +43,27 @@ The function name is `metadata.name` (create-time immutable in AWS). There is no
 - `file_system_config` — EFS access point mount (requires VPC)
 - `image_config` — container entrypoint overrides
 - `publish` — publish version on each change
+- `publish_to` — maintain the `$LATEST.PUBLISHED` head pointer (`LATEST_PUBLISHED`; still rolling out — regions/accounts without the feature reject it at create)
 - `reserved_concurrent_executions` — concurrency cap/reservation
 - `snap_start` — SnapStart (requires `publish`)
 - `logging_config` — log format, levels, optional `log_group` ref
 - `recursive_loop` — `Allow` or `Terminate`
+- `code_sha256` — deploy-side digest for out-of-band code-change detection
+
+**Execution platform**
+
+- `managed_instances` — run on a Lambda Managed Instances capacity provider (ARN, per-vCPU memory sizing, per-environment concurrency)
+- `durable_config` — durable execution (checkpointed progress, up to 366-day budget; adding/removing REPLACES the function)
+- `tenant_isolation_mode` — `PER_TENANT` execution-environment isolation (create-time immutable)
 
 **Satellites (folded into spec)**
 
 - `aliases` — named version pointers, canary weights, provisioned concurrency
-- `function_url` — HTTPS endpoint with CORS
-- `invoke_permissions` — resource-policy invoke grants
-- `async_invoke_config` — async retry, event age, destinations
-- `runtime_management` — runtime patch rollout policy
+- `function_url` — HTTPS endpoint with CORS, optionally alias-qualified (`qualifier`)
+- `invoke_permissions` — resource-policy invoke grants (qualifier scoping, Alexa `event_source_token`, URL-path restriction)
+- `async_invoke_config` — async retry, event age, destinations; optional `qualifier` scope
+- `runtime_management` — runtime patch rollout policy; optional `qualifier` scope
+- `scaling_configs` — per-qualifier execution-environment bounds (Managed Instances; version numbers or `$LATEST.PUBLISHED`)
 
 Event sources are **not** on this spec — use `AwsLambdaEventSourceMapping`.
 

@@ -10,9 +10,23 @@ terraform {
       #
       # Feature floor: the v6 line carries the full
       # aws_redshiftserverless_workgroup surface this module uses,
-      # including price_performance_target and track_name.
+      # including price_performance_target and track_name, plus the
+      # satellites this module also renders
+      # (aws_redshiftserverless_endpoint_access, _usage_limit,
+      # _custom_domain_association) -- all predate the v6 line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
+    }
+    time = {
+      # Utility provider for the destroy-side settle between the
+      # usage-limit deletes and the endpoint-access delete (see
+      # satellite_settle.tf): Redshift Serverless holds a per-workgroup
+      # operation lock for ~15-30s AFTER a usage-limit call returns, and
+      # DeleteEndpointAccess conflicts against it with no provider-side
+      # retry (the aws provider retries that ConflictException only on
+      # the workgroup's own delete/update).
+      source  = "hashicorp/time"
+      version = "~> 0.13"
     }
   }
 }

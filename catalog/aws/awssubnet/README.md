@@ -13,10 +13,11 @@ This resource makes the subnet a first-class, independently composable building 
 
 ## Key Features
 
-- **Single-AZ placement**: Each subnet lives in exactly one Availability Zone (`availabilityZone`), the AWS model. Span AZs by creating one `AwsSubnet` per zone.
-- **Routing folded in**: Declare `routes` and a dedicated route table is created, populated, associated with the subnet, and its id exported — no separate route-table resource. Or set `routeTableId` to adopt an existing table. The two are mutually exclusive, enforced by schema validation.
-- **Typed route targets**: Each route names a `targetType` (internet gateway, NAT gateway, transit gateway, VPC peering, VPC endpoint, network interface, egress-only internet gateway) and a `targetId`, mapping cleanly onto the AWS route attributes.
-- **Dual-stack IPv6**: Optional `ipv6CidrBlock`, `assignIpv6AddressOnCreation`, and `enableDns64` for IPv6 and NAT64 workloads.
+- **Single-AZ placement**: Each subnet lives in exactly one Availability Zone — named (`availabilityZone`) or, for cross-account coordination, by stable zone id (`availabilityZoneId`). Span AZs by creating one `AwsSubnet` per zone.
+- **Explicit or IPAM-allocated addressing**: Declare `cidrBlock` yourself, or allocate from an IPAM pool (`ipv4IpamPoolId` + `ipv4NetmaskLength`; likewise `ipv6IpamPoolId` + `ipv6NetmaskLength` for IPv6) and let your address-management plan own the numbers.
+- **Routing folded in**: Declare `routes` (and/or `propagatingVgws` for Site-to-Site VPN / Direct Connect route propagation) and a dedicated route table is created, populated, associated with the subnet, and its id exported — no separate route-table resource. Or set `routeTableId` to adopt an existing table. The modes are mutually exclusive, enforced by schema validation.
+- **Typed route targets**: Each route names a `targetType` (internet gateway, NAT gateway, transit gateway, VPC peering, VPC endpoint, network interface, egress-only internet gateway, carrier gateway, Cloud WAN core network, Outposts local gateway, Oracle Database@AWS network) and a `targetId`, mapping cleanly onto the AWS route attributes — the provider's complete target set.
+- **Dual-stack and IPv6-only**: Optional `ipv6CidrBlock` (or IPAM), `assignIpv6AddressOnCreation`, `enableDns64`, and `ipv6Native` for IPv6-only subnets with NAT64/DNS64 reach-back to IPv4.
 - **Launch-time behavior**: `mapPublicIpOnLaunch`, resource-name DNS A/AAAA records, and `privateDnsHostnameTypeOnLaunch` control how instances come up.
 - **Consistent tagging**: Standard resource-identity tags are applied to the subnet and any created route table.
 - **Dual-engine parity**: Identical behavior and outputs from the Pulumi (Go) and Terraform (HCL) modules.
@@ -30,10 +31,10 @@ This resource makes the subnet a first-class, independently composable building 
 
 ## Critical Constraints
 
-- **CIDR block**: Required, must be within the VPC CIDR, must not overlap another subnet. Immutable — changing it replaces the subnet.
-- **Availability zone**: Required and immutable. Changing it replaces the subnet.
+- **IPv4 addressing**: Exactly one method — an explicit `cidrBlock` (within the VPC CIDR, non-overlapping) or an IPAM allocation (`ipv4IpamPoolId` + `ipv4NetmaskLength`, /16–/28) — unless `ipv6Native` is true, in which case neither. Immutable — changing it replaces the subnet.
+- **Availability zone**: Exactly one of `availabilityZone` or `availabilityZoneId`, immutable. Changing it replaces the subnet.
 - **VPC id**: Required and immutable. Changing it replaces the subnet.
-- **Route table mutual exclusivity**: `routeTableId` and `routes` cannot both be set; the schema enforces this with a CEL rule.
+- **Route table mutual exclusivity**: `routeTableId` cannot be combined with `routes` or `propagatingVgws`; the schema enforces this with CEL rules.
 - **One destination per route**: Each inline route sets exactly one of `destinationCidrBlock`, `destinationIpv6CidrBlock`, or `destinationPrefixListId`.
 
 ## Use Cases
@@ -42,6 +43,8 @@ This resource makes the subnet a first-class, independently composable building 
 - **Private application subnets**: No public IPs, with an inline default route to a NAT gateway for outbound-only internet access.
 - **Isolated data-tier subnets**: No routes at all — the subnet stays on the VPC main route table with no internet path.
 - **Dual-stack subnets**: An IPv6 CIDR plus an egress-only internet gateway route for outbound-only IPv6.
+- **IPv6-only subnets**: `ipv6Native: true` with `privateDnsHostnameTypeOnLaunch: resource-name` and DNS64 for modern address-exhaustion-free tiers.
+- **Hybrid-connected subnets**: `propagatingVgws` pulls Site-to-Site VPN / Direct Connect routes into the subnet's table automatically.
 
 ## Production Features
 

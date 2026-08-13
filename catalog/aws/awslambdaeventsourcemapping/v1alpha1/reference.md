@@ -29,6 +29,12 @@ larger batches.
 ## Example
 
 ```yaml
+# Canonical validated example: an SQS worker mapping with per-record
+# failure reporting, both billable CloudWatch metrics, and a per-mapping
+# concurrency throttle (the ceiling is the function's own concurrency --
+# values above the former 1,000 cap are valid). The Kafka-only arms
+# (provisioned pollers with a shared poller group, schema registry) live
+# in the msk-shared-pollers preset, which the offline plans also exercise.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambdaEventSourceMapping
 metadata:
@@ -36,11 +42,15 @@ metadata:
 spec:
   region: us-west-2
   functionArn:
-    value: "<lambda-function-arn>"
+    value: arn:aws:lambda:us-west-2:123456789012:function:orders-worker
   eventSourceArn:
-    value: "<sqs-queue-arn>"
+    value: arn:aws:sqs:us-west-2:123456789012:orders-queue
   functionResponseTypes:
     - ReportBatchItemFailures
+  metrics:
+    - EventCount
+    - ErrorCount
+  scalingMaxConcurrency: 2500
 ```
 
 ## Spec Fields
@@ -84,6 +94,7 @@ spec:
 | `spec.provisionedPollers` | `AwsLambdaEventSourceMappingProvisionedPollers` |  |  |  |
 | `spec.provisionedPollers.minimumPollers` | `int32` |  |  |  |
 | `spec.provisionedPollers.maximumPollers` | `int32` |  |  |  |
+| `spec.provisionedPollers.pollerGroupName` | `string` | yes |  |  |
 | `spec.mqQueue` | `string` |  |  |  |
 | `spec.documentDb` | `AwsLambdaEventSourceMappingDocumentDb` |  |  |  |
 | `spec.documentDb.databaseName` | `string` | yes |  |  |
@@ -225,20 +236,25 @@ consumer that processes records independently.
 
 `int32`
 
-Maximum concurrent function invocations this SQS mapping may drive,
-2-1000 -- a per-mapping throttle below the function's own
-concurrency. 0 leaves scaling to AWS. SQS sources only.
+Maximum concurrent function invocations this SQS mapping may drive
+-- a per-mapping throttle below the function's own concurrency.
+Minimum 2; the effective ceiling is the function's concurrency
+(AWS validates it at deploy time -- it routinely exceeds any fixed
+bound, so none is imposed here). 0 leaves scaling to AWS. SQS
+sources only.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":1000,"gte":2}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"gte":2}}
 
 ### spec.metrics
 
 `[]string`
 
-Emit the mapping's CloudWatch metrics ("EventCount" -- records
-delivered to the function). Off by default; metrics are billed.
+Emit the mapping's CloudWatch metrics: "EventCount" (records
+delivered to the function), "ErrorCount" (records that failed
+processing), and/or "KafkaMetrics" (poller/consumer-lag metrics --
+Kafka sources only). Off by default; metrics are billed.
 
-- rule: {"repeated":{"unique":true,"items":{"string":{"in":["EventCount"]}}}}
+- rule: {"repeated":{"unique":true,"items":{"string":{"in":["EventCount","ErrorCount","KafkaMetrics"]}}}}
 
 ### spec.startingPosition
 
@@ -471,6 +487,17 @@ The ceiling of pollers AWS may scale to, 1-2000. 0 keeps the AWS
 default (200).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","int32":{"lte":2000,"gte":1}}
+
+### spec.provisionedPollers.pollerGroupName
+
+`string` · required
+
+Share one provisioned poller fleet across mappings by naming a
+poller group, 1-128 characters: every mapping naming the same group
+draws from (and is jointly capped by) one fleet instead of
+provisioning its own -- the cost lever for many low-traffic topics.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"1","maxLen":"128"}}
 
 ### spec.mqQueue
 

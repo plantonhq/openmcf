@@ -3,6 +3,7 @@ syntax = "proto3";
 package dev.planton.aws.awsdynamodb.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 
 // AwsDynamodbSpec defines an Amazon DynamoDB table: key schema and
@@ -62,9 +63,11 @@ message AwsDynamodbSpec {
 
   // Reserved read/write capacity for the table. Required when the
   // effective billing mode is PROVISIONED; must stay unset for
-  // PAY_PER_REQUEST. Pair with auto-scaling needs by sizing for the
-  // sustained baseline -- on-demand is usually the better answer for
-  // spiky traffic.
+  // PAY_PER_REQUEST. On provisioned tables the modules enforce this
+  // capacity through an Application Auto Scaling target (pinned
+  // min = max) so that capacity changes here always land -- and so that
+  // adding the autoscaling block later never replaces the table. With
+  // autoscaling configured, these values are the initial capacity only.
   AwsDynamodbProvisionedThroughput provisioned_throughput = 5;
 
   // Optional ceilings on on-demand consumption -- a spend guardrail
@@ -156,10 +159,10 @@ message AwsDynamodbSpec {
   // table level and, optionally, per GSI.
   AwsDynamodbContributorInsights contributor_insights = 17;
 
-  // A resource-based IAM policy attached to the table, as a JSON
-  // document -- cross-account access grants without assuming roles.
-  // Table-scoped only (stream policies are a separate niche surface).
-  string resource_policy = 18;
+  // A resource-based IAM policy attached to the table -- cross-account
+  // access grants without assuming roles. Table-scoped only (stream
+  // policies are a separate niche surface).
+  AwsDynamodbResourcePolicy resource_policy = 18;
 
   // A Kinesis Data Stream that receives the table's item-level change
   // data -- the fan-out path for analytics and search-indexing
@@ -192,12 +195,18 @@ message AwsDynamodbSpec {
   // cross-region / cross-account form of point-in-time restore.
   // Server-side encryption must be configured on the restored table.
   // Mutually exclusive with the other restore/import sources.
-  string restore_source_table_arn = 23;
+  string restore_source_table_arn = 23 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:"
+  ];
 
   // The point in time to restore, as a UTC RFC3339 timestamp (e.g.
   // "2026-07-04T06:00:00Z"). Exactly one of restore_date_time or
   // restore_to_latest_time accompanies a point-in-time restore source.
-  string restore_date_time = 24;
+  string restore_date_time = 24 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+  ];
 
   // Restore the most recent recoverable state of the source table
   // instead of a specific timestamp.
@@ -206,7 +215,10 @@ message AwsDynamodbSpec {
   // Create this table by restoring an on-demand or AWS Backup backup,
   // by ARN. Key schema and attributes are inherited from the backup.
   // Mutually exclusive with the other restore/import sources.
-  string restore_backup_arn = 26;
+  string restore_backup_arn = 26 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:"
+  ];
 
   // Create this table pre-loaded with data imported from S3 (CSV,
   // DynamoDB JSON, or Amazon Ion) -- billed as a one-time import, far
@@ -214,6 +226,20 @@ message AwsDynamodbSpec {
   // the restore sources; the key schema and attributes above are
   // required (imports define a brand-new table).
   AwsDynamodbImportTable import_table = 27;
+
+  // Application Auto Scaling for PROVISIONED tables: target-tracking
+  // policies that hold read/write capacity utilization near a target,
+  // plus optional scheduled capacity adjustments. Application Auto
+  // Scaling owns the table's live capacity on EVERY provisioned table
+  // (without this block the modules register pinned min = max targets
+  // from provisioned_throughput, so declared capacity still lands),
+  // which is what lets this block be added or removed in place -- the
+  // table resource itself never changes shape. Per-GSI autoscaling is
+  // deliberately not modeled: neither engine can exempt only the inline
+  // indexes' capacity from reconciliation, so an autoscaled GSI would
+  // fight the scaler on every apply (the provider's standalone GSI
+  // resource exists for that shape).
+  AwsDynamodbAutoscaling autoscaling = 28;
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -307,6 +333,30 @@ message AwsDynamodbSpec {
     id: "insights_indexes_exist"
     message: "contributor_insights.gsi_index_names must name global secondary indexes defined on this table"
     expression: "!has(this.contributor_insights) || this.contributor_insights.gsi_index_names.all(n, this.global_secondary_indexes.exists(g, g.name == n))"
+  };
+
+  // Mirrors the provider's hard plan-time error: DynamoDB rejects declared
+  // attributes that no key uses ("all attributes must be indexed").
+  option (buf.validate.message).cel = {
+    id: "attributes_all_indexed"
+    message: "every declared attribute must be used by the table key schema, a GSI key schema, or an LSI range key -- DynamoDB rejects unused attribute definitions"
+    expression: "this.attribute_definitions.all(a, this.key_schema.exists(k, k.attribute_name == a.name) || this.global_secondary_indexes.exists(g, g.key_schema.exists(k, k.attribute_name == a.name)) || this.local_secondary_indexes.exists(l, l.range_key == a.name))"
+  };
+
+  // Autoscaling manages live capacity on PROVISIONED tables only, and the
+  // initial capacity still comes from provisioned_throughput.
+  option (buf.validate.message).cel = {
+    id: "autoscaling_requires_provisioned"
+    message: "autoscaling applies to PROVISIONED tables only (on-demand tables scale natively) and requires provisioned_throughput for the initial capacity"
+    expression: "!has(this.autoscaling) || (this.billing_mode != 'PAY_PER_REQUEST' && has(this.provisioned_throughput))"
+  };
+
+  // A scheduled adjustment presupposes a registered scalable target for its
+  // dimension -- the read/write policy config is what registers it.
+  option (buf.validate.message).cel = {
+    id: "scheduled_adjustments_require_dimension_target"
+    message: "each scheduled adjustment's dimension (READ/WRITE) must have its autoscaling target configured (autoscaling.read / autoscaling.write)"
+    expression: "!has(this.autoscaling) || this.autoscaling.scheduled_adjustments.all(s, s.dimension == 'READ' ? has(this.autoscaling.read) : has(this.autoscaling.write))"
   };
 }
 
@@ -430,7 +480,10 @@ message AwsDynamodbGlobalSecondaryIndex {
   // keys), then 0-4 RANGE elements (multi-attribute sort keys). Every
   // element names a declared attribute. The common case is one HASH
   // and at most one RANGE.
-  repeated AwsDynamodbKeySchemaElement key_schema = 2 [(buf.validate.field).repeated.min_items = 1];
+  repeated AwsDynamodbKeySchemaElement key_schema = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 8
+  ];
 
   // Which attributes the index carries.
   AwsDynamodbProjection projection = 3 [(buf.validate.field).required = true];
@@ -445,14 +498,18 @@ message AwsDynamodbGlobalSecondaryIndex {
   // Per-index pre-warmed throughput; increase-only, like the table's.
   AwsDynamodbWarmThroughput warm_throughput = 6;
 
+  // The interleaving half of the rule needs positional checks; CEL macros
+  // are element-wise, so adjacency is checked pairwise (a RANGE anywhere
+  // before a HASH always produces an adjacent RANGE,HASH pair, and
+  // max_items caps the list at 8).
   option (buf.validate.message).cel = {
     id: "gsi_key_schema_shape"
-    message: "GSI key_schema must start with a HASH element and carry 1-4 HASH elements (all before any RANGE) and at most 4 RANGE elements"
+    message: "GSI key_schema must carry 1-4 HASH elements first, then at most 4 RANGE elements -- no HASH may follow a RANGE"
     // size() guard first: indexing [0] on an empty list is an EVALUATION
     // error on every engine, which aborts the whole document's validation
     // instead of reporting this rule. Emptiness itself is the sibling
     // min_items rule's job.
-    expression: "this.key_schema.size() == 0 || (this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4)"
+    expression: "this.key_schema.size() == 0 || (this.key_schema[0].key_type == 'HASH' && this.key_schema.filter(k, k.key_type == 'HASH').size() <= 4 && this.key_schema.filter(k, k.key_type == 'RANGE').size() <= 4 && (this.key_schema.size() < 3 || !(this.key_schema[1].key_type == 'RANGE' && this.key_schema[2].key_type == 'HASH')) && (this.key_schema.size() < 4 || !(this.key_schema[2].key_type == 'RANGE' && this.key_schema[3].key_type == 'HASH')) && (this.key_schema.size() < 5 || !(this.key_schema[3].key_type == 'RANGE' && this.key_schema[4].key_type == 'HASH')) && (this.key_schema.size() < 6 || !(this.key_schema[4].key_type == 'RANGE' && this.key_schema[5].key_type == 'HASH')) && (this.key_schema.size() < 7 || !(this.key_schema[5].key_type == 'RANGE' && this.key_schema[6].key_type == 'HASH')) && (this.key_schema.size() < 8 || !(this.key_schema[6].key_type == 'RANGE' && this.key_schema[7].key_type == 'HASH')))"
   };
 }
 
@@ -480,13 +537,16 @@ message AwsDynamodbTtl {
   bool enabled = 1;
 
   // The attribute holding the expiry time as epoch seconds. Required
-  // when enabled; must stay empty when disabled.
+  // when enabled. MAY (and should) stay set when flipping enabled to
+  // false: AWS's UpdateTimeToLive call requires the attribute name when
+  // DISABLING TTL too, so keeping it is what makes the disable
+  // expressible.
   string attribute_name = 2;
 
   option (buf.validate.message).cel = {
     id: "ttl_attribute_when_enabled"
-    message: "attribute_name is required when TTL is enabled and must stay empty when disabled"
-    expression: "this.enabled ? this.attribute_name != '' : this.attribute_name == ''"
+    message: "attribute_name is required when TTL is enabled"
+    expression: "!this.enabled || this.attribute_name != ''"
   };
 }
 
@@ -532,13 +592,18 @@ message AwsDynamodbServerSideEncryption {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];
 
-  // Note: this rule deliberately checks only message presence --
-  // dereferencing StringValueOrRef sub-fields in message-level CEL
-  // breaks protovalidate-java.
   option (buf.validate.message).cel = {
     id: "kms_key_requires_enabled"
     message: "kms_key_arn only applies when server-side encryption is enabled"
     expression: "this.enabled || !has(this.kms_key_arn)"
+  };
+
+  // Literal values must be key ARNs (the provider validates ValidARN at
+  // plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "kms_key_arn_format"
+    message: "kms_key_arn literal value must be a KMS key ARN (arn:...)"
+    expression: "!has(this.kms_key_arn) || this.kms_key_arn.value == '' || this.kms_key_arn.value.startsWith('arn:')"
   };
 }
 
@@ -596,6 +661,14 @@ message AwsDynamodbKinesisStreamingDestination {
       ]
     }
   ];
+
+  // Literal values must be stream ARNs (the provider validates ValidARN
+  // at plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "stream_arn_format"
+    message: "stream_arn literal value must be a Kinesis stream ARN (arn:...)"
+    expression: "!has(this.stream_arn) || this.stream_arn.value == '' || this.stream_arn.value.startsWith('arn:')"
+  };
 }
 
 // AwsDynamodbReplica is one region of a Global Tables v2 deployment --
@@ -603,7 +676,7 @@ message AwsDynamodbKinesisStreamingDestination {
 message AwsDynamodbReplica {
   // The region the replica lives in. Must differ from the table's own
   // region.
-  string region_name = 1 [(buf.validate.field).string.min_len = 1];
+  string region_name = 1 [(buf.validate.field).string.pattern = "^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$"];
 
   // The customer-managed KMS key encrypting THIS replica (each region
   // encrypts independently). Empty uses the AWS-managed aws/dynamodb
@@ -640,6 +713,14 @@ message AwsDynamodbReplica {
       ]
     }
   ];
+
+  // Literal values must be key ARNs (the provider validates ValidARN at
+  // plan time); references resolve at deploy time and are exempt.
+  option (buf.validate.message).cel = {
+    id: "replica_kms_key_arn_format"
+    message: "kms_key_arn literal value must be a KMS key ARN (arn:...)"
+    expression: "!has(this.kms_key_arn) || this.kms_key_arn.value == '' || this.kms_key_arn.value.startsWith('arn:')"
+  };
 }
 
 // AwsDynamodbGlobalTableWitness is the witness region of a Multi-Region
@@ -648,7 +729,7 @@ message AwsDynamodbReplica {
 message AwsDynamodbGlobalTableWitness {
   // The witness region. Must differ from the table's region and the
   // replica's region.
-  string region_name = 1 [(buf.validate.field).string.min_len = 1];
+  string region_name = 1 [(buf.validate.field).string.pattern = "^[a-z]{2,4}(?:-[a-z]+)+-\\d{1,2}$"];
 }
 
 // AwsDynamodbImportTable seeds a brand-new table from data in S3 --
@@ -713,4 +794,148 @@ message AwsDynamodbImportTableCsv {
   // Column names, when the files carry no header row. Empty treats the
   // first row of each file as the header.
   repeated string header_list = 2;
+}
+
+// AwsDynamodbResourcePolicy attaches a resource-based IAM policy to the
+// table -- cross-account access grants without assuming roles.
+message AwsDynamodbResourcePolicy {
+  // The policy document, written as native YAML (serialized to JSON for
+  // the AWS API). Statements address the table ARN and, for index
+  // access, "{table_arn}/index/*".
+  google.protobuf.Struct policy = 1 [(buf.validate.field).required = true];
+
+  // Allow this policy to remove the applying caller's OWN access to the
+  // table. AWS refuses such a policy unless this is set -- the guard
+  // against locking yourself out. Set it deliberately for lockdown and
+  // hand-off policies where the deploying principal is meant to lose
+  // access.
+  bool confirm_remove_self_resource_access = 2;
+}
+
+// AwsDynamodbAutoscaling configures Application Auto Scaling for a
+// PROVISIONED table: target-tracking on read/write capacity utilization
+// plus optional scheduled capacity adjustments. Once configured, the
+// scaler owns the table's live capacity; provisioned_throughput supplies
+// only the initial values.
+message AwsDynamodbAutoscaling {
+  // Target tracking for read capacity. At least one of read/write must
+  // be configured.
+  AwsDynamodbCapacityAutoscaling read = 1;
+
+  // Target tracking for write capacity.
+  AwsDynamodbCapacityAutoscaling write = 2;
+
+  // Scheduled capacity adjustments (e.g. raise the floor before a
+  // nightly batch job, lower it after). Each entry is keyed by name and
+  // targets one dimension's registered scalable target.
+  repeated AwsDynamodbScheduledAdjustment scheduled_adjustments = 3;
+
+  option (buf.validate.message).cel = {
+    id: "at_least_one_dimension"
+    message: "configure autoscaling for at least one dimension (read or write)"
+    expression: "has(this.read) || has(this.write)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "adjustment_names_unique"
+    message: "scheduled_adjustments[].name must be unique"
+    expression: "this.scheduled_adjustments.map(s, s.name).unique()"
+  };
+}
+
+// AwsDynamodbCapacityAutoscaling holds one dimension's scalable-target
+// bounds and its target-tracking policy.
+message AwsDynamodbCapacityAutoscaling {
+  // The capacity floor the scaler never goes below.
+  int64 min_capacity = 1 [(buf.validate.field).int64.gte = 1];
+
+  // The capacity ceiling the scaler never exceeds -- also the cost
+  // guardrail.
+  int64 max_capacity = 2 [(buf.validate.field).int64.gte = 1];
+
+  // The consumed-to-provisioned utilization percentage to hold. AWS
+  // accepts 20-90 for DynamoDB. 70 is the usual production sweet spot:
+  // headroom for spikes without paying for idle.
+  int32 target_utilization_percent = 3 [(buf.validate.field).int32 = {
+    gte: 20
+    lte: 90
+  }];
+
+  // Seconds to wait after a scale-in before another may follow. 0 keeps
+  // the AWS default.
+  int32 scale_in_cooldown_seconds = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Seconds to wait after a scale-out before another may follow. 0 keeps
+  // the AWS default.
+  int32 scale_out_cooldown_seconds = 5 [(buf.validate.field).int32.gte = 0];
+
+  option (buf.validate.message).cel = {
+    id: "max_gte_min"
+    message: "max_capacity must be greater than or equal to min_capacity"
+    expression: "this.max_capacity >= this.min_capacity"
+  };
+}
+
+// AwsDynamodbScheduledAdjustment changes one dimension's capacity bounds
+// on a schedule (cron, rate, or one-shot at-time).
+message AwsDynamodbScheduledAdjustment {
+  // The adjustment name -- keys the provider resource; renaming replaces
+  // this adjustment without touching siblings.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Which capacity dimension this adjustment changes: "READ" or "WRITE".
+  // The dimension's autoscaling target (read/write above) must be
+  // configured.
+  string dimension = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "READ",
+        "WRITE"
+      ]
+    }
+  ];
+
+  // The schedule: "cron(...)" (recurring, e.g. "cron(0 6 * * ? *)"),
+  // "rate(...)" (fixed interval), or "at(yyyy-mm-ddThh:mm:ss)"
+  // (one-shot).
+  string schedule = 3 [(buf.validate.field).string.pattern = "^(cron|rate|at)\\(.+\\)$"];
+
+  // IANA timezone for the schedule (e.g. "America/Los_Angeles"). Empty
+  // keeps the AWS default (UTC).
+  string timezone = 4;
+
+  // The new capacity floor when the schedule fires. At least one of
+  // min_capacity/max_capacity must be set. 0 leaves the floor unchanged.
+  int64 min_capacity = 5 [(buf.validate.field).int64.gte = 0];
+
+  // The new capacity ceiling when the schedule fires. 0 leaves the
+  // ceiling unchanged.
+  int64 max_capacity = 6 [(buf.validate.field).int64.gte = 0];
+
+  // RFC3339 UTC timestamp the schedule takes effect (e.g.
+  // "2026-09-01T00:00:00Z"). Empty starts immediately.
+  string start_time = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+  ];
+
+  // RFC3339 UTC timestamp the schedule stops firing. Empty never
+  // expires.
+  string end_time = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "at_least_one_bound"
+    message: "a scheduled adjustment must set min_capacity, max_capacity, or both"
+    expression: "this.min_capacity > 0 || this.max_capacity > 0"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "bounds_ordered"
+    message: "max_capacity must be greater than or equal to min_capacity when both are set"
+    expression: "this.min_capacity == 0 || this.max_capacity == 0 || this.max_capacity >= this.min_capacity"
+  };
 }

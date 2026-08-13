@@ -22,7 +22,7 @@ The check mirrors the state of a CloudWatch alarm instead of probing anything. T
 
 ### Aggregation and Recovery (CALCULATED, RECOVERY_CONTROL)
 
-Calculated checks aggregate up to 256 child health checks and report healthy when at least the threshold number of children are healthy — composing per-endpoint checks into service-level health. Recovery-control checks mirror an Application Recovery Controller routing control: a deliberate switch for disaster-recovery runbooks rather than an observation.
+Calculated checks aggregate up to 256 child health checks and report healthy when at least the threshold number of children are healthy — composing per-endpoint checks into service-level health. The threshold carries AWS's contract by presence: an explicit `0` means the check is ALWAYS healthy (a maintenance-style override), a value above the child count means always unhealthy, and omitting it lets AWS apply its server-side default. Recovery-control checks mirror an Application Recovery Controller routing control: a deliberate switch for disaster-recovery runbooks rather than an observation.
 
 ## Key Features
 

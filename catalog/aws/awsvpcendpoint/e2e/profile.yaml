@@ -10,10 +10,16 @@ spec:
   # default route table (free; creates in seconds) and an STS INTERFACE
   # endpoint on the subnet pair (billed hourly, but ephemeral; ENI provisioning
   # makes it the slower of the two at a few minutes each way). The VPC/subnet
-  # prerequisites dominate the runtime.
+  # prerequisites dominate the runtime. The depth close changed two render
+  # paths, both riding these lanes: the endpoint policy is now a structured
+  # document serialized by each engine (the gateway scenario carries a
+  # read-only S3 policy -- the field's FIRST-EVER coverage; evidence bar is
+  # DescribeVpcEndpoints echoing the document), and private_dns_enabled is
+  # presence-typed tri-state (the interface scenario's explicit true now
+  # rides the send-when-set path; the explicit-false disable arm is
+  # offline-proven -- a live disable arm needs an enable->disable two-phase
+  # lane, recorded as the reopen bar).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

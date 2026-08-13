@@ -1,0 +1,166 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_dynamodb_table:
+    mappings:
+      # The provider's attribute block; the spec names the list for what
+      # it declares.
+      - spec: spec.attribute_definitions.name
+        arg: attribute.name
+      - spec: spec.attribute_definitions.type
+        arg: attribute.type
+      # The table's primary key: the spec models AWS's own KeySchema list;
+      # the provider lowers it to two scalars. Both modules translate
+      # (exactly one HASH element, at most one RANGE -- CEL-enforced).
+      - spec: spec.key_schema.attribute_name
+        arg: hash_key
+      - spec: spec.key_schema.key_type
+        arg: range_key
+      # Provisioned capacity: the spec follows AWS's ProvisionedThroughput
+      # member names; the provider flattens to two scalars.
+      - spec: spec.provisioned_throughput.read_capacity_units
+        arg: read_capacity
+      - spec: spec.provisioned_throughput.write_capacity_units
+        arg: write_capacity
+      # Global secondary indexes: the spec pluralizes the repeated list;
+      # the provider block is singular. Projections additionally flatten
+      # (the spec nests a typed projection message; the provider carries
+      # type and non-key attributes as siblings), and per-index capacity
+      # follows the table's ProvisionedThroughput member-name shape.
+      - spec: spec.global_secondary_indexes.name
+        arg: global_secondary_index.name
+      - spec: spec.global_secondary_indexes.key_schema.attribute_name
+        arg: global_secondary_index.key_schema.attribute_name
+      - spec: spec.global_secondary_indexes.key_schema.key_type
+        arg: global_secondary_index.key_schema.key_type
+      - spec: spec.global_secondary_indexes.projection.type
+        arg: global_secondary_index.projection_type
+      - spec: spec.global_secondary_indexes.projection.non_key_attributes
+        arg: global_secondary_index.non_key_attributes
+      - spec: spec.global_secondary_indexes.provisioned_throughput.read_capacity_units
+        arg: global_secondary_index.read_capacity
+      - spec: spec.global_secondary_indexes.provisioned_throughput.write_capacity_units
+        arg: global_secondary_index.write_capacity
+      - spec: spec.global_secondary_indexes.on_demand_throughput.max_read_request_units
+        arg: global_secondary_index.on_demand_throughput.max_read_request_units
+      - spec: spec.global_secondary_indexes.on_demand_throughput.max_write_request_units
+        arg: global_secondary_index.on_demand_throughput.max_write_request_units
+      - spec: spec.global_secondary_indexes.warm_throughput.read_units_per_second
+        arg: global_secondary_index.warm_throughput.read_units_per_second
+      - spec: spec.global_secondary_indexes.warm_throughput.write_units_per_second
+        arg: global_secondary_index.warm_throughput.write_units_per_second
+      # Local secondary indexes: same pluralization and projection
+      # flattening.
+      - spec: spec.local_secondary_indexes.name
+        arg: local_secondary_index.name
+      - spec: spec.local_secondary_indexes.range_key
+        arg: local_secondary_index.range_key
+      - spec: spec.local_secondary_indexes.projection.type
+        arg: local_secondary_index.projection_type
+      - spec: spec.local_secondary_indexes.projection.non_key_attributes
+        arg: local_secondary_index.non_key_attributes
+      # Global-table replicas: the spec pluralizes; the provider block is
+      # singular.
+      - spec: spec.replicas.region_name
+        arg: replica.region_name
+      - spec: spec.replicas.kms_key_arn
+        arg: replica.kms_key_arn
+      - spec: spec.replicas.point_in_time_recovery
+        arg: replica.point_in_time_recovery
+      - spec: spec.replicas.deletion_protection_enabled
+        arg: replica.deletion_protection_enabled
+      - spec: spec.replicas.propagate_tags
+        arg: replica.propagate_tags
+      - spec: spec.replicas.consistency_mode
+        arg: replica.consistency_mode
+      # The S3 import source: the spec flattens the provider's
+      # s3_bucket_source nesting.
+      - spec: spec.import_table.s3_bucket
+        arg: import_table.s3_bucket_source.bucket
+      - spec: spec.import_table.s3_bucket_owner
+        arg: import_table.s3_bucket_source.bucket_owner
+      - spec: spec.import_table.s3_key_prefix
+        arg: import_table.s3_bucket_source.key_prefix
+      # CSV options: the spec flattens the provider's input_format_options
+      # wrapper (CSV is its only member).
+      - spec: spec.import_table.csv.delimiter
+        arg: import_table.input_format_options.csv.delimiter
+      - spec: spec.import_table.csv.header_list
+        arg: import_table.input_format_options.csv.header_list
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (create-time-immutable) -- never free-form user surface
+      # Tag machinery. (The deprecated single-attribute GSI hash_key/
+      # range_key variants sit outside the census mechanically -- the
+      # auditor already drops deprecated arguments.)
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_dynamodb_resource_policy:
+    mappings:
+      # The spec types the policy as a YAML/JSON document (Struct); the
+      # provider takes the serialized JSON.
+      - spec: spec.resource_policy.policy
+        arg: policy
+      - spec: spec.resource_policy.confirm_remove_self_resource_access
+        arg: confirm_remove_self_resource_access
+    exclusions:
+      - arg: resource_arn
+        reason: module-shaped plumbing -- always this table's own ARN (the policy is a folded table setting)
+
+  aws_dynamodb_kinesis_streaming_destination:
+    mappings:
+      - spec: spec.kinesis_streaming_destination.stream_arn
+        arg: stream_arn
+      - spec: spec.kinesis_streaming_destination.approximate_creation_date_time_precision
+        arg: approximate_creation_date_time_precision
+    exclusions:
+      - arg: table_name
+        reason: module-shaped plumbing -- always this table's own name (the destination is a folded table setting)
+
+  aws_dynamodb_contributor_insights:
+    mappings:
+      # One provider resource per opted-in GSI, fanned out from the name
+      # list (plus one for the table itself with no index_name).
+      - spec: spec.contributor_insights.gsi_index_names
+        arg: index_name
+      - spec: spec.contributor_insights.mode
+        arg: mode
+    exclusions:
+      - arg: table_name
+        reason: module-shaped plumbing -- always this table's own name (insights are a folded table setting)
+
+  # ---------------------------------------------------------------------
+  # Folded capacity management: Application Auto Scaling owns live
+  # read/write capacity on every provisioned table (user bounds with
+  # target-tracking policies when spec.autoscaling is set; pinned
+  # min = max targets from provisioned_throughput otherwise). The
+  # resources' wider surface (predictive scaling, step scaling, custom
+  # metric math, every other service namespace) is deliberately out of
+  # this kind's scope -- App Auto Scaling as a general surface belongs to
+  # its consuming kinds' folded shapes.
+  # ---------------------------------------------------------------------
+  aws_appautoscaling_target:
+    internal: module-shaped plumbing driven from spec.autoscaling and spec.provisioned_throughput (min/max capacity bounds on the table's two scalable dimensions); wider App Auto Scaling surface is deliberately out of this kind's scope
+  aws_appautoscaling_policy:
+    internal: module-shaped plumbing driven from spec.autoscaling (fixed target-tracking policies on DynamoDB read/write capacity utilization); predictive/step scaling and custom metric math are deliberately out of this kind's scope
+  aws_appautoscaling_scheduled_action:
+    internal: module-shaped plumbing driven from spec.autoscaling.scheduled_adjustments (per-dimension capacity bound changes on a schedule); wider App Auto Scaling surface is deliberately out of this kind's scope
+
+specExclusions:
+  # Drives the internal aws_appautoscaling_target/policy/scheduled_action
+  # resources above -- judged on those resources' internal entries.
+  - field: spec.autoscaling
+    reason: drives the folded aws_appautoscaling_target/policy/scheduled_action resources (module-shaped capacity management; judged on those resources' internal entries)
+  # Gates satellite resource existence rather than mapping to an argument.
+  - field: spec.contributor_insights.enabled
+    reason: gates whether the aws_dynamodb_contributor_insights resources exist at all -- the provider expresses "disabled" as resource absence

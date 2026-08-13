@@ -183,6 +183,14 @@ type AwsCognitoUserPoolSpec struct {
 	// Threat protection posture (AWS "advanced security features"). Beyond
 	// audit-only logging this requires the PLUS feature tier.
 	UserPoolAddOns *AwsCognitoUserPoolAddOns `protobuf:"bytes,25,opt,name=user_pool_add_ons,json=userPoolAddOns,proto3" json:"user_pool_add_ons,omitempty"`
+	// Pool-wide risk configuration for threat protection: automated responses
+	// to account-takeover and compromised-credentials risk, notification
+	// templates, and IP allow/block exceptions. Applies to every app client
+	// that does not carry its own client-scoped risk configuration (a client
+	// sets that on the AwsCognitoUserPoolClient spec). Requires threat
+	// protection to be active (`user_pool_add_ons.advanced_security_mode` of
+	// "AUDIT" or "ENFORCED"); automated responses act only in ENFORCED mode.
+	RiskConfiguration *AwsCognitoUserPoolRiskConfiguration `protobuf:"bytes,28,opt,name=risk_configuration,json=riskConfiguration,proto3" json:"risk_configuration,omitempty"`
 	// Where Cognito delivers detailed event logs. Each entry routes one event
 	// source (user notifications, or auth events from threat protection) to
 	// exactly one destination: a CloudWatch log group, a Firehose stream, or an
@@ -197,7 +205,15 @@ type AwsCognitoUserPoolSpec struct {
 	//
 	// Required for OAuth flows that use the Authorization Code grant with a
 	// hosted UI redirect.
-	Domain        *AwsCognitoUserPoolDomainConfig `protobuf:"bytes,27,opt,name=domain,proto3" json:"domain,omitempty"`
+	Domain *AwsCognitoUserPoolDomainConfig `protobuf:"bytes,27,opt,name=domain,proto3" json:"domain,omitempty"`
+	// User groups in this pool. Groups organize users for authorization: a
+	// user's group memberships appear in the "cognito:groups" claim of their
+	// tokens, and a group's IAM role flows into credentials vended through
+	// identity-pool federation. Groups are pool-scoped configuration with no
+	// independent AWS lifecycle, so they live here rather than as a separate
+	// component. Users are ASSIGNED to groups at runtime (admin API) -- group
+	// membership is data-plane content, not infrastructure.
+	UserGroups    []*AwsCognitoUserPoolUserGroup `protobuf:"bytes,29,rep,name=user_groups,json=userGroups,proto3" json:"user_groups,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -407,6 +423,13 @@ func (x *AwsCognitoUserPoolSpec) GetUserPoolAddOns() *AwsCognitoUserPoolAddOns {
 	return nil
 }
 
+func (x *AwsCognitoUserPoolSpec) GetRiskConfiguration() *AwsCognitoUserPoolRiskConfiguration {
+	if x != nil {
+		return x.RiskConfiguration
+	}
+	return nil
+}
+
 func (x *AwsCognitoUserPoolSpec) GetLogConfigurations() []*AwsCognitoUserPoolLogConfiguration {
 	if x != nil {
 		return x.LogConfigurations
@@ -417,6 +440,13 @@ func (x *AwsCognitoUserPoolSpec) GetLogConfigurations() []*AwsCognitoUserPoolLog
 func (x *AwsCognitoUserPoolSpec) GetDomain() *AwsCognitoUserPoolDomainConfig {
 	if x != nil {
 		return x.Domain
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolSpec) GetUserGroups() []*AwsCognitoUserPoolUserGroup {
+	if x != nil {
+		return x.UserGroups
 	}
 	return nil
 }
@@ -434,12 +464,15 @@ type AwsCognitoUserPoolPasswordPolicy struct {
 	RequireNumbers bool `protobuf:"varint,4,opt,name=require_numbers,json=requireNumbers,proto3" json:"require_numbers,omitempty"`
 	// Require at least one special character.
 	RequireSymbols bool `protobuf:"varint,5,opt,name=require_symbols,json=requireSymbols,proto3" json:"require_symbols,omitempty"`
-	// Number of previous passwords a new password must differ from. Range: 0-24
-	// (0 disables history checking). Password history requires the pool to be on
-	// the ESSENTIALS tier or higher.
+	// Number of previous passwords a new password must differ from. Range: 0-24.
+	// 0 is AWS's default posture (history checking off), so leaving this unset
+	// and setting 0 are the same policy. Password history requires the pool to
+	// be on the ESSENTIALS tier or higher.
 	PasswordHistorySize int32 `protobuf:"varint,6,opt,name=password_history_size,json=passwordHistorySize,proto3" json:"password_history_size,omitempty"`
-	// Number of days temporary passwords (admin-created) are valid.
-	// Range: 0-365 (0 means no expiration). AWS default: 7.
+	// Number of days temporary passwords (admin-created) are valid. Range:
+	// 0-365. AWS default: 7 -- and AWS treats a submitted 0 as null, applying
+	// that default, so 0 is NOT "no expiration"; there is no way to make
+	// temporary passwords permanent. Leaving this unset keeps the 7-day default.
 	TemporaryPasswordValidityDays int32 `protobuf:"varint,7,opt,name=temporary_password_validity_days,json=temporaryPasswordValidityDays,proto3" json:"temporary_password_validity_days,omitempty"`
 	unknownFields                 protoimpl.UnknownFields
 	sizeCache                     protoimpl.SizeCache
@@ -787,7 +820,8 @@ type AwsCognitoUserPoolEmailConfig struct {
 	//     Requires `source_arn`. Supports production-level sending volumes.
 	EmailSendingAccount string `protobuf:"bytes,1,opt,name=email_sending_account,json=emailSendingAccount,proto3" json:"email_sending_account,omitempty"`
 	// SES verified identity ARN for sending emails. Required when
-	// `email_sending_account` is "DEVELOPER". Example:
+	// `email_sending_account` is "DEVELOPER". Accepts a direct identity ARN or
+	// a reference to an AwsSesEmailIdentity resource. Example:
 	// "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
 	SourceArn *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=source_arn,json=sourceArn,proto3" json:"source_arn,omitempty"`
 	// "From" email address shown to recipients. Only applicable when using
@@ -796,8 +830,10 @@ type AwsCognitoUserPoolEmailConfig struct {
 	// Reply-to email address. When set, user replies go to this address
 	// instead of the "from" address.
 	ReplyToEmailAddress string `protobuf:"bytes,4,opt,name=reply_to_email_address,json=replyToEmailAddress,proto3" json:"reply_to_email_address,omitempty"`
-	// SES configuration set name for tracking email delivery metrics.
-	ConfigurationSet string `protobuf:"bytes,5,opt,name=configuration_set,json=configurationSet,proto3" json:"configuration_set,omitempty"`
+	// SES configuration set for tracking email delivery metrics (opens, bounces,
+	// complaints). Accepts a direct configuration-set name or a reference to an
+	// AwsSesConfigurationSet resource.
+	ConfigurationSet *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=configuration_set,json=configurationSet,proto3" json:"configuration_set,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -860,11 +896,11 @@ func (x *AwsCognitoUserPoolEmailConfig) GetReplyToEmailAddress() string {
 	return ""
 }
 
-func (x *AwsCognitoUserPoolEmailConfig) GetConfigurationSet() string {
+func (x *AwsCognitoUserPoolEmailConfig) GetConfigurationSet() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ConfigurationSet
 	}
-	return ""
+	return nil
 }
 
 // AwsCognitoUserPoolVerificationMessageTemplate customizes the message users
@@ -1754,11 +1790,584 @@ func (x *AwsCognitoUserPoolDomainConfig) GetManagedLoginVersion() int32 {
 	return 0
 }
 
+// AwsCognitoUserPoolUserGroup defines one user group in the pool. Group
+// membership surfaces in the "cognito:groups" token claim, and the group's
+// IAM role is the role identity-pool federation vends to members.
+type AwsCognitoUserPoolUserGroup struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Group name. Unique within the pool. 1-128 characters. Renaming a group
+	// replaces it (AWS has no rename API) -- memberships do not survive.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Human-readable purpose of the group. Up to 2048 characters.
+	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	// Priority when a user belongs to multiple groups: the LOWEST value wins
+	// for the "cognito:preferred_role" claim. Note an AWS/provider asymmetry:
+	// AWS accepts precedence 0 (the strongest priority) and defaults to null,
+	// but the Terraform provider's zero-value gating cannot send an explicit 0
+	// -- through either engine -- so 0 here means "no precedence" (AWS null).
+	// Use 1 as the strongest expressible priority.
+	Precedence int32 `protobuf:"varint,3,opt,name=precedence,proto3" json:"precedence,omitempty"`
+	// The IAM role whose ARN lands in members' "cognito:roles" and
+	// "cognito:preferred_role" claims (and is assumable through identity-pool
+	// federation). Accepts a direct role ARN or a reference to an AwsIamRole
+	// resource.
+	RoleArn       *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolUserGroup) Reset() {
+	*x = AwsCognitoUserPoolUserGroup{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolUserGroup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolUserGroup) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolUserGroup) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolUserGroup.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolUserGroup) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsCognitoUserPoolUserGroup) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolUserGroup) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolUserGroup) GetPrecedence() int32 {
+	if x != nil {
+		return x.Precedence
+	}
+	return 0
+}
+
+func (x *AwsCognitoUserPoolUserGroup) GetRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RoleArn
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolRiskConfiguration configures threat protection's
+// automated responses. AWS applies a pool-wide configuration (this message)
+// to every app client unless a client carries its own client-scoped
+// configuration (set on the AwsCognitoUserPoolClient spec). At least one of
+// the three arms must be configured.
+type AwsCognitoUserPoolRiskConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Automated responses to sign-in attempts Cognito assesses as possible
+	// account takeover, by risk level, plus the notification templates for
+	// "notify the user" actions.
+	AccountTakeover *AwsCognitoUserPoolAccountTakeoverConfig `protobuf:"bytes,1,opt,name=account_takeover,json=accountTakeover,proto3" json:"account_takeover,omitempty"`
+	// Automated response when Cognito detects the presented credentials in a
+	// known-compromised set.
+	CompromisedCredentials *AwsCognitoUserPoolCompromisedCredentialsConfig `protobuf:"bytes,2,opt,name=compromised_credentials,json=compromisedCredentials,proto3" json:"compromised_credentials,omitempty"`
+	// IP-range exceptions that bypass or force the risk decision.
+	RiskException *AwsCognitoUserPoolRiskExceptionConfig `protobuf:"bytes,3,opt,name=risk_exception,json=riskException,proto3" json:"risk_exception,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) Reset() {
+	*x = AwsCognitoUserPoolRiskConfiguration{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolRiskConfiguration) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolRiskConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolRiskConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) GetAccountTakeover() *AwsCognitoUserPoolAccountTakeoverConfig {
+	if x != nil {
+		return x.AccountTakeover
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) GetCompromisedCredentials() *AwsCognitoUserPoolCompromisedCredentialsConfig {
+	if x != nil {
+		return x.CompromisedCredentials
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskConfiguration) GetRiskException() *AwsCognitoUserPoolRiskExceptionConfig {
+	if x != nil {
+		return x.RiskException
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolAccountTakeoverConfig assigns an automated response to
+// each account-takeover risk level and configures the notification emails
+// those responses can send.
+type AwsCognitoUserPoolAccountTakeoverConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Response to a LOW-risk assessment.
+	LowAction *AwsCognitoUserPoolAccountTakeoverAction `protobuf:"bytes,1,opt,name=low_action,json=lowAction,proto3" json:"low_action,omitempty"`
+	// Response to a MEDIUM-risk assessment.
+	MediumAction *AwsCognitoUserPoolAccountTakeoverAction `protobuf:"bytes,2,opt,name=medium_action,json=mediumAction,proto3" json:"medium_action,omitempty"`
+	// Response to a HIGH-risk assessment.
+	HighAction *AwsCognitoUserPoolAccountTakeoverAction `protobuf:"bytes,3,opt,name=high_action,json=highAction,proto3" json:"high_action,omitempty"`
+	// SES sending configuration and message templates for the notification
+	// emails sent when an action has notify enabled. Required by AWS when any
+	// action notifies the user.
+	NotifyConfiguration *AwsCognitoUserPoolRiskNotifyConfig `protobuf:"bytes,4,opt,name=notify_configuration,json=notifyConfiguration,proto3" json:"notify_configuration,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) Reset() {
+	*x = AwsCognitoUserPoolAccountTakeoverConfig{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolAccountTakeoverConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolAccountTakeoverConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolAccountTakeoverConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) GetLowAction() *AwsCognitoUserPoolAccountTakeoverAction {
+	if x != nil {
+		return x.LowAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) GetMediumAction() *AwsCognitoUserPoolAccountTakeoverAction {
+	if x != nil {
+		return x.MediumAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) GetHighAction() *AwsCognitoUserPoolAccountTakeoverAction {
+	if x != nil {
+		return x.HighAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverConfig) GetNotifyConfiguration() *AwsCognitoUserPoolRiskNotifyConfig {
+	if x != nil {
+		return x.NotifyConfiguration
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolAccountTakeoverAction is the automated response for one
+// account-takeover risk level.
+type AwsCognitoUserPoolAccountTakeoverAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+	// metrics without acting):
+	//   - "BLOCK": reject the sign-in attempt.
+	//   - "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+	//     otherwise allow the attempt.
+	//   - "MFA_REQUIRED": require MFA; users without a factor are blocked.
+	//   - "NO_ACTION": allow the attempt (pair with notify to warn the user).
+	EventAction string `protobuf:"bytes,1,opt,name=event_action,json=eventAction,proto3" json:"event_action,omitempty"`
+	// Whether Cognito emails the user about the event using the templates in
+	// notify_configuration.
+	Notify        bool `protobuf:"varint,2,opt,name=notify,proto3" json:"notify,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverAction) Reset() {
+	*x = AwsCognitoUserPoolAccountTakeoverAction{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolAccountTakeoverAction) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolAccountTakeoverAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolAccountTakeoverAction.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolAccountTakeoverAction) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverAction) GetEventAction() string {
+	if x != nil {
+		return x.EventAction
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolAccountTakeoverAction) GetNotify() bool {
+	if x != nil {
+		return x.Notify
+	}
+	return false
+}
+
+// AwsCognitoUserPoolRiskNotifyConfig configures the SES identity and message
+// templates threat protection uses to notify users of risky sign-in events.
+type AwsCognitoUserPoolRiskNotifyConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SES identity Cognito sends notification emails from. Accepts a
+	// direct identity ARN or a reference to an AwsSesEmailIdentity resource.
+	SourceArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=source_arn,json=sourceArn,proto3" json:"source_arn,omitempty"`
+	// "From" address shown on notification emails. When omitted, AWS derives
+	// it from the source identity.
+	From string `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	// Reply-to address on notification emails.
+	ReplyTo string `protobuf:"bytes,3,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	// Template for the "we blocked a sign-in attempt" notification.
+	BlockEmail *AwsCognitoUserPoolRiskNotifyEmail `protobuf:"bytes,4,opt,name=block_email,json=blockEmail,proto3" json:"block_email,omitempty"`
+	// Template for the "we required MFA on a sign-in attempt" notification.
+	MfaEmail *AwsCognitoUserPoolRiskNotifyEmail `protobuf:"bytes,5,opt,name=mfa_email,json=mfaEmail,proto3" json:"mfa_email,omitempty"`
+	// Template for the "we observed a risky sign-in attempt" (no action taken)
+	// notification.
+	NoActionEmail *AwsCognitoUserPoolRiskNotifyEmail `protobuf:"bytes,6,opt,name=no_action_email,json=noActionEmail,proto3" json:"no_action_email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) Reset() {
+	*x = AwsCognitoUserPoolRiskNotifyConfig{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolRiskNotifyConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolRiskNotifyConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolRiskNotifyConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetSourceArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetReplyTo() string {
+	if x != nil {
+		return x.ReplyTo
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetBlockEmail() *AwsCognitoUserPoolRiskNotifyEmail {
+	if x != nil {
+		return x.BlockEmail
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetMfaEmail() *AwsCognitoUserPoolRiskNotifyEmail {
+	if x != nil {
+		return x.MfaEmail
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyConfig) GetNoActionEmail() *AwsCognitoUserPoolRiskNotifyEmail {
+	if x != nil {
+		return x.NoActionEmail
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolRiskNotifyEmail is one notification email template.
+type AwsCognitoUserPoolRiskNotifyEmail struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Email subject. 1-140 characters.
+	Subject string `protobuf:"bytes,1,opt,name=subject,proto3" json:"subject,omitempty"`
+	// HTML email body. 6-20000 characters.
+	HtmlBody string `protobuf:"bytes,2,opt,name=html_body,json=htmlBody,proto3" json:"html_body,omitempty"`
+	// Plain-text email body. 6-20000 characters.
+	TextBody      string `protobuf:"bytes,3,opt,name=text_body,json=textBody,proto3" json:"text_body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) Reset() {
+	*x = AwsCognitoUserPoolRiskNotifyEmail{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolRiskNotifyEmail) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolRiskNotifyEmail.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolRiskNotifyEmail) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) GetHtmlBody() string {
+	if x != nil {
+		return x.HtmlBody
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolRiskNotifyEmail) GetTextBody() string {
+	if x != nil {
+		return x.TextBody
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolCompromisedCredentialsConfig configures the automated
+// response when a user signs in (or up, or changes their password) with
+// credentials Cognito finds in a known-compromised set.
+type AwsCognitoUserPoolCompromisedCredentialsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The response Cognito takes (acts only in ENFORCED mode):
+	// - "BLOCK": reject the attempt.
+	// - "NO_ACTION": allow the attempt (still logged/audited).
+	EventAction string `protobuf:"bytes,1,opt,name=event_action,json=eventAction,proto3" json:"event_action,omitempty"`
+	// Which authentication events are checked against the compromised set.
+	// When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+	// "PASSWORD_CHANGE", "SIGN_UP".
+	EventFilter   []string `protobuf:"bytes,2,rep,name=event_filter,json=eventFilter,proto3" json:"event_filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolCompromisedCredentialsConfig) Reset() {
+	*x = AwsCognitoUserPoolCompromisedCredentialsConfig{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolCompromisedCredentialsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolCompromisedCredentialsConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolCompromisedCredentialsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolCompromisedCredentialsConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolCompromisedCredentialsConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AwsCognitoUserPoolCompromisedCredentialsConfig) GetEventAction() string {
+	if x != nil {
+		return x.EventAction
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolCompromisedCredentialsConfig) GetEventFilter() []string {
+	if x != nil {
+		return x.EventFilter
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolRiskExceptionConfig lists IP ranges that override risk
+// evaluation entirely.
+type AwsCognitoUserPoolRiskExceptionConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Always-BLOCK list: authentication requests from these CIDR ranges are
+	// rejected regardless of risk assessment. Up to 200 entries.
+	BlockedIpRanges []string `protobuf:"bytes,1,rep,name=blocked_ip_ranges,json=blockedIpRanges,proto3" json:"blocked_ip_ranges,omitempty"`
+	// Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+	// Up to 200 entries.
+	SkippedIpRanges []string `protobuf:"bytes,2,rep,name=skipped_ip_ranges,json=skippedIpRanges,proto3" json:"skipped_ip_ranges,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolRiskExceptionConfig) Reset() {
+	*x = AwsCognitoUserPoolRiskExceptionConfig{}
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolRiskExceptionConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolRiskExceptionConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolRiskExceptionConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolRiskExceptionConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolRiskExceptionConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AwsCognitoUserPoolRiskExceptionConfig) GetBlockedIpRanges() []string {
+	if x != nil {
+		return x.BlockedIpRanges
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolRiskExceptionConfig) GetSkippedIpRanges() []string {
+	if x != nil {
+		return x.SkippedIpRanges
+	}
+	return nil
+}
+
 var File_catalog_aws_awscognitouserpool_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awscognitouserpool/v1alpha1/spec.proto\x12+dev.planton.aws.awscognitouserpool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf2.\n" +
+	"2catalog/aws/awscognitouserpool/v1alpha1/spec.proto\x12+dev.planton.aws.awscognitouserpool.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xec3\n" +
 	"\x16AwsCognitoUserPoolSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12/\n" +
 	"\x13username_attributes\x18\x02 \x03(\tR\x12usernameAttributes\x12)\n" +
@@ -1785,9 +2394,14 @@ const file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14device_configuration\x18\x16 \x01(\v2K.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDeviceConfigR\x13deviceConfiguration\x12{\n" +
 	"\x11custom_attributes\x18\x17 \x03(\v2N.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSchemaAttributeR\x10customAttributes\x12p\n" +
 	"\rlambda_config\x18\x18 \x01(\v2K.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfigR\flambdaConfig\x12p\n" +
-	"\x11user_pool_add_ons\x18\x19 \x01(\v2E.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAddOnsR\x0euserPoolAddOns\x12~\n" +
+	"\x11user_pool_add_ons\x18\x19 \x01(\v2E.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAddOnsR\x0euserPoolAddOns\x12\x7f\n" +
+	"\x12risk_configuration\x18\x1c \x01(\v2P.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfigurationR\x11riskConfiguration\x12~\n" +
 	"\x12log_configurations\x18\x1a \x03(\v2O.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfigurationR\x11logConfigurations\x12c\n" +
-	"\x06domain\x18\x1b \x01(\v2K.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfigR\x06domain:\xbd\x1b\xbaH\xb9\x1b\x1a\xc8\x01\n" +
+	"\x06domain\x18\x1b \x01(\v2K.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfigR\x06domain\x12i\n" +
+	"\vuser_groups\x18\x1d \x03(\v2H.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolUserGroupR\n" +
+	"userGroups:\xcb\x1e\xbaH\xc7\x1e\x1am\n" +
+	"\x17user_group_names_unique\x12(user_groups must have unique name values\x1a(this.user_groups.map(g, g.name).unique()\x1a\x9c\x02\n" +
+	"-risk_configuration_requires_threat_protection\x12`risk_configuration requires user_pool_add_ons.advanced_security_mode to be 'AUDIT' or 'ENFORCED'\x1a\x88\x01!has(this.risk_configuration) || (has(this.user_pool_add_ons) && this.user_pool_add_ons.advanced_security_mode in ['AUDIT', 'ENFORCED'])\x1a\xc8\x01\n" +
 	"\x1cusername_or_alias_attributes\x12]username_attributes and alias_attributes are mutually exclusive; set one or neither, not both\x1aIthis.username_attributes.size() == 0 || this.alias_attributes.size() == 0\x1a\xa1\x01\n" +
 	"\x19username_attributes_valid\x12Cusername_attributes must contain only 'email' and/or 'phone_number'\x1a?this.username_attributes.all(a, a in ['email', 'phone_number'])\x1a\xc5\x01\n" +
 	"\x16alias_attributes_valid\x12Walias_attributes must contain only 'email', 'phone_number', and/or 'preferred_username'\x1aRthis.alias_attributes.all(a, a in ['email', 'phone_number', 'preferred_username'])\x1a\xab\x01\n" +
@@ -1830,14 +2444,14 @@ const file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc = "" +
 	"sns_region\x18\x03 \x01(\tR\tsnsRegion\"e\n" +
 	"#AwsCognitoUserPoolRecoveryMechanism\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\"\n" +
-	"\bpriority\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bpriority\"\xb7\x05\n" +
+	"\bpriority\x18\x02 \x01(\x05B\x06\xbaH\x03\xc8\x01\x01R\bpriority\"\xc2\x06\n" +
 	"\x1dAwsCognitoUserPoolEmailConfig\x122\n" +
-	"\x15email_sending_account\x18\x01 \x01(\tR\x13emailSendingAccount\x12Q\n" +
+	"\x15email_sending_account\x18\x01 \x01(\tR\x13emailSendingAccount\x12w\n" +
 	"\n" +
-	"source_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\tsourceArn\x12,\n" +
+	"source_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\x88\xd4a\x8f\t\x92\xd4a\x1bstatus.outputs.identity_arnR\tsourceArn\x12,\n" +
 	"\x12from_email_address\x18\x03 \x01(\tR\x10fromEmailAddress\x123\n" +
-	"\x16reply_to_email_address\x18\x04 \x01(\tR\x13replyToEmailAddress\x12+\n" +
-	"\x11configuration_set\x18\x05 \x01(\tR\x10configurationSet:\xfe\x02\xbaH\xfa\x02\x1a\xca\x01\n" +
+	"\x16reply_to_email_address\x18\x04 \x01(\tR\x13replyToEmailAddress\x12\x8f\x01\n" +
+	"\x11configuration_set\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB.\x88\xd4a\x8e\t\x92\xd4a%status.outputs.configuration_set_nameR\x10configurationSet:\xfe\x02\xbaH\xfa\x02\x1a\xca\x01\n" +
 	"\x1bemail_sending_account_valid\x12Gemail_sending_account must be 'COGNITO_DEFAULT' or 'DEVELOPER' when set\x1abthis.email_sending_account == '' || this.email_sending_account in ['COGNITO_DEFAULT', 'DEVELOPER']\x1a\xaa\x01\n" +
 	"#developer_email_requires_source_arn\x12@source_arn is required when email_sending_account is 'DEVELOPER'\x1aAthis.email_sending_account != 'DEVELOPER' || has(this.source_arn)\"\xf0\t\n" +
 	"-AwsCognitoUserPoolVerificationMessageTemplate\x120\n" +
@@ -1921,7 +2535,57 @@ const file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x06domain\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06domain\x12}\n" +
 	"\x0fcertificate_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x0ecertificateArn\x12B\n" +
 	"\x15managed_login_version\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x02(\x01H\x00R\x13managedLoginVersion\x88\x01\x01B\x18\n" +
-	"\x16_managed_login_versionB\xee\x02\n" +
+	"\x16_managed_login_version\"\x83\x02\n" +
+	"\x1bAwsCognitoUserPoolUserGroup\x12\x1e\n" +
+	"\x04name\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x80\x01R\x04name\x12*\n" +
+	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\vdescription\x12'\n" +
+	"\n" +
+	"precedence\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
+	"precedence\x12o\n" +
+	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\x96\x05\n" +
+	"#AwsCognitoUserPoolRiskConfiguration\x12\x7f\n" +
+	"\x10account_takeover\x18\x01 \x01(\v2T.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfigR\x0faccountTakeover\x12\x94\x01\n" +
+	"\x17compromised_credentials\x18\x02 \x01(\v2[.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCompromisedCredentialsConfigR\x16compromisedCredentials\x12y\n" +
+	"\x0erisk_exception\x18\x03 \x01(\v2R.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskExceptionConfigR\rriskException:\xdb\x01\xbaH\xd7\x01\x1a\xd4\x01\n" +
+	"#risk_configuration_at_least_one_arm\x12Pset at least one of account_takeover, compromised_credentials, or risk_exception\x1a[has(this.account_takeover) || has(this.compromised_credentials) || has(this.risk_exception)\"\x8e\b\n" +
+	"'AwsCognitoUserPoolAccountTakeoverConfig\x12s\n" +
+	"\n" +
+	"low_action\x18\x01 \x01(\v2T.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverActionR\tlowAction\x12y\n" +
+	"\rmedium_action\x18\x02 \x01(\v2T.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverActionR\fmediumAction\x12u\n" +
+	"\vhigh_action\x18\x03 \x01(\v2T.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverActionR\n" +
+	"highAction\x12\x82\x01\n" +
+	"\x14notify_configuration\x18\x04 \x01(\v2O.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfigR\x13notifyConfiguration:\xf6\x03\xbaH\xf2\x03\x1a\xaf\x01\n" +
+	"$account_takeover_at_least_one_action\x12=set at least one of low_action, medium_action, or high_action\x1aHhas(this.low_action) || has(this.medium_action) || has(this.high_action)\x1a\xbd\x02\n" +
+	".notify_configuration_requires_notifying_action\x12Enotify_configuration requires at least one action with notify enabled\x1a\xc3\x01!has(this.notify_configuration) || (has(this.low_action) && this.low_action.notify) || (has(this.medium_action) && this.medium_action.notify) || (has(this.high_action) && this.high_action.notify)\"\xc0\x02\n" +
+	"'AwsCognitoUserPoolAccountTakeoverAction\x12)\n" +
+	"\fevent_action\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventAction\x12\x16\n" +
+	"\x06notify\x18\x02 \x01(\bR\x06notify:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"#account_takeover_event_action_valid\x12Qevent_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'\x1aPthis.event_action in ['BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', 'NO_ACTION']\"\xa8\x04\n" +
+	"\"AwsCognitoUserPoolRiskNotifyConfig\x12}\n" +
+	"\n" +
+	"source_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\t\x92\xd4a\x1bstatus.outputs.identity_arnR\tsourceArn\x12\x12\n" +
+	"\x04from\x18\x02 \x01(\tR\x04from\x12\x19\n" +
+	"\breply_to\x18\x03 \x01(\tR\areplyTo\x12o\n" +
+	"\vblock_email\x18\x04 \x01(\v2N.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmailR\n" +
+	"blockEmail\x12k\n" +
+	"\tmfa_email\x18\x05 \x01(\v2N.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmailR\bmfaEmail\x12v\n" +
+	"\x0fno_action_email\x18\x06 \x01(\v2N.dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmailR\rnoActionEmail\"\x9d\x01\n" +
+	"!AwsCognitoUserPoolRiskNotifyEmail\x12$\n" +
+	"\asubject\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x8c\x01R\asubject\x12(\n" +
+	"\thtml_body\x18\x02 \x01(\tB\v\xbaH\br\x06\x10\x06\x18\xa0\x9c\x01R\bhtmlBody\x12(\n" +
+	"\ttext_body\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x06\x18\xa0\x9c\x01R\btextBody\"\xd6\x03\n" +
+	".AwsCognitoUserPoolCompromisedCredentialsConfig\x12)\n" +
+	"\fevent_action\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventAction\x12!\n" +
+	"\fevent_filter\x18\x02 \x03(\tR\veventFilter:\xd5\x02\xbaH\xd1\x02\x1a\x86\x01\n" +
+	"*compromised_credentials_event_action_valid\x12+event_action must be 'BLOCK' or 'NO_ACTION'\x1a+this.event_action in ['BLOCK', 'NO_ACTION']\x1a\xc5\x01\n" +
+	"*compromised_credentials_event_filter_valid\x12Mevent_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'\x1aHthis.event_filter.all(f, f in ['SIGN_IN', 'PASSWORD_CHANGE', 'SIGN_UP'])\"\xf5\x04\n" +
+	"%AwsCognitoUserPoolRiskExceptionConfig\x12;\n" +
+	"\x11blocked_ip_ranges\x18\x01 \x03(\tB\x0f\xbaH\f\x92\x01\t\x10\xc8\x01\"\x04r\x02\x10\x01R\x0fblockedIpRanges\x12;\n" +
+	"\x11skipped_ip_ranges\x18\x02 \x03(\tB\x0f\xbaH\f\x92\x01\t\x10\xc8\x01\"\x04r\x02\x10\x01R\x0fskippedIpRanges:\xd1\x03\xbaH\xcd\x03\x1a\xa6\x01\n" +
+	" risk_exception_at_least_one_list\x12:set at least one of blocked_ip_ranges or skipped_ip_ranges\x1aFthis.blocked_ip_ranges.size() > 0 || this.skipped_ip_ranges.size() > 0\x1a\xa1\x02\n" +
+	"\x1arisk_exception_cidr_format\x12nblocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')\x1a\x92\x01this.blocked_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$')) && this.skipped_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$'))B\xee\x02\n" +
 	"/com.dev.planton.aws.awscognitouserpool.v1alpha1B\tSpecProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awscognitouserpool/v1alpha1;awscognitouserpoolv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awscognitouserpool.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awscognitouserpool\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awscognitouserpool\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awscognitouserpool::V1alpha1b\x06proto3"
 
 var (
@@ -1936,26 +2600,34 @@ func file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsCognitoUserPoolSpec)(nil),                        // 0: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec
-	(*AwsCognitoUserPoolPasswordPolicy)(nil),              // 1: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPasswordPolicy
-	(*AwsCognitoUserPoolEmailMfaConfig)(nil),              // 2: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailMfaConfig
-	(*AwsCognitoUserPoolWebAuthnConfig)(nil),              // 3: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolWebAuthnConfig
-	(*AwsCognitoUserPoolSmsConfig)(nil),                   // 4: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSmsConfig
-	(*AwsCognitoUserPoolRecoveryMechanism)(nil),           // 5: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRecoveryMechanism
-	(*AwsCognitoUserPoolEmailConfig)(nil),                 // 6: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailConfig
-	(*AwsCognitoUserPoolVerificationMessageTemplate)(nil), // 7: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolVerificationMessageTemplate
-	(*AwsCognitoUserPoolInviteMessageTemplate)(nil),       // 8: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolInviteMessageTemplate
-	(*AwsCognitoUserPoolDeviceConfig)(nil),                // 9: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDeviceConfig
-	(*AwsCognitoUserPoolSchemaAttribute)(nil),             // 10: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSchemaAttribute
-	(*AwsCognitoUserPoolLambdaConfig)(nil),                // 11: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig
-	(*AwsCognitoUserPoolPreTokenGenerationConfig)(nil),    // 12: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig
-	(*AwsCognitoUserPoolCustomSenderConfig)(nil),          // 13: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
-	(*AwsCognitoUserPoolAddOns)(nil),                      // 14: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAddOns
-	(*AwsCognitoUserPoolLogConfiguration)(nil),            // 15: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration
-	(*AwsCognitoUserPoolDomainConfig)(nil),                // 16: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig
-	(*v1.StringValueOrRef)(nil),                           // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCognitoUserPoolSpec)(nil),                         // 0: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec
+	(*AwsCognitoUserPoolPasswordPolicy)(nil),               // 1: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPasswordPolicy
+	(*AwsCognitoUserPoolEmailMfaConfig)(nil),               // 2: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailMfaConfig
+	(*AwsCognitoUserPoolWebAuthnConfig)(nil),               // 3: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolWebAuthnConfig
+	(*AwsCognitoUserPoolSmsConfig)(nil),                    // 4: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSmsConfig
+	(*AwsCognitoUserPoolRecoveryMechanism)(nil),            // 5: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRecoveryMechanism
+	(*AwsCognitoUserPoolEmailConfig)(nil),                  // 6: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailConfig
+	(*AwsCognitoUserPoolVerificationMessageTemplate)(nil),  // 7: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolVerificationMessageTemplate
+	(*AwsCognitoUserPoolInviteMessageTemplate)(nil),        // 8: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolInviteMessageTemplate
+	(*AwsCognitoUserPoolDeviceConfig)(nil),                 // 9: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDeviceConfig
+	(*AwsCognitoUserPoolSchemaAttribute)(nil),              // 10: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSchemaAttribute
+	(*AwsCognitoUserPoolLambdaConfig)(nil),                 // 11: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig
+	(*AwsCognitoUserPoolPreTokenGenerationConfig)(nil),     // 12: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig
+	(*AwsCognitoUserPoolCustomSenderConfig)(nil),           // 13: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
+	(*AwsCognitoUserPoolAddOns)(nil),                       // 14: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAddOns
+	(*AwsCognitoUserPoolLogConfiguration)(nil),             // 15: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration
+	(*AwsCognitoUserPoolDomainConfig)(nil),                 // 16: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig
+	(*AwsCognitoUserPoolUserGroup)(nil),                    // 17: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolUserGroup
+	(*AwsCognitoUserPoolRiskConfiguration)(nil),            // 18: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfiguration
+	(*AwsCognitoUserPoolAccountTakeoverConfig)(nil),        // 19: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig
+	(*AwsCognitoUserPoolAccountTakeoverAction)(nil),        // 20: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverAction
+	(*AwsCognitoUserPoolRiskNotifyConfig)(nil),             // 21: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig
+	(*AwsCognitoUserPoolRiskNotifyEmail)(nil),              // 22: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmail
+	(*AwsCognitoUserPoolCompromisedCredentialsConfig)(nil), // 23: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCompromisedCredentialsConfig
+	(*AwsCognitoUserPoolRiskExceptionConfig)(nil),          // 24: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskExceptionConfig
+	(*v1.StringValueOrRef)(nil),                            // 25: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.password_policy:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPasswordPolicy
@@ -1970,35 +2642,50 @@ var file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_depIdxs = []int32{
 	10, // 9: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.custom_attributes:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSchemaAttribute
 	11, // 10: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.lambda_config:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig
 	14, // 11: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.user_pool_add_ons:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAddOns
-	15, // 12: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.log_configurations:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration
-	16, // 13: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.domain:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig
-	17, // 14: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSmsConfig.sns_caller_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 15: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 16: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_sign_up:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 17: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 18: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.post_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 19: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.post_confirmation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 20: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_token_generation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 21: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_token_generation_config:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig
-	17, // 22: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_message:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 23: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.user_migration:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 24: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.define_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 25: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.create_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 26: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.verify_auth_challenge_response:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	13, // 27: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_email_sender:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
-	13, // 28: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_sms_sender:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
-	17, // 29: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 30: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 31: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 32: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 33: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.firehose_stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 34: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.s3_bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 35: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	36, // [36:36] is the sub-list for method output_type
-	36, // [36:36] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	18, // 12: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.risk_configuration:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfiguration
+	15, // 13: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.log_configurations:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration
+	16, // 14: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.domain:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig
+	17, // 15: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSpec.user_groups:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolUserGroup
+	25, // 16: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolSmsConfig.sns_caller_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 17: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 18: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolEmailConfig.configuration_set:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 19: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_sign_up:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 20: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 21: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.post_authentication:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 22: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.post_confirmation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 23: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_token_generation:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	12, // 24: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.pre_token_generation_config:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig
+	25, // 25: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_message:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 26: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.user_migration:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 27: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.define_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 28: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.create_auth_challenge:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 29: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.verify_auth_challenge_response:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 30: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_email_sender:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
+	13, // 31: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.custom_sms_sender:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig
+	25, // 32: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLambdaConfig.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 33: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolPreTokenGenerationConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 34: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCustomSenderConfig.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 35: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 36: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.firehose_stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 37: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolLogConfiguration.s3_bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 38: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolDomainConfig.certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 39: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolUserGroup.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	19, // 40: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfiguration.account_takeover:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig
+	23, // 41: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfiguration.compromised_credentials:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolCompromisedCredentialsConfig
+	24, // 42: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskConfiguration.risk_exception:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskExceptionConfig
+	20, // 43: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig.low_action:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverAction
+	20, // 44: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig.medium_action:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverAction
+	20, // 45: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig.high_action:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverAction
+	21, // 46: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolAccountTakeoverConfig.notify_configuration:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig
+	25, // 47: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 48: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig.block_email:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmail
+	22, // 49: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig.mfa_email:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmail
+	22, // 50: dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyConfig.no_action_email:type_name -> dev.planton.aws.awscognitouserpool.v1alpha1.AwsCognitoUserPoolRiskNotifyEmail
+	51, // [51:51] is the sub-list for method output_type
+	51, // [51:51] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_init() }
@@ -2013,7 +2700,7 @@ func file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awscognitouserpool_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

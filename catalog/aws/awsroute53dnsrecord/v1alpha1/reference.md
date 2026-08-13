@@ -180,15 +180,17 @@ supported:
 
 ### spec.ttl
 
-`int32`
+`int32` · optional (explicit presence)
 
 Time to live in seconds — how long resolvers cache the record. Required
 for standard records; must be omitted for alias records (the target's
-TTL applies).
-Common values: 60 (fast cutover during incidents), 300 (general
-default), 86400 (static records like MX/NS).
+TTL applies). AWS accepts 0 to 2147483647; an explicit 0 means "never
+cache" (every lookup hits Route 53 — valid, but billed per query).
+Common values: 60 (fast cutover during incidents, and the recommended
+ceiling for health-checked records), 300 (general default), 86400
+(static records like MX/NS).
 
-- rule: ttl must be 0 (alias records) or between 1 and 604800 seconds (1 week max)
+- rule: ttl must be between 0 and 2147483647 seconds (AWS's contract; 0 = never cache)
 
 ### spec.values
 
@@ -200,8 +202,11 @@ The record data for standard records. Format depends on type:
   - CNAME: one target hostname (e.g. ["target.example.com"])
   - MX: priority + mail server (e.g. ["10 mail1.example.com"])
   - TXT: text values (e.g. ["v=spf1 include:_spf.google.com ~all"])
+Each value is at most 4,000 characters (AWS's per-value limit).
 Mutually exclusive with alias_target — a record is standard or alias,
 never both.
+
+- rule: {"repeated":{"items":{"string":{"maxLen":"4000"}}}}
 
 ### spec.aliasTarget
 
@@ -286,7 +291,12 @@ The AWS region this record's resource lives in — the region whose
 latency measurements represent this group member.
 Example: "us-east-1", "eu-west-1", "ap-southeast-1"
 
-- rule: {"required":true}
+Format-checked rather than enumerated on purpose: the provider's region
+enum grows with every AWS region launch, and freezing today's list here
+would reject tomorrow's regions until the next pin sweep. AWS itself
+rejects unknown regions at change time.
+
+- rule: {"required":true,"string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 
 ### spec.routingPolicy.failover
 
@@ -318,8 +328,11 @@ US state). Compliance boundaries, localized content.
 
 `string`
 
-Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA".
-Use continent OR country, not both.
+Two-letter continent code: "AF", "AN", "AS", "EU", "OC", "NA", "SA"
+(a frozen set — continents don't churn). Use continent OR country, not
+both.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["AF","AN","AS","EU","OC","NA","SA"]}}
 
 ### spec.routingPolicy.geolocation.country
 
@@ -328,12 +341,16 @@ Use continent OR country, not both.
 Two-letter ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "DE"), or
 "*" for the default record that answers unmatched locations.
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(\\*|[A-Z]{2})$"}}
+
 ### spec.routingPolicy.geolocation.subdivision
 
 `string`
 
 Subdivision code — US states only (e.g. "CA", "NY"); requires country
-"US".
+"US". At most 3 characters (AWS's limit).
+
+- rule: {"string":{"maxLen":"3"}}
 
 ### spec.routingPolicy.geoproximity
 
@@ -350,6 +367,10 @@ area. Traffic shifting between nearby regions.
 `string`
 
 The AWS region hosting the resource (for resources in AWS regions).
+Format-checked rather than enumerated (the region list grows; AWS
+rejects unknown regions at change time).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 
 ### spec.routingPolicy.geoproximity.coordinates
 
@@ -460,8 +481,9 @@ records or a manually-created record being brought under management).
 - `values_or_alias_exclusive`: values and alias_target are mutually exclusive — a record is either a standard record or an alias record
 - `values_or_alias_required`: either values (standard record) or alias_target (alias record) must be specified
 - `alias_forbids_ttl`: ttl cannot be set on alias records (Route 53 uses the alias target's TTL)
-- `values_require_ttl`: ttl is required for standard records (set 300 if unsure)
+- `values_require_ttl`: ttl is required for standard records (set 300 if unsure; 0 means never cache)
 - `set_identifier_for_routing_policy`: set_identifier is required when a routing_policy is set (it distinguishes this record within its routing group)
+- `set_identifier_requires_routing_policy`: set_identifier is only valid with a routing_policy (AWS rejects it on simple records)
 - `multivalue_forbids_alias`: multivalue answer routing cannot be used with alias records (AWS limitation)
 
 ## Outputs

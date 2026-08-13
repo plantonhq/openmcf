@@ -16,9 +16,19 @@ spec:
   # builds) and anomaly-detection bands (the same metric-query plumbing with
   # an expression function). Simple-metric mode is exercised by the
   # prerequisite fixture that composite-alarm lanes deploy.
+  #
+  # Proven live 2026-08-12, both engines: the scenario's three metric
+  # queries (return_data true AND the two implicit-false arms) ran through
+  # the converged send paths cleanly — no perpetual diff, no update loop —
+  # and the expression-based query with unset metric.namespace applied
+  # without an empty-string send on either engine.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
+  # 2026-08-13 tag-convergence sweep: the Terraform module's metadata.labels
+  # merge into cloud tags was dropped (the canonical six-key identity map --
+  # user labels are platform metadata). Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awscloudwatchloggroup
+  # represents it).

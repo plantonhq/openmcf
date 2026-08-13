@@ -21,4 +21,9 @@ message AwsAppRunnerAutoScalingConfigurationStackOutputs {
   // Whether this revision is the latest one registered under the
   // configuration name.
   bool latest = 3;
+
+  // Whether this configuration holds the account/region default
+  // designation at the end of the deployment (true when
+  // set_as_account_default claimed it).
+  bool is_default = 4;
 }

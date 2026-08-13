@@ -1,0 +1,83 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_globalaccelerator_accelerator:
+    mappings:
+      # The spec groups the three flow-log dials in one message; the
+      # provider carries them flat inside the attributes block (which both
+      # modules ALWAYS materialize so flow logs can be turned off once on).
+      - spec: spec.flow_logs.enabled
+        arg: attributes.flow_logs_enabled
+      - spec: spec.flow_logs.s3_bucket
+        arg: attributes.flow_logs_s3_bucket
+      - spec: spec.flow_logs.s3_prefix
+        arg: attributes.flow_logs_s3_prefix
+    exclusions:
+      # Identity is the kind's own contract. The provider's name rule
+      # (1-255 chars, alphanumeric and hyphens, no leading/trailing hyphen)
+      # is enforced on metadata.name at manifest level.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the planton.ai identity keys; no Name tag -- the accelerator carries its own name argument) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_globalaccelerator_listener:
+    # One listener per spec.listeners entry, keyed by the entry's name (a
+    # Planton-side key -- AWS listeners are anonymous).
+    specRoot: spec.listeners
+    mappings:
+      # The spec pluralizes the repeated block.
+      - spec: spec.listeners.port_ranges.from_port
+        arg: port_range.from_port
+      - spec: spec.listeners.port_ranges.to_port
+        arg: port_range.to_port
+    exclusions:
+      - arg: accelerator_arn
+        reason: module-shaped plumbing -- always this accelerator's own ARN (listeners are folded sub-resources)
+
+  aws_globalaccelerator_endpoint_group:
+    # One group per spec.listeners[].endpoint_groups entry, keyed
+    # "listener_name/group_name" so groups come and go without touching
+    # their listener.
+    specRoot: spec.listeners.endpoint_groups
+    mappings:
+      # The spec names the repeated endpoint entries for what they are; the
+      # provider wraps each in an endpoint_configuration block.
+      - spec: spec.listeners.endpoint_groups.endpoints.endpoint_id
+        arg: endpoint_configuration.endpoint_id
+      - spec: spec.listeners.endpoint_groups.endpoints.weight
+        arg: endpoint_configuration.weight
+      - spec: spec.listeners.endpoint_groups.endpoints.client_ip_preservation_enabled
+        arg: endpoint_configuration.client_ip_preservation_enabled
+      - spec: spec.listeners.endpoint_groups.endpoints.attachment_arn
+        arg: endpoint_configuration.attachment_arn
+      # The spec pluralizes the repeated block.
+      - spec: spec.listeners.endpoint_groups.port_overrides.listener_port
+        arg: port_override.listener_port
+      - spec: spec.listeners.endpoint_groups.port_overrides.endpoint_port
+        arg: port_override.endpoint_port
+    exclusions:
+      - arg: listener_arn
+        reason: module-shaped plumbing -- always the parent folded listener's ARN
+
+specExclusions:
+  # Global Accelerator is a global (non-regional) service: the provider
+  # homes all API calls in us-west-2 and its resources carry no region
+  # argument. spec.region configures the provider connection only.
+  - field: spec.region
+    reason: provider-connection configuration -- Global Accelerator is a global service; its resources carry no region argument
+  # Planton-side keys: AWS listeners and endpoint groups are anonymous; the
+  # names key the folded satellites in both IaC modules and the output maps.
+  - field: spec.listeners.name
+    reason: Planton-side key for the folded listener satellite (AWS listeners are anonymous) -- never sent to the provider
+  - field: spec.listeners.endpoint_groups.name
+    reason: Planton-side key for the folded endpoint-group satellite -- never sent to the provider

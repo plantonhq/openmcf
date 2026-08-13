@@ -4,20 +4,29 @@ metadata:
   name: awskmskey
 spec:
   # A customer-managed KMS key under E2E: the harness runs deploy ->
-  # DescribeKey verify -> destroy -> verify-destroyed on both
-  # provisioners. The scenario is a true leaf (no registry prerequisites)
-  # with one symmetric key and a single alias -- fast and cheap. Deliberately
-  # not in the live scenario: multi-Region primaries, asymmetric/HMAC key
-  # shapes, and custom key policies -- all proven by CEL spec tests and the
-  # offline gate.
+  # DescribeKey verify (incl. per-grant ListGrants assertions from the
+  # grant_ids output) -> destroy -> verify-destroyed on both
+  # provisioners. The scenario has no registry prerequisites; it composes
+  # the shared AwsIamRole fixture by annotation for the grant's grantee
+  # (grants take IAM principal ARNs ONLY -- AWS rejects bare service
+  # principals on CreateGrant's GranteePrincipal, live-caught 2026-08-11;
+  # grants themselves are free and create-time). Deliberately not in the
+  # live scenario: multi-Region primaries, asymmetric/HMAC/post-quantum
+  # key shapes, and custom key policies -- all proven by CEL spec tests
+  # and the offline gate.
   #
-  # green: both engines have passed the full live lane -- deploy ->
-  # DescribeKey verify -> destroy -> verify-destroyed (Pulumi ~74s,
-  # Terraform ~44s) -- on top of the standing offline gate (tofu init +
-  # validate, spec/CEL tests, outputs conformance, Pulumi module compile).
+  # Proven 2026-08-11 (both engines + the blind import round-trip incl.
+  # the {kms_key_id}:{grant_id} composite -- the cloud-generated grant id
+  # derives blind from the grant_ids output). First contact caught the
+  # grant-principal contract: CreateGrant rejects bare service principals
+  # (InvalidArnException) -- the scenario's grantee is the composed
+  # AwsIamRole fixture, and the spec now enforces ARN-shaped literals.
+  # Offline-proven only, never silent skips: the custom-key-store and XKS
+  # arms need CloudHSM / external-key-store infrastructure no shared test
+  # account can carry (proven via the 03-external-key-store preset's
+  # offline plan and preview; unblock: a dedicated CloudHSM/XKS budget
+  # decision by the owner).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

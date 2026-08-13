@@ -1,4 +1,4 @@
-name: awsecsservice-pulumi-project
+name: awsecsservice
 runtime:
   name: go
 # options:

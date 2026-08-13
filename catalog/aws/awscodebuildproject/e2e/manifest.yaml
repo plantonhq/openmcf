@@ -1,7 +1,9 @@
 # Full-surface offline-plan manifest. This exercises every optional block the
-# module renders -- including the arms excluded from live E2E lanes (webhook,
-# source auth, public visibility, EFS mounts, batch builds) -- so the
-# `tofu plan` / `pulumi preview` proofs cover the whole contract.
+# module renders -- including the arms excluded from live E2E lanes (webhook
+# with manual creation, organization scope, and PR build policy; source auth;
+# public visibility with its access role; EFS mounts; batch builds; the
+# host-kernel selection) -- so the `tofu plan` / `pulumi preview` proofs
+# cover the whole contract.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
@@ -9,11 +11,6 @@ metadata:
   id: test-codebuild
   org: test-org
   env: dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test
-    pulumi.planton.dev/project: test
-    pulumi.planton.dev/stack.name: dev.AwsCodeBuildProject.test-codebuild
 spec:
   region: us-west-2
   source:
@@ -45,6 +42,7 @@ spec:
     certificate: certs-bucket/private-ca.pem
     privilegedMode: true
     imagePullCredentialsType: CODEBUILD
+    hostKernel: LINUX_KERNEL_6
     environmentVariables:
       - name: STAGE
         value: dev
@@ -82,6 +80,11 @@ spec:
   autoRetryLimit: 2
   badgeEnabled: true
   sourceVersion: main
+  # Public visibility with its required read-access role (PUBLIC_READ is
+  # CEL-gated on resourceAccessRole being set).
+  projectVisibility: PUBLIC_READ
+  resourceAccessRole:
+    value: arn:aws:iam::123456789012:role/codebuild-public-read-role
   cache:
     type: S3
     location:
@@ -136,6 +139,15 @@ spec:
             aws:ResourceAccount: "${aws:PrincipalAccount}"
   webhook:
     buildType: BUILD
+    # manual_creation: CodeBuild creates the webhook definition without
+    # registering it with the source provider -- the payload URL and secret
+    # are then wired into GitHub by hand (GitHub-source projects only).
+    manualCreation: true
+    # An organization-scoped webhook: one webhook covering every repository
+    # in the GitHub organization (runner/monorepo fan-in patterns).
+    scopeConfiguration:
+      name: example-org
+      scope: GITHUB_ORGANIZATION
     filterGroups:
       - filters:
           - type: EVENT

@@ -10,8 +10,13 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor: the cluster's managed_storage_configuration
-      # and the capacity provider's managed_draining land on the v6 line.
+      # Feature floor: the cluster's managed_storage_configuration and the
+      # capacity provider's managed_draining land on the v6 line; the ECS
+      # Managed Instances family (managed_instances_provider + the cluster
+      # binding) lands in 6.15.0 and is completed by 6.58.0
+      # (capacity_reservations, the RESERVED capacity_option_type, and
+      # local_storage_configuration) -- this pin is the first release
+      # carrying the full managed-instances surface this module drives.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

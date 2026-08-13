@@ -26,6 +26,8 @@ func Resources(ctx *pulumi.Context, stackInput *awselasticipv1alpha1.AwsElasticI
 	ctx.Export(OpPublicIp, result.PublicIp)
 	ctx.Export(OpArn, result.Arn)
 	ctx.Export(OpPublicDns, result.PublicDns)
+	ctx.Export(OpAssociationId, result.AssociationId)
+	ctx.Export(OpPtrRecord, result.PtrRecord)
 
 	return nil
 }

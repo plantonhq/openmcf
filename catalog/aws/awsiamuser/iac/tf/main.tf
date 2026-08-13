@@ -43,4 +43,9 @@ resource "aws_iam_user_policy" "inline" {
 resource "aws_iam_access_key" "this" {
   count = var.spec.disable_access_keys ? 0 : 1
   user  = aws_iam_user.this.name
+
+  # Active/Inactive updates in place -- the rotation lever: an Inactive key
+  # keeps its id and secret but AWS rejects requests signed with it. Unset
+  # keeps the AWS default (Active).
+  status = var.spec.access_key_status != "" ? var.spec.access_key_status : null
 }

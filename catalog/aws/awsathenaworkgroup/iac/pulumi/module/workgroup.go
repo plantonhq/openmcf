@@ -47,15 +47,18 @@ func workgroup(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 		config.PublishCloudwatchMetricsEnabled = pulumi.BoolPtr(*spec.PublishCloudwatchMetricsEnabled)
 	}
 
-	if spec.RequesterPaysEnabled {
-		config.RequesterPaysEnabled = pulumi.BoolPtr(true)
-	}
+	// Always sent (matching the Terraform module): the provider drops an
+	// explicit false before it reaches AWS, so this is purely a send-style
+	// convergence.
+	config.RequesterPaysEnabled = pulumi.BoolPtr(spec.RequesterPaysEnabled)
 
 	// Compliance guardrail: query results are written with at least SSE_S3
-	// even when individual queries specify no encryption.
-	if spec.EnableMinimumEncryptionConfiguration {
-		config.EnableMinimumEncryptionConfiguration = pulumi.BoolPtr(true)
-	}
+	// even when individual queries specify no encryption. Always sent: the
+	// provider attribute is Optional+Computed, so omitting the value would
+	// keep whatever AWS last reported -- an explicit false is the ONLY way
+	// to turn the guardrail back off once enabled (the Terraform module
+	// sends it unconditionally for the same reason).
+	config.EnableMinimumEncryptionConfiguration = pulumi.BoolPtr(spec.EnableMinimumEncryptionConfiguration)
 
 	if spec.SelectedEngineVersion != "" {
 		config.EngineVersion = &athena.WorkgroupConfigurationEngineVersionArgs{

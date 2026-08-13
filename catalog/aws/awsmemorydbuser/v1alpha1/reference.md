@@ -94,6 +94,13 @@ Common shapes:
 Updates apply in place — a tightened access string takes effect on new
 connections without recreating the user.
 
+AWS stores the string NORMALIZED (live-verified 2026-08-13): the API
+echoes it with Redis ACL defaults made explicit — e.g.
+"on ~orders:* +@read" comes back as
+"on ~orders:* resetchannels -@all +@read". The provider reconciles the
+normalized form, so manifests never see drift; just don't expect a
+byte-identical echo when comparing DescribeUsers output to this field.
+
 - rule: {"required":true}
 
 ### spec.authenticationMode
@@ -131,7 +138,10 @@ Authentication mechanism. Values:
 
 Passwords for the "password" authentication type. One or two entries,
 each 16–128 characters; two entries enable zero-downtime rotation.
-Must be empty for the "iam" type.
+Must be empty for the "iam" type. Write-only at AWS: the API never
+returns passwords, so drift changed outside this manifest is
+undetectable, and a user adopted by import carries no password state —
+re-assert the passwords here to manage them.
 
 - rule: {"repeated":{"maxItems":"2","items":{"string":{"minLen":"16","maxLen":"128"}}}}
 

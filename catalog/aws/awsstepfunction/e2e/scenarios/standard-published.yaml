@@ -1,10 +1,12 @@
 # Standard state machine over the Step Functions execution-role fixture: a
 # Pass-state workflow (invokes no services, so the empty-permission role is
 # honest), published so the version surface (state_machine_version_arn,
-# revision_id) is exercised live. Logging and encryption are deliberately not
-# in this lane -- logging would pull the CloudWatch log-group full-surface
-# chain and KMS association would slow the destroy leg; both arms are proven
-# by spec tests and the offline gate.
+# revision_id) is exercised live, with a folded alias routing 100% of
+# traffic to that published version (the alias_arns output's live proof).
+# Logging and encryption are deliberately not in this lane -- logging would
+# pull the CloudWatch log-group full-surface chain and KMS association
+# would slow the destroy leg; both arms are proven by spec tests and the
+# offline gate.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
@@ -23,6 +25,9 @@ spec:
   region: us-west-2
   type: STANDARD
   publish: true
+  aliases:
+    - name: live
+      description: Follows the version published by the current deployment
   roleArn:
     valueFrom:
       kind: AwsIamRole

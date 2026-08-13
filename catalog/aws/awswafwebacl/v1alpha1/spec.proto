@@ -135,7 +135,17 @@ message AwsWafWebAclSpec {
   // Domains to accept in web request tokens for CAPTCHA and Challenge actions.
   // Required when using CAPTCHA/Challenge with multiple domains that share
   // the same Web ACL. When omitted, tokens are scoped to the request domain.
-  repeated string token_domains = 8 [(dev.planton.shared.options.sensitive_exempt_reason) = "Domain names for CAPTCHA/Challenge token scoping, not secret values."];
+  // Each entry is a domain name (1-253 characters; letters, digits, dots,
+  // hyphens, slashes). Public suffixes (e.g. "co.uk", "gov.au") are rejected
+  // by AWS.
+  repeated string token_domains = 8 [
+    (dev.planton.shared.options.sensitive_exempt_reason) = "Domain names for CAPTCHA/Challenge token scoping, not secret values.",
+    (buf.validate.field).repeated.items.string = {
+      min_len: 1
+      max_len: 253
+      pattern: "^[\\w\\.\\-/]+$"
+    }
+  ];
 
   // ---------------------------------------------------------------------------
   // CAPTCHA / Challenge immunity
@@ -272,8 +282,14 @@ message AwsWafWebAclRule {
   ];
 
   // Evaluation priority. Lower numbers are evaluated first. Must be unique
-  // across all rules in the Web ACL. Range: 0-2147483647.
-  int32 priority = 2 [(buf.validate.field).required = true];
+  // across all rules in the Web ACL. Range: 0-2147483647. Priority 0 is
+  // legal (AWS-console-generated ACLs commonly start at 0) — the field is
+  // presence-typed exactly so 0 can be expressed while the field stays
+  // required.
+  optional int32 priority = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 0
+  ];
 
   // The match condition for this rule — exactly one statement type must be
   // set inside (see AwsWafWebAclStatement for the full statement language,
@@ -322,8 +338,14 @@ message AwsWafWebAclRule {
 
   // Labels added to requests that match this rule. Labels are key-value pairs
   // (namespace:name format) that can be matched by label_match statements in
-  // subsequent rules, enabling multi-stage rule evaluation.
-  repeated string rule_labels = 8;
+  // subsequent rules, enabling multi-stage rule evaluation. Each label is
+  // 1-1024 characters of letters, digits, hyphen, underscore, and ':'
+  // namespace separators (the WAF label syntax).
+  repeated string rule_labels = 8 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 1024
+    pattern: "^[0-9A-Za-z_\\-:]+$"
+  }];
 
   // CloudWatch metrics configuration for this rule. When omitted, the IaC
   // module applies sensible defaults:
@@ -655,6 +677,9 @@ message AwsWafWebAclAtpConfig {
   ];
 
   // Treat login_path as a regular expression instead of a literal path.
+  // AWS's default is false, and the AWS API types this as a plain (non-
+  // nullable) boolean — absence and false are identical on the wire, so a
+  // plain bool models it exactly.
   bool enable_regex_in_path = 2;
 
   // How to find the username and password in the login request.
@@ -709,6 +734,9 @@ message AwsWafWebAclAcfpConfig {
   ];
 
   // Treat the paths as regular expressions instead of literal paths.
+  // AWS's default is false, and the AWS API types this as a plain (non-
+  // nullable) boolean — absence and false are identical on the wire, so a
+  // plain bool models it exactly.
   bool enable_regex_in_path = 3;
 
   // How to find the sign-up fields in the account-creation request.
@@ -1127,13 +1155,14 @@ message AwsWafWebAclFingerprintKey {
 // - Allow traffic only from countries where your service operates
 // - Apply different rules based on geographic region
 message AwsWafWebAclGeoMatchStatement {
-  // ISO 3166-1 alpha-2 country codes to match against.
-  // Examples: "US", "CA", "GB", "DE", "JP", "AU".
+  // ISO 3166-1 alpha-2 country codes to match against (two uppercase
+  // letters). Examples: "US", "CA", "GB", "DE", "JP", "AU".
   //
   // At least one country code is required.
   repeated string country_codes = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).repeated.min_items = 1
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.pattern = "^[A-Z]{2}$"
   ];
 
   // Optional forwarded IP configuration. Use when the Web ACL is behind a
@@ -1334,12 +1363,15 @@ message AwsWafWebAclLabelMatchStatement {
   ];
 
   // The label (for scope LABEL, e.g. "awswaf:111122223333:rulegroup:testRules:label:testLabel")
-  // or namespace prefix ending in ':' (for scope NAMESPACE).
+  // or namespace prefix ending in ':' (for scope NAMESPACE). 1-1024
+  // characters of letters, digits, hyphen, underscore, and ':' (the WAF
+  // label syntax).
   string key = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string = {
       min_len: 1
       max_len: 1024
+      pattern: "^[0-9A-Za-z_\\-:]+$"
     }
   ];
 }
@@ -1714,9 +1746,14 @@ message AwsWafWebAclVisibilityConfig {
   bool sampled_requests_enabled = 2;
 
   // CloudWatch metric name for this Web ACL or rule. Must be unique within
-  // the Web ACL's rules.
+  // the Web ACL's rules. 1-128 characters: letters, digits, hyphen,
+  // underscore only; "All" and "Default_Action" are reserved by WAF.
   // Default: resource name (Web ACL) or rule name (applied by IaC module).
-  string metric_name = 3;
+  string metric_name = 3 [(buf.validate.field).cel = {
+    id: "metric_name_valid"
+    message: "metric_name must be 1-128 characters of A-Za-z0-9_- and must not be the reserved 'All' or 'Default_Action' when set"
+    expression: "this == '' || (this.matches('^[A-Za-z0-9_-]{1,128}$') && !(this in ['All', 'Default_Action']))"
+  }];
 }
 
 // AwsWafWebAclImmunityTimeConfig sets how long a client's successful
@@ -1806,9 +1843,18 @@ message AwsWafWebAclDataProtection {
   ];
 
   // The specific keys to protect for the SINGLE_* field types (header names,
-  // cookie names, query-argument names; up to 100). Not applicable to
-  // QUERY_STRING/BODY (which protect the whole component).
-  repeated string field_keys = 2 [(buf.validate.field).repeated.max_items = 100];
+  // cookie names, query-argument names; up to 100, each 1-64 characters).
+  // OMITTING keys for a SINGLE_* type protects ALL keys of that type (the
+  // AWS contract: "If you don't specify any key, then all keys for the
+  // field type are protected"). Not applicable to QUERY_STRING/BODY (which
+  // protect the whole component).
+  repeated string field_keys = 2 [
+    (buf.validate.field).repeated.max_items = 100,
+    (buf.validate.field).repeated.items.string = {
+      min_len: 1
+      max_len: 64
+    }
+  ];
 
   // How to mask: "SUBSTITUTION" (replace with a fixed placeholder) or
   // "HASH" (replace with a one-way hash, preserving correlate-ability).
@@ -1828,12 +1874,13 @@ message AwsWafWebAclDataProtection {
   // Also exclude this field from rate-based rule details in logs.
   bool exclude_rate_based_details = 5;
 
-  // SINGLE_* field types need field_keys; whole-component types must not
-  // carry them.
+  // field_keys are only meaningful for the SINGLE_* field types;
+  // whole-component types (QUERY_STRING/BODY) must not carry them. A
+  // SINGLE_* entry MAY omit keys — AWS then protects all keys of that type.
   option (buf.validate.message).cel = {
-    id: "field_keys_pairing"
-    message: "field_keys is required for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT and must be empty for QUERY_STRING/BODY"
-    expression: "(this.field_type in ['SINGLE_HEADER', 'SINGLE_COOKIE', 'SINGLE_QUERY_ARGUMENT']) == (size(this.field_keys) > 0)"
+    id: "field_keys_scope"
+    message: "field_keys is only valid for SINGLE_HEADER/SINGLE_COOKIE/SINGLE_QUERY_ARGUMENT (omit it to protect all keys of the field type)"
+    expression: "size(this.field_keys) == 0 || this.field_type in ['SINGLE_HEADER', 'SINGLE_COOKIE', 'SINGLE_QUERY_ARGUMENT']"
   };
 }
 
@@ -1864,16 +1911,27 @@ message AwsWafWebAclCustomResponse {
 // request handling (inserted into forwarded requests) or custom responses
 // (returned in block responses).
 message AwsWafWebAclCustomHeader {
-  // HTTP header name (case-insensitive).
+  // HTTP header name (case-insensitive). 1-64 characters: letters, digits,
+  // and _ $ . - only. For INSERTED request headers, WAF prefixes the name
+  // with "x-amzn-waf-" on the wire (name "sample" arrives as
+  // "x-amzn-waf-sample") to avoid clobbering existing request headers;
+  // response headers are sent under the name as given.
   string name = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 64
+      pattern: "^[0-9A-Za-z_$.-]+$"
+    }
   ];
 
-  // HTTP header value.
+  // HTTP header value. 1-255 characters.
   string value = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 255
+    }
   ];
 }
 
@@ -1884,10 +1942,15 @@ message AwsWafWebAclCustomHeader {
 // maintain consistent user experience across different block scenarios.
 message AwsWafWebAclCustomResponseBody {
   // Unique key used to reference this response body from custom_response
-  // configurations. Must be unique within the Web ACL.
+  // configurations. Must be unique within the Web ACL. 1-128 characters:
+  // letters, digits, underscore, hyphen.
   string key = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.min_len = 1
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+      pattern: "^[\\w\\-]+$"
+    }
   ];
 
   // The response body content (HTML, plain text, or JSON). Max 10,240 bytes.
@@ -1931,15 +1994,24 @@ message AwsWafWebAclLoggingConfig {
   //
   // The destination resource name must start with "aws-waf-logs-".
   //
+  // Deliberately singular: AWS allows exactly one logging destination per
+  // web ACL (the Terraform provider's log_destination_configs argument
+  // nominally accepts up to 100 entries, but the service contract — SDK:
+  // "You can associate one logging destination to a web ACL" — is one).
+  //
   // No default_kind is set because the destination can be any of three
   // different resource types.
   dev.planton.shared.foreignkey.v1.StringValueOrRef destination_arn = 1 [(buf.validate.field).required = true];
 
-  // HTTP header names to redact from logs. Redacted headers appear as
-  // "REDACTED" in log entries instead of their actual values.
+  // HTTP header names to redact from logs (each 1-64 characters). Redacted
+  // headers appear as "REDACTED" in log entries instead of their actual
+  // values.
   //
   // Common headers to redact: "Authorization", "Cookie", "X-Api-Key".
-  repeated string redacted_header_names = 2;
+  repeated string redacted_header_names = 2 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 64
+  }];
 
   // Redact the URI path from log entries. When true, the URI path appears
   // as "REDACTED" in logs.
@@ -1948,4 +2020,92 @@ message AwsWafWebAclLoggingConfig {
   // Redact the query string from log entries. When true, query string
   // parameters appear as "REDACTED" in logs.
   bool redact_query_string = 4;
+
+  // Redact the HTTP method from log entries. When true, the method appears
+  // as "REDACTED" in logs. (Method, query string, URI path, and single
+  // headers are the only components AWS supports redacting.)
+  bool redact_method = 5;
+
+  // Optional log filtering: keep or drop log records by the action WAF
+  // applied or by labels on the request, instead of logging every inspected
+  // request. Typical use: keep only BLOCK and COUNT records to cut logging
+  // cost on high-traffic ACLs.
+  AwsWafWebAclLoggingFilterConfig filter = 6;
+}
+
+// AwsWafWebAclLoggingFilterConfig routes each request's log record through
+// the filters: the first matching filter's behavior (keep/drop) applies, and
+// records matching no filter get default_behavior.
+message AwsWafWebAclLoggingFilterConfig {
+  // What happens to log records that match NONE of the filters:
+  // "KEEP" (log them) or "DROP" (discard them).
+  string default_behavior = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "KEEP",
+        "DROP"
+      ]
+    }
+  ];
+
+  // The filters, each with its own keep/drop behavior. At least one.
+  repeated AwsWafWebAclLoggingFilter filters = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclLoggingFilter is one keep-or-drop routing rule for log
+// records.
+message AwsWafWebAclLoggingFilter {
+  // What happens to log records matching this filter: "KEEP" or "DROP".
+  string behavior = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "KEEP",
+        "DROP"
+      ]
+    }
+  ];
+
+  // How the conditions combine: "MEETS_ALL" (every condition must match)
+  // or "MEETS_ANY" (at least one condition matches).
+  string requirement = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "MEETS_ALL",
+        "MEETS_ANY"
+      ]
+    }
+  ];
+
+  // The match conditions. At least one.
+  repeated AwsWafWebAclLoggingFilterCondition conditions = 3 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// AwsWafWebAclLoggingFilterCondition is a single match condition for a
+// logging filter — exactly one of action / label_name per condition (add
+// more conditions to combine them).
+message AwsWafWebAclLoggingFilterCondition {
+  // Match log records by the action WAF applied to the request:
+  // "ALLOW", "BLOCK", "COUNT", "CAPTCHA", "CHALLENGE",
+  // "EXCLUDED_AS_COUNT" (rules overridden to count — the tuning-noise
+  // filter), or "MONETIZE" (marketplace rule groups only).
+  string action = 1 [(buf.validate.field).cel = {
+    id: "filter_action_valid"
+    message: "action must be 'ALLOW', 'BLOCK', 'COUNT', 'CAPTCHA', 'CHALLENGE', 'EXCLUDED_AS_COUNT', or 'MONETIZE' when set"
+    expression: "this == '' || this in ['ALLOW', 'BLOCK', 'COUNT', 'CAPTCHA', 'CHALLENGE', 'EXCLUDED_AS_COUNT', 'MONETIZE']"
+  }];
+
+  // Match log records carrying this label. Must be the FULLY QUALIFIED
+  // label name including the prefix, e.g.
+  // "awswaf:managed:aws:bot-control:bot:category:monitoring".
+  string label_name = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // Exactly one condition type per entry.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_condition"
+    message: "set exactly one of action or label_name per condition"
+    expression: "(this.action != '') != (this.label_name != '')"
+  };
 }

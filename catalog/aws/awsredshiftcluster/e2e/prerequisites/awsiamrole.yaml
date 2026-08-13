@@ -1,0 +1,38 @@
+# Consumer-scoped AwsIamRole install profile for the Redshift cluster's
+# E2E chain, replacing the kind's shared multi-role profile for THIS
+# consumer only. Scheduled actions are validated SERVER-SIDE at
+# CreateScheduledAction: the role's trust policy must allow
+# scheduler.redshift.amazonaws.com to assume it, or AWS rejects the call
+# with InvalidParameterValue ("The IAM role must delegate access to
+# Amazon Redshift scheduler") -- a contract no provider schema or offline
+# plan carries (the provider itself retries on it while a fresh trust
+# propagates). The shared profile's composition role trusts
+# ec2.amazonaws.com, so this consumer ships its own scheduler-trusting
+# shape. The role carries no policies on purpose: the E2E arm is a
+# DISABLED action that never fires -- create-time trust validation is the
+# entire proof; a firing action would additionally need
+# redshift:PauseCluster permissions, which are the workload's concern.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-redshift-scheduler-role
+  id: planton-oss-e2e-redshift-scheduler-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E prerequisite role for Redshift scheduled actions
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: scheduler.redshift.amazonaws.com
+        Action: sts:AssumeRole

@@ -1,0 +1,57 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sesv2_email_identity:
+    mappings:
+      # The spec drops the provider's _name suffix (the field is a
+      # chart-wirable ref to an AwsSesConfigurationSet).
+      - spec: spec.configuration_set
+        arg: configuration_set_name
+      # The provider names the block dkim_signing_attributes; the spec
+      # carries the same three leaves under dkim_signing.
+      - spec: spec.dkim_signing.next_signing_key_length
+        arg: dkim_signing_attributes.next_signing_key_length
+      - spec: spec.dkim_signing.domain_signing_private_key
+        arg: dkim_signing_attributes.domain_signing_private_key
+      - spec: spec.dkim_signing.domain_signing_selector
+        arg: dkim_signing_attributes.domain_signing_selector
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_sesv2_email_identity_mail_from_attributes:
+    # The identity's one custom MAIL FROM domain (AWS's own model), folded
+    # as a singular sub-message.
+    specRoot: spec.mail_from
+    exclusions:
+      - arg: email_identity
+        reason: wired by the module to the identity it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the MAIL FROM attributes follow the identity's spec.region through the provider connection
+
+  aws_sesv2_email_identity_feedback_attributes:
+    # Materialized only when spec.email_forwarding_enabled takes an explicit
+    # position (tri-state; absent means AWS's own default applies unmanaged).
+    exclusions:
+      - arg: email_identity
+        reason: wired by the module to the identity it creates -- never user surface
+
+  aws_sesv2_email_identity_policy:
+    # One authorization policy per spec.policies entry, keyed by name.
+    specRoot: spec.policies
+    mappings:
+      - spec: spec.policies.name
+        arg: policy_name
+    exclusions:
+      - arg: email_identity
+        reason: wired by the module to the identity it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- identity policies follow the identity's spec.region through the provider connection

@@ -31,6 +31,8 @@ func newValueFromRef(name string) *foreignkeyv1.StringValueOrRef {
 
 func ptr(s string) *string { return &s }
 
+func iptr(i int32) *int32 { return &i }
+
 func minimalValidSubnet() *AwsSubnet {
 	return &AwsSubnet{
 		ApiVersion: "aws.planton.dev/v1alpha1",
@@ -153,6 +155,89 @@ var _ = ginkgo.Describe("AwsSubnetSpec Validation Tests", func() {
 			ginkgo.It("should not return a validation error for an empty private_dns_hostname_type_on_launch", func() {
 				input := minimalValidSubnet()
 				input.Spec.PrivateDnsHostnameTypeOnLaunch = ptr("")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with availability_zone_id instead of the zone name", func() {
+				input := minimalValidSubnet()
+				input.Spec.AvailabilityZone = ""
+				input.Spec.AvailabilityZoneId = "usw2-az1"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with an IPv4 IPAM allocation instead of cidr_block", func() {
+				input := minimalValidSubnet()
+				input.Spec.CidrBlock = ""
+				input.Spec.Ipv4IpamPoolId = newStringValueOrRef("ipam-pool-0abc123")
+				input.Spec.Ipv4NetmaskLength = iptr(24)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with an IPv6 IPAM allocation", func() {
+				input := minimalValidSubnet()
+				input.Spec.Ipv6IpamPoolId = newStringValueOrRef("ipam-pool-0def456")
+				input.Spec.Ipv6NetmaskLength = iptr(64)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for an IPv6-only subnet", func() {
+				input := minimalValidSubnet()
+				input.Spec.CidrBlock = ""
+				input.Spec.Ipv6Native = true
+				input.Spec.Ipv6CidrBlock = "2600:1f18:abcd:1200::/64"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for the newer route target kinds", func() {
+				input := minimalValidSubnet()
+				input.Spec.Routes = []*AwsSubnetSpec_AwsSubnetRoute{
+					{
+						DestinationCidrBlock: "10.100.0.0/16",
+						TargetType:           AwsSubnetSpec_AwsSubnetRoute_core_network,
+						TargetId:             newStringValueOrRef("arn:aws:networkmanager::123456789012:core-network/core-network-0abc123"),
+					},
+					{
+						DestinationCidrBlock: "10.200.0.0/16",
+						TargetType:           AwsSubnetSpec_AwsSubnetRoute_local_gateway,
+						TargetId:             newStringValueOrRef("lgw-0abc123"),
+					},
+					{
+						DestinationCidrBlock: "10.201.0.0/16",
+						TargetType:           AwsSubnetSpec_AwsSubnetRoute_carrier_gateway,
+						TargetId:             newStringValueOrRef("cagw-0abc123"),
+					},
+					{
+						DestinationCidrBlock: "10.202.0.0/16",
+						TargetType:           AwsSubnetSpec_AwsSubnetRoute_odb_network,
+						TargetId:             newStringValueOrRef("arn:aws:odb:us-west-2:123456789012:odb-network/odb-0abc123"),
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for propagating_vgws with inline routes", func() {
+				input := minimalValidSubnet()
+				input.Spec.Routes = []*AwsSubnetSpec_AwsSubnetRoute{
+					{
+						DestinationCidrBlock: "0.0.0.0/0",
+						TargetType:           AwsSubnetSpec_AwsSubnetRoute_internet_gateway,
+						TargetId:             newStringValueOrRef("igw-0abc123"),
+					},
+				}
+				input.Spec.PropagatingVgws = []string{"vgw-0abc123"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for propagating_vgws without inline routes", func() {
+				input := minimalValidSubnet()
+				input.Spec.PropagatingVgws = []string{"vgw-0abc123"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -295,6 +380,79 @@ var _ = ginkgo.Describe("AwsSubnetSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error for an invalid private_dns_hostname_type_on_launch", func() {
 				input := minimalValidSubnet()
 				input.Spec.PrivateDnsHostnameTypeOnLaunch = ptr("invalid-type")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when both availability_zone and availability_zone_id are set", func() {
+				input := minimalValidSubnet()
+				input.Spec.AvailabilityZoneId = "usw2-az1"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when cidr_block and ipv4_ipam_pool_id are both set", func() {
+				input := minimalValidSubnet()
+				input.Spec.Ipv4IpamPoolId = newStringValueOrRef("ipam-pool-0abc123")
+				input.Spec.Ipv4NetmaskLength = iptr(24)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when ipv4_netmask_length is set without its pool", func() {
+				input := minimalValidSubnet()
+				input.Spec.CidrBlock = ""
+				input.Spec.Ipv4NetmaskLength = iptr(24)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an out-of-range ipv4_netmask_length", func() {
+				input := minimalValidSubnet()
+				input.Spec.CidrBlock = ""
+				input.Spec.Ipv4IpamPoolId = newStringValueOrRef("ipam-pool-0abc123")
+				input.Spec.Ipv4NetmaskLength = iptr(30)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an ipv6_netmask_length AWS does not accept", func() {
+				input := minimalValidSubnet()
+				input.Spec.Ipv6IpamPoolId = newStringValueOrRef("ipam-pool-0def456")
+				input.Spec.Ipv6NetmaskLength = iptr(63)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when ipv6_cidr_block and ipv6_ipam_pool_id are both set", func() {
+				input := minimalValidSubnet()
+				input.Spec.Ipv6CidrBlock = "2600:1f18:abcd:1200::/64"
+				input.Spec.Ipv6IpamPoolId = newStringValueOrRef("ipam-pool-0def456")
+				input.Spec.Ipv6NetmaskLength = iptr(64)
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for ipv6_native with IPv4 addressing", func() {
+				input := minimalValidSubnet()
+				input.Spec.Ipv6Native = true
+				input.Spec.Ipv6CidrBlock = "2600:1f18:abcd:1200::/64"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for ipv6_native without any IPv6 addressing", func() {
+				input := minimalValidSubnet()
+				input.Spec.CidrBlock = ""
+				input.Spec.Ipv6Native = true
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for propagating_vgws with an external route_table_id", func() {
+				input := minimalValidSubnet()
+				input.Spec.RouteTableId = newStringValueOrRef("rtb-0abc123")
+				input.Spec.PropagatingVgws = []string{"vgw-0abc123"}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

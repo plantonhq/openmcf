@@ -24,20 +24,24 @@ import "shared/options/options.proto";
 // deployment -- "change the image tag, the schedule runs the new code"
 // falls out of the composition.
 //
-// This kind models single-container ECS-based jobs (type "container" with
-// containerProperties) for EC2 and Fargate -- the shape nearly every Batch
-// workload uses. Multi-node parallel jobs (nodeProperties), multi-container
-// ECS jobs (ecsProperties), and Batch-on-EKS pod jobs (eksProperties) are
-// separate long-tail arms, deliberately not modeled yet.
+// This kind models type "container" job definitions in both of their
+// workload arms: single-container ECS-based jobs (containerProperties --
+// the shape nearly every Batch workload uses, for EC2 and Fargate) and
+// Batch-on-EKS pod jobs (eksProperties -- the workload half of an
+// EKS-attached compute environment). Exactly one arm is set per
+// definition. Multi-node parallel jobs (nodeProperties, type "multinode")
+// and multi-container ECS jobs (ecsProperties) remain separate long-tail
+// workload shapes, deliberately not modeled.
 message AwsBatchJobDefinitionSpec {
   // The AWS region the job definition is registered in. A queue can only
   // run definitions registered in its own region.
   // Example: "us-west-2", "eu-west-1".
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
-  // The container the job runs: image, command, sizing, identities,
-  // logging, and storage.
-  AwsBatchJobDefinitionContainer container = 2 [(buf.validate.field).required = true];
+  // The ECS-based container the job runs: image, command, sizing,
+  // identities, logging, and storage. Exactly one of container or eks is
+  // set -- this arm targets EC2/Fargate compute environments.
+  AwsBatchJobDefinitionContainer container = 2;
 
   // Where the job may run: "EC2" (default when empty) and/or "FARGATE".
   // A Fargate job definition additionally requires container.execution_role
@@ -89,7 +93,34 @@ message AwsBatchJobDefinitionSpec {
   // running old revisions.
   optional bool deregister_on_new_revision = 9 [(dev.planton.shared.options.default) = "true"];
 
+  // The Batch-on-EKS pod the job runs: containers, pod networking, and
+  // Kubernetes-native volumes. Exactly one of container or eks is set --
+  // this arm targets compute environments attached to an EKS cluster
+  // (eks_configuration on AwsBatchComputeEnvironment). Jobs are submitted
+  // the same way; Batch translates the definition into a pod on the
+  // attached cluster.
+  AwsBatchJobDefinitionEks eks = 10;
+
   // --- Cross-field validations -------------------------------------------
+
+  // The two workload arms are mutually exclusive in AWS (the provider
+  // conflicts containerProperties with eksProperties), and a definition
+  // without either describes nothing to run.
+  option (buf.validate.message).cel = {
+    id: "exactly_one_of_container_or_eks"
+    message: "set exactly one workload arm: container (ECS-based jobs on EC2/Fargate) or eks (pod jobs on an EKS-attached compute environment)"
+    expression: "has(this.container) != has(this.eks)"
+  };
+
+  // AWS's RegisterJobDefinition contract: EKS jobs must not specify
+  // platformCapabilities or propagateTags (both are ECS concepts -- EKS
+  // capacity comes from the compute environment's cluster, and there is
+  // no ECS task to propagate tags to).
+  option (buf.validate.message).cel = {
+    id: "eks_forbids_ecs_only_toggles"
+    message: "platform_capabilities and propagate_tags apply only to container (ECS-based) job definitions -- AWS rejects them for EKS jobs"
+    expression: "!has(this.eks) || (size(this.platform_capabilities) == 0 && !this.propagate_tags)"
+  };
 
   // AWS rejects RegisterJobDefinition for Fargate jobs without an execution
   // role (the agent needs it to pull the image and write logs). Caught here
@@ -559,4 +590,288 @@ message AwsBatchJobDefinitionEvaluateOnExit {
 message AwsBatchJobDefinitionTimeout {
   // Seconds an attempt may run before Batch terminates it. Minimum 60.
   int32 attempt_duration_seconds = 1 [(buf.validate.field).int32.gte = 60];
+}
+
+// AwsBatchJobDefinitionEks describes the pod a Batch-on-EKS job runs
+// (the provider's eksProperties.podProperties, flattened -- the wrapper
+// carries nothing else). Batch translates this into a Kubernetes pod on
+// the compute environment's attached EKS cluster at job start.
+message AwsBatchJobDefinitionEks {
+  // The pod's main containers (1-10). Batch watches these to decide job
+  // success: the job completes when every main container exits.
+  repeated AwsBatchJobDefinitionEksContainer containers = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+  }];
+
+  // Init containers (0-10), run sequentially to completion before the
+  // main containers start -- setup steps like fetching data or waiting
+  // for a dependency.
+  repeated AwsBatchJobDefinitionEksContainer init_containers = 2 [(buf.validate.field).repeated.max_items = 10];
+
+  // Whether the pod uses the NODE's network namespace (Kubernetes
+  // hostNetwork). UNSET means AWS's default, which is TRUE for Batch
+  // pods -- the opposite of the plain-Kubernetes default -- so an
+  // explicit false is a real choice: it gives the pod its own namespace
+  // (required for VPC-CNI pod networking with security groups per pod).
+  optional bool host_network = 3;
+
+  // The pod's DNS resolution policy. AWS defaults to "ClusterFirst"
+  // (resolve through the cluster's DNS first); "Default" inherits the
+  // NODE's resolution; "ClusterFirstWithHostNet" is the cluster-first
+  // behavior for pods running with host_network.
+  string dns_policy = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Default",
+        "ClusterFirst",
+        "ClusterFirstWithHostNet"
+      ]
+    }
+  ];
+
+  // The Kubernetes service account the pod runs as -- the EKS-native way
+  // to grant the JOB's code AWS permissions (IRSA / Pod Identity), the
+  // counterpart of the container arm's job_role.
+  string service_account_name = 5;
+
+  // Labels applied to the pod's metadata -- Kubernetes selectors,
+  // cost-allocation, and policy engines key off these.
+  // Example: {"team": "genomics", "workload": "batch"}.
+  map<string, string> pod_labels = 6;
+
+  // Names of Kubernetes imagePullSecrets in the job's namespace, for
+  // pulling from private non-ECR registries (the EKS counterpart of the
+  // container arm's repository_credentials_secret_arn). ECR images need
+  // no secret -- the node role's pull access covers them.
+  repeated string image_pull_secret_names = 7 [
+    (buf.validate.field).repeated.items.string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "values are the NAMES of Kubernetes secrets resolved in the job's namespace at pod start, never secret material"
+  ];
+
+  // Share one process namespace across the pod's containers (Kubernetes
+  // shareProcessNamespace) -- lets a sidecar signal or observe the main
+  // container's processes. Default false, like plain Kubernetes.
+  bool share_process_namespace = 8;
+
+  // Kubernetes-native volumes the pod's containers mount by name:
+  // emptyDir scratch space, node hostPath directories, or Kubernetes
+  // secrets. (EFS rides the cluster's CSI driver and static
+  // PersistentVolumes -- outside the job definition's surface.)
+  repeated AwsBatchJobDefinitionEksVolume volumes = 9;
+
+  // Every volume mount (in main and init containers alike) must name a
+  // declared volume -- a dangling mount registers fine and fails only
+  // when the pod starts.
+  option (buf.validate.message).cel = {
+    id: "eks_volume_mounts_reference_declared_volumes"
+    message: "every volume_mounts entry (containers and init_containers) must reference the name of a volume declared in volumes"
+    expression: "this.containers.all(c, c.volume_mounts.all(m, this.volumes.exists(v, v.name == m.name))) && this.init_containers.all(c, c.volume_mounts.all(m, this.volumes.exists(v, v.name == m.name)))"
+  };
+}
+
+// AwsBatchJobDefinitionEksContainer is one container of a Batch-on-EKS
+// pod (main or init). Field names follow the Kubernetes container spec as
+// Batch exposes it.
+message AwsBatchJobDefinitionEksContainer {
+  // The container image, as a full reference: "<repository>:<tag>" or
+  // "<repository>@<digest>". The image architecture must match the
+  // cluster's node architecture.
+  // Example: "123456789012.dkr.ecr.us-west-2.amazonaws.com/genomics:2.1".
+  string image = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // The container's name -- a Kubernetes DNS-1123 label (lowercase
+  // alphanumerics and hyphens, max 63 chars). Required by Kubernetes when
+  // the pod has more than one container; Batch names a lone unnamed
+  // container "default".
+  string name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  ];
+
+  // Entrypoint override (Kubernetes command / Docker ENTRYPOINT).
+  // Supports "Ref::<key>" placeholders resolved from spec.parameters.
+  repeated string command = 3;
+
+  // Arguments to the entrypoint (Kubernetes args / Docker CMD). Supports
+  // "Ref::<key>" placeholders resolved from spec.parameters.
+  repeated string args = 4;
+
+  // Plain-text environment variables (name -> value). Names must not
+  // start with "AWS_BATCH" (reserved by the service). For secrets, mount
+  // a Kubernetes secret volume instead -- EKS jobs have no ECS-style
+  // secrets injection.
+  map<string, string> env = 5;
+
+  // When Kubernetes pulls the image: "Always", "IfNotPresent", or
+  // "Never". AWS defaults to Always, matching Kubernetes for :latest
+  // tags -- pinned tags commonly use IfNotPresent to spare registry
+  // traffic.
+  string image_pull_policy = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Always",
+        "IfNotPresent",
+        "Never"
+      ]
+    }
+  ];
+
+  // The container's compute sizing -- Kubernetes resource requests and
+  // limits. Batch schedules the job by these (its EKS counterpart of the
+  // container arm's vcpus/memory_mib/gpus).
+  AwsBatchJobDefinitionEksResources resources = 7;
+
+  // The container's Kubernetes securityContext -- run-as identity and
+  // privilege hardening.
+  AwsBatchJobDefinitionEksSecurityContext security_context = 8;
+
+  // Mounts of the pod's declared volumes into this container's
+  // filesystem.
+  repeated AwsBatchJobDefinitionEksVolumeMount volume_mounts = 9;
+
+  option (buf.validate.message).cel = {
+    id: "eks_env_names_not_reserved"
+    message: "environment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job"
+    expression: "this.env.all(k, !k.startsWith('AWS_BATCH'))"
+  };
+}
+
+// AwsBatchJobDefinitionEksResources sizes an EKS job container via
+// Kubernetes resource quantities.
+message AwsBatchJobDefinitionEksResources {
+  // Hard caps (Kubernetes limits): keys "cpu" (e.g. "1", "500m"),
+  // "memory" (e.g. "2Gi", "512Mi"), and "nvidia.com/gpu" for GPU nodes.
+  // Batch treats limits as the job's sizing; GPU quantities must be
+  // whole numbers.
+  map<string, string> limits = 1;
+
+  // Scheduling reservations (Kubernetes requests), same keys as limits.
+  // When both are set for a key, request must not exceed limit; Batch
+  // fills a missing request from the limit.
+  map<string, string> requests = 2;
+
+  // An empty resources block describes no sizing -- Batch requires cpu
+  // and memory through at least one of the two maps.
+  option (buf.validate.message).cel = {
+    id: "eks_resources_not_empty"
+    message: "resources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)"
+    expression: "size(this.limits) > 0 || size(this.requests) > 0"
+  };
+}
+
+// AwsBatchJobDefinitionEksSecurityContext hardens one EKS job container
+// (Kubernetes securityContext).
+message AwsBatchJobDefinitionEksSecurityContext {
+  // Run the container process as this numeric UID. 0 (root) is a legal
+  // explicit value -- UNSET leaves the image's own USER in effect, which
+  // is why presence matters here.
+  optional int64 run_as_user = 1 [(buf.validate.field).int64.gte = 0];
+
+  // Run the container process as this numeric GID. As with run_as_user,
+  // 0 is legal and distinct from unset.
+  optional int64 run_as_group = 2 [(buf.validate.field).int64.gte = 0];
+
+  // Have Kubernetes REJECT the pod at start if the effective user
+  // resolves to root -- an assertion, not an identity setting.
+  bool run_as_non_root = 3;
+
+  // Whether the process may gain more privileges than its parent
+  // (setuid binaries, file capabilities). UNSET means Kubernetes'
+  // default (allowed, unless the container is otherwise restricted);
+  // an explicit false is the hardening posture.
+  optional bool allow_privilege_escalation = 4;
+
+  // Run the container privileged (root-equivalent on the node).
+  // Default false, like Kubernetes.
+  bool privileged = 5;
+
+  // Mount the container's root filesystem read-only -- writable paths
+  // must come from volumes.
+  bool read_only_root_file_system = 6;
+}
+
+// AwsBatchJobDefinitionEksVolumeMount mounts one of the pod's declared
+// volumes into a container.
+message AwsBatchJobDefinitionEksVolumeMount {
+  // The name of a volume declared in eks.volumes.
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The path inside the container where the volume mounts.
+  // Example: "/mnt/data".
+  string mount_path = 2 [(buf.validate.field).required = true];
+
+  // Mount read-only.
+  bool read_only = 3;
+}
+
+// AwsBatchJobDefinitionEksVolume declares one Kubernetes volume the pod's
+// containers can mount. Exactly one backing must be set: emptyDir
+// (per-job scratch), a node hostPath, or a Kubernetes secret.
+message AwsBatchJobDefinitionEksVolume {
+  // The volume's name (a DNS-1123 label), referenced by containers'
+  // volume_mounts.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+    }
+  ];
+
+  // Scratch space that lives and dies with the job's pod.
+  AwsBatchJobDefinitionEksEmptyDir empty_dir = 2;
+
+  // A directory on the NODE's filesystem (Kubernetes hostPath.path) --
+  // data outlives the pod but is pinned to whichever node ran it.
+  // Example: "/mnt/scratch".
+  string host_path = 3;
+
+  // Project a Kubernetes secret (from the job's namespace) into the
+  // volume.
+  AwsBatchJobDefinitionEksSecretVolume secret = 4;
+
+  option (buf.validate.message).cel = {
+    id: "eks_volume_exactly_one_backing"
+    message: "a volume is backed by exactly one of empty_dir, host_path, or secret"
+    expression: "(has(this.empty_dir) ? 1 : 0) + (this.host_path != '' ? 1 : 0) + (has(this.secret) ? 1 : 0) == 1"
+  };
+}
+
+// AwsBatchJobDefinitionEksEmptyDir is per-job scratch space.
+message AwsBatchJobDefinitionEksEmptyDir {
+  // Where the scratch lives: unset backs it with node storage; "Memory"
+  // backs it with tmpfs (fast, counts against the container's memory
+  // sizing).
+  string medium = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.const = "Memory"
+  ];
+
+  // The scratch size cap, as a Kubernetes quantity.
+  // Example: "1Gi", "500Mi".
+  string size_limit = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|K|M|G|T)?$"
+  ];
+}
+
+// AwsBatchJobDefinitionEksSecretVolume projects a Kubernetes secret into
+// a pod volume.
+message AwsBatchJobDefinitionEksSecretVolume {
+  // The name of the Kubernetes secret in the job's namespace (the
+  // namespace comes from the compute environment's eks_configuration).
+  string secret_name = 1 [(buf.validate.field).required = true];
+
+  // Mount successfully even when the secret does not exist yet (an empty
+  // volume) instead of failing the pod.
+  bool optional = 2;
 }

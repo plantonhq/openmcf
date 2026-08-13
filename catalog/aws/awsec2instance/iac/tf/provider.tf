@@ -10,9 +10,13 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor: cpu_options.nested_virtualization (6.33) is
-      # the newest argument this module uses; secondary_network_interface
-      # landed in 6.32 and primary_network_interface in 6.10.
+      # Feature floor: instance_market_options.market_type
+      # "interruptible-capacity-reservation" needs the 6.58-era SDK enum
+      # (the value rides the vendored AWS SDK, no dated changelog entry);
+      # the capacity-block market's perpetual-diff fix landed in 6.53,
+      # cpu_options.nested_virtualization in 6.33,
+      # secondary_network_interface in 6.32, primary_network_interface in
+      # 6.10, and force_destroy in 6.8.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

@@ -1,6 +1,6 @@
 # AWS RDS Instance
 
-Deploys a single-instance relational database on Amazon RDS supporting PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server engines — with Multi-AZ failover, AWS-managed master credentials in Secrets Manager, storage encryption and autoscaling, read replicas and snapshot/point-in-time creation sources, Performance Insights and Enhanced Monitoring, and Blue/Green deployments. The instance integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a single-instance relational database on Amazon RDS supporting PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server engines — with Multi-AZ failover, AWS-managed master credentials in Secrets Manager, storage encryption and autoscaling, read replicas and snapshot/point-in-time/S3-XtraBackup creation sources, instance-owned parameter and option groups, feature-scoped IAM role associations, Performance Insights and Enhanced Monitoring, Blue/Green deployments, and the extended-support opt-out. The instance integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
 
 ## What Gets Created
 
@@ -107,7 +107,7 @@ These are the most important decisions when configuring an RDS instance. Explore
 
 **Engine choice** -- Set `engine` to `postgres`, `mysql`, `mariadb`, an `oracle-*` edition, or a `sqlserver-*` edition and pin `engineVersion` (empty floats with AWS's current default). The engine choice is immutable after creation. Aurora engines deploy through AwsRdsCluster instead.
 
-**Creation source** -- A new instance configures everything; `replicateSourceDb` creates a read replica (engine, storage, and credentials inherited — clearing it later promotes the replica to standalone), `snapshotIdentifier` restores a snapshot, and `restoreToPointInTime` restores another instance's continuous backup to any moment in its retention window. The three sources are mutually exclusive.
+**Creation source** -- A new instance configures everything; `replicateSourceDb` creates a read replica (engine, storage, and credentials inherited — clearing it later promotes the replica to standalone), `snapshotIdentifier` restores a snapshot, `restoreToPointInTime` restores another instance's continuous backup to any moment in its retention window, and `s3Import` restores a Percona XtraBackup from S3 (MySQL migration on-ramp). The four sources are mutually exclusive.
 
 **Credentials** -- `manageMasterUserPassword: true` (recommended) keeps the master password in Secrets Manager, generated and rotated by AWS, exported as the `master_user_secret_arn` output. A supplied `password` is mutually exclusive with the managed strategy.
 
@@ -119,6 +119,8 @@ These are the most important decisions when configuring an RDS instance. Explore
 
 **Observability** -- `performanceInsightsEnabled` is free at the 7-day retention; `monitoringInterval` + `monitoringRoleArn` stream OS-level metrics; `enabledCloudwatchLogsExports` ships the engine's own logs (legal types vary by engine family).
 
+**Engine configuration and roles** -- Inline `parameters` and `options` manage instance-owned parameter and option groups (family and major version derived from the pinned engine version; mutually exclusive with `parameterGroupName`/`optionGroupName`); `iamRoles` attaches feature-scoped engine roles (one association per entry, `featureName` required and engine-specific — e.g. `s3Import`, `s3Export`, `Lambda`; the role's trust policy must allow `rds.amazonaws.com` to assume it — AWS validates that server-side at association time and rejects the deploy otherwise); `engineLifecycleSupport: open-source-rds-extended-support-disabled` opts out of paid extended support.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -128,7 +130,8 @@ These are the most important decisions when configuring an RDS instance. Explore
 | **AwsSubnet** | `subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
 | **AwsKmsKey** (optional) | `kmsKeyId`, `masterUserSecretKmsKeyId`, `performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
-| **AwsIamRole** (optional) | `monitoringRoleArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (optional) | `monitoringRoleArn`, `iamRoles[].role`, `s3Import.ingestionRole` | `status.outputs.role_arn` |
+| **AwsSecurityGroup** (optional, options) | `options[].vpcSecurityGroupMemberships` | `status.outputs.security_group_id` |
 
 ### What This Component Provides
 
@@ -146,6 +149,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `engine_version_actual` | The running engine version | Upgrade auditing |
 | `master_user_secret_arn` | Secrets Manager ARN of the AWS-managed master secret | Application credential reads |
 | `db_subnet_group_name` | DB subnet group name | Audit, related resource lookups |
+| `db_parameter_group_name` | DB parameter group in use | Parameter auditing |
+| `option_group_name` | Option group in use | Option auditing |
 
 ## Common Patterns
 

@@ -6,10 +6,34 @@ spec:
   # A target group under live E2E: the harness deploys the AwsVpc prerequisite,
   # runs deploy -> DescribeTargetGroups verify -> destroy -> verify-destroyed on
   # both provisioners. Target groups are free and create in seconds; the VPC
-  # prerequisite dominates the runtime.
+  # prerequisite dominates the runtime. The minimal scenario carries the ALB
+  # Target Optimizer agent port (free create-time config).
+  #
+  # Deliberately not in the live lane, proven by CEL spec tests and the
+  # offline plan/preview gate: the QUIC family (protocol QUIC/TCP_QUIC,
+  # flow-hash stickiness, per-target quic_server_id) -- protocol is one
+  # create-only field, so the QUIC shape lives in the 04-quic-passthrough
+  # preset, planned and previewed on both engines. The 2026-08-12 proof
+  # session kept that deferral (a live QUIC lane needs a NEW scenario
+  # because protocol is create-only; nothing bills -- add one when a lane
+  # budget allows).
+  #
+  # Proven 2026-08-12 (both engines, all eight phases): Pulumi 69.66s /
+  # Terraform 70.81s. targetControlPort 9999 accepted at CreateTargetGroup
+  # with no Target Optimizer agent running and echoed by
+  # DescribeTargetGroups on the live group -- read through the repo's
+  # pinned Go SDK: the local aws-cli 2.33.24 OUTPUT model predates
+  # TargetControlPort and silently drops it (the recorded stale-CLI
+  # false-negative class; the Terraform lane's plan and destroy-refresh
+  # carried the same value as engine-native evidence).
   tier: 1
   status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 20
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

@@ -66,6 +66,7 @@ spec:
 | `spec.subnetMappings[].subnetId` | `string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
 | `spec.subnetMappings[].allocationId` | `string \| valueFrom` |  |  | AwsElasticIp (`status.outputs.allocation_id`) |
 | `spec.subnetMappings[].privateIpv4Address` | `string` |  |  |  |
+| `spec.subnetMappings[].ipv6Address` | `string` |  |  |  |
 | `spec.securityGroups` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.internal` | `bool` |  |  |  |
 | `spec.deleteProtectionEnabled` | `bool` |  |  |  |
@@ -81,6 +82,9 @@ spec:
 | `spec.dns.enabled` | `bool` |  |  |  |
 | `spec.dns.route53ZoneId` | `string \| valueFrom` |  |  | AwsRoute53Zone (`status.outputs.zone_id`) |
 | `spec.dns.hostnames` | `[]string` |  |  |  |
+| `spec.minimumLoadBalancerCapacityUnits` | `int32` |  |  |  |
+| `spec.secondaryIpsAutoAssignedPerSubnet` | `int32` |  |  |  |
+| `spec.enablePrefixForIpv6SourceNat` | `string` |  |  |  |
 
 ## Field Details
 
@@ -138,6 +142,16 @@ one Elastic IP.
 Specific private IPv4 address for the NLB node in this subnet. Only valid
 for internal NLBs. The address must belong to the subnet's CIDR range.
 When omitted, AWS assigns a private IP automatically.
+
+### spec.subnetMappings[].ipv6Address
+
+`string`
+
+Specific IPv6 address for the NLB node in this subnet, for dualstack
+NLBs (ip_address_type = "dualstack"). Must fall within the subnet's IPv6
+CIDR. When omitted, AWS assigns one automatically. Pinning it gives the
+IPv6 side the same static-address story allocation_id gives the IPv4
+side.
 
 ### spec.securityGroups
 
@@ -280,11 +294,47 @@ Each hostname gets its own A record aliased to the NLB's DNS name.
 
 - rule: {"repeated":{"unique":true}}
 
+### spec.minimumLoadBalancerCapacityUnits
+
+`int32` · optional (explicit presence)
+
+Reserved load balancer capacity, in Load Balancer Capacity Units (LCUs).
+Pre-provisions the NLB for a known traffic level (product launches,
+failover targets) instead of waiting for organic scaling. Reserved
+capacity bills for the reservation whether used or not. Leave unset for
+normal on-demand scaling.
+
+- rule: {"int32":{"gte":1}}
+
+### spec.secondaryIpsAutoAssignedPerSubnet
+
+`int32` · optional (explicit presence)
+
+Number of secondary private IPv4 addresses (0-7) AWS auto-assigns to each
+NLB node, raising the source-port budget for very high connection counts
+to a single target. Provider-verified caveat: DECREASING this value
+replaces the load balancer (AWS cannot release secondary IPs in place) --
+plan capacity before setting it. Leave unset for the AWS default of 0.
+
+- rule: {"int32":{"lte":7,"gte":0}}
+
+### spec.enablePrefixForIpv6SourceNat
+
+`string`
+
+Whether NLB nodes source-NAT IPv6 traffic through a /80 prefix per AZ
+instead of a single IPv6 address -- required for UDP listeners on a
+dualstack NLB (the per-address port budget cannot serve UDP flow hashing).
+Valid values: "on", "off". Only meaningful when ip_address_type is
+"dualstack".
+
 ## Validation Rules
 
 - `ip_address_type_valid`: ip_address_type must be 'ipv4' or 'dualstack' when set
 - `dns_record_client_routing_policy_valid`: dns_record_client_routing_policy must be 'any_availability_zone', 'availability_zone_affinity', or 'partial_availability_zone_affinity' when set
 - `private_link_enforcement_valid`: enforce_security_group_inbound_rules_on_private_link_traffic must be 'on' or 'off' when set
+- `ipv6_source_nat_prefix_valid`: enable_prefix_for_ipv6_source_nat must be 'on' or 'off' when set
+- `ipv6_source_nat_requires_dualstack`: enable_prefix_for_ipv6_source_nat requires ip_address_type 'dualstack'
 
 ## Outputs
 

@@ -73,19 +73,41 @@ func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 		if instance.PerformanceInsightsEnabled != nil {
 			args.PerformanceInsightsEnabled = pulumi.Bool(instance.GetPerformanceInsightsEnabled())
 		}
+		if instance.PerformanceInsightsKmsKeyId.GetValue() != "" {
+			args.PerformanceInsightsKmsKeyId = pulumi.String(instance.PerformanceInsightsKmsKeyId.GetValue())
+		}
+		if instance.PerformanceInsightsRetentionPeriod != 0 {
+			args.PerformanceInsightsRetentionPeriod = pulumi.Int(int(instance.PerformanceInsightsRetentionPeriod))
+		}
 
 		// Per-instance Enhanced Monitoring cadence, publishing through the
-		// cluster spec's monitoring role (AWS requires the role whenever
-		// the interval is set -- the spec's CEL guarantees it).
+		// instance's own role when given, else the cluster spec's
+		// monitoring role (AWS requires a role whenever the interval is
+		// set -- the spec's CEL guarantees the cluster-level pairing).
 		if instance.MonitoringInterval != 0 {
 			args.MonitoringInterval = pulumi.Int(int(instance.MonitoringInterval))
-			if spec.MonitoringRoleArn.GetValue() != "" {
+			if instance.MonitoringRoleArn.GetValue() != "" {
+				args.MonitoringRoleArn = pulumi.String(instance.MonitoringRoleArn.GetValue())
+			} else if spec.MonitoringRoleArn.GetValue() != "" {
 				args.MonitoringRoleArn = pulumi.String(spec.MonitoringRoleArn.GetValue())
 			}
 		}
 
+		// Per-instance windows: empty inherits AWS scheduling -- stagger
+		// these so readers never back up or patch simultaneously.
+		if instance.PreferredBackupWindow != "" {
+			args.PreferredBackupWindow = pulumi.String(instance.PreferredBackupWindow)
+		}
+		if instance.PreferredMaintenanceWindow != "" {
+			args.PreferredMaintenanceWindow = pulumi.String(instance.PreferredMaintenanceWindow)
+		}
+
 		if instance.CaCertIdentifier != "" {
 			args.CaCertIdentifier = pulumi.String(instance.CaCertIdentifier)
+		}
+		args.CopyTagsToSnapshot = pulumi.Bool(instance.CopyTagsToSnapshot)
+		if instance.ApplyImmediately {
+			args.ApplyImmediately = pulumi.Bool(true)
 		}
 
 		createdInstance, err := rds.NewClusterInstance(ctx,

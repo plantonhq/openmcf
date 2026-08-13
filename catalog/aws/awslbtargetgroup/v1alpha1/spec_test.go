@@ -149,6 +149,41 @@ var _ = ginkgo.Describe("AwsLbTargetGroupSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for a QUIC target group with a QUIC server id", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.Protocol = "QUIC"
+				input.Spec.Port = 443
+				input.Spec.Targets = []*AwsLbTargetGroupTarget{
+					{TargetId: literalRef("10.0.1.15"), QuicServerId: "server-1"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a TCP_QUIC group with flow-hash stickiness", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.Protocol = "TCP_QUIC"
+				input.Spec.Port = 443
+				input.Spec.Stickiness = &AwsLbTargetGroupStickiness{Type: "source_ip_dest_ip"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for source_ip_dest_ip_proto stickiness", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.Protocol = "UDP"
+				input.Spec.Stickiness = &AwsLbTargetGroupStickiness{Type: "source_ip_dest_ip_proto"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for an ALB group with a target control port", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.TargetControlPort = 9999
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -331,6 +366,21 @@ var _ = ginkgo.Describe("AwsLbTargetGroupSpec Validation Tests", func() {
 			ginkgo.It("should return a validation error for an invalid stickiness type", func() {
 				input := minimalValidTargetGroup()
 				input.Spec.Stickiness = &AwsLbTargetGroupStickiness{Type: "sticky"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an out-of-range target control port", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.TargetControlPort = 70000
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a target control port on an NLB protocol", func() {
+				input := minimalValidTargetGroup()
+				input.Spec.Protocol = "TCP"
+				input.Spec.TargetControlPort = 9999
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

@@ -7,9 +7,6 @@ metadata:
   id: test-queue-dev
   annotations:
     planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSqsQueue.test-queue
 spec:
   region: us-west-2
   sqsManagedSseEnabled: true

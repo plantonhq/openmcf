@@ -10,9 +10,20 @@ spec:
   # log group the module creates alongside it is likewise free. The one
   # prerequisite is the shared execution-role fixture, which AWS requires
   # at registration time for Fargate tasks on the awslogs default.
+  #
+  # pending_proof: the spec surface deepened (launch-time configure_at_launch
+  # volumes, Docker and S3-backed volume backings, EFS transit-encryption
+  # port, ipc/pid namespace modes, task-level placement constraints, fault
+  # injection, the MANAGED_INSTANCES compatibility) after the prior green
+  # run, so that proof no longer covers the current surface. Offline plans
+  # and previews passed on both engines, including the configure_at_launch
+  # arm; the live lanes re-earn the badge.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

@@ -124,8 +124,16 @@ func replicationGroup(
 		args.IpDiscovery = pulumi.String(spec.IpDiscovery)
 	}
 
-	args.AtRestEncryptionEnabled = pulumi.Bool(spec.AtRestEncryptionEnabled)
-	args.TransitEncryptionEnabled = pulumi.Bool(spec.TransitEncryptionEnabled)
+	// Presence-typed enable flags: forward only when the manifest set them.
+	// Unset must be OMITTED entirely — AWS applies its engine default, and
+	// a global-datastore secondary MUST omit them (the provider conflicts
+	// their presence with global_replication_group_id).
+	if spec.AtRestEncryptionEnabled != nil {
+		args.AtRestEncryptionEnabled = pulumi.BoolPtr(*spec.AtRestEncryptionEnabled)
+	}
+	if spec.TransitEncryptionEnabled != nil {
+		args.TransitEncryptionEnabled = pulumi.BoolPtr(*spec.TransitEncryptionEnabled)
+	}
 	if spec.TransitEncryptionMode != "" {
 		args.TransitEncryptionMode = pulumi.String(spec.TransitEncryptionMode)
 	}
@@ -196,8 +204,11 @@ func replicationGroup(
 	if spec.NotificationTopicArn != nil && spec.NotificationTopicArn.GetValue() != "" {
 		args.NotificationTopicArn = pulumi.String(spec.NotificationTopicArn.GetValue())
 	}
-	if spec.AutoMinorVersionUpgrade {
-		args.AutoMinorVersionUpgrade = pulumi.Bool(true)
+	// auto_minor_version_upgrade is presence-typed: AWS enables minor
+	// upgrades by default, so unset is omitted (AWS decides) and an
+	// explicit false is forwarded — never conflated.
+	if spec.AutoMinorVersionUpgrade != nil {
+		args.AutoMinorVersionUpgrade = pulumi.BoolPtr(*spec.AutoMinorVersionUpgrade)
 	}
 	if spec.DataTieringEnabled {
 		args.DataTieringEnabled = pulumi.Bool(true)

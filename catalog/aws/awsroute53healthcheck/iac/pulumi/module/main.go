@@ -30,6 +30,13 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53healthcheckv1alpha1.Aw
 		Tags: pulumi.ToStringMap(locals.AwsTags),
 	}
 
+	// The check type gates which argument families apply (CEL-enforced in
+	// the spec); the probe-tuning family is sent only for endpoint checks so
+	// both engines render identically.
+	isEndpointCheck := map[string]bool{
+		"HTTP": true, "HTTPS": true, "HTTP_STR_MATCH": true, "HTTPS_STR_MATCH": true, "TCP": true,
+	}[spec.CheckType]
+
 	// --- Endpoint checks (HTTP / HTTPS / *_STR_MATCH / TCP) ------------------
 	// fqdn alone: Route 53 resolves and probes it (and sends it as the Host
 	// header). ip_address alone or with fqdn: the probe goes to the IP.
@@ -51,33 +58,36 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53healthcheckv1alpha1.Aw
 		args.SearchString = pulumi.String(spec.SearchString)
 	}
 	// request_interval and measure_latency are create-time (ForceNew).
-	if spec.RequestInterval != nil {
-		args.RequestInterval = pulumi.Int(int(spec.GetRequestInterval()))
-	}
-	if spec.FailureThreshold != nil {
-		args.FailureThreshold = pulumi.Int(int(spec.GetFailureThreshold()))
-	}
-	if spec.MeasureLatency {
-		args.MeasureLatency = pulumi.Bool(true)
-	}
-	if spec.EnableSni != nil {
-		args.EnableSni = pulumi.Bool(spec.GetEnableSni())
+	// Probe tuning only exists where probing happens (endpoint checks) —
+	// mirroring the Terraform module's type gate check-for-check.
+	if isEndpointCheck {
+		if spec.RequestInterval != nil {
+			args.RequestInterval = pulumi.Int(int(spec.GetRequestInterval()))
+		}
+		if spec.FailureThreshold != nil {
+			args.FailureThreshold = pulumi.Int(int(spec.GetFailureThreshold()))
+		}
+		// State-pinned like Terraform: an explicit false is sent, so a
+		// true -> false edit is a real update on both engines.
+		args.MeasureLatency = pulumi.Bool(spec.MeasureLatency)
+		if spec.EnableSni != nil {
+			args.EnableSni = pulumi.Bool(spec.GetEnableSni())
+		}
 	}
 	if len(spec.Regions) > 0 {
 		args.Regions = pulumi.ToStringArray(spec.Regions)
 	}
 
 	// --- State shaping (any type) ---------------------------------------------
-	if spec.InvertHealthcheck {
-		args.InvertHealthcheck = pulumi.Bool(true)
-	}
-	if spec.Disabled {
-		args.Disabled = pulumi.Bool(true)
-	}
+	// State-pinned like Terraform (both booleans are sent unconditionally),
+	// so switching either back to false is a real update on both engines.
+	args.InvertHealthcheck = pulumi.Bool(spec.InvertHealthcheck)
+	args.Disabled = pulumi.Bool(spec.Disabled)
 
 	// --- CALCULATED: aggregate child checks -----------------------------------
-	// A zero threshold means "all children must be healthy" (the AWS default
-	// when the parameter is omitted).
+	// Presence carries the AWS contract: an explicit 0 means "always
+	// healthy", a value above the child count means "always unhealthy", and
+	// omitting the field lets AWS apply its server-side default.
 	if len(spec.ChildHealthChecks) > 0 {
 		childIds := make([]string, 0, len(spec.ChildHealthChecks))
 		for _, child := range spec.ChildHealthChecks {
@@ -85,8 +95,8 @@ func Resources(ctx *pulumi.Context, stackInput *awsroute53healthcheckv1alpha1.Aw
 		}
 		args.ChildHealthchecks = pulumi.ToStringArray(childIds)
 	}
-	if spec.ChildHealthThreshold != 0 {
-		args.ChildHealthThreshold = pulumi.Int(int(spec.ChildHealthThreshold))
+	if spec.ChildHealthThreshold != nil {
+		args.ChildHealthThreshold = pulumi.Int(int(spec.GetChildHealthThreshold()))
 	}
 
 	// --- CLOUDWATCH_METRIC: mirror an alarm (the private-resource pattern) ----

@@ -10,3 +10,4 @@ spec:
   maxConcurrency: 80
   maxSize: 10
   minSize: 2
+  setAsAccountDefault: true

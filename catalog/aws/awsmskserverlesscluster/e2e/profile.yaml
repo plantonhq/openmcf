@@ -13,14 +13,21 @@ spec:
   #
   # deferred: both engines are validated offline only -- tofu init +
   # validate, spec/CEL tests, outputs conformance, and Pulumi module
-  # compile -- with no live provision lane yet (plan/preview lanes also
-  # not run: no usable AWS credentials were reachable; the provider's
-  # contract ceiling is 120 min each way; in practice serverless
-  # provisions faster than the provisioned sibling, but the sibling's
-  # lane is also deferred and long-tail adoption does not yet earn the
-  # run). The scenario, prerequisite chain, and verifier are live-ready;
-  # flip to green after the first full deploy -> verify -> destroy run
-  # on both provisioners.
+  # compile -- with no live provision lane yet (the provider's contract
+  # ceiling is 120 min each way; in practice serverless provisions faster
+  # than the provisioned sibling, but the sibling's lane is also deferred
+  # and long-tail adoption does not yet earn the run). The scenario,
+  # prerequisite chain, and verifier are live-ready; flip to green after
+  # the first full deploy -> verify -> destroy run on both provisioners.
+  #
+  # Depth closure (2026-08-12): the spec RESTRUCTURED to repeated
+  # vpc_configs placements (multi-VPC access -- the provider's unbounded
+  # vpc_config list was previously inexpressible), both engines loop, and
+  # THIS closure's plan/preview lanes RAN green: tofu plan renders both
+  # vpc_config blocks from the canonical two-placement manifest; the
+  # Pulumi preview's diff shows both placements' subnet/security-group
+  # sets verbatim. A reopened lane's first-contact evidence bar:
+  # DescribeClusterV2 serverless.vpcConfigs echoes every placement.
   tier: 1
   status: deferred
   validated_provisioners:

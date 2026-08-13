@@ -52,6 +52,11 @@ spec:
 
 ---
 # TCP check against a static address (a database listener, a bastion).
+# The address must be YOUR endpoint's real public IP: AWS rejects local,
+# private, non-routable, multicast, and documentation/reserved ranges at
+# create ("IPv4 address x.x.x.x is forbidden") — a server-side contract no
+# offline validation can catch. Use fqdn instead when no static public IP
+# exists.
 
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53HealthCheck
@@ -60,8 +65,27 @@ metadata:
 spec:
   region: us-west-2
   checkType: TCP
-  ipAddress: 192.0.2.10
+  ipAddress: 203.0.113.25 # replace with the endpoint's real public IP
   port: 5432
+
+---
+# CALCULATED check aggregating per-endpoint checks into service health.
+# childHealthThreshold is by PRESENCE: 2 here means "at least two children
+# healthy"; an explicit 0 means "always healthy" (AWS's contract); omitting
+# it lets AWS apply its server-side default.
+
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53HealthCheck
+metadata:
+  name: service-calculated-check
+spec:
+  region: us-west-2
+  checkType: CALCULATED
+  childHealthChecks:
+    - value: abcdef11-2222-3333-4444-555555fedcba
+    - value: fedcba55-4444-3333-2222-11fedcbaabcd
+    - value: 12345678-90ab-cdef-1234-567890abcdef
+  childHealthThreshold: 2
 ```
 
 ## Spec Fields
@@ -75,8 +99,8 @@ spec:
 | `spec.port` | `int32` |  |  |  |
 | `spec.resourcePath` | `string` |  |  |  |
 | `spec.searchString` | `string` |  |  |  |
-| `spec.requestInterval` | `int32` |  | `30` |  |
-| `spec.failureThreshold` | `int32` |  | `3` |  |
+| `spec.requestInterval` | `int32` |  |  |  |
+| `spec.failureThreshold` | `int32` |  |  |  |
 | `spec.measureLatency` | `bool` |  |  |  |
 | `spec.enableSni` | `bool` |  |  |  |
 | `spec.regions` | `[]string` |  |  |  |
@@ -136,9 +160,14 @@ IP and this value is only the Host header. Max 255 characters.
 
 IPv4 or IPv6 address of the endpoint to probe. Use for endpoints whose
 address is static; use fqdn alone when the address changes (e.g. behind
-DNS-based scaling).
+DNS-based scaling). The address must be publicly routable: AWS rejects
+local, private, non-routable, multicast, AND documentation/reserved
+ranges at CreateHealthCheck with InvalidInput ("IPv4 address x.x.x.x is
+forbidden" — proven live against RFC 5737 192.0.2.x, even on a disabled
+check). The contract is server-side only — no schema mirrors it — so a
+placeholder manifest must use fqdn instead of a made-up address.
 
-- rule: {"string":{"maxLen":"45"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"ip":true}}
 
 ### spec.port
 
@@ -171,21 +200,22 @@ Required for (and only valid with) HTTP_STR_MATCH / HTTPS_STR_MATCH.
 
 `int32` · optional (explicit presence)
 
-Seconds between probes from each checker: 10 or 30 (default 30).
-Create-time immutable (ForceNew). Fast (10s) checks cost more but detect
-failures ~3x sooner.
+Seconds between probes from each checker: 10 or 30. AWS defaults to 30
+when omitted — no default is materialized here, because the field only
+exists for endpoint checks and a manufactured value would be dead
+configuration on every other type. Create-time immutable (ForceNew).
+Fast (10s) checks cost more but detect failures ~3x sooner.
 
-- default: `30`
 - rule: {"int32":{"in":[10,30]}}
 
 ### spec.failureThreshold
 
 `int32` · optional (explicit presence)
 
-Consecutive probe results required to flip the health state (1–10,
-default 3). Lower reacts faster; higher rides out blips.
+Consecutive probe results required to flip the health state (1–10; AWS
+defaults to 3 when omitted). Lower reacts faster; higher rides out
+blips. Endpoint checks only.
 
-- default: `3`
 - rule: {"int32":{"lte":10,"gte":1}}
 
 ### spec.measureLatency
@@ -243,11 +273,14 @@ Can reference other AwsRoute53HealthCheck resources.
 
 ### spec.childHealthThreshold
 
-`int32`
+`int32` · optional (explicit presence)
 
 Minimum number of healthy children for this check to report healthy
-(1–256). Defaults to the number of children when omitted (all must be
-healthy).
+(0–256). AWS's contract (per the CreateHealthCheck API): an explicit 0
+makes the check ALWAYS HEALTHY; a value greater than the number of
+children makes it always unhealthy; when omitted, Route 53 applies its
+own server-side default. Explicit 0 and omitted are therefore different
+configurations — presence carries the distinction.
 
 - rule: {"int32":{"lte":256,"gte":0}}
 
@@ -263,6 +296,10 @@ Name of the CloudWatch alarm whose state this check mirrors.
 
 Region the CloudWatch alarm lives in (alarms are regional even though
 the health check is global). Example: "us-west-2".
+Format-checked rather than enumerated on purpose: the provider's region
+enum grows with every AWS region launch; AWS rejects unknown regions.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]{2,4}(-[a-z]+)+-[0-9]+$"}}
 
 ### spec.insufficientDataHealthStatus
 
@@ -280,6 +317,8 @@ What to report while the alarm is in INSUFFICIENT_DATA state:
 ARN of the Application Recovery Controller routing control whose state
 this check mirrors. Create-time immutable (ForceNew).
 
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:[^:]+:[^:]+:[^:]*:[^:]*:.+$"}}
+
 ## Validation Rules
 
 - `endpoint_checks_require_target`: fqdn or ip_address is required for HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, and TCP checks
@@ -290,7 +329,7 @@ this check mirrors. Create-time immutable (ForceNew).
 - `calculated_requires_children`: child_health_checks (at least one) is required for CALCULATED checks and not valid for any other type
 - `cloudwatch_requires_alarm`: cloudwatch_alarm_name and cloudwatch_alarm_region are required for CLOUDWATCH_METRIC checks and not valid for any other type
 - `recovery_control_requires_arn`: routing_control_arn is required for RECOVERY_CONTROL checks and not valid for any other type
-- `probe_tuning_endpoint_only`: regions, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)
+- `probe_tuning_endpoint_only`: regions, request_interval, failure_threshold, measure_latency, and enable_sni only apply to endpoint checks (HTTP, HTTPS, HTTP_STR_MATCH, HTTPS_STR_MATCH, TCP)
 - `regions_min_three`: regions must list at least 3 checker regions when set (AWS minimum for reliable quorum)
 
 ## Outputs

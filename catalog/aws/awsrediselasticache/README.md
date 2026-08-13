@@ -116,8 +116,8 @@ This creates a single-node Redis 7.1 cluster with encryption at rest and in tran
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `atRestEncryptionEnabled` | `bool` | Recommended: `true` | Encrypt data on disk. ForceNew. |
-| `transitEncryptionEnabled` | `bool` | Recommended: `true` | Encrypt data in transit (TLS). |
+| `atRestEncryptionEnabled` | `bool` | Unset (AWS default); recommended: `true` | Encrypt data on disk. Presence matters: leave unset to let AWS apply its engine default; must stay unset when joining a global datastore. ForceNew. |
+| `transitEncryptionEnabled` | `bool` | Unset (AWS default: off); recommended: `true` | Encrypt data in transit (TLS). Presence matters: must stay unset when joining a global datastore. |
 | `transitEncryptionMode` | `string` | — | `"preferred"` or `"required"`. Requires transit encryption. |
 | `kmsKeyId` | `StringValueOrRef` | — | Customer-managed KMS key. ForceNew. Can reference AwsKmsKey. |
 
@@ -126,7 +126,7 @@ This creates a single-node Redis 7.1 cluster with encryption at rest and in tran
 | Field | Type | Description |
 |-------|------|-------------|
 | `authToken` | `StringValueOrRef` | Redis AUTH password. Mutually exclusive with `userGroupIds`. Requires transit encryption. |
-| `authTokenUpdateStrategy` | `string` | How token changes roll out: `ROTATE`, `SET`, or `DELETE`. Requires `authToken`. |
+| `authTokenUpdateStrategy` | `string` | How token changes roll out: `ROTATE` and `SET` require `authToken`; `DELETE` removes AUTH entirely (the AUTH-to-ACL migration step) and requires `authToken` to be absent. |
 | `userGroupIds` | `repeated StringValueOrRef` | Redis ACL user groups via `AwsElasticacheUserGroup`. Mutually exclusive with `authToken`. |
 
 ### Restore (Create-Time)
@@ -165,7 +165,7 @@ This creates a single-node Redis 7.1 cluster with encryption at rest and in tran
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `notificationTopicArn` | `StringValueOrRef` | — | SNS topic for cluster events. Can reference AwsSnsTopic. |
-| `autoMinorVersionUpgrade` | `bool` | `false` | Auto-apply minor version upgrades. |
+| `autoMinorVersionUpgrade` | `bool` | Unset (AWS default: on) | Auto-apply minor version upgrades. Leave unset to keep AWS's enabled-by-default; set `false` to pin the running minor version. |
 | `dataTieringEnabled` | `bool` | `false` | Move cold data to SSD. r6gd node types only. ForceNew. |
 | `clusterMode` | `string` | — | Migration setting: `enabled`, `compatible`, `disabled`. Online path from non-clustered to clustered. |
 

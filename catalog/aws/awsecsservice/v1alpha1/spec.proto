@@ -147,9 +147,10 @@ message AwsEcsServiceSpec {
   AwsEcsServiceServiceRegistries service_registries = 19;
 
   // A per-deployment managed EBS volume attached to each task, configured
-  // at deployment time against a volume declared (by name) in the task
-  // definition. How ECS tasks get real block storage beyond ephemeral
-  // scratch space.
+  // at deployment time against a volume the task definition declares with
+  // configure_at_launch (AwsEcsTaskDefinition spec.volumes) -- name must
+  // match that volume's name. How ECS tasks get real block storage beyond
+  // ephemeral scratch space.
   AwsEcsServiceVolumeConfiguration volume_configuration = 20;
 
   // Task placement strategies, applied in order (EC2 launch type only --
@@ -194,6 +195,14 @@ message AwsEcsServiceSpec {
   // the policies create are managed by AWS. Not applicable to DAEMON
   // services.
   AwsEcsServiceAutoscaling autoscaling = 28;
+
+  // VPC Lattice target-group attachments: register this service's tasks
+  // into VPC Lattice target groups so Lattice services route to them --
+  // the application-network alternative to a load balancer for
+  // cross-VPC/cross-account traffic. Each entry names the target group,
+  // the port name (from the task definition's port_mappings) to register,
+  // and the infrastructure role ECS assumes to manage the registration.
+  repeated AwsEcsServiceVpcLatticeConfiguration vpc_lattice_configurations = 29;
 
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
@@ -573,10 +582,46 @@ message AwsEcsServiceServiceConnect {
   // logs, not the application's).
   AwsEcsServiceLogConfiguration log_configuration = 4;
 
+  // Per-request access logging by the Service Connect proxy -- one line
+  // per mesh request (caller, target, status, latency), emitted to the
+  // proxy's log destination above. The mesh-level equivalent of load
+  // balancer access logs.
+  AwsEcsServiceServiceConnectAccessLog access_log_configuration = 5;
+
   option (buf.validate.message).cel = {
     id: "services_require_enabled"
     message: "declaring exposed services requires Service Connect to be enabled"
     expression: "size(this.services) == 0 || this.enabled"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "access_log_requires_enabled"
+    message: "access_log_configuration requires Service Connect to be enabled"
+    expression: "!has(this.access_log_configuration) || this.enabled"
+  };
+}
+
+// AwsEcsServiceServiceConnectAccessLog turns on per-request access logs
+// from the Service Connect proxy.
+message AwsEcsServiceServiceConnectAccessLog {
+  // The log line format: "TEXT" or "JSON" (structured -- the right choice
+  // when logs feed a query engine).
+  string format = 1 [(buf.validate.field).string = {
+    in: [
+      "TEXT",
+      "JSON"
+    ]
+  }];
+
+  // Include request query parameters in the log lines: "ENABLED" or
+  // "DISABLED". Unset keeps AWS's default (disabled -- query strings
+  // often carry sensitive values).
+  string include_query_parameters = 2;
+
+  option (buf.validate.message).cel = {
+    id: "include_query_parameters_valid"
+    message: "include_query_parameters must be 'ENABLED' or 'DISABLED' when set"
+    expression: "this.include_query_parameters == '' || this.include_query_parameters in ['ENABLED', 'DISABLED']"
   };
 }
 
@@ -620,6 +665,35 @@ message AwsEcsServiceServiceConnectClientAlias {
   // The DNS name clients use (e.g. "orders" or "orders.internal").
   // Default: the discovery name.
   string dns_name = 2;
+
+  // Route requests carrying a matching header to this service's TEST
+  // revision during a blue/green deployment -- how testers reach the new
+  // version through the mesh before traffic shifts.
+  repeated AwsEcsServiceServiceConnectTestTrafficRules test_traffic_rules = 3;
+}
+
+// AwsEcsServiceServiceConnectTestTrafficRules is one test-traffic routing
+// rule: requests whose header matches route to the deployment's test
+// revision.
+message AwsEcsServiceServiceConnectTestTrafficRules {
+  // The header match selecting test traffic.
+  AwsEcsServiceServiceConnectTestTrafficHeader header = 1;
+}
+
+// AwsEcsServiceServiceConnectTestTrafficHeader matches one request header.
+message AwsEcsServiceServiceConnectTestTrafficHeader {
+  // The header name to match (e.g. "x-canary-test").
+  string name = 1 [(buf.validate.field).required = true];
+
+  // The header value match.
+  AwsEcsServiceServiceConnectTestTrafficHeaderValue value = 2 [(buf.validate.field).required = true];
+}
+
+// AwsEcsServiceServiceConnectTestTrafficHeaderValue is the value match for
+// a test-traffic header rule.
+message AwsEcsServiceServiceConnectTestTrafficHeaderValue {
+  // The exact header value that selects test traffic.
+  string exact = 1 [(buf.validate.field).required = true];
 }
 
 // AwsEcsServiceServiceConnectTimeout shapes the proxy's patience for calls
@@ -759,6 +833,15 @@ message AwsEcsServiceManagedEbsVolume {
   // "ext3", or "ntfs" (Windows tasks).
   string file_system_type = 9;
 
+  // Tags applied to each created EBS volume at creation time -- without
+  // this, per-task volumes carry no cost-allocation tags at all.
+  repeated AwsEcsServiceEbsTagSpecification tag_specifications = 10;
+
+  // How fast a snapshot-restored volume hydrates, in MiB/s. Only
+  // meaningful with snapshot_id; 0 (unset) uses the EBS default lazy
+  // loading.
+  int32 volume_initialization_rate = 11;
+
   option (buf.validate.message).cel = {
     id: "size_or_snapshot"
     message: "set size_in_gb, or snapshot_id (whose snapshot defines the size)"
@@ -787,6 +870,57 @@ message AwsEcsServiceManagedEbsVolume {
     id: "file_system_type_valid"
     message: "file_system_type must be 'xfs', 'ext4', 'ext3', or 'ntfs' when set"
     expression: "this.file_system_type == '' || this.file_system_type in ['xfs', 'ext4', 'ext3', 'ntfs']"
+  };
+}
+
+// AwsEcsServiceVpcLatticeConfiguration registers the service's tasks into
+// one VPC Lattice target group -- the application-network path for
+// cross-VPC and cross-account traffic without a load balancer in every
+// VPC.
+message AwsEcsServiceVpcLatticeConfiguration {
+  // The IAM role ECS assumes to register and deregister task targets with
+  // VPC Lattice (the ECS service principal must be able to assume it, and
+  // it needs the Lattice target-management permissions). Reference an
+  // AwsIamRole's role_arn output or pass a literal ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The VPC Lattice target group (by ARN) the tasks register into. A
+  // literal ARN -- Planton has no VPC Lattice kinds yet.
+  string target_group_arn = 2 [(buf.validate.field).required = true];
+
+  // The name of a port mapping in the task definition (the port_mappings
+  // entry must set name) whose port is registered with the target group.
+  // 1-64 characters: lowercase letters, digits, underscores, hyphens.
+  string port_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[0-9a-z_][0-9a-z_-]{0,63}$"
+  ];
+}
+
+// AwsEcsServiceEbsTagSpecification tags the EBS volumes ECS creates for
+// managed task storage.
+message AwsEcsServiceEbsTagSpecification {
+  // The resource type being tagged; "volume" is the only type EBS task
+  // volumes support.
+  string resource_type = 1 [(buf.validate.field).string = {
+    in: ["volume"]
+  }];
+
+  // The tags applied to each created volume.
+  map<string, string> tags = 2;
+
+  // Also propagate tags from "SERVICE" or "TASK_DEFINITION" ("NONE"
+  // disables propagation) onto the created volumes.
+  string propagate_tags = 3;
+
+  option (buf.validate.message).cel = {
+    id: "propagate_tags_valid"
+    message: "propagate_tags must be 'SERVICE', 'TASK_DEFINITION', or 'NONE' when set"
+    expression: "this.propagate_tags == '' || this.propagate_tags in ['SERVICE', 'TASK_DEFINITION', 'NONE']"
   };
 }
 

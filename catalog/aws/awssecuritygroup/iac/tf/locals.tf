@@ -9,6 +9,10 @@ locals {
   # VPC ID (already resolved from the reference before the module runs).
   vpc_id = var.spec.vpc_id
 
+  # Additional VPCs the group is shared into (already resolved to literal
+  # vpc-... ids). Empty entries are dropped defensively.
+  additional_vpc_ids = [for v in try(var.spec.additional_vpc_ids, []) : v if v != ""]
+
   # Resource-identity tags match the Pulumi module key-for-key.
   aws_tags = {
     "Name"                     = var.metadata.name

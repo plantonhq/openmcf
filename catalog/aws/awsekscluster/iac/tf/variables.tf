@@ -41,5 +41,10 @@ variable "spec" {
     deletion_protection = optional(bool, false)
     bootstrap_self_managed_addons = optional(bool)
     force_update_version = optional(bool, false)
+    control_plane_scaling_tier = optional(string, "")
+    remote_networks = optional(object({
+      node_cidrs = optional(list(string), [])
+      pod_cidrs = optional(list(string), [])
+    }))
   })
 }

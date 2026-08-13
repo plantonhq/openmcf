@@ -23,13 +23,14 @@ variable "spec" {
     })), [])
     delegation_set_id = optional(string, "")
     force_destroy = optional(bool, false)
-    enable_accelerated_recovery = optional(bool, false)
+    enable_accelerated_recovery = optional(bool)
     query_logging = optional(object({
       cloudwatch_log_group_arn = string
     }))
     dnssec = optional(object({
       kms_key_arn = string
       key_signing_key_name = optional(string, "")
+      key_signing_key_status = optional(string, "")
     }))
   })
 }

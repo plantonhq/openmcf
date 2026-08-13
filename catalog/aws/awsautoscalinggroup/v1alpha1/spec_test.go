@@ -221,6 +221,115 @@ var _ = ginkgo.Describe("AwsAutoScalingGroupSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for a reserved fleet with lifecycle policy and waits", func() {
+				input := minimalValidGroup()
+				input.Spec.CapacityReservation = &AwsAutoScalingGroupCapacityReservation{
+					Preference:             "capacity-reservations-first",
+					CapacityReservationIds: []string{"cr-0123456789abcdef0"},
+				}
+				input.Spec.InstanceLifecyclePolicy = &AwsAutoScalingGroupInstanceLifecyclePolicy{
+					TerminateHookAbandon: "retain",
+				}
+				input.Spec.IgnoreFailedScalingActivities = true
+				input.Spec.ForceDeleteWarmPool = true
+				input.Spec.TargetGroups = []*foreignkeyv1.StringValueOrRef{
+					literalRef("arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/50dc6c495c0c9188"),
+				}
+				input.Spec.MinElbCapacity = 1
+				input.Spec.WaitForElbCapacity = 2
+				input.Spec.LifecycleHooks = []*AwsAutoScalingGroupLifecycleHook{
+					{
+						Name:                "warm-cache",
+						LifecycleTransition: "autoscaling:EC2_INSTANCE_LAUNCHING",
+						ApplyAtLaunch:       true,
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for VPC Lattice traffic sources", func() {
+				input := minimalValidGroup()
+				input.Spec.TrafficSources = []*AwsAutoScalingGroupTrafficSource{
+					{
+						Identifier: literalRef("arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0"),
+						Type:       "vpc-lattice",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a disabled policy with split predictive metrics", func() {
+				input := minimalValidGroup()
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast-split",
+						PolicyType: "PredictiveScaling",
+						Disabled:   true,
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue: 60,
+							PredefinedLoadMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGTotalCPUUtilization",
+							},
+							PredefinedScalingMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGAverageCPUUtilization",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for fully customized predictive metrics", func() {
+				input := minimalValidGroup()
+				returnData := false
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast-custom",
+						PolicyType: "PredictiveScaling",
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue: 100,
+							CustomizedLoadMetricQueries: []*AwsAutoScalingGroupMetricDataQuery{
+								{
+									Id: "load",
+									MetricStat: &AwsAutoScalingGroupMetricStat{
+										MetricName: "RequestsTotal",
+										Namespace:  "MyApp",
+										Stat:       "Sum",
+									},
+								},
+							},
+							CustomizedScalingMetricQueries: []*AwsAutoScalingGroupMetricDataQuery{
+								{
+									Id: "m1",
+									MetricStat: &AwsAutoScalingGroupMetricStat{
+										MetricName: "RequestsPerInstance",
+										Namespace:  "MyApp",
+										Stat:       "Average",
+									},
+									ReturnData: &returnData,
+								},
+								{Id: "scaling", Expression: "m1 * 1.1"},
+							},
+							CustomizedCapacityMetricQueries: []*AwsAutoScalingGroupMetricDataQuery{
+								{
+									Id: "capacity",
+									MetricStat: &AwsAutoScalingGroupMetricStat{
+										MetricName: "GroupInServiceInstances",
+										Namespace:  "AWS/AutoScaling",
+										Stat:       "Average",
+									},
+								},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -284,6 +393,140 @@ var _ = ginkgo.Describe("AwsAutoScalingGroupSpec Validation Tests", func() {
 			ginkgo.It("should return an error for an unknown suspended process", func() {
 				input := minimalValidGroup()
 				input.Spec.SuspendedProcesses = []string{"Reboot"}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when traffic_sources and target_groups are both set", func() {
+				input := minimalValidGroup()
+				input.Spec.TargetGroups = []*foreignkeyv1.StringValueOrRef{
+					literalRef("arn:aws:elasticloadbalancing:us-west-2:123456789012:targetgroup/api/50dc6c495c0c9188"),
+				}
+				input.Spec.TrafficSources = []*AwsAutoScalingGroupTrafficSource{
+					{Identifier: literalRef("arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0")},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an unknown traffic source type", func() {
+				input := minimalValidGroup()
+				input.Spec.TrafficSources = []*AwsAutoScalingGroupTrafficSource{
+					{Identifier: literalRef("my-classic-elb"), Type: "clb"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when capacity reservation ids and resource groups are both set", func() {
+				input := minimalValidGroup()
+				input.Spec.CapacityReservation = &AwsAutoScalingGroupCapacityReservation{
+					CapacityReservationIds:               []string{"cr-0123456789abcdef0"},
+					CapacityReservationResourceGroupArns: []string{"arn:aws:resource-groups:us-west-2:123456789012:group/crs"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an unknown capacity reservation preference", func() {
+				input := minimalValidGroup()
+				input.Spec.CapacityReservation = &AwsAutoScalingGroupCapacityReservation{
+					Preference: "always",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for an unknown terminate_hook_abandon action", func() {
+				input := minimalValidGroup()
+				input.Spec.InstanceLifecyclePolicy = &AwsAutoScalingGroupInstanceLifecyclePolicy{
+					TerminateHookAbandon: "keep",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("predictive scaling metric-form rules", func() {
+
+			ginkgo.It("should return an error when the pair combines with customized queries", func() {
+				input := minimalValidGroup()
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast",
+						PolicyType: "PredictiveScaling",
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue:              60,
+							PredefinedMetricPairType: "ASGCPUUtilization",
+							CustomizedScalingMetricQueries: []*AwsAutoScalingGroupMetricDataQuery{
+								{Id: "m1", Expression: "10"},
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when no scaling metric is given", func() {
+				input := minimalValidGroup()
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast",
+						PolicyType: "PredictiveScaling",
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue: 60,
+							PredefinedLoadMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGTotalCPUUtilization",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error when predefined and customized load metrics are both set", func() {
+				input := minimalValidGroup()
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast",
+						PolicyType: "PredictiveScaling",
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue: 60,
+							PredefinedLoadMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGTotalCPUUtilization",
+							},
+							CustomizedLoadMetricQueries: []*AwsAutoScalingGroupMetricDataQuery{
+								{Id: "load", Expression: "10"},
+							},
+							PredefinedScalingMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGAverageCPUUtilization",
+							},
+						},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should return an error for a scaling-side metric type on the load side", func() {
+				input := minimalValidGroup()
+				input.Spec.ScalingPolicies = []*AwsAutoScalingGroupScalingPolicy{
+					{
+						Name:       "forecast",
+						PolicyType: "PredictiveScaling",
+						PredictiveScaling: &AwsAutoScalingGroupPredictiveScalingConfig{
+							TargetValue: 60,
+							PredefinedLoadMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGAverageCPUUtilization",
+							},
+							PredefinedScalingMetric: &AwsAutoScalingGroupPredictiveScalingPredefinedMetric{
+								MetricType: "ASGAverageCPUUtilization",
+							},
+						},
+					},
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

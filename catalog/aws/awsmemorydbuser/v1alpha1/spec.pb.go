@@ -71,6 +71,13 @@ type AwsMemorydbUserSpec struct {
 	//
 	// Updates apply in place — a tightened access string takes effect on new
 	// connections without recreating the user.
+	//
+	// AWS stores the string NORMALIZED (live-verified 2026-08-13): the API
+	// echoes it with Redis ACL defaults made explicit — e.g.
+	// "on ~orders:* +@read" comes back as
+	// "on ~orders:* resetchannels -@all +@read". The provider reconciles the
+	// normalized form, so manifests never see drift; just don't expect a
+	// byte-identical echo when comparing DescribeUsers output to this field.
 	AccessString string `protobuf:"bytes,2,opt,name=access_string,json=accessString,proto3" json:"access_string,omitempty"`
 	// How clients prove they are this user. Exactly one authentication type,
 	// with passwords carried inline only for the "password" type.
@@ -151,7 +158,10 @@ type AwsMemorydbUserAuthenticationMode struct {
 	Type string `protobuf:"bytes,1,opt,name=type,proto3" json:"type,omitempty"`
 	// Passwords for the "password" authentication type. One or two entries,
 	// each 16–128 characters; two entries enable zero-downtime rotation.
-	// Must be empty for the "iam" type.
+	// Must be empty for the "iam" type. Write-only at AWS: the API never
+	// returns passwords, so drift changed outside this manifest is
+	// undetectable, and a user adopted by import carries no password state —
+	// re-assert the passwords here to manage them.
 	Passwords     []string `protobuf:"bytes,2,rep,name=passwords,proto3" json:"passwords,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

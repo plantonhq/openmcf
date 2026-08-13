@@ -38,9 +38,13 @@ spec:
   # ~2-3 min and deletes with its EFS in ~2-4 min); zero-orphan sweep
   # clean -- the Delete retention policy removed the auto-created EFS
   # home file system in every lane.
+  #
+  # pending_proof: the depth closure folded the user-profile and space
+  # satellites (full-surface gains one profile with a DISABLED-lifecycle
+  # override and one private space), healed the idle lifecycle_management
+  # tri-state, and added value-domain rules; the previous green run predates
+  # this surface. The raised verifier asserts every folded profile/space
+  # InService from the output maps.
   tier: 1
-  status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  status: pending_proof
   timeout_minutes: 45

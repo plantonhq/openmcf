@@ -14,7 +14,24 @@ spec:
         VPC console -> Your VPCs (the VPC ID column), or
         `aws ec2 describe-vpcs` (VpcId).
     - name: cidr_association_id
-      derivations: []
+      derivations:
+        # Association IDs are AWS-generated (the CIDR key on the module's
+        # for_each is config-time identity, never the ID), so the module
+        # exports them keyed by the same key. One placeholder serves both
+        # association resources: the ordered lookups cannot collide because
+        # the two maps' key spaces are disjoint (IPv4 vs IPv6 CIDR formats;
+        # "ipam-" vs "ipv6-" index prefixes).
+        - from_stack_output_keyed_by_address: secondary_ipv4_cidr_association_ids
+        - from_stack_output_keyed_by_address: secondary_ipv6_cidr_association_ids
       where_to_find: >-
         `aws ec2 describe-vpcs --vpc-ids <vpc-id>` -> CidrBlockAssociationSet
-        -> AssociationId ("vpc-cidr-assoc-..."), one per secondary CIDR block.
+        (IPv4) or Ipv6CidrBlockAssociationSet (IPv6) -> AssociationId
+        ("vpc-cidr-assoc-..."), one per secondary CIDR block.
+    - name: vpc_encryption_control_id
+      derivations:
+        # One encryption control per VPC (count-gated singleton), so the
+        # plain scalar output serves it.
+        - from_stack_output: encryption_control_id
+      where_to_find: >-
+        `aws ec2 describe-vpc-encryption-controls` -> the control whose
+        VpcId matches ("vpcec-...").

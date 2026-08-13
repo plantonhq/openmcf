@@ -1,4 +1,4 @@
-name: awslaunchtemplate-pulumi-project
+name: awslaunchtemplate
 runtime:
   name: go
 # options:

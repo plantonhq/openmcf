@@ -35,18 +35,35 @@ every fleet definition -- lets you:
   accelerator, local-storage, and price-protection filters) and let AWS
   pick.
 - **Purchase options**: On-Demand by default; `spotOptions` turns every
-  launch into a Spot request with interruption behavior and price ceiling.
+  launch into a Spot request with interruption behavior and price ceiling;
+  `marketType: capacity-block` consumes pre-purchased Capacity Blocks for
+  ML with `capacityReservation` naming the block.
+- **Reserved capacity**: `capacityReservation` targets On-Demand Capacity
+  Reservations by ID or resource group, or shapes reservation use with a
+  preference (`open`, `none`, `capacity-reservations-only`).
+- **Dedicated Hosts**: `placement` pins BYOL workloads to a host
+  (`hostId`), a License Manager host resource group, and host affinity;
+  `licenseConfigurationArns` tracks the licenses launches consume.
 - **Partial templates**: leave AMI and type unset when the consumer (an EKS
   node group, an ASG override) supplies them.
 
 ### Storage and Networking
 
 - **Block device mappings**: grow or retype the root volume, encrypt with a
-  KMS key reference, attach data volumes from snapshots, suppress AMI-baked
-  devices.
-- **Explicit network interfaces**: public-IP tri-state, static IPs, IPv6,
-  prefix delegation (the Kubernetes CNI pattern), EFA for HPC/ML, security
-  groups per interface referencing `AwsSecurityGroup` nodes.
+  KMS key reference, attach data volumes from snapshots -- pre-warmed at a
+  paid `volumeInitializationRateMibps` instead of loading lazily --
+  suppress AMI-baked devices.
+- **Explicit network interfaces**: public-IP tri-state, static IPs, IPv6
+  (including `primaryIpv6` for stable IPv6 identity), prefix delegation
+  (the Kubernetes CNI pattern), EFA for HPC/ML, connection-tracking
+  timeout tuning, ENA Express (SRD) with its UDP option, ENA queue counts,
+  Wavelength carrier IPs, and security groups per interface referencing
+  `AwsSecurityGroup` nodes.
+- **Secondary interfaces**: additional interfaces attached at launch for
+  multi-homed instances (e.g. a dedicated storage-subnet leg), referencing
+  `AwsSubnet` nodes.
+- **Bandwidth weighting**: bias baseline bandwidth toward VPC networking
+  or EBS throughput on supported types -- free performance shaping.
 
 ### Security Posture
 
@@ -55,7 +72,11 @@ every fleet definition -- lets you:
 - **Instance identity by reference**: `instanceProfile` composes with
   `AwsIamInstanceProfile`; EBS keys with `AwsKmsKey`.
 - **Nitro Enclaves, hibernation, stop/termination protection, CPU
-  SEV-SNP** for hardened and stateful workloads.
+  SEV-SNP, nested virtualization** for hardened and specialized
+  workloads.
+- **Launch-time tagging built in**: the module renders the platform's
+  identity tags onto the instances and volumes every launch creates, so
+  fleet members never escape cost-allocation or orphan-cleanup queries.
 
 ## Benefits
 

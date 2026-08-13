@@ -346,7 +346,7 @@ const file_catalog_aws_awsfsxontapstoragevirtualmachine_v1alpha1_spec_proto_rawD
 	"\x1aroot_volume_security_style\x18\x04 \x01(\tB\b\x8a\xa6\x1d\x04UNIXH\x00R\x17rootVolumeSecurityStyle\x88\x01\x01\x122\n" +
 	"\x12svm_admin_password\x18\x05 \x01(\tB\x04\xa0\xa6\x1d\x01R\x10svmAdminPassword\x12\xbd\x01\n" +
 	"\x1eactive_directory_configuration\x18\x06 \x01(\v2w.dev.planton.aws.awsfsxontapstoragevirtualmachine.v1alpha1.AwsFsxOntapStorageVirtualMachineActiveDirectoryConfigurationR\x1cactiveDirectoryConfiguration:\xba\x04\xbaH\xb6\x04\x1a\xbc\x01\n" +
-	"\x14security_style_valid\x12=root_volume_security_style must be 'UNIX', 'NTFS', or 'MIXED'\x1aethis.root_volume_security_style == '' || this.root_volume_security_style in ['UNIX', 'NTFS', 'MIXED']\x1a\xbf\x01\n" +
+	"\x14security_style_valid\x12=root_volume_security_style must be 'UNIX', 'NTFS', or 'MIXED'\x1ae!has(this.root_volume_security_style) || this.root_volume_security_style in ['UNIX', 'NTFS', 'MIXED']\x1a\xbf\x01\n" +
 	"\x15admin_password_length\x128svm_admin_password must be 8-50 characters when provided\x1althis.svm_admin_password == '' || (size(this.svm_admin_password) >= 8 && size(this.svm_admin_password) <= 50)\x1a\xb2\x01\n" +
 	"\vname_format\x12jname must contain only alphanumeric characters and underscores (no hyphens, spaces, or special characters)\x1a7this.name == '' || this.name.matches('^[a-zA-Z0-9_]+$')B\x1d\n" +
 	"\x1b_root_volume_security_style\"\xac\x06\n" +

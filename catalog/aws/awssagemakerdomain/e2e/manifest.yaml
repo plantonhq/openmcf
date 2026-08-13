@@ -173,3 +173,38 @@ spec:
     customPosixUserConfig:
       uid: 10001
       gid: 1002
+  # The folded per-person plane: profiles inherit defaultUserSettings and
+  # override per person. The first profile's idle settings carry
+  # lifecycleManagement DISABLED -- guardrails published, enforcement off.
+  userProfiles:
+    - userProfileName: alice
+      userSettings:
+        executionRoleArn:
+          value: arn:aws:iam::123456789012:role/hack-user-execution-role
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            lifecycleManagement: DISABLED
+            idleTimeoutInMinutes: 120
+            minIdleTimeoutInMinutes: 60
+            maxIdleTimeoutInMinutes: 240
+    - userProfileName: bob
+  # The folded collaboration plane: named spaces (ownership and sharing
+  # travel together -- AWS's RequiredWith contract).
+  spaces:
+    - spaceName: team-analytics
+      displayName: Team Analytics
+      ownershipSettings:
+        ownerUserProfileName: alice
+      spaceSharingSettings:
+        sharingType: Shared
+      spaceSettings:
+        appType: JupyterLab
+        jupyterLabAppSettings:
+          defaultResourceSpec:
+            instanceType: ml.t3.medium
+          idleSettings:
+            idleTimeoutInMinutes: 60
+        spaceStorageSettings:
+          ebsVolumeSizeInGb: 25

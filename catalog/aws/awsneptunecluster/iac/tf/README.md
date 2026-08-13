@@ -18,9 +18,12 @@ Credentials are passed via the stack input through the CLI, not in `spec`.
 - `provider.tf` — provider setup
 - `locals.tf` — computed locals and flags
 - `subnet_group.tf` — Neptune subnet group when subnet IDs provided
-- `cluster_param_group.tf` — managed cluster parameter group for inline parameters
+- `cluster_param_group.tf` — managed cluster parameter group for inline
+  parameters, plus the instance-level twin for inline instance_parameters
 - `neptune_cluster.tf` — main cluster resource
-- `cluster_instances.tf` — per-name folded instances
+- `cluster_instances.tf` — per-name folded instances (pinned to the
+  cluster's port; apply_immediately and skip_final_snapshot forwarded)
+- `custom_endpoints.tf` — per-name folded custom cluster endpoints
 - `outputs.tf` — outputs matching `AwsNeptuneClusterStackOutputs`
 
 ## Presets

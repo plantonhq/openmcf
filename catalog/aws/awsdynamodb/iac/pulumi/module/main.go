@@ -34,6 +34,10 @@ func Resources(ctx *pulumi.Context, stackInput *awsdynamodbv1alpha1.AwsDynamodbS
 		return errors.Wrap(err, "failed to create DynamoDB table satellites")
 	}
 
+	if err := autoscaling(ctx, locals, provider, createdTable); err != nil {
+		return errors.Wrap(err, "failed to configure DynamoDB capacity autoscaling")
+	}
+
 	// Stream outputs resolve to "" when streams are disabled -- the SDK
 	// string outputs carry the zero value without ApplyT.
 	ctx.Export(OpTableName, createdTable.Name)

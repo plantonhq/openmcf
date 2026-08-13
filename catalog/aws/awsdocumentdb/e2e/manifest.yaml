@@ -14,3 +14,8 @@ spec:
   instances:
     - name: writer
       instanceClass: db.t4g.medium
+      # Defer the CA-rotation restart to the next maintenance action
+      # instead of restarting immediately (unset keeps the AWS default:
+      # restart on rotation).
+      certificateRotationRestart: false
+      applyImmediately: true

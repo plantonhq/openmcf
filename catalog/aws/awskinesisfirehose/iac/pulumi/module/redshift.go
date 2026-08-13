@@ -94,6 +94,15 @@ func buildRedshiftS3Config(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Config) *
 			args.BufferingSize = pulumi.IntPtr(int(b.SizeInMbs))
 		}
 	}
+	// CloudWatch logging for the staging S3 leg -- distinct from the
+	// destination-level logging options.
+	if log := cfg.Logging; log != nil && log.Enabled {
+		args.CloudwatchLoggingOptions = &kinesis.FirehoseDeliveryStreamRedshiftConfigurationS3ConfigurationCloudwatchLoggingOptionsArgs{
+			Enabled:       pulumi.BoolPtr(true),
+			LogGroupName:  pulumi.StringPtr(log.LogGroupName),
+			LogStreamName: pulumi.StringPtr(log.LogStreamName),
+		}
+	}
 	return args
 }
 
@@ -121,6 +130,15 @@ func buildRedshiftS3BackupConfig(cfg *awskinesisfirehose.AwsKinesisFirehoseS3Con
 		}
 		if b.SizeInMbs > 0 {
 			args.BufferingSize = pulumi.IntPtr(int(b.SizeInMbs))
+		}
+	}
+	// CloudWatch logging for the backup S3 leg -- distinct from the
+	// destination-level logging options.
+	if log := cfg.Logging; log != nil && log.Enabled {
+		args.CloudwatchLoggingOptions = &kinesis.FirehoseDeliveryStreamRedshiftConfigurationS3BackupConfigurationCloudwatchLoggingOptionsArgs{
+			Enabled:       pulumi.BoolPtr(true),
+			LogGroupName:  pulumi.StringPtr(log.LogGroupName),
+			LogStreamName: pulumi.StringPtr(log.LogStreamName),
 		}
 	}
 	return args

@@ -1,0 +1,102 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_instance:
+    mappings:
+      # The spec folds the provider's single-purpose wrapper blocks flat
+      # (credit_specification, maintenance_options, enclave_options,
+      # monitoring) and groups placement under one message.
+      - spec: spec.instance_profile
+        arg: iam_instance_profile
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+      - spec: spec.detailed_monitoring
+        arg: monitoring
+      - spec: spec.cpu_credits
+        arg: credit_specification.cpu_credits
+      - spec: spec.auto_recovery
+        arg: maintenance_options.auto_recovery
+      - spec: spec.enclave_enabled
+        arg: enclave_options.enabled
+      - spec: spec.hibernation_enabled
+        arg: hibernation
+
+      # A pre-provisioned primary ENI: the spec carries the id flat; the
+      # provider wraps it in the primary_network_interface block (its only
+      # configurable leaf -- delete_on_termination there is computed).
+      - spec: spec.primary_network_interface_id
+        arg: primary_network_interface.network_interface_id
+
+      # The provider names repeated blocks in the singular; the spec uses
+      # the catalog's plural list convention. Leaves bind by name beneath
+      # each subtree; renamed leaves follow explicitly.
+      - spec: spec.ebs_block_devices
+        arg: ebs_block_device
+      - spec: spec.ebs_block_devices.volume_size_gb
+        arg: ebs_block_device.volume_size
+      - spec: spec.ebs_block_devices.throughput_mibps
+        arg: ebs_block_device.throughput
+      - spec: spec.root_block_device.volume_size_gb
+        arg: root_block_device.volume_size
+      - spec: spec.root_block_device.throughput_mibps
+        arg: root_block_device.throughput
+      - spec: spec.ephemeral_block_devices
+        arg: ephemeral_block_device
+      - spec: spec.secondary_network_interfaces
+        arg: secondary_network_interface
+      - spec: spec.secondary_network_interfaces.subnet_id
+        arg: secondary_network_interface.secondary_subnet_id
+
+      # Purchase options: market_type sits flat next to spot_options.
+      - spec: spec.market_type
+        arg: instance_market_options.market_type
+      - spec: spec.spot_options
+        arg: instance_market_options.spot_options
+
+      # Capacity reservation: the spec flattens the provider's
+      # target wrapper into the one message.
+      - spec: spec.capacity_reservation.preference
+        arg: capacity_reservation_specification.capacity_reservation_preference
+      - spec: spec.capacity_reservation.capacity_reservation_id
+        arg: capacity_reservation_specification.capacity_reservation_target.capacity_reservation_id
+      - spec: spec.capacity_reservation.capacity_reservation_resource_group_arn
+        arg: capacity_reservation_specification.capacity_reservation_target.capacity_reservation_resource_group_arn
+
+      # Placement: the provider scatters placement across five top-level
+      # arguments; the spec groups them under one message.
+      - spec: spec.placement.availability_zone
+        arg: availability_zone
+      - spec: spec.placement.group_name
+        arg: placement_group
+      - spec: spec.placement.group_id
+        arg: placement_group_id
+      - spec: spec.placement.partition_number
+        arg: placement_partition_number
+      - spec: spec.placement.tenancy
+        arg: tenancy
+      - spec: spec.placement.host_id
+        arg: host_id
+      - spec: spec.placement.host_resource_group_arn
+        arg: host_resource_group_arn
+
+    exclusions:
+      - arg: get_password_data
+        reason: read-behavior knob -- opts the provider into fetching the Windows Administrator password into state (a sensitive computed attribute); data retrieval, not infrastructure configuration
+      - arg: security_groups
+        reason: EC2-Classic / default-VPC security group NAMES -- the EC2-Classic platform is retired and the provider logs a runtime deprecation warning; access composes through vpc_security_group_ids (spec.security_group_ids references)
+      - arg: secondary_network_interface.interface_type
+        reason: single-value domain -- "secondary" is the only value the provider accepts; the module wires the constant
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+      - arg: ebs_block_device.tags_all
+        reason: provider-side merge on the device mapping -- reflects the device tags, carries no configuration of its own
+      - arg: root_block_device.tags_all
+        reason: provider-side merge on the root device -- reflects the device tags, carries no configuration of its own

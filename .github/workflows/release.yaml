@@ -2,18 +2,16 @@
 # Release Orchestrator
 # =============================================================================
 # Single entry point for all release workflows. Triggers on semantic version
-# tags (v*) and orchestrates the release of CLI, website, all Pulumi module
-# binaries, all Terraform module zips, content distribution zips
-# (presets, IaC source, catalog pages, proto source, the component reference
-# pack), and the InfraChart catalog zip.
+# tags (v*) and orchestrates the release of all Pulumi module binaries, all
+# Terraform module zips, content distribution zips (presets, IaC source,
+# catalog pages, proto source, the component reference pack), and the
+# InfraChart catalog zip.
 #
 # Architecture:
-#   1. CLI job runs first (GoReleaser creates the GitHub Release)
-#   2. Website job runs in parallel
-#   3. Pulumi modules, Terraform modules, Content, and Definitions jobs
-#      upload to Cloudflare R2 (downloads.planton.dev) after CLI completes
-#   4. Charts job attaches the InfraChart catalog zip to the GitHub Release
-#      after CLI completes
+#   1. The github-release job creates the GitHub Release for the tag
+#   2. Pulumi modules, Terraform modules, Content, and Definitions jobs
+#      upload to Cloudflare R2 (downloads.planton.dev) after it completes
+#   3. Charts job attaches the InfraChart catalog zip to the GitHub Release
 #
 # Job visibility: the content and definitions workflows run ONE JOB PER
 # ARTIFACT (content: one per zip; definitions: one per skill/agent, with the
@@ -21,7 +19,6 @@
 # the release's artifact inventory.
 #
 # Artifact hosting:
-#   - CLI binaries   -> GitHub Release (via GoReleaser)
 #   - Pulumi modules -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/modules/pulumi/)
 #   - Terraform zips -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/modules/terraform/)
 #   - Content zips   -> Cloudflare R2 (downloads.planton.dev/releases/{tag}/content/)
@@ -47,22 +44,36 @@ permissions:
 
 jobs:
   # ============================================================================
-  # CLI Release - Creates the GitHub Release
+  # GitHub Release - creates the release object the chart assets attach to
+  # and that /releases/latest/download resolves to
   # ============================================================================
-  cli:
-    uses: ./.github/workflows/release.cli.yaml
+  github-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  # ============================================================================
-  # Website Release - Runs in parallel
-  # ============================================================================
-  website:
-    uses: ./.github/workflows/release.website.yaml
+      - name: Create the GitHub Release for the tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME}"
+          if gh release view "${VERSION}" --repo "${GITHUB_REPOSITORY}" > /dev/null 2>&1; then
+            echo "Release ${VERSION} already exists"
+          else
+            gh release create "${VERSION}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${VERSION}" \
+              --generate-notes
+          fi
 
   # ============================================================================
   # Pulumi Modules - All providers (uploads to Cloudflare R2)
   # ============================================================================
   pulumi-modules:
-    needs: cli
+    needs: github-release
     uses: ./.github/workflows/release.pulumi-modules.yaml
     secrets:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -73,7 +84,7 @@ jobs:
   # Terraform Modules - All providers (uploads to Cloudflare R2)
   # ============================================================================
   terraform-modules:
-    needs: cli
+    needs: github-release
     uses: ./.github/workflows/release.terraform-modules.yaml
     secrets:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -85,7 +96,7 @@ jobs:
   # pages, proto source, reference pack, catalog bundle
   # ============================================================================
   content:
-    needs: cli
+    needs: github-release
     uses: ./.github/workflows/release.content.yaml
     secrets:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -96,7 +107,7 @@ jobs:
   # Infra Charts - attach the chart catalog zip to the GitHub Release
   # ============================================================================
   charts:
-    needs: cli
+    needs: github-release
     uses: ./.github/workflows/release.charts.yaml
 
   # ============================================================================
@@ -104,10 +115,9 @@ jobs:
   # pointer published last (uploads to Cloudflare R2)
   # ============================================================================
   definitions:
-    needs: cli
+    needs: github-release
     uses: ./.github/workflows/release.definitions.yaml
     secrets:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
-

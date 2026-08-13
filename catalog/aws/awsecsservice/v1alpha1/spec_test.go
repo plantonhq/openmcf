@@ -508,4 +508,70 @@ var _ = ginkgo.Describe("AwsEcsServiceSpec Validation Tests", func() {
 			})
 		})
 	})
+
+	ginkgo.Describe("vpc lattice configurations", func() {
+		ginkgo.It("should accept a complete target-group attachment", func() {
+			input := minimalValidService()
+			input.Spec.VpcLatticeConfigurations = []*AwsEcsServiceVpcLatticeConfiguration{{
+				RoleArn:        literalRef("arn:aws:iam::123456789012:role/ecs-lattice-infrastructure"),
+				TargetGroupArn: "arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0",
+				PortName:       "http",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an attachment without a role", func() {
+			input := minimalValidService()
+			input.Spec.VpcLatticeConfigurations = []*AwsEcsServiceVpcLatticeConfiguration{{
+				TargetGroupArn: "arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0",
+				PortName:       "http",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid port name", func() {
+			input := minimalValidService()
+			input.Spec.VpcLatticeConfigurations = []*AwsEcsServiceVpcLatticeConfiguration{{
+				RoleArn:        literalRef("arn:aws:iam::123456789012:role/ecs-lattice-infrastructure"),
+				TargetGroupArn: "arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0",
+				PortName:       "HTTP Port",
+			}}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Describe("service connect access logs", func() {
+		ginkgo.It("should accept JSON access logging on an enabled mesh", func() {
+			input := minimalValidService()
+			input.Spec.ServiceConnect = &AwsEcsServiceServiceConnect{
+				Enabled: true,
+				AccessLogConfiguration: &AwsEcsServiceServiceConnectAccessLog{
+					Format:                 "JSON",
+					IncludeQueryParameters: "DISABLED",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject access logs when Service Connect is not enabled", func() {
+			input := minimalValidService()
+			input.Spec.ServiceConnect = &AwsEcsServiceServiceConnect{
+				AccessLogConfiguration: &AwsEcsServiceServiceConnectAccessLog{
+					Format: "TEXT",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an invalid access log format", func() {
+			input := minimalValidService()
+			input.Spec.ServiceConnect = &AwsEcsServiceServiceConnect{
+				Enabled: true,
+				AccessLogConfiguration: &AwsEcsServiceServiceConnectAccessLog{
+					Format: "CSV",
+				},
+			}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+	})
 })

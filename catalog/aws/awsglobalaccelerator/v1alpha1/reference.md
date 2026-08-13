@@ -50,11 +50,6 @@ apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: test-ga
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsGlobalAccelerator.test-ga
 spec:
   region: us-west-2
   enabled: true
@@ -210,6 +205,9 @@ StringValueOrRef sub-fields — a protovalidate-java constraint).
 
 S3 key prefix for flow logs. Useful for organizing logs when multiple
 accelerators share a bucket. Example: "ga-logs/prod-accelerator/".
+Maximum 255 characters (the provider's bound).
+
+- rule: {"string":{"maxLen":"255"}}
 
 ### spec.listeners
 
@@ -329,7 +327,10 @@ alphanumeric and hyphens only, starting with a letter (max 63 characters).
 
 AWS region for this endpoint group (e.g., "us-east-1", "eu-west-1").
 When omitted, defaults to the spec's region. ForceNew — changing
-the region requires replacing the endpoint group.
+the region requires replacing the endpoint group. The format is checked
+here; region-name membership is validated by AWS (the region list grows).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-z]{2}(-[a-z]+)+-[0-9]$"}}
 
 ### spec.listeners[].endpointGroups[].healthCheckPort
 
@@ -433,8 +434,10 @@ type varies.
 
 `int32` · optional (explicit presence)
 
-Relative weight for this endpoint. Range: 0-255. When omitted, AWS
-assigns the default weight of 128. Higher weight means more traffic.
+Relative weight for this endpoint. Range: 0-255. When omitted, both
+modules materialize AWS's documented default of 128 — the provider has no
+default of its own and would otherwise transmit 0, silently draining the
+endpoint. Higher weight means more traffic.
 
 Set to 0 explicitly to temporarily stop routing traffic to this endpoint
 without removing it — 0 is a real value here, distinct from omitting the
@@ -465,7 +468,7 @@ attachment in the endpoint-owning account (with this accelerator's
 account as a principal) and supply its ARN here. Leave empty for
 same-account endpoints — the common case.
 
-- rule: attachment_arn must be a Global Accelerator attachment ARN (arn:...)
+- rule: attachment_arn must be a Global Accelerator attachment ARN (arn:<partition>:globalaccelerator::<account>:attachment/<id>)
 
 ### spec.listeners[].endpointGroups[].portOverrides
 

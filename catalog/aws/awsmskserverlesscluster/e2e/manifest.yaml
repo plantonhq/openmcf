@@ -4,8 +4,17 @@ metadata:
   name: test-msk-serverless
 spec:
   region: us-west-2
-  subnetIds:
-    - value: "<private-subnet-id-az1>"
-    - value: "<private-subnet-id-az2>"
-  securityGroupIds:
-    - value: "<broker-security-group-id>"
+  # One entry per VPC placement -- AWS provisions client-facing network
+  # interfaces in each declared VPC, so applications in every listed VPC
+  # connect privately without peering or PrivateLink setup.
+  vpcConfigs:
+    - subnetIds:
+        - value: subnet-0aaa1111bbb222333
+        - value: subnet-0bbb2222ccc333444
+      securityGroupIds:
+        - value: sg-0abc1234def567890
+    - subnetIds:
+        - value: subnet-0ccc3333ddd444555
+        - value: subnet-0ddd4444eee555666
+      securityGroupIds:
+        - value: sg-0def5678abc901234

@@ -35,7 +35,10 @@ func initializeLocals(ctx *pulumi.Context, in *awsathenaworkgroup.AwsAthenaWorkg
 		locals.WorkgroupState = s
 	}
 
+	// Canonical six-key resource-identity map, matching the Terraform module
+	// key-for-key (Name + the planton.ai identity keys).
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.Target.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.Target.Metadata.Org,
 		awstagkeys.Environment:  locals.Target.Metadata.Env,

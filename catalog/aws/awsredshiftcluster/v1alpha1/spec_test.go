@@ -113,6 +113,60 @@ var _ = ginkgo.Describe("AwsRedshiftClusterSpec Custom Validation Tests", func()
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
+
+		ginkgo.It("accepts a governed cluster with usage limits, scheduled actions, and endpoints", func() {
+			input := validCluster()
+			input.Spec.SnapshotScheduleIdentifier = "every-12h"
+			input.Spec.UsageLimits = []*AwsRedshiftClusterUsageLimit{
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 5},
+				{FeatureType: "concurrency-scaling", LimitType: "time", Amount: 60, Period: "daily", BreachAction: "disable"},
+			}
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:     "test-redshift-nightly-pause",
+					Schedule: "cron(0 22 * * ? *)",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					PauseCluster: true,
+				},
+				{
+					Name:      "test-redshift-morning-resume",
+					Schedule:  "cron(0 6 * * ? *)",
+					StartTime: "2026-09-01T00:00:00Z",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					ResumeCluster: true,
+				},
+			}
+			input.Spec.EndpointAccesses = []*AwsRedshiftClusterEndpointAccess{
+				{EndpointName: "analytics-vpc"},
+			}
+			input.Spec.EndpointAuthorizations = []*AwsRedshiftClusterEndpointAuthorization{
+				{Account: "210987654321", ForceDelete: true},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a scheduled resize action", func() {
+			input := validCluster()
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:     "test-redshift-weekend-shrink",
+					Schedule: "cron(0 20 ? * FRI *)",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					ResizeCluster: &AwsRedshiftClusterResizeAction{
+						NumberOfNodes: 2,
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -309,6 +363,226 @@ var _ = ginkgo.Describe("AwsRedshiftClusterSpec Custom Validation Tests", func()
 			input.Spec.PreferredMaintenanceWindow = "saturday:03:00-04:00"
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a weak master password (master_password_complexity)", func() {
+			input := validCluster()
+			input.Spec.ManageMasterPassword = false
+			input.Spec.MasterPassword = "alllowercase1"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("master_password must be 8-64 characters"))
+		})
+
+		ginkgo.It("rejects a master password with forbidden characters (master_password_complexity)", func() {
+			input := validCluster()
+			input.Spec.ManageMasterPassword = false
+			input.Spec.MasterPassword = "Correct1Horse/Battery"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must not contain"))
+		})
+
+		ginkgo.It("rejects a secret KMS key without managed password (secret_kms_requires_managed)", func() {
+			input := validCluster()
+			input.Spec.ManageMasterPassword = false
+			input.Spec.MasterPassword = "Correct1HorseBattery"
+			input.Spec.MasterPasswordSecretKmsKeyId = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:kms:us-west-2:123456789012:key/abc"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("master_password_secret_kms_key_id is only meaningful with manage_master_password"))
+		})
+
+		ginkgo.It("rejects a malformed final snapshot identifier (final_snapshot_identifier_format)", func() {
+			input := validCluster()
+			input.Spec.SkipFinalSnapshot = false
+			input.Spec.FinalSnapshotIdentifier = "bad--name-"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("no consecutive hyphens"))
+		})
+
+		ginkgo.It("rejects an uppercase database name", func() {
+			input := validCluster()
+			input.Spec.DatabaseName = "Analytics"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a master username starting with a digit", func() {
+			input := validCluster()
+			input.Spec.MasterUsername = "1admin"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a mispaired usage limit (feature_limit_type_pairing)", func() {
+			input := validCluster()
+			input.Spec.UsageLimits = []*AwsRedshiftClusterUsageLimit{
+				{FeatureType: "spectrum", LimitType: "time", Amount: 60},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("CreateUsageLimit contract"))
+		})
+
+		ginkgo.It("rejects a non-positive usage limit amount", func() {
+			input := validCluster()
+			input.Spec.UsageLimits = []*AwsRedshiftClusterUsageLimit{
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 0},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate usage limit triples (usage_limits_unique)", func() {
+			input := validCluster()
+			input.Spec.UsageLimits = []*AwsRedshiftClusterUsageLimit{
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 5},
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 10},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("usage_limits must be unique"))
+		})
+
+		ginkgo.It("rejects an unset period colliding with an explicit monthly (usage_limits_unique)", func() {
+			input := validCluster()
+			input.Spec.UsageLimits = []*AwsRedshiftClusterUsageLimit{
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 5},
+				{FeatureType: "spectrum", LimitType: "data-scanned", Amount: 10, Period: "monthly"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("an empty period means monthly"))
+		})
+
+		ginkgo.It("rejects a scheduled action with no arm (exactly_one_action_arm)", func() {
+			input := validCluster()
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:     "test-redshift-noop",
+					Schedule: "cron(0 22 * * ? *)",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of pause_cluster, resume_cluster, or resize_cluster"))
+		})
+
+		ginkgo.It("rejects a scheduled action with two arms (exactly_one_action_arm)", func() {
+			input := validCluster()
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:     "test-redshift-conflict",
+					Schedule: "cron(0 22 * * ? *)",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					PauseCluster:  true,
+					ResumeCluster: true,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of pause_cluster, resume_cluster, or resize_cluster"))
+		})
+
+		ginkgo.It("rejects a malformed schedule expression", func() {
+			input := validCluster()
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:     "test-redshift-badschedule",
+					Schedule: "every day at 10pm",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					PauseCluster: true,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a malformed scheduled action start time (start_time_rfc3339)", func() {
+			input := validCluster()
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{
+				{
+					Name:      "test-redshift-badstart",
+					Schedule:  "cron(0 22 * * ? *)",
+					StartTime: "2026-09-01 00:00:00",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					PauseCluster: true,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("start_time must be an RFC 3339 timestamp"))
+		})
+
+		ginkgo.It("rejects duplicate scheduled action names (scheduled_action_names_unique)", func() {
+			input := validCluster()
+			action := func() *AwsRedshiftClusterScheduledAction {
+				return &AwsRedshiftClusterScheduledAction{
+					Name:     "test-redshift-dup",
+					Schedule: "cron(0 22 * * ? *)",
+					IamRoleArn: &foreignkeyv1.StringValueOrRef{
+						LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/redshift-scheduler"},
+					},
+					PauseCluster: true,
+				}
+			}
+			input.Spec.ScheduledActions = []*AwsRedshiftClusterScheduledAction{action(), action()}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("scheduled action names must be unique"))
+		})
+
+		ginkgo.It("rejects an uppercase endpoint access name", func() {
+			input := validCluster()
+			input.Spec.EndpointAccesses = []*AwsRedshiftClusterEndpointAccess{
+				{EndpointName: "Analytics-VPC"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate endpoint access names (endpoint_access_names_unique)", func() {
+			input := validCluster()
+			input.Spec.EndpointAccesses = []*AwsRedshiftClusterEndpointAccess{
+				{EndpointName: "analytics-vpc"},
+				{EndpointName: "analytics-vpc"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("endpoint access names must be unique"))
+		})
+
+		ginkgo.It("rejects a malformed grantee account ID", func() {
+			input := validCluster()
+			input.Spec.EndpointAuthorizations = []*AwsRedshiftClusterEndpointAuthorization{
+				{Account: "12345"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate endpoint authorization accounts (endpoint_authorization_accounts_unique)", func() {
+			input := validCluster()
+			input.Spec.EndpointAuthorizations = []*AwsRedshiftClusterEndpointAuthorization{
+				{Account: "210987654321"},
+				{Account: "210987654321"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("grantee accounts must be unique"))
 		})
 	})
 })

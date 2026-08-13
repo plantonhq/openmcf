@@ -23,3 +23,10 @@ spec:
   customDomains:
     - domainName: "app.example.com"
       enableWwwSubdomain: false
+  isPubliclyAccessible: false
+  vpcIngressConnections:
+    - name: "apprunner-demo-private"
+      vpcId:
+        value: "vpc-0abc123def4567890"
+      vpcEndpointId:
+        value: "vpce-0abc123def4567890"

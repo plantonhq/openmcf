@@ -21,10 +21,12 @@ import (
 // its instances with the resolved version, and a version change rolls the
 // instances in the same update.
 func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
-	createdCluster *neptune.Cluster) ([]*neptune.ClusterInstance, error) {
+	createdCluster *neptune.Cluster,
+	createdInstanceParameterGroup *neptune.ParameterGroup) ([]*neptune.ClusterInstance, map[string]*neptune.ClusterInstance, error) {
 	spec := locals.AwsNeptuneCluster.Spec
 
 	createdInstances := make([]*neptune.ClusterInstance, 0, len(spec.Instances))
+	createdInstancesByName := make(map[string]*neptune.ClusterInstance, len(spec.Instances))
 	for _, instance := range spec.Instances {
 		args := &neptune.ClusterInstanceArgs{
 			Identifier:        pulumi.Sprintf("%s-%s", locals.ClusterIdentifier, instance.Name),
@@ -44,6 +46,27 @@ func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 
 			PubliclyAccessible: pulumi.Bool(instance.PubliclyAccessible),
 
+			// The cluster's resolved port, pinned on every instance.
+			// Instances have no port of their own (they listen on the
+			// cluster's), but the instance schema carries its own default
+			// (8182) -- left unset, a cluster on any other port would read
+			// back that port and fight the 8182 default with a replacement
+			// diff on every update. Pinning the cluster's own attribute
+			// keeps instance state converged by construction.
+			Port: createdCluster.Port,
+
+			// The manifest's immediate-vs-maintenance-window intent
+			// applies to instance-scope changes too (class resizes, window
+			// moves, parameter group switches) -- without this the
+			// provider defers them regardless of what the manifest asked.
+			ApplyImmediately: pulumi.Bool(spec.ApplyImmediately),
+
+			// Delete-time intent forwarded from the cluster. Cluster
+			// members take no instance-level final snapshot (backups are
+			// cluster-storage scoped), but the flag keeps teardown intent
+			// consistent on every resource.
+			SkipFinalSnapshot: pulumi.Bool(spec.SkipFinalSnapshot),
+
 			Tags: pulumi.ToStringMap(locals.AwsTags),
 		}
 
@@ -54,10 +77,14 @@ func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 		}
 
 		// Instance-LEVEL parameter group (engine tunables scoped to one
-		// instance); the cluster-level group lives on the cluster
-		// resource.
+		// instance): an explicit per-instance group wins; otherwise
+		// instances adopt the module-managed group from
+		// spec.instance_parameters when one exists; unset keeps the engine
+		// default group.
 		if instance.NeptuneParameterGroupName != "" {
 			args.NeptuneParameterGroupName = pulumi.String(instance.NeptuneParameterGroupName)
+		} else if createdInstanceParameterGroup != nil {
+			args.NeptuneParameterGroupName = createdInstanceParameterGroup.Name
 		}
 
 		// Tri-state: unset keeps the AWS default (true).
@@ -74,10 +101,11 @@ func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 		createdInstance, err := neptune.NewClusterInstance(ctx,
 			fmt.Sprintf("instance-%s", instance.Name), args, pulumi.Provider(provider))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create cluster instance %s", instance.Name)
+			return nil, nil, errors.Wrapf(err, "failed to create cluster instance %s", instance.Name)
 		}
 		createdInstances = append(createdInstances, createdInstance)
+		createdInstancesByName[instance.Name] = createdInstance
 	}
 
-	return createdInstances, nil
+	return createdInstances, createdInstancesByName, nil
 }

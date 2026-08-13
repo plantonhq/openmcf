@@ -890,12 +890,14 @@ type AwsKinesisFirehoseLambdaProcessor struct {
 	// version or alias qualifier to pin the deployed transformation.
 	LambdaArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=lambda_arn,json=lambdaArn,proto3" json:"lambda_arn,omitempty"`
 	// Buffer size in MiB that Firehose accumulates before invoking Lambda.
-	// Range: 1-3 MiB. Default: 3 MiB.
+	// Range: 0.2-3 MiB (fractional values are AWS-legal -- e.g. 0.5 for
+	// low-latency, small-batch invocation). Default: 1 MiB (256 KiB when the
+	// destination is Splunk).
 	//
 	// Smaller buffers invoke Lambda more frequently with smaller batches.
 	// Larger buffers (up to 3 MiB) are more efficient and reduce Lambda
 	// invocation costs.
-	BufferSizeInMbs int32 `protobuf:"varint,2,opt,name=buffer_size_in_mbs,json=bufferSizeInMbs,proto3" json:"buffer_size_in_mbs,omitempty"`
+	BufferSizeInMbs float64 `protobuf:"fixed64,2,opt,name=buffer_size_in_mbs,json=bufferSizeInMbs,proto3" json:"buffer_size_in_mbs,omitempty"`
 	// Buffer interval in seconds. Firehose invokes Lambda when this interval
 	// elapses, even if the buffer size threshold has not been reached.
 	// Range: 60-900 seconds. Default: 60 seconds.
@@ -904,8 +906,18 @@ type AwsKinesisFirehoseLambdaProcessor struct {
 	// writing the record to the error output prefix.
 	// Range: 0-300. Default: 3.
 	NumberOfRetries int32 `protobuf:"varint,4,opt,name=number_of_retries,json=numberOfRetries,proto3" json:"number_of_retries,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// IAM role ARN Firehose assumes to invoke the Lambda function. When
+	// absent, Firehose uses the delivery stream's destination role -- the
+	// right choice for almost every pipeline. Set this only when the
+	// transformation function must be invoked with a DIFFERENT role than the
+	// one that writes to the destination (e.g. the function lives in another
+	// account). Note: AWS reports the delivery role back for unset values, and
+	// the provider does not store default-valued processor parameters in
+	// state -- so set this only to a non-default role, never to the delivery
+	// role itself (that would cause perpetual plan diffs).
+	RoleArn       *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsKinesisFirehoseLambdaProcessor) Reset() {
@@ -945,7 +957,7 @@ func (x *AwsKinesisFirehoseLambdaProcessor) GetLambdaArn() *v1.StringValueOrRef 
 	return nil
 }
 
-func (x *AwsKinesisFirehoseLambdaProcessor) GetBufferSizeInMbs() int32 {
+func (x *AwsKinesisFirehoseLambdaProcessor) GetBufferSizeInMbs() float64 {
 	if x != nil {
 		return x.BufferSizeInMbs
 	}
@@ -964,6 +976,13 @@ func (x *AwsKinesisFirehoseLambdaProcessor) GetNumberOfRetries() int32 {
 		return x.NumberOfRetries
 	}
 	return 0
+}
+
+func (x *AwsKinesisFirehoseLambdaProcessor) GetRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RoleArn
+	}
+	return nil
 }
 
 // AwsKinesisFirehoseMetadataExtractionProcessor extracts partition keys from
@@ -1247,7 +1266,12 @@ type AwsKinesisFirehoseCloudwatchLogging struct {
 	// Enable CloudWatch error logging for this delivery target.
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// CloudWatch Logs log group name where errors are published.
-	// Required when enabled is true.
+	// Required when enabled is true. Firehose neither creates nor
+	// validates this group: CreateDeliveryStream accepts a nonexistent
+	// name (live-verified 2026-08-12), and delivery errors are silently
+	// dropped until a log group with exactly this name exists -- create
+	// it yourself (e.g. an AwsCloudwatchLogGroup resource) or the error
+	// trail you configured here never materializes.
 	LogGroupName string `protobuf:"bytes,2,opt,name=log_group_name,json=logGroupName,proto3" json:"log_group_name,omitempty"`
 	// CloudWatch Logs log stream name within the log group.
 	// Required when enabled is true.
@@ -1740,34 +1764,32 @@ func (x *AwsKinesisFirehoseDynamicPartitioning) GetRetryDurationInSeconds() int3
 //     permissions on the Glue catalog
 type AwsKinesisFirehoseDataFormatConversion struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Enable data format conversion. When true, output_format and schema are
-	// required.
+	// Enable data format conversion. When true, exactly one deserializer arm
+	// (open_x_json or hive_json), exactly one serializer arm (parquet or orc),
+	// and schema are required. When false with arms configured, the
+	// conversion settings are retained but inactive (AWS permits disabling
+	// conversion without discarding its configuration).
 	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	// Input data format for deserialization. Firehose reads incoming JSON
-	// records using this deserializer.
-	//
-	// Valid values:
-	//   - "OPENX_JSON" (default) -- OpenX JSON SerDe. Handles most JSON formats
-	//     including nested objects. Recommended for general use.
-	//   - "HIVE_JSON" -- Apache Hive JSON SerDe. Use for Hive-compatible JSON
-	//     with custom timestamp formats.
-	InputFormat string `protobuf:"bytes,2,opt,name=input_format,json=inputFormat,proto3" json:"input_format,omitempty"`
-	// Output columnar format for serialization. Records are converted from
-	// JSON to this format before writing to S3.
-	//
-	// Valid values:
-	//   - "PARQUET" -- Apache Parquet format. Best for read-heavy analytical
-	//     workloads (Athena, Spark, Presto). Excellent compression, predicate
-	//     pushdown, and columnar pruning.
-	//   - "ORC" -- Apache ORC format. Best for Hive workloads. ACID support,
-	//     bloom filters, and built-in indexing.
-	OutputFormat string `protobuf:"bytes,3,opt,name=output_format,json=outputFormat,proto3" json:"output_format,omitempty"`
-	// Compression for Parquet output. Only used when output_format is "PARQUET".
-	// Valid values: "SNAPPY" (default), "GZIP", "UNCOMPRESSED".
-	ParquetCompression string `protobuf:"bytes,4,opt,name=parquet_compression,json=parquetCompression,proto3" json:"parquet_compression,omitempty"`
-	// Compression for ORC output. Only used when output_format is "ORC".
-	// Valid values: "SNAPPY" (default), "ZLIB", "NONE".
-	OrcCompression string `protobuf:"bytes,5,opt,name=orc_compression,json=orcCompression,proto3" json:"orc_compression,omitempty"`
+	// OpenX JSON deserializer arm. Handles most JSON formats including nested
+	// objects -- the right choice for general use. Exactly one of open_x_json
+	// or hive_json must be set when conversion is enabled; set it empty
+	// ("openXJson: {}") to accept the deserializer defaults.
+	OpenXJson *AwsKinesisFirehoseOpenXJsonDeserializer `protobuf:"bytes,2,opt,name=open_x_json,json=openXJson,proto3" json:"open_x_json,omitempty"`
+	// Apache Hive JSON deserializer arm. Use for Hive-compatible JSON when
+	// records carry non-standard timestamp encodings that need explicit
+	// parsing patterns. Exactly one of open_x_json or hive_json must be set
+	// when conversion is enabled.
+	HiveJson *AwsKinesisFirehoseHiveJsonDeserializer `protobuf:"bytes,3,opt,name=hive_json,json=hiveJson,proto3" json:"hive_json,omitempty"`
+	// Apache Parquet serializer arm. Best for read-heavy analytical workloads
+	// (Athena, Spark, Presto): excellent compression, predicate pushdown, and
+	// columnar pruning. Exactly one of parquet or orc must be set when
+	// conversion is enabled; set it empty ("parquet: {}") to accept the
+	// serializer defaults (SNAPPY compression).
+	Parquet *AwsKinesisFirehoseParquetSerializer `protobuf:"bytes,4,opt,name=parquet,proto3" json:"parquet,omitempty"`
+	// Apache ORC serializer arm. Best for Hive workloads: ACID support, bloom
+	// filters, and built-in indexing. Exactly one of parquet or orc must be
+	// set when conversion is enabled.
+	Orc *AwsKinesisFirehoseOrcSerializer `protobuf:"bytes,5,opt,name=orc,proto3" json:"orc,omitempty"`
 	// AWS Glue Data Catalog schema reference. Defines the table schema used
 	// for converting JSON records to the columnar format. Required when
 	// data format conversion is enabled.
@@ -1813,32 +1835,32 @@ func (x *AwsKinesisFirehoseDataFormatConversion) GetEnabled() bool {
 	return false
 }
 
-func (x *AwsKinesisFirehoseDataFormatConversion) GetInputFormat() string {
+func (x *AwsKinesisFirehoseDataFormatConversion) GetOpenXJson() *AwsKinesisFirehoseOpenXJsonDeserializer {
 	if x != nil {
-		return x.InputFormat
+		return x.OpenXJson
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsKinesisFirehoseDataFormatConversion) GetOutputFormat() string {
+func (x *AwsKinesisFirehoseDataFormatConversion) GetHiveJson() *AwsKinesisFirehoseHiveJsonDeserializer {
 	if x != nil {
-		return x.OutputFormat
+		return x.HiveJson
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsKinesisFirehoseDataFormatConversion) GetParquetCompression() string {
+func (x *AwsKinesisFirehoseDataFormatConversion) GetParquet() *AwsKinesisFirehoseParquetSerializer {
 	if x != nil {
-		return x.ParquetCompression
+		return x.Parquet
 	}
-	return ""
+	return nil
 }
 
-func (x *AwsKinesisFirehoseDataFormatConversion) GetOrcCompression() string {
+func (x *AwsKinesisFirehoseDataFormatConversion) GetOrc() *AwsKinesisFirehoseOrcSerializer {
 	if x != nil {
-		return x.OrcCompression
+		return x.Orc
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsKinesisFirehoseDataFormatConversion) GetSchema() *AwsKinesisFirehoseGlueSchemaConfig {
@@ -1846,6 +1868,383 @@ func (x *AwsKinesisFirehoseDataFormatConversion) GetSchema() *AwsKinesisFirehose
 		return x.Schema
 	}
 	return nil
+}
+
+// AwsKinesisFirehoseOpenXJsonDeserializer configures the OpenX JSON SerDe
+// used to read incoming JSON records. All fields are optional -- an empty
+// arm accepts the deserializer defaults.
+type AwsKinesisFirehoseOpenXJsonDeserializer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// When true (the AWS default), JSON keys are lowercased before
+	// deserialization, so keys match case-insensitively against the Glue
+	// schema's lowercase column names. Set to false only when the source
+	// JSON keys must be matched exactly as sent (combine with
+	// column_to_json_key_mappings for columns whose keys differ only by
+	// case).
+	CaseInsensitive *bool `protobuf:"varint,1,opt,name=case_insensitive,json=caseInsensitive,proto3,oneof" json:"case_insensitive,omitempty"`
+	// Map of Glue schema column names to JSON keys that differ from them.
+	// Use when a JSON key is not a valid column name -- e.g. a key that
+	// collides with a Hive reserved word: {"ts": "timestamp"} reads the JSON
+	// key "timestamp" into the column "ts".
+	ColumnToJsonKeyMappings map[string]string `protobuf:"bytes,2,rep,name=column_to_json_key_mappings,json=columnToJsonKeyMappings,proto3" json:"column_to_json_key_mappings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// When true, dots in JSON keys are converted to underscores before
+	// matching against the schema ("a.b" reads into column "a_b"). Glue
+	// column names cannot contain dots, so enable this when source keys do.
+	// Default: false.
+	ConvertDotsInJsonKeysToUnderscores bool `protobuf:"varint,3,opt,name=convert_dots_in_json_keys_to_underscores,json=convertDotsInJsonKeysToUnderscores,proto3" json:"convert_dots_in_json_keys_to_underscores,omitempty"`
+	unknownFields                      protoimpl.UnknownFields
+	sizeCache                          protoimpl.SizeCache
+}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) Reset() {
+	*x = AwsKinesisFirehoseOpenXJsonDeserializer{}
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsKinesisFirehoseOpenXJsonDeserializer) ProtoMessage() {}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsKinesisFirehoseOpenXJsonDeserializer.ProtoReflect.Descriptor instead.
+func (*AwsKinesisFirehoseOpenXJsonDeserializer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) GetCaseInsensitive() bool {
+	if x != nil && x.CaseInsensitive != nil {
+		return *x.CaseInsensitive
+	}
+	return false
+}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) GetColumnToJsonKeyMappings() map[string]string {
+	if x != nil {
+		return x.ColumnToJsonKeyMappings
+	}
+	return nil
+}
+
+func (x *AwsKinesisFirehoseOpenXJsonDeserializer) GetConvertDotsInJsonKeysToUnderscores() bool {
+	if x != nil {
+		return x.ConvertDotsInJsonKeysToUnderscores
+	}
+	return false
+}
+
+// AwsKinesisFirehoseHiveJsonDeserializer configures the Apache Hive JSON
+// SerDe used to read incoming JSON records.
+type AwsKinesisFirehoseHiveJsonDeserializer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Joda-Time datetime format patterns for parsing timestamp fields from
+	// the source JSON (e.g. "yyyy-MM-dd'T'HH:mm:ss"). Include the special
+	// value "millis" to parse epoch-millisecond timestamps. When empty,
+	// Firehose uses java.sql.Timestamp::valueOf.
+	TimestampFormats []string `protobuf:"bytes,1,rep,name=timestamp_formats,json=timestampFormats,proto3" json:"timestamp_formats,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsKinesisFirehoseHiveJsonDeserializer) Reset() {
+	*x = AwsKinesisFirehoseHiveJsonDeserializer{}
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsKinesisFirehoseHiveJsonDeserializer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsKinesisFirehoseHiveJsonDeserializer) ProtoMessage() {}
+
+func (x *AwsKinesisFirehoseHiveJsonDeserializer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsKinesisFirehoseHiveJsonDeserializer.ProtoReflect.Descriptor instead.
+func (*AwsKinesisFirehoseHiveJsonDeserializer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsKinesisFirehoseHiveJsonDeserializer) GetTimestampFormats() []string {
+	if x != nil {
+		return x.TimestampFormats
+	}
+	return nil
+}
+
+// AwsKinesisFirehoseParquetSerializer configures Apache Parquet output.
+// All fields are optional -- an empty arm accepts the serializer defaults
+// (SNAPPY compression, 256 MiB blocks, 1 MiB pages, writer version V1).
+type AwsKinesisFirehoseParquetSerializer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Compression codec for Parquet pages. "SNAPPY" (the default) balances
+	// speed and size; "GZIP" compresses harder at higher CPU cost --
+	// preferable when S3 storage/scan cost outweighs write throughput;
+	// "UNCOMPRESSED" only when downstream readers cannot decompress.
+	Compression string `protobuf:"bytes,1,opt,name=compression,proto3" json:"compression,omitempty"`
+	// Parquet row-group (block) size in bytes. Firehose and query engines use
+	// it for padding and row-group sizing; larger blocks improve scan
+	// efficiency at the cost of memory. Minimum: 67108864 (64 MiB).
+	// Default: 268435456 (256 MiB).
+	BlockSizeBytes int64 `protobuf:"varint,2,opt,name=block_size_bytes,json=blockSizeBytes,proto3" json:"block_size_bytes,omitempty"`
+	// Parquet page size in bytes -- the smallest unit a read must fully
+	// decompress. Minimum: 65536 (64 KiB). Default: 1048576 (1 MiB).
+	PageSizeBytes int64 `protobuf:"varint,3,opt,name=page_size_bytes,json=pageSizeBytes,proto3" json:"page_size_bytes,omitempty"`
+	// Maximum padding in bytes when writing row groups (used to align blocks
+	// to HDFS-style boundaries; rarely needed on S3). Default: 0.
+	MaxPaddingBytes int64 `protobuf:"varint,4,opt,name=max_padding_bytes,json=maxPaddingBytes,proto3" json:"max_padding_bytes,omitempty"`
+	// Enable dictionary compression -- encodes repeated column values through
+	// a dictionary. Effective when columns carry low-cardinality values.
+	// Default: false.
+	EnableDictionaryCompression bool `protobuf:"varint,5,opt,name=enable_dictionary_compression,json=enableDictionaryCompression,proto3" json:"enable_dictionary_compression,omitempty"`
+	// Parquet writer version. "V1" (the default) is readable by every
+	// engine; "V2" enables newer encodings -- confirm downstream reader
+	// support before switching. Valid values: "V1", "V2".
+	WriterVersion string `protobuf:"bytes,6,opt,name=writer_version,json=writerVersion,proto3" json:"writer_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) Reset() {
+	*x = AwsKinesisFirehoseParquetSerializer{}
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsKinesisFirehoseParquetSerializer) ProtoMessage() {}
+
+func (x *AwsKinesisFirehoseParquetSerializer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsKinesisFirehoseParquetSerializer.ProtoReflect.Descriptor instead.
+func (*AwsKinesisFirehoseParquetSerializer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetCompression() string {
+	if x != nil {
+		return x.Compression
+	}
+	return ""
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetBlockSizeBytes() int64 {
+	if x != nil {
+		return x.BlockSizeBytes
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetPageSizeBytes() int64 {
+	if x != nil {
+		return x.PageSizeBytes
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetMaxPaddingBytes() int64 {
+	if x != nil {
+		return x.MaxPaddingBytes
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetEnableDictionaryCompression() bool {
+	if x != nil {
+		return x.EnableDictionaryCompression
+	}
+	return false
+}
+
+func (x *AwsKinesisFirehoseParquetSerializer) GetWriterVersion() string {
+	if x != nil {
+		return x.WriterVersion
+	}
+	return ""
+}
+
+// AwsKinesisFirehoseOrcSerializer configures Apache ORC output. All fields
+// are optional -- an empty arm accepts the serializer defaults (SNAPPY
+// compression, 256 MiB blocks, 64 MiB stripes, format version V0_12).
+type AwsKinesisFirehoseOrcSerializer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Compression codec for ORC stripes. "SNAPPY" (the default) balances
+	// speed and size; "ZLIB" compresses harder at higher CPU cost; "NONE"
+	// only when downstream readers cannot decompress.
+	Compression string `protobuf:"bytes,1,opt,name=compression,proto3" json:"compression,omitempty"`
+	// ORC block size in bytes, used for padding calculations and copy-block
+	// sizing. Minimum: 67108864 (64 MiB). Default: 268435456 (256 MiB).
+	BlockSizeBytes int64 `protobuf:"varint,2,opt,name=block_size_bytes,json=blockSizeBytes,proto3" json:"block_size_bytes,omitempty"`
+	// ORC stripe size in bytes -- the unit of independent reading. Minimum:
+	// 8388608 (8 MiB). Default: 67108864 (64 MiB).
+	StripeSizeBytes int64 `protobuf:"varint,3,opt,name=stripe_size_bytes,json=stripeSizeBytes,proto3" json:"stripe_size_bytes,omitempty"`
+	// Column names to build bloom filters for. Bloom filters let readers
+	// skip stripes that cannot contain a searched value -- list the columns
+	// your queries filter on by equality.
+	BloomFilterColumns []string `protobuf:"bytes,4,rep,name=bloom_filter_columns,json=bloomFilterColumns,proto3" json:"bloom_filter_columns,omitempty"`
+	// Bloom filter false-positive probability, between 0 and 1. Lower values
+	// make filters more selective but larger. AWS default: 0.05. Explicit 0
+	// is AWS-legal, so absence (AWS default) and 0 are distinct states.
+	BloomFilterFalsePositiveProbability *float64 `protobuf:"fixed64,5,opt,name=bloom_filter_false_positive_probability,json=bloomFilterFalsePositiveProbability,proto3,oneof" json:"bloom_filter_false_positive_probability,omitempty"`
+	// Fraction of a column's total distinct keys above which dictionary
+	// encoding is abandoned for that column, between 0 and 1. 0 (the AWS
+	// default) always dictionary-encodes; 1 never abandons it.
+	DictionaryKeyThreshold float64 `protobuf:"fixed64,6,opt,name=dictionary_key_threshold,json=dictionaryKeyThreshold,proto3" json:"dictionary_key_threshold,omitempty"`
+	// Pad stripes to HDFS-style block boundaries. Relevant for HDFS-backed
+	// readers; rarely needed for S3. Default: false.
+	EnablePadding bool `protobuf:"varint,7,opt,name=enable_padding,json=enablePadding,proto3" json:"enable_padding,omitempty"`
+	// Maximum fraction of a stripe that may be wasted as padding, between 0
+	// and 1. Only meaningful when enable_padding is true. AWS default: 0.05.
+	// Explicit 0 is AWS-legal, so absence and 0 are distinct states.
+	PaddingTolerance *float64 `protobuf:"fixed64,8,opt,name=padding_tolerance,json=paddingTolerance,proto3,oneof" json:"padding_tolerance,omitempty"`
+	// ORC file format version. "V0_12" (the default) is current; "V0_11" is
+	// the legacy Hive 0.11 format -- use only for readers frozen on it.
+	// Valid values: "V0_11", "V0_12".
+	FormatVersion string `protobuf:"bytes,9,opt,name=format_version,json=formatVersion,proto3" json:"format_version,omitempty"`
+	// Number of rows between index entries. Must be at least 1000 when set.
+	// Default: 10000.
+	RowIndexStride int32 `protobuf:"varint,10,opt,name=row_index_stride,json=rowIndexStride,proto3" json:"row_index_stride,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) Reset() {
+	*x = AwsKinesisFirehoseOrcSerializer{}
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsKinesisFirehoseOrcSerializer) ProtoMessage() {}
+
+func (x *AwsKinesisFirehoseOrcSerializer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsKinesisFirehoseOrcSerializer.ProtoReflect.Descriptor instead.
+func (*AwsKinesisFirehoseOrcSerializer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetCompression() string {
+	if x != nil {
+		return x.Compression
+	}
+	return ""
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetBlockSizeBytes() int64 {
+	if x != nil {
+		return x.BlockSizeBytes
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetStripeSizeBytes() int64 {
+	if x != nil {
+		return x.StripeSizeBytes
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetBloomFilterColumns() []string {
+	if x != nil {
+		return x.BloomFilterColumns
+	}
+	return nil
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetBloomFilterFalsePositiveProbability() float64 {
+	if x != nil && x.BloomFilterFalsePositiveProbability != nil {
+		return *x.BloomFilterFalsePositiveProbability
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetDictionaryKeyThreshold() float64 {
+	if x != nil {
+		return x.DictionaryKeyThreshold
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetEnablePadding() bool {
+	if x != nil {
+		return x.EnablePadding
+	}
+	return false
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetPaddingTolerance() float64 {
+	if x != nil && x.PaddingTolerance != nil {
+		return *x.PaddingTolerance
+	}
+	return 0
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetFormatVersion() string {
+	if x != nil {
+		return x.FormatVersion
+	}
+	return ""
+}
+
+func (x *AwsKinesisFirehoseOrcSerializer) GetRowIndexStride() int32 {
+	if x != nil {
+		return x.RowIndexStride
+	}
+	return 0
 }
 
 // AwsKinesisFirehoseGlueSchemaConfig references an AWS Glue Data Catalog table
@@ -1874,7 +2273,7 @@ type AwsKinesisFirehoseGlueSchemaConfig struct {
 
 func (x *AwsKinesisFirehoseGlueSchemaConfig) Reset() {
 	*x = AwsKinesisFirehoseGlueSchemaConfig{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1886,7 +2285,7 @@ func (x *AwsKinesisFirehoseGlueSchemaConfig) String() string {
 func (*AwsKinesisFirehoseGlueSchemaConfig) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseGlueSchemaConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1899,7 +2298,7 @@ func (x *AwsKinesisFirehoseGlueSchemaConfig) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsKinesisFirehoseGlueSchemaConfig.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseGlueSchemaConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AwsKinesisFirehoseGlueSchemaConfig) GetDatabaseName() string {
@@ -2021,7 +2420,7 @@ type AwsKinesisFirehoseOpenSearchDestination struct {
 
 func (x *AwsKinesisFirehoseOpenSearchDestination) Reset() {
 	*x = AwsKinesisFirehoseOpenSearchDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2033,7 +2432,7 @@ func (x *AwsKinesisFirehoseOpenSearchDestination) String() string {
 func (*AwsKinesisFirehoseOpenSearchDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseOpenSearchDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2046,7 +2445,7 @@ func (x *AwsKinesisFirehoseOpenSearchDestination) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AwsKinesisFirehoseOpenSearchDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseOpenSearchDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *AwsKinesisFirehoseOpenSearchDestination) GetDomainArn() *v1.StringValueOrRef {
@@ -2200,7 +2599,7 @@ type AwsKinesisFirehoseOpenSearchServerlessDestination struct {
 
 func (x *AwsKinesisFirehoseOpenSearchServerlessDestination) Reset() {
 	*x = AwsKinesisFirehoseOpenSearchServerlessDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2212,7 +2611,7 @@ func (x *AwsKinesisFirehoseOpenSearchServerlessDestination) String() string {
 func (*AwsKinesisFirehoseOpenSearchServerlessDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseOpenSearchServerlessDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2225,7 +2624,7 @@ func (x *AwsKinesisFirehoseOpenSearchServerlessDestination) ProtoReflect() proto
 
 // Deprecated: Use AwsKinesisFirehoseOpenSearchServerlessDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseOpenSearchServerlessDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *AwsKinesisFirehoseOpenSearchServerlessDestination) GetCollectionEndpoint() string {
@@ -2363,7 +2762,7 @@ type AwsKinesisFirehoseHttpEndpointDestination struct {
 
 func (x *AwsKinesisFirehoseHttpEndpointDestination) Reset() {
 	*x = AwsKinesisFirehoseHttpEndpointDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2375,7 +2774,7 @@ func (x *AwsKinesisFirehoseHttpEndpointDestination) String() string {
 func (*AwsKinesisFirehoseHttpEndpointDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseHttpEndpointDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2388,7 +2787,7 @@ func (x *AwsKinesisFirehoseHttpEndpointDestination) ProtoReflect() protoreflect.
 
 // Deprecated: Use AwsKinesisFirehoseHttpEndpointDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseHttpEndpointDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *AwsKinesisFirehoseHttpEndpointDestination) GetUrl() string {
@@ -2493,7 +2892,7 @@ type AwsKinesisFirehoseRequestConfig struct {
 
 func (x *AwsKinesisFirehoseRequestConfig) Reset() {
 	*x = AwsKinesisFirehoseRequestConfig{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2505,7 +2904,7 @@ func (x *AwsKinesisFirehoseRequestConfig) String() string {
 func (*AwsKinesisFirehoseRequestConfig) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseRequestConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2518,7 +2917,7 @@ func (x *AwsKinesisFirehoseRequestConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsKinesisFirehoseRequestConfig.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseRequestConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *AwsKinesisFirehoseRequestConfig) GetContentEncoding() string {
@@ -2549,7 +2948,7 @@ type AwsKinesisFirehoseRequestAttribute struct {
 
 func (x *AwsKinesisFirehoseRequestAttribute) Reset() {
 	*x = AwsKinesisFirehoseRequestAttribute{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2561,7 +2960,7 @@ func (x *AwsKinesisFirehoseRequestAttribute) String() string {
 func (*AwsKinesisFirehoseRequestAttribute) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseRequestAttribute) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2574,7 +2973,7 @@ func (x *AwsKinesisFirehoseRequestAttribute) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsKinesisFirehoseRequestAttribute.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseRequestAttribute) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AwsKinesisFirehoseRequestAttribute) GetName() string {
@@ -2666,7 +3065,7 @@ type AwsKinesisFirehoseRedshiftDestination struct {
 
 func (x *AwsKinesisFirehoseRedshiftDestination) Reset() {
 	*x = AwsKinesisFirehoseRedshiftDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2678,7 +3077,7 @@ func (x *AwsKinesisFirehoseRedshiftDestination) String() string {
 func (*AwsKinesisFirehoseRedshiftDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseRedshiftDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[25]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2691,7 +3090,7 @@ func (x *AwsKinesisFirehoseRedshiftDestination) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AwsKinesisFirehoseRedshiftDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseRedshiftDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AwsKinesisFirehoseRedshiftDestination) GetClusterJdbcurl() string {
@@ -2854,7 +3253,7 @@ type AwsKinesisFirehoseSplunkDestination struct {
 
 func (x *AwsKinesisFirehoseSplunkDestination) Reset() {
 	*x = AwsKinesisFirehoseSplunkDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2866,7 +3265,7 @@ func (x *AwsKinesisFirehoseSplunkDestination) String() string {
 func (*AwsKinesisFirehoseSplunkDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseSplunkDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[26]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2879,7 +3278,7 @@ func (x *AwsKinesisFirehoseSplunkDestination) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AwsKinesisFirehoseSplunkDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseSplunkDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *AwsKinesisFirehoseSplunkDestination) GetHecEndpoint() string {
@@ -3051,7 +3450,7 @@ type AwsKinesisFirehoseSnowflakeDestination struct {
 
 func (x *AwsKinesisFirehoseSnowflakeDestination) Reset() {
 	*x = AwsKinesisFirehoseSnowflakeDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3063,7 +3462,7 @@ func (x *AwsKinesisFirehoseSnowflakeDestination) String() string {
 func (*AwsKinesisFirehoseSnowflakeDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseSnowflakeDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[27]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3076,7 +3475,7 @@ func (x *AwsKinesisFirehoseSnowflakeDestination) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsKinesisFirehoseSnowflakeDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseSnowflakeDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *AwsKinesisFirehoseSnowflakeDestination) GetAccountUrl() string {
@@ -3280,7 +3679,7 @@ type AwsKinesisFirehoseIcebergDestination struct {
 
 func (x *AwsKinesisFirehoseIcebergDestination) Reset() {
 	*x = AwsKinesisFirehoseIcebergDestination{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3292,7 +3691,7 @@ func (x *AwsKinesisFirehoseIcebergDestination) String() string {
 func (*AwsKinesisFirehoseIcebergDestination) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseIcebergDestination) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[28]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3305,7 +3704,7 @@ func (x *AwsKinesisFirehoseIcebergDestination) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AwsKinesisFirehoseIcebergDestination.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseIcebergDestination) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *AwsKinesisFirehoseIcebergDestination) GetCatalogArn() *v1.StringValueOrRef {
@@ -3400,7 +3799,7 @@ type AwsKinesisFirehoseIcebergDestinationTable struct {
 
 func (x *AwsKinesisFirehoseIcebergDestinationTable) Reset() {
 	*x = AwsKinesisFirehoseIcebergDestinationTable{}
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[29]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3412,7 +3811,7 @@ func (x *AwsKinesisFirehoseIcebergDestinationTable) String() string {
 func (*AwsKinesisFirehoseIcebergDestinationTable) ProtoMessage() {}
 
 func (x *AwsKinesisFirehoseIcebergDestinationTable) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[29]
+	mi := &file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3425,7 +3824,7 @@ func (x *AwsKinesisFirehoseIcebergDestinationTable) ProtoReflect() protoreflect.
 
 // Deprecated: Use AwsKinesisFirehoseIcebergDestinationTable.ProtoReflect.Descriptor instead.
 func (*AwsKinesisFirehoseIcebergDestinationTable) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
+	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *AwsKinesisFirehoseIcebergDestinationTable) GetDatabaseName() string {
@@ -3488,15 +3887,16 @@ const file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc = "" +
 	"%AwsKinesisFirehoseKinesisStreamSource\x12{\n" +
 	"\n" +
 	"stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\tstreamArn\x12u\n" +
-	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\x94\x04\n" +
+	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\"\xb6\x06\n" +
 	"\x1bAwsKinesisFirehoseMskSource\x12\x85\x01\n" +
 	"\x0fmsk_cluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xfe\b\x92\xd4a\x1astatus.outputs.cluster_arnR\rmskClusterArn\x12&\n" +
 	"\n" +
 	"topic_name\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\ttopicName\x12+\n" +
 	"\fconnectivity\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fconnectivity\x12u\n" +
 	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12.\n" +
-	"\x13read_from_timestamp\x18\x05 \x01(\tR\x11readFromTimestamp:q\xbaHn\x1al\n" +
-	"\x12connectivity_valid\x12*connectivity must be 'PRIVATE' or 'PUBLIC'\x1a*this.connectivity in ['PRIVATE', 'PUBLIC']\"\xb5\x03\n" +
+	"\x13read_from_timestamp\x18\x05 \x01(\tR\x11readFromTimestamp:\x92\x03\xbaH\x8e\x03\x1al\n" +
+	"\x12connectivity_valid\x12*connectivity must be 'PRIVATE' or 'PUBLIC'\x1a*this.connectivity in ['PRIVATE', 'PUBLIC']\x1a\x9d\x02\n" +
+	"\x1bread_from_timestamp_rfc3339\x12Yread_from_timestamp must be an RFC 3339 timestamp (e.g., '2026-05-01T00:00:00Z') when set\x1a\xa2\x01this.read_from_timestamp == '' || this.read_from_timestamp.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')\"\xb5\x03\n" +
 	" AwsKinesisFirehoseBufferingHints\x12.\n" +
 	"\x13interval_in_seconds\x18\x01 \x01(\x05R\x11intervalInSeconds\x12\x1e\n" +
 	"\vsize_in_mbs\x18\x02 \x01(\x05R\tsizeInMbs:\xc0\x02\xbaH\xbc\x02\x1a\xad\x01\n" +
@@ -3528,14 +3928,15 @@ const file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19cloudwatch_log_processing\x18\x04 \x01(\v2_.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogProcessingProcessorR\x17cloudwatchLogProcessing\x12\x82\x01\n" +
 	"\x10append_delimiter\x18\x05 \x01(\v2W.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseAppendDelimiterProcessorR\x0fappendDelimiter\x12\x8e\x01\n" +
 	"\x14record_deaggregation\x18\x06 \x01(\v2[.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRecordDeaggregationProcessorR\x13recordDeaggregation:\xfb\x02\xbaH\xf7\x02\x1a\xf4\x02\n" +
-	"\x15exactly_one_processor\x12\x93\x01exactly one processor must be set: lambda, metadata_extraction, decompression, cloudwatch_log_processing, append_delimiter, or record_deaggregation\x1a\xc4\x01[has(this.lambda), has(this.metadata_extraction), has(this.decompression), has(this.cloudwatch_log_processing), has(this.append_delimiter), has(this.record_deaggregation)].filter(x, x).size() == 1\"\xe6\x06\n" +
+	"\x15exactly_one_processor\x12\x93\x01exactly one processor must be set: lambda, metadata_extraction, decompression, cloudwatch_log_processing, append_delimiter, or record_deaggregation\x1a\xc4\x01[has(this.lambda), has(this.metadata_extraction), has(this.decompression), has(this.cloudwatch_log_processing), has(this.append_delimiter), has(this.record_deaggregation)].filter(x, x).size() == 1\"\xdf\a\n" +
 	"!AwsKinesisFirehoseLambdaProcessor\x12}\n" +
 	"\n" +
 	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x12+\n" +
-	"\x12buffer_size_in_mbs\x18\x02 \x01(\x05R\x0fbufferSizeInMbs\x12;\n" +
+	"\x12buffer_size_in_mbs\x18\x02 \x01(\x01R\x0fbufferSizeInMbs\x12;\n" +
 	"\x1abuffer_interval_in_seconds\x18\x03 \x01(\x05R\x17bufferIntervalInSeconds\x12*\n" +
-	"\x11number_of_retries\x18\x04 \x01(\x05R\x0fnumberOfRetries:\xab\x04\xbaH\xa7\x04\x1a\xa8\x01\n" +
-	"\x11buffer_size_range\x123buffer_size_in_mbs must be between 1 and 3 when set\x1a^this.buffer_size_in_mbs == 0 || (this.buffer_size_in_mbs >= 1 && this.buffer_size_in_mbs <= 3)\x1a\xd2\x01\n" +
+	"\x11number_of_retries\x18\x04 \x01(\x05R\x0fnumberOfRetries\x12o\n" +
+	"\brole_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn:\xb3\x04\xbaH\xaf\x04\x1a\xb0\x01\n" +
+	"\x11buffer_size_range\x125buffer_size_in_mbs must be between 0.2 and 3 when set\x1adthis.buffer_size_in_mbs == 0.0 || (this.buffer_size_in_mbs >= 0.2 && this.buffer_size_in_mbs <= 3.0)\x1a\xd2\x01\n" +
 	"\x15buffer_interval_range\x12>buffer_interval_in_seconds must be between 60 and 900 when set\x1aythis.buffer_interval_in_seconds == 0 || (this.buffer_interval_in_seconds >= 60 && this.buffer_interval_in_seconds <= 900)\x1a\xa4\x01\n" +
 	"\rretries_range\x124number_of_retries must be between 0 and 300 when set\x1a]this.number_of_retries == 0 || (this.number_of_retries >= 0 && this.number_of_retries <= 300)\"\x9a\x02\n" +
 	"-AwsKinesisFirehoseMetadataExtractionProcessor\x12\x1d\n" +
@@ -3595,23 +3996,66 @@ const file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc = "" +
 	"%AwsKinesisFirehoseDynamicPartitioning\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x129\n" +
 	"\x19retry_duration_in_seconds\x18\x02 \x01(\x05R\x16retryDurationInSeconds:\xd4\x01\xbaH\xd0\x01\x1a\xcd\x01\n" +
-	"\x14retry_duration_range\x12=retry_duration_in_seconds must be between 0 and 7200 when set\x1avthis.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)\"\xd1\f\n" +
+	"\x14retry_duration_range\x12=retry_duration_in_seconds must be between 0 and 7200 when set\x1avthis.retry_duration_in_seconds == 0 || (this.retry_duration_in_seconds >= 0 && this.retry_duration_in_seconds <= 7200)\"\xe5\n" +
+	"\n" +
 	"&AwsKinesisFirehoseDataFormatConversion\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12!\n" +
-	"\finput_format\x18\x02 \x01(\tR\vinputFormat\x12#\n" +
-	"\routput_format\x18\x03 \x01(\tR\foutputFormat\x12/\n" +
-	"\x13parquet_compression\x18\x04 \x01(\tR\x12parquetCompression\x12'\n" +
-	"\x0forc_compression\x18\x05 \x01(\tR\x0eorcCompression\x12g\n" +
-	"\x06schema\x18\x06 \x01(\v2O.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfigR\x06schema:\x81\n" +
-	"\xbaH\xfd\t\x1a\x92\x01\n" +
-	"#output_format_required_when_enabled\x12@output_format is required when data format conversion is enabled\x1a)!this.enabled || this.output_format != ''\x1a|\n" +
-	"\x1cschema_required_when_enabled\x129schema is required when data format conversion is enabled\x1a!!this.enabled || has(this.schema)\x1a\x9c\x01\n" +
-	"\x12input_format_valid\x129input_format must be 'OPENX_JSON' or 'HIVE_JSON' when set\x1aKthis.input_format == '' || this.input_format in ['OPENX_JSON', 'HIVE_JSON']\x1a\x8e\x01\n" +
-	"\x13output_format_valid\x121output_format must be 'PARQUET' or 'ORC' when set\x1aDthis.output_format == '' || this.output_format in ['PARQUET', 'ORC']\x1a\xc7\x01\n" +
-	"\x19parquet_compression_valid\x12Hparquet_compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set\x1a`this.parquet_compression == '' || this.parquet_compression in ['SNAPPY', 'GZIP', 'UNCOMPRESSED']\x1a\xa7\x01\n" +
-	"\x15orc_compression_valid\x12<orc_compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set\x1aPthis.orc_compression == '' || this.orc_compression in ['SNAPPY', 'ZLIB', 'NONE']\x1a\xac\x01\n" +
-	"$parquet_compression_requires_parquet\x12Aparquet_compression is only valid when output_format is 'PARQUET'\x1aAthis.parquet_compression == '' || this.output_format == 'PARQUET'\x1a\x94\x01\n" +
-	"\x1corc_compression_requires_orc\x129orc_compression is only valid when output_format is 'ORC'\x1a9this.orc_compression == '' || this.output_format == 'ORC'\"\xc7\x02\n" +
+	"\aenabled\x18\x01 \x01(\bR\aenabled\x12t\n" +
+	"\vopen_x_json\x18\x02 \x01(\v2T.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializerR\topenXJson\x12p\n" +
+	"\thive_json\x18\x03 \x01(\v2S.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHiveJsonDeserializerR\bhiveJson\x12j\n" +
+	"\aparquet\x18\x04 \x01(\v2P.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseParquetSerializerR\aparquet\x12^\n" +
+	"\x03orc\x18\x05 \x01(\v2L.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOrcSerializerR\x03orc\x12g\n" +
+	"\x06schema\x18\x06 \x01(\v2O.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfigR\x06schema:\x83\x06\xbaH\xff\x05\x1a\x8e\x01\n" +
+	"\x18deserializer_at_most_one\x12Aat most one deserializer arm may be set: open_x_json or hive_json\x1a/!(has(this.open_x_json) && has(this.hive_json))\x1a\xc5\x01\n" +
+	"\"deserializer_required_when_enabled\x12`a deserializer arm (open_x_json or hive_json) is required when data format conversion is enabled\x1a=!this.enabled || has(this.open_x_json) || has(this.hive_json)\x1av\n" +
+	"\x16serializer_at_most_one\x125at most one serializer arm may be set: parquet or orc\x1a%!(has(this.parquet) && has(this.orc))\x1a\xad\x01\n" +
+	" serializer_required_when_enabled\x12Ta serializer arm (parquet or orc) is required when data format conversion is enabled\x1a3!this.enabled || has(this.parquet) || has(this.orc)\x1a|\n" +
+	"\x1cschema_required_when_enabled\x129schema is required when data format conversion is enabled\x1a!!this.enabled || has(this.schema)\"\xc2\x03\n" +
+	"'AwsKinesisFirehoseOpenXJsonDeserializer\x12.\n" +
+	"\x10case_insensitive\x18\x01 \x01(\bH\x00R\x0fcaseInsensitive\x88\x01\x01\x12\xaf\x01\n" +
+	"\x1bcolumn_to_json_key_mappings\x18\x02 \x03(\v2q.dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer.ColumnToJsonKeyMappingsEntryR\x17columnToJsonKeyMappings\x12T\n" +
+	"(convert_dots_in_json_keys_to_underscores\x18\x03 \x01(\bR\"convertDotsInJsonKeysToUnderscores\x1aJ\n" +
+	"\x1cColumnToJsonKeyMappingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x13\n" +
+	"\x11_case_insensitive\"U\n" +
+	"&AwsKinesisFirehoseHiveJsonDeserializer\x12+\n" +
+	"\x11timestamp_formats\x18\x01 \x03(\tR\x10timestampFormats\"\xe5\a\n" +
+	"#AwsKinesisFirehoseParquetSerializer\x12 \n" +
+	"\vcompression\x18\x01 \x01(\tR\vcompression\x12(\n" +
+	"\x10block_size_bytes\x18\x02 \x01(\x03R\x0eblockSizeBytes\x12&\n" +
+	"\x0fpage_size_bytes\x18\x03 \x01(\x03R\rpageSizeBytes\x12*\n" +
+	"\x11max_padding_bytes\x18\x04 \x01(\x03R\x0fmaxPaddingBytes\x12B\n" +
+	"\x1denable_dictionary_compression\x18\x05 \x01(\bR\x1benableDictionaryCompression\x12%\n" +
+	"\x0ewriter_version\x18\x06 \x01(\tR\rwriterVersion:\xb2\x05\xbaH\xae\x05\x1a\xa7\x01\n" +
+	"\x11compression_valid\x12@compression must be 'SNAPPY', 'GZIP', or 'UNCOMPRESSED' when set\x1aPthis.compression == '' || this.compression in ['SNAPPY', 'GZIP', 'UNCOMPRESSED']\x1a\x8f\x01\n" +
+	"\x0eblock_size_min\x12<block_size_bytes must be at least 67108864 (64 MiB) when set\x1a?this.block_size_bytes == 0 || this.block_size_bytes >= 67108864\x1a\x85\x01\n" +
+	"\rpage_size_min\x128page_size_bytes must be at least 65536 (64 KiB) when set\x1a:this.page_size_bytes == 0 || this.page_size_bytes >= 65536\x1a_\n" +
+	"\x18max_padding_non_negative\x12&max_padding_bytes must not be negative\x1a\x1bthis.max_padding_bytes >= 0\x1a\x86\x01\n" +
+	"\x14writer_version_valid\x12,writer_version must be 'V1' or 'V2' when set\x1a@this.writer_version == '' || this.writer_version in ['V1', 'V2']\"\xfb\x0e\n" +
+	"\x1fAwsKinesisFirehoseOrcSerializer\x12 \n" +
+	"\vcompression\x18\x01 \x01(\tR\vcompression\x12(\n" +
+	"\x10block_size_bytes\x18\x02 \x01(\x03R\x0eblockSizeBytes\x12*\n" +
+	"\x11stripe_size_bytes\x18\x03 \x01(\x03R\x0fstripeSizeBytes\x120\n" +
+	"\x14bloom_filter_columns\x18\x04 \x03(\tR\x12bloomFilterColumns\x12Y\n" +
+	"'bloom_filter_false_positive_probability\x18\x05 \x01(\x01H\x00R#bloomFilterFalsePositiveProbability\x88\x01\x01\x128\n" +
+	"\x18dictionary_key_threshold\x18\x06 \x01(\x01R\x16dictionaryKeyThreshold\x12%\n" +
+	"\x0eenable_padding\x18\a \x01(\bR\renablePadding\x120\n" +
+	"\x11padding_tolerance\x18\b \x01(\x01H\x01R\x10paddingTolerance\x88\x01\x01\x12%\n" +
+	"\x0eformat_version\x18\t \x01(\tR\rformatVersion\x12(\n" +
+	"\x10row_index_stride\x18\n" +
+	" \x01(\x05R\x0erowIndexStride:\xac\n" +
+	"\xbaH\xa8\n" +
+	"\x1a\x97\x01\n" +
+	"\x11compression_valid\x128compression must be 'SNAPPY', 'ZLIB', or 'NONE' when set\x1aHthis.compression == '' || this.compression in ['SNAPPY', 'ZLIB', 'NONE']\x1a\x8f\x01\n" +
+	"\x0eblock_size_min\x12<block_size_bytes must be at least 67108864 (64 MiB) when set\x1a?this.block_size_bytes == 0 || this.block_size_bytes >= 67108864\x1a\x90\x01\n" +
+	"\x0fstripe_size_min\x12;stripe_size_bytes must be at least 8388608 (8 MiB) when set\x1a@this.stripe_size_bytes == 0 || this.stripe_size_bytes >= 8388608\x1a\xfe\x01\n" +
+	"\x16bloom_filter_fpp_range\x12?bloom_filter_false_positive_probability must be between 0 and 1\x1a\xa2\x01!has(this.bloom_filter_false_positive_probability) || (this.bloom_filter_false_positive_probability >= 0.0 && this.bloom_filter_false_positive_probability <= 1.0)\x1a\xa0\x01\n" +
+	"\x1edictionary_key_threshold_range\x120dictionary_key_threshold must be between 0 and 1\x1aLthis.dictionary_key_threshold >= 0.0 && this.dictionary_key_threshold <= 1.0\x1a\xa6\x01\n" +
+	"\x17padding_tolerance_range\x12)padding_tolerance must be between 0 and 1\x1a`!has(this.padding_tolerance) || (this.padding_tolerance >= 0.0 && this.padding_tolerance <= 1.0)\x1a\x92\x01\n" +
+	"\x14format_version_valid\x122format_version must be 'V0_11' or 'V0_12' when set\x1aFthis.format_version == '' || this.format_version in ['V0_11', 'V0_12']\x1a\x84\x01\n" +
+	"\x14row_index_stride_min\x12/row_index_stride must be at least 1000 when set\x1a;this.row_index_stride == 0 || this.row_index_stride >= 1000B*\n" +
+	"(_bloom_filter_false_positive_probabilityB\x14\n" +
+	"\x12_padding_tolerance\"\xc7\x02\n" +
 	"\"AwsKinesisFirehoseGlueSchemaConfig\x12,\n" +
 	"\rdatabase_name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\fdatabaseName\x12&\n" +
 	"\n" +
@@ -3824,7 +4268,7 @@ func file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsKinesisFirehoseSpec)(nil),                             // 0: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec
 	(*AwsKinesisFirehoseKinesisStreamSource)(nil),              // 1: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource
@@ -3845,38 +4289,43 @@ var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsKinesisFirehoseExtendedS3Destination)(nil),            // 16: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination
 	(*AwsKinesisFirehoseDynamicPartitioning)(nil),              // 17: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDynamicPartitioning
 	(*AwsKinesisFirehoseDataFormatConversion)(nil),             // 18: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion
-	(*AwsKinesisFirehoseGlueSchemaConfig)(nil),                 // 19: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig
-	(*AwsKinesisFirehoseOpenSearchDestination)(nil),            // 20: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination
-	(*AwsKinesisFirehoseOpenSearchServerlessDestination)(nil),  // 21: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination
-	(*AwsKinesisFirehoseHttpEndpointDestination)(nil),          // 22: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination
-	(*AwsKinesisFirehoseRequestConfig)(nil),                    // 23: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig
-	(*AwsKinesisFirehoseRequestAttribute)(nil),                 // 24: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestAttribute
-	(*AwsKinesisFirehoseRedshiftDestination)(nil),              // 25: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination
-	(*AwsKinesisFirehoseSplunkDestination)(nil),                // 26: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination
-	(*AwsKinesisFirehoseSnowflakeDestination)(nil),             // 27: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination
-	(*AwsKinesisFirehoseIcebergDestination)(nil),               // 28: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination
-	(*AwsKinesisFirehoseIcebergDestinationTable)(nil),          // 29: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTable
-	(*v1.StringValueOrRef)(nil),                                // 30: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsKinesisFirehoseOpenXJsonDeserializer)(nil),            // 19: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer
+	(*AwsKinesisFirehoseHiveJsonDeserializer)(nil),             // 20: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHiveJsonDeserializer
+	(*AwsKinesisFirehoseParquetSerializer)(nil),                // 21: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseParquetSerializer
+	(*AwsKinesisFirehoseOrcSerializer)(nil),                    // 22: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOrcSerializer
+	(*AwsKinesisFirehoseGlueSchemaConfig)(nil),                 // 23: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig
+	(*AwsKinesisFirehoseOpenSearchDestination)(nil),            // 24: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination
+	(*AwsKinesisFirehoseOpenSearchServerlessDestination)(nil),  // 25: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination
+	(*AwsKinesisFirehoseHttpEndpointDestination)(nil),          // 26: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination
+	(*AwsKinesisFirehoseRequestConfig)(nil),                    // 27: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig
+	(*AwsKinesisFirehoseRequestAttribute)(nil),                 // 28: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestAttribute
+	(*AwsKinesisFirehoseRedshiftDestination)(nil),              // 29: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination
+	(*AwsKinesisFirehoseSplunkDestination)(nil),                // 30: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination
+	(*AwsKinesisFirehoseSnowflakeDestination)(nil),             // 31: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination
+	(*AwsKinesisFirehoseIcebergDestination)(nil),               // 32: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination
+	(*AwsKinesisFirehoseIcebergDestinationTable)(nil),          // 33: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTable
+	nil,                         // 34: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer.ColumnToJsonKeyMappingsEntry
+	(*v1.StringValueOrRef)(nil), // 35: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.kinesis_stream_source:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource
 	2,  // 1: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.msk_source:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseMskSource
-	30, // 2: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.sse_kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 2: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.sse_kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	16, // 3: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.extended_s3:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination
-	20, // 4: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.opensearch:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination
-	21, // 5: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.opensearch_serverless:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination
-	22, // 6: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.http_endpoint:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination
-	25, // 7: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.redshift:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination
-	26, // 8: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.splunk:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination
-	27, // 9: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.snowflake:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination
-	28, // 10: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.iceberg:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination
-	30, // 11: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource.stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 12: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 13: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseMskSource.msk_cluster_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 14: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseMskSource.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 15: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 16: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 17: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 4: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.opensearch:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination
+	25, // 5: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.opensearch_serverless:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination
+	26, // 6: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.http_endpoint:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination
+	29, // 7: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.redshift:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination
+	30, // 8: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.splunk:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination
+	31, // 9: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.snowflake:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination
+	32, // 10: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSpec.iceberg:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination
+	35, // 11: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource.stream_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 12: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseKinesisStreamSource.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 13: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseMskSource.msk_cluster_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 14: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseMskSource.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 15: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 16: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 17: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3,  // 18: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
 	13, // 19: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
 	6,  // 20: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing.processors:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessor
@@ -3886,73 +4335,79 @@ var file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_depIdxs = []int32{
 	10, // 24: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessor.cloudwatch_log_processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogProcessingProcessor
 	11, // 25: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessor.append_delimiter:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseAppendDelimiterProcessor
 	12, // 26: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessor.record_deaggregation:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRecordDeaggregationProcessor
-	30, // 27: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseLambdaProcessor.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 28: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 29: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 30: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 31: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig.secret_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 32: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 33: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 34: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 35: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 36: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 37: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.s3_backup:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 38: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 39: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	17, // 40: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.dynamic_partitioning:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDynamicPartitioning
-	18, // 41: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.data_format_conversion:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion
-	19, // 42: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.schema:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig
-	30, // 43: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 44: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.domain_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 45: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 46: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 47: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 48: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 49: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	14, // 50: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.vpc_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig
-	30, // 51: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 52: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 53: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 54: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 55: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	14, // 56: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.vpc_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig
-	15, // 57: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
-	30, // 58: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3,  // 59: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 60: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 61: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 62: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	23, // 63: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.request_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig
-	24, // 64: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig.common_attributes:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestAttribute
-	30, // 65: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 66: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
-	4,  // 67: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	4,  // 68: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.s3_backup:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 69: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 70: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	15, // 71: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
-	3,  // 72: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 73: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 74: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 75: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	30, // 76: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 77: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
-	3,  // 78: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 79: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 80: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 81: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	30, // 82: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.catalog_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	30, // 83: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	29, // 84: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.destination_tables:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTable
-	3,  // 85: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
-	4,  // 86: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
-	5,  // 87: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
-	13, // 88: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
-	89, // [89:89] is the sub-list for method output_type
-	89, // [89:89] is the sub-list for method input_type
-	89, // [89:89] is the sub-list for extension type_name
-	89, // [89:89] is the sub-list for extension extendee
-	0,  // [0:89] is the sub-list for field type_name
+	35, // 27: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseLambdaProcessor.lambda_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 28: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseLambdaProcessor.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 29: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 30: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 31: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 32: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig.secret_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 33: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 34: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.bucket_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 35: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 36: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.kms_key_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 37: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 38: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.s3_backup:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 39: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 40: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	17, // 41: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.dynamic_partitioning:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDynamicPartitioning
+	18, // 42: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseExtendedS3Destination.data_format_conversion:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion
+	19, // 43: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.open_x_json:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer
+	20, // 44: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.hive_json:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHiveJsonDeserializer
+	21, // 45: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.parquet:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseParquetSerializer
+	22, // 46: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.orc:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOrcSerializer
+	23, // 47: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseDataFormatConversion.schema:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig
+	34, // 48: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer.column_to_json_key_mappings:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenXJsonDeserializer.ColumnToJsonKeyMappingsEntry
+	35, // 49: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseGlueSchemaConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 50: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.domain_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 51: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 52: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 53: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 54: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 55: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	14, // 56: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchDestination.vpc_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig
+	35, // 57: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 58: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 59: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 60: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 61: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	14, // 62: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseOpenSearchServerlessDestination.vpc_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseVpcConfig
+	15, // 63: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
+	35, // 64: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3,  // 65: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 66: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 67: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 68: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	27, // 69: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseHttpEndpointDestination.request_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig
+	28, // 70: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestConfig.common_attributes:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRequestAttribute
+	35, // 71: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 72: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
+	4,  // 73: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	4,  // 74: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.s3_backup:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 75: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 76: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseRedshiftDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	15, // 77: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
+	3,  // 78: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 79: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 80: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 81: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSplunkDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	35, // 82: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	15, // 83: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.secrets_manager:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSecretsManagerConfig
+	3,  // 84: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 85: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 86: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 87: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseSnowflakeDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	35, // 88: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.catalog_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	35, // 89: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	33, // 90: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.destination_tables:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestinationTable
+	3,  // 91: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.buffering:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseBufferingHints
+	4,  // 92: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.s3_config:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseS3Config
+	5,  // 93: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.processing:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseProcessing
+	13, // 94: dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseIcebergDestination.logging:type_name -> dev.planton.aws.awskinesisfirehose.v1alpha1.AwsKinesisFirehoseCloudwatchLogging
+	95, // [95:95] is the sub-list for method output_type
+	95, // [95:95] is the sub-list for method input_type
+	95, // [95:95] is the sub-list for extension type_name
+	95, // [95:95] is the sub-list for extension extendee
+	0,  // [0:95] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_init() }
@@ -3970,13 +4425,15 @@ func file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_init() {
 		(*AwsKinesisFirehoseSpec_Snowflake)(nil),
 		(*AwsKinesisFirehoseSpec_Iceberg)(nil),
 	}
+	file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_msgTypes[22].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awskinesisfirehose_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   30,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -56,7 +56,10 @@ message AwsMemcachedElasticacheSpec {
   // "1.6.22", "1.6.17", "1.5.16", etc. Leave empty to use the AWS default —
   // a versionless manifest never goes stale.
   // Transit encryption requires version 1.6.12 or later.
-  string engine_version = 2;
+  string engine_version = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d+\\.\\d+\\.\\d+$"
+  ];
 
   // ---------------------------------------------------------------------------
   // Node configuration
@@ -173,8 +176,11 @@ message AwsMemcachedElasticacheSpec {
   bool apply_immediately = 17;
 
   // Automatically apply minor engine version upgrades during maintenance
-  // windows. Recommended for staying on supported versions.
-  bool auto_minor_version_upgrade = 18 [(dev.planton.shared.options.recommended_default) = "true"];
+  // windows. AWS enables this by default: leave unset to keep the default,
+  // set false to pin the running minor version explicitly, set true to pin
+  // the opt-in. Presence matters — unset is forwarded to AWS as "decide",
+  // never as false.
+  optional bool auto_minor_version_upgrade = 18 [(dev.planton.shared.options.recommended_default) = "true"];
 
   // ---------------------------------------------------------------------------
   // Notifications
@@ -193,8 +199,17 @@ message AwsMemcachedElasticacheSpec {
 
   // Preferred Availability Zones for the cache nodes. When provided, the list
   // length must match num_cache_nodes. Nodes are placed in the specified AZs
-  // in order. Leave empty for AWS-managed AZ distribution.
+  // in order. Leave empty for AWS-managed AZ distribution. Mutually exclusive
+  // with `availability_zone` (the single-AZ pin).
   repeated string preferred_availability_zones = 20;
+
+  // Pin ALL cache nodes to one Availability Zone (e.g. "us-west-2a") —
+  // AZ-local latency for a client fleet that lives in a single zone.
+  // ForceNew — changing the pin replaces the cluster. Leave empty for an
+  // AWS-chosen AZ. Mutually exclusive with `preferred_availability_zones`
+  // (per-node placement) and with az_mode "cross-az" — a single-AZ pin IS
+  // single-az mode.
+  string availability_zone = 21;
 
   // ---------------------------------------------------------------------------
   // CEL validations
@@ -254,6 +269,23 @@ message AwsMemcachedElasticacheSpec {
     id: "parameter_arms_mutual_exclusion"
     message: "parameters and parameter_group_name are mutually exclusive — manage parameters here or bring an existing group"
     expression: "!(this.parameters.size() > 0 && this.parameter_group_name != '')"
+  };
+
+  // availability_zone and preferred_availability_zones are alternative
+  // placement controls (AWS's CreateCacheCluster contract: pin all nodes to
+  // one AZ, or place nodes per-AZ via the list — to get all nodes in one AZ
+  // with the list form, repeat the AZ).
+  option (buf.validate.message).cel = {
+    id: "az_placement_mutual_exclusion"
+    message: "availability_zone and preferred_availability_zones are mutually exclusive placement controls — pin all nodes to one AZ or place nodes per-AZ"
+    expression: "!(this.availability_zone != '' && this.preferred_availability_zones.size() > 0)"
+  };
+
+  // A single-AZ pin contradicts cross-az distribution.
+  option (buf.validate.message).cel = {
+    id: "az_pin_forbids_cross_az"
+    message: "availability_zone pins all nodes to one AZ — it cannot be combined with az_mode 'cross-az'; use preferred_availability_zones for cross-AZ placement"
+    expression: "this.availability_zone == '' || this.az_mode != 'cross-az'"
   };
 }
 

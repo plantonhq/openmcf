@@ -78,7 +78,7 @@ resource "aws_instance" "this" {
     for_each = var.spec.secondary_network_interfaces
     content {
       network_card_index       = secondary_network_interface.value.network_card_index
-      device_index             = secondary_network_interface.value.device_index
+      device_index             = secondary_network_interface.value.device_index != 0 ? secondary_network_interface.value.device_index : null
       secondary_subnet_id      = secondary_network_interface.value.subnet_id
       private_ip_address_count = secondary_network_interface.value.private_ip_address_count != 0 ? secondary_network_interface.value.private_ip_address_count : null
       delete_on_termination    = secondary_network_interface.value.delete_on_termination
@@ -97,6 +97,9 @@ resource "aws_instance" "this" {
       encrypted             = root_block_device.value.encrypted ? true : null
       kms_key_id            = root_block_device.value.kms_key_id != "" ? root_block_device.value.kms_key_id : null
       delete_on_termination = root_block_device.value.delete_on_termination
+      # Per-volume tags apply post-creation (see volume_tags for the
+      # at-creation alternative; the provider forbids mixing them).
+      tags = length(root_block_device.value.tags) > 0 ? root_block_device.value.tags : null
     }
   }
 
@@ -112,8 +115,14 @@ resource "aws_instance" "this" {
       kms_key_id            = ebs_block_device.value.kms_key_id != "" ? ebs_block_device.value.kms_key_id : null
       snapshot_id           = ebs_block_device.value.snapshot_id != "" ? ebs_block_device.value.snapshot_id : null
       delete_on_termination = ebs_block_device.value.delete_on_termination
+      tags                  = length(ebs_block_device.value.tags) > 0 ? ebs_block_device.value.tags : null
     }
   }
+
+  # Uniform at-creation tags for EVERY volume (incl. AMI-inherited
+  # mappings) -- the ABAC-compliant arm; mutually exclusive with the
+  # per-device tags above.
+  volume_tags = length(var.spec.volume_tags) > 0 ? var.spec.volume_tags : null
 
   dynamic "ephemeral_block_device" {
     for_each = var.spec.ephemeral_block_devices
@@ -163,17 +172,23 @@ resource "aws_instance" "this" {
     }
   }
 
-  # Presence of spot_options is the Spot switch; On-Demand needs no
-  # market options at all.
+  # The purchase market: an explicit market_type, or presence of
+  # spot_options implying "spot" (the classic shape). On-Demand needs no
+  # market options at all. Reservation-backed markets (capacity-block,
+  # interruptible-capacity-reservation) carry no spot_options -- CEL
+  # enforces that pairing and the required reservation target.
   dynamic "instance_market_options" {
-    for_each = var.spec.spot_options != null ? [var.spec.spot_options] : []
+    for_each = var.spec.market_type != "" || var.spec.spot_options != null ? [1] : []
     content {
-      market_type = "spot"
-      spot_options {
-        max_price                      = instance_market_options.value.max_price != "" ? instance_market_options.value.max_price : null
-        spot_instance_type             = instance_market_options.value.spot_instance_type != "" ? instance_market_options.value.spot_instance_type : null
-        instance_interruption_behavior = instance_market_options.value.instance_interruption_behavior != "" ? instance_market_options.value.instance_interruption_behavior : null
-        valid_until                    = instance_market_options.value.valid_until != "" ? instance_market_options.value.valid_until : null
+      market_type = var.spec.market_type != "" ? var.spec.market_type : "spot"
+      dynamic "spot_options" {
+        for_each = var.spec.spot_options != null ? [var.spec.spot_options] : []
+        content {
+          max_price                      = spot_options.value.max_price != "" ? spot_options.value.max_price : null
+          spot_instance_type             = spot_options.value.spot_instance_type != "" ? spot_options.value.spot_instance_type : null
+          instance_interruption_behavior = spot_options.value.instance_interruption_behavior != "" ? spot_options.value.instance_interruption_behavior : null
+          valid_until                    = spot_options.value.valid_until != "" ? spot_options.value.valid_until : null
+        }
       }
     }
   }
@@ -223,6 +238,10 @@ resource "aws_instance" "this" {
   instance_initiated_shutdown_behavior = var.spec.instance_initiated_shutdown_behavior != "" ? var.spec.instance_initiated_shutdown_behavior : null
   disable_api_stop                     = var.spec.disable_api_stop
   disable_api_termination              = var.spec.disable_api_termination
+
+  # Destroy-time escape hatch: lift stop/termination protection before
+  # terminating instead of failing the destroy.
+  force_destroy = var.spec.force_destroy ? true : null
 
   # Plain text arrives with HCL template introducers already escaped by
   # the tfvars writer, so ${...} content in shell scripts passes through

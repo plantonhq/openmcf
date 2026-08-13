@@ -116,6 +116,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsBatchComputeEnvironment | `spec.computeResources.instanceRole` | `status.outputs.instance_profile_arn` |
 | AwsEc2Instance | `spec.instanceProfile` | `status.outputs.instance_profile_name` |
+| AwsEcsCluster | `spec.managedInstancesCapacityProviders[].instanceLaunchTemplate.ec2InstanceProfileArn` | `status.outputs.instance_profile_arn` |
 | AwsLaunchTemplate | `spec.instanceProfile` | `status.outputs.instance_profile_arn` |
 
 ## See Also

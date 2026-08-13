@@ -22,3 +22,7 @@ The **AzureBackupContainerStorageAccount** component registers a storage account
 ## Future Enhancements
 
 - Blob and disk protection under the modern Data Protection family use their own binding kinds -- this registration serves the classic (Recovery Services) file-share path.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

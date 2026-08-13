@@ -80,6 +80,36 @@ var _ = ginkgo.Describe("AwsNlbSpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for a capacity reservation", func() {
+				input := minimalValidNlb()
+				units := int32(500)
+				input.Spec.MinimumLoadBalancerCapacityUnits = &units
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for secondary IPs per subnet within range", func() {
+				input := minimalValidNlb()
+				n := int32(7)
+				input.Spec.SecondaryIpsAutoAssignedPerSubnet = &n
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a dualstack NLB with IPv6 source-NAT prefix and node addresses", func() {
+				input := minimalValidNlb()
+				input.Spec.IpAddressType = "dualstack"
+				input.Spec.EnablePrefixForIpv6SourceNat = "on"
+				input.Spec.SubnetMappings = []*AwsNlbSubnetMapping{
+					{
+						SubnetId:    literalRef("subnet-12345678"),
+						Ipv6Address: "2600:1f18:abcd:1200::10",
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -151,6 +181,37 @@ var _ = ginkgo.Describe("AwsNlbSpec Validation Tests", func() {
 					Route53ZoneId: literalRef("Z0123456789ABCDEF"),
 					Hostnames:     []string{"tcp.example.com", "tcp.example.com"},
 				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a zero capacity reservation", func() {
+				input := minimalValidNlb()
+				units := int32(0)
+				input.Spec.MinimumLoadBalancerCapacityUnits = &units
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for secondary IPs per subnet above 7", func() {
+				input := minimalValidNlb()
+				n := int32(8)
+				input.Spec.SecondaryIpsAutoAssignedPerSubnet = &n
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an invalid IPv6 source-NAT prefix value", func() {
+				input := minimalValidNlb()
+				input.Spec.IpAddressType = "dualstack"
+				input.Spec.EnablePrefixForIpv6SourceNat = "enabled"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for the IPv6 source-NAT prefix on an ipv4-only NLB", func() {
+				input := minimalValidNlb()
+				input.Spec.EnablePrefixForIpv6SourceNat = "on"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

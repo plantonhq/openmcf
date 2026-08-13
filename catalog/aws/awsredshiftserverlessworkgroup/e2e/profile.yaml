@@ -13,9 +13,28 @@ spec:
   # dominates the runtime (the provider allows up to 20 minutes each
   # way); AWS also serializes namespace/workgroup operations, so lanes
   # must run serially.
+  #
+  # PROVEN 2026-08-12 (live, both engines): all eight phases green per
+  # engine (~9-11 min/lane) after TWO live catches fixed at the full
+  # bar in-session -- Redshift Serverless serializes mutating
+  # operations per workgroup, the lock outlives each usage-limit call
+  # by ~15-30s, and endpoint-access create AND delete conflict against
+  # it with no provider retry (upstream gap recorded; contract mapped
+  # by CLI probes on throwaway resources). Both modules now order the
+  # satellites custom domain -> endpoint accesses -> usage limits, and
+  # the destroy crossing is protected per-engine (Pulumi: DeletedWith
+  # rides the workgroup's cascading, provider-retried delete --
+  # cascade live-probed AND observed in-lane; Terraform: a time_sleep
+  # 60s destroy settle, observed running exactly once on destroy).
+  # Evidence per engine window: GetWorkgroup AVAILABLE on the 3-AZ
+  # trio + namespace join; GetEndpointAccess Active with distinct
+  # AWS-generated addresses in each engine's endpoint_access_addresses
+  # output keyed "e2e-self-vpc"; distinct usage-limit IDs with
+  # breachAction=deactivate in usage_limit_ids keyed
+  # "serverless-compute/daily". The CUSTOM DOMAIN stays offline-proven
+  # with its named unblock (owned domain + validated ACM certificate);
+  # its conflict window is unproven -- it applies first by design.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

@@ -261,6 +261,99 @@ var _ = ginkgo.Describe("AwsEcrRepoSpec validations", func() {
 	})
 
 	// -------------------------------------------------------------------------
+	// storage-class tiering (archive transitions)
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("accepts the canonical archive policy pair (one 'any' rule per tier)", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{
+				RulePriority:       1,
+				Description:        "Archive images not pulled in 90 days",
+				TagStatus:          "any",
+				CountType:          "sinceImagePulled",
+				CountNumber:        90,
+				ActionType:         "transition",
+				TargetStorageClass: "archive",
+			},
+			{
+				RulePriority: 2,
+				Description:  "Delete images archived for more than 365 days",
+				TagStatus:    "any",
+				CountType:    "sinceImageTransitioned",
+				CountNumber:  365,
+				StorageClass: "archive",
+			},
+		}
+		// The provider's own tested archive example: a standard-tier 'any'
+		// transition plus an archive-tier 'any' expire — legal together.
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects two 'any' rules in the same storage-class tier", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{
+			{RulePriority: 1, TagStatus: "any", CountType: "imageCountMoreThan", CountNumber: 50},
+			{RulePriority: 2, TagStatus: "any", CountType: "imageCountMoreThan", CountNumber: 100},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a transition action without its target storage class", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "any",
+			CountType:    "sinceImagePulled",
+			CountNumber:  90,
+			ActionType:   "transition",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a target storage class on an expire rule", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority:       1,
+			TagStatus:          "any",
+			CountType:          "imageCountMoreThan",
+			CountNumber:        100,
+			TargetStorageClass: "archive",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects sinceImageTransitioned without the archive selector", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "any",
+			CountType:    "sinceImageTransitioned",
+			CountNumber:  365,
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects the archive selector on a non-transitioned count type", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority: 1,
+			TagStatus:    "any",
+			CountType:    "sinceImagePushed",
+			CountNumber:  14,
+			StorageClass: "archive",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects transitioning already-archived images", func() {
+		spec.LifecycleRules = []*AwsEcrRepoLifecycleRule{{
+			RulePriority:       1,
+			TagStatus:          "any",
+			CountType:          "sinceImageTransitioned",
+			CountNumber:        30,
+			StorageClass:       "archive",
+			ActionType:         "transition",
+			TargetStorageClass: "archive",
+		}}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	// -------------------------------------------------------------------------
 	// region
 	// -------------------------------------------------------------------------
 

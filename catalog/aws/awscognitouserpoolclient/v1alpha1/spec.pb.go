@@ -154,8 +154,16 @@ type AwsCognitoUserPoolClientSpec struct {
 	// Amazon Pinpoint analytics wiring: Cognito publishes sign-in/sign-up events
 	// to a Pinpoint project for user-journey analytics.
 	AnalyticsConfiguration *AwsCognitoUserPoolClientAnalyticsConfig `protobuf:"bytes,23,opt,name=analytics_configuration,json=analyticsConfiguration,proto3" json:"analytics_configuration,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Client-scoped risk configuration for threat protection. When set, this
+	// client stops following the pool-wide risk configuration (set on the
+	// AwsCognitoUserPool spec) and uses these responses instead. Requires the
+	// POOL to have threat protection active (`user_pool_add_ons.
+	// advanced_security_mode` of "AUDIT" or "ENFORCED") -- a cross-resource
+	// requirement this spec cannot validate; AWS rejects the configuration
+	// when threat protection is off.
+	RiskConfiguration *AwsCognitoUserPoolClientRiskConfiguration `protobuf:"bytes,24,opt,name=risk_configuration,json=riskConfiguration,proto3" json:"risk_configuration,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *AwsCognitoUserPoolClientSpec) Reset() {
@@ -349,6 +357,13 @@ func (x *AwsCognitoUserPoolClientSpec) GetAnalyticsConfiguration() *AwsCognitoUs
 	return nil
 }
 
+func (x *AwsCognitoUserPoolClientSpec) GetRiskConfiguration() *AwsCognitoUserPoolClientRiskConfiguration {
+	if x != nil {
+		return x.RiskConfiguration
+	}
+	return nil
+}
+
 // AwsCognitoUserPoolClientTokenValidityUnits sets the unit each token lifetime
 // is expressed in.
 type AwsCognitoUserPoolClientTokenValidityUnits struct {
@@ -426,8 +441,11 @@ type AwsCognitoUserPoolClientRefreshTokenRotation struct {
 	Feature string `protobuf:"bytes,1,opt,name=feature,proto3" json:"feature,omitempty"`
 	// How long (seconds) the RETIRED refresh token keeps working after a
 	// rotation, absorbing clients that lose the response carrying the new token.
-	// Range: 0-60. AWS default: 0 (immediate retirement).
-	RetryGracePeriodSeconds int32 `protobuf:"varint,2,opt,name=retry_grace_period_seconds,json=retryGracePeriodSeconds,proto3" json:"retry_grace_period_seconds,omitempty"`
+	// Range: 0-60, where an EXPLICIT 0 disables the grace period (immediate
+	// retirement -- AWS's default posture). Tri-state: unset leaves the choice
+	// to AWS, explicit 0 pins immediate retirement, 1-60 grants that many
+	// seconds of grace.
+	RetryGracePeriodSeconds *int32 `protobuf:"varint,2,opt,name=retry_grace_period_seconds,json=retryGracePeriodSeconds,proto3,oneof" json:"retry_grace_period_seconds,omitempty"`
 	unknownFields           protoimpl.UnknownFields
 	sizeCache               protoimpl.SizeCache
 }
@@ -470,8 +488,8 @@ func (x *AwsCognitoUserPoolClientRefreshTokenRotation) GetFeature() string {
 }
 
 func (x *AwsCognitoUserPoolClientRefreshTokenRotation) GetRetryGracePeriodSeconds() int32 {
-	if x != nil {
-		return x.RetryGracePeriodSeconds
+	if x != nil && x.RetryGracePeriodSeconds != nil {
+		return *x.RetryGracePeriodSeconds
 	}
 	return 0
 }
@@ -564,11 +582,499 @@ func (x *AwsCognitoUserPoolClientAnalyticsConfig) GetUserDataShared() bool {
 	return false
 }
 
+// AwsCognitoUserPoolClientRiskConfiguration configures threat protection's
+// automated responses for THIS client only, overriding the pool-wide risk
+// configuration. At least one of the three arms must be configured.
+type AwsCognitoUserPoolClientRiskConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Automated responses to sign-in attempts Cognito assesses as possible
+	// account takeover, by risk level, plus the notification templates for
+	// "notify the user" actions.
+	AccountTakeover *AwsCognitoUserPoolClientAccountTakeoverConfig `protobuf:"bytes,1,opt,name=account_takeover,json=accountTakeover,proto3" json:"account_takeover,omitempty"`
+	// Automated response when Cognito detects the presented credentials in a
+	// known-compromised set.
+	CompromisedCredentials *AwsCognitoUserPoolClientCompromisedCredentialsConfig `protobuf:"bytes,2,opt,name=compromised_credentials,json=compromisedCredentials,proto3" json:"compromised_credentials,omitempty"`
+	// IP-range exceptions that bypass or force the risk decision.
+	RiskException *AwsCognitoUserPoolClientRiskExceptionConfig `protobuf:"bytes,3,opt,name=risk_exception,json=riskException,proto3" json:"risk_exception,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) Reset() {
+	*x = AwsCognitoUserPoolClientRiskConfiguration{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientRiskConfiguration) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientRiskConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientRiskConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) GetAccountTakeover() *AwsCognitoUserPoolClientAccountTakeoverConfig {
+	if x != nil {
+		return x.AccountTakeover
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) GetCompromisedCredentials() *AwsCognitoUserPoolClientCompromisedCredentialsConfig {
+	if x != nil {
+		return x.CompromisedCredentials
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskConfiguration) GetRiskException() *AwsCognitoUserPoolClientRiskExceptionConfig {
+	if x != nil {
+		return x.RiskException
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolClientAccountTakeoverConfig assigns an automated response
+// to each account-takeover risk level and configures the notification emails
+// those responses can send.
+type AwsCognitoUserPoolClientAccountTakeoverConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Response to a LOW-risk assessment.
+	LowAction *AwsCognitoUserPoolClientAccountTakeoverAction `protobuf:"bytes,1,opt,name=low_action,json=lowAction,proto3" json:"low_action,omitempty"`
+	// Response to a MEDIUM-risk assessment.
+	MediumAction *AwsCognitoUserPoolClientAccountTakeoverAction `protobuf:"bytes,2,opt,name=medium_action,json=mediumAction,proto3" json:"medium_action,omitempty"`
+	// Response to a HIGH-risk assessment.
+	HighAction *AwsCognitoUserPoolClientAccountTakeoverAction `protobuf:"bytes,3,opt,name=high_action,json=highAction,proto3" json:"high_action,omitempty"`
+	// SES sending configuration and message templates for the notification
+	// emails sent when an action has notify enabled. Required by AWS when any
+	// action notifies the user.
+	NotifyConfiguration *AwsCognitoUserPoolClientRiskNotifyConfig `protobuf:"bytes,4,opt,name=notify_configuration,json=notifyConfiguration,proto3" json:"notify_configuration,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) Reset() {
+	*x = AwsCognitoUserPoolClientAccountTakeoverConfig{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientAccountTakeoverConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientAccountTakeoverConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientAccountTakeoverConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) GetLowAction() *AwsCognitoUserPoolClientAccountTakeoverAction {
+	if x != nil {
+		return x.LowAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) GetMediumAction() *AwsCognitoUserPoolClientAccountTakeoverAction {
+	if x != nil {
+		return x.MediumAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) GetHighAction() *AwsCognitoUserPoolClientAccountTakeoverAction {
+	if x != nil {
+		return x.HighAction
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverConfig) GetNotifyConfiguration() *AwsCognitoUserPoolClientRiskNotifyConfig {
+	if x != nil {
+		return x.NotifyConfiguration
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolClientAccountTakeoverAction is the automated response for
+// one account-takeover risk level.
+type AwsCognitoUserPoolClientAccountTakeoverAction struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+	// metrics without acting):
+	//   - "BLOCK": reject the sign-in attempt.
+	//   - "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+	//     otherwise allow the attempt.
+	//   - "MFA_REQUIRED": require MFA; users without a factor are blocked.
+	//   - "NO_ACTION": allow the attempt (pair with notify to warn the user).
+	EventAction string `protobuf:"bytes,1,opt,name=event_action,json=eventAction,proto3" json:"event_action,omitempty"`
+	// Whether Cognito emails the user about the event using the templates in
+	// notify_configuration.
+	Notify        bool `protobuf:"varint,2,opt,name=notify,proto3" json:"notify,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverAction) Reset() {
+	*x = AwsCognitoUserPoolClientAccountTakeoverAction{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverAction) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientAccountTakeoverAction) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverAction) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientAccountTakeoverAction.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientAccountTakeoverAction) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverAction) GetEventAction() string {
+	if x != nil {
+		return x.EventAction
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientAccountTakeoverAction) GetNotify() bool {
+	if x != nil {
+		return x.Notify
+	}
+	return false
+}
+
+// AwsCognitoUserPoolClientRiskNotifyConfig configures the SES identity and
+// message templates threat protection uses to notify users of risky sign-in
+// events on this client.
+type AwsCognitoUserPoolClientRiskNotifyConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The SES identity Cognito sends notification emails from. Accepts a
+	// direct identity ARN or a reference to an AwsSesEmailIdentity resource.
+	SourceArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=source_arn,json=sourceArn,proto3" json:"source_arn,omitempty"`
+	// "From" address shown on notification emails. When omitted, AWS derives
+	// it from the source identity.
+	From string `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	// Reply-to address on notification emails.
+	ReplyTo string `protobuf:"bytes,3,opt,name=reply_to,json=replyTo,proto3" json:"reply_to,omitempty"`
+	// Template for the "we blocked a sign-in attempt" notification.
+	BlockEmail *AwsCognitoUserPoolClientRiskNotifyEmail `protobuf:"bytes,4,opt,name=block_email,json=blockEmail,proto3" json:"block_email,omitempty"`
+	// Template for the "we required MFA on a sign-in attempt" notification.
+	MfaEmail *AwsCognitoUserPoolClientRiskNotifyEmail `protobuf:"bytes,5,opt,name=mfa_email,json=mfaEmail,proto3" json:"mfa_email,omitempty"`
+	// Template for the "we observed a risky sign-in attempt" (no action taken)
+	// notification.
+	NoActionEmail *AwsCognitoUserPoolClientRiskNotifyEmail `protobuf:"bytes,6,opt,name=no_action_email,json=noActionEmail,proto3" json:"no_action_email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) Reset() {
+	*x = AwsCognitoUserPoolClientRiskNotifyConfig{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientRiskNotifyConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientRiskNotifyConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientRiskNotifyConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetSourceArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.SourceArn
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetReplyTo() string {
+	if x != nil {
+		return x.ReplyTo
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetBlockEmail() *AwsCognitoUserPoolClientRiskNotifyEmail {
+	if x != nil {
+		return x.BlockEmail
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetMfaEmail() *AwsCognitoUserPoolClientRiskNotifyEmail {
+	if x != nil {
+		return x.MfaEmail
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyConfig) GetNoActionEmail() *AwsCognitoUserPoolClientRiskNotifyEmail {
+	if x != nil {
+		return x.NoActionEmail
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolClientRiskNotifyEmail is one notification email template.
+type AwsCognitoUserPoolClientRiskNotifyEmail struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Email subject. 1-140 characters.
+	Subject string `protobuf:"bytes,1,opt,name=subject,proto3" json:"subject,omitempty"`
+	// HTML email body. 6-20000 characters.
+	HtmlBody string `protobuf:"bytes,2,opt,name=html_body,json=htmlBody,proto3" json:"html_body,omitempty"`
+	// Plain-text email body. 6-20000 characters.
+	TextBody      string `protobuf:"bytes,3,opt,name=text_body,json=textBody,proto3" json:"text_body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) Reset() {
+	*x = AwsCognitoUserPoolClientRiskNotifyEmail{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientRiskNotifyEmail) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientRiskNotifyEmail.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientRiskNotifyEmail) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) GetHtmlBody() string {
+	if x != nil {
+		return x.HtmlBody
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientRiskNotifyEmail) GetTextBody() string {
+	if x != nil {
+		return x.TextBody
+	}
+	return ""
+}
+
+// AwsCognitoUserPoolClientCompromisedCredentialsConfig configures the
+// automated response when a user signs in (or up, or changes their password)
+// with credentials Cognito finds in a known-compromised set.
+type AwsCognitoUserPoolClientCompromisedCredentialsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The response Cognito takes (acts only in ENFORCED mode):
+	// - "BLOCK": reject the attempt.
+	// - "NO_ACTION": allow the attempt (still logged/audited).
+	EventAction string `protobuf:"bytes,1,opt,name=event_action,json=eventAction,proto3" json:"event_action,omitempty"`
+	// Which authentication events are checked against the compromised set.
+	// When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+	// "PASSWORD_CHANGE", "SIGN_UP".
+	EventFilter   []string `protobuf:"bytes,2,rep,name=event_filter,json=eventFilter,proto3" json:"event_filter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientCompromisedCredentialsConfig) Reset() {
+	*x = AwsCognitoUserPoolClientCompromisedCredentialsConfig{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientCompromisedCredentialsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientCompromisedCredentialsConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientCompromisedCredentialsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientCompromisedCredentialsConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientCompromisedCredentialsConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AwsCognitoUserPoolClientCompromisedCredentialsConfig) GetEventAction() string {
+	if x != nil {
+		return x.EventAction
+	}
+	return ""
+}
+
+func (x *AwsCognitoUserPoolClientCompromisedCredentialsConfig) GetEventFilter() []string {
+	if x != nil {
+		return x.EventFilter
+	}
+	return nil
+}
+
+// AwsCognitoUserPoolClientRiskExceptionConfig lists IP ranges that override
+// risk evaluation entirely for this client.
+type AwsCognitoUserPoolClientRiskExceptionConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Always-BLOCK list: authentication requests from these CIDR ranges are
+	// rejected regardless of risk assessment. Up to 200 entries.
+	BlockedIpRanges []string `protobuf:"bytes,1,rep,name=blocked_ip_ranges,json=blockedIpRanges,proto3" json:"blocked_ip_ranges,omitempty"`
+	// Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+	// Up to 200 entries.
+	SkippedIpRanges []string `protobuf:"bytes,2,rep,name=skipped_ip_ranges,json=skippedIpRanges,proto3" json:"skipped_ip_ranges,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AwsCognitoUserPoolClientRiskExceptionConfig) Reset() {
+	*x = AwsCognitoUserPoolClientRiskExceptionConfig{}
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsCognitoUserPoolClientRiskExceptionConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsCognitoUserPoolClientRiskExceptionConfig) ProtoMessage() {}
+
+func (x *AwsCognitoUserPoolClientRiskExceptionConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsCognitoUserPoolClientRiskExceptionConfig.ProtoReflect.Descriptor instead.
+func (*AwsCognitoUserPoolClientRiskExceptionConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AwsCognitoUserPoolClientRiskExceptionConfig) GetBlockedIpRanges() []string {
+	if x != nil {
+		return x.BlockedIpRanges
+	}
+	return nil
+}
+
+func (x *AwsCognitoUserPoolClientRiskExceptionConfig) GetSkippedIpRanges() []string {
+	if x != nil {
+		return x.SkippedIpRanges
+	}
+	return nil
+}
+
 var File_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/aws/awscognitouserpoolclient/v1alpha1/spec.proto\x121dev.planton.aws.awscognitouserpoolclient.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfb=\n" +
+	"8catalog/aws/awscognitouserpoolclient/v1alpha1/spec.proto\x121dev.planton.aws.awscognitouserpoolclient.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x89?\n" +
 	"\x1cAwsCognitoUserPoolClientSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
 	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
@@ -595,7 +1101,8 @@ const file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc = ""
 	"\x1dprevent_user_existence_errors\x18\x14 \x01(\tR\x1apreventUserExistenceErrors\x12'\n" +
 	"\x0fread_attributes\x18\x15 \x03(\tR\x0ereadAttributes\x12)\n" +
 	"\x10write_attributes\x18\x16 \x03(\tR\x0fwriteAttributes\x12\x93\x01\n" +
-	"\x17analytics_configuration\x18\x17 \x01(\v2Z.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfigR\x16analyticsConfiguration:\x85/\xbaH\x81/\x1a\xc0\x01\n" +
+	"\x17analytics_configuration\x18\x17 \x01(\v2Z.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfigR\x16analyticsConfiguration\x12\x8b\x01\n" +
+	"\x12risk_configuration\x18\x18 \x01(\v2\\.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfigurationR\x11riskConfiguration:\x85/\xbaH\x81/\x1a\xc0\x01\n" +
 	"\x19allowed_oauth_flows_valid\x12Qallowed_oauth_flows must contain only 'code', 'implicit', or 'client_credentials'\x1aPthis.allowed_oauth_flows.all(f, f in ['code', 'implicit', 'client_credentials'])\x1a\x8c\x02\n" +
 	"\x1cclient_credentials_not_mixed\x12\x83\x01'client_credentials' cannot be combined with 'code' or 'implicit' on the same client -- create a separate machine-to-machine client\x1af!this.allowed_oauth_flows.exists(f, f == 'client_credentials') || this.allowed_oauth_flows.size() == 1\x1a\xc4\x01\n" +
 	"!oauth_flows_require_oauth_enabled\x12Lallowed_oauth_flows requires allowed_oauth_flows_user_pool_client to be true\x1aQthis.allowed_oauth_flows.size() == 0 || this.allowed_oauth_flows_user_pool_client\x1a\xcc\x01\n" +
@@ -617,11 +1124,12 @@ const file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc = ""
 	"\faccess_token\x18\x01 \x01(\tBb\xaa\xa6\x1d^Time unit for the access-token lifetime (heuristic matched the word token), not a token value.R\vaccessToken\x12y\n" +
 	"\bid_token\x18\x02 \x01(\tB^\xaa\xa6\x1dZTime unit for the ID-token lifetime (heuristic matched the word token), not a token value.R\aidToken\x12\x88\x01\n" +
 	"\rrefresh_token\x18\x03 \x01(\tBc\xaa\xa6\x1d_Time unit for the refresh-token lifetime (heuristic matched the word token), not a token value.R\frefreshToken:\xfa\x02\xbaH\xf6\x02\x1a\xf3\x02\n" +
-	"\x1atoken_validity_units_valid\x12Etoken validity units must be 'seconds', 'minutes', 'hours', or 'days'\x1a\x8d\x02(this.access_token == '' || this.access_token in ['seconds', 'minutes', 'hours', 'days']) && (this.id_token == '' || this.id_token in ['seconds', 'minutes', 'hours', 'days']) && (this.refresh_token == '' || this.refresh_token in ['seconds', 'minutes', 'hours', 'days'])\"\xb1\x02\n" +
+	"\x1atoken_validity_units_valid\x12Etoken validity units must be 'seconds', 'minutes', 'hours', or 'days'\x1a\x8d\x02(this.access_token == '' || this.access_token in ['seconds', 'minutes', 'hours', 'days']) && (this.id_token == '' || this.id_token in ['seconds', 'minutes', 'hours', 'days']) && (this.refresh_token == '' || this.refresh_token in ['seconds', 'minutes', 'hours', 'days'])\"\xd5\x02\n" +
 	",AwsCognitoUserPoolClientRefreshTokenRotation\x12 \n" +
-	"\afeature\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\afeature\x12F\n" +
-	"\x1aretry_grace_period_seconds\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18<(\x00R\x17retryGracePeriodSeconds:\x96\x01\xbaH\x92\x01\x1a\x8f\x01\n" +
-	"$refresh_token_rotation_feature_valid\x12>refresh_token_rotation feature must be 'ENABLED' or 'DISABLED'\x1a'this.feature in ['ENABLED', 'DISABLED']\"\xec\x05\n" +
+	"\afeature\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\afeature\x12K\n" +
+	"\x1aretry_grace_period_seconds\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18<(\x00H\x00R\x17retryGracePeriodSeconds\x88\x01\x01:\x96\x01\xbaH\x92\x01\x1a\x8f\x01\n" +
+	"$refresh_token_rotation_feature_valid\x12>refresh_token_rotation feature must be 'ENABLED' or 'DISABLED'\x1a'this.feature in ['ENABLED', 'DISABLED']B\x1d\n" +
+	"\x1b_retry_grace_period_seconds\"\xec\x05\n" +
 	"'AwsCognitoUserPoolClientAnalyticsConfig\x12'\n" +
 	"\x0fapplication_arn\x18\x01 \x01(\tR\x0eapplicationArn\x12%\n" +
 	"\x0eapplication_id\x18\x02 \x01(\tR\rapplicationId\x12\x1f\n" +
@@ -630,7 +1138,49 @@ const file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc = ""
 	"\brole_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12(\n" +
 	"\x10user_data_shared\x18\x05 \x01(\bR\x0euserDataShared:\xb4\x03\xbaH\xb0\x03\x1a\xd1\x01\n" +
 	"!analytics_application_exactly_one\x124set exactly one of application_arn or application_id\x1av(this.application_arn != '' && this.application_id == '') || (this.application_arn == '' && this.application_id != '')\x1a\xd9\x01\n" +
-	"&analytics_application_id_requires_role\x12bapplication_id requires both external_id and role_arn (application_arn derives them automatically)\x1aKthis.application_id == '' || (this.external_id != '' && has(this.role_arn))B\x98\x03\n" +
+	"&analytics_application_id_requires_role\x12bapplication_id requires both external_id and role_arn (application_arn derives them automatically)\x1aKthis.application_id == '' || (this.external_id != '' && has(this.role_arn))\"\xc2\x05\n" +
+	")AwsCognitoUserPoolClientRiskConfiguration\x12\x8b\x01\n" +
+	"\x10account_takeover\x18\x01 \x01(\v2`.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfigR\x0faccountTakeover\x12\xa0\x01\n" +
+	"\x17compromised_credentials\x18\x02 \x01(\v2g.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientCompromisedCredentialsConfigR\x16compromisedCredentials\x12\x85\x01\n" +
+	"\x0erisk_exception\x18\x03 \x01(\v2^.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskExceptionConfigR\rriskException:\xdb\x01\xbaH\xd7\x01\x1a\xd4\x01\n" +
+	"#risk_configuration_at_least_one_arm\x12Pset at least one of account_takeover, compromised_credentials, or risk_exception\x1a[has(this.account_takeover) || has(this.compromised_credentials) || has(this.risk_exception)\"\xc6\b\n" +
+	"-AwsCognitoUserPoolClientAccountTakeoverConfig\x12\x7f\n" +
+	"\n" +
+	"low_action\x18\x01 \x01(\v2`.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverActionR\tlowAction\x12\x85\x01\n" +
+	"\rmedium_action\x18\x02 \x01(\v2`.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverActionR\fmediumAction\x12\x81\x01\n" +
+	"\vhigh_action\x18\x03 \x01(\v2`.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverActionR\n" +
+	"highAction\x12\x8e\x01\n" +
+	"\x14notify_configuration\x18\x04 \x01(\v2[.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfigR\x13notifyConfiguration:\xf6\x03\xbaH\xf2\x03\x1a\xaf\x01\n" +
+	"$account_takeover_at_least_one_action\x12=set at least one of low_action, medium_action, or high_action\x1aHhas(this.low_action) || has(this.medium_action) || has(this.high_action)\x1a\xbd\x02\n" +
+	".notify_configuration_requires_notifying_action\x12Enotify_configuration requires at least one action with notify enabled\x1a\xc3\x01!has(this.notify_configuration) || (has(this.low_action) && this.low_action.notify) || (has(this.medium_action) && this.medium_action.notify) || (has(this.high_action) && this.high_action.notify)\"\xc6\x02\n" +
+	"-AwsCognitoUserPoolClientAccountTakeoverAction\x12)\n" +
+	"\fevent_action\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventAction\x12\x16\n" +
+	"\x06notify\x18\x02 \x01(\bR\x06notify:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"#account_takeover_event_action_valid\x12Qevent_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'\x1aPthis.event_action in ['BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', 'NO_ACTION']\"\xd3\x04\n" +
+	"(AwsCognitoUserPoolClientRiskNotifyConfig\x12}\n" +
+	"\n" +
+	"source_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\t\x92\xd4a\x1bstatus.outputs.identity_arnR\tsourceArn\x12\x12\n" +
+	"\x04from\x18\x02 \x01(\tR\x04from\x12\x19\n" +
+	"\breply_to\x18\x03 \x01(\tR\areplyTo\x12{\n" +
+	"\vblock_email\x18\x04 \x01(\v2Z.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmailR\n" +
+	"blockEmail\x12w\n" +
+	"\tmfa_email\x18\x05 \x01(\v2Z.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmailR\bmfaEmail\x12\x82\x01\n" +
+	"\x0fno_action_email\x18\x06 \x01(\v2Z.dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmailR\rnoActionEmail\"\xa3\x01\n" +
+	"'AwsCognitoUserPoolClientRiskNotifyEmail\x12$\n" +
+	"\asubject\x18\x01 \x01(\tB\n" +
+	"\xbaH\ar\x05\x10\x01\x18\x8c\x01R\asubject\x12(\n" +
+	"\thtml_body\x18\x02 \x01(\tB\v\xbaH\br\x06\x10\x06\x18\xa0\x9c\x01R\bhtmlBody\x12(\n" +
+	"\ttext_body\x18\x03 \x01(\tB\v\xbaH\br\x06\x10\x06\x18\xa0\x9c\x01R\btextBody\"\xdc\x03\n" +
+	"4AwsCognitoUserPoolClientCompromisedCredentialsConfig\x12)\n" +
+	"\fevent_action\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\veventAction\x12!\n" +
+	"\fevent_filter\x18\x02 \x03(\tR\veventFilter:\xd5\x02\xbaH\xd1\x02\x1a\x86\x01\n" +
+	"*compromised_credentials_event_action_valid\x12+event_action must be 'BLOCK' or 'NO_ACTION'\x1a+this.event_action in ['BLOCK', 'NO_ACTION']\x1a\xc5\x01\n" +
+	"*compromised_credentials_event_filter_valid\x12Mevent_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'\x1aHthis.event_filter.all(f, f in ['SIGN_IN', 'PASSWORD_CHANGE', 'SIGN_UP'])\"\xfb\x04\n" +
+	"+AwsCognitoUserPoolClientRiskExceptionConfig\x12;\n" +
+	"\x11blocked_ip_ranges\x18\x01 \x03(\tB\x0f\xbaH\f\x92\x01\t\x10\xc8\x01\"\x04r\x02\x10\x01R\x0fblockedIpRanges\x12;\n" +
+	"\x11skipped_ip_ranges\x18\x02 \x03(\tB\x0f\xbaH\f\x92\x01\t\x10\xc8\x01\"\x04r\x02\x10\x01R\x0fskippedIpRanges:\xd1\x03\xbaH\xcd\x03\x1a\xa6\x01\n" +
+	" risk_exception_at_least_one_list\x12:set at least one of blocked_ip_ranges or skipped_ip_ranges\x1aFthis.blocked_ip_ranges.size() > 0 || this.skipped_ip_ranges.size() > 0\x1a\xa1\x02\n" +
+	"\x1arisk_exception_cidr_format\x12nblocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')\x1a\x92\x01this.blocked_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$')) && this.skipped_ip_ranges.all(c, c.matches('^[0-9a-fA-F:.]+/[0-9]{1,3}$'))B\x98\x03\n" +
 	"5com.dev.planton.aws.awscognitouserpoolclient.v1alpha1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/catalog/aws/awscognitouserpoolclient/v1alpha1;awscognitouserpoolclientv1alpha1\xa2\x02\x04DPAA\xaa\x021Dev.Planton.Aws.Awscognitouserpoolclient.V1alpha1\xca\x021Dev\\Planton\\Aws\\Awscognitouserpoolclient\\V1alpha1\xe2\x02=Dev\\Planton\\Aws\\Awscognitouserpoolclient\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Aws::Awscognitouserpoolclient::V1alpha1b\x06proto3"
 
 var (
@@ -645,26 +1195,45 @@ func file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescGZIP()
 	return file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsCognitoUserPoolClientSpec)(nil),                 // 0: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec
-	(*AwsCognitoUserPoolClientTokenValidityUnits)(nil),   // 1: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientTokenValidityUnits
-	(*AwsCognitoUserPoolClientRefreshTokenRotation)(nil), // 2: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRefreshTokenRotation
-	(*AwsCognitoUserPoolClientAnalyticsConfig)(nil),      // 3: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig
-	(*v1.StringValueOrRef)(nil),                          // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsCognitoUserPoolClientSpec)(nil),                         // 0: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec
+	(*AwsCognitoUserPoolClientTokenValidityUnits)(nil),           // 1: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientTokenValidityUnits
+	(*AwsCognitoUserPoolClientRefreshTokenRotation)(nil),         // 2: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRefreshTokenRotation
+	(*AwsCognitoUserPoolClientAnalyticsConfig)(nil),              // 3: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig
+	(*AwsCognitoUserPoolClientRiskConfiguration)(nil),            // 4: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfiguration
+	(*AwsCognitoUserPoolClientAccountTakeoverConfig)(nil),        // 5: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig
+	(*AwsCognitoUserPoolClientAccountTakeoverAction)(nil),        // 6: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverAction
+	(*AwsCognitoUserPoolClientRiskNotifyConfig)(nil),             // 7: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig
+	(*AwsCognitoUserPoolClientRiskNotifyEmail)(nil),              // 8: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmail
+	(*AwsCognitoUserPoolClientCompromisedCredentialsConfig)(nil), // 9: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientCompromisedCredentialsConfig
+	(*AwsCognitoUserPoolClientRiskExceptionConfig)(nil),          // 10: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskExceptionConfig
+	(*v1.StringValueOrRef)(nil),                                  // 11: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.supported_identity_providers:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 2: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.token_validity_units:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientTokenValidityUnits
-	2, // 3: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.refresh_token_rotation:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRefreshTokenRotation
-	3, // 4: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.analytics_configuration:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig
-	4, // 5: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	11, // 0: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	11, // 1: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.supported_identity_providers:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 2: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.token_validity_units:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientTokenValidityUnits
+	2,  // 3: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.refresh_token_rotation:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRefreshTokenRotation
+	3,  // 4: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.analytics_configuration:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig
+	4,  // 5: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientSpec.risk_configuration:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfiguration
+	11, // 6: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAnalyticsConfig.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5,  // 7: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfiguration.account_takeover:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig
+	9,  // 8: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfiguration.compromised_credentials:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientCompromisedCredentialsConfig
+	10, // 9: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskConfiguration.risk_exception:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskExceptionConfig
+	6,  // 10: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig.low_action:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverAction
+	6,  // 11: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig.medium_action:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverAction
+	6,  // 12: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig.high_action:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverAction
+	7,  // 13: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientAccountTakeoverConfig.notify_configuration:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig
+	11, // 14: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig.source_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 15: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig.block_email:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmail
+	8,  // 16: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig.mfa_email:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmail
+	8,  // 17: dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyConfig.no_action_email:type_name -> dev.planton.aws.awscognitouserpoolclient.v1alpha1.AwsCognitoUserPoolClientRiskNotifyEmail
+	18, // [18:18] is the sub-list for method output_type
+	18, // [18:18] is the sub-list for method input_type
+	18, // [18:18] is the sub-list for extension type_name
+	18, // [18:18] is the sub-list for extension extendee
+	0,  // [0:18] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_init() }
@@ -673,13 +1242,14 @@ func file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awscognitouserpoolclient_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

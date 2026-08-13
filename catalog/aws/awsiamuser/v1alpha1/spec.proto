@@ -80,6 +80,23 @@ message AwsIamUserSpec {
   // users where teardown must always succeed.
   bool force_destroy = 8;
 
+  // Lifecycle state of the managed access key: "Active" (the AWS default) or
+  // "Inactive". An Inactive key keeps its id and secret but AWS rejects every
+  // request signed with it -- the standard rotation lever: create the
+  // replacement credential, flip this key "Inactive" to prove nothing still
+  // depends on it, then delete it. Updatable in place (no key re-creation, so
+  // the secret output never changes). Empty keeps the key Active. Only
+  // meaningful when the access key exists (disable_access_keys is false).
+  string access_key_status = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Active",
+        "Inactive"
+      ]
+    }
+  ];
+
   // path, when set, must be "/" or a "/"-delimited sequence of non-empty
   // segments that begins and ends with "/" (this also rules out "//").
   option (buf.validate.message).cel = {
@@ -93,5 +110,12 @@ message AwsIamUserSpec {
     id: "path_length"
     message: "path must be at most 512 characters"
     expression: "size(this.path) <= 512"
+  };
+
+  // A key status without a key is dead configuration.
+  option (buf.validate.message).cel = {
+    id: "access_key_status_requires_key"
+    message: "access_key_status has no effect when disable_access_keys is true -- remove one of the two"
+    expression: "this.access_key_status == '' || !this.disable_access_keys"
   };
 }

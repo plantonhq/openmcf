@@ -3,6 +3,7 @@ syntax = "proto3";
 package dev.planton.aws.awsmskcluster.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 import "shared/options/options.proto";
 
@@ -210,11 +211,12 @@ message AwsMskClusterSpec {
   // --- Resource policy ---
 
   // cluster_policy is a resource-based IAM policy attached to the cluster, as a
-  // JSON document -- the mechanism behind cross-account PrivateLink access
-  // (granting kafka:CreateVpcConnection and the Get*ForVpcConnection actions to
-  // consumer principals). A cluster setting keyed by the cluster ARN, updated in
-  // place.
-  string cluster_policy = 19;
+  // structured policy document -- the mechanism behind cross-account PrivateLink
+  // access (granting kafka:CreateVpcConnection and the Get*ForVpcConnection
+  // actions to consumer principals). A cluster setting keyed by the cluster ARN,
+  // updated in place. The IaC modules serialize this document to JSON for the
+  // provider.
+  google.protobuf.Struct cluster_policy = 19;
 
   // --- Configuration ---
 
@@ -290,6 +292,26 @@ message AwsMskClusterSpec {
     }
   ];
 
+  // --- Topics ---
+
+  // topics declares Apache Kafka topics managed WITH the cluster through the
+  // MSK topic API (CreateTopic/UpdateTopic/DeleteTopic) -- no Kafka client,
+  // bootstrap connectivity, or client authentication setup is needed; the
+  // control plane manages them via IAM alone. Each entry is keyed by its
+  // topic name and follows the cluster's lifecycle.
+  //
+  // Declare the topics your applications depend on here (the chart-wiring
+  // shape: a cluster and its contract topics deploy as one unit); leave
+  // application-owned ad-hoc topics to the applications themselves, or set
+  // auto.create.topics.enable in server_properties.
+  //
+  // Deleting a declared topic entry deletes the topic and its data. Topic
+  // deletion requires delete.topic.enable=true on the cluster (MSK's default;
+  // only relevant if server_properties overrides it to false, in which case
+  // destroy operations on declared topics hang until the server property is
+  // restored).
+  repeated AwsMskClusterTopic topics = 28;
+
   // --- Cross-field validations ---
 
   option (buf.validate.message).cel = {
@@ -338,6 +360,22 @@ message AwsMskClusterSpec {
     id: "public_access_requires_authenticated_tls"
     message: "public access requires TLS-only client_broker_encryption and at least one of SASL/IAM, SASL/SCRAM, or mTLS authentication with unauthenticated disabled"
     expression: "this.public_access_type == 'SERVICE_PROVIDED_EIPS' ? (has(this.authentication) && !this.authentication.unauthenticated && (this.authentication.sasl_iam_enabled || this.authentication.sasl_scram_enabled || this.authentication.tls_enabled) && (!has(this.client_broker_encryption) || this.client_broker_encryption == 'TLS')) : true"
+  };
+
+  // Topic names key the per-topic resources in both IaC modules and the MSK
+  // API rejects duplicates anyway, so uniqueness is validated up front.
+  option (buf.validate.message).cel = {
+    id: "topic_names_unique"
+    message: "topic names must be unique within the cluster"
+    expression: "this.topics.map(t, t.name).unique()"
+  };
+
+  // Kafka's own placement contract: a topic's replication factor can never
+  // exceed the number of brokers available to host the replicas.
+  option (buf.validate.message).cel = {
+    id: "topic_replication_within_brokers"
+    message: "a topic's replication_factor cannot exceed number_of_broker_nodes"
+    expression: "this.topics.all(t, t.replication_factor <= this.number_of_broker_nodes)"
   };
 }
 
@@ -464,5 +502,56 @@ message AwsMskClusterS3Logging {
     id: "bucket_required_when_enabled"
     message: "bucket is required when S3 logging is enabled"
     expression: "this.enabled ? has(this.bucket) : true"
+  };
+}
+
+// AwsMskClusterTopic declares one Apache Kafka topic managed with the cluster
+// through the MSK topic API. The name is the topic's identity: renaming an
+// entry replaces the topic (Kafka topics cannot be renamed), and the entry is
+// keyed by name in both IaC modules so adding or removing one topic never
+// churns its neighbors.
+message AwsMskClusterTopic {
+  // name is the Kafka topic name. Letters, digits, '.', '_', and '-' only,
+  // up to 249 characters (Kafka's own naming contract). Names beginning with
+  // "__" are reserved for Kafka-internal topics (e.g. __consumer_offsets) --
+  // avoid declaring them.
+  // ForceNew: a Kafka topic cannot be renamed; changing the name replaces the
+  // topic and its data.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.pattern = "^[a-zA-Z0-9._-]{1,249}$"
+  ];
+
+  // partition_count is the number of partitions for the topic.
+  // Kafka only supports INCREASING the partition count in place; declaring a
+  // lower count than the topic currently has fails the update (decrease is
+  // not possible without replacing the topic).
+  int32 partition_count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // replication_factor is the number of replicas per partition. Cannot exceed
+  // the cluster's number_of_broker_nodes (CEL-enforced on the spec). Use 3 for
+  // production durability, matching MSK's default.replication.factor guidance.
+  // ForceNew: changing the replication factor replaces the topic.
+  int32 replication_factor = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // configs are topic-level Apache Kafka configuration overrides, e.g.
+  // "retention.ms", "cleanup.policy", "min.insync.replicas",
+  // "retention.bytes". Keys and values follow Kafka's topic-config vocabulary;
+  // values are strings exactly as Kafka accepts them ("-1" for unlimited
+  // retention.bytes). Updated in place via the MSK topic API.
+  map<string, string> configs = 4;
+
+  // Kafka rejects "." and ".." as topic names (they collide with filesystem
+  // path semantics in the log directories).
+  option (buf.validate.message).cel = {
+    id: "topic_name_not_dots"
+    message: "a topic name cannot be '.' or '..'"
+    expression: "this.name != '.' && this.name != '..'"
   };
 }

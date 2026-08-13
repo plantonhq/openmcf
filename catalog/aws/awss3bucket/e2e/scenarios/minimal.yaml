@@ -1,15 +1,18 @@
 # Minimal AwsS3Bucket scenario -- the AWS harness walking skeleton.
 # The bucket name is the resource metadata.name (S3 module derives the bucket
-# from it). It must be globally unique; a fixed name is fine for a single
-# sequential smoke (pulumi then terraform, each deploy+destroy). Per-run
-# uniqueness across parallel/CI runs is a tracked E2E-framework follow-up
-# (E2E_RUN_ID substitution). forceDestroy lets the DESTROY phase remove a
-# non-empty bucket cleanly.
+# from it) and lives in S3's GLOBAL namespace: a committed fixed name can be
+# squatted by any AWS account (this repo is public) and a recently-deleted
+# name can sit in a propagation window that 409s CreateBucket while
+# HeadBucket answers 404 (live-hit 2026-08-11 on the full-surface sibling).
+# The run-id token keeps every run's name globally fresh. The token in
+# metadata.name is a recorded exception to the names-stay-stable guidance:
+# S3 is the class where the CLOUD identifier IS the metadata name, and no
+# prerequisite chain references this scenario by name.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3Bucket
 metadata:
-  name: planton-oss-e2e-awss3bucket-smoke
-  id: planton-oss-e2e-awss3bucket-smoke
+  name: planton-oss-e2e-s3-smoke-${E2E_RUN_ID}
+  id: planton-oss-e2e-s3-smoke-${E2E_RUN_ID}
   org: planton-oss
   env: e2e
   # Full metadata is supplied so the bucket carries complete identity tags;

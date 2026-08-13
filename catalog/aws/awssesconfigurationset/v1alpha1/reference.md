@@ -35,11 +35,6 @@ metadata:
   org: test-org
   env: dev
   id: test-ses-config-set-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSesConfigurationSet.test-ses-config-set
 spec:
   region: us-west-2
   reputationMetricsEnabled: true
@@ -439,6 +434,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsCognitoUserPool | `spec.emailConfiguration.configurationSet` | `status.outputs.configuration_set_name` |
 | AwsSesEmailIdentity | `spec.configurationSet` | `status.outputs.configuration_set_name` |
 
 ## See Also

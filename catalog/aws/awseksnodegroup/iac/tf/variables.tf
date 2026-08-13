@@ -62,5 +62,11 @@ variable "spec" {
     version = optional(string, "")
     release_version = optional(string, "")
     force_update_version = optional(bool, false)
+    warm_pool_config = optional(object({
+      pool_state = optional(string, "")
+      min_size = optional(number, 0)
+      max_group_prepared_capacity = optional(number)
+      reuse_on_scale_in = optional(bool, false)
+    }))
   })
 }

@@ -1,7 +1,14 @@
 # Minimal AwsKmsKey scenario: one SYMMETRIC_DEFAULT encrypt/decrypt key
 # with a single friendly alias -- the shape every encryption-at-rest field
-# across the catalog references. Full metadata is supplied for tagging/orphan
-# cleanup.
+# across the catalog references -- plus one grant to an IAM role composed
+# by reference (the e2e-prerequisites annotation installs the shared
+# AwsIamRole fixture; the valueFrom edge is the mainstream chart-wiring
+# pattern and its first live proof on this kind). Grants take IAM
+# principal ARNs ONLY: AWS's CreateGrant rejects bare service principals
+# on GranteePrincipal (live-caught 2026-08-11, "InvalidArnException" on
+# both engines -- the service-principal path is a separate API parameter
+# the provider does not expose). Full metadata is supplied for
+# tagging/orphan cleanup.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKmsKey
 metadata:
@@ -14,6 +21,7 @@ metadata:
     e2e-component: awskmskey
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
   tags:
     - planton-e2e
 spec:
@@ -21,3 +29,15 @@ spec:
   description: Planton E2E minimal symmetric KMS key
   aliases:
     - alias/planton-oss-e2e-kms-smoke
+  grants:
+    - name: planton-e2e-worker-grant
+      granteePrincipal:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-awsiamrole-prereq
+          fieldPath: status.outputs.role_arn
+      operations:
+        - Encrypt
+        - Decrypt
+        - GenerateDataKey
+        - DescribeKey

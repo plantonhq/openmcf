@@ -1,0 +1,34 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRedshiftServerlessWorkgroup
+metadata:
+  name: my-governed-workgroup
+spec:
+  region: us-west-2
+  namespaceName:
+    value: "<namespace-name>"
+  baseCapacity: 32
+  maxCapacity: 128
+  subnetIds:
+    - value: "<private-subnet-id-az1>"
+    - value: "<private-subnet-id-az2>"
+    - value: "<private-subnet-id-az3>"
+  enhancedVpcRouting: true
+  usageLimits:
+    - usageType: serverless-compute
+      amount: 200
+      period: daily
+      breachAction: deactivate
+    - usageType: cross-region-datasharing
+      amount: 5
+      period: monthly
+      breachAction: log
+  endpointAccesses:
+    - endpointName: bi-tools-vpc
+      subnetIds:
+        - value: "<consumer-subnet-id-az1>"
+        - value: "<consumer-subnet-id-az2>"
+        - value: "<consumer-subnet-id-az3>"
+  customDomain:
+    domainName: warehouse.example.com
+    certificateArn:
+      value: "<acm-certificate-arn>"

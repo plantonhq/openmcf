@@ -7,9 +7,23 @@ spec:
   # destroy -> verify-destroyed on both provisioners against the AWS test account
   # via keyless SSO/OIDC credentials. AwsVpc has no prerequisites -- it is the root
   # of the networking graph.
+  #
+  # Proven 2026-08-11 (both engines + the blind import round-trip): the
+  # secondary IPv4 CIDR association deployed, verified in "associated"
+  # state from the VPC's own CidrBlockAssociationSet, and re-imported
+  # blind -- its cloud-generated association id derives from the
+  # secondary_ipv4_cidr_association_ids output. Offline-proven only,
+  # never silent skips: the IPAM arms (no IPAM pool fixture exists -- unblock:
+  # a VPC IPAM kind with a shared pool fixture), the BYOIP ipv6_pool arm (no
+  # BYOIP range on the test account), and encryption control (billing
+  # unverified -- unblock: verify pricing, then add a monitor-mode arm; its
+  # delete path waits on AWS state transitions).
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

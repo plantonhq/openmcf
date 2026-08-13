@@ -62,3 +62,35 @@ spec:
       # force_destroy pairs with GOVERNANCE retention: it sends the
       # governance-bypass flag on delete (lock-enabled buckets only).
       forceDestroy: true
+    # Copy-sourced object, default (COPY) directive: duplicates another object
+    # of this same set — the copy preserves the source's metadata and headers,
+    # and the engines order it after the set's content objects.
+    - key: config/app.backup.json
+      copyFrom:
+        sourceBucket:
+          value: my-demo-bucket
+        sourceKey: config/app.json
+    # Copy-sourced object, full copy surface: promotes an artifact from an
+    # external golden bucket with replaced metadata/headers, copy-time
+    # preconditions, an Expires header, Requester Pays acknowledgment, and
+    # its own destination placement.
+    - key: releases/app-v1.2.3.zip
+      copyFrom:
+        sourceBucket:
+          value: golden-artifacts-bucket
+        sourceKey: builds/app/1.2.3/app.zip
+        replaceMetadata: true
+        copyIfMatch: 9b2cf535f27731c974343645a3985328
+        copyIfUnmodifiedSince: "2026-08-01T00:00:00Z"
+        expires: "2027-08-01T00:00:00Z"
+        requestPayer: requester
+      contentType: application/zip
+      cacheControl: private, max-age=0
+      contentDisposition: attachment; filename="app-v1.2.3.zip"
+      metadata:
+        promoted-from: golden-artifacts-bucket
+        release-version: 1.2.3
+      storageClass: STANDARD_IA
+      checksumAlgorithm: CRC64NVME
+      tags:
+        purpose: release-artifact

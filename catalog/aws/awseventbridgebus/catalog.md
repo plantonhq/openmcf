@@ -1,6 +1,6 @@
 # AWS EventBridge Bus
 
-Deploys a custom EventBridge event bus with optional customer-managed KMS encryption, dead letter queue for undeliverable events, CloudWatch Logs delivery logging, and a resource-based access policy for cross-account event publishing. Custom buses isolate application event traffic from the default AWS event bus, enabling fine-grained access control and dedicated event routing. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS keys and SQS dead letter queues.
+Deploys a custom EventBridge event bus with optional customer-managed KMS encryption, dead letter queue for undeliverable events, CloudWatch Logs delivery logging, replay-able event archives, and a resource-based access policy for cross-account event publishing. Custom buses isolate application event traffic from the default AWS event bus, enabling fine-grained access control and dedicated event routing. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS keys and SQS dead letter queues.
 
 ## What Gets Created
 
@@ -11,6 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Dead Letter Configuration** -- configured only when `deadLetterConfig` is provided; routes events that fail delivery to any rule target to the specified SQS queue
 - **Log Configuration** -- configured only when `logConfig` is provided; sends event delivery logs to CloudWatch Logs at the specified verbosity level
 - **Resource Policy** -- configured only when `resourcePolicy` is provided; attaches an IAM policy document to the bus granting other accounts, organizations, or roles permission to put events
+- **Event Archives** -- one archive per `archives` entry, recorded from this bus: replay-able event history (EventBridge StartReplay) with optional pattern scoping, retention window, and per-archive KMS encryption
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy

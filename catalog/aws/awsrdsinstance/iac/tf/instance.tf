@@ -71,8 +71,24 @@ resource "aws_db_instance" "this" {
   replica_mode        = var.spec.replica_mode != "" ? var.spec.replica_mode : null
 
   # Create-time restore sources (mutually exclusive with each other and
-  # with replicate_source_db, CEL-enforced).
+  # with replicate_source_db, CEL-enforced). s3_import is the MySQL
+  # migration on-ramp: restore a Percona XtraBackup straight from S3.
   snapshot_identifier = var.spec.snapshot_identifier != "" ? var.spec.snapshot_identifier : null
+
+  dynamic "s3_import" {
+    for_each = var.spec.s3_import != null ? [var.spec.s3_import] : []
+    content {
+      bucket_name           = s3_import.value.bucket_name
+      bucket_prefix         = s3_import.value.bucket_prefix != "" ? s3_import.value.bucket_prefix : null
+      ingestion_role        = s3_import.value.ingestion_role
+      source_engine         = s3_import.value.source_engine
+      source_engine_version = s3_import.value.source_engine_version
+    }
+  }
+
+  # One-way storage file-system upgrade, consulted on replicas and
+  # snapshot restores whose source still runs the older configuration.
+  upgrade_storage_config = var.spec.upgrade_storage_config ? true : null
 
   dynamic "restore_to_point_in_time" {
     for_each = var.spec.restore_to_point_in_time != null ? [var.spec.restore_to_point_in_time] : []
@@ -118,10 +134,11 @@ resource "aws_db_instance" "this" {
   monitoring_role_arn                   = var.spec.monitoring_role_arn != "" ? var.spec.monitoring_role_arn : null
   database_insights_mode                = var.spec.database_insights_mode != "" ? var.spec.database_insights_mode : null
 
-  # Engine-configuration attachments by name: parameter groups and
+  # Engine-configuration attachments: the managed inline group, an
+  # existing referenced group, or the engine default -- parameter and
   # option groups are configuration lists, not composable nodes.
-  parameter_group_name = var.spec.parameter_group_name != "" ? var.spec.parameter_group_name : null
-  option_group_name    = var.spec.option_group_name != "" ? var.spec.option_group_name : null
+  parameter_group_name = local.effective_parameter_group
+  option_group_name    = local.effective_option_group
 
   # Active Directory join -- either the AWS-managed directory shape or
   # the self-managed shape (never both; CEL-enforced). Nested ternaries,
@@ -138,6 +155,11 @@ resource "aws_db_instance" "this" {
   character_set_name       = var.spec.character_set_name != "" ? var.spec.character_set_name : null
   nchar_character_set_name = var.spec.nchar_character_set_name != "" ? var.spec.nchar_character_set_name : null
   timezone                 = var.spec.timezone != "" ? var.spec.timezone : null
+
+  # Extended support posture -- empty keeps the AWS default (paid
+  # extended support engages automatically when the version leaves
+  # standard support).
+  engine_lifecycle_support = var.spec.engine_lifecycle_support != "" ? var.spec.engine_lifecycle_support : null
 
   ca_cert_identifier = var.spec.ca_cert_identifier != "" ? var.spec.ca_cert_identifier : null
 

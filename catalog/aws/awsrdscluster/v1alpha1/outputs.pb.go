@@ -59,8 +59,16 @@ type AwsRdsClusterStackOutputs struct {
 	// as declared in spec.instances. Empty for Aurora Serverless v1 and
 	// Multi-AZ RDS clusters, where AWS owns the compute.
 	InstanceEndpoints []string `protobuf:"bytes,12,rep,name=instance_endpoints,json=instanceEndpoints,proto3" json:"instance_endpoints,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The custom cluster endpoints declared in spec.custom_endpoints --
+	// one entry per endpoint, carrying its DNS name for charts to wire
+	// into consumers.
+	CustomEndpoints []*AwsRdsClusterCustomEndpointOutput `protobuf:"bytes,13,rep,name=custom_endpoints,json=customEndpoints,proto3" json:"custom_endpoints,omitempty"`
+	// The name of the Kinesis stream receiving the Database Activity
+	// Stream (aws-rds-das-...). Populated only when spec.activity_stream
+	// is set -- the handle audit consumers attach to.
+	ActivityStreamKinesisStreamName string `protobuf:"bytes,14,opt,name=activity_stream_kinesis_stream_name,json=activityStreamKinesisStreamName,proto3" json:"activity_stream_kinesis_stream_name,omitempty"`
+	unknownFields                   protoimpl.UnknownFields
+	sizeCache                       protoimpl.SizeCache
 }
 
 func (x *AwsRdsClusterStackOutputs) Reset() {
@@ -177,11 +185,82 @@ func (x *AwsRdsClusterStackOutputs) GetInstanceEndpoints() []string {
 	return nil
 }
 
+func (x *AwsRdsClusterStackOutputs) GetCustomEndpoints() []*AwsRdsClusterCustomEndpointOutput {
+	if x != nil {
+		return x.CustomEndpoints
+	}
+	return nil
+}
+
+func (x *AwsRdsClusterStackOutputs) GetActivityStreamKinesisStreamName() string {
+	if x != nil {
+		return x.ActivityStreamKinesisStreamName
+	}
+	return ""
+}
+
+// AwsRdsClusterCustomEndpointOutput is one custom endpoint's observable
+// identity: the spec entry name and the DNS endpoint AWS assigned it.
+type AwsRdsClusterCustomEndpointOutput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The endpoint's spec.custom_endpoints entry name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The DNS name of the custom endpoint -- connect here to reach the
+	// endpoint's member subset.
+	Endpoint      string `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsRdsClusterCustomEndpointOutput) Reset() {
+	*x = AwsRdsClusterCustomEndpointOutput{}
+	mi := &file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsRdsClusterCustomEndpointOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsRdsClusterCustomEndpointOutput) ProtoMessage() {}
+
+func (x *AwsRdsClusterCustomEndpointOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsRdsClusterCustomEndpointOutput.ProtoReflect.Descriptor instead.
+func (*AwsRdsClusterCustomEndpointOutput) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsRdsClusterCustomEndpointOutput) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsRdsClusterCustomEndpointOutput) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
 var File_catalog_aws_awsrdscluster_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awsrdscluster/v1alpha1/outputs.proto\x12&dev.planton.aws.awsrdscluster.v1alpha1\"\x9a\x04\n" +
+	"0catalog/aws/awsrdscluster/v1alpha1/outputs.proto\x12&dev.planton.aws.awsrdscluster.v1alpha1\"\xde\x05\n" +
 	"\x19AwsRdsClusterStackOutputs\x12-\n" +
 	"\x12cluster_identifier\x18\x01 \x01(\tR\x11clusterIdentifier\x12\x10\n" +
 	"\x03arn\x18\x02 \x01(\tR\x03arn\x12.\n" +
@@ -195,7 +274,12 @@ const file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x14db_subnet_group_name\x18\n" +
 	" \x01(\tR\x11dbSubnetGroupName\x12D\n" +
 	"\x1fdb_cluster_parameter_group_name\x18\v \x01(\tR\x1bdbClusterParameterGroupName\x12-\n" +
-	"\x12instance_endpoints\x18\f \x03(\tR\x11instanceEndpointsB\xce\x02\n" +
+	"\x12instance_endpoints\x18\f \x03(\tR\x11instanceEndpoints\x12t\n" +
+	"\x10custom_endpoints\x18\r \x03(\v2I.dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterCustomEndpointOutputR\x0fcustomEndpoints\x12L\n" +
+	"#activity_stream_kinesis_stream_name\x18\x0e \x01(\tR\x1factivityStreamKinesisStreamName\"S\n" +
+	"!AwsRdsClusterCustomEndpointOutput\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
+	"\bendpoint\x18\x02 \x01(\tR\bendpointB\xce\x02\n" +
 	"*com.dev.planton.aws.awsrdscluster.v1alpha1B\fOutputsProtoP\x01ZUgithub.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1;awsrdsclusterv1alpha1\xa2\x02\x04DPAA\xaa\x02&Dev.Planton.Aws.Awsrdscluster.V1alpha1\xca\x02&Dev\\Planton\\Aws\\Awsrdscluster\\V1alpha1\xe2\x022Dev\\Planton\\Aws\\Awsrdscluster\\V1alpha1\\GPBMetadata\xea\x02*Dev::Planton::Aws::Awsrdscluster::V1alpha1b\x06proto3"
 
 var (
@@ -210,16 +294,18 @@ func file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDescGZIP() []byte 
 	return file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_goTypes = []any{
-	(*AwsRdsClusterStackOutputs)(nil), // 0: dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterStackOutputs
+	(*AwsRdsClusterStackOutputs)(nil),         // 0: dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterStackOutputs
+	(*AwsRdsClusterCustomEndpointOutput)(nil), // 1: dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterCustomEndpointOutput
 }
 var file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterStackOutputs.custom_endpoints:type_name -> dev.planton.aws.awsrdscluster.v1alpha1.AwsRdsClusterCustomEndpointOutput
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_init() }
@@ -233,7 +319,7 @@ func file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsrdscluster_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

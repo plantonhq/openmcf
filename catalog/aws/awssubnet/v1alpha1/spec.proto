@@ -16,8 +16,9 @@ import "shared/options/options.proto";
 // private. Routing is therefore folded into this spec.
 //
 // Two mutually exclusive ways to attach a route table are supported:
-//   - routes: inline rules from which a dedicated route table is created and
-//     owned by this subnet.
+//   - routes (and/or propagating_vgws): a dedicated route table is created,
+//     owned by this subnet, populated with the inline rules and any VGW
+//     route propagations.
 //   - route_table_id: an existing, externally-managed route table to associate.
 // If neither is set, the subnet uses the VPC's main route table. The
 // route_table_id is always exported as a stack output so downstream resources
@@ -39,19 +40,26 @@ message AwsSubnetSpec {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
   ];
 
-  // The availability zone the subnet lives in (e.g. "us-west-2a"). AWS subnets
-  // are single-AZ; to span AZs, create one AwsSubnet per zone. Immutable:
+  // The availability zone the subnet lives in, by NAME (e.g. "us-west-2a").
+  // AWS subnets are single-AZ; to span AZs, create one AwsSubnet per zone.
+  // Exactly one of availability_zone or availability_zone_id must be set --
+  // explicit placement is mandatory (AWS would otherwise pick a zone at
+  // random, which is never what declarative infrastructure wants). Immutable:
   // changing the AZ replaces the subnet.
-  string availability_zone = 3 [(buf.validate.field).string.min_len = 1];
+  string availability_zone = 3;
 
   // IPv4 CIDR block for the subnet (e.g. "10.0.1.0/24"). Must fall within the
   // VPC's CIDR and not overlap any sibling subnet. Note that AWS reserves the
   // first four and the last IP address in every subnet, so a /28 yields 11
-  // usable addresses. Immutable: changing the CIDR replaces the subnet.
-  string cidr_block = 4 [
-    (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^([0-9]{1,3}\\.){3}[0-9]{1,3}/[0-9]{1,2}$"
-  ];
+  // usable addresses. Exactly one IPv4 addressing method is required unless
+  // ipv6_native is true: either this CIDR or an IPAM allocation
+  // (ipv4_ipam_pool_id + ipv4_netmask_length). Immutable: changing the CIDR
+  // replaces the subnet.
+  string cidr_block = 4 [(buf.validate.field).cel = {
+    id: "cidr_block_format"
+    message: "cidr_block must be an IPv4 CIDR like 10.0.1.0/24"
+    expression: "this == '' || this.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$')"
+  }];
 
   // When true, instances launched into this subnet receive a public IPv4
   // address by default. This is a convenience for public subnets; it does NOT
@@ -103,6 +111,65 @@ message AwsSubnetSpec {
   // Mutually exclusive with route_table_id.
   repeated AwsSubnetRoute routes = 13;
 
+  // The availability zone the subnet lives in, by ID (e.g. "usw2-az1"). AZ IDs
+  // are stable across AWS accounts, unlike AZ names which are shuffled
+  // per-account -- use the ID form when coordinating subnet placement across
+  // accounts. Exactly one of availability_zone or availability_zone_id must be
+  // set. Immutable: changing it replaces the subnet.
+  string availability_zone_id = 14;
+
+  // The IPAM pool to allocate the subnet's IPv4 CIDR from, as an alternative
+  // to declaring cidr_block explicitly. Requires ipv4_netmask_length. Supply a
+  // literal ipam-pool-id; there is no IPAM pool catalog kind yet. Immutable:
+  // changing it replaces the subnet.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ipv4_ipam_pool_id = 15;
+
+  // Netmask length for the IPv4 CIDR allocated from ipv4_ipam_pool_id
+  // (e.g. 24 for a /24). Valid range 16-28 (the AWS subnet netmask bounds).
+  // Requires ipv4_ipam_pool_id; mutually exclusive with cidr_block.
+  optional int32 ipv4_netmask_length = 16 [(buf.validate.field).int32 = {
+    gte: 16
+    lte: 28
+  }];
+
+  // The IPAM pool to allocate the subnet's IPv6 CIDR from, as an alternative
+  // to declaring ipv6_cidr_block explicitly. Requires ipv6_netmask_length.
+  // Supply a literal ipam-pool-id; there is no IPAM pool catalog kind yet.
+  // Immutable: changing it replaces the subnet.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ipv6_ipam_pool_id = 17;
+
+  // Netmask length for the IPv6 CIDR allocated from ipv6_ipam_pool_id. AWS
+  // subnets accept /44, /48, /52, /56, /60, or /64 (a /64 is the norm --
+  // anything shorter is for subnets that will be further subdivided by
+  // longest-prefix-match routing). Requires ipv6_ipam_pool_id; mutually
+  // exclusive with ipv6_cidr_block.
+  optional int32 ipv6_netmask_length = 18 [(buf.validate.field).int32 = {
+    in: [
+      44,
+      48,
+      52,
+      56,
+      60,
+      64
+    ]
+  }];
+
+  // When true, creates an IPv6-only subnet: no IPv4 addressing at all
+  // (cidr_block and ipv4_ipam_pool_id must both be empty), and an IPv6 CIDR
+  // (ipv6_cidr_block or the IPv6 IPAM pair) is required. Instances in an
+  // IPv6-only subnet need private_dns_hostname_type_on_launch =
+  // "resource-name" and can reach IPv4-only destinations via DNS64 + NAT64
+  // (see enable_dns64). Immutable: changing it replaces the subnet.
+  bool ipv6_native = 19;
+
+  // Virtual private gateway IDs (vgw-...) whose routes propagate into the
+  // subnet-owned route table -- the mechanism that pulls Site-to-Site VPN /
+  // Direct Connect routes in automatically instead of declaring them one by
+  // one. Only valid when this subnet OWNS its route table (inline routes
+  // mode, or propagation-only with no inline routes); not allowed with an
+  // external route_table_id, whose owner controls its own propagation.
+  repeated string propagating_vgws = 20;
+
   // AwsSubnetRoute is one entry in the subnet-owned route table: a destination
   // and the network entity that traffic to that destination is sent to.
   message AwsSubnetRoute {
@@ -130,7 +197,10 @@ message AwsSubnetSpec {
     // producing resource is referenced explicitly via value_from.
     dev.planton.shared.foreignkey.v1.StringValueOrRef target_id = 5 [(buf.validate.field).required = true];
 
-    // RouteTargetType enumerates the AWS route target kinds.
+    // RouteTargetType enumerates the AWS route target kinds -- the complete
+    // set the provider's route block accepts. For core_network and
+    // odb_network the target_id carries an ARN (the provider validates ARN
+    // syntax); every other kind carries a resource id.
     enum RouteTargetType {
       unspecified = 0;
       internet_gateway = 1;
@@ -140,6 +210,20 @@ message AwsSubnetSpec {
       vpc_endpoint = 5;
       network_interface = 6;
       egress_only_internet_gateway = 7;
+      // Wavelength Zone carrier gateway (cagw-...), for routing subnet
+      // traffic to the telecom carrier network.
+      carrier_gateway = 8;
+      // AWS Cloud WAN core network ARN
+      // (arn:aws:networkmanager::...:core-network/...).
+      core_network = 9;
+      // Outposts local gateway (lgw-...), for routing to an on-premises
+      // network through an Outpost.
+      local_gateway = 10;
+      // Oracle Database@AWS network ARN (arn:aws:odb:...:odb-network/...).
+      // Verified provider quirk: AWS returns a gateway id alongside ODB
+      // routes, which older providers surfaced as perpetual drift -- fixed in
+      // provider 6.53.0; the modules rely on the pinned provider for this.
+      odb_network = 11;
     }
 
     // Exactly one destination must be set per route.
@@ -156,5 +240,55 @@ message AwsSubnetSpec {
     id: "route_table_mutual_exclusivity"
     message: "route_table_id and routes are mutually exclusive; provide one or neither"
     expression: "!has(this.route_table_id) || this.routes.size() == 0"
+  };
+
+  // Explicit placement is mandatory: exactly one of the AZ name or the AZ id.
+  option (buf.validate.message).cel = {
+    id: "availability_zone_exactly_one"
+    message: "exactly one of availability_zone or availability_zone_id must be set"
+    expression: "[this.availability_zone, this.availability_zone_id].filter(z, z != '').size() == 1"
+  };
+
+  // IPv4 addressing: exactly one method (explicit CIDR or IPAM allocation)
+  // for a dual-stack/IPv4 subnet; none at all for an IPv6-only subnet.
+  option (buf.validate.message).cel = {
+    id: "ipv4_addressing_exactly_one"
+    message: "set exactly one of cidr_block or ipv4_ipam_pool_id (neither when ipv6_native is true)"
+    expression: "this.ipv6_native ? (this.cidr_block == '' && !has(this.ipv4_ipam_pool_id)) : ((this.cidr_block != '' ? 1 : 0) + (has(this.ipv4_ipam_pool_id) ? 1 : 0) == 1)"
+  };
+
+  // The IPAM netmask lengths ride their pool references.
+  option (buf.validate.message).cel = {
+    id: "ipv4_netmask_requires_pool"
+    message: "ipv4_netmask_length requires ipv4_ipam_pool_id"
+    expression: "!has(this.ipv4_netmask_length) || has(this.ipv4_ipam_pool_id)"
+  };
+  option (buf.validate.message).cel = {
+    id: "ipv6_netmask_requires_pool"
+    message: "ipv6_netmask_length requires ipv6_ipam_pool_id"
+    expression: "!has(this.ipv6_netmask_length) || has(this.ipv6_ipam_pool_id)"
+  };
+
+  // IPv6 addressing: an explicit CIDR and an IPAM allocation are mutually
+  // exclusive (either is optional -- an IPv4-only subnet has neither).
+  option (buf.validate.message).cel = {
+    id: "ipv6_addressing_at_most_one"
+    message: "ipv6_cidr_block and ipv6_ipam_pool_id are mutually exclusive"
+    expression: "this.ipv6_cidr_block == '' || !has(this.ipv6_ipam_pool_id)"
+  };
+
+  // An IPv6-only subnet must actually carry IPv6 addressing.
+  option (buf.validate.message).cel = {
+    id: "ipv6_native_requires_ipv6"
+    message: "ipv6_native requires ipv6_cidr_block or ipv6_ipam_pool_id"
+    expression: "!this.ipv6_native || this.ipv6_cidr_block != '' || has(this.ipv6_ipam_pool_id)"
+  };
+
+  // VGW route propagation configures the subnet-OWNED table; an external
+  // table's propagation belongs to whoever owns that table.
+  option (buf.validate.message).cel = {
+    id: "propagating_vgws_owned_table_only"
+    message: "propagating_vgws is not allowed with route_table_id (propagation belongs to the table's owner)"
+    expression: "this.propagating_vgws.size() == 0 || !has(this.route_table_id)"
   };
 }

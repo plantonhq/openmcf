@@ -18,6 +18,7 @@ go_library(
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/ec2",
+        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws/vpc",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
 )

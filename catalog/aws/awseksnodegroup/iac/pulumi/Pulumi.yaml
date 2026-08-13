@@ -1,4 +1,4 @@
-name: awseksnodegroup-pulumi-project
+name: awseksnodegroup
 runtime:
   name: go
 # options:

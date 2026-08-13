@@ -24,3 +24,7 @@ The **AzureCognitiveDeployment** component deploys a model onto an Azure AI serv
 ## Future Enhancements
 
 - Batch-SKU-specific presets as batch inference patterns settle.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

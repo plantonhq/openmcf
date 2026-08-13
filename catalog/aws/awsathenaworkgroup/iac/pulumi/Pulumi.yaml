@@ -1,4 +1,4 @@
-name: awsathenaworkgroup-pulumi-project
+name: awsathenaworkgroup
 runtime:
   name: go
 # options:

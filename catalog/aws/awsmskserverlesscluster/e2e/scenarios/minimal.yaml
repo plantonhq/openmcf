@@ -1,10 +1,14 @@
-# Minimal AwsMskServerlessCluster scenario: the complete honest surface --
-# network interfaces in both subnet fixtures and the broker
-# security-group fixture attached (its ingress already opens the Kafka
-# listener ports including SASL/IAM 9098). SASL/IAM authentication is not
-# in the manifest because it is not a spec field: AWS requires it and both
-# modules enable it unconditionally. Full metadata is supplied for
-# tagging/orphan cleanup.
+# Minimal AwsMskServerlessCluster scenario: the complete honest single-VPC
+# surface -- one VPC placement with network interfaces in both subnet
+# fixtures and the broker security-group fixture attached (its ingress
+# already opens the Kafka listener ports including SASL/IAM 9098). SASL/IAM
+# authentication is not in the manifest because it is not a spec field: AWS
+# requires it and both modules enable it unconditionally. Full metadata is
+# supplied for tagging/orphan cleanup.
+#
+# Deliberately not in the scenario: a second VPC placement (multi-VPC
+# access) -- the shared fixture chain provisions one VPC; the multi-VPC arm
+# is offline-proven through the canonical manifest's two-placement shape.
 #
 # The e2e-prerequisites annotation composes the security-group fixture;
 # subnets are a registry prerequisite (security groups are optional on the
@@ -26,17 +30,18 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
-  subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: planton-oss-e2e-awssubnet-prereq-a
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: planton-oss-e2e-awssubnet-prereq-b
-        fieldPath: status.outputs.subnet_id
-  securityGroupIds:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: planton-oss-e2e-awssg-prereq
-        fieldPath: status.outputs.security_group_id
+  vpcConfigs:
+    - subnetIds:
+        - valueFrom:
+            kind: AwsSubnet
+            name: planton-oss-e2e-awssubnet-prereq-a
+            fieldPath: status.outputs.subnet_id
+        - valueFrom:
+            kind: AwsSubnet
+            name: planton-oss-e2e-awssubnet-prereq-b
+            fieldPath: status.outputs.subnet_id
+      securityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: planton-oss-e2e-awssg-prereq
+            fieldPath: status.outputs.security_group_id

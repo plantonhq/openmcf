@@ -58,3 +58,17 @@ resource "aws_security_group" "this" {
 
   tags = local.aws_tags
 }
+
+# Share this group into additional VPCs (same account and region), so
+# resources there attach the same group instead of maintaining per-VPC
+# copies. Keyed by the resolved VPC id; adding/removing an entry
+# associates/disassociates in place -- the group is never replaced. AWS
+# ignores rules that reference a security group from a different VPC than
+# the one a packet traverses, so multi-VPC groups should prefer CIDR or
+# prefix-list rules (documented on the spec field).
+resource "aws_vpc_security_group_vpc_association" "additional" {
+  for_each = toset([for v in local.additional_vpc_ids : v])
+
+  security_group_id = aws_security_group.this.id
+  vpc_id            = each.value
+}

@@ -62,3 +62,7 @@ The metric then charts (and alerts) as `logging.googleapis.com/user/checkout-err
 - **GcpMonitoringSlo** -- log-based counters feed good/total ratio SLIs
 - **GcpLogBucket** -- `bucketName` scopes the metric to a specific bucket instead of the project's `_Default`
 - **GcpProject** -- provides the GCP project whose logs feed the metric
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

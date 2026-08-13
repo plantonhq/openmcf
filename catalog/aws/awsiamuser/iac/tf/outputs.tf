@@ -31,3 +31,8 @@ output "console_url" {
   description = "AWS console sign-in URL for this user."
   value       = "https://signin.aws.amazon.com/console"
 }
+
+output "access_key_status" {
+  description = "The access key's status (Active/Inactive) as the provider reports it post-apply -- the rotation-lever position. Empty when no access key was created."
+  value       = try(aws_iam_access_key.this[0].status, "")
+}

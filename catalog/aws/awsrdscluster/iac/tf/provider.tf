@@ -8,11 +8,11 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor: Serverless v2 automatic pause
-      # (serverlessv2_scaling_configuration.seconds_until_auto_pause) and
-      # database_insights_mode are late-v5 additions -- the v6 floor keeps
-      # the module on the modern major where the whole modeled surface
-      # (including the iam-db-auth-error log type) is present.
+      # Feature floor: cluster-level auto_minor_version_upgrade landed in
+      # 6.54.0 (the newest argument this module renders); Serverless v2
+      # automatic pause and database_insights_mode are late-v5 additions.
+      # The 6.58 floor covers the whole modeled surface, including the
+      # role-association, custom-endpoint, and activity-stream resources.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

@@ -52,8 +52,16 @@ type AwsSagemakerDomainStackOutputs struct {
 	// application instance ID for this domain. Only populated when auth_mode is "SSO".
 	// Used when assigning Identity Center users and groups to the domain programmatically.
 	SingleSignOnManagedApplicationInstanceId string `protobuf:"bytes,7,opt,name=single_sign_on_managed_application_instance_id,json=singleSignOnManagedApplicationInstanceId,proto3" json:"single_sign_on_managed_application_instance_id,omitempty"`
-	unknownFields                            protoimpl.UnknownFields
-	sizeCache                                protoimpl.SizeCache
+	// user_profile_arns maps each folded user profile's name (the spec key) to its ARN.
+	// Feeds IAM policies scoped to a profile and the import tooling's per-satellite IDs.
+	UserProfileArns map[string]string `protobuf:"bytes,8,rep,name=user_profile_arns,json=userProfileArns,proto3" json:"user_profile_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// space_arns maps each folded space's name (the spec key) to its ARN — the space's
+	// canonical identity (space imports are ARN-keyed).
+	SpaceArns map[string]string `protobuf:"bytes,9,rep,name=space_arns,json=spaceArns,proto3" json:"space_arns,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// space_urls maps each folded space's name to the URL where its runtime is reached.
+	SpaceUrls     map[string]string `protobuf:"bytes,10,rep,name=space_urls,json=spaceUrls,proto3" json:"space_urls,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsSagemakerDomainStackOutputs) Reset() {
@@ -135,11 +143,32 @@ func (x *AwsSagemakerDomainStackOutputs) GetSingleSignOnManagedApplicationInstan
 	return ""
 }
 
+func (x *AwsSagemakerDomainStackOutputs) GetUserProfileArns() map[string]string {
+	if x != nil {
+		return x.UserProfileArns
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainStackOutputs) GetSpaceArns() map[string]string {
+	if x != nil {
+		return x.SpaceArns
+	}
+	return nil
+}
+
+func (x *AwsSagemakerDomainStackOutputs) GetSpaceUrls() map[string]string {
+	if x != nil {
+		return x.SpaceUrls
+	}
+	return nil
+}
+
 var File_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awssagemakerdomain/v1alpha1/outputs.proto\x12+dev.planton.aws.awssagemakerdomain.v1alpha1\"\xa8\x03\n" +
+	"5catalog/aws/awssagemakerdomain/v1alpha1/outputs.proto\x12+dev.planton.aws.awssagemakerdomain.v1alpha1\"\xed\a\n" +
 	"\x1eAwsSagemakerDomainStackOutputs\x12\x1b\n" +
 	"\tdomain_id\x18\x01 \x01(\tR\bdomainId\x12\x1d\n" +
 	"\n" +
@@ -149,7 +178,22 @@ const file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x17home_efs_file_system_id\x18\x04 \x01(\tR\x13homeEfsFileSystemId\x12O\n" +
 	"%security_group_id_for_domain_boundary\x18\x05 \x01(\tR securityGroupIdForDomainBoundary\x12B\n" +
 	"\x1esingle_sign_on_application_arn\x18\x06 \x01(\tR\x1asingleSignOnApplicationArn\x12`\n" +
-	".single_sign_on_managed_application_instance_id\x18\a \x01(\tR(singleSignOnManagedApplicationInstanceIdB\xf1\x02\n" +
+	".single_sign_on_managed_application_instance_id\x18\a \x01(\tR(singleSignOnManagedApplicationInstanceId\x12\x8c\x01\n" +
+	"\x11user_profile_arns\x18\b \x03(\v2`.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.UserProfileArnsEntryR\x0fuserProfileArns\x12y\n" +
+	"\n" +
+	"space_arns\x18\t \x03(\v2Z.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceArnsEntryR\tspaceArns\x12y\n" +
+	"\n" +
+	"space_urls\x18\n" +
+	" \x03(\v2Z.dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceUrlsEntryR\tspaceUrls\x1aB\n" +
+	"\x14UserProfileArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +
+	"\x0eSpaceArnsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +
+	"\x0eSpaceUrlsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xf1\x02\n" +
 	"/com.dev.planton.aws.awssagemakerdomain.v1alpha1B\fOutputsProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awssagemakerdomain/v1alpha1;awssagemakerdomainv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awssagemakerdomain.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awssagemakerdomain\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awssagemakerdomain\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awssagemakerdomain::V1alpha1b\x06proto3"
 
 var (
@@ -164,16 +208,22 @@ func file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDescGZIP() []
 	return file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsSagemakerDomainStackOutputs)(nil), // 0: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs
+	nil,                                    // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.UserProfileArnsEntry
+	nil,                                    // 2: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceArnsEntry
+	nil,                                    // 3: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceUrlsEntry
 }
 var file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.user_profile_arns:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.UserProfileArnsEntry
+	2, // 1: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.space_arns:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceArnsEntry
+	3, // 2: dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.space_urls:type_name -> dev.planton.aws.awssagemakerdomain.v1alpha1.AwsSagemakerDomainStackOutputs.SpaceUrlsEntry
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_init() }
@@ -187,7 +237,7 @@ func file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awssagemakerdomain_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

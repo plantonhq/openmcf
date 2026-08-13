@@ -30,6 +30,12 @@ func targets(ctx *pulumi.Context, locals *Locals, createdRule *cloudwatch.EventR
 			args.EventBusName = pulumi.StringPtr(locals.Spec.EventBusName.GetValue())
 		}
 
+		// One teardown-forcing decision governs the rule and its
+		// targets: the same spec flag forces RemoveTargets on destroy.
+		if locals.Spec.ForceDestroy {
+			args.ForceDestroy = pulumi.BoolPtr(true)
+		}
+
 		// IAM role for target invocation
 		if target.RoleArn.GetValue() != "" {
 			args.RoleArn = pulumi.StringPtr(target.RoleArn.GetValue())
@@ -141,6 +147,70 @@ func targets(ctx *pulumi.Context, locals *Locals, createdRule *cloudwatch.EventR
 			args.EcsTarget = ecsTargetArgs(target.EcsTarget)
 		}
 
+		// Redshift Data API: the target arn is the CLUSTER; each event runs
+		// the SQL statement here, authenticated by db_user (temporary
+		// credentials) or a Secrets Manager secret.
+		if target.RedshiftTarget != nil {
+			redshiftArgs := &cloudwatch.EventTargetRedshiftTargetArgs{
+				Database: pulumi.String(target.RedshiftTarget.Database),
+			}
+			if target.RedshiftTarget.DbUser != "" {
+				redshiftArgs.DbUser = pulumi.StringPtr(target.RedshiftTarget.DbUser)
+			}
+			if target.RedshiftTarget.SecretsManagerArn != "" {
+				redshiftArgs.SecretsManagerArn = pulumi.StringPtr(target.RedshiftTarget.SecretsManagerArn)
+			}
+			if target.RedshiftTarget.Sql != "" {
+				redshiftArgs.Sql = pulumi.StringPtr(target.RedshiftTarget.Sql)
+			}
+			if target.RedshiftTarget.StatementName != "" {
+				redshiftArgs.StatementName = pulumi.StringPtr(target.RedshiftTarget.StatementName)
+			}
+			if target.RedshiftTarget.WithEvent {
+				redshiftArgs.WithEvent = pulumi.BoolPtr(true)
+			}
+			args.RedshiftTarget = redshiftArgs
+		}
+
+		// SSM Run Command: the target arn is the DOCUMENT; each selector
+		// narrows the instances the command dispatches to (selectors AND
+		// together).
+		if len(target.RunCommandTargets) > 0 {
+			selectors := make(cloudwatch.EventTargetRunCommandTargetArray, 0, len(target.RunCommandTargets))
+			for _, s := range target.RunCommandTargets {
+				selectors = append(selectors, cloudwatch.EventTargetRunCommandTargetArgs{
+					Key:    pulumi.String(s.Key),
+					Values: pulumi.ToStringArray(s.Values),
+				})
+			}
+			args.RunCommandTargets = selectors
+		}
+
+		// SageMaker Pipelines: the target arn is the PIPELINE; each event
+		// starts an execution with these parameters.
+		if target.SagemakerPipelineTarget != nil {
+			sagemakerArgs := &cloudwatch.EventTargetSagemakerPipelineTargetArgs{}
+			if len(target.SagemakerPipelineTarget.PipelineParameterList) > 0 {
+				params := make(cloudwatch.EventTargetSagemakerPipelineTargetPipelineParameterListArray, 0, len(target.SagemakerPipelineTarget.PipelineParameterList))
+				for _, p := range target.SagemakerPipelineTarget.PipelineParameterList {
+					params = append(params, cloudwatch.EventTargetSagemakerPipelineTargetPipelineParameterListArgs{
+						Name:  pulumi.String(p.Name),
+						Value: pulumi.String(p.Value),
+					})
+				}
+				sagemakerArgs.PipelineParameterLists = params
+			}
+			args.SagemakerPipelineTarget = sagemakerArgs
+		}
+
+		// AppSync: the target arn is the API's endpoint ARN; each event
+		// invokes the GraphQL operation.
+		if target.AppsyncTarget != nil {
+			args.AppsyncTarget = &cloudwatch.EventTargetAppsyncTargetArgs{
+				GraphqlOperation: pulumi.StringPtr(target.AppsyncTarget.GraphqlOperation),
+			}
+		}
+
 		// -----------------------------------------------------------
 		// Create target
 		// -----------------------------------------------------------
@@ -241,6 +311,12 @@ func ecsTargetArgs(ecs *awseventbridgerulev1alpha1.AwsEventBridgeTargetEcsConfig
 			constraints = append(constraints, entry)
 		}
 		args.PlacementConstraints = constraints
+	}
+
+	// Tags applied to the ECS TASKS each event launches -- distinct from
+	// the rule's own resource tags.
+	if len(ecs.Tags) > 0 {
+		args.Tags = pulumi.ToStringMap(ecs.Tags)
 	}
 
 	return args

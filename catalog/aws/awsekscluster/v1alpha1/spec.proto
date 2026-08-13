@@ -168,6 +168,21 @@ message AwsEksClusterSpec {
   // satisfied). Only consulted while `version` changes.
   bool force_update_version = 20;
 
+  // EKS Provisioned Control Plane: pre-provisions control-plane capacity
+  // for very large or bursty clusters instead of relying on EKS's
+  // reactive scaling (which can lag sudden API-server load, e.g. mass
+  // node joins or operator storms). "standard" (AWS default -- reactive
+  // scaling, no surcharge) or a provisioned tier of increasing capacity:
+  // "tier-xl", "tier-2xl", "tier-4xl", "tier-8xl" -- each billed hourly
+  // ON TOP of the cluster fee. Updates in place; empty keeps standard.
+  string control_plane_scaling_tier = 21;
+
+  // EKS Hybrid Nodes: the on-premises/edge networks whose nodes and pods
+  // join this cluster over your VPN or Direct Connect. Declaring the
+  // ranges is free -- billing starts only when hybrid nodes register.
+  // Updates in place on a live cluster.
+  AwsEksClusterRemoteNetworks remote_networks = 22;
+
   // ---------------------------------------------------------------------------
   // Spec-level CEL validations
   // ---------------------------------------------------------------------------
@@ -214,6 +229,12 @@ message AwsEksClusterSpec {
     id: "upgrade_support_type_valid"
     message: "upgrade_support_type must be 'STANDARD' or 'EXTENDED' when set"
     expression: "this.upgrade_support_type == '' || this.upgrade_support_type in ['STANDARD', 'EXTENDED']"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "control_plane_scaling_tier_valid"
+    message: "control_plane_scaling_tier must be 'standard', 'tier-xl', 'tier-2xl', 'tier-4xl', or 'tier-8xl' when set"
+    expression: "this.control_plane_scaling_tier == '' || this.control_plane_scaling_tier in ['standard', 'tier-xl', 'tier-2xl', 'tier-4xl', 'tier-8xl']"
   };
 }
 
@@ -287,5 +308,48 @@ message AwsEksClusterAutoMode {
     id: "node_role_requires_pools"
     message: "node_role_arn is required when node_pools is non-empty"
     expression: "size(this.node_pools) == 0 || has(this.node_role_arn)"
+  };
+}
+
+// AwsEksClusterRemoteNetworks declares the on-premises networks EKS Hybrid
+// Nodes join from. AWS models this as two nested single-list blocks
+// (remote node networks and remote pod networks); this message flattens
+// them to the two CIDR lists. Every CIDR must be an IPv4 NETWORK address
+// (host bits zero) inside the private ranges AWS accepts here: 10.0.0.0/8,
+// 172.16.0.0/12, 192.168.0.0/16, or carrier-grade NAT 100.64.0.0/10.
+// The ranges must be reachable from the VPC (VPN or Direct Connect) and
+// must not overlap the VPC, the service CIDR, or each other.
+message AwsEksClusterRemoteNetworks {
+  // CIDR blocks of the on-premises network the hybrid NODES have their
+  // addresses in. This is the range the control plane accepts kubelet
+  // registrations from -- without a node's address inside one of these
+  // blocks, it cannot join.
+  repeated string node_cidrs = 1 [(buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"];
+
+  // CIDR blocks the on-premises PODS have their addresses in (the CNI's
+  // pod network on the hybrid nodes). Optional: needed when pods must be
+  // directly routable from the cluster (e.g. webhooks running on hybrid
+  // nodes); node-only setups can omit it.
+  repeated string pod_cidrs = 2 [(buf.validate.field).repeated.items.string.pattern = "^(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(?:\\.(?:25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}/(?:[0-9]|[12]\\d|3[0-2])$"];
+
+  // A declared remote-networks block with no ranges configures nothing --
+  // the message's presence must carry at least one network.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_network"
+    message: "remote_networks requires at least one of node_cidrs or pod_cidrs"
+    expression: "size(this.node_cidrs) > 0 || size(this.pod_cidrs) > 0"
+  };
+
+  // Mirrors the provider's private-range validation (RFC1918 + CGNAT).
+  option (buf.validate.message).cel = {
+    id: "node_cidrs_private_range"
+    message: "each node CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10"
+    expression: "this.node_cidrs.all(c, c.matches('^(10|172\\\\.(1[6-9]|2[0-9]|3[0-1])|192\\\\.168|100\\\\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7]))\\\\.'))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "pod_cidrs_private_range"
+    message: "each pod CIDR must be within 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, or 100.64.0.0/10"
+    expression: "this.pod_cidrs.all(c, c.matches('^(10|172\\\\.(1[6-9]|2[0-9]|3[0-1])|192\\\\.168|100\\\\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7]))\\\\.'))"
   };
 }

@@ -30,5 +30,8 @@ spec:
   deferred_reason: >-
     Long-tail kind with the slowest AWS provisioning profile (create up to
     120 min, delete up to 90 min per engine); live lane deferred by owner
-    decision. Offline gate green (tofu init + validate, spec/CEL tests,
-    outputs conformance, Pulumi module compile); artifacts live-ready.
+    decision, re-affirmed at the depth closure. Offline gate fully green on
+    the closed surface (offline tofu plan + Pulumi preview arm-for-arm,
+    spec/CEL tests incl. the PUBLIC_AND_PRIVATE access mode and the
+    maintenance-window format, the log_level empty-string plan-failure heal,
+    outputs conformance); artifacts live-ready.

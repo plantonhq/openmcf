@@ -72,6 +72,35 @@ spec:
     - name: verified_email
       priority: 1
   deletionProtection: false
+  userPoolTier: PLUS
+  userPoolAddOns:
+    advancedSecurityMode: ENFORCED
+  riskConfiguration:
+    accountTakeover:
+      highAction:
+        eventAction: BLOCK
+        notify: true
+      mediumAction:
+        eventAction: MFA_IF_CONFIGURED
+        notify: false
+      notifyConfiguration:
+        sourceArn:
+          value: arn:aws:ses:us-west-2:123456789012:identity/security@example.com
+        blockEmail:
+          subject: Sign-in attempt blocked
+          htmlBody: <p>We blocked a risky sign-in attempt on your account.</p>
+          textBody: We blocked a risky sign-in attempt on your account.
+    compromisedCredentials:
+      eventAction: BLOCK
+    riskException:
+      blockedIpRanges:
+        - 192.0.2.0/24
+  userGroups:
+    - name: admins
+      description: Administrators
+      precedence: 1
+      roleArn:
+        value: arn:aws:iam::123456789012:role/pool-admins
   domain:
     domain: test-auth-pool
 ```
@@ -115,10 +144,10 @@ spec:
 | `spec.accountRecoveryMechanisms[].priority` | `int32` | yes |  |  |
 | `spec.emailConfiguration` | `AwsCognitoUserPoolEmailConfig` |  |  |  |
 | `spec.emailConfiguration.emailSendingAccount` | `string` |  |  |  |
-| `spec.emailConfiguration.sourceArn` | `string \| valueFrom` |  |  |  |
+| `spec.emailConfiguration.sourceArn` | `string \| valueFrom` |  |  | AwsSesEmailIdentity (`status.outputs.identity_arn`) |
 | `spec.emailConfiguration.fromEmailAddress` | `string` |  |  |  |
 | `spec.emailConfiguration.replyToEmailAddress` | `string` |  |  |  |
-| `spec.emailConfiguration.configurationSet` | `string` |  |  |  |
+| `spec.emailConfiguration.configurationSet` | `string \| valueFrom` |  |  | AwsSesConfigurationSet (`status.outputs.configuration_set_name`) |
 | `spec.verificationMessageTemplate` | `AwsCognitoUserPoolVerificationMessageTemplate` |  |  |  |
 | `spec.verificationMessageTemplate.defaultEmailOption` | `string` |  |  |  |
 | `spec.verificationMessageTemplate.emailMessage` | `string` |  |  |  |
@@ -168,6 +197,39 @@ spec:
 | `spec.userPoolAddOns` | `AwsCognitoUserPoolAddOns` |  |  |  |
 | `spec.userPoolAddOns.advancedSecurityMode` | `string` | yes |  |  |
 | `spec.userPoolAddOns.customAuthMode` | `string` |  |  |  |
+| `spec.riskConfiguration` | `AwsCognitoUserPoolRiskConfiguration` |  |  |  |
+| `spec.riskConfiguration.accountTakeover` | `AwsCognitoUserPoolAccountTakeoverConfig` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction` | `AwsCognitoUserPoolAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.lowAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction` | `AwsCognitoUserPoolAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.mediumAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction` | `AwsCognitoUserPoolAccountTakeoverAction` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.highAction.notify` | `bool` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration` | `AwsCognitoUserPoolRiskNotifyConfig` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `string \| valueFrom` | yes |  | AwsSesEmailIdentity (`status.outputs.identity_arn`) |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.from` | `string` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo` | `string` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail` | `AwsCognitoUserPoolRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail` | `AwsCognitoUserPoolRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail` | `AwsCognitoUserPoolRiskNotifyEmail` |  |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.htmlBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody` | `string` | yes |  |  |
+| `spec.riskConfiguration.compromisedCredentials` | `AwsCognitoUserPoolCompromisedCredentialsConfig` |  |  |  |
+| `spec.riskConfiguration.compromisedCredentials.eventAction` | `string` | yes |  |  |
+| `spec.riskConfiguration.compromisedCredentials.eventFilter` | `[]string` |  |  |  |
+| `spec.riskConfiguration.riskException` | `AwsCognitoUserPoolRiskExceptionConfig` |  |  |  |
+| `spec.riskConfiguration.riskException.blockedIpRanges` | `[]string` |  |  |  |
+| `spec.riskConfiguration.riskException.skippedIpRanges` | `[]string` |  |  |  |
 | `spec.logConfigurations` | `[]AwsCognitoUserPoolLogConfiguration` |  |  |  |
 | `spec.logConfigurations[].eventSource` | `string` | yes |  |  |
 | `spec.logConfigurations[].logLevel` | `string` | yes |  |  |
@@ -178,6 +240,11 @@ spec:
 | `spec.domain.domain` | `string` | yes |  |  |
 | `spec.domain.certificateArn` | `string \| valueFrom` |  |  | AwsCertManagerCert (`status.outputs.cert_arn`) |
 | `spec.domain.managedLoginVersion` | `int32` |  |  |  |
+| `spec.userGroups` | `[]AwsCognitoUserPoolUserGroup` |  |  |  |
+| `spec.userGroups[].name` | `string` | yes |  |  |
+| `spec.userGroups[].description` | `string` |  |  |  |
+| `spec.userGroups[].precedence` | `int32` |  |  |  |
+| `spec.userGroups[].roleArn` | `string \| valueFrom` |  |  | AwsIamRole (`status.outputs.role_arn`) |
 
 ## Field Details
 
@@ -285,9 +352,10 @@ Require at least one special character.
 
 `int32`
 
-Number of previous passwords a new password must differ from. Range: 0-24
-(0 disables history checking). Password history requires the pool to be on
-the ESSENTIALS tier or higher.
+Number of previous passwords a new password must differ from. Range: 0-24.
+0 is AWS's default posture (history checking off), so leaving this unset
+and setting 0 are the same policy. Password history requires the pool to
+be on the ESSENTIALS tier or higher.
 
 - rule: {"int32":{"lte":24,"gte":0}}
 
@@ -295,8 +363,10 @@ the ESSENTIALS tier or higher.
 
 `int32`
 
-Number of days temporary passwords (admin-created) are valid.
-Range: 0-365 (0 means no expiration). AWS default: 7.
+Number of days temporary passwords (admin-created) are valid. Range:
+0-365. AWS default: 7 -- and AWS treats a submitted 0 as null, applying
+that default, so 0 is NOT "no expiration"; there is no way to make
+temporary passwords permanent. Leaving this unset keeps the 7-day default.
 
 - rule: {"int32":{"lte":365,"gte":0}}
 
@@ -505,10 +575,12 @@ Email sending mode. Valid values:
 `string | valueFrom`
 
 SES verified identity ARN for sending emails. Required when
-`email_sending_account` is "DEVELOPER". Example:
+`email_sending_account` is "DEVELOPER". Accepts a direct identity ARN or
+a reference to an AwsSesEmailIdentity resource. Example:
 "arn:aws:ses:us-east-1:123456789012:identity/noreply@example.com"
 
-- rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
+- references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSesEmailIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_arn}} -- a bare string does not parse
 
 ### spec.emailConfiguration.fromEmailAddress
 
@@ -526,9 +598,14 @@ instead of the "from" address.
 
 ### spec.emailConfiguration.configurationSet
 
-`string`
+`string | valueFrom`
 
-SES configuration set name for tracking email delivery metrics.
+SES configuration set for tracking email delivery metrics (opens, bounces,
+complaints). Accepts a direct configuration-set name or a reference to an
+AwsSesConfigurationSet resource.
+
+- references: AwsSesConfigurationSet (`status.outputs.configuration_set_name`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSesConfigurationSet, name: <that resource's name>, fieldPath: status.outputs.configuration_set_name}} -- a bare string does not parse
 
 ### spec.verificationMessageTemplate
 
@@ -973,6 +1050,296 @@ Extends threat protection to CUSTOM authentication flows (Lambda-driven
 challenges), which standard mode does not cover. Valid values: "AUDIT",
 "ENFORCED". When omitted, custom auth flows are not covered.
 
+### spec.riskConfiguration
+
+`AwsCognitoUserPoolRiskConfiguration`
+
+Pool-wide risk configuration for threat protection: automated responses
+to account-takeover and compromised-credentials risk, notification
+templates, and IP allow/block exceptions. Applies to every app client
+that does not carry its own client-scoped risk configuration (a client
+sets that on the AwsCognitoUserPoolClient spec). Requires threat
+protection to be active (`user_pool_add_ons.advanced_security_mode` of
+"AUDIT" or "ENFORCED"); automated responses act only in ENFORCED mode.
+
+- rule: set at least one of account_takeover, compromised_credentials, or risk_exception
+
+### spec.riskConfiguration.accountTakeover
+
+`AwsCognitoUserPoolAccountTakeoverConfig`
+
+Automated responses to sign-in attempts Cognito assesses as possible
+account takeover, by risk level, plus the notification templates for
+"notify the user" actions.
+
+- rule: set at least one of low_action, medium_action, or high_action
+- rule: notify_configuration requires at least one action with notify enabled
+
+### spec.riskConfiguration.accountTakeover.lowAction
+
+`AwsCognitoUserPoolAccountTakeoverAction`
+
+Response to a LOW-risk assessment.
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.lowAction.eventAction
+
+`string` · required
+
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.lowAction.notify
+
+`bool`
+
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
+### spec.riskConfiguration.accountTakeover.mediumAction
+
+`AwsCognitoUserPoolAccountTakeoverAction`
+
+Response to a MEDIUM-risk assessment.
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.mediumAction.eventAction
+
+`string` · required
+
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.mediumAction.notify
+
+`bool`
+
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
+### spec.riskConfiguration.accountTakeover.highAction
+
+`AwsCognitoUserPoolAccountTakeoverAction`
+
+Response to a HIGH-risk assessment.
+
+- rule: event_action must be 'BLOCK', 'MFA_IF_CONFIGURED', 'MFA_REQUIRED', or 'NO_ACTION'
+
+### spec.riskConfiguration.accountTakeover.highAction.eventAction
+
+`string` · required
+
+The response Cognito takes (acts only in ENFORCED mode; AUDIT gathers
+metrics without acting):
+- "BLOCK": reject the sign-in attempt.
+- "MFA_IF_CONFIGURED": require MFA when the user has a factor set up,
+  otherwise allow the attempt.
+- "MFA_REQUIRED": require MFA; users without a factor are blocked.
+- "NO_ACTION": allow the attempt (pair with notify to warn the user).
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.accountTakeover.highAction.notify
+
+`bool`
+
+Whether Cognito emails the user about the event using the templates in
+notify_configuration.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration
+
+`AwsCognitoUserPoolRiskNotifyConfig`
+
+SES sending configuration and message templates for the notification
+emails sent when an action has notify enabled. Required by AWS when any
+action notifies the user.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn
+
+`string | valueFrom` · required
+
+The SES identity Cognito sends notification emails from. Accepts a
+direct identity ARN or a reference to an AwsSesEmailIdentity resource.
+
+- references: AwsSesEmailIdentity (`status.outputs.identity_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsSesEmailIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_arn}} -- a bare string does not parse
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.from
+
+`string`
+
+"From" address shown on notification emails. When omitted, AWS derives
+it from the source identity.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.replyTo
+
+`string`
+
+Reply-to address on notification emails.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail
+
+`AwsCognitoUserPoolRiskNotifyEmail`
+
+Template for the "we blocked a sign-in attempt" notification.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.subject
+
+`string` · required
+
+Email subject. 1-140 characters.
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.htmlBody
+
+`string` · required
+
+HTML email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.blockEmail.textBody
+
+`string` · required
+
+Plain-text email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail
+
+`AwsCognitoUserPoolRiskNotifyEmail`
+
+Template for the "we required MFA on a sign-in attempt" notification.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.subject
+
+`string` · required
+
+Email subject. 1-140 characters.
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.htmlBody
+
+`string` · required
+
+HTML email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.mfaEmail.textBody
+
+`string` · required
+
+Plain-text email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail
+
+`AwsCognitoUserPoolRiskNotifyEmail`
+
+Template for the "we observed a risky sign-in attempt" (no action taken)
+notification.
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.subject
+
+`string` · required
+
+Email subject. 1-140 characters.
+
+- rule: {"string":{"minLen":"1","maxLen":"140"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.htmlBody
+
+`string` · required
+
+HTML email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.accountTakeover.notifyConfiguration.noActionEmail.textBody
+
+`string` · required
+
+Plain-text email body. 6-20000 characters.
+
+- rule: {"string":{"minLen":"6","maxLen":"20000"}}
+
+### spec.riskConfiguration.compromisedCredentials
+
+`AwsCognitoUserPoolCompromisedCredentialsConfig`
+
+Automated response when Cognito detects the presented credentials in a
+known-compromised set.
+
+- rule: event_action must be 'BLOCK' or 'NO_ACTION'
+- rule: event_filter must contain only 'SIGN_IN', 'PASSWORD_CHANGE', and/or 'SIGN_UP'
+
+### spec.riskConfiguration.compromisedCredentials.eventAction
+
+`string` · required
+
+The response Cognito takes (acts only in ENFORCED mode):
+- "BLOCK": reject the attempt.
+- "NO_ACTION": allow the attempt (still logged/audited).
+
+- rule: {"required":true}
+
+### spec.riskConfiguration.compromisedCredentials.eventFilter
+
+`[]string`
+
+Which authentication events are checked against the compromised set.
+When empty, AWS checks all supported events. Valid values: "SIGN_IN",
+"PASSWORD_CHANGE", "SIGN_UP".
+
+### spec.riskConfiguration.riskException
+
+`AwsCognitoUserPoolRiskExceptionConfig`
+
+IP-range exceptions that bypass or force the risk decision.
+
+- rule: set at least one of blocked_ip_ranges or skipped_ip_ranges
+- rule: blocked_ip_ranges and skipped_ip_ranges entries must be CIDR notation (e.g. '192.0.2.0/24' or '2001:db8::/32')
+
+### spec.riskConfiguration.riskException.blockedIpRanges
+
+`[]string`
+
+Always-BLOCK list: authentication requests from these CIDR ranges are
+rejected regardless of risk assessment. Up to 200 entries.
+
+- rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
+
+### spec.riskConfiguration.riskException.skippedIpRanges
+
+`[]string`
+
+Always-ALLOW list: risk detection is skipped for these CIDR ranges.
+Up to 200 entries.
+
+- rule: {"repeated":{"maxItems":"200","items":{"string":{"minLen":"1"}}}}
+
 ### spec.logConfigurations
 
 `[]AwsCognitoUserPoolLogConfiguration`
@@ -1089,8 +1456,64 @@ When omitted, AWS defaults new domains to managed login (2).
 
 - rule: {"int32":{"lte":2,"gte":1}}
 
+### spec.userGroups
+
+`[]AwsCognitoUserPoolUserGroup`
+
+User groups in this pool. Groups organize users for authorization: a
+user's group memberships appear in the "cognito:groups" claim of their
+tokens, and a group's IAM role flows into credentials vended through
+identity-pool federation. Groups are pool-scoped configuration with no
+independent AWS lifecycle, so they live here rather than as a separate
+component. Users are ASSIGNED to groups at runtime (admin API) -- group
+membership is data-plane content, not infrastructure.
+
+### spec.userGroups[].name
+
+`string` · required
+
+Group name. Unique within the pool. 1-128 characters. Renaming a group
+replaces it (AWS has no rename API) -- memberships do not survive.
+
+- rule: {"string":{"minLen":"1","maxLen":"128"}}
+
+### spec.userGroups[].description
+
+`string`
+
+Human-readable purpose of the group. Up to 2048 characters.
+
+- rule: {"string":{"maxLen":"2048"}}
+
+### spec.userGroups[].precedence
+
+`int32`
+
+Priority when a user belongs to multiple groups: the LOWEST value wins
+for the "cognito:preferred_role" claim. Note an AWS/provider asymmetry:
+AWS accepts precedence 0 (the strongest priority) and defaults to null,
+but the Terraform provider's zero-value gating cannot send an explicit 0
+-- through either engine -- so 0 here means "no precedence" (AWS null).
+Use 1 as the strongest expressible priority.
+
+- rule: {"int32":{"gte":0}}
+
+### spec.userGroups[].roleArn
+
+`string | valueFrom`
+
+The IAM role whose ARN lands in members' "cognito:roles" and
+"cognito:preferred_role" claims (and is assumable through identity-pool
+federation). Accepts a direct role ARN or a reference to an AwsIamRole
+resource.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
 ## Validation Rules
 
+- `user_group_names_unique`: user_groups must have unique name values
+- `risk_configuration_requires_threat_protection`: risk_configuration requires user_pool_add_ons.advanced_security_mode to be 'AUDIT' or 'ENFORCED'
 - `username_or_alias_attributes`: username_attributes and alias_attributes are mutually exclusive; set one or neither, not both
 - `username_attributes_valid`: username_attributes must contain only 'email' and/or 'phone_number'
 - `alias_attributes_valid`: alias_attributes must contain only 'email', 'phone_number', and/or 'preferred_username'
@@ -1132,6 +1555,8 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.smsConfiguration.snsCallerArn` | AwsIamRole | `status.outputs.role_arn` |
+| `spec.emailConfiguration.sourceArn` | AwsSesEmailIdentity | `status.outputs.identity_arn` |
+| `spec.emailConfiguration.configurationSet` | AwsSesConfigurationSet | `status.outputs.configuration_set_name` |
 | `spec.lambdaConfig.preSignUp` | AwsLambda | `status.outputs.function_arn` |
 | `spec.lambdaConfig.preAuthentication` | AwsLambda | `status.outputs.function_arn` |
 | `spec.lambdaConfig.postAuthentication` | AwsLambda | `status.outputs.function_arn` |
@@ -1146,10 +1571,12 @@ Fields that can point at another resource's outputs:
 | `spec.lambdaConfig.customEmailSender.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
 | `spec.lambdaConfig.customSmsSender.lambdaArn` | AwsLambda | `status.outputs.function_arn` |
 | `spec.lambdaConfig.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
+| `spec.riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | AwsSesEmailIdentity | `status.outputs.identity_arn` |
 | `spec.logConfigurations[].cloudwatchLogGroupArn` | AwsCloudwatchLogGroup | `status.outputs.log_group_arn` |
 | `spec.logConfigurations[].firehoseStreamArn` | AwsKinesisFirehose | `status.outputs.delivery_stream_arn` |
 | `spec.logConfigurations[].s3BucketArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
 | `spec.domain.certificateArn` | AwsCertManagerCert | `status.outputs.cert_arn` |
+| `spec.userGroups[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
 
 ## Referenced By
 

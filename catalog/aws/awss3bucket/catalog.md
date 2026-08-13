@@ -1,13 +1,13 @@
 # AWS S3 Bucket
 
-Deploys an S3 bucket with its full behavioral surface folded into one document: public-access guards, object ownership, bucket policy, versioning and Object Lock, default encryption, lifecycle rules and Intelligent-Tiering archive, replication, static website hosting, CORS, access logging, event notifications, and the transfer/cost knobs. New buckets are private by default — all four public-access guards on, ACLs disabled, every object encrypted.
+Deploys an S3 bucket with its full behavioral surface folded into one document: public-access guards, object ownership, bucket policy, versioning and Object Lock, default encryption (including blocked encryption types), lifecycle rules and Intelligent-Tiering archive, replication, static website hosting, CORS, access logging, event notifications, the transfer/cost knobs, and the governance surface — ABAC, storage-class analytics, inventory reports, request metrics, and S3 Metadata tables. New buckets are private by default — all four public-access guards on, ACLs disabled, every object encrypted.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **S3 Bucket** — named after the resource (bucket names are immutable and globally unique across all AWS accounts)
-- **Bucket-scoped configurations** — only the blocks the spec sets: versioning state, default encryption, public-access block, ownership controls, bucket policy, lifecycle rules, replication configuration, website configuration, logging, CORS, notifications, Object Lock default retention, Intelligent-Tiering archive configurations, acceleration, and request-payer
+- **Bucket-scoped configurations** — only the blocks the spec sets: versioning state, default encryption, public-access block, ownership controls, bucket policy, lifecycle rules, replication configuration, website configuration, logging, CORS, notifications, Object Lock default retention, Intelligent-Tiering archive configurations, acceleration, request-payer, ABAC, storage-class-analysis configurations, inventory configurations, request-metrics configurations, and the S3 Metadata tables
 - **AWS Tags** — resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -104,6 +104,8 @@ These are the most important decisions when configuring a bucket. Explore the fu
 
 **Eventing** — `notification` delivers object events to EventBridge (no grant needed) and/or Lambda/SQS/SNS targets (grant delivery BEFORE configuring). `logging` delivers request-level access logs; partitioned prefixes make them Athena-queryable.
 
+**Governance and insight** — `inventoryConfigurations` deliver scheduled object manifests (encryption/replication/lock posture per object) to a bucket — including the bucket itself; `analyticsConfigurations` observe access patterns and export findings that justify lifecycle transition ages; `metricsConfigurations` add CloudWatch request metrics per prefix/tag scope; `metadataConfiguration` maintains queryable Iceberg tables (change journal + live inventory) so you find objects with Athena instead of listing; `abacStatus` enables tag-based access control. Inventory/analytics DELIVERY needs a bucket policy allowing `s3.amazonaws.com` to `s3:PutObject` on the destination.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -118,6 +120,10 @@ These are the most important decisions when configuring a bucket. Explore the fu
 | **AwsLambda** (optional, per target) | `notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
 | **AwsSqsQueue** (optional, per target) | `notification.queues[].queueArn` | `status.outputs.queue_arn` |
 | **AwsSnsTopic** (optional, per target) | `notification.topics[].topicArn` | `status.outputs.topic_arn` |
+| **AwsS3Bucket** (optional, per config) | `analyticsConfigurations[].export.bucketArn` | `status.outputs.bucket_arn` |
+| **AwsS3Bucket** (optional, per config) | `inventoryConfigurations[].destination.bucketArn` | `status.outputs.bucket_arn` |
+| **AwsKmsKey** (optional, per config) | `inventoryConfigurations[].destination.sseKmsKeyId` | `status.outputs.key_arn` |
+| **AwsKmsKey** (optional, per table) | `metadataConfiguration.*TableEncryption.kmsKeyArn` | `status.outputs.key_arn` |
 
 ### What This Component Provides
 

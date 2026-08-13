@@ -37,17 +37,25 @@ func routeTable(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*e
 	// Associations: the attachments whose OUTBOUND traffic is looked up in
 	// this table. AWS allows an attachment at most ONE association across
 	// the whole gateway -- an attachment listed here must have its default
-	// association turned off and must not appear in another table's
-	// associations. Documents cannot see each other, so that gateway-wide
-	// uniqueness is enforced by AWS at apply time, not by validation.
+	// association turned off, must not appear in another table's
+	// associations, or must be taken over explicitly. Documents cannot see
+	// each other, so that gateway-wide uniqueness is enforced by AWS at
+	// apply time, not by validation.
 	for _, association := range spec.Associations {
-		attachmentId := association.GetValue()
+		attachmentId := association.AttachmentId.GetValue()
 		_, err := ec2transitgateway.NewRouteTableAssociation(
 			ctx,
 			fmt.Sprintf("%s-association-%s", locals.RouteTable.Metadata.Name, attachmentId),
 			&ec2transitgateway.RouteTableAssociationArgs{
 				TransitGatewayAttachmentId: pulumi.String(attachmentId),
 				TransitGatewayRouteTableId: createdRouteTable.ID(),
+				// Takeover: disassociate the attachment's existing
+				// association before associating here, in one apply. Plain
+				// bool whose spec default (false) matches the provider
+				// default: always sent, matching the Terraform module. Only
+				// consulted at association create; the provider's update is
+				// a no-op.
+				ReplaceExistingAssociation: pulumi.Bool(association.ReplaceExistingAssociation),
 			},
 			pulumi.Provider(provider),
 			pulumi.Parent(createdRouteTable),
@@ -128,6 +136,45 @@ func routeTable(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*e
 		)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to create prefix list reference %s", prefixListReference.PrefixListId)
+		}
+	}
+
+	// Gateway default-table designation: repoint the GATEWAY's default
+	// association/propagation pointer at THIS table, so attachments that
+	// keep their default-table dials enabled land here instead of the
+	// AWS-created default table. Meaningful only on a gateway whose
+	// corresponding dial is enabled; at most one table per gateway may hold
+	// each designation (AWS state is the referee -- the most recent apply
+	// wins the pointer). On destroy the provider RESTORES the gateway's
+	// original default table, which it records at designation time.
+	if spec.SetAsDefaultAssociationTable {
+		_, err := ec2transitgateway.NewDefaultRouteTableAssociation(
+			ctx,
+			fmt.Sprintf("%s-default-association", locals.RouteTable.Metadata.Name),
+			&ec2transitgateway.DefaultRouteTableAssociationArgs{
+				TransitGatewayId:           pulumi.String(spec.TransitGatewayId.GetValue()),
+				TransitGatewayRouteTableId: createdRouteTable.ID(),
+			},
+			pulumi.Provider(provider),
+			pulumi.Parent(createdRouteTable),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to designate default association table")
+		}
+	}
+	if spec.SetAsDefaultPropagationTable {
+		_, err := ec2transitgateway.NewDefaultRouteTablePropagation(
+			ctx,
+			fmt.Sprintf("%s-default-propagation", locals.RouteTable.Metadata.Name),
+			&ec2transitgateway.DefaultRouteTablePropagationArgs{
+				TransitGatewayId:           pulumi.String(spec.TransitGatewayId.GetValue()),
+				TransitGatewayRouteTableId: createdRouteTable.ID(),
+			},
+			pulumi.Provider(provider),
+			pulumi.Parent(createdRouteTable),
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to designate default propagation table")
 		}
 	}
 

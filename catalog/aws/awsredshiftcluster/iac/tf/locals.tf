@@ -34,4 +34,21 @@ locals {
     var.spec.cluster_parameter_group_name != "" ? var.spec.cluster_parameter_group_name :
     null
   )
+
+  # The subnet group name endpoint accesses fall back to when an entry
+  # does not bring its own -- the managed group or the referenced
+  # existing one (the subnets_or_group CEL guarantees one exists).
+  effective_subnet_group = (
+    local.manage_subnet_group ? aws_redshift_subnet_group.this[0].name :
+    var.spec.cluster_subnet_group_name
+  )
+
+  # Usage limits key their resources (and the exported ID map) by the
+  # (feature, limit type, period) triple, with an unset period rendered
+  # as monthly -- the same normalization the spec's uniqueness CEL
+  # applies, so validate-time uniqueness IS plan-time key uniqueness.
+  usage_limits_by_key = {
+    for l in var.spec.usage_limits :
+    "${l.feature_type}/${l.limit_type}/${l.period != "" ? l.period : "monthly"}" => l
+  }
 }

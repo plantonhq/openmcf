@@ -9,7 +9,7 @@ Managing S3 objects alongside infrastructure requires coordinating bucket creati
 - **Declarative Object Management**: Define objects as code alongside your infrastructure, ensuring they are created, updated, or removed consistently.
 - **Foreign Key Integration**: Reference an `AwsS3Bucket` component directly, so the bucket name is resolved automatically when both resources are managed together.
 - **Batch Uploads**: Upload multiple objects to the same bucket in a single deployment, reducing configuration duplication.
-- **Content Flexibility**: Support both inline text content (UTF-8) and base64-encoded binary content for any file type.
+- **Content Flexibility**: Inline text content (UTF-8), base64-encoded binary content, or a server-side copy of an existing S3 object of any size.
 
 ## Key Features
 
@@ -23,10 +23,11 @@ Managing S3 objects alongside infrastructure requires coordinating bucket creati
 - Upload one or more objects per deployment. Each object's identity is its key: adding, removing, or reordering entries never churns unrelated objects.
 - Set-level tags are merged with object-level tags (object tags take precedence).
 
-### Content Sources
+### Object Sources
 
 - **Inline Text** (`content`): For configuration files, JSON, YAML, HTML, and other text formats.
 - **Base64 Binary** (`content_base64`): For images, compiled assets, or any binary data small enough to carry in a manifest.
+- **Server-Side Copy** (`copy_from`): Copies an existing S3 object into the set's bucket — the bytes move inside S3, never through the deploy host, so size is unconstrained. Built for promoting build artifacts between buckets and seeding environments from a golden bucket, with optional copy-time preconditions (ETag and modified-since guards) that fail the deploy if the source changed, Requester Pays acknowledgment, and a choice between preserving the source's metadata/headers (the default) or replacing them (`replace_metadata`). The source bucket can be a component reference, a literal name, or an access-point ARN. Copies take the source's current version and are ordered after the set's inline-content objects, so a copy may duplicate an object declared in the same set.
 
 ### Per-Object HTTP and Storage Surface
 

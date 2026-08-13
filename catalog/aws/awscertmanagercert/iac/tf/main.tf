@@ -18,6 +18,11 @@ resource "aws_acm_certificate" "this" {
   # Private (ACM-PCA) arm.
   certificate_authority_arn = local.is_private ? var.spec.certificate_authority_arn : null
 
+  # Managed early renewal -- a private-CA mechanism (ACM's
+  # RenewCertificate is private-certificate-only; CEL ties the field to
+  # the private arm). Durations under 60 days have no effect.
+  early_renewal_duration = local.is_private && var.spec.early_renewal_duration != "" ? var.spec.early_renewal_duration : null
+
   # Imported arm: the PEM material. The private key is sensitive spec
   # input and never appears in outputs; re-importing new material before
   # expiry updates in place and keeps the ARN stable for consumers.

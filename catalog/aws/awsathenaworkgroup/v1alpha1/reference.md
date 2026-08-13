@@ -256,6 +256,8 @@ Choose this over result_configuration when nothing downstream reads the
 result files directly from S3. The two are mutually exclusive: AWS rejects
 a workgroup that sets both managed results and an S3 output_location.
 
+- rule: managed_query_results.kms_key literal value must be a full KMS key ARN (arn:...) -- aliases are not accepted here
+
 ### spec.managedQueryResults.kmsKey
 
 `string | valueFrom`
@@ -264,6 +266,10 @@ KMS key that encrypts results in AWS-managed storage. When omitted, AWS
 encrypts managed results with an AWS-owned key -- already encrypted at
 rest; supply a key only when your compliance posture requires
 customer-controlled key rotation and CloudTrail audit of key usage.
+
+Unlike the other three KMS fields on this workgroup, this one accepts a
+full key ARN ONLY -- the provider rejects "alias/..." forms here at plan
+time.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -454,7 +460,7 @@ Name of the CloudWatch Logs log group to publish to. When omitted, Athena
 publishes to its service-default log group. 1-512 characters:
 alphanumeric, periods, underscores, hyphens, and slashes.
 
-- rule: {"string":{"maxLen":"512"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"512","pattern":"^[a-zA-Z0-9._/-]+$"}}
 
 ### spec.monitoring.cloudWatchLogging.logStreamNamePrefix
 
@@ -464,7 +470,7 @@ Prefix for the log stream names Athena creates inside the log group.
 Useful when several workgroups share one log group. Same character rules
 as log_group.
 
-- rule: {"string":{"maxLen":"512"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"512","pattern":"^[a-zA-Z0-9._/-]+$"}}
 
 ### spec.monitoring.cloudWatchLogging.logTypes
 
@@ -516,7 +522,7 @@ with an AWS-owned key.
 Delivers logs to an S3 location you own -- the cheap long-term archive
 destination.
 
-- rule: s3_logging.log_location must start with 's3://' when set
+- rule: s3_logging.log_location must be an s3:// URI with a valid lowercase bucket name when set
 
 ### spec.monitoring.s3Logging.logLocation
 
@@ -554,6 +560,7 @@ statements will fail.
 - `result_encryption_option_valid`: result_configuration.encryption_option must be 'SSE_S3', 'SSE_KMS', or 'CSE_KMS' when set
 - `s3_acl_option_valid`: result_configuration.s3_acl_option must be 'BUCKET_OWNER_FULL_CONTROL' when set
 - `managed_results_excludes_output_location`: managed_query_results cannot be combined with result_configuration.output_location; results are stored either in AWS-managed storage or in your S3 bucket, not both
+- `execution_role_arn_format`: execution_role literal value must be an IAM role ARN (arn:...)
 
 ## Outputs
 

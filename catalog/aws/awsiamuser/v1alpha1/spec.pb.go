@@ -79,9 +79,17 @@ type AwsIamUserSpec struct {
 	// if such artifacts exist, surfacing them instead of silently destroying
 	// credentials someone may depend on. Turn on for ephemeral or CI-owned
 	// users where teardown must always succeed.
-	ForceDestroy  bool `protobuf:"varint,8,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ForceDestroy bool `protobuf:"varint,8,opt,name=force_destroy,json=forceDestroy,proto3" json:"force_destroy,omitempty"`
+	// Lifecycle state of the managed access key: "Active" (the AWS default) or
+	// "Inactive". An Inactive key keeps its id and secret but AWS rejects every
+	// request signed with it -- the standard rotation lever: create the
+	// replacement credential, flip this key "Inactive" to prove nothing still
+	// depends on it, then delete it. Updatable in place (no key re-creation, so
+	// the secret output never changes). Empty keeps the key Active. Only
+	// meaningful when the access key exists (disable_access_keys is false).
+	AccessKeyStatus string `protobuf:"bytes,9,opt,name=access_key_status,json=accessKeyStatus,proto3" json:"access_key_status,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AwsIamUserSpec) Reset() {
@@ -170,11 +178,18 @@ func (x *AwsIamUserSpec) GetForceDestroy() bool {
 	return false
 }
 
+func (x *AwsIamUserSpec) GetAccessKeyStatus() string {
+	if x != nil {
+		return x.AccessKeyStatus
+	}
+	return ""
+}
+
 var File_catalog_aws_awsiamuser_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsiamuser_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"*catalog/aws/awsiamuser/v1alpha1/spec.proto\x12#dev.planton.aws.awsiamuser.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9\a\n" +
+	"*catalog/aws/awsiamuser/v1alpha1/spec.proto\x12#dev.planton.aws.awsiamuser.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xea\t\n" +
 	"\x0eAwsIamUserSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12A\n" +
 	"\tuser_name\x18\x02 \x01(\tB$\xbaH!\xc8\x01\x01r\x1c2\x1a^[a-zA-Z0-9+=,.@_-]{1,64}$R\buserName\x12\x19\n" +
@@ -184,12 +199,14 @@ const file_catalog_aws_awsiamuser_v1alpha1_spec_proto_rawDesc = "" +
 	"\x9a\x01\a\"\x05r\x03\x18\x80\x01R\x0einlinePolicies\x12\x89\x01\n" +
 	"\x14permissions_boundary\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\x86\b\x92\xd4a\x19status.outputs.policy_arnR\x13permissionsBoundary\x12.\n" +
 	"\x13disable_access_keys\x18\a \x01(\bR\x11disableAccessKeys\x12#\n" +
-	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x1aZ\n" +
+	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x12F\n" +
+	"\x11access_key_status\x18\t \x01(\tB\x1a\xbaH\x17\xd8\x01\x01r\x12R\x06ActiveR\bInactiveR\x0faccessKeyStatus\x1aZ\n" +
 	"\x13InlinePoliciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12-\n" +
-	"\x05value\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x05value:\x028\x01:\x90\x02\xbaH\x8c\x02\x1a\xbd\x01\n" +
+	"\x05value\x18\x02 \x01(\v2\x17.google.protobuf.StructR\x05value:\x028\x01:\xc9\x03\xbaH\xc5\x03\x1a\xbd\x01\n" +
 	"\vpath_format\x12Rpath must begin and end with '/' and contain no empty segments, e.g. '/' or '/ci/'\x1aZthis.path == '' || this.path == '/' || this.path.matches('^/([A-Za-z0-9\\\\.,\\\\+@=_-]+/)+$')\x1aJ\n" +
-	"\vpath_length\x12#path must be at most 512 characters\x1a\x16size(this.path) <= 512B\xb6\x02\n" +
+	"\vpath_length\x12#path must be at most 512 characters\x1a\x16size(this.path) <= 512\x1a\xb6\x01\n" +
+	"\x1eaccess_key_status_requires_key\x12Yaccess_key_status has no effect when disable_access_keys is true -- remove one of the two\x1a9this.access_key_status == '' || !this.disable_access_keysB\xb6\x02\n" +
 	"'com.dev.planton.aws.awsiamuser.v1alpha1B\tSpecProtoP\x01ZOgithub.com/plantonhq/planton/catalog/aws/awsiamuser/v1alpha1;awsiamuserv1alpha1\xa2\x02\x04DPAA\xaa\x02#Dev.Planton.Aws.Awsiamuser.V1alpha1\xca\x02#Dev\\Planton\\Aws\\Awsiamuser\\V1alpha1\xe2\x02/Dev\\Planton\\Aws\\Awsiamuser\\V1alpha1\\GPBMetadata\xea\x02'Dev::Planton::Aws::Awsiamuser::V1alpha1b\x06proto3"
 
 var (

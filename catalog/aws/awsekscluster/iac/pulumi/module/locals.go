@@ -23,6 +23,7 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awseksclusterv1alpha1.Aws
 
 	// Build standard AWS tags for the cluster
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsEksCluster.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsEksCluster.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsEksCluster.Metadata.Env,

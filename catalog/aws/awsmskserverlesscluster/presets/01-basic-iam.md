@@ -10,11 +10,12 @@ A minimal MSK Serverless cluster: network interfaces in two private subnets, a r
 
 ## Before you deploy
 
-- Replace the subnet placeholders with private subnets in two different Availability Zones.
-- Replace the security group placeholder with a group whose ingress opens port 9098 to your client workloads (for example, from the application tier's security group).
+- Replace the example subnet IDs with private subnets in two different Availability Zones.
+- Replace the example security group ID with a group whose ingress opens port 9098 to your client workloads (for example, from the application tier's security group).
 
 ## Remix ideas
 
 - Reference Planton-managed resources with `valueFrom` instead of literal IDs so the cluster composes into the resource graph.
-- Omit `securityGroupIds` for a quick sandbox — AWS attaches the VPC's default security group.
+- Omit a placement's `securityGroupIds` for a quick sandbox — AWS attaches the VPC's default security group.
+- Add a second `vpcConfigs` entry to serve clients in another VPC privately (see the multi-VPC preset).
 - Grant client workloads `kafka-cluster:*` IAM permissions scoped to the exported `cluster_arn`.

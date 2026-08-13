@@ -32,7 +32,11 @@ type AwsEventBridgeBusStackOutputs struct {
 	BusName string `protobuf:"bytes,1,opt,name=bus_name,json=busName,proto3" json:"bus_name,omitempty"`
 	// The Amazon Resource Name (ARN) of the event bus. Used for IAM policies,
 	// cross-account event delivery, and as a reference in other resources.
-	BusArn        string `protobuf:"bytes,2,opt,name=bus_arn,json=busArn,proto3" json:"bus_arn,omitempty"`
+	BusArn string `protobuf:"bytes,2,opt,name=bus_arn,json=busArn,proto3" json:"bus_arn,omitempty"`
+	// The archives declared in spec.archives — one entry per archive, exposing
+	// the identifiers replay operations (EventBridge StartReplay) and IAM
+	// policies need.
+	Archives      []*AwsEventBridgeBusArchiveOutput `protobuf:"bytes,3,rep,name=archives,proto3" json:"archives,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,14 +85,81 @@ func (x *AwsEventBridgeBusStackOutputs) GetBusArn() string {
 	return ""
 }
 
+func (x *AwsEventBridgeBusStackOutputs) GetArchives() []*AwsEventBridgeBusArchiveOutput {
+	if x != nil {
+		return x.Archives
+	}
+	return nil
+}
+
+// AwsEventBridgeBusArchiveOutput is one archive's observable identity.
+type AwsEventBridgeBusArchiveOutput struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The archive's spec.archives entry name.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The Amazon Resource Name (ARN) of the archive. StartReplay calls and
+	// IAM policies reference the archive by this ARN.
+	Arn           string `protobuf:"bytes,2,opt,name=arn,proto3" json:"arn,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeBusArchiveOutput) Reset() {
+	*x = AwsEventBridgeBusArchiveOutput{}
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeBusArchiveOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeBusArchiveOutput) ProtoMessage() {}
+
+func (x *AwsEventBridgeBusArchiveOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeBusArchiveOutput.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeBusArchiveOutput) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *AwsEventBridgeBusArchiveOutput) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeBusArchiveOutput) GetArn() string {
+	if x != nil {
+		return x.Arn
+	}
+	return ""
+}
+
 var File_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awseventbridgebus/v1alpha1/outputs.proto\x12*dev.planton.aws.awseventbridgebus.v1alpha1\"S\n" +
+	"4catalog/aws/awseventbridgebus/v1alpha1/outputs.proto\x12*dev.planton.aws.awseventbridgebus.v1alpha1\"\xbb\x01\n" +
 	"\x1dAwsEventBridgeBusStackOutputs\x12\x19\n" +
 	"\bbus_name\x18\x01 \x01(\tR\abusName\x12\x17\n" +
-	"\abus_arn\x18\x02 \x01(\tR\x06busArnB\xea\x02\n" +
+	"\abus_arn\x18\x02 \x01(\tR\x06busArn\x12f\n" +
+	"\barchives\x18\x03 \x03(\v2J.dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchiveOutputR\barchives\"F\n" +
+	"\x1eAwsEventBridgeBusArchiveOutput\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
+	"\x03arn\x18\x02 \x01(\tR\x03arnB\xea\x02\n" +
 	".com.dev.planton.aws.awseventbridgebus.v1alpha1B\fOutputsProtoP\x01Z]github.com/plantonhq/planton/catalog/aws/awseventbridgebus/v1alpha1;awseventbridgebusv1alpha1\xa2\x02\x04DPAA\xaa\x02*Dev.Planton.Aws.Awseventbridgebus.V1alpha1\xca\x02*Dev\\Planton\\Aws\\Awseventbridgebus\\V1alpha1\xe2\x026Dev\\Planton\\Aws\\Awseventbridgebus\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Aws::Awseventbridgebus::V1alpha1b\x06proto3"
 
 var (
@@ -103,16 +174,18 @@ func file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDescGZIP() []b
 	return file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_goTypes = []any{
-	(*AwsEventBridgeBusStackOutputs)(nil), // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusStackOutputs
+	(*AwsEventBridgeBusStackOutputs)(nil),  // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusStackOutputs
+	(*AwsEventBridgeBusArchiveOutput)(nil), // 1: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchiveOutput
 }
 var file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusStackOutputs.archives:type_name -> dev.planton.aws.awseventbridgebus.v1alpha1.AwsEventBridgeBusArchiveOutput
+	1, // [1:1] is the sub-list for method output_type
+	1, // [1:1] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_init() }
@@ -126,7 +199,7 @@ func file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awseventbridgebus_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

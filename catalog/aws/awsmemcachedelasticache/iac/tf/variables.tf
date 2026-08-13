@@ -34,8 +34,9 @@ variable "spec" {
     parameter_group_name = optional(string, "")
     maintenance_window = optional(string, "")
     apply_immediately = optional(bool, false)
-    auto_minor_version_upgrade = optional(bool, false)
+    auto_minor_version_upgrade = optional(bool)
     notification_topic_arn = optional(string, "")
     preferred_availability_zones = optional(list(string), [])
+    availability_zone = optional(string, "")
   })
 }

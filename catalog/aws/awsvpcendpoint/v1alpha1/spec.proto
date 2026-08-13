@@ -3,6 +3,7 @@ syntax = "proto3";
 package dev.planton.aws.awsvpcendpoint.v1alpha1;
 
 import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
 
 // AwsVpcEndpointSpec creates a private connection from a VPC to an AWS
@@ -118,8 +119,12 @@ message AwsVpcEndpointSpec {
   // reach the service with zero code changes. Requires the VPC to have
   // BOTH DNS support and DNS hostnames enabled. Interface endpoints
   // only (AWS replaces the endpoint if this changes on other types --
-  // on Interface it updates in place). Off by default, matching AWS.
-  bool private_dns_enabled = 10;
+  // on Interface it updates in place). Tri-state: unset lets AWS use
+  // its default (off) and keeps an existing endpoint's current setting
+  // (the provider attribute is Optional+Computed -- an omitted value is
+  // never sent); true enables private DNS; an EXPLICIT false is the
+  // only way to turn it back off once enabled.
+  optional bool private_dns_enabled = 10;
 
   // Fine-grained DNS behavior for the endpoint. Only meaningful when
   // the endpoint creates DNS records (interface endpoints, and the
@@ -132,13 +137,15 @@ message AwsVpcEndpointSpec {
   // support the chosen type. Updates in place.
   string ip_address_type = 12;
 
-  // An IAM policy document (JSON) controlling which principals may use
-  // the endpoint to reach which resources -- e.g. "only this account's
+  // An IAM policy document controlling which principals may use the
+  // endpoint to reach which resources -- e.g. "only this account's
   // buckets" on an S3 gateway endpoint, turning the endpoint into a
-  // data-exfiltration control. Empty means full access (AWS's
-  // default). All gateway and most interface endpoints support
-  // policies. Updates in place.
-  string policy = 13;
+  // data-exfiltration control. Expressed as a structured document
+  // (standard IAM policy shape: Version, Statement, ...) rather than an
+  // embedded JSON string. Empty means full access (AWS's default). All
+  // gateway and most interface endpoints support policies. Updates in
+  // place.
+  google.protobuf.Struct policy = 13;
 
   // Pin specific IPv4/IPv6 addresses for the endpoint's ENI in chosen
   // subnets -- for appliances or firewall rules that need stable
@@ -189,11 +196,12 @@ message AwsVpcEndpointSpec {
   };
 
   // Gateway endpoints have no ENIs: no subnets, no security groups, no
-  // private DNS, no cross-region target.
+  // private DNS (set OR unset-false -- presence is what matters), no
+  // cross-region target.
   option (buf.validate.message).cel = {
     id: "eni_fields_not_gateway"
     message: "subnet_ids, security_group_ids, private_dns_enabled, subnet_configurations, and service_region do not apply to Gateway endpoints -- set endpoint_type to 'Interface' (or another ENI-based type)"
-    expression: "(this.endpoint_type != '' && this.endpoint_type != 'Gateway') || (size(this.subnet_ids) == 0 && size(this.security_group_ids) == 0 && !this.private_dns_enabled && size(this.subnet_configurations) == 0 && this.service_region == '')"
+    expression: "(this.endpoint_type != '' && this.endpoint_type != 'Gateway') || (size(this.subnet_ids) == 0 && size(this.security_group_ids) == 0 && !has(this.private_dns_enabled) && size(this.subnet_configurations) == 0 && this.service_region == '')"
   };
 
   // Security groups and private DNS are Interface-endpoint concepts;
@@ -201,13 +209,21 @@ message AwsVpcEndpointSpec {
   option (buf.validate.message).cel = {
     id: "sg_and_private_dns_interface_only"
     message: "security_group_ids and private_dns_enabled apply only to Interface endpoints"
-    expression: "this.endpoint_type in ['', 'Gateway', 'Interface'] || (size(this.security_group_ids) == 0 && !this.private_dns_enabled)"
+    expression: "this.endpoint_type in ['', 'Gateway', 'Interface'] || (size(this.security_group_ids) == 0 && !has(this.private_dns_enabled))"
   };
 
   option (buf.validate.message).cel = {
     id: "service_region_interface_only"
     message: "service_region (cross-region endpoints) applies only to Interface endpoints"
     expression: "this.service_region == '' || this.endpoint_type == 'Interface'"
+  };
+
+  // The inbound-resolver-only refinement is a mode OF private DNS -- AWS
+  // rejects it unless private DNS is enabled on the endpoint.
+  option (buf.validate.message).cel = {
+    id: "inbound_resolver_requires_private_dns"
+    message: "dns_options.private_dns_only_for_inbound_resolver_endpoint requires private_dns_enabled to be true"
+    expression: "!has(this.dns_options) || !this.dns_options.private_dns_only_for_inbound_resolver_endpoint || (has(this.private_dns_enabled) && this.private_dns_enabled)"
   };
 
   option (buf.validate.message).cel = {

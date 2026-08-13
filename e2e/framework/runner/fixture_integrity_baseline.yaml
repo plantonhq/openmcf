@@ -12,38 +12,6 @@
 # (empty field/ref segments mean the prerequisite chain itself failed to
 # resolve -- typically a prerequisite kind with no install manifest).
 
-# ── AWS: the FSx family references an AwsSecurityGroup fixture no chain
-#    deploys (AwsSecurityGroup is not among these kinds' registry
-#    prerequisites and no scenario declares it via annotation). All these
-#    profiles are currently deferred, so no live lane is failing today.
-- key: catalog/aws/awsfsxdatarepositoryassociation/e2e/scenarios/lustre-s3-link.yaml|catalog/aws/awsfsxlustrefilesystem/e2e/prerequisite.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: FSx Lustre install profile references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxlustrefilesystem/e2e/scenarios/persistent-full.yaml|catalog/aws/awsfsxlustrefilesystem/e2e/scenarios/persistent-full.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxlustrefilesystem/e2e/scenarios/scratch-minimal.yaml|catalog/aws/awsfsxlustrefilesystem/e2e/scenarios/scratch-minimal.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxontapfilesystem/e2e/scenarios/multi-az-full.yaml|catalog/aws/awsfsxontapfilesystem/e2e/scenarios/multi-az-full.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxontapfilesystem/e2e/scenarios/single-az-minimal.yaml|catalog/aws/awsfsxontapfilesystem/e2e/scenarios/single-az-minimal.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxontapstoragevirtualmachine/e2e/scenarios/unix-svm.yaml|catalog/aws/awsfsxontapfilesystem/e2e/prerequisite.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: FSx ONTAP install profile references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxontapvolume/e2e/scenarios/mounted-flexvol.yaml|catalog/aws/awsfsxontapfilesystem/e2e/prerequisite.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: FSx ONTAP install profile references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxopenzfsfilesystem/e2e/scenarios/single-az-full.yaml|catalog/aws/awsfsxopenzfsfilesystem/e2e/scenarios/single-az-full.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-- key: catalog/aws/awsfsxwindowsfilesystem/e2e/scenarios/self-managed-ad.yaml|catalog/aws/awsfsxwindowsfilesystem/e2e/scenarios/self-managed-ad.yaml|security_group_ids|AwsSecurityGroup/planton-oss-e2e-awssg-prereq
-  owner: aws-provider catalog maintainers
-  note: scenario references an undeployed AwsSecurityGroup
-
 # ── Azure: the Front Door origin install profile no longer fits its own
 #    kind's current schema (the spec moved under the fixture), so the route
 #    scenarios' chains break at the origin fixture.
@@ -67,12 +35,3 @@
 #    resolve. Owned by the proxy kinds' next proof pass: either publish an
 #    install profile for the cert or move the optional cert edge out of the
 #    registry prerequisites.
-- key: catalog/gcp/gcpglobalforwardingrule/e2e/scenarios/minimal.yaml|catalog/gcp/gcpglobalforwardingrule/e2e/scenarios/minimal.yaml||/
-  owner: gcp-provider catalog maintainers (global forwarding rule proof pass)
-  note: chain fails at the GcpCertManagerCert prerequisite via GcpTargetHttpsProxy
-- key: catalog/gcp/gcptargethttpsproxy/e2e/scenarios/hardened-frontend.yaml|catalog/gcp/gcptargethttpsproxy/e2e/scenarios/hardened-frontend.yaml||/
-  owner: gcp-provider catalog maintainers (target https proxy proof pass)
-  note: GcpCertManagerCert registry prerequisite has no install manifest
-- key: catalog/gcp/gcptargethttpsproxy/e2e/scenarios/minimal.yaml|catalog/gcp/gcptargethttpsproxy/e2e/scenarios/minimal.yaml||/
-  owner: gcp-provider catalog maintainers (target https proxy proof pass)
-  note: GcpCertManagerCert registry prerequisite has no install manifest

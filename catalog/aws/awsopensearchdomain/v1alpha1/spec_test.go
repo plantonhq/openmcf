@@ -56,8 +56,8 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 	})
 
 	ginkgo.It("accepts a full production VPC spec", func() {
-		spec.EncryptAtRestEnabled = true
-		spec.NodeToNodeEncryptionEnabled = true
+		spec.EncryptAtRestEnabled = proto.Bool(true)
+		spec.NodeToNodeEncryptionEnabled = proto.Bool(true)
 		spec.ClusterConfig.DedicatedMasterEnabled = true
 		spec.ClusterConfig.DedicatedMasterType = "r6g.large.search"
 		spec.ClusterConfig.DedicatedMasterCount = 3
@@ -170,7 +170,7 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 			UseOffPeakWindow: true,
 		}
 		spec.OffPeakWindowOptions = &AwsOpenSearchDomainOffPeakWindowOptions{
-			Enabled:           true,
+			Enabled:           proto.Bool(true),
 			WindowStartHour:   proto.Int32(23),
 			WindowStartMinute: proto.Int32(30),
 		}
@@ -619,7 +619,7 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 
 	ginkgo.It("fails when off_peak_window start hour is out of range", func() {
 		spec.OffPeakWindowOptions = &AwsOpenSearchDomainOffPeakWindowOptions{
-			Enabled:         true,
+			Enabled:         proto.Bool(true),
 			WindowStartHour: proto.Int32(24),
 		}
 		err := protovalidate.Validate(spec)
@@ -646,5 +646,125 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when warm is enabled without its node shape", func() {
+		spec.ClusterConfig.ZoneAwarenessEnabled = true
+		spec.ClusterConfig.AvailabilityZoneCount = 2
+		spec.ClusterConfig.DedicatedMasterEnabled = true
+		spec.ClusterConfig.DedicatedMasterType = "r6g.large.search"
+		spec.ClusterConfig.DedicatedMasterCount = 3
+		spec.ClusterConfig.WarmEnabled = true
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("warm_enabled requires warm_type and warm_count"))
+	})
+
+	ginkgo.It("fails for a warm_type outside the UltraWarm family", func() {
+		spec.ClusterConfig.WarmEnabled = true
+		spec.ClusterConfig.WarmType = "r6g.large.search"
+		spec.ClusterConfig.WarmCount = 2
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails for an unknown TLS security policy", func() {
+		spec.DomainEndpointOptions = &AwsOpenSearchDomainEndpointOptions{
+			TlsSecurityPolicy: "Policy-Min-TLS-9-9",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails for a jwt_options block with no validation source, even when disabled", func() {
+		spec.EngineVersion = "OpenSearch_2.11"
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:        true,
+			MasterUserArn:  strRef("arn:aws:iam::123456789012:role/master"),
+			JwtOptions:     &AwsOpenSearchDomainJwtOptions{Enabled: false},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("provide jwks_url or public_key"))
+	})
+
+	ginkgo.It("fails for jwt_options on an engine below OpenSearch 2.11", func() {
+		spec.EngineVersion = "OpenSearch_2.9"
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
+			JwtOptions:    &AwsOpenSearchDomainJwtOptions{Enabled: true, JwksUrl: "https://idp.example.com/jwks.json"},
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("OpenSearch_2.11 or newer"))
+	})
+
+	ginkgo.It("accepts jwt_options on OpenSearch 2.11", func() {
+		spec.EngineVersion = "OpenSearch_2.11"
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
+			JwtOptions:    &AwsOpenSearchDomainJwtOptions{Enabled: true, JwksUrl: "https://idp.example.com/jwks.json"},
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails for a vpc_options block with no subnets", func() {
+		spec.VpcOptions = &AwsOpenSearchDomainVpcOptions{}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("at least one subnet_id"))
+	})
+
+	ginkgo.It("accepts SAML options under fine-grained access control", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
+		}
+		spec.SamlOptions = &AwsOpenSearchDomainSamlOptions{
+			IdpEntityId:        "https://idp.example.com/saml/metadata",
+			IdpMetadataContent: "<EntityDescriptor>...</EntityDescriptor>",
+			SessionTimeoutMinutes: 120,
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects SAML options without fine-grained access control", func() {
+		spec.SamlOptions = &AwsOpenSearchDomainSamlOptions{
+			IdpEntityId:        "https://idp.example.com/saml/metadata",
+			IdpMetadataContent: "<EntityDescriptor>...</EntityDescriptor>",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires advanced_security_options to be enabled"))
+	})
+
+	ginkgo.It("rejects SAML options naming two master principals", func() {
+		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
+		}
+		spec.SamlOptions = &AwsOpenSearchDomainSamlOptions{
+			IdpEntityId:        "https://idp.example.com/saml/metadata",
+			IdpMetadataContent: "<EntityDescriptor>...</EntityDescriptor>",
+			MasterBackendRole:  "admins",
+			MasterUserName:     "admin",
+		}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("mutually exclusive"))
+	})
+
+	ginkgo.It("rejects a malformed authorized VPC endpoint account ID", func() {
+		spec.AuthorizedVpcEndpointAccessAccounts = []string{"12345"}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+		gomega.Expect(err.Error()).To(gomega.ContainSubstring("12-digit AWS account IDs"))
+	})
+
+	ginkgo.It("accepts twelve-digit authorized account IDs", func() {
+		spec.AuthorizedVpcEndpointAccessAccounts = []string{"123456789012", "210987654321"}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 	})
 })

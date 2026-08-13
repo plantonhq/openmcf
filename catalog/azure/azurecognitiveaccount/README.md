@@ -26,3 +26,7 @@ The **AzureCognitiveAccount** component deploys an Azure AI services account -- 
 
 - Account connections (the AI Foundry connection surface for storage, search, and partner services) -- deferred until the Pulumi provider can express them; the upgrade is additive.
 - A typed reference for `customQuestionAnsweringSearchServiceId` once the Azure AI Search kind registers.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

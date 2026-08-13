@@ -1,0 +1,144 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_db_instance:
+    mappings:
+      - spec: spec.allocated_storage_gb
+        arg: allocated_storage
+      - spec: spec.max_allocated_storage_gb
+        arg: max_allocated_storage
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+      # The spec groups the six flat domain_* arguments into one Active
+      # Directory message carrying the two mutually exclusive shapes
+      # (AWS-managed vs self-managed).
+      - spec: spec.active_directory.domain
+        arg: domain
+      - spec: spec.active_directory.domain_iam_role_name
+        arg: domain_iam_role_name
+      - spec: spec.active_directory.domain_fqdn
+        arg: domain_fqdn
+      - spec: spec.active_directory.domain_ou
+        arg: domain_ou
+      - spec: spec.active_directory.domain_auth_secret_arn
+        arg: domain_auth_secret_arn
+      - spec: spec.active_directory.domain_dns_ips
+        arg: domain_dns_ips
+      # The provider wraps the single toggle in a block; the spec keeps it
+      # a flat boolean.
+      - spec: spec.blue_green_update_enabled
+        arg: blue_green_update.enabled
+    exclusions:
+      - arg: identifier
+        reason: wired by the module from metadata.name -- the identifier is platform naming, never free-form spec surface
+      - arg: identifier_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity -- the module always names the instance exactly
+      - arg: backup_target
+        reason: AWS Outposts backup placement -- Outposts deployment is excluded surface across the catalog (the recorded Outposts exclusion class)
+      - arg: customer_owned_ip_enabled
+        reason: customer-owned IP pools exist only on AWS Outposts -- the recorded Outposts exclusion class
+      - arg: custom_iam_instance_profile
+        reason: RDS Custom surface (requires an AWSRDSCustom-prefixed profile and a custom-* engine) -- RDS Custom is excluded; its custom engine versions are a recorded deferral in the dispositions ledger
+      - arg: password_wo
+        reason: write-only ephemeral password variant -- the managed-password posture (manage_master_user_password) supersedes it; the platform never round-trips raw credentials through manifests
+      - arg: password_wo_version
+        reason: version companion of the excluded write-only password
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_db_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one instance
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_db_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters.
+    specRoot: spec.parameters
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one instance
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: family
+        reason: derived by the module from spec.engine + spec.engine_version per AWS's own family naming -- a second source of the same fact would only drift
+      - arg: skip_destroy
+        reason: destroy-behavior knob (leave the group behind on teardown) -- engine operation, not mapping configuration; the recorded apply-behavior exclusion class
+      - arg: region
+        reason: wired by the module -- the group follows the instance's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_db_option_group:
+    # The managed group for inline spec.options -- engine features
+    # activated as a named option list, created only when the spec brings
+    # options.
+    specRoot: spec.options
+    mappings:
+      # The provider nests entries under an "option" block; the spec IS
+      # that list.
+      - spec: spec.options
+        arg: option
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one instance
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: option_group_description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: engine_name
+        reason: wired by the module from spec.engine -- an option group is always for its instance's engine
+      - arg: major_engine_version
+        reason: derived by the module from spec.engine_version per AWS's raw segment convention -- a second source of the same fact would only drift
+      - arg: option.db_security_group_memberships
+        reason: EC2-Classic security group names -- the EC2-Classic platform is retired; access composes through option.vpc_security_group_memberships references
+      - arg: skip_destroy
+        reason: destroy-behavior knob (leave the group behind on teardown) -- engine operation, not mapping configuration; the recorded apply-behavior exclusion class
+      - arg: region
+        reason: wired by the module -- the group follows the instance's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_db_instance_role_association:
+    # One association per spec.iam_roles entry -- feature_name is REQUIRED
+    # on the instance-side association (unlike the cluster side), and the
+    # spec's CEL mirrors that asymmetry.
+    specRoot: spec.iam_roles
+    mappings:
+      - spec: spec.iam_roles.role
+        arg: role_arn
+    exclusions:
+      - arg: db_instance_identifier
+        reason: wired by the module to the instance it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- associations follow the instance's spec.region through the provider connection

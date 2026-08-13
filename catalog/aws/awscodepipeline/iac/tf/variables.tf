@@ -39,6 +39,12 @@ variable "spec" {
         role_arn = optional(string, "")
         run_order = optional(number, 0)
         timeout_in_minutes = optional(number, 0)
+        commands = optional(list(string), [])
+        output_artifacts_for_compute_action = optional(list(object({
+          name = string
+          files = optional(list(string), [])
+        })), [])
+        output_variables = optional(list(string), [])
       }))
       before_entry = optional(object({
         result = optional(string, "")

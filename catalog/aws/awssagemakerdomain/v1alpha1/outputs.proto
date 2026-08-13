@@ -38,4 +38,15 @@ message AwsSagemakerDomainStackOutputs {
   // application instance ID for this domain. Only populated when auth_mode is "SSO".
   // Used when assigning Identity Center users and groups to the domain programmatically.
   string single_sign_on_managed_application_instance_id = 7;
+
+  // user_profile_arns maps each folded user profile's name (the spec key) to its ARN.
+  // Feeds IAM policies scoped to a profile and the import tooling's per-satellite IDs.
+  map<string, string> user_profile_arns = 8;
+
+  // space_arns maps each folded space's name (the spec key) to its ARN — the space's
+  // canonical identity (space imports are ARN-keyed).
+  map<string, string> space_arns = 9;
+
+  // space_urls maps each folded space's name to the URL where its runtime is reached.
+  map<string, string> space_urls = 10;
 }

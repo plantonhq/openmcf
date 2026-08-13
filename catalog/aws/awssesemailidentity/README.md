@@ -28,7 +28,7 @@ The identity's satellites are folded: the custom MAIL FROM domain, bounce/compla
 | `dkimSigning.domainSigningSelector` | string | No | — | BYODKIM selector you publish the public key under. |
 | `mailFrom.mailFromDomain` | string | No | amazonses.com | Custom MAIL FROM subdomain (needs MX + SPF records). |
 | `mailFrom.behaviorOnMxFailure` | string | No | USE_DEFAULT_VALUE | `USE_DEFAULT_VALUE` or `REJECT_MESSAGE`. |
-| `emailForwardingEnabled` | bool | No | true | Forward bounces/complaints to the mailbox. |
+| `emailForwardingEnabled` | bool | No | unset | Tri-state: unset leaves the setting unmanaged (a fresh identity gets AWS's default, forwarding on); an explicit true/false pins the position (materializes the feedback sub-resource). SES retains the last-written value per identity name even across identity deletion, so unsetting the field on a previously-managed identity does not restore the default — set true explicitly to turn forwarding back on. |
 | `policies[]` | list | No | — | Named cross-account authorization policies (IAM policy JSON). |
 
 ## Outputs

@@ -1,6 +1,6 @@
 # AwsEventBridgeRule
 
-The **AwsEventBridgeRule** resource provides a standardized way to provision and manage AWS EventBridge rules with bundled targets through Planton. It supports event pattern matching, schedule-based triggering, input transformation, per-target dead letter queues, retry policies, and service-typed target parameter blocks (SQS, Kinesis, HTTP/API destinations, Batch, ECS RunTask).
+The **AwsEventBridgeRule** resource provides a standardized way to provision and manage AWS EventBridge rules with bundled targets through Planton. It supports event pattern matching, schedule-based triggering, input transformation, per-target dead letter queues, retry policies, and service-typed target parameter blocks (SQS, Kinesis, HTTP/API destinations, Batch, ECS RunTask, Redshift Data API, SSM Run Command, SageMaker Pipelines, AppSync).
 
 ## Spec Fields (80/20)
 
@@ -38,7 +38,11 @@ The **AwsEventBridgeRule** resource provides a standardized way to provision and
 - **targets[].kinesis_target.partition_key_path**: JSONPath extracting the partition key from the event (shard routing). When unset, EventBridge uses the event ID.
 - **targets[].http_target**: Path wildcards, query string parameters, and header parameters for EventBridge API destination targets.
 - **targets[].batch_target**: Batch job submission parameters — `job_definition` (a reference to an AwsBatchJobDefinition's revision-carrying ARN output, or a literal name/name:revision) and `job_name` (required), optional `array_size` (2-10000) and `job_attempts` (1-10). The target `arn` is the job QUEUE (an AwsBatchJobQueue's `job_queue_arn` output).
-- **targets[].ecs_target**: ECS RunTask parameters — the target `arn` is the CLUSTER, and this block carries `task_definition_arn` (required, accepts an AwsEcsTaskDefinition reference), task count, launch type or capacity provider strategy, awsvpc network configuration, placement strategies/constraints, and tagging behavior. The target's `role_arn` is required — EventBridge assumes it to call `ecs:RunTask`.
+- **targets[].ecs_target**: ECS RunTask parameters — the target `arn` is the CLUSTER, and this block carries `task_definition_arn` (required, accepts an AwsEcsTaskDefinition reference), task count, launch type or capacity provider strategy, awsvpc network configuration, placement strategies/constraints, tagging behavior, and per-task `tags` (cost allocation on the launched tasks). The target's `role_arn` is required — EventBridge assumes it to call `ecs:RunTask`.
+- **targets[].redshift_target**: Redshift Data API parameters — the target `arn` is the CLUSTER; this block carries the `database` (required), the SQL statement each event runs, an optional statement name, `with_event` context delivery, and credentials as either `db_user` (temporary credentials) or `secrets_manager_arn`. The target's `role_arn` is required.
+- **targets[].run_command_targets**: SSM Run Command instance selectors (up to 5, AND-ed) — the target `arn` is the DOCUMENT (e.g. `AWS-RunShellScript`); each selector pairs a `key` (`InstanceIds` or `tag:<key>`) with 1–50 `values`. The target's `role_arn` is required.
+- **targets[].sagemaker_pipeline_target**: SageMaker pipeline execution parameters (`pipeline_parameter_list`, up to 200 name/value pairs) — the target `arn` is the PIPELINE. The target's `role_arn` is required.
+- **targets[].appsync_target**: the GraphQL operation (query or mutation, with its selection set) each event invokes — the target `arn` is the AppSync API's endpoint ARN. The target's `role_arn` is required.
 
 ## Stack Outputs
 

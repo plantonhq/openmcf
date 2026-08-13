@@ -89,6 +89,20 @@ var _ = ginkgo.Describe("AwsIamUserSpec Validation Tests", func() {
 				input.Spec.InlinePolicies = map[string]*structpb.Struct{"bucketAccess": inline}
 				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for an explicitly Active access key", func() {
+				input := minimalValidUser()
+				input.Spec.AccessKeyStatus = "Active"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for an Inactive access key", func() {
+				input := minimalValidUser()
+				input.Spec.AccessKeyStatus = "Inactive"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -135,6 +149,21 @@ var _ = ginkgo.Describe("AwsIamUserSpec Validation Tests", func() {
 				input.Spec.ManagedPolicyArns = []*foreignkeyv1.StringValueOrRef{
 					{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: ""}},
 				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an unknown access key status", func() {
+				input := minimalValidUser()
+				input.Spec.AccessKeyStatus = "Suspended"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a key status with keys disabled", func() {
+				input := minimalValidUser()
+				input.Spec.DisableAccessKeys = true
+				input.Spec.AccessKeyStatus = "Active"
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

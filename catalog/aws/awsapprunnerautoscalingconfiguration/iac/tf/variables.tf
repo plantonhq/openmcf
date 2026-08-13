@@ -18,5 +18,6 @@ variable "spec" {
     max_concurrency = optional(number)
     max_size = optional(number)
     min_size = optional(number)
+    set_as_account_default = optional(bool, false)
   })
 }

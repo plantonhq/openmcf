@@ -31,5 +31,6 @@ go_test(
     deps = [
         "//catalog/aws/awswafwebacl/v1alpha1",
         "//shared/foreignkey/v1:foreignkey",
+        "@org_golang_google_protobuf//proto",
     ],
 )

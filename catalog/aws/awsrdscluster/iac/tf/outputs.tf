@@ -57,3 +57,13 @@ output "instance_endpoints" {
   description = "Per-instance endpoints of the folded instances, in spec order. Empty for Aurora Serverless v1 and Multi-AZ RDS clusters, where AWS owns the compute."
   value       = [for instance in var.spec.instances : aws_rds_cluster_instance.this[instance.name].endpoint]
 }
+
+output "custom_endpoints" {
+  description = "The custom cluster endpoints, in spec order -- each entry's name and the DNS endpoint AWS assigned it, for charts to wire into consumers."
+  value       = [for endpoint in var.spec.custom_endpoints : { name = endpoint.name, endpoint = aws_rds_cluster_endpoint.this[endpoint.name].endpoint }]
+}
+
+output "activity_stream_kinesis_stream_name" {
+  description = "The Kinesis stream receiving the Database Activity Stream (only when spec.activity_stream is set) -- the handle audit consumers attach to."
+  value       = try(aws_rds_cluster_activity_stream.this[0].kinesis_stream_name, "")
+}

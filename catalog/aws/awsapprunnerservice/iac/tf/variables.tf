@@ -48,6 +48,11 @@ variable "spec" {
     vpc_connector_arn = optional(string, "")
     observability_configuration_arn = optional(string, "")
     is_publicly_accessible = optional(bool)
+    vpc_ingress_connections = optional(list(object({
+      name = string
+      vpc_id = string
+      vpc_endpoint_id = string
+    })), [])
     ip_address_type = optional(string)
     kms_key_arn = optional(string, "")
     auto_deployments_enabled = optional(bool, false)

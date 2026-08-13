@@ -19,6 +19,12 @@
 # what AWS accepts. Both registry prerequisites (AwsS3Bucket, AwsIamRole)
 # install first; the role profile's firehose-delivery document is scoped to
 # the fixture bucket that receives failed events.
+#
+# The backup S3 leg carries its own CloudWatch logging block (distinct from
+# destination-level logging) -- create-time configuration naming a log
+# group/stream Firehose writes to only on delivery errors; nothing is
+# created in CloudWatch and nothing bills. This is the live arm for the
+# s3-level logging wiring.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisFirehose
 metadata:
@@ -61,6 +67,12 @@ spec:
           name: planton-oss-e2e-firehose-delivery-role
           fieldPath: status.outputs.role_arn
       prefix: "splunk-failed/"
+      # S3-leg CloudWatch logging: accepted at create with a named
+      # group/stream; Firehose does not create or probe them.
+      logging:
+        enabled: true
+        logGroupName: /aws/kinesisfirehose/planton-oss-e2e-awskfh-splunk
+        logStreamName: S3BackupDelivery
     processing:
       enabled: true
       processors:

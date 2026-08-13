@@ -5,6 +5,9 @@
 # directory (see profile.yaml) — AWS rejects the join otherwise. The lane
 # is deferred; the offline plan/preview proof covers the full argument
 # wiring including the Secrets Manager arm both engines send.
+# The e2e-prerequisites annotation composes the security-group fixture this
+# manifest references (security_group_ids is optional on the kind, so it is
+# deliberately NOT a registry prerequisite).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
@@ -17,6 +20,7 @@ metadata:
     e2e-component: awsfsxwindowsfilesystem
   annotations:
     planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSecurityGroup"
   tags:
     - planton-e2e
 spec:

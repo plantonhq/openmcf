@@ -5,6 +5,12 @@
 # unset on purpose so AWS picks its current default and this manifest never
 # goes stale. access-entries-only authentication exercises the modern
 # access model. Full metadata is supplied for tagging/orphan cleanup.
+#
+# Two zero-cost arms ride along: the EXPLICIT standard scaling tier (proves
+# the control_plane_scaling_config path renders live -- provisioned tiers
+# bill hourly and stay offline-proven) and a hybrid-nodes remote-network
+# declaration (declaring ranges is free; billing starts only when a hybrid
+# node registers, which this scenario never does).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksCluster
 metadata:
@@ -38,3 +44,7 @@ spec:
   accessConfig:
     authenticationMode: API
   upgradeSupportType: STANDARD
+  controlPlaneScalingTier: standard
+  remoteNetworks:
+    nodeCidrs:
+      - 10.80.0.0/16

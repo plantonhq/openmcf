@@ -9,6 +9,7 @@ AWS IAM users provide long-lived programmatic credentials for CI/CD pipelines, t
 - inline_policies: Map of policy name to JSON document for user-specific permissions
 - permissions_boundary: Managed policy (reference or literal ARN) capping the user's maximum permissions — valuable on long-lived credentials
 - disable_access_keys: Set to true to create user without access keys (default: false, creates access keys)
+- access_key_status: "Active" (default) or "Inactive" -- the rotation lever: an Inactive key keeps its id and secret but AWS rejects requests signed with it; flips in place without recreating the key
 - force_destroy: Delete out-of-band credentials (login profile, extra keys, MFA devices) on teardown instead of failing
 
 ## Stack outputs

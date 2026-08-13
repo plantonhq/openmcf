@@ -89,6 +89,7 @@ variable "spec" {
         kms_key_id = optional(string, "")
         snapshot_id = optional(string, "")
         delete_on_termination = optional(bool)
+        volume_initialization_rate_mibps = optional(number, 0)
       }))
     })), [])
     network_interfaces = optional(list(object({
@@ -110,6 +111,18 @@ variable "spec" {
       ipv4_prefixes = optional(list(string), [])
       ipv6_prefix_count = optional(number, 0)
       ipv6_prefixes = optional(list(string), [])
+      associate_carrier_ip_address = optional(bool)
+      connection_tracking = optional(object({
+        tcp_established_timeout_seconds = optional(number, 0)
+        udp_stream_timeout_seconds = optional(number, 0)
+        udp_timeout_seconds = optional(number, 0)
+      }))
+      ena_srd = optional(object({
+        enabled = optional(bool, false)
+        udp_enabled = optional(bool, false)
+      }))
+      ena_queue_count = optional(number, 0)
+      primary_ipv6 = optional(bool)
     })), [])
     metadata_options = optional(object({
       http_endpoint = optional(string, "")
@@ -124,11 +137,17 @@ variable "spec" {
       group_name = optional(string, "")
       partition_number = optional(number, 0)
       tenancy = optional(string, "")
+      group_id = optional(string, "")
+      host_id = optional(string, "")
+      host_resource_group_arn = optional(string, "")
+      affinity = optional(string, "")
+      spread_domain = optional(string, "")
     }))
     cpu_options = optional(object({
       core_count = optional(number, 0)
       threads_per_core = optional(number, 0)
       amd_sev_snp = optional(string, "")
+      nested_virtualization = optional(string, "")
     }))
     cpu_credits = optional(string, "")
     spot_options = optional(object({
@@ -148,5 +167,21 @@ variable "spec" {
     disable_api_stop = optional(bool, false)
     disable_api_termination = optional(bool, false)
     instance_initiated_shutdown_behavior = optional(string, "")
+    capacity_reservation = optional(object({
+      preference = optional(string, "")
+      capacity_reservation_id = optional(string, "")
+      capacity_reservation_resource_group_arn = optional(string, "")
+    }))
+    market_type = optional(string, "")
+    bandwidth_weighting = optional(string, "")
+    license_configuration_arns = optional(list(string), [])
+    secondary_interfaces = optional(list(object({
+      device_index = optional(number, 0)
+      network_card_index = optional(number, 0)
+      delete_on_termination = optional(bool, false)
+      secondary_subnet_id = optional(string, "")
+      private_ip_address_count = optional(number, 0)
+      private_ip_addresses = optional(list(string), [])
+    })), [])
   })
 }

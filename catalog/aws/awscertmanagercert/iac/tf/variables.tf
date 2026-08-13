@@ -35,5 +35,6 @@ variable "spec" {
       certificate_chain = optional(string, "")
     }))
     certificate_authority_arn = optional(string, "")
+    early_renewal_duration = optional(string, "")
   })
 }

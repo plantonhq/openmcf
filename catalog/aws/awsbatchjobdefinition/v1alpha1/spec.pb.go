@@ -42,19 +42,23 @@ const (
 // deployment -- "change the image tag, the schedule runs the new code"
 // falls out of the composition.
 //
-// This kind models single-container ECS-based jobs (type "container" with
-// containerProperties) for EC2 and Fargate -- the shape nearly every Batch
-// workload uses. Multi-node parallel jobs (nodeProperties), multi-container
-// ECS jobs (ecsProperties), and Batch-on-EKS pod jobs (eksProperties) are
-// separate long-tail arms, deliberately not modeled yet.
+// This kind models type "container" job definitions in both of their
+// workload arms: single-container ECS-based jobs (containerProperties --
+// the shape nearly every Batch workload uses, for EC2 and Fargate) and
+// Batch-on-EKS pod jobs (eksProperties -- the workload half of an
+// EKS-attached compute environment). Exactly one arm is set per
+// definition. Multi-node parallel jobs (nodeProperties, type "multinode")
+// and multi-container ECS jobs (ecsProperties) remain separate long-tail
+// workload shapes, deliberately not modeled.
 type AwsBatchJobDefinitionSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region the job definition is registered in. A queue can only
 	// run definitions registered in its own region.
 	// Example: "us-west-2", "eu-west-1".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The container the job runs: image, command, sizing, identities,
-	// logging, and storage.
+	// The ECS-based container the job runs: image, command, sizing,
+	// identities, logging, and storage. Exactly one of container or eks is
+	// set -- this arm targets EC2/Fargate compute environments.
 	Container *AwsBatchJobDefinitionContainer `protobuf:"bytes,2,opt,name=container,proto3" json:"container,omitempty"`
 	// Where the job may run: "EC2" (default when empty) and/or "FARGATE".
 	// A Fargate job definition additionally requires container.execution_role
@@ -86,8 +90,15 @@ type AwsBatchJobDefinitionSpec struct {
 	// consumers (a manual SubmitJob against a pinned revision) must keep
 	// running old revisions.
 	DeregisterOnNewRevision *bool `protobuf:"varint,9,opt,name=deregister_on_new_revision,json=deregisterOnNewRevision,proto3,oneof" json:"deregister_on_new_revision,omitempty"`
-	unknownFields           protoimpl.UnknownFields
-	sizeCache               protoimpl.SizeCache
+	// The Batch-on-EKS pod the job runs: containers, pod networking, and
+	// Kubernetes-native volumes. Exactly one of container or eks is set --
+	// this arm targets compute environments attached to an EKS cluster
+	// (eks_configuration on AwsBatchComputeEnvironment). Jobs are submitted
+	// the same way; Batch translates the definition into a pod on the
+	// attached cluster.
+	Eks           *AwsBatchJobDefinitionEks `protobuf:"bytes,10,opt,name=eks,proto3" json:"eks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsBatchJobDefinitionSpec) Reset() {
@@ -181,6 +192,13 @@ func (x *AwsBatchJobDefinitionSpec) GetDeregisterOnNewRevision() bool {
 		return *x.DeregisterOnNewRevision
 	}
 	return false
+}
+
+func (x *AwsBatchJobDefinitionSpec) GetEks() *AwsBatchJobDefinitionEks {
+	if x != nil {
+		return x.Eks
+	}
+	return nil
 }
 
 // AwsBatchJobDefinitionContainer describes the single container a job runs.
@@ -1305,14 +1323,718 @@ func (x *AwsBatchJobDefinitionTimeout) GetAttemptDurationSeconds() int32 {
 	return 0
 }
 
+// AwsBatchJobDefinitionEks describes the pod a Batch-on-EKS job runs
+// (the provider's eksProperties.podProperties, flattened -- the wrapper
+// carries nothing else). Batch translates this into a Kubernetes pod on
+// the compute environment's attached EKS cluster at job start.
+type AwsBatchJobDefinitionEks struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The pod's main containers (1-10). Batch watches these to decide job
+	// success: the job completes when every main container exits.
+	Containers []*AwsBatchJobDefinitionEksContainer `protobuf:"bytes,1,rep,name=containers,proto3" json:"containers,omitempty"`
+	// Init containers (0-10), run sequentially to completion before the
+	// main containers start -- setup steps like fetching data or waiting
+	// for a dependency.
+	InitContainers []*AwsBatchJobDefinitionEksContainer `protobuf:"bytes,2,rep,name=init_containers,json=initContainers,proto3" json:"init_containers,omitempty"`
+	// Whether the pod uses the NODE's network namespace (Kubernetes
+	// hostNetwork). UNSET means AWS's default, which is TRUE for Batch
+	// pods -- the opposite of the plain-Kubernetes default -- so an
+	// explicit false is a real choice: it gives the pod its own namespace
+	// (required for VPC-CNI pod networking with security groups per pod).
+	HostNetwork *bool `protobuf:"varint,3,opt,name=host_network,json=hostNetwork,proto3,oneof" json:"host_network,omitempty"`
+	// The pod's DNS resolution policy. AWS defaults to "ClusterFirst"
+	// (resolve through the cluster's DNS first); "Default" inherits the
+	// NODE's resolution; "ClusterFirstWithHostNet" is the cluster-first
+	// behavior for pods running with host_network.
+	DnsPolicy string `protobuf:"bytes,4,opt,name=dns_policy,json=dnsPolicy,proto3" json:"dns_policy,omitempty"`
+	// The Kubernetes service account the pod runs as -- the EKS-native way
+	// to grant the JOB's code AWS permissions (IRSA / Pod Identity), the
+	// counterpart of the container arm's job_role.
+	ServiceAccountName string `protobuf:"bytes,5,opt,name=service_account_name,json=serviceAccountName,proto3" json:"service_account_name,omitempty"`
+	// Labels applied to the pod's metadata -- Kubernetes selectors,
+	// cost-allocation, and policy engines key off these.
+	// Example: {"team": "genomics", "workload": "batch"}.
+	PodLabels map[string]string `protobuf:"bytes,6,rep,name=pod_labels,json=podLabels,proto3" json:"pod_labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Names of Kubernetes imagePullSecrets in the job's namespace, for
+	// pulling from private non-ECR registries (the EKS counterpart of the
+	// container arm's repository_credentials_secret_arn). ECR images need
+	// no secret -- the node role's pull access covers them.
+	ImagePullSecretNames []string `protobuf:"bytes,7,rep,name=image_pull_secret_names,json=imagePullSecretNames,proto3" json:"image_pull_secret_names,omitempty"`
+	// Share one process namespace across the pod's containers (Kubernetes
+	// shareProcessNamespace) -- lets a sidecar signal or observe the main
+	// container's processes. Default false, like plain Kubernetes.
+	ShareProcessNamespace bool `protobuf:"varint,8,opt,name=share_process_namespace,json=shareProcessNamespace,proto3" json:"share_process_namespace,omitempty"`
+	// Kubernetes-native volumes the pod's containers mount by name:
+	// emptyDir scratch space, node hostPath directories, or Kubernetes
+	// secrets. (EFS rides the cluster's CSI driver and static
+	// PersistentVolumes -- outside the job definition's surface.)
+	Volumes       []*AwsBatchJobDefinitionEksVolume `protobuf:"bytes,9,rep,name=volumes,proto3" json:"volumes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEks) Reset() {
+	*x = AwsBatchJobDefinitionEks{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEks) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEks) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEks) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEks.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEks) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AwsBatchJobDefinitionEks) GetContainers() []*AwsBatchJobDefinitionEksContainer {
+	if x != nil {
+		return x.Containers
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEks) GetInitContainers() []*AwsBatchJobDefinitionEksContainer {
+	if x != nil {
+		return x.InitContainers
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEks) GetHostNetwork() bool {
+	if x != nil && x.HostNetwork != nil {
+		return *x.HostNetwork
+	}
+	return false
+}
+
+func (x *AwsBatchJobDefinitionEks) GetDnsPolicy() string {
+	if x != nil {
+		return x.DnsPolicy
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEks) GetServiceAccountName() string {
+	if x != nil {
+		return x.ServiceAccountName
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEks) GetPodLabels() map[string]string {
+	if x != nil {
+		return x.PodLabels
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEks) GetImagePullSecretNames() []string {
+	if x != nil {
+		return x.ImagePullSecretNames
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEks) GetShareProcessNamespace() bool {
+	if x != nil {
+		return x.ShareProcessNamespace
+	}
+	return false
+}
+
+func (x *AwsBatchJobDefinitionEks) GetVolumes() []*AwsBatchJobDefinitionEksVolume {
+	if x != nil {
+		return x.Volumes
+	}
+	return nil
+}
+
+// AwsBatchJobDefinitionEksContainer is one container of a Batch-on-EKS
+// pod (main or init). Field names follow the Kubernetes container spec as
+// Batch exposes it.
+type AwsBatchJobDefinitionEksContainer struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The container image, as a full reference: "<repository>:<tag>" or
+	// "<repository>@<digest>". The image architecture must match the
+	// cluster's node architecture.
+	// Example: "123456789012.dkr.ecr.us-west-2.amazonaws.com/genomics:2.1".
+	Image string `protobuf:"bytes,1,opt,name=image,proto3" json:"image,omitempty"`
+	// The container's name -- a Kubernetes DNS-1123 label (lowercase
+	// alphanumerics and hyphens, max 63 chars). Required by Kubernetes when
+	// the pod has more than one container; Batch names a lone unnamed
+	// container "default".
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	// Entrypoint override (Kubernetes command / Docker ENTRYPOINT).
+	// Supports "Ref::<key>" placeholders resolved from spec.parameters.
+	Command []string `protobuf:"bytes,3,rep,name=command,proto3" json:"command,omitempty"`
+	// Arguments to the entrypoint (Kubernetes args / Docker CMD). Supports
+	// "Ref::<key>" placeholders resolved from spec.parameters.
+	Args []string `protobuf:"bytes,4,rep,name=args,proto3" json:"args,omitempty"`
+	// Plain-text environment variables (name -> value). Names must not
+	// start with "AWS_BATCH" (reserved by the service). For secrets, mount
+	// a Kubernetes secret volume instead -- EKS jobs have no ECS-style
+	// secrets injection.
+	Env map[string]string `protobuf:"bytes,5,rep,name=env,proto3" json:"env,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// When Kubernetes pulls the image: "Always", "IfNotPresent", or
+	// "Never". AWS defaults to Always, matching Kubernetes for :latest
+	// tags -- pinned tags commonly use IfNotPresent to spare registry
+	// traffic.
+	ImagePullPolicy string `protobuf:"bytes,6,opt,name=image_pull_policy,json=imagePullPolicy,proto3" json:"image_pull_policy,omitempty"`
+	// The container's compute sizing -- Kubernetes resource requests and
+	// limits. Batch schedules the job by these (its EKS counterpart of the
+	// container arm's vcpus/memory_mib/gpus).
+	Resources *AwsBatchJobDefinitionEksResources `protobuf:"bytes,7,opt,name=resources,proto3" json:"resources,omitempty"`
+	// The container's Kubernetes securityContext -- run-as identity and
+	// privilege hardening.
+	SecurityContext *AwsBatchJobDefinitionEksSecurityContext `protobuf:"bytes,8,opt,name=security_context,json=securityContext,proto3" json:"security_context,omitempty"`
+	// Mounts of the pod's declared volumes into this container's
+	// filesystem.
+	VolumeMounts  []*AwsBatchJobDefinitionEksVolumeMount `protobuf:"bytes,9,rep,name=volume_mounts,json=volumeMounts,proto3" json:"volume_mounts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) Reset() {
+	*x = AwsBatchJobDefinitionEksContainer{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksContainer) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksContainer) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksContainer.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksContainer) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetImage() string {
+	if x != nil {
+		return x.Image
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetCommand() []string {
+	if x != nil {
+		return x.Command
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetEnv() map[string]string {
+	if x != nil {
+		return x.Env
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetImagePullPolicy() string {
+	if x != nil {
+		return x.ImagePullPolicy
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetResources() *AwsBatchJobDefinitionEksResources {
+	if x != nil {
+		return x.Resources
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetSecurityContext() *AwsBatchJobDefinitionEksSecurityContext {
+	if x != nil {
+		return x.SecurityContext
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksContainer) GetVolumeMounts() []*AwsBatchJobDefinitionEksVolumeMount {
+	if x != nil {
+		return x.VolumeMounts
+	}
+	return nil
+}
+
+// AwsBatchJobDefinitionEksResources sizes an EKS job container via
+// Kubernetes resource quantities.
+type AwsBatchJobDefinitionEksResources struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Hard caps (Kubernetes limits): keys "cpu" (e.g. "1", "500m"),
+	// "memory" (e.g. "2Gi", "512Mi"), and "nvidia.com/gpu" for GPU nodes.
+	// Batch treats limits as the job's sizing; GPU quantities must be
+	// whole numbers.
+	Limits map[string]string `protobuf:"bytes,1,rep,name=limits,proto3" json:"limits,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Scheduling reservations (Kubernetes requests), same keys as limits.
+	// When both are set for a key, request must not exceed limit; Batch
+	// fills a missing request from the limit.
+	Requests      map[string]string `protobuf:"bytes,2,rep,name=requests,proto3" json:"requests,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksResources) Reset() {
+	*x = AwsBatchJobDefinitionEksResources{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksResources) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksResources) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksResources) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksResources.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksResources) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AwsBatchJobDefinitionEksResources) GetLimits() map[string]string {
+	if x != nil {
+		return x.Limits
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksResources) GetRequests() map[string]string {
+	if x != nil {
+		return x.Requests
+	}
+	return nil
+}
+
+// AwsBatchJobDefinitionEksSecurityContext hardens one EKS job container
+// (Kubernetes securityContext).
+type AwsBatchJobDefinitionEksSecurityContext struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Run the container process as this numeric UID. 0 (root) is a legal
+	// explicit value -- UNSET leaves the image's own USER in effect, which
+	// is why presence matters here.
+	RunAsUser *int64 `protobuf:"varint,1,opt,name=run_as_user,json=runAsUser,proto3,oneof" json:"run_as_user,omitempty"`
+	// Run the container process as this numeric GID. As with run_as_user,
+	// 0 is legal and distinct from unset.
+	RunAsGroup *int64 `protobuf:"varint,2,opt,name=run_as_group,json=runAsGroup,proto3,oneof" json:"run_as_group,omitempty"`
+	// Have Kubernetes REJECT the pod at start if the effective user
+	// resolves to root -- an assertion, not an identity setting.
+	RunAsNonRoot bool `protobuf:"varint,3,opt,name=run_as_non_root,json=runAsNonRoot,proto3" json:"run_as_non_root,omitempty"`
+	// Whether the process may gain more privileges than its parent
+	// (setuid binaries, file capabilities). UNSET means Kubernetes'
+	// default (allowed, unless the container is otherwise restricted);
+	// an explicit false is the hardening posture.
+	AllowPrivilegeEscalation *bool `protobuf:"varint,4,opt,name=allow_privilege_escalation,json=allowPrivilegeEscalation,proto3,oneof" json:"allow_privilege_escalation,omitempty"`
+	// Run the container privileged (root-equivalent on the node).
+	// Default false, like Kubernetes.
+	Privileged bool `protobuf:"varint,5,opt,name=privileged,proto3" json:"privileged,omitempty"`
+	// Mount the container's root filesystem read-only -- writable paths
+	// must come from volumes.
+	ReadOnlyRootFileSystem bool `protobuf:"varint,6,opt,name=read_only_root_file_system,json=readOnlyRootFileSystem,proto3" json:"read_only_root_file_system,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) Reset() {
+	*x = AwsBatchJobDefinitionEksSecurityContext{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksSecurityContext) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksSecurityContext.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksSecurityContext) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetRunAsUser() int64 {
+	if x != nil && x.RunAsUser != nil {
+		return *x.RunAsUser
+	}
+	return 0
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetRunAsGroup() int64 {
+	if x != nil && x.RunAsGroup != nil {
+		return *x.RunAsGroup
+	}
+	return 0
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetRunAsNonRoot() bool {
+	if x != nil {
+		return x.RunAsNonRoot
+	}
+	return false
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetAllowPrivilegeEscalation() bool {
+	if x != nil && x.AllowPrivilegeEscalation != nil {
+		return *x.AllowPrivilegeEscalation
+	}
+	return false
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetPrivileged() bool {
+	if x != nil {
+		return x.Privileged
+	}
+	return false
+}
+
+func (x *AwsBatchJobDefinitionEksSecurityContext) GetReadOnlyRootFileSystem() bool {
+	if x != nil {
+		return x.ReadOnlyRootFileSystem
+	}
+	return false
+}
+
+// AwsBatchJobDefinitionEksVolumeMount mounts one of the pod's declared
+// volumes into a container.
+type AwsBatchJobDefinitionEksVolumeMount struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of a volume declared in eks.volumes.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The path inside the container where the volume mounts.
+	// Example: "/mnt/data".
+	MountPath string `protobuf:"bytes,2,opt,name=mount_path,json=mountPath,proto3" json:"mount_path,omitempty"`
+	// Mount read-only.
+	ReadOnly      bool `protobuf:"varint,3,opt,name=read_only,json=readOnly,proto3" json:"read_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) Reset() {
+	*x = AwsBatchJobDefinitionEksVolumeMount{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksVolumeMount) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksVolumeMount.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksVolumeMount) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) GetMountPath() string {
+	if x != nil {
+		return x.MountPath
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksVolumeMount) GetReadOnly() bool {
+	if x != nil {
+		return x.ReadOnly
+	}
+	return false
+}
+
+// AwsBatchJobDefinitionEksVolume declares one Kubernetes volume the pod's
+// containers can mount. Exactly one backing must be set: emptyDir
+// (per-job scratch), a node hostPath, or a Kubernetes secret.
+type AwsBatchJobDefinitionEksVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The volume's name (a DNS-1123 label), referenced by containers'
+	// volume_mounts.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Scratch space that lives and dies with the job's pod.
+	EmptyDir *AwsBatchJobDefinitionEksEmptyDir `protobuf:"bytes,2,opt,name=empty_dir,json=emptyDir,proto3" json:"empty_dir,omitempty"`
+	// A directory on the NODE's filesystem (Kubernetes hostPath.path) --
+	// data outlives the pod but is pinned to whichever node ran it.
+	// Example: "/mnt/scratch".
+	HostPath string `protobuf:"bytes,3,opt,name=host_path,json=hostPath,proto3" json:"host_path,omitempty"`
+	// Project a Kubernetes secret (from the job's namespace) into the
+	// volume.
+	Secret        *AwsBatchJobDefinitionEksSecretVolume `protobuf:"bytes,4,opt,name=secret,proto3" json:"secret,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) Reset() {
+	*x = AwsBatchJobDefinitionEksVolume{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksVolume) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksVolume.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksVolume) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) GetEmptyDir() *AwsBatchJobDefinitionEksEmptyDir {
+	if x != nil {
+		return x.EmptyDir
+	}
+	return nil
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) GetHostPath() string {
+	if x != nil {
+		return x.HostPath
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksVolume) GetSecret() *AwsBatchJobDefinitionEksSecretVolume {
+	if x != nil {
+		return x.Secret
+	}
+	return nil
+}
+
+// AwsBatchJobDefinitionEksEmptyDir is per-job scratch space.
+type AwsBatchJobDefinitionEksEmptyDir struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Where the scratch lives: unset backs it with node storage; "Memory"
+	// backs it with tmpfs (fast, counts against the container's memory
+	// sizing).
+	Medium string `protobuf:"bytes,1,opt,name=medium,proto3" json:"medium,omitempty"`
+	// The scratch size cap, as a Kubernetes quantity.
+	// Example: "1Gi", "500Mi".
+	SizeLimit     string `protobuf:"bytes,2,opt,name=size_limit,json=sizeLimit,proto3" json:"size_limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksEmptyDir) Reset() {
+	*x = AwsBatchJobDefinitionEksEmptyDir{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksEmptyDir) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksEmptyDir) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksEmptyDir) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksEmptyDir.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksEmptyDir) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AwsBatchJobDefinitionEksEmptyDir) GetMedium() string {
+	if x != nil {
+		return x.Medium
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksEmptyDir) GetSizeLimit() string {
+	if x != nil {
+		return x.SizeLimit
+	}
+	return ""
+}
+
+// AwsBatchJobDefinitionEksSecretVolume projects a Kubernetes secret into
+// a pod volume.
+type AwsBatchJobDefinitionEksSecretVolume struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The name of the Kubernetes secret in the job's namespace (the
+	// namespace comes from the compute environment's eks_configuration).
+	SecretName string `protobuf:"bytes,1,opt,name=secret_name,json=secretName,proto3" json:"secret_name,omitempty"`
+	// Mount successfully even when the secret does not exist yet (an empty
+	// volume) instead of failing the pod.
+	Optional      bool `protobuf:"varint,2,opt,name=optional,proto3" json:"optional,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsBatchJobDefinitionEksSecretVolume) Reset() {
+	*x = AwsBatchJobDefinitionEksSecretVolume{}
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsBatchJobDefinitionEksSecretVolume) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsBatchJobDefinitionEksSecretVolume) ProtoMessage() {}
+
+func (x *AwsBatchJobDefinitionEksSecretVolume) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsBatchJobDefinitionEksSecretVolume.ProtoReflect.Descriptor instead.
+func (*AwsBatchJobDefinitionEksSecretVolume) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *AwsBatchJobDefinitionEksSecretVolume) GetSecretName() string {
+	if x != nil {
+		return x.SecretName
+	}
+	return ""
+}
+
+func (x *AwsBatchJobDefinitionEksSecretVolume) GetOptional() bool {
+	if x != nil {
+		return x.Optional
+	}
+	return false
+}
+
 var File_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awsbatchjobdefinition/v1alpha1/spec.proto\x12.dev.planton.aws.awsbatchjobdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda\x0f\n" +
+	"5catalog/aws/awsbatchjobdefinition/v1alpha1/spec.proto\x12.dev.planton.aws.awsbatchjobdefinition.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xee\x13\n" +
 	"\x19AwsBatchJobDefinitionSpec\x12\x1f\n" +
-	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12t\n" +
-	"\tcontainer\x18\x02 \x01(\v2N.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainerB\x06\xbaH\x03\xc8\x01\x01R\tcontainer\x12O\n" +
+	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12l\n" +
+	"\tcontainer\x18\x02 \x01(\v2N.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainerR\tcontainer\x12O\n" +
 	"\x15platform_capabilities\x18\x03 \x03(\tB\x1a\xbaH\x17\x92\x01\x14\x18\x01\"\x10r\x0eR\x03EC2R\aFARGATER\x14platformCapabilities\x12y\n" +
 	"\n" +
 	"parameters\x18\x04 \x03(\v2Y.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.ParametersEntryR\n" +
@@ -1322,10 +2044,14 @@ const file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13scheduling_priority\x18\a \x01(\x05B\n" +
 	"\xbaH\a\x1a\x05\x18\x8fN(\x00R\x12schedulingPriority\x12%\n" +
 	"\x0epropagate_tags\x18\b \x01(\bR\rpropagateTags\x12J\n" +
-	"\x1aderegister_on_new_revision\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17deregisterOnNewRevision\x88\x01\x01\x1a=\n" +
+	"\x1aderegister_on_new_revision\x18\t \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x17deregisterOnNewRevision\x88\x01\x01\x12Z\n" +
+	"\x03eks\x18\n" +
+	" \x01(\v2H.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksR\x03eks\x1a=\n" +
 	"\x0fParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe8\b\xbaH\xe4\b\x1a\x95\x02\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa8\f\xbaH\xa4\f\x1a\xca\x01\n" +
+	"\x1fexactly_one_of_container_or_eks\x12\x80\x01set exactly one workload arm: container (ECS-based jobs on EC2/Fargate) or eks (pod jobs on an EKS-attached compute environment)\x1a$has(this.container) != has(this.eks)\x1a\xf0\x01\n" +
+	"\x1ceks_forbids_ecs_only_toggles\x12}platform_capabilities and propagate_tags apply only to container (ECS-based) job definitions -- AWS rejects them for EKS jobs\x1aQ!has(this.eks) || (size(this.platform_capabilities) == 0 && !this.propagate_tags)\x1a\x95\x02\n" +
 	"\x1ffargate_requires_execution_role\x12\x9f\x01Fargate job definitions need container.execution_role -- reference an AwsIamRole carrying AmazonECSTaskExecutionRolePolicy (image pull + log write permissions)\x1aP!('FARGATE' in this.platform_capabilities) || has(this.container.execution_role)\x1a\x8b\x03\n" +
 	")fargate_forbids_ec2_only_container_fields\x12\xa6\x01Fargate job definitions cannot use the EC2-only container fields -- remove gpus, privileged, ulimits, and linux_parameters, or drop FARGATE from platform_capabilities\x1a\xb4\x01!('FARGATE' in this.platform_capabilities) || (this.container.gpus == 0 && !this.container.privileged && size(this.container.ulimits) == 0 && !has(this.container.linux_parameters))\x1a\xbb\x03\n" +
 	")ec2_forbids_fargate_only_container_fields\x12\xb4\x01fargate_platform_version, assign_public_ip, ephemeral_storage_gib, and runtime_platform only apply to Fargate job definitions -- add FARGATE to platform_capabilities or remove them\x1a\xd6\x01('FARGATE' in this.platform_capabilities) || (this.container.fargate_platform_version == '' && !this.container.assign_public_ip && this.container.ephemeral_storage_gib == 0 && !has(this.container.runtime_platform))B\x1d\n" +
@@ -1429,7 +2155,87 @@ const file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDesc = "" +
 	"\ton_reason\x18\x03 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a\x18\x80\x042\x15^[0-9A-Za-z.:\\s]*\\*?$R\bonReason\x12L\n" +
 	"\x10on_status_reason\x18\x04 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a\x18\x80\x042\x15^[0-9A-Za-z.:\\s]*\\*?$R\x0eonStatusReason\"a\n" +
 	"\x1cAwsBatchJobDefinitionTimeout\x12A\n" +
-	"\x18attempt_duration_seconds\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(<R\x16attemptDurationSecondsB\x83\x03\n" +
+	"\x18attempt_duration_seconds\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(<R\x16attemptDurationSeconds\"\xdc\n" +
+	"\n" +
+	"\x18AwsBatchJobDefinitionEks\x12}\n" +
+	"\n" +
+	"containers\x18\x01 \x03(\v2Q.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainerB\n" +
+	"\xbaH\a\x92\x01\x04\b\x01\x10\n" +
+	"R\n" +
+	"containers\x12\x84\x01\n" +
+	"\x0finit_containers\x18\x02 \x03(\v2Q.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainerB\b\xbaH\x05\x92\x01\x02\x10\n" +
+	"R\x0einitContainers\x12&\n" +
+	"\fhost_network\x18\x03 \x01(\bH\x00R\vhostNetwork\x88\x01\x01\x12W\n" +
+	"\n" +
+	"dns_policy\x18\x04 \x01(\tB8\xbaH5\xd8\x01\x01r0R\aDefaultR\fClusterFirstR\x17ClusterFirstWithHostNetR\tdnsPolicy\x120\n" +
+	"\x14service_account_name\x18\x05 \x01(\tR\x12serviceAccountName\x12v\n" +
+	"\n" +
+	"pod_labels\x18\x06 \x03(\v2W.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.PodLabelsEntryR\tpodLabels\x12\xb5\x01\n" +
+	"\x17image_pull_secret_names\x18\a \x03(\tB~\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01\xaa\xa6\x1dnvalues are the NAMES of Kubernetes secrets resolved in the job's namespace at pod start, never secret materialR\x14imagePullSecretNames\x126\n" +
+	"\x17share_process_namespace\x18\b \x01(\bR\x15shareProcessNamespace\x12h\n" +
+	"\avolumes\x18\t \x03(\v2N.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolumeR\avolumes\x1a<\n" +
+	"\x0ePodLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe5\x02\xbaH\xe1\x02\x1a\xde\x02\n" +
+	",eks_volume_mounts_reference_declared_volumes\x12revery volume_mounts entry (containers and init_containers) must reference the name of a volume declared in volumes\x1a\xb9\x01this.containers.all(c, c.volume_mounts.all(m, this.volumes.exists(v, v.name == m.name))) && this.init_containers.all(c, c.volume_mounts.all(m, this.volumes.exists(v, v.name == m.name)))B\x0f\n" +
+	"\r_host_network\"\xf2\a\n" +
+	"!AwsBatchJobDefinitionEksContainer\x12!\n" +
+	"\x05image\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\x05image\x12?\n" +
+	"\x04name\x18\x02 \x01(\tB+\xbaH(\xd8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x04name\x12\x18\n" +
+	"\acommand\x18\x03 \x03(\tR\acommand\x12\x12\n" +
+	"\x04args\x18\x04 \x03(\tR\x04args\x12l\n" +
+	"\x03env\x18\x05 \x03(\v2Z.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.EnvEntryR\x03env\x12Q\n" +
+	"\x11image_pull_policy\x18\x06 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1dR\x06AlwaysR\fIfNotPresentR\x05NeverR\x0fimagePullPolicy\x12o\n" +
+	"\tresources\x18\a \x01(\v2Q.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResourcesR\tresources\x12\x82\x01\n" +
+	"\x10security_context\x18\b \x01(\v2W.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecurityContextR\x0fsecurityContext\x12x\n" +
+	"\rvolume_mounts\x18\t \x03(\v2S.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolumeMountR\fvolumeMounts\x1a6\n" +
+	"\bEnvEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd1\x01\xbaH\xcd\x01\x1a\xca\x01\n" +
+	"\x1aeks_env_names_not_reserved\x12\x7fenvironment variable names must not start with 'AWS_BATCH' -- that prefix is reserved for variables AWS Batch sets on every job\x1a+this.env.all(k, !k.startsWith('AWS_BATCH'))\"\xcf\x04\n" +
+	"!AwsBatchJobDefinitionEksResources\x12u\n" +
+	"\x06limits\x18\x01 \x03(\v2].dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.LimitsEntryR\x06limits\x12{\n" +
+	"\brequests\x18\x02 \x03(\v2_.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.RequestsEntryR\brequests\x1a9\n" +
+	"\vLimitsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a;\n" +
+	"\rRequestsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xbd\x01\xbaH\xb9\x01\x1a\xb6\x01\n" +
+	"\x17eks_resources_not_empty\x12iresources must set at least one of limits or requests (Batch requires cpu and memory sizing for EKS jobs)\x1a0size(this.limits) > 0 || size(this.requests) > 0\"\x8d\x03\n" +
+	"'AwsBatchJobDefinitionEksSecurityContext\x12,\n" +
+	"\vrun_as_user\x18\x01 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x00R\trunAsUser\x88\x01\x01\x12.\n" +
+	"\frun_as_group\x18\x02 \x01(\x03B\a\xbaH\x04\"\x02(\x00H\x01R\n" +
+	"runAsGroup\x88\x01\x01\x12%\n" +
+	"\x0frun_as_non_root\x18\x03 \x01(\bR\frunAsNonRoot\x12A\n" +
+	"\x1aallow_privilege_escalation\x18\x04 \x01(\bH\x02R\x18allowPrivilegeEscalation\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"privileged\x18\x05 \x01(\bR\n" +
+	"privileged\x12:\n" +
+	"\x1aread_only_root_file_system\x18\x06 \x01(\bR\x16readOnlyRootFileSystemB\x0e\n" +
+	"\f_run_as_userB\x0f\n" +
+	"\r_run_as_groupB\x1d\n" +
+	"\x1b_allow_privilege_escalation\"\x85\x01\n" +
+	"#AwsBatchJobDefinitionEksVolumeMount\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12%\n" +
+	"\n" +
+	"mount_path\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tmountPath\x12\x1b\n" +
+	"\tread_only\x18\x03 \x01(\bR\breadOnly\"\xad\x04\n" +
+	"\x1eAwsBatchJobDefinitionEksVolume\x12?\n" +
+	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#\x18?2\x1f^[a-z0-9]([-a-z0-9]*[a-z0-9])?$R\x04name\x12m\n" +
+	"\tempty_dir\x18\x02 \x01(\v2P.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksEmptyDirR\bemptyDir\x12\x1b\n" +
+	"\thost_path\x18\x03 \x01(\tR\bhostPath\x12l\n" +
+	"\x06secret\x18\x04 \x01(\v2T.dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecretVolumeR\x06secret:\xcf\x01\xbaH\xcb\x01\x1a\xc8\x01\n" +
+	"\x1eeks_volume_exactly_one_backing\x12Da volume is backed by exactly one of empty_dir, host_path, or secret\x1a`(has(this.empty_dir) ? 1 : 0) + (this.host_path != '' ? 1 : 0) + (has(this.secret) ? 1 : 0) == 1\"\xa0\x01\n" +
+	" AwsBatchJobDefinitionEksEmptyDir\x12(\n" +
+	"\x06medium\x18\x01 \x01(\tB\x10\xbaH\r\xd8\x01\x01r\b\n" +
+	"\x06MemoryR\x06medium\x12R\n" +
+	"\n" +
+	"size_limit\x18\x02 \x01(\tB3\xbaH0\xc8\x01\x01r+2)^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|K|M|G|T)?$R\tsizeLimit\"k\n" +
+	"$AwsBatchJobDefinitionEksSecretVolume\x12'\n" +
+	"\vsecret_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
+	"secretName\x12\x1a\n" +
+	"\boptional\x18\x02 \x01(\bR\boptionalB\x83\x03\n" +
 	"2com.dev.planton.aws.awsbatchjobdefinition.v1alpha1B\tSpecProtoP\x01Zegithub.com/plantonhq/planton/catalog/aws/awsbatchjobdefinition/v1alpha1;awsbatchjobdefinitionv1alpha1\xa2\x02\x04DPAA\xaa\x02.Dev.Planton.Aws.Awsbatchjobdefinition.V1alpha1\xca\x02.Dev\\Planton\\Aws\\Awsbatchjobdefinition\\V1alpha1\xe2\x02:Dev\\Planton\\Aws\\Awsbatchjobdefinition\\V1alpha1\\GPBMetadata\xea\x022Dev::Planton::Aws::Awsbatchjobdefinition::V1alpha1b\x06proto3"
 
 var (
@@ -1444,57 +2250,82 @@ func file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescGZIP() []
 	return file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
 var file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsBatchJobDefinitionSpec)(nil),             // 0: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec
-	(*AwsBatchJobDefinitionContainer)(nil),        // 1: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer
-	(*AwsBatchJobDefinitionLogConfiguration)(nil), // 2: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration
-	(*AwsBatchJobDefinitionMountPoint)(nil),       // 3: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionMountPoint
-	(*AwsBatchJobDefinitionVolume)(nil),           // 4: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume
-	(*AwsBatchJobDefinitionEfsVolume)(nil),        // 5: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume
-	(*AwsBatchJobDefinitionUlimit)(nil),           // 6: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionUlimit
-	(*AwsBatchJobDefinitionLinuxParameters)(nil),  // 7: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters
-	(*AwsBatchJobDefinitionDevice)(nil),           // 8: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionDevice
-	(*AwsBatchJobDefinitionTmpfs)(nil),            // 9: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTmpfs
-	(*AwsBatchJobDefinitionRuntimePlatform)(nil),  // 10: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRuntimePlatform
-	(*AwsBatchJobDefinitionRetryStrategy)(nil),    // 11: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRetryStrategy
-	(*AwsBatchJobDefinitionEvaluateOnExit)(nil),   // 12: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEvaluateOnExit
-	(*AwsBatchJobDefinitionTimeout)(nil),          // 13: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTimeout
-	nil,                                           // 14: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.ParametersEntry
-	nil,                                           // 15: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.EnvironmentEntry
-	nil,                                           // 16: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.SecretsEntry
-	nil,                                           // 17: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.OptionsEntry
-	nil,                                           // 18: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.SecretOptionsEntry
-	(*v1.StringValueOrRef)(nil),                   // 19: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsBatchJobDefinitionSpec)(nil),               // 0: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec
+	(*AwsBatchJobDefinitionContainer)(nil),          // 1: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer
+	(*AwsBatchJobDefinitionLogConfiguration)(nil),   // 2: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration
+	(*AwsBatchJobDefinitionMountPoint)(nil),         // 3: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionMountPoint
+	(*AwsBatchJobDefinitionVolume)(nil),             // 4: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume
+	(*AwsBatchJobDefinitionEfsVolume)(nil),          // 5: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume
+	(*AwsBatchJobDefinitionUlimit)(nil),             // 6: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionUlimit
+	(*AwsBatchJobDefinitionLinuxParameters)(nil),    // 7: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters
+	(*AwsBatchJobDefinitionDevice)(nil),             // 8: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionDevice
+	(*AwsBatchJobDefinitionTmpfs)(nil),              // 9: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTmpfs
+	(*AwsBatchJobDefinitionRuntimePlatform)(nil),    // 10: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRuntimePlatform
+	(*AwsBatchJobDefinitionRetryStrategy)(nil),      // 11: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRetryStrategy
+	(*AwsBatchJobDefinitionEvaluateOnExit)(nil),     // 12: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEvaluateOnExit
+	(*AwsBatchJobDefinitionTimeout)(nil),            // 13: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTimeout
+	(*AwsBatchJobDefinitionEks)(nil),                // 14: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks
+	(*AwsBatchJobDefinitionEksContainer)(nil),       // 15: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer
+	(*AwsBatchJobDefinitionEksResources)(nil),       // 16: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources
+	(*AwsBatchJobDefinitionEksSecurityContext)(nil), // 17: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecurityContext
+	(*AwsBatchJobDefinitionEksVolumeMount)(nil),     // 18: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolumeMount
+	(*AwsBatchJobDefinitionEksVolume)(nil),          // 19: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolume
+	(*AwsBatchJobDefinitionEksEmptyDir)(nil),        // 20: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksEmptyDir
+	(*AwsBatchJobDefinitionEksSecretVolume)(nil),    // 21: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecretVolume
+	nil,                         // 22: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.ParametersEntry
+	nil,                         // 23: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.EnvironmentEntry
+	nil,                         // 24: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.SecretsEntry
+	nil,                         // 25: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.OptionsEntry
+	nil,                         // 26: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.SecretOptionsEntry
+	nil,                         // 27: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.PodLabelsEntry
+	nil,                         // 28: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.EnvEntry
+	nil,                         // 29: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.LimitsEntry
+	nil,                         // 30: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.RequestsEntry
+	(*v1.StringValueOrRef)(nil), // 31: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.container:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer
-	14, // 1: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.parameters:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.ParametersEntry
+	22, // 1: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.parameters:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.ParametersEntry
 	11, // 2: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.retry_strategy:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRetryStrategy
 	13, // 3: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.timeout:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTimeout
-	19, // 4: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.job_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // 5: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.execution_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 6: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.environment:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.EnvironmentEntry
-	16, // 7: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.secrets:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.SecretsEntry
-	2,  // 8: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.log_configuration:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration
-	3,  // 9: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.mount_points:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionMountPoint
-	4,  // 10: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.volumes:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume
-	6,  // 11: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.ulimits:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionUlimit
-	7,  // 12: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.linux_parameters:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters
-	10, // 13: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.runtime_platform:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRuntimePlatform
-	17, // 14: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.options:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.OptionsEntry
-	18, // 15: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.secret_options:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.SecretOptionsEntry
-	5,  // 16: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume.efs:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume
-	19, // 17: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	19, // 18: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume.access_point_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 19: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters.devices:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionDevice
-	9,  // 20: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters.tmpfs:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTmpfs
-	12, // 21: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRetryStrategy.evaluate_on_exit:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEvaluateOnExit
-	22, // [22:22] is the sub-list for method output_type
-	22, // [22:22] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	14, // 4: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionSpec.eks:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks
+	31, // 5: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.job_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 6: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.execution_role:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 7: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.environment:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.EnvironmentEntry
+	24, // 8: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.secrets:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.SecretsEntry
+	2,  // 9: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.log_configuration:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration
+	3,  // 10: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.mount_points:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionMountPoint
+	4,  // 11: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.volumes:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume
+	6,  // 12: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.ulimits:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionUlimit
+	7,  // 13: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.linux_parameters:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters
+	10, // 14: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionContainer.runtime_platform:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRuntimePlatform
+	25, // 15: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.options:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.OptionsEntry
+	26, // 16: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.secret_options:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLogConfiguration.SecretOptionsEntry
+	5,  // 17: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionVolume.efs:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume
+	31, // 18: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume.file_system_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 19: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEfsVolume.access_point_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 20: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters.devices:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionDevice
+	9,  // 21: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionLinuxParameters.tmpfs:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionTmpfs
+	12, // 22: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionRetryStrategy.evaluate_on_exit:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEvaluateOnExit
+	15, // 23: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.containers:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer
+	15, // 24: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.init_containers:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer
+	27, // 25: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.pod_labels:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.PodLabelsEntry
+	19, // 26: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEks.volumes:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolume
+	28, // 27: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.env:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.EnvEntry
+	16, // 28: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.resources:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources
+	17, // 29: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.security_context:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecurityContext
+	18, // 30: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksContainer.volume_mounts:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolumeMount
+	29, // 31: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.limits:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.LimitsEntry
+	30, // 32: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.requests:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksResources.RequestsEntry
+	20, // 33: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolume.empty_dir:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksEmptyDir
+	21, // 34: dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksVolume.secret:type_name -> dev.planton.aws.awsbatchjobdefinition.v1alpha1.AwsBatchJobDefinitionEksSecretVolume
+	35, // [35:35] is the sub-list for method output_type
+	35, // [35:35] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_init() }
@@ -1503,13 +2334,15 @@ func file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[14].OneofWrappers = []any{}
+	file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_msgTypes[17].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsbatchjobdefinition_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   31,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

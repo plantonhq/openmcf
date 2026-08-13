@@ -1,0 +1,48 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRedshiftCluster
+metadata:
+  name: my-governed-warehouse
+spec:
+  region: us-west-2
+  nodeType: ra3.xlplus
+  numberOfNodes: 2
+  databaseName: analytics
+  masterUsername: admin
+  manageMasterPassword: true
+  subnetIds:
+    - value: "<private-subnet-id-az1>"
+    - value: "<private-subnet-id-az2>"
+  encrypted: true
+  enhancedVpcRouting: true
+  automatedSnapshotRetentionPeriod: 7
+  skipFinalSnapshot: false
+  finalSnapshotIdentifier: my-governed-warehouse-final
+  usageLimits:
+    - featureType: spectrum
+      limitType: data-scanned
+      amount: 10
+      period: daily
+      breachAction: emit-metric
+    - featureType: concurrency-scaling
+      limitType: time
+      amount: 60
+      period: daily
+      breachAction: disable
+  scheduledActions:
+    - name: my-governed-warehouse-nightly-pause
+      description: Pause outside business hours (22:00 PT)
+      schedule: cron(0 5 * * ? *)
+      iamRoleArn:
+        value: "<redshift-scheduler-role-arn>"
+      pauseCluster: true
+    - name: my-governed-warehouse-morning-resume
+      description: Resume before business hours (06:00 PT)
+      schedule: cron(0 13 * * ? *)
+      iamRoleArn:
+        value: "<redshift-scheduler-role-arn>"
+      resumeCluster: true
+  endpointAccesses:
+    - endpointName: bi-tools-vpc
+      subnetGroupName: "<consumer-vpc-subnet-group-name>"
+  endpointAuthorizations:
+    - account: "210987654321"

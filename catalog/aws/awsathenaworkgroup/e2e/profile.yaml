@@ -31,7 +31,8 @@ spec:
   # s3-results-full-surface ~55s/60s incl. the S3 fixture chain; zero-orphan
   # sweep clean.
   tier: 1
-  status: green
+  # pending_proof: the session-043 depth closure changed the live send surface (the minimum-encryption un-disable convergence, requester-pays always-send, the Name tag on both engines) -- Q29 proves it
+  status: pending_proof
   validated_provisioners:
     - pulumi
     - terraform

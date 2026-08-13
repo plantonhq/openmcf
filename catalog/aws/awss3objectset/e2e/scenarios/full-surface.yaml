@@ -1,4 +1,4 @@
-# Full-surface AwsS3ObjectSet scenario: three objects proving the per-object
+# Full-surface AwsS3ObjectSet scenario: five objects proving the per-object
 # breadth against the shared versioned S3 bucket fixture —
 # - a JSON config with lowercase user metadata, cache/disposition/language
 #   headers, a SHA256 upload checksum, SSE-S3 (AES256) encryption override,
@@ -7,7 +7,12 @@
 # - a base64-encoded binary (a 1x1 PNG) in STANDARD_IA with a long-lived
 #   immutable cache posture;
 # - a website-redirect marker object whose GET redirects when the bucket has
-#   website hosting (stored inert on the fixture bucket).
+#   website hosting (stored inert on the fixture bucket);
+# - a default-directive COPY of the JSON config (same set, same bucket —
+#   proves the copies-after-content ordering, the REPLACE tagging directive's
+#   identity tags, and that the source's metadata/headers are preserved);
+# - a replace_metadata COPY of the same source with its own headers and
+#   STANDARD_IA placement (the REPLACE metadata-directive path).
 # Destroy on the versioned fixture proves all versions go.
 #
 # Excluded arms, with reasons:
@@ -76,3 +81,31 @@ spec:
         <!DOCTYPE html><html><body>moved</body></html>
       contentType: text/html
       websiteRedirect: /new-page.html
+    # Default (COPY) directive: preserves the source's metadata and headers;
+    # the copy still carries this set's identity tags (REPLACE tagging
+    # directive). The source is another object of this same set — the engines
+    # order copies after all content objects.
+    - key: config/app.backup.json
+      copyFrom:
+        sourceBucket:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: planton-oss-e2e-awss3bucket-prereq
+            fieldPath: status.outputs.bucket_id
+        sourceKey: config/app.json
+    # REPLACE metadata directive: the copy gets these headers/metadata instead
+    # of the source's, plus its own storage placement.
+    - key: config/app.archived.json
+      copyFrom:
+        sourceBucket:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: planton-oss-e2e-awss3bucket-prereq
+            fieldPath: status.outputs.bucket_id
+        sourceKey: config/app.json
+        replaceMetadata: true
+      contentType: application/json
+      cacheControl: private, max-age=0
+      metadata:
+        archived-from: config/app.json
+      storageClass: STANDARD_IA

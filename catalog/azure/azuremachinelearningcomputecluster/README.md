@@ -24,3 +24,7 @@ The **AzureMachineLearningComputeCluster** component creates an auto-scaling com
 ## Future Enhancements
 
 - Managed online/batch endpoint kinds for model serving as their contracts land in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

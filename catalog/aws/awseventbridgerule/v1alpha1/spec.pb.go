@@ -111,9 +111,11 @@ type AwsEventBridgeRuleSpec struct {
 	// required. Each target specifies a destination (Lambda, SQS, SNS, Step
 	// Functions, etc.), optional input transformation, retry policy, dead
 	// letter queue, and an optional service-typed parameter block (SQS,
-	// Kinesis, HTTP/API-destination, Batch, ECS RunTask).
+	// Kinesis, HTTP/API-destination, Batch, ECS RunTask, Redshift Data API,
+	// SSM Run Command, SageMaker Pipelines, AppSync).
 	//
-	// AWS limits: maximum 5 targets per rule.
+	// AWS limits: maximum 5 targets per rule (enforced here so the quota
+	// fails at validate time instead of at PutTargets).
 	Targets       []*AwsEventBridgeTarget `protobuf:"bytes,9,rep,name=targets,proto3" json:"targets,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -276,7 +278,22 @@ type AwsEventBridgeTarget struct {
 	BatchTarget *AwsEventBridgeTargetBatchConfig `protobuf:"bytes,12,opt,name=batch_target,json=batchTarget,proto3" json:"batch_target,omitempty"`
 	// ECS RunTask parameters. Required when the target arn is an ECS cluster —
 	// the event launches a task from the referenced task definition.
-	EcsTarget     *AwsEventBridgeTargetEcsConfig `protobuf:"bytes,13,opt,name=ecs_target,json=ecsTarget,proto3" json:"ecs_target,omitempty"`
+	EcsTarget *AwsEventBridgeTargetEcsConfig `protobuf:"bytes,13,opt,name=ecs_target,json=ecsTarget,proto3" json:"ecs_target,omitempty"`
+	// Redshift Data API parameters. Required when the target arn is a
+	// Redshift cluster — each matched event runs a SQL statement against it.
+	RedshiftTarget *AwsEventBridgeTargetRedshiftConfig `protobuf:"bytes,14,opt,name=redshift_target,json=redshiftTarget,proto3" json:"redshift_target,omitempty"`
+	// SSM Run Command instance selectors. Required when the target arn is a
+	// Systems Manager document — each matched event dispatches the command
+	// to the instances the selectors match. Up to 5 selectors, combined
+	// with AND.
+	RunCommandTargets []*AwsEventBridgeTargetRunCommandSelector `protobuf:"bytes,15,rep,name=run_command_targets,json=runCommandTargets,proto3" json:"run_command_targets,omitempty"`
+	// SageMaker Pipelines parameters. Set when the target arn is a
+	// SageMaker pipeline — each matched event starts a pipeline execution
+	// with these parameters.
+	SagemakerPipelineTarget *AwsEventBridgeTargetSagemakerPipelineConfig `protobuf:"bytes,16,opt,name=sagemaker_pipeline_target,json=sagemakerPipelineTarget,proto3" json:"sagemaker_pipeline_target,omitempty"`
+	// AppSync parameters. Required when the target arn is an AppSync
+	// GraphQL API endpoint — each matched event invokes the operation.
+	AppsyncTarget *AwsEventBridgeTargetAppsyncConfig `protobuf:"bytes,17,opt,name=appsync_target,json=appsyncTarget,proto3" json:"appsync_target,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -402,6 +419,34 @@ func (x *AwsEventBridgeTarget) GetEcsTarget() *AwsEventBridgeTargetEcsConfig {
 	return nil
 }
 
+func (x *AwsEventBridgeTarget) GetRedshiftTarget() *AwsEventBridgeTargetRedshiftConfig {
+	if x != nil {
+		return x.RedshiftTarget
+	}
+	return nil
+}
+
+func (x *AwsEventBridgeTarget) GetRunCommandTargets() []*AwsEventBridgeTargetRunCommandSelector {
+	if x != nil {
+		return x.RunCommandTargets
+	}
+	return nil
+}
+
+func (x *AwsEventBridgeTarget) GetSagemakerPipelineTarget() *AwsEventBridgeTargetSagemakerPipelineConfig {
+	if x != nil {
+		return x.SagemakerPipelineTarget
+	}
+	return nil
+}
+
+func (x *AwsEventBridgeTarget) GetAppsyncTarget() *AwsEventBridgeTargetAppsyncConfig {
+	if x != nil {
+		return x.AppsyncTarget
+	}
+	return nil
+}
+
 // AwsEventBridgeInputTransformer reshapes event data before delivering it to
 // the target. Useful for extracting specific fields, reformatting event data,
 // or adding static context.
@@ -413,7 +458,7 @@ type AwsEventBridgeInputTransformer struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Map of variable names to JSONPath expressions that extract values from
 	// the matched event. Keys become variables available in `input_template`.
-	// Maximum 100 entries. Keys must not start with "AWS".
+	// Maximum 100 entries. Keys must not start with "AWS" (reserved).
 	//
 	// Example:
 	//
@@ -880,8 +925,13 @@ type AwsEventBridgeTargetEcsConfig struct {
 	EnableEcsManagedTags bool `protobuf:"varint,11,opt,name=enable_ecs_managed_tags,json=enableEcsManagedTags,proto3" json:"enable_ecs_managed_tags,omitempty"`
 	// Enable ECS Exec on the launched tasks for interactive debugging.
 	EnableExecuteCommand bool `protobuf:"varint,12,opt,name=enable_execute_command,json=enableExecuteCommand,proto3" json:"enable_execute_command,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Tags applied to the ECS TASKS each event launches (cost allocation,
+	// ownership) — distinct from the rule's own resource tags, which the
+	// module manages from metadata. Merged with the task definition's tags
+	// when propagate_tags is set.
+	Tags          map[string]string `protobuf:"bytes,13,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AwsEventBridgeTargetEcsConfig) Reset() {
@@ -996,6 +1046,13 @@ func (x *AwsEventBridgeTargetEcsConfig) GetEnableExecuteCommand() bool {
 		return x.EnableExecuteCommand
 	}
 	return false
+}
+
+func (x *AwsEventBridgeTargetEcsConfig) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
 }
 
 // AwsEventBridgeEcsCapacityProviderStrategy is one entry in an ECS capacity
@@ -1193,6 +1250,330 @@ func (x *AwsEventBridgeEcsPlacementStrategy) GetField() string {
 	return ""
 }
 
+// AwsEventBridgeTargetRedshiftConfig runs a SQL statement through the
+// Redshift Data API per matched event. The target's `arn` is the Redshift
+// CLUSTER; the statement and its execution identity live here. The
+// target's `role_arn` is required — EventBridge assumes it to call the
+// Data API.
+type AwsEventBridgeTargetRedshiftConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The database the statement runs in. Maximum 64 characters.
+	Database string `protobuf:"bytes,1,opt,name=database,proto3" json:"database,omitempty"`
+	// Authenticate as this database user with temporary credentials
+	// (GetClusterCredentials). Use this OR secrets_manager_arn — AWS
+	// resolves credentials from whichever is provided. Maximum 128
+	// characters.
+	DbUser string `protobuf:"bytes,2,opt,name=db_user,json=dbUser,proto3" json:"db_user,omitempty"`
+	// Authenticate with credentials stored in Secrets Manager — the
+	// alternative to db_user temporary credentials. Pass the secret ARN
+	// as a literal, e.g.
+	// "arn:aws:secretsmanager:us-west-2:123456789012:secret:redshift-...".
+	SecretsManagerArn string `protobuf:"bytes,3,opt,name=secrets_manager_arn,json=secretsManagerArn,proto3" json:"secrets_manager_arn,omitempty"`
+	// The SQL statement each matched event runs. Maximum 100,000
+	// characters.
+	Sql string `protobuf:"bytes,4,opt,name=sql,proto3" json:"sql,omitempty"`
+	// A name for the statement, visible in the Data API's statement
+	// history. Maximum 500 characters.
+	StatementName string `protobuf:"bytes,5,opt,name=statement_name,json=statementName,proto3" json:"statement_name,omitempty"`
+	// Deliver the matched event to the statement as execution context
+	// (the Data API's WithEvent flag).
+	WithEvent     bool `protobuf:"varint,6,opt,name=with_event,json=withEvent,proto3" json:"with_event,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) Reset() {
+	*x = AwsEventBridgeTargetRedshiftConfig{}
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeTargetRedshiftConfig) ProtoMessage() {}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeTargetRedshiftConfig.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeTargetRedshiftConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetDatabase() string {
+	if x != nil {
+		return x.Database
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetDbUser() string {
+	if x != nil {
+		return x.DbUser
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetSecretsManagerArn() string {
+	if x != nil {
+		return x.SecretsManagerArn
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetSql() string {
+	if x != nil {
+		return x.Sql
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetStatementName() string {
+	if x != nil {
+		return x.StatementName
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRedshiftConfig) GetWithEvent() bool {
+	if x != nil {
+		return x.WithEvent
+	}
+	return false
+}
+
+// AwsEventBridgeTargetRunCommandSelector selects the EC2 instances an
+// SSM Run Command target dispatches to — by instance id or by tag. The
+// target's `arn` is the SSM DOCUMENT (e.g.
+// "arn:aws:ssm:us-west-2::document/AWS-RunShellScript"); the target's
+// `role_arn` is required — EventBridge assumes it to call
+// ssm:SendCommand.
+type AwsEventBridgeTargetRunCommandSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The selector key: "InstanceIds" (select by instance id) or
+	// "tag:<tag-key>" (select every instance carrying the tag). Maximum
+	// 128 characters.
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// The selector values: instance ids for "InstanceIds", tag values for
+	// a "tag:" key. 1-50 entries, each 1-256 characters.
+	Values        []string `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeTargetRunCommandSelector) Reset() {
+	*x = AwsEventBridgeTargetRunCommandSelector{}
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeTargetRunCommandSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeTargetRunCommandSelector) ProtoMessage() {}
+
+func (x *AwsEventBridgeTargetRunCommandSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeTargetRunCommandSelector.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeTargetRunCommandSelector) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AwsEventBridgeTargetRunCommandSelector) GetKey() string {
+	if x != nil {
+		return x.Key
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeTargetRunCommandSelector) GetValues() []string {
+	if x != nil {
+		return x.Values
+	}
+	return nil
+}
+
+// AwsEventBridgeTargetSagemakerPipelineConfig starts a SageMaker
+// pipeline execution per matched event. The target's `arn` is the
+// SageMaker PIPELINE; the target's `role_arn` is required — EventBridge
+// assumes it to call sagemaker:StartPipelineExecution.
+type AwsEventBridgeTargetSagemakerPipelineConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Parameters passed to the pipeline execution, up to 200 — each must
+	// be a parameter the pipeline declares.
+	PipelineParameterList []*AwsEventBridgeSagemakerPipelineParameter `protobuf:"bytes,1,rep,name=pipeline_parameter_list,json=pipelineParameterList,proto3" json:"pipeline_parameter_list,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeTargetSagemakerPipelineConfig) Reset() {
+	*x = AwsEventBridgeTargetSagemakerPipelineConfig{}
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeTargetSagemakerPipelineConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeTargetSagemakerPipelineConfig) ProtoMessage() {}
+
+func (x *AwsEventBridgeTargetSagemakerPipelineConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeTargetSagemakerPipelineConfig.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeTargetSagemakerPipelineConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsEventBridgeTargetSagemakerPipelineConfig) GetPipelineParameterList() []*AwsEventBridgeSagemakerPipelineParameter {
+	if x != nil {
+		return x.PipelineParameterList
+	}
+	return nil
+}
+
+// AwsEventBridgeSagemakerPipelineParameter is one name/value parameter
+// for an event-started SageMaker pipeline execution.
+type AwsEventBridgeSagemakerPipelineParameter struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The parameter name, as declared by the pipeline definition.
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The value passed for this execution.
+	Value         string `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeSagemakerPipelineParameter) Reset() {
+	*x = AwsEventBridgeSagemakerPipelineParameter{}
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeSagemakerPipelineParameter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeSagemakerPipelineParameter) ProtoMessage() {}
+
+func (x *AwsEventBridgeSagemakerPipelineParameter) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeSagemakerPipelineParameter.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeSagemakerPipelineParameter) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AwsEventBridgeSagemakerPipelineParameter) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEventBridgeSagemakerPipelineParameter) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// AwsEventBridgeTargetAppsyncConfig invokes an AppSync GraphQL operation
+// per matched event. The target's `arn` is the AppSync API's endpoint
+// ARN (the appsync:endpoints ARN form); the target's `role_arn` is
+// required — EventBridge assumes it to call the API.
+type AwsEventBridgeTargetAppsyncConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The GraphQL operation (typically a mutation) to invoke, with its
+	// selection set — variables are bound from the (transformed) event
+	// input. Maximum 1,048,576 characters.
+	GraphqlOperation string `protobuf:"bytes,1,opt,name=graphql_operation,json=graphqlOperation,proto3" json:"graphql_operation,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AwsEventBridgeTargetAppsyncConfig) Reset() {
+	*x = AwsEventBridgeTargetAppsyncConfig{}
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEventBridgeTargetAppsyncConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEventBridgeTargetAppsyncConfig) ProtoMessage() {}
+
+func (x *AwsEventBridgeTargetAppsyncConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEventBridgeTargetAppsyncConfig.ProtoReflect.Descriptor instead.
+func (*AwsEventBridgeTargetAppsyncConfig) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsEventBridgeTargetAppsyncConfig) GetGraphqlOperation() string {
+	if x != nil {
+		return x.GraphqlOperation
+	}
+	return ""
+}
+
 // AwsEventBridgeEcsPlacementConstraint filters candidate container instances
 // for event-launched EC2 tasks.
 type AwsEventBridgeEcsPlacementConstraint struct {
@@ -1208,7 +1589,7 @@ type AwsEventBridgeEcsPlacementConstraint struct {
 
 func (x *AwsEventBridgeEcsPlacementConstraint) Reset() {
 	*x = AwsEventBridgeEcsPlacementConstraint{}
-	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1220,7 +1601,7 @@ func (x *AwsEventBridgeEcsPlacementConstraint) String() string {
 func (*AwsEventBridgeEcsPlacementConstraint) ProtoMessage() {}
 
 func (x *AwsEventBridgeEcsPlacementConstraint) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1233,7 +1614,7 @@ func (x *AwsEventBridgeEcsPlacementConstraint) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AwsEventBridgeEcsPlacementConstraint.ProtoReflect.Descriptor instead.
 func (*AwsEventBridgeEcsPlacementConstraint) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AwsEventBridgeEcsPlacementConstraint) GetType() string {
@@ -1254,7 +1635,7 @@ var File_catalog_aws_awseventbridgerule_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awseventbridgerule/v1alpha1/spec.proto\x12+dev.planton.aws.awseventbridgerule.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x82\t\n" +
+	"2catalog/aws/awseventbridgerule/v1alpha1/spec.proto\x12+dev.planton.aws.awseventbridgerule.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x8c\t\n" +
 	"\x16AwsEventBridgeRuleSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12z\n" +
 	"\x0eevent_bus_name\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\x83\b\x92\xd4a\x17status.outputs.bus_nameR\feventBusName\x12*\n" +
@@ -1263,11 +1644,11 @@ const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13schedule_expression\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x02R\x12scheduleExpression\x12\x14\n" +
 	"\x05state\x18\x06 \x01(\tR\x05state\x12o\n" +
 	"\brole_arn\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12#\n" +
-	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x12[\n" +
-	"\atargets\x18\t \x03(\v2A.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetR\atargets:\x9c\x04\xbaH\x98\x04\x1a\xe2\x01\n" +
+	"\rforce_destroy\x18\b \x01(\bR\fforceDestroy\x12e\n" +
+	"\atargets\x18\t \x03(\v2A.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetB\b\xbaH\x05\x92\x01\x02\x10\x05R\atargets:\x9c\x04\xbaH\x98\x04\x1a\xe2\x01\n" +
 	"\"event_pattern_or_schedule_required\x12?exactly one of event_pattern or schedule_expression must be set\x1a{(has(this.event_pattern) && this.schedule_expression == '') || (!has(this.event_pattern) && this.schedule_expression != '')\x1a\xe2\x01\n" +
 	"\x12state_valid_values\x12`state must be 'ENABLED', 'DISABLED', or 'ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS' when set\x1ajthis.state == '' || this.state in ['ENABLED', 'DISABLED', 'ENABLED_WITH_ALL_CLOUDTRAIL_MANAGEMENT_EVENTS']\x1aL\n" +
-	"\x11targets_not_empty\x12\x1fat least one target is required\x1a\x16size(this.targets) > 0\"\xe2\r\n" +
+	"\x11targets_not_empty\x12\x1fat least one target is required\x1a\x16size(this.targets) > 0\"\xf6\x13\n" +
 	"\x14AwsEventBridgeTarget\x121\n" +
 	"\x04name\x18\x01 \x01(\tB\x1d\xbaH\x1a\xc8\x01\x01r\x15\x18@2\x11^[0-9A-Za-z_.-]+$R\x04name\x12L\n" +
 	"\x03arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\x03arn\x12o\n" +
@@ -1286,16 +1667,21 @@ const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"httpTarget\x12o\n" +
 	"\fbatch_target\x18\f \x01(\v2L.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfigR\vbatchTarget\x12i\n" +
 	"\n" +
-	"ecs_target\x18\r \x01(\v2J.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfigR\tecsTarget:\xf6\x03\xbaH\xf2\x03\x1a\xc3\x01\n" +
-	"\x16input_mutual_exclusion\x12>only one of input, input_path, or input_transformer may be set\x1ai(this.input == '' ? 0 : 1) + (this.input_path == '' ? 0 : 1) + (has(this.input_transformer) ? 1 : 0) <= 1\x1a\xa9\x02\n" +
-	"\x16one_typed_target_block\x12^at most one of sqs_target, kinesis_target, http_target, batch_target, or ecs_target may be set\x1a\xae\x01(has(this.sqs_target) ? 1 : 0) + (has(this.kinesis_target) ? 1 : 0) + (has(this.http_target) ? 1 : 0) + (has(this.batch_target) ? 1 : 0) + (has(this.ecs_target) ? 1 : 0) <= 1\"\x91\x02\n" +
-	"\x1eAwsEventBridgeInputTransformer\x12|\n" +
-	"\vinput_paths\x18\x01 \x03(\v2[.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntryR\n" +
+	"ecs_target\x18\r \x01(\v2J.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfigR\tecsTarget\x12x\n" +
+	"\x0fredshift_target\x18\x0e \x01(\v2O.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRedshiftConfigR\x0eredshiftTarget\x12\x8d\x01\n" +
+	"\x13run_command_targets\x18\x0f \x03(\v2S.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRunCommandSelectorB\b\xbaH\x05\x92\x01\x02\x10\x05R\x11runCommandTargets\x12\x94\x01\n" +
+	"\x19sagemaker_pipeline_target\x18\x10 \x01(\v2X.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSagemakerPipelineConfigR\x17sagemakerPipelineTarget\x12u\n" +
+	"\x0eappsync_target\x18\x11 \x01(\v2N.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetAppsyncConfigR\rappsyncTarget:\xf2\x05\xbaH\xee\x05\x1a\xc3\x01\n" +
+	"\x16input_mutual_exclusion\x12>only one of input, input_path, or input_transformer may be set\x1ai(this.input == '' ? 0 : 1) + (this.input_path == '' ? 0 : 1) + (has(this.input_transformer) ? 1 : 0) <= 1\x1a\xa5\x04\n" +
+	"\x16one_typed_target_block\x12\xaf\x01at most one of sqs_target, kinesis_target, http_target, batch_target, ecs_target, redshift_target, run_command_targets, sagemaker_pipeline_target, or appsync_target may be set\x1a\xd8\x02(has(this.sqs_target) ? 1 : 0) + (has(this.kinesis_target) ? 1 : 0) + (has(this.http_target) ? 1 : 0) + (has(this.batch_target) ? 1 : 0) + (has(this.ecs_target) ? 1 : 0) + (has(this.redshift_target) ? 1 : 0) + (size(this.run_command_targets) > 0 ? 1 : 0) + (has(this.sagemaker_pipeline_target) ? 1 : 0) + (has(this.appsync_target) ? 1 : 0) <= 1\"\xc9\x03\n" +
+	"\x1eAwsEventBridgeInputTransformer\x12\x86\x01\n" +
+	"\vinput_paths\x18\x01 \x03(\v2[.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntryB\b\xbaH\x05\x9a\x01\x02\x10dR\n" +
 	"inputPaths\x122\n" +
 	"\x0einput_template\x18\x02 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80@R\rinputTemplate\x1a=\n" +
 	"\x0fInputPathsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x95\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xaa\x01\xbaH\xa6\x01\x1a\xa3\x01\n" +
+	"\x1cinput_path_keys_not_reserved\x12Tinput_paths keys must not start with 'AWS' -- that prefix is reserved by EventBridge\x1a-this.input_paths.all(k, !k.startsWith('AWS'))\"\x95\x01\n" +
 	"$AwsEventBridgeTargetDeadLetterConfig\x12m\n" +
 	"\x03arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB'\xbaH\x03\xc8\x01\x01\x88\xd4a\x81\b\x92\xd4a\x18status.outputs.queue_arnR\x03arn\"\xf6\x01\n" +
 	"\x1fAwsEventBridgeTargetRetryPolicy\x12P\n" +
@@ -1325,7 +1711,7 @@ const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"array_size\x18\x03 \x01(\x05B\r\xbaH\n" +
 	"\xd8\x01\x01\x1a\x05\x18\x90N(\x02R\tarraySize\x12/\n" +
 	"\fjob_attempts\x18\x04 \x01(\x05B\f\xbaH\t\xd8\x01\x01\x1a\x04\x18\n" +
-	"(\x01R\vjobAttempts\"\xe2\r\n" +
+	"(\x01R\vjobAttempts\"\x85\x0f\n" +
 	"\x1dAwsEventBridgeTargetEcsConfig\x12\x95\x01\n" +
 	"\x13task_definition_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\x8f\b\x92\xd4a\"status.outputs.task_definition_arnR\x11taskDefinitionArn\x12+\n" +
 	"\n" +
@@ -1343,7 +1729,11 @@ const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0epropagate_tags\x18\n" +
 	" \x01(\tR\rpropagateTags\x125\n" +
 	"\x17enable_ecs_managed_tags\x18\v \x01(\bR\x14enableEcsManagedTags\x124\n" +
-	"\x16enable_execute_command\x18\f \x01(\bR\x14enableExecuteCommand:\xa3\x05\xbaH\x9f\x05\x1a\x9f\x01\n" +
+	"\x16enable_execute_command\x18\f \x01(\bR\x14enableExecuteCommand\x12h\n" +
+	"\x04tags\x18\r \x03(\v2T.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa3\x05\xbaH\x9f\x05\x1a\x9f\x01\n" +
 	"\x11launch_type_valid\x12<launch_type must be 'EC2', 'FARGATE', or 'EXTERNAL' when set\x1aLthis.launch_type == '' || this.launch_type in ['EC2', 'FARGATE', 'EXTERNAL']\x1a\xcc\x01\n" +
 	"!launch_type_xor_capacity_strategy\x12alaunch_type and capacity_provider_strategy are mutually exclusive; choose one placement mechanism\x1aDthis.launch_type == '' || size(this.capacity_provider_strategy) == 0\x1a\x98\x01\n" +
 	"\x1dplatform_version_fargate_only\x129platform_version is only valid with launch_type 'FARGATE'\x1a<this.platform_version == '' || this.launch_type == 'FARGATE'\x1a\x90\x01\n" +
@@ -1360,7 +1750,26 @@ const file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc = "" +
 	"\"AwsEventBridgeEcsPlacementStrategy\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x1e\n" +
 	"\x05field\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\x05field:\x81\x01\xbaH~\x1a|\n" +
-	"\x1dplacement_strategy_type_valid\x12-type must be 'random', 'spread', or 'binpack'\x1a,this.type in ['random', 'spread', 'binpack']\"\xbb\x03\n" +
+	"\x1dplacement_strategy_type_valid\x12-type must be 'random', 'spread', or 'binpack'\x1a,this.type in ['random', 'spread', 'binpack']\"\x8c\x02\n" +
+	"\"AwsEventBridgeTargetRedshiftConfig\x12&\n" +
+	"\bdatabase\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x18@R\bdatabase\x12!\n" +
+	"\adb_user\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x01R\x06dbUser\x12.\n" +
+	"\x13secrets_manager_arn\x18\x03 \x01(\tR\x11secretsManagerArn\x12\x1b\n" +
+	"\x03sql\x18\x04 \x01(\tB\t\xbaH\x06r\x04\x18\xa0\x8d\x06R\x03sql\x12/\n" +
+	"\x0estatement_name\x18\x05 \x01(\tB\b\xbaH\x05r\x03\x18\xf4\x03R\rstatementName\x12\x1d\n" +
+	"\n" +
+	"with_event\x18\x06 \x01(\bR\twithEvent\"t\n" +
+	"&AwsEventBridgeTargetRunCommandSelector\x12\x1d\n" +
+	"\x03key\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\x80\x01R\x03key\x12+\n" +
+	"\x06values\x18\x02 \x03(\tB\x13\xbaH\x10\x92\x01\r\b\x01\x102\"\ar\x05\x10\x01\x18\x80\x02R\x06values\"\xc8\x01\n" +
+	"+AwsEventBridgeTargetSagemakerPipelineConfig\x12\x98\x01\n" +
+	"\x17pipeline_parameter_list\x18\x01 \x03(\v2U.dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeSagemakerPipelineParameterB\t\xbaH\x06\x92\x01\x03\x10\xc8\x01R\x15pipelineParameterList\"d\n" +
+	"(AwsEventBridgeSagemakerPipelineParameter\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12\x1c\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"^\n" +
+	"!AwsEventBridgeTargetAppsyncConfig\x129\n" +
+	"\x11graphql_operation\x18\x01 \x01(\tB\f\xbaH\t\xc8\x01\x01r\x04\x18\x80\x80@R\x10graphqlOperation\"\xbb\x03\n" +
 	"$AwsEventBridgeEcsPlacementConstraint\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12(\n" +
 	"\n" +
@@ -1382,35 +1791,41 @@ func file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescGZIP() []byt
 	return file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsEventBridgeRuleSpec)(nil),                    // 0: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec
-	(*AwsEventBridgeTarget)(nil),                      // 1: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget
-	(*AwsEventBridgeInputTransformer)(nil),            // 2: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer
-	(*AwsEventBridgeTargetDeadLetterConfig)(nil),      // 3: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetDeadLetterConfig
-	(*AwsEventBridgeTargetRetryPolicy)(nil),           // 4: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRetryPolicy
-	(*AwsEventBridgeTargetSqsConfig)(nil),             // 5: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSqsConfig
-	(*AwsEventBridgeTargetKinesisConfig)(nil),         // 6: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetKinesisConfig
-	(*AwsEventBridgeTargetHttpConfig)(nil),            // 7: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig
-	(*AwsEventBridgeTargetBatchConfig)(nil),           // 8: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfig
-	(*AwsEventBridgeTargetEcsConfig)(nil),             // 9: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig
-	(*AwsEventBridgeEcsCapacityProviderStrategy)(nil), // 10: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsCapacityProviderStrategy
-	(*AwsEventBridgeEcsNetworkConfiguration)(nil),     // 11: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration
-	(*AwsEventBridgeEcsPlacementStrategy)(nil),        // 12: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementStrategy
-	(*AwsEventBridgeEcsPlacementConstraint)(nil),      // 13: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementConstraint
-	nil,                         // 14: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntry
-	nil,                         // 15: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.QueryStringParametersEntry
-	nil,                         // 16: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.HeaderParametersEntry
-	(*v1.StringValueOrRef)(nil), // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),     // 18: google.protobuf.Struct
+	(*AwsEventBridgeRuleSpec)(nil),                      // 0: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec
+	(*AwsEventBridgeTarget)(nil),                        // 1: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget
+	(*AwsEventBridgeInputTransformer)(nil),              // 2: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer
+	(*AwsEventBridgeTargetDeadLetterConfig)(nil),        // 3: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetDeadLetterConfig
+	(*AwsEventBridgeTargetRetryPolicy)(nil),             // 4: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRetryPolicy
+	(*AwsEventBridgeTargetSqsConfig)(nil),               // 5: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSqsConfig
+	(*AwsEventBridgeTargetKinesisConfig)(nil),           // 6: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetKinesisConfig
+	(*AwsEventBridgeTargetHttpConfig)(nil),              // 7: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig
+	(*AwsEventBridgeTargetBatchConfig)(nil),             // 8: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfig
+	(*AwsEventBridgeTargetEcsConfig)(nil),               // 9: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig
+	(*AwsEventBridgeEcsCapacityProviderStrategy)(nil),   // 10: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsCapacityProviderStrategy
+	(*AwsEventBridgeEcsNetworkConfiguration)(nil),       // 11: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration
+	(*AwsEventBridgeEcsPlacementStrategy)(nil),          // 12: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementStrategy
+	(*AwsEventBridgeTargetRedshiftConfig)(nil),          // 13: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRedshiftConfig
+	(*AwsEventBridgeTargetRunCommandSelector)(nil),      // 14: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRunCommandSelector
+	(*AwsEventBridgeTargetSagemakerPipelineConfig)(nil), // 15: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSagemakerPipelineConfig
+	(*AwsEventBridgeSagemakerPipelineParameter)(nil),    // 16: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeSagemakerPipelineParameter
+	(*AwsEventBridgeTargetAppsyncConfig)(nil),           // 17: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetAppsyncConfig
+	(*AwsEventBridgeEcsPlacementConstraint)(nil),        // 18: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementConstraint
+	nil,                         // 19: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntry
+	nil,                         // 20: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.QueryStringParametersEntry
+	nil,                         // 21: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.HeaderParametersEntry
+	nil,                         // 22: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 23: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),     // 24: google.protobuf.Struct
 }
 var file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_depIdxs = []int32{
-	17, // 0: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.event_bus_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	18, // 1: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.event_pattern:type_name -> google.protobuf.Struct
-	17, // 2: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 0: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.event_bus_name:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	24, // 1: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.event_pattern:type_name -> google.protobuf.Struct
+	23, // 2: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 3: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeRuleSpec.targets:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget
-	17, // 4: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 5: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 4: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 5: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	2,  // 6: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.input_transformer:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer
 	3,  // 7: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.dead_letter_config:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetDeadLetterConfig
 	4,  // 8: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.retry_policy:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRetryPolicy
@@ -1419,23 +1834,29 @@ var file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_depIdxs = []int32{
 	7,  // 11: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.http_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig
 	8,  // 12: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.batch_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfig
 	9,  // 13: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.ecs_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig
-	14, // 14: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.input_paths:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntry
-	17, // 15: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	15, // 16: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.query_string_parameters:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.QueryStringParametersEntry
-	16, // 17: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.header_parameters:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.HeaderParametersEntry
-	17, // 18: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfig.job_definition:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 19: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.task_definition_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 20: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.capacity_provider_strategy:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsCapacityProviderStrategy
-	11, // 21: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.network_configuration:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration
-	12, // 22: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.ordered_placement_strategy:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementStrategy
-	13, // 23: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.placement_constraints:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementConstraint
-	17, // 24: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	17, // 25: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	26, // [26:26] is the sub-list for method output_type
-	26, // [26:26] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	13, // 14: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.redshift_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRedshiftConfig
+	14, // 15: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.run_command_targets:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetRunCommandSelector
+	15, // 16: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.sagemaker_pipeline_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSagemakerPipelineConfig
+	17, // 17: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTarget.appsync_target:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetAppsyncConfig
+	19, // 18: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.input_paths:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeInputTransformer.InputPathsEntry
+	23, // 19: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetDeadLetterConfig.arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	20, // 20: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.query_string_parameters:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.QueryStringParametersEntry
+	21, // 21: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.header_parameters:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetHttpConfig.HeaderParametersEntry
+	23, // 22: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetBatchConfig.job_definition:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 23: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.task_definition_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 24: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.capacity_provider_strategy:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsCapacityProviderStrategy
+	11, // 25: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.network_configuration:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration
+	12, // 26: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.ordered_placement_strategy:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementStrategy
+	18, // 27: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.placement_constraints:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsPlacementConstraint
+	22, // 28: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.tags:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetEcsConfig.TagsEntry
+	23, // 29: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	23, // 30: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeEcsNetworkConfiguration.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	16, // 31: dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeTargetSagemakerPipelineConfig.pipeline_parameter_list:type_name -> dev.planton.aws.awseventbridgerule.v1alpha1.AwsEventBridgeSagemakerPipelineParameter
+	32, // [32:32] is the sub-list for method output_type
+	32, // [32:32] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_init() }
@@ -1450,7 +1871,7 @@ func file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awseventbridgerule_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

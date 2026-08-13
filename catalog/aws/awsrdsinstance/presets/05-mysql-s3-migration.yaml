@@ -1,0 +1,38 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRdsInstance
+metadata:
+  name: my-migrated-mysql
+spec:
+  region: us-west-2
+  subnetIds:
+    - value: subnet-replace-with-private-az1
+    - value: subnet-replace-with-private-az2
+  securityGroupIds:
+    - value: sg-replace-with-database-sg
+  engine: mysql
+  # Pin the target engine line; the S3 restore declares the SOURCE
+  # engine version separately below.
+  engineVersion: "8.0.39"
+  instanceClass: db.m6g.large
+  allocatedStorageGb: 200
+  maxAllocatedStorageGb: 500
+  storageType: gp3
+  storageEncrypted: true # recommended_default -- create-time-only, cannot be enabled later
+  # S3 import creates a brand-new instance, so credentials are required
+  # (unlike snapshot or point-in-time restores, which inherit them).
+  username: dbadmin # AWS has no default master username -- pick one (avoid reserved names like rdsadmin)
+  manageMasterUserPassword: true # recommended_default -- AWS generates, stores, and rotates the password in Secrets Manager
+  # Restore a Percona XtraBackup straight from S3 -- the migration
+  # on-ramp from self-managed MySQL without a logical dump. MySQL only;
+  # create-time only.
+  s3Import:
+    bucketName: replace-with-backup-bucket
+    bucketPrefix: xtrabackup/
+    ingestionRole:
+      value: arn:aws:iam::123456789012:role/replace-with-s3-ingestion-role
+    sourceEngine: mysql
+    sourceEngineVersion: "8.0"
+  multiAz: true
+  backupRetentionPeriod: 7
+  skipFinalSnapshot: false
+  finalSnapshotIdentifier: my-migrated-mysql-final

@@ -13,7 +13,8 @@ terraform {
       # (gateway, VPC attachment, route table) so composed deployments
       # resolve one provider build. The floor is set by the gateway's
       # encryption_support argument (landed 6.25.0 with a crash regression
-      # fixed in 6.26.0); the route table resources themselves predate v6.
+      # fixed in 6.26.0); the route table resources -- including the
+      # default-table designation pair -- all predate v6.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

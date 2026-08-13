@@ -74,3 +74,7 @@ The Dashboard API object is an enormous, fast-moving schema — dozens of widget
 - **GcpMonitoringAlertPolicy** -- link the dashboard from alert runbook documentation so the on-call engineer lands on the right charts
 - **GcpLogMetric** -- chart log-based metrics (`logging.googleapis.com/user/{metric_name}`) on dashboard widgets
 - **GcpProject** -- provides the GCP project where the dashboard is created
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

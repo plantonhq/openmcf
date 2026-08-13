@@ -58,6 +58,12 @@ var _ = ginkgo.Describe("AwsFsxOntapStorageVirtualMachineSpec validations", func
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects an explicit empty root_volume_security_style (presence survives default materialization)", func() {
+		spec.RootVolumeSecurityStyle = stringPtr("")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
 	ginkgo.It("accepts MIXED root_volume_security_style", func() {
 		spec.RootVolumeSecurityStyle = stringPtr("MIXED")
 		err := protovalidate.Validate(spec)

@@ -206,6 +206,78 @@ var _ = ginkgo.Describe("AwsS3ObjectSetSpec Validation Tests", func() {
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("copy_from source arm", func() {
+
+			ginkgo.It("should not return a validation error for a minimal copy object", func() {
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with source_bucket as value_from reference", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.SourceBucket = &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+						ValueFrom: &foreignkeyv1.ValueFromRef{Name: "golden-bucket"},
+					},
+				}
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with replace_metadata and headers", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.ReplaceMetadata = true
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				spec.Objects[0].CacheControl = "max-age=86400"
+				spec.Objects[0].Metadata = map[string]string{"promoted-from": "staging"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with copy preconditions, expires, and request_payer", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.CopyIfMatch = "9b2cf535f27731c974343645a3985328"
+				copyFrom.CopyIfUnmodifiedSince = "2026-08-01T00:00:00Z"
+				copyFrom.Expires = "2027-01-01T00:00:00Z"
+				copyFrom.RequestPayer = "requester"
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error with destination placement on a copy", func() {
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				spec.Objects[0].StorageClass = "STANDARD_IA"
+				spec.Objects[0].ServerSideEncryption = "aws:kms"
+				spec.Objects[0].KmsKey = &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+						Value: "arn:aws:kms:us-east-1:123456789012:key/abc",
+					},
+				}
+				spec.Objects[0].Tags = map[string]string{"promotion": "release"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for content_type on a copy without replace_metadata", func() {
+				// The manifest loader materializes content_type's default on
+				// every object, so its presence carries no authored intent —
+				// the headers guard deliberately exempts it.
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				spec.Objects[0].ContentType = stringPtr("application/octet-stream")
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
 	})
 
 	ginkgo.Describe("When invalid input is passed", func() {
@@ -339,5 +411,89 @@ var _ = ginkgo.Describe("AwsS3ObjectSetSpec Validation Tests", func() {
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})
 		})
+
+		ginkgo.Context("copy_from source arm", func() {
+
+			ginkgo.It("should return a validation error when source_bucket is missing", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.SourceBucket = nil
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error when source_key is empty", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.SourceKey = ""
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for cache_control on a copy without replace_metadata", func() {
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				spec.Objects[0].CacheControl = "max-age=86400"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for metadata on a copy without replace_metadata", func() {
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				spec.Objects[0].Metadata = map[string]string{"promoted-from": "staging"}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for website_redirect on a copy without replace_metadata", func() {
+				spec := minimalValidSpec()
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: validCopyFrom()}
+				spec.Objects[0].WebsiteRedirect = "/moved.html"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a non-RFC3339 copy_if_modified_since", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.CopyIfModifiedSince = "yesterday"
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a non-RFC3339 expires", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.Expires = "2027-01-01"
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an invalid request_payer", func() {
+				spec := minimalValidSpec()
+				copyFrom := validCopyFrom()
+				copyFrom.RequestPayer = "Requester"
+				spec.Objects[0].Source = &AwsS3Object_CopyFrom{CopyFrom: copyFrom}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
 	})
 })
+
+// validCopyFrom returns a minimal valid copy source.
+func validCopyFrom() *AwsS3ObjectCopyFrom {
+	return &AwsS3ObjectCopyFrom{
+		SourceBucket: &foreignkeyv1.StringValueOrRef{
+			LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+				Value: "golden-artifacts",
+			},
+		},
+		SourceKey: "releases/v1.2.3/app.zip",
+	}
+}

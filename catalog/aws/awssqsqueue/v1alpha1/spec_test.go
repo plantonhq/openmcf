@@ -21,6 +21,9 @@ func strRef(val string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
+// helper for the presence-typed sqs_managed_sse_enabled field.
+func boolPtr(b bool) *bool { return &b }
+
 var _ = ginkgo.Describe("AwsSqsQueueSpec validations", func() {
 	var spec *AwsSqsQueueSpec
 
@@ -50,7 +53,15 @@ var _ = ginkgo.Describe("AwsSqsQueueSpec validations", func() {
 	})
 
 	ginkgo.It("accepts a standard queue with SQS-managed SSE", func() {
-		spec.SqsManagedSseEnabled = true
+		spec.SqsManagedSseEnabled = boolPtr(true)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a queue explicitly opting OUT of SQS-managed SSE", func() {
+		// AWS enables SSE-SQS on new queues by default; explicit false is the
+		// only way to declare an unencrypted queue.
+		spec.SqsManagedSseEnabled = boolPtr(false)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
 	})
@@ -180,9 +191,25 @@ var _ = ginkgo.Describe("AwsSqsQueueSpec validations", func() {
 
 	ginkgo.It("fails when both kms_key_id and sqs_managed_sse_enabled are set", func() {
 		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
-		spec.SqsManagedSseEnabled = true
+		spec.SqsManagedSseEnabled = boolPtr(true)
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when kms_key_id is combined with an explicit-false sqs_managed_sse_enabled", func() {
+		// The provider's ConflictsWith fires on config PRESENCE, not value —
+		// explicit false alongside a KMS key dies at plan time, so CEL rejects
+		// the shape up front.
+		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
+		spec.SqsManagedSseEnabled = boolPtr(false)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts kms_key_id with sqs_managed_sse_enabled left unset", func() {
+		spec.KmsKeyId = strRef("arn:aws:kms:us-east-1:123456789012:key/mrk-abc123")
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
 	})
 
 	// -------------------------------------------------------------------------

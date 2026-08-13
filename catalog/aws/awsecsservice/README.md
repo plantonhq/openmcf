@@ -26,12 +26,18 @@ rolls the service -- deploys travel through the resource graph.
   **blue/green** with canary or linear traffic shifting, bake time, and
   Lambda lifecycle hooks -- no CodeDeploy required.
 - **Service Connect** -- sidecar-free service-to-service discovery,
-  retries, telemetry, and optional Private-CA TLS on top of Cloud Map.
+  retries, telemetry, per-request access logs, header-based test-traffic
+  routing for blue/green, and optional Private-CA TLS on top of Cloud Map.
+- **VPC Lattice attachments** -- register tasks straight into Lattice
+  target groups for cross-VPC and cross-account traffic without a load
+  balancer in every VPC.
 - **Folded autoscaling** -- target tracking on CPU, memory, and ALB
   requests-per-target (composing the ALB's and target group's
   `arn_suffix` outputs), with cooldowns and scale-in control.
-- **Managed EBS task volumes** -- real block storage per task, sized and
-  encrypted at deployment time.
+- **Managed EBS task volumes** -- real block storage per task, sized,
+  encrypted, tagged for cost allocation, and optionally
+  snapshot-hydrated at deployment time, against the task definition's
+  `configureAtLaunch` volume of the same name.
 - **Operations posture** -- ECS Exec, AZ rebalancing, tag propagation,
   placement strategies/constraints for EC2 fleets.
 

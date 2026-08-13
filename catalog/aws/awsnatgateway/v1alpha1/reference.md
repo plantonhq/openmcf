@@ -23,6 +23,15 @@ There are two kinds, selected by connectivity_type:
     transit/VPN/peering path) while keeping instances unreachable from those
     networks.
 
+Orthogonally, availability_mode selects the placement model:
+  - zonal (default, the classic form): one gateway in one subnet
+    (subnet_id), one AZ. Zone-resilient architectures deploy one per AZ.
+  - regional: one gateway spanning every AZ of a VPC (vpc_id), managed by
+    AWS as a single unit. AWS either picks the zones automatically (leave
+    availability_zone_addresses empty) or follows the explicit per-AZ
+    layout given there. Creating a regional gateway additionally requires
+    the ec2:DescribeAvailabilityZones permission on the deploying role.
+
 A NAT gateway does not, by itself, route anything: a private subnet becomes
 NAT-egressed only when its route table sends a default route
 (target_type = nat_gateway) to this gateway. The Elastic IP is composed by
@@ -51,12 +60,18 @@ spec:
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
 | `spec.connectivityType` | `string` |  | `public` |  |
-| `spec.subnetId` | `string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
+| `spec.subnetId` | `string \| valueFrom` |  |  | AwsSubnet (`status.outputs.subnet_id`) |
 | `spec.allocationId` | `string \| valueFrom` |  |  | AwsElasticIp (`status.outputs.allocation_id`) |
 | `spec.privateIp` | `string` |  |  |  |
 | `spec.secondaryAllocationIds` | `[]string \| valueFrom` |  |  | AwsElasticIp (`status.outputs.allocation_id`) |
 | `spec.secondaryPrivateIpAddresses` | `[]string` |  |  |  |
 | `spec.secondaryPrivateIpAddressCount` | `int32` |  |  |  |
+| `spec.availabilityMode` | `string` |  | `zonal` |  |
+| `spec.vpcId` | `string \| valueFrom` |  |  | AwsVpc (`status.outputs.vpc_id`) |
+| `spec.availabilityZoneAddresses` | `[]AwsNatGatewayAvailabilityZoneAddress` |  |  |  |
+| `spec.availabilityZoneAddresses[].availabilityZone` | `string` |  |  |  |
+| `spec.availabilityZoneAddresses[].availabilityZoneId` | `string` |  |  |  |
+| `spec.availabilityZoneAddresses[].allocationIds` | `[]string \| valueFrom` |  |  | AwsElasticIp (`status.outputs.allocation_id`) |
 
 ## Field Details
 
@@ -93,27 +108,30 @@ gateway.
 
 ### spec.subnetId
 
-`string | valueFrom` · required
+`string | valueFrom`
 
-The subnet the NAT gateway is created in. Supply a literal subnet-id or
-reference an AwsSubnet and the platform resolves its subnet_id output. For a
-public gateway this must be a PUBLIC subnet (one whose route table reaches an
-internet gateway); for a private gateway any subnet works. Immutable:
-changing the subnet replaces the gateway.
+The subnet the NAT gateway is created in (zonal mode only -- required
+there, forbidden for a regional gateway, which spans the whole VPC).
+Supply a literal subnet-id or reference an AwsSubnet and the platform
+resolves its subnet_id output. For a public gateway this must be a PUBLIC
+subnet (one whose route table reaches an internet gateway); for a private
+gateway any subnet works. Immutable: changing the subnet replaces the
+gateway.
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
-- rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
 
 ### spec.allocationId
 
 `string | valueFrom`
 
-The Elastic IP allocation that gives a public gateway its stable outbound
-address. Supply a literal eipalloc-id or reference an AwsElasticIp and the
-platform resolves its allocation_id output. Required when
-connectivity_type is public; must be empty when it is private. ForceNew:
-changing it replaces the gateway.
+The Elastic IP allocation that gives a zonal public gateway its stable
+outbound address. Supply a literal eipalloc-id or reference an
+AwsElasticIp and the platform resolves its allocation_id output. Required
+for a zonal public gateway; must be empty when connectivity_type is
+private, and empty for a regional gateway (regional addressing lives in
+availability_zone_addresses or is AWS-managed). ForceNew: changing it
+replaces the gateway.
 
 - references: AwsElasticIp (`status.outputs.allocation_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticIp, name: <that resource's name>, fieldPath: status.outputs.allocation_id}} -- a bare string does not parse
@@ -155,10 +173,77 @@ gateway (an alternative to listing them explicitly). Only valid when
 connectivity_type is private. Mutually exclusive with
 secondary_private_ip_addresses.
 
+### spec.availabilityMode
+
+`string`
+
+Placement model: "zonal" (default -- the classic single-subnet,
+single-AZ gateway) or "regional" (one AWS-managed gateway spanning every
+AZ of the VPC). Leave empty for zonal. ForceNew: changing the mode
+replaces the gateway.
+
+- default: `zonal`
+- rule: availability_mode must be one of: zonal, regional
+
+### spec.vpcId
+
+`string | valueFrom`
+
+The VPC a REGIONAL gateway spans (required for regional mode, forbidden
+for zonal, where the subnet implies the VPC). Supply a literal vpc-id or
+reference an AwsVpc and the platform resolves its vpc_id output.
+Immutable: changing the VPC replaces the gateway.
+
+- references: AwsVpc (`status.outputs.vpc_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsVpc, name: <that resource's name>, fieldPath: status.outputs.vpc_id}} -- a bare string does not parse
+
+### spec.availabilityZoneAddresses
+
+`[]AwsNatGatewayAvailabilityZoneAddress`
+
+Explicit per-AZ layout for a regional gateway. Leave empty to let AWS
+choose the zones and manage addresses automatically (auto mode); list
+entries to pin the zones -- and, for a public regional gateway, the
+Elastic IPs -- yourself (manual mode). Switching a regional gateway
+between auto and manual replaces it (verified provider behavior).
+
+- rule: each availability_zone_addresses entry needs availability_zone or availability_zone_id
+
+### spec.availabilityZoneAddresses[].availabilityZone
+
+`string`
+
+The availability zone, by name (e.g. "us-west-2a"). At least one of
+availability_zone or availability_zone_id is required per entry; both
+may be set (AWS reports both).
+
+### spec.availabilityZoneAddresses[].availabilityZoneId
+
+`string`
+
+The availability zone, by ID (e.g. "usw2-az1") -- stable across AWS
+accounts, unlike zone names. At least one of availability_zone or
+availability_zone_id is required per entry.
+
+### spec.availabilityZoneAddresses[].allocationIds
+
+`[]string | valueFrom`
+
+Elastic IP allocations serving this zone (public regional gateways
+only -- a private gateway carries no Elastic IPs). Each entry is a
+literal eipalloc-id or a reference to an AwsElasticIp.
+
+- references: AwsElasticIp (`status.outputs.allocation_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsElasticIp, name: <that resource's name>, fieldPath: status.outputs.allocation_id}} -- a bare string does not parse
+
 ## Validation Rules
 
-- `public_requires_allocation_id`: allocation_id is required when connectivity_type is public (a public NAT gateway needs an Elastic IP)
-- `private_forbids_eip`: allocation_id and secondary_allocation_ids are not allowed when connectivity_type is private
+- `zonal_requires_subnet`: subnet_id is required for a zonal NAT gateway (availability_mode empty or 'zonal')
+- `regional_requires_vpc`: a regional NAT gateway requires vpc_id and must not set subnet_id
+- `zonal_forbids_regional_surface`: vpc_id and availability_zone_addresses are only valid when availability_mode is 'regional'
+- `regional_forbids_zonal_addressing`: allocation_id, secondary_allocation_ids, private_ip, and the secondary private IP fields are zonal-mode surface; a regional gateway uses availability_zone_addresses
+- `public_requires_allocation_id`: allocation_id is required when connectivity_type is public (a zonal public NAT gateway needs an Elastic IP)
+- `private_forbids_eip`: allocation_id, secondary_allocation_ids, and availability_zone_addresses[].allocation_ids are not allowed when connectivity_type is private
 - `public_forbids_private_addressing`: private_ip, secondary_private_ip_addresses, and secondary_private_ip_address_count are only valid when connectivity_type is private
 - `secondary_private_ip_exclusive`: secondary_private_ip_addresses and secondary_private_ip_address_count are mutually exclusive
 
@@ -184,6 +269,8 @@ Fields that can point at another resource's outputs:
 | `spec.subnetId` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.allocationId` | AwsElasticIp | `status.outputs.allocation_id` |
 | `spec.secondaryAllocationIds` | AwsElasticIp | `status.outputs.allocation_id` |
+| `spec.vpcId` | AwsVpc | `status.outputs.vpc_id` |
+| `spec.availabilityZoneAddresses[].allocationIds` | AwsElasticIp | `status.outputs.allocation_id` |
 
 ## See Also
 

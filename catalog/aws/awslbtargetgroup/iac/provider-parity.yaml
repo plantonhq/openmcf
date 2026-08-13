@@ -1,0 +1,54 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_lb_target_group:
+    mappings:
+      # The spec carries the unit suffix the provider leaves implicit.
+      - spec: spec.deregistration_delay_seconds
+        arg: deregistration_delay
+      - spec: spec.slow_start_seconds
+        arg: slow_start
+      - spec: spec.health_check.interval_seconds
+        arg: health_check.interval
+      - spec: spec.health_check.timeout_seconds
+        arg: health_check.timeout
+      - spec: spec.stickiness.cookie_duration_seconds
+        arg: stickiness.cookie_duration
+      - spec: spec.target_health_state.unhealthy_draining_interval_seconds
+        arg: target_health_state.unhealthy_draining_interval
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (truncated deterministically to AWS's 32-char limit) -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Gateway Load Balancer surface.
+      - arg: target_failover.on_deregistration
+        reason: GENEVE/Gateway-Load-Balancer-only surface -- GWLB target groups are deliberately not modeled (no gateway load balancer kind to compose them with; recorded in the spec header)
+      - arg: target_failover.on_unhealthy
+        reason: GENEVE/Gateway-Load-Balancer-only surface -- GWLB target groups are deliberately not modeled (no gateway load balancer kind to compose them with; recorded in the spec header)
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_lb_target_group_attachment:
+    # Instantiated per spec.targets entry: static registrations folded into
+    # the kind because a registration is pure glue with no referenceable
+    # identity of its own (recorded on the spec field).
+    specRoot: spec.targets
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: target_group_arn
+        reason: wired by the module to the target group it creates -- never user surface

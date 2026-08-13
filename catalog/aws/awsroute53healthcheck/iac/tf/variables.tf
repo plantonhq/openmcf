@@ -29,7 +29,7 @@ variable "spec" {
     invert_healthcheck = optional(bool, false)
     disabled = optional(bool, false)
     child_health_checks = optional(list(string), [])
-    child_health_threshold = optional(number, 0)
+    child_health_threshold = optional(number)
     cloudwatch_alarm_name = optional(string, "")
     cloudwatch_alarm_region = optional(string, "")
     insufficient_data_health_status = optional(string, "")

@@ -5,11 +5,6 @@ metadata:
   org: test-org
   env: dev
   id: test-ses-identity-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsSesEmailIdentity.test-ses-identity
 spec:
   region: us-west-2
   emailIdentity: mail.example.com

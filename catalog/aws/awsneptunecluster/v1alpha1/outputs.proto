@@ -46,4 +46,13 @@ message AwsNeptuneClusterStackOutputs {
   // as declared in spec.instances. Empty for headless shapes (restores,
   // replicas, and global-cluster members created without instances).
   repeated string instance_endpoints = 11;
+
+  // Custom endpoint DNS addresses keyed by spec.custom_endpoints[].name
+  // (e.g. "analytics" -> "analytics.cluster-custom-...neptune.amazonaws.com").
+  map<string, string> custom_endpoint_addresses = 12;
+
+  // The name of the module-managed instance parameter group created from
+  // spec.instance_parameters. Empty when instance parameters are not
+  // managed here.
+  string neptune_instance_parameter_group_name = 13;
 }

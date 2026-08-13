@@ -1,0 +1,48 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_batch_compute_environment:
+    mappings:
+      # The spec pluralizes repeated surfaces and names references for what
+      # they point at.
+      - spec: spec.compute_resources.instance_types
+        arg: compute_resources.instance_type
+      - spec: spec.compute_resources.subnet_ids
+        arg: compute_resources.subnets
+      - spec: spec.compute_resources.ec2_configurations.image_type
+        arg: compute_resources.ec2_configuration.image_type
+      - spec: spec.compute_resources.ec2_configurations.image_id_override
+        arg: compute_resources.ec2_configuration.image_id_override
+      - spec: spec.compute_resources.ec2_configurations.image_kubernetes_version
+        arg: compute_resources.ec2_configuration.image_kubernetes_version
+      # These tags land on the EC2 instances / Spot requests Batch launches;
+      # the spec names them resource_tags to keep them distinct from the
+      # environment's own identity tags (the `tags` exclusion below).
+      - spec: spec.compute_resources.resource_tags
+        arg: compute_resources.tags
+    exclusions:
+      # Superseded surface.
+      - arg: compute_resources.image_id
+        reason: legacy whole-environment AMI pin superseded by ec2_configuration.image_id_override (modeled), which scopes the AMI per image type -- the provider keeps both for compatibility, one configuration surface suffices
+      # Covered alternative.
+      - arg: compute_resources.launch_template.launch_template_name
+        reason: alternative addressing for the same launch template -- the spec references templates by id (launch_template_id, chart-wired via StringValueOrRef); the provider conflicts the two forms
+      # Recorded boundary.
+      - arg: type
+        reason: always MANAGED by module design -- UNMANAGED (bring-your-own ECS container instances) is a different operating model, recorded as unmodeled on the spec's message comment
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name -- never free-form user surface
+      - arg: name_prefix
+        reason: alternative naming form; names always derive from metadata.name
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

@@ -148,8 +148,8 @@ func TestBaselineFloorOnMessyAccount(t *testing.T) {
 				finding.FieldPath, finding.Instance)
 		}
 	}
-	if report.Spec.GroundTruthLeaves != 64 || report.Spec.Matched != 21 {
-		t.Fatalf("spec floor drifted: want 21/64 leaves matched, got %d/%d\nmissing: %v",
+	if report.Spec.GroundTruthLeaves != 72 || report.Spec.Matched != 21 {
+		t.Fatalf("spec floor drifted: want 21/72 leaves matched, got %d/%d\nmissing: %v",
 			report.Spec.Matched, report.Spec.GroundTruthLeaves, report.Spec.Missing)
 	}
 

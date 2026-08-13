@@ -7,6 +7,10 @@ terraform {
       # a deliberate catalog-wide decision, and floor-at-latest-released-minor
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
+      #
+      # Feature floor: volume.s3files_volume_configuration lands in 6.41.0;
+      # the MANAGED_INSTANCES compatibility value follows the ECS Managed
+      # Instances family on the 6.x line.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

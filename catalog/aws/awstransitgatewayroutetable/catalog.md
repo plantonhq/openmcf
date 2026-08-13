@@ -7,10 +7,11 @@ Creates an isolated routing domain inside an AWS Transit Gateway hub. A route ta
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Transit Gateway Route Table** -- the routing domain itself
-- **Route Table Associations** -- one per entry in `associations`, binding each attachment's outbound lookups to this table
+- **Route Table Associations** -- one per entry in `associations`, binding each attachment's outbound lookups to this table (optionally taking over an existing association in the same apply)
 - **Route Table Propagations** -- one per entry in `propagations`, advertising each attachment's routes into this table
 - **Static Routes** -- one per entry in `routes`, each forwarding a destination CIDR to an attachment or blackholing it
 - **Prefix List References** -- one per entry in `prefixListReferences`, each routing a managed prefix list's whole CIDR set
+- **Default-Table Designations** -- when `setAsDefaultAssociationTable` / `setAsDefaultPropagationTable` are set, the gateway's default association/propagation pointers are repointed at this table
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically
 
 ## Before You Deploy
@@ -24,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **A Transit Gateway** in the same region -- for segmented designs, typically one whose default-association and default-propagation dials are off.
 - **Attachments to include** -- `AwsTransitGatewayVpcAttachment` resources (reference their `attachment_id` outputs), or literal `tgw-attach-…` IDs for VPN, Direct Connect, and peering attachments created outside Planton.
-- **Association exclusivity** -- an attachment associates with at most ONE route table across the whole gateway. An attachment listed in this table's `associations` must have `defaultRouteTableAssociation` off and must not appear in any other table's associations; AWS rejects a second association at apply time.
+- **Association exclusivity** -- an attachment associates with at most ONE route table across the whole gateway. An attachment listed in this table's `associations` must have `defaultRouteTableAssociation` off and must not appear in any other table's associations; AWS rejects a second association at apply time. To move an attachment that is ALREADY associated somewhere else (the gateway's default table, another custom table, or an attachment on a RAM-shared gateway whose default membership you cannot switch off), set the entry's `replaceExistingAssociation` -- the old association is removed and the new one created in one apply.
 
 ## Deploy
 
@@ -48,7 +49,8 @@ spec:
   transitGatewayId:
     value: "tgw-0123456789abcdef0"
   associations:
-    - value: "tgw-attach-0123456789abcdef0"
+    - attachmentId:
+        value: "tgw-attach-0123456789abcdef0"
   propagations:
     - value: "tgw-attach-0fedcba9876543210"
   routes:
@@ -74,10 +76,11 @@ spec:
       name: network-hub
       fieldPath: status.outputs.transit_gateway_id
   associations:
-    - valueFrom:
-        kind: AwsTransitGatewayVpcAttachment
-        name: prod-a-attachment
-        fieldPath: status.outputs.attachment_id
+    - attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: prod-a-attachment
+          fieldPath: status.outputs.attachment_id
   propagations:
     - valueFrom:
         kind: AwsTransitGatewayVpcAttachment
@@ -99,6 +102,10 @@ These are the most important decisions when configuring a route table. Explore t
 
 **Prefix list references** -- Route a managed prefix list's entire CIDR set through one attachment (or blackhole it), tracking membership changes automatically — safer than mirroring a team's CIDR inventory as statics. Each prefix list appears at most once per table.
 
+**Association takeover** -- `associations[].replaceExistingAssociation` moves an attachment that is already associated elsewhere into this table in one apply. Its primary use is attachments on RAM-shared gateways (the sharing account controls their default membership) and brownfield adoption of flat hubs. The flag matters only when the association is created.
+
+**Default-table designation** -- `setAsDefaultAssociationTable` / `setAsDefaultPropagationTable` make this table the gateway's default association/propagation table: attachments that keep their default-table dials on land here. Meaningful only on a gateway whose corresponding default dial is enabled; at most one table per gateway may claim each designation (AWS state is the referee — the most recent apply wins), and removing a flag restores the gateway's original default table.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -106,7 +113,7 @@ These are the most important decisions when configuring a route table. Explore t
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AwsTransitGateway** | `transitGatewayId` | `status.outputs.transit_gateway_id` |
-| **AwsTransitGatewayVpcAttachment** | `associations[]`, `propagations[]`, `routes[].attachmentId`, `prefixListReferences[].attachmentId` | `status.outputs.attachment_id` |
+| **AwsTransitGatewayVpcAttachment** | `associations[].attachmentId`, `propagations[]`, `routes[].attachmentId`, `prefixListReferences[].attachmentId` | `status.outputs.attachment_id` |
 
 ### What This Component Provides
 

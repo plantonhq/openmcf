@@ -159,6 +159,9 @@ build-optional-linter-plugin:
 
 .PHONY: buf-lint
 buf-lint: build-optional-linter-plugin
+	# --disable-symlinks keeps local runs immune to the bazel-* convenience
+	# symlinks (bazel run //:gazelle recreates them), whose tree duplication
+	# otherwise fails the module compile with duplicate-symbol errors.
 	buf lint --disable-symlinks
 
 .PHONY: buf-breaking
@@ -267,6 +270,9 @@ generate-kubernetes-types:
 # `planton explain` serves offline. Generated protobuf code strips comments,
 # so the prose is distilled from a descriptor image built with source info.
 # Deterministic: unchanged protos regenerate a byte-identical artifact.
+# If `buf build` fails with "symbol already defined at bazel-<repo>/...",
+# stale Bazel output symlinks at the repo root are leaking a duplicate
+# proto tree into the module walk -- delete the bazel-* symlinks and rerun.
 .PHONY: generate-proto-docs
 generate-proto-docs:
 	mkdir -p build
@@ -293,7 +299,8 @@ generate-provider-schemas:
 		--out-dir pkg/providerparity/schemas \
 		--provider 'google=hashicorp/google@~> 7.43' \
 		--provider 'google-beta=hashicorp/google-beta@~> 7.43' \
-		--provider 'azurerm=hashicorp/azurerm@5.0.0'
+		--provider 'azurerm=hashicorp/azurerm@5.0.0' \
+		--provider 'aws=hashicorp/aws@~> 6.58'
 
 # Regenerate every committed public parity page (catalog/<provider>/terraform-parity.md)
 # from the accounting. Each page embeds its own generation parameters, so this
@@ -391,10 +398,6 @@ release-buf:
 next-version:  ## show what the next version would be
 	@python3 tools/ci/release/next_version.py $(bump)
 
-.PHONY: snapshot
-snapshot: deps  ## build a local snapshot using GoReleaser
-	goreleaser release --snapshot --clean --skip=publish
-
 .PHONY: release
 release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: patch). Override with version=vX.Y.Z
 	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
@@ -417,19 +420,6 @@ run-docs:
 .PHONY: build-docs
 build-docs:
 	$(MAKE) -C docs build
-
-# ── website (site/) ────────────────────────────────────────────────────────────
-.PHONY: run-site
-run-site:
-	$(MAKE) -C site dev
-
-.PHONY: build-site
-build-site:
-	$(MAKE) -C site build
-
-.PHONY: preview-site
-preview-site:
-	$(MAKE) -C site preview-site
 
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies

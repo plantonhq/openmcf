@@ -26,5 +26,6 @@ variable "spec" {
       include_detail = optional(string, "")
     }))
     resource_policy = optional(any)
+    archives = optional(any, [])
   })
 }

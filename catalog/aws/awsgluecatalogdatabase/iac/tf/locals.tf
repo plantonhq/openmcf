@@ -5,12 +5,14 @@ locals {
   # silently transformed. Same basis as the Pulumi module.
   database_name = var.metadata.name
 
-  # Resource-identity tags match the Pulumi module key-for-key. Identity
-  # tagging is the only tagging surface this module manages; user-defined
-  # custom tags are a platform-wide concern, not per-kind spec surface.
-  # (Tags land on the Glue resource itself; the spec's `parameters` map is
-  # catalog metadata inside the database, a different surface.)
+  # Canonical six-key resource-identity map, matching the Pulumi module
+  # key-for-key (Name + the planton.ai identity keys). Identity tagging is
+  # the only tagging surface this module manages; user-defined custom tags
+  # are a platform-wide concern, not per-kind spec surface. (Tags land on
+  # the Glue resource itself; the spec's `parameters` map is catalog
+  # metadata inside the database, a different surface.)
   tags = {
+    "Name"                     = var.metadata.name
     "planton.ai/resource"      = "true"
     "planton.ai/organization"  = var.metadata.org
     "planton.ai/environment"   = var.metadata.env
@@ -23,5 +25,4 @@ locals {
   # the regular shape.
   has_target_database    = var.spec.target_database != null
   has_federated_database = var.spec.federated_database != null
-  has_create_table_perms = length(var.spec.create_table_default_permissions) > 0
 }

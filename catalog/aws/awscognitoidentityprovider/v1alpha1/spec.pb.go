@@ -585,6 +585,10 @@ type AwsCognitoIdentityProviderSpec struct {
 	// unique within the pool. Referenced by User Pool Clients in their
 	// `supported_identity_providers` list.
 	//
+	// For the SOCIAL provider types AWS requires the name to EQUAL the type
+	// ("Google", "Facebook", "LoginWithAmazon", "SignInWithApple") -- custom
+	// names are an OIDC/SAML feature.
+	//
 	// Examples: "Google", "CorpOkta", "AzureAD-SAML"
 	//
 	// 1-32 UTF-8 characters. This field is ForceNew.
@@ -849,7 +853,7 @@ const file_catalog_aws_awscognitoidentityprovider_v1alpha1_spec_proto_rawDesc = 
 	"idpSignOut\x12\x19\n" +
 	"\bidp_init\x18\x04 \x01(\bR\aidpInit\x12/\n" +
 	"\x13encrypted_responses\x18\x05 \x01(\bR\x12encryptedResponses\x12:\n" +
-	"\x19request_signing_algorithm\x18\x06 \x01(\tR\x17requestSigningAlgorithm\"\xa3\x15\n" +
+	"\x19request_signing_algorithm\x18\x06 \x01(\tR\x17requestSigningAlgorithm\"\x81\x18\n" +
 	"\x1eAwsCognitoIdentityProviderSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x80\x01\n" +
 	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_idR\n" +
@@ -867,12 +871,13 @@ const file_catalog_aws_awscognitoidentityprovider_v1alpha1_spec_proto_rawDesc = 
 	"\x0fidp_identifiers\x18\f \x03(\tB\b\xbaH\x05\x92\x01\x02\x102R\x0eidpIdentifiers\x1aC\n" +
 	"\x15AttributeMappingEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa8\v\xbaH\xa4\v\x1a\xde\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x86\x0e\xbaH\x82\x0e\x1a\xde\x01\n" +
 	"\x13provider_type_valid\x12cprovider_type must be 'Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', or 'SAML'\x1abthis.provider_type in ['Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple', 'OIDC', 'SAML']\x1a\x88\x05\n" +
 	"\x1aprovider_type_config_match\x12\xf5\x01provider_type must match the provider configuration field: Google requires 'google', Facebook requires 'facebook', LoginWithAmazon requires 'loginWithAmazon', SignInWithApple requires 'signInWithApple', OIDC requires 'oidc', SAML requires 'saml'\x1a\xf1\x02(this.provider_type == 'Google' && has(this.google)) || (this.provider_type == 'Facebook' && has(this.facebook)) || (this.provider_type == 'LoginWithAmazon' && has(this.login_with_amazon)) || (this.provider_type == 'SignInWithApple' && has(this.sign_in_with_apple)) || (this.provider_type == 'OIDC' && has(this.oidc)) || (this.provider_type == 'SAML' && has(this.saml))\x1a\xa1\x01\n" +
 	"\x16saml_metadata_required\x125SAML providers must set metadata_file or metadata_url\x1aP!has(this.saml) || this.saml.metadata_file != '' || this.saml.metadata_url != ''\x1a\xb8\x01\n" +
 	"\x17saml_metadata_exclusive\x12KSAML providers must set only one of metadata_file or metadata_url, not both\x1aP!has(this.saml) || this.saml.metadata_file == '' || this.saml.metadata_url == ''\x1a\xd6\x01\n" +
-	"$oidc_attributes_request_method_valid\x126OIDC attributes_request_method must be 'GET' or 'POST'\x1av!has(this.oidc) || this.oidc.attributes_request_method == '' || this.oidc.attributes_request_method in ['GET', 'POST']B\x11\n" +
+	"$oidc_attributes_request_method_valid\x126OIDC attributes_request_method must be 'GET' or 'POST'\x1av!has(this.oidc) || this.oidc.attributes_request_method == '' || this.oidc.attributes_request_method in ['GET', 'POST']\x1a\xdb\x02\n" +
+	"!social_provider_name_matches_type\x12\xb1\x01for social provider types the provider_name must equal the provider_type (e.g. type 'Google' requires name 'Google'); custom names are only supported for OIDC and SAML providers\x1a\x81\x01!(this.provider_type in ['Google', 'Facebook', 'LoginWithAmazon', 'SignInWithApple']) || this.provider_name == this.provider_typeB\x11\n" +
 	"\x0fprovider_configB\xa6\x03\n" +
 	"7com.dev.planton.aws.awscognitoidentityprovider.v1alpha1B\tSpecProtoP\x01Zogithub.com/plantonhq/planton/catalog/aws/awscognitoidentityprovider/v1alpha1;awscognitoidentityproviderv1alpha1\xa2\x02\x04DPAA\xaa\x023Dev.Planton.Aws.Awscognitoidentityprovider.V1alpha1\xca\x023Dev\\Planton\\Aws\\Awscognitoidentityprovider\\V1alpha1\xe2\x02?Dev\\Planton\\Aws\\Awscognitoidentityprovider\\V1alpha1\\GPBMetadata\xea\x027Dev::Planton::Aws::Awscognitoidentityprovider::V1alpha1b\x06proto3"
 

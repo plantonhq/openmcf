@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "cluster_instances.go",
         "cluster_param_group.go",
+        "custom_endpoints.go",
         "locals.go",
         "main.go",
         "neptune_cluster.go",

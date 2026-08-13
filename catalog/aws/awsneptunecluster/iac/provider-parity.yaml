@@ -1,0 +1,161 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_neptune_cluster:
+    mappings:
+      # The spec names the key for what it references (an AwsKmsKey,
+      # chart-wired via StringValueOrRef); the provider carries the ARN
+      # suffix.
+      - spec: spec.kms_key_id
+        arg: kms_key_arn
+      # The spec names security groups for what they are; the provider
+      # prefixes the VPC scope.
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+      # The provider prefixes "enable_"; the spec follows the AWS API's
+      # member-name shape used across the catalog's database kinds.
+      - spec: spec.enabled_cloudwatch_logs_exports
+        arg: enable_cloudwatch_logs_exports
+      # Neptune Serverless capacity bounds -- the spec drops the
+      # "_configuration" suffix.
+      - spec: spec.serverless_v2_scaling.min_capacity
+        arg: serverless_v2_scaling_configuration.min_capacity
+      - spec: spec.serverless_v2_scaling.max_capacity
+        arg: serverless_v2_scaling_configuration.max_capacity
+    exclusions:
+      # Identity is the kind's own contract.
+      - arg: cluster_identifier
+        reason: derived from metadata.name (create-time-immutable) -- never free-form user surface
+      - arg: cluster_identifier_prefix
+        reason: alternative naming form; identifiers always derive from metadata.name
+      # Single-value domain.
+      - arg: engine
+        reason: the provider's engine enum carries exactly one value ("neptune") -- hardcoded by both modules; a spec field would have one legal value
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_neptune_cluster_instance:
+    # One instance per spec.instances entry, keyed by the entry's name so
+    # readers scale in and out without touching the cluster.
+    specRoot: spec.instances
+    mappings:
+      # The AWS identifier is the entry's name under the module's
+      # "<cluster>-<name>" composition.
+      - spec: spec.instances.name
+        arg: identifier
+    exclusions:
+      - arg: region
+        reason: wired by the module -- instances follow the cluster's spec.region through the provider connection
+      - arg: identifier_prefix
+        reason: alternative naming form; identifiers always derive from metadata.name and the entry name
+      - arg: cluster_identifier
+        reason: module-shaped plumbing -- always this cluster's own identifier (instances are folded sub-resources)
+      - arg: engine
+        reason: the provider's engine enum carries exactly one value ("neptune") -- hardcoded by both modules
+      - arg: engine_version
+        reason: wired by the module from the cluster resource -- an unpinned cluster still stamps its instances with the resolved version
+      - arg: neptune_subnet_group_name
+        reason: inherited from the cluster -- cluster instances always live in the cluster's subnet group; a per-instance override would diverge from AWS's own placement
+      - arg: port
+        reason: pinned by the module to the cluster's own resolved port (instances listen on the cluster's port; an independent value would fight the instance schema's 8182 default with a replacement diff)
+      - arg: apply_immediately
+        reason: forwarded from the cluster-level spec.apply_immediately -- one immediate-vs-maintenance-window intent for cluster and instance scope alike
+      - arg: skip_final_snapshot
+        reason: forwarded from the cluster-level spec.skip_final_snapshot -- cluster members take no instance-level final snapshot; the flag keeps teardown intent consistent
+      - arg: preferred_backup_window
+        reason: backups are a cluster-storage property -- AWS reports the cluster's window at instance level; the cluster-level spec.preferred_backup_window is the honest home and the instance echo stays unset (Optional+Computed, inert)
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_neptune_cluster_endpoint:
+    # One endpoint per spec.custom_endpoints entry, keyed by the entry's
+    # name so endpoints come and go without touching the cluster.
+    specRoot: spec.custom_endpoints
+    mappings:
+      # The DNS-visible endpoint identifier is the entry's name.
+      - spec: spec.custom_endpoints.name
+        arg: cluster_endpoint_identifier
+    exclusions:
+      - arg: region
+        reason: wired by the module -- endpoints follow the cluster's spec.region through the provider connection
+      - arg: cluster_identifier
+        reason: module-shaped plumbing -- always this cluster's own identifier (endpoints front the cluster's own instances)
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_neptune_cluster_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters.
+    specRoot: spec.parameters
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+    exclusions:
+      - arg: region
+        reason: wired by the module -- the group follows the cluster's spec.region through the provider connection
+      - arg: name
+        reason: module-shaped plumbing -- named after the cluster (metadata.name); the group is glue owned by exactly this cluster
+      - arg: name_prefix
+        reason: alternative naming form; the group is named after the cluster
+      - arg: description
+        reason: module-shaped plumbing -- the provider default describes a managed group adequately; the group is not user-facing surface
+      - arg: family
+        reason: derived from the pinned spec.engine_version ("1.4.5.1" -> neptune1.4) -- AWS's own engine-major-scoped family naming, never free-form
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_neptune_parameter_group:
+    # The managed INSTANCE parameter group for inline
+    # spec.instance_parameters -- the instance-level twin of the cluster
+    # group, adopted by every folded instance without its own group.
+    specRoot: spec.instance_parameters
+    mappings:
+      - spec: spec.instance_parameters
+        arg: parameter
+    exclusions:
+      - arg: region
+        reason: wired by the module -- the group follows the cluster's spec.region through the provider connection
+      - arg: name
+        reason: module-shaped plumbing -- named "{metadata.name}-instance"; the group is glue owned by exactly this cluster
+      - arg: name_prefix
+        reason: alternative naming form; the group is named after the cluster
+      - arg: description
+        reason: module-shaped plumbing -- the provider default describes a managed group adequately; the group is not user-facing surface
+      - arg: family
+        reason: derived from the pinned spec.engine_version ("1.4.5.1" -> neptune1.4) -- AWS's own engine-major-scoped family naming, never free-form
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_neptune_subnet_group:
+    exclusions:
+      # spec.subnet_ids carries the group's one real input; the group
+      # itself is pure glue (a named list of subnets).
+      - arg: name
+        reason: module-shaped plumbing -- named after the cluster (metadata.name); the group is glue owned by exactly this cluster
+      - arg: name_prefix
+        reason: alternative naming form; the group is named after the cluster
+      - arg: description
+        reason: module-shaped plumbing -- the provider default describes a managed group adequately; the group is not user-facing surface
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

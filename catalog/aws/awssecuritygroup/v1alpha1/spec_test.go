@@ -45,6 +45,16 @@ var _ = ginkgo.Describe("AwsSecurityGroupSpec Custom Validation Tests", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
+		ginkgo.It("should accept a group shared into additional VPCs", func() {
+			input := validMinimalSpec()
+			input.Spec.AdditionalVpcIds = []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-87654321"}},
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "vpc-abcdef01"}},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
 		ginkgo.It("should accept a rules-rich group (self-reference, prefix lists, dual-stack CIDRs)", func() {
 			input := validMinimalSpec()
 			input.Spec.RevokeRulesOnDelete = true
@@ -167,6 +177,38 @@ var _ = ginkgo.Describe("AwsSecurityGroupSpec Custom Validation Tests", func() {
 					FromPort:      443,
 					ToPort:        443,
 					PrefixListIds: []string{"not-a-prefix-list"},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when an ingress rule carries the egress-direction group field", func() {
+			input := validMinimalSpec()
+			input.Spec.Ingress = []*SecurityGroupRule{
+				{
+					Protocol: "tcp",
+					FromPort: 443,
+					ToPort:   443,
+					DestinationSecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-dead-config"}},
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail when an egress rule carries the ingress-direction group field", func() {
+			input := validMinimalSpec()
+			input.Spec.Egress = []*SecurityGroupRule{
+				{
+					Protocol: "tcp",
+					FromPort: 443,
+					ToPort:   443,
+					SourceSecurityGroupIds: []*foreignkeyv1.StringValueOrRef{
+						{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "sg-dead-config"}},
+					},
 				},
 			}
 			err := protovalidate.Validate(input)

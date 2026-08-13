@@ -35,7 +35,7 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
     for_each = var.spec.authentication_options
     content {
       type                           = authentication_options.value.type
-      root_certificate_chain_arn    = authentication_options.value.root_certificate_chain_arn != "" ? authentication_options.value.root_certificate_chain_arn : null
+      root_certificate_chain_arn     = authentication_options.value.root_certificate_chain_arn != "" ? authentication_options.value.root_certificate_chain_arn : null
       active_directory_id            = authentication_options.value.active_directory_id != "" ? authentication_options.value.active_directory_id : null
       saml_provider_arn              = authentication_options.value.saml_provider_arn != "" ? authentication_options.value.saml_provider_arn : null
       self_service_saml_provider_arn = authentication_options.value.self_service_saml_provider_arn != "" ? authentication_options.value.self_service_saml_provider_arn : null
@@ -55,8 +55,11 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
   # VPC attachment surface (CEL guarantees it never coexists with the
   # transit-gateway arm). When omitted, AWS infers the VPC from the first
   # associated subnet and applies that VPC's default security group.
+  # Unresolved (empty-string) references are filtered out before the length
+  # check — mirroring the Pulumi module — so a list of one unresolved ref
+  # omits the argument instead of sending [""] to the provider.
   vpc_id             = var.spec.vpc_id != "" ? var.spec.vpc_id : null
-  security_group_ids = length(var.spec.security_group_ids) > 0 ? var.spec.security_group_ids : null
+  security_group_ids = length([for sg in var.spec.security_group_ids : sg if sg != ""]) > 0 ? [for sg in var.spec.security_group_ids : sg if sg != ""] : null
 
   # Transit-gateway attachment surface (ForceNew): clients reach every
   # network the gateway routes to, without per-subnet associations.
@@ -74,31 +77,31 @@ resource "aws_ec2_client_vpn_endpoint" "this" {
   disconnect_on_session_timeout = var.spec.disconnect_on_session_timeout
   self_service_portal           = var.spec.self_service_portal_enabled ? "enabled" : "disabled"
 
-  # Posture hook: presence of the spec block is the switch.
-  dynamic "client_connect_options" {
-    for_each = var.spec.client_connect_options != null ? [var.spec.client_connect_options] : []
-    content {
-      enabled             = true
-      lambda_function_arn = client_connect_options.value.lambda_function_arn
-    }
+  # Posture hook: presence of the spec block is the switch. The block is
+  # ALWAYS materialized with an explicit enabled value — the provider
+  # declares it Optional+Computed and diff-suppresses a missing block, so
+  # omitting it after the hook was enabled would leave the Lambda gate
+  # active forever. Sending enabled=false (payload deliberately dropped,
+  # matching the provider's own expander) is what makes removal a real
+  # disable.
+  client_connect_options {
+    enabled             = var.spec.client_connect_options != null
+    lambda_function_arn = var.spec.client_connect_options != null ? var.spec.client_connect_options.lambda_function_arn : null
   }
 
-  # Login banner: presence of the spec block is the switch.
-  dynamic "client_login_banner_options" {
-    for_each = var.spec.client_login_banner != null ? [var.spec.client_login_banner] : []
-    content {
-      enabled     = true
-      banner_text = client_login_banner_options.value.banner_text
-    }
+  # Login banner: presence of the spec block is the switch — always
+  # materialized for the same removal-must-disable reason as above.
+  client_login_banner_options {
+    enabled     = var.spec.client_login_banner != null
+    banner_text = var.spec.client_login_banner != null ? var.spec.client_login_banner.banner_text : null
   }
 
-  # Route enforcement: a single hardening dial, only sent when enabled so
-  # unset manifests keep AWS's default posture.
-  dynamic "client_route_enforcement_options" {
-    for_each = var.spec.client_route_enforcement_enabled ? [true] : []
-    content {
-      enforced = true
-    }
+  # Route enforcement: a single hardening dial, always sent explicitly in
+  # BOTH states — the provider's Optional+Computed block absorbs the
+  # AWS-side value when omitted, so flipping the spec back to false would
+  # otherwise be a silent no-op.
+  client_route_enforcement_options {
+    enforced = var.spec.client_route_enforcement_enabled
   }
 
   dns_servers = length(var.spec.dns_servers) > 0 ? var.spec.dns_servers : null

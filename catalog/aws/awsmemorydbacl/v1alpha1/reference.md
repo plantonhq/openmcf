@@ -77,7 +77,10 @@ The users that make up this ACL, referenced by user name (the value
 AwsMemorydbUser exports as `status.outputs.user_name`). Membership
 updates in place; the ACL is the single place an application's cluster
 access is granted or revoked. May be empty — a cluster attached to an
-empty ACL simply accepts no authenticated connections.
+empty ACL simply accepts no authenticated connections. Deleting a user
+removes it from every ACL server-side automatically; the provider
+reconciles that, so dropping an already-deleted member from this list
+is a clean no-op, never an error.
 
 - references: AwsMemorydbUser (`status.outputs.user_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsMemorydbUser, name: <that resource's name>, fieldPath: status.outputs.user_name}} -- a bare string does not parse

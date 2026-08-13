@@ -10,17 +10,28 @@ spec:
   # composing the shared AwsVpc fixture via the e2e-prerequisites annotation
   # (the kind itself honestly requires nothing — public zones are leaves).
   # Zones create in seconds at $0.50/month prorated-to-minutes cost.
-  # Deliberately not in the live scenarios: DNSSEC signing (the KSK demands
-  # a us-east-1 ECC_NIST_P256 KMS key carrying the dnssec-route53 service
-  # key policy — a key-policy-prepared fixture the shared KMS fixture does
-  # not model), query logging (delivery requires an ACCOUNT-level CloudWatch
-  # Logs resource policy — max 10 per region, shared across zones — which a
-  # per-lane fixture must not own), and reusable delegation sets (account
-  # objects with no kind to compose from). All three arms are proven by CEL
-  # spec tests, both engines' builds, and the offline gate.
+  # The public scenario carries an EXPLICIT-FALSE enable_accelerated_recovery
+  # (the tri-state disable send path; a fresh zone is off by default, so the
+  # arm engages nothing billed).
+  # Deliberately not in the live scenarios: DNSSEC signing incl. the
+  # key-signing-key status lever and the ds_record/dnskey_record/key-tag
+  # outputs (the KSK demands a us-east-1 ECC_NIST_P256 KMS key carrying the
+  # dnssec-route53 service key policy — a key-policy-prepared fixture the
+  # shared KMS fixture does not model; unblock: a prepared DNSSEC key
+  # fixture or an owner-budgeted arm), query logging (delivery requires an
+  # ACCOUNT-level CloudWatch Logs resource policy — max 10 per region,
+  # shared across zones — which a per-lane fixture must not own), and
+  # reusable delegation sets (account objects with no kind to compose
+  # from). All arms are proven by CEL spec tests, both engines' builds, and
+  # the offline gate (tofu plan + Pulumi preview render the full DNSSEC
+  # shape arm-for-arm).
+  #
   tier: 1
+  # Proven live 2026-08-12, both engines, both scenarios. The explicit-false
+  # enable_accelerated_recovery send path (the tri-state repair) was accepted
+  # cleanly by CreateHostedZone on a fresh zone in both engines' lanes; the
+  # private-vpc arm re-proved the composed AwsVpc association per engine.
+  # DNSSEC arms stay offline-proven per the deferral above.
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

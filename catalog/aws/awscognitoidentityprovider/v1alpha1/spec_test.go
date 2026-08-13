@@ -731,4 +731,51 @@ var _ = ginkgo.Describe("AwsCognitoIdentityProviderSpec validations", func() {
 		err := protovalidate.Validate(input)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
+
+	// -------------------------------------------------------------------------
+	// CEL: social provider names must equal the type
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when a social provider carries a custom name", func() {
+		input := &AwsCognitoIdentityProvider{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCognitoIdentityProvider",
+			Metadata:   &shared.CloudResourceMetadata{Name: "google-idp"},
+			Spec: &AwsCognitoIdentityProviderSpec{
+				Region:       "us-west-2",
+				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
+				ProviderName: "MyGoogle",
+				ProviderType: "Google",
+				ProviderConfig: &AwsCognitoIdentityProviderSpec_Google{
+					Google: &AwsCognitoIdpGoogleConfig{
+						ClientId: "id", ClientSecret: "secret", AuthorizeScopes: "email",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a custom name on an OIDC provider", func() {
+		input := &AwsCognitoIdentityProvider{
+			ApiVersion: "aws.planton.dev/v1alpha1",
+			Kind:       "AwsCognitoIdentityProvider",
+			Metadata:   &shared.CloudResourceMetadata{Name: "corp-okta"},
+			Spec: &AwsCognitoIdentityProviderSpec{
+				Region:       "us-west-2",
+				UserPoolId:   &fkv1.StringValueOrRef{LiteralOrRef: &fkv1.StringValueOrRef_Value{Value: "us-east-1_Ab1Cd2EfG"}},
+				ProviderName: "CorpOkta",
+				ProviderType: "OIDC",
+				ProviderConfig: &AwsCognitoIdentityProviderSpec_Oidc{
+					Oidc: &AwsCognitoIdpOidcConfig{
+						ClientId:   "okta-client",
+						OidcIssuer: "https://corp.okta.com",
+					},
+				},
+			},
+		}
+		err := protovalidate.Validate(input)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
 })

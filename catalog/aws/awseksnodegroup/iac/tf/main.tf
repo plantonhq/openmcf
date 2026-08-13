@@ -104,6 +104,21 @@ resource "aws_eks_node_group" "this" {
     }
   }
 
+  # A pool of pre-initialized nodes that cuts scale-out from minutes to
+  # seconds; updates in place. Stopped pools cost only EBS storage.
+  dynamic "warm_pool_config" {
+    for_each = var.spec.warm_pool_config != null ? [var.spec.warm_pool_config] : []
+    content {
+      pool_state = warm_pool_config.value.pool_state != "" ? warm_pool_config.value.pool_state : null
+      min_size   = warm_pool_config.value.min_size > 0 ? warm_pool_config.value.min_size : null
+      # Explicit 0 is meaningful (no prepared capacity beyond min_size), so
+      # presence (null vs a value) decides what is sent; null keeps AWS's
+      # default ceiling (max_size minus desired capacity).
+      max_group_prepared_capacity = warm_pool_config.value.max_group_prepared_capacity
+      reuse_on_scale_in           = warm_pool_config.value.reuse_on_scale_in ? true : null
+    }
+  }
+
   # Version changes roll the group node by node; release_version pins the
   # exact AMI release within the minor.
   version              = var.spec.version != "" ? var.spec.version : null

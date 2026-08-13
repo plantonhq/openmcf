@@ -9,15 +9,22 @@ spec:
   # provisioners. NLB creation takes 2-3 minutes and deletion similar; the
   # timeout budgets for both plus the prerequisite chain.
   #
-  # deferred: the shared test account rejects CreateLoadBalancer for the
-  # NETWORK type with "OperationNotPermitted: This AWS account currently does
-  # not support creating load balancers" (application-type creates succeed in
-  # the same account), which only AWS Support can lift. Both engines reach
-  # the AWS API cleanly through the full prerequisite chain; flip to green
-  # once the account restriction is removed.
+  # The account's former network-type CreateLoadBalancer restriction
+  # ("OperationNotPermitted", lifted by AWS Support) is GONE — verified live
+  # 2026-08-11 when both engines created, verified, and destroyed the NLB
+  # cleanly. Offline-proven-only arms (never silent skips): the dualstack /
+  # per-node ipv6_address arms (no IPv6 VPC fixture), the LCU capacity
+  # reservation (bills while set), and secondary-IPs-per-subnet (replacement
+  # semantics make it a create-time-only arm) — proven by offline plans and
+  # previews on both engines.
   tier: 1
-  status: deferred
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
   timeout_minutes: 30
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

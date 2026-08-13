@@ -259,6 +259,15 @@ message AwsHttpApiGatewaySpec {
     expression: "this.routes.all(r, r.integration.timeout_milliseconds == 0 || (r.integration.timeout_milliseconds >= 50 && r.integration.timeout_milliseconds <= 30000))"
   };
 
+  // Integration method must be a real HTTP method when set -- API Gateway
+  // rejects anything outside this set at deploy time; catching the typo
+  // here saves a failed apply.
+  option (buf.validate.message).cel = {
+    id: "integration_method_valid"
+    message: "route integration integration_method must be one of 'ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT' when set"
+    expression: "this.routes.all(r, r.integration.integration_method == '' || r.integration.integration_method in ['ANY', 'DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT'])"
+  };
+
   // Authorizer result_ttl_seconds range validation.
   option (buf.validate.message).cel = {
     id: "authorizer_ttl_range"
@@ -492,9 +501,11 @@ message AwsHttpApiGatewayIntegration {
   // AWS service integrations (integration_subtype) always use "1.0".
   string payload_format_version = 4;
 
-  // HTTP method used for the integration request. Defaults to the route's HTTP
-  // method for HTTP_PROXY integrations. For AWS_PROXY (Lambda) integrations,
-  // this is always POST regardless of the value set here.
+  // HTTP method used for the integration request. Valid values: "ANY",
+  // "DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT" (uppercase).
+  // Defaults to the route's HTTP method for HTTP_PROXY integrations. For
+  // AWS_PROXY (Lambda) integrations, this is always POST regardless of the
+  // value set here.
   string integration_method = 5;
 
   // Integration timeout in milliseconds. If the backend does not respond within
@@ -565,8 +576,9 @@ message AwsHttpApiGatewayIntegration {
 // returns to the caller for one backend status code.
 message AwsHttpApiGatewayResponseParameters {
   // The backend response status code these mappings apply to (e.g. "403",
-  // "500").
-  string status_code = 1 [(buf.validate.field).string.pattern = "^[1-5][0-9][0-9]$"];
+  // "500"). API Gateway accepts 200-599 -- informational (1xx) codes cannot
+  // carry response overrides.
+  string status_code = 1 [(buf.validate.field).string.pattern = "^[2-5][0-9][0-9]$"];
 
   // Mapping instructions applied to the response. Keys are instructions such
   // as "overwrite:statuscode", "append:header.<name>",

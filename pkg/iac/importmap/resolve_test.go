@@ -209,6 +209,60 @@ func TestResolveValues(t *testing.T) {
 	}
 }
 
+func TestResolveValues_FromStackOutputKeyedByAddress(t *testing.T) {
+	// Cloud-generated per-instance IDs of keyed satellites: the module
+	// exports a map keyed by the SAME key as the resource's for_each
+	// instances, and the enumerated address selects the entry. Map keys may
+	// themselves contain dots (a CIDR) -- the lookup composes the flattened
+	// dot-path string exactly, never re-parses it.
+	m := &componentv1.ComponentImportMap{
+		Spec: &componentv1.ComponentImportMapSpec{
+			Values: []*componentv1.ImportValue{
+				{
+					Name: "cidr_association_id",
+					Derivations: []*componentv1.ImportValueDerivation{
+						{Source: &componentv1.ImportValueDerivation_FromStackOutputKeyedByAddress{
+							FromStackOutputKeyedByAddress: "secondary_ipv4_cidr_association_ids",
+						}},
+					},
+					WhereToFind: "describe-vpcs",
+				},
+			},
+		},
+	}
+
+	outputs := map[string]string{
+		"secondary_ipv4_cidr_association_ids.10.1.0.0/16": "vpc-cidr-assoc-0abc",
+		"secondary_ipv4_cidr_association_ids.ipam-1":      "vpc-cidr-assoc-0def",
+	}
+
+	resolved, unresolved := ResolveValues(m, []string{"cidr_association_id"}, ResolveContext{
+		StackOutputs: outputs,
+		AddressKey:   "10.1.0.0/16",
+	})
+	if len(unresolved) != 0 || resolved["cidr_association_id"] != "vpc-cidr-assoc-0abc" {
+		t.Errorf("dotted-key entry: resolved = %v, unresolved = %v", resolved, unresolved)
+	}
+
+	resolved, unresolved = ResolveValues(m, []string{"cidr_association_id"}, ResolveContext{
+		StackOutputs: outputs,
+		AddressKey:   "ipam-1",
+	})
+	if len(unresolved) != 0 || resolved["cidr_association_id"] != "vpc-cidr-assoc-0def" {
+		t.Errorf("ipam-keyed entry: resolved = %v, unresolved = %v", resolved, unresolved)
+	}
+
+	// An address without an instance key (a singular resource reaching this
+	// arm by mistake) resolves empty and falls back to unresolved -- the
+	// ask-the-user contract, never a wrong composed lookup.
+	resolved, unresolved = ResolveValues(m, []string{"cidr_association_id"}, ResolveContext{
+		StackOutputs: outputs,
+	})
+	if len(resolved) != 0 || !reflect.DeepEqual(unresolved, []string{"cidr_association_id"}) {
+		t.Errorf("empty address key: resolved = %v, unresolved = %v", resolved, unresolved)
+	}
+}
+
 func TestResolveValues_TofuResourceNameScoping(t *testing.T) {
 	// A module with SEVERAL resources of one type whose placeholder carries a
 	// different value per resource (a control-plane module installing multiple

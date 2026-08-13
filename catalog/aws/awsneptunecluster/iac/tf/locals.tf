@@ -40,4 +40,18 @@ locals {
     var.spec.neptune_cluster_parameter_group_name != "" ? var.spec.neptune_cluster_parameter_group_name :
     null
   )
+
+  # The instance-level twin: a managed instance parameter group exists only
+  # for inline instance_parameters (mutually exclusive with bringing an
+  # existing name -- CEL-enforced).
+  manage_instance_parameter_group = length(var.spec.instance_parameters) > 0
+
+  # The instance parameter group folded instances adopt when they carry no
+  # per-instance override: the managed group, or null for the engine
+  # default. (The spec-level neptune_instance_parameter_group_name is a
+  # cluster-resource argument AWS reads during major version upgrades, not
+  # an instance default -- it stays on the cluster resource.)
+  effective_instance_parameter_group = (
+    local.manage_instance_parameter_group ? aws_neptune_parameter_group.instance[0].name : null
+  )
 }

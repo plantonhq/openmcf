@@ -113,4 +113,17 @@ locals {
   intelligent_tiering_configurations = {
     for c in var.spec.intelligent_tiering_configurations : c.name => c
   }
+
+  # The other three many-per-bucket satellites follow the same name-keyed
+  # for_each convention (the name is each instance's identity in the
+  # provider's import address).
+  analytics_configurations = {
+    for c in var.spec.analytics_configurations : c.name => c
+  }
+  inventory_configurations = {
+    for c in var.spec.inventory_configurations : c.name => c
+  }
+  metrics_configurations = {
+    for c in var.spec.metrics_configurations : c.name => c
+  }
 }

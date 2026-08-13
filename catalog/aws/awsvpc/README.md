@@ -29,9 +29,11 @@ object. It lets you:
 - **Primary IPv4 CIDR**: the VPC's main range (e.g. `10.0.0.0/16`), specified
   directly or allocated from an IPAM pool.
 - **Secondary IPv4 CIDRs**: additional ranges associated with the VPC, added or
-  removed without recreating it.
+  removed without recreating it -- each entry an explicit block, an IPAM-sized
+  allocation, or a pool-pinned block, mirroring the primary's modes.
 - **IPv6**: an Amazon-provided /56 or an IPAM-allocated block, for dual-stack
-  networks.
+  networks; additional IPv6 ranges grow in place through secondary
+  associations (Amazon-provided, BYOIP pool, or IPAM).
 
 ### Network Settings
 
@@ -40,6 +42,8 @@ object. It lets you:
 - **DNS**: Amazon-provided DNS resolution and public DNS hostnames.
 - **Network Address Usage metrics**: optional CloudWatch IP-consumption metrics
   for capacity planning.
+- **Encryption Control**: monitor or enforce encryption in transit VPC-wide,
+  with per-service exclusions for paths that cannot encrypt.
 
 ## Benefits
 

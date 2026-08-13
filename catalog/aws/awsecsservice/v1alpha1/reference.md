@@ -48,6 +48,25 @@ spec:
   deploymentCircuitBreaker:
     enable: true
     rollback: true
+  # A per-deployment managed EBS volume backing the task definition's
+  # configure_at_launch volume of the same name.
+  volumeConfiguration:
+    name: data
+    managedEbsVolume:
+      roleArn:
+        value: arn:aws:iam::123456789012:role/ecsInfrastructureRoleEbs
+      sizeInGb: 20
+      volumeType: gp3
+      tagSpecifications:
+        - resourceType: volume
+          propagateTags: SERVICE
+  # Register the tasks into a VPC Lattice target group -- cross-VPC
+  # traffic without a load balancer in every VPC.
+  vpcLatticeConfigurations:
+    - roleArn:
+        value: arn:aws:iam::123456789012:role/ecsInfrastructureRoleLattice
+      targetGroupArn: arn:aws:vpc-lattice:us-west-2:123456789012:targetgroup/tg-0123456789abcdef0
+      portName: http
 ```
 
 ## Spec Fields
@@ -112,6 +131,11 @@ spec:
 | `spec.serviceConnect.services[].clientAlias` | `AwsEcsServiceServiceConnectClientAlias` |  |  |  |
 | `spec.serviceConnect.services[].clientAlias.port` | `int32` |  |  |  |
 | `spec.serviceConnect.services[].clientAlias.dnsName` | `string` |  |  |  |
+| `spec.serviceConnect.services[].clientAlias.testTrafficRules` | `[]AwsEcsServiceServiceConnectTestTrafficRules` |  |  |  |
+| `spec.serviceConnect.services[].clientAlias.testTrafficRules[].header` | `AwsEcsServiceServiceConnectTestTrafficHeader` |  |  |  |
+| `spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.name` | `string` | yes |  |  |
+| `spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.value` | `AwsEcsServiceServiceConnectTestTrafficHeaderValue` | yes |  |  |
+| `spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.value.exact` | `string` | yes |  |  |
 | `spec.serviceConnect.services[].ingressPortOverride` | `int32` |  |  |  |
 | `spec.serviceConnect.services[].timeout` | `AwsEcsServiceServiceConnectTimeout` |  |  |  |
 | `spec.serviceConnect.services[].timeout.idleTimeoutSeconds` | `int32` |  |  |  |
@@ -124,6 +148,9 @@ spec:
 | `spec.serviceConnect.logConfiguration.logDriver` | `string` | yes |  |  |
 | `spec.serviceConnect.logConfiguration.options` | `map<string, string>` |  |  |  |
 | `spec.serviceConnect.logConfiguration.secretOptions` | `map<string, string>` |  |  |  |
+| `spec.serviceConnect.accessLogConfiguration` | `AwsEcsServiceServiceConnectAccessLog` |  |  |  |
+| `spec.serviceConnect.accessLogConfiguration.format` | `string` |  |  |  |
+| `spec.serviceConnect.accessLogConfiguration.includeQueryParameters` | `string` |  |  |  |
 | `spec.serviceRegistries` | `AwsEcsServiceServiceRegistries` |  |  |  |
 | `spec.serviceRegistries.registryArn` | `string` | yes |  |  |
 | `spec.serviceRegistries.containerName` | `string` |  |  |  |
@@ -141,6 +168,11 @@ spec:
 | `spec.volumeConfiguration.managedEbsVolume.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.volumeConfiguration.managedEbsVolume.snapshotId` | `string` |  |  |  |
 | `spec.volumeConfiguration.managedEbsVolume.fileSystemType` | `string` |  |  |  |
+| `spec.volumeConfiguration.managedEbsVolume.tagSpecifications` | `[]AwsEcsServiceEbsTagSpecification` |  |  |  |
+| `spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].resourceType` | `string` |  |  |  |
+| `spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].tags` | `map<string, string>` |  |  |  |
+| `spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].propagateTags` | `string` |  |  |  |
+| `spec.volumeConfiguration.managedEbsVolume.volumeInitializationRate` | `int32` |  |  |  |
 | `spec.orderedPlacementStrategy` | `[]AwsEcsServicePlacementStrategy` |  |  |  |
 | `spec.orderedPlacementStrategy[].type` | `string` |  |  |  |
 | `spec.orderedPlacementStrategy[].field` | `string` |  |  |  |
@@ -172,6 +204,10 @@ spec:
 | `spec.autoscaling.requestsPerTarget.scaleInCooldownSeconds` | `int32` |  | `300` |  |
 | `spec.autoscaling.requestsPerTarget.scaleOutCooldownSeconds` | `int32` |  | `60` |  |
 | `spec.autoscaling.requestsPerTarget.disableScaleIn` | `bool` |  |  |  |
+| `spec.vpcLatticeConfigurations` | `[]AwsEcsServiceVpcLatticeConfiguration` |  |  |  |
+| `spec.vpcLatticeConfigurations[].roleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
+| `spec.vpcLatticeConfigurations[].targetGroupArn` | `string` | yes |  |  |
+| `spec.vpcLatticeConfigurations[].portName` | `string` | yes |  |  |
 
 ## Field Details
 
@@ -646,6 +682,7 @@ AWS Cloud Map -- sidecar-free discovery ("call http://orders") with
 per-request telemetry, retries, and optional TLS between services.
 
 - rule: declaring exposed services requires Service Connect to be enabled
+- rule: access_log_configuration requires Service Connect to be enabled
 
 ### spec.serviceConnect.enabled
 
@@ -706,6 +743,44 @@ The port clients connect to (often the same as the container port).
 
 The DNS name clients use (e.g. "orders" or "orders.internal").
 Default: the discovery name.
+
+### spec.serviceConnect.services[].clientAlias.testTrafficRules
+
+`[]AwsEcsServiceServiceConnectTestTrafficRules`
+
+Route requests carrying a matching header to this service's TEST
+revision during a blue/green deployment -- how testers reach the new
+version through the mesh before traffic shifts.
+
+### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header
+
+`AwsEcsServiceServiceConnectTestTrafficHeader`
+
+The header match selecting test traffic.
+
+### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.name
+
+`string` · required
+
+The header name to match (e.g. "x-canary-test").
+
+- rule: {"required":true}
+
+### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.value
+
+`AwsEcsServiceServiceConnectTestTrafficHeaderValue` · required
+
+The header value match.
+
+- rule: {"required":true}
+
+### spec.serviceConnect.services[].clientAlias.testTrafficRules[].header.value.exact
+
+`string` · required
+
+The exact header value that selects test traffic.
+
+- rule: {"required":true}
 
 ### spec.serviceConnect.services[].ingressPortOverride
 
@@ -806,6 +881,34 @@ awslogs-stream-prefix).
 Driver options whose values come from Secrets Manager / SSM (name ->
 ARN), resolved by the ECS agent at task start.
 
+### spec.serviceConnect.accessLogConfiguration
+
+`AwsEcsServiceServiceConnectAccessLog`
+
+Per-request access logging by the Service Connect proxy -- one line
+per mesh request (caller, target, status, latency), emitted to the
+proxy's log destination above. The mesh-level equivalent of load
+balancer access logs.
+
+- rule: include_query_parameters must be 'ENABLED' or 'DISABLED' when set
+
+### spec.serviceConnect.accessLogConfiguration.format
+
+`string`
+
+The log line format: "TEXT" or "JSON" (structured -- the right choice
+when logs feed a query engine).
+
+- rule: {"string":{"in":["TEXT","JSON"]}}
+
+### spec.serviceConnect.accessLogConfiguration.includeQueryParameters
+
+`string`
+
+Include request query parameters in the log lines: "ENABLED" or
+"DISABLED". Unset keeps AWS's default (disabled -- query strings
+often carry sensitive values).
+
 ### spec.serviceRegistries
 
 `AwsEcsServiceServiceRegistries`
@@ -852,9 +955,10 @@ For SRV records on awsvpc tasks: the port published with the task IP.
 `AwsEcsServiceVolumeConfiguration`
 
 A per-deployment managed EBS volume attached to each task, configured
-at deployment time against a volume declared (by name) in the task
-definition. How ECS tasks get real block storage beyond ephemeral
-scratch space.
+at deployment time against a volume the task definition declares with
+configure_at_launch (AwsEcsTaskDefinition spec.volumes) -- name must
+match that volume's name. How ECS tasks get real block storage beyond
+ephemeral scratch space.
 
 ### spec.volumeConfiguration.name
 
@@ -946,6 +1050,45 @@ Create each volume from this snapshot instead of empty.
 
 The filesystem ECS formats the volume with: "xfs" (default), "ext4",
 "ext3", or "ntfs" (Windows tasks).
+
+### spec.volumeConfiguration.managedEbsVolume.tagSpecifications
+
+`[]AwsEcsServiceEbsTagSpecification`
+
+Tags applied to each created EBS volume at creation time -- without
+this, per-task volumes carry no cost-allocation tags at all.
+
+- rule: propagate_tags must be 'SERVICE', 'TASK_DEFINITION', or 'NONE' when set
+
+### spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].resourceType
+
+`string`
+
+The resource type being tagged; "volume" is the only type EBS task
+volumes support.
+
+- rule: {"string":{"in":["volume"]}}
+
+### spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].tags
+
+`map<string, string>`
+
+The tags applied to each created volume.
+
+### spec.volumeConfiguration.managedEbsVolume.tagSpecifications[].propagateTags
+
+`string`
+
+Also propagate tags from "SERVICE" or "TASK_DEFINITION" ("NONE"
+disables propagation) onto the created volumes.
+
+### spec.volumeConfiguration.managedEbsVolume.volumeInitializationRate
+
+`int32`
+
+How fast a snapshot-restored volume hydrates, in MiB/s. Only
+meaningful with snapshot_id; 0 (unset) uses the EBS default lazy
+loading.
 
 ### spec.orderedPlacementStrategy
 
@@ -1219,6 +1362,49 @@ Scale-out cooldown, seconds. AWS default: 60.
 
 Only ever scale out on this policy; never remove capacity.
 
+### spec.vpcLatticeConfigurations
+
+`[]AwsEcsServiceVpcLatticeConfiguration`
+
+VPC Lattice target-group attachments: register this service's tasks
+into VPC Lattice target groups so Lattice services route to them --
+the application-network alternative to a load balancer for
+cross-VPC/cross-account traffic. Each entry names the target group,
+the port name (from the task definition's port_mappings) to register,
+and the infrastructure role ECS assumes to manage the registration.
+
+### spec.vpcLatticeConfigurations[].roleArn
+
+`string | valueFrom` · required
+
+The IAM role ECS assumes to register and deregister task targets with
+VPC Lattice (the ECS service principal must be able to assume it, and
+it needs the Lattice target-management permissions). Reference an
+AwsIamRole's role_arn output or pass a literal ARN.
+
+- references: AwsIamRole (`status.outputs.role_arn`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
+
+### spec.vpcLatticeConfigurations[].targetGroupArn
+
+`string` · required
+
+The VPC Lattice target group (by ARN) the tasks register into. A
+literal ARN -- Planton has no VPC Lattice kinds yet.
+
+- rule: {"required":true}
+
+### spec.vpcLatticeConfigurations[].portName
+
+`string` · required
+
+The name of a port mapping in the task definition (the port_mappings
+entry must set name) whose port is registered with the target group.
+1-64 characters: lowercase letters, digits, underscores, hyphens.
+
+- rule: {"required":true,"string":{"pattern":"^[0-9a-z_][0-9a-z_-]{0,63}$"}}
+
 ## Validation Rules
 
 - `launch_type_valid`: launch_type must be 'FARGATE', 'EC2', or 'EXTERNAL' when set
@@ -1267,6 +1453,7 @@ Fields that can point at another resource's outputs:
 | `spec.volumeConfiguration.managedEbsVolume.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.autoscaling.requestsPerTarget.loadBalancerArnSuffix` | AwsAlb | `status.outputs.arn_suffix` |
 | `spec.autoscaling.requestsPerTarget.targetGroupArnSuffix` | AwsLbTargetGroup | `status.outputs.arn_suffix` |
+| `spec.vpcLatticeConfigurations[].roleArn` | AwsIamRole | `status.outputs.role_arn` |
 
 ## See Also
 

@@ -31,3 +31,13 @@ spec:
   logConfig:
     level: ERROR
     includeDetail: NONE
+  # Archive arm -- free at zero traffic: the archive stores nothing while no
+  # events flow, and creation/deletion are plain control-plane calls. The
+  # pattern scopes it to a source the lane never publishes.
+  archives:
+    - name: planton-oss-e2e-bus-archive
+      description: Planton E2E archive arm (pattern-scoped, short retention)
+      retentionDays: 1
+      eventPattern:
+        source:
+          - planton.e2e

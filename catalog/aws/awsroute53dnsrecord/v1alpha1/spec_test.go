@@ -1,12 +1,14 @@
 package awsroute53dnsrecordv1alpha1
 
 import (
+	"strings"
 	"testing"
 
 	"buf.build/go/protovalidate"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsRoute53DnsRecordSpec(t *testing.T) {
@@ -39,7 +41,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 			ZoneId: strRef("Z1234567890ABC"),
 			Name:   "www.example.com",
 			Type:   "A",
-			Ttl:    300,
+			Ttl:    proto.Int32(300),
 			Values: []string{"192.0.2.1"},
 		}
 	})
@@ -84,14 +86,14 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 	// -------------------------------------------------------------------------
 
 	ginkgo.It("accepts an alias record to an ALB", func() {
-		spec.Ttl = 0
+		spec.Ttl = nil
 		spec.Values = nil
 		spec.AliasTarget = albAlias()
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
 	})
 
 	ginkgo.It("accepts an alias record with target-health evaluation", func() {
-		spec.Ttl = 0
+		spec.Ttl = nil
 		spec.Values = nil
 		spec.AliasTarget = albAlias()
 		spec.AliasTarget.EvaluateTargetHealth = true
@@ -210,7 +212,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 
 	ginkgo.It("rejects a record with neither values nor alias", func() {
 		spec.Values = nil
-		spec.Ttl = 0
+		spec.Ttl = nil
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
@@ -222,23 +224,50 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 	ginkgo.It("rejects a ttl on an alias record", func() {
 		spec.Values = nil
 		spec.AliasTarget = albAlias()
-		spec.Ttl = 300
+		spec.Ttl = proto.Int32(300)
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects an explicit zero ttl on an alias record", func() {
+		// Presence is what conflicts: even ttl 0 is a set TTL on an alias.
+		spec.Values = nil
+		spec.AliasTarget = albAlias()
+		spec.Ttl = proto.Int32(0)
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
 	ginkgo.It("rejects a standard record without a ttl", func() {
-		spec.Ttl = 0
+		spec.Ttl = nil
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
-	ginkgo.It("rejects a ttl above one week", func() {
-		spec.Ttl = 604801
+	ginkgo.It("accepts an explicit zero ttl on a standard record", func() {
+		// AWS's contract: TTL 0 is valid and means "never cache".
+		spec.Ttl = proto.Int32(0)
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+	})
+
+	ginkgo.It("accepts a ttl above one week up to AWS's maximum", func() {
+		for _, ttl := range []int32{604801, 2147483647} {
+			spec.Ttl = proto.Int32(ttl)
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed(), "ttl %d should be valid", ttl)
+		}
+	})
+
+	ginkgo.It("rejects a negative ttl", func() {
+		spec.Ttl = proto.Int32(-1)
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a value above AWS's 4000-character limit", func() {
+		spec.Type = "TXT"
+		spec.Values = []string{strings.Repeat("a", 4001)}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
 	})
 
 	ginkgo.It("rejects an alias missing its target zone id", func() {
 		spec.Values = nil
-		spec.Ttl = 0
+		spec.Ttl = nil
 		spec.AliasTarget = &AwsRoute53AliasTarget{
 			DnsName: strRef("d1234abcd.cloudfront.net"),
 		}
@@ -254,6 +283,60 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 			Policy: &AwsRoute53RoutingPolicy_Weighted{Weighted: &AwsRoute53WeightedPolicy{Weight: 50}},
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a set identifier without a routing policy", func() {
+		// AWS scopes SetIdentifier to non-simple routing and rejects it on
+		// simple records — dead configuration guarded both ways.
+		spec.SetIdentifier = "orphaned"
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+	})
+
+	ginkgo.It("rejects a malformed latency-routing region", func() {
+		spec.SetIdentifier = "l"
+		for _, region := range []string{"US-EAST-1", "useast1", "us-east", "eu_west_1"} {
+			spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+				Policy: &AwsRoute53RoutingPolicy_Latency{Latency: &AwsRoute53LatencyPolicy{Region: region}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed(), "region %q should be rejected", region)
+		}
+	})
+
+	ginkgo.It("accepts extended-partition latency regions", func() {
+		spec.SetIdentifier = "l"
+		for _, region := range []string{"us-gov-west-1", "cn-north-1", "eusc-de-east-1", "ap-southeast-7"} {
+			spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+				Policy: &AwsRoute53RoutingPolicy_Latency{Latency: &AwsRoute53LatencyPolicy{Region: region}},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed(), "region %q should be valid", region)
+		}
+	})
+
+	ginkgo.It("accepts geolocation by continent and the default-record country", func() {
+		spec.SetIdentifier = "g"
+		for _, geo := range []*AwsRoute53GeolocationPolicy{
+			{Continent: "EU"},
+			{Country: "*"},
+		} {
+			spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+				Policy: &AwsRoute53RoutingPolicy_Geolocation{Geolocation: geo},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.Succeed())
+		}
+	})
+
+	ginkgo.It("rejects malformed geolocation codes", func() {
+		spec.SetIdentifier = "g"
+		for _, geo := range []*AwsRoute53GeolocationPolicy{
+			{Continent: "XX"},                    // not a continent code
+			{Country: "de"},                      // ISO codes are uppercase
+			{Country: "US", Subdivision: "ABCD"}, // subdivision is at most 3 chars
+		} {
+			spec.RoutingPolicy = &AwsRoute53RoutingPolicy{
+				Policy: &AwsRoute53RoutingPolicy_Geolocation{Geolocation: geo},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.Succeed())
+		}
 	})
 
 	ginkgo.It("rejects a weight above 255", func() {
@@ -328,7 +411,7 @@ var _ = ginkgo.Describe("AwsRoute53DnsRecordSpec validations", func() {
 
 	ginkgo.It("rejects multivalue answer routing on an alias record", func() {
 		spec.Values = nil
-		spec.Ttl = 0
+		spec.Ttl = nil
 		spec.AliasTarget = albAlias()
 		spec.SetIdentifier = "server-1"
 		spec.RoutingPolicy = &AwsRoute53RoutingPolicy{

@@ -8,6 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Cognito User Pool Client** -- registered on the target user pool with the configured OAuth flows, scopes, redirect URLs, auth flows, token lifetimes, attribute access, and optional Pinpoint analytics
 - **Client Secret** -- minted only when `generateSecret` is true (confidential / M2M clients); public clients authenticate with PKCE instead
+- **Client-Scoped Risk Configuration** -- created only when `riskConfiguration` is set; overrides the pool-wide threat-protection response policy for this client only (requires the pool's threat protection to be active)
 - **AWS Tags** -- resource metadata tags applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -79,7 +80,9 @@ Reference the pool and any federated providers with ValueFromRef so the deployme
 
 **OAuth grants** -- Authorization Code is the modern default. Client Credentials is machine-to-machine and cannot share a client with user-facing grants. Callback URLs are required for browser redirects; the default redirect URI must be one of them.
 
-**Refresh token rotation** -- When ENABLED, each refresh issues a new refresh token. Drop `ALLOW_REFRESH_TOKEN_AUTH` from explicit auth flows — AWS rejects the combination.
+**Refresh token rotation** -- When ENABLED, each refresh issues a new refresh token. Drop `ALLOW_REFRESH_TOKEN_AUTH` from explicit auth flows — AWS rejects the combination. `retryGracePeriodSeconds` is tri-state: leave it unset to keep AWS's default, or set an explicit `0` to retire rotated-out tokens immediately (a distinct, deliberate posture — not the same as unset).
+
+**Client-scoped threat protection** -- `riskConfiguration` overrides the pool-wide response policy for this client only: its own account-takeover actions and notification templates, compromised-credential response, and IP exceptions. Requires the pool's `userPoolAddOns.advancedSecurityMode` to be `AUDIT` or `ENFORCED`.
 
 ## After Deployment
 

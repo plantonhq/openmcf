@@ -43,9 +43,10 @@ func queue(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sqs.Qu
 	// -------------------------------------------------------------------
 
 	if spec.FifoQueue {
-		if spec.ContentBasedDeduplication {
-			args.ContentBasedDeduplication = pulumi.BoolPtr(true)
-		}
+		// Sent whenever the queue is FIFO (matching the Terraform module's
+		// state-pinned rendering) — the provider default is false, so the
+		// explicit value never changes cloud behavior.
+		args.ContentBasedDeduplication = pulumi.BoolPtr(spec.ContentBasedDeduplication)
 		if spec.DeduplicationScope != "" {
 			args.DeduplicationScope = pulumi.StringPtr(spec.DeduplicationScope)
 		}
@@ -103,8 +104,13 @@ func queue(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*sqs.Qu
 	if spec.KmsDataKeyReusePeriodSeconds != 0 {
 		args.KmsDataKeyReusePeriodSeconds = pulumi.IntPtr(int(spec.KmsDataKeyReusePeriodSeconds))
 	}
-	if spec.SqsManagedSseEnabled {
-		args.SqsManagedSseEnabled = pulumi.BoolPtr(true)
+	// PRESENCE-typed: AWS enables SSE-SQS on new queues by default, so unset
+	// must stay OMITTED to keep that default, while an explicit false is a
+	// real configuration (an unencrypted queue) that must be SENT. The
+	// provider conflicts this attribute's config PRESENCE with
+	// KmsMasterKeyId — CEL blocks any manifest carrying both.
+	if spec.SqsManagedSseEnabled != nil {
+		args.SqsManagedSseEnabled = pulumi.BoolPtr(spec.GetSqsManagedSseEnabled())
 	}
 
 	// -------------------------------------------------------------------

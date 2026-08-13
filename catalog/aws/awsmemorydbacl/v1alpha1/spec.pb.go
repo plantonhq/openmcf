@@ -59,7 +59,10 @@ type AwsMemorydbAclSpec struct {
 	// AwsMemorydbUser exports as `status.outputs.user_name`). Membership
 	// updates in place; the ACL is the single place an application's cluster
 	// access is granted or revoked. May be empty — a cluster attached to an
-	// empty ACL simply accepts no authenticated connections.
+	// empty ACL simply accepts no authenticated connections. Deleting a user
+	// removes it from every ACL server-side automatically; the provider
+	// reconciles that, so dropping an already-deleted member from this list
+	// is a clean no-op, never an error.
 	UserNames     []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=user_names,json=userNames,proto3" json:"user_names,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

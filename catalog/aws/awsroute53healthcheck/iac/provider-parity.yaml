@@ -1,0 +1,35 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_route53_health_check:
+    mappings:
+      # The spec names the monitoring model for what it selects; the
+      # provider's bare "type" reads as nothing in a manifest.
+      - spec: spec.check_type
+        arg: type
+      # The provider drops the word boundary; the spec keeps it readable.
+      - spec: spec.child_health_checks
+        arg: child_healthchecks
+    exclusions:
+      - arg: reference_name
+        reason: metadata.name serves this -- the argument only prefixes AWS's generated CallerReference (create-time idempotency token), never a queryable property
+      - arg: triggers
+        reason: Terraform's own replacement-forcing mechanism (an arbitrary map whose change provokes an update call) -- tool machinery with no AWS-side meaning
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+specExclusions:
+  # Route 53 is global -- aws_route53_health_check takes no region argument;
+  # the field selects the provider connection (checker regions are the
+  # separate spec.regions list).
+  - field: spec.region
+    reason: provider-connection region for a global service -- no consumed resource carries a region argument

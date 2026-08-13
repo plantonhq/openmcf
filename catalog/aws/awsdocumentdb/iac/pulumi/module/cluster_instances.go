@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
@@ -73,6 +74,20 @@ func clusterInstances(ctx *pulumi.Context, locals *Locals, provider *aws.Provide
 
 		if instance.CaCertIdentifier != "" {
 			args.CaCertIdentifier = pulumi.String(instance.CaCertIdentifier)
+		}
+
+		// Tri-state on purpose: unset sends nothing and keeps the AWS
+		// default (restart on CA rotation so the new certificate serves
+		// immediately); an explicit false defers the restart to the next
+		// maintenance action. The provider models the tri-state as a
+		// nullable bool, which the Pulumi bridge surfaces as a STRING
+		// ("true"/"false") -- hence the explicit formatting.
+		if instance.CertificateRotationRestart != nil {
+			args.CertificateRotationRestart = pulumi.String(strconv.FormatBool(instance.GetCertificateRotationRestart()))
+		}
+
+		if instance.ApplyImmediately {
+			args.ApplyImmediately = pulumi.Bool(true)
 		}
 
 		createdInstance, err := docdb.NewClusterInstance(ctx,

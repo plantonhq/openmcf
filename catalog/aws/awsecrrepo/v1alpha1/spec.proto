@@ -166,8 +166,10 @@ message AwsEcrRepoSpec {
   // Rules are evaluated by ascending rule_priority; an image is expired by the
   // first rule that selects it. AWS constraints (enforced here so they fail at
   // authoring time, not at apply): rule priorities must be unique, and at most
-  // one rule may use tag_status "any" (AWS additionally requires that rule to
-  // carry the highest priority — keep it last).
+  // one rule may use tag_status "any" PER storage class — the provider's own
+  // tested archive example pairs an "any" transition rule (standard images)
+  // with an "any" expire rule selecting storage_class "archive", so the cap
+  // applies per selection tier, not per policy.
   repeated AwsEcrRepoLifecycleRule lifecycle_rules = 9;
 
   // ---------------------------------------------------------------------------
@@ -215,25 +217,32 @@ message AwsEcrRepoSpec {
     expression: "this.lifecycle_rules.all(r, this.lifecycle_rules.filter(x, x.rule_priority == r.rule_priority).size() == 1)"
   };
 
-  // AWS allows at most one rule selecting ALL images (tag_status 'any').
+  // AWS allows at most one rule selecting ALL images (tag_status 'any') per
+  // storage-class tier: the archive tier ('archive') and the standard tier
+  // (unset or 'standard') each take one — the provider's tested archive
+  // example pairs a standard-tier "any" transition with an archive-tier
+  // "any" expire.
   option (buf.validate.message).cel = {
     id: "lifecycle_single_any_rule"
-    message: "at most one lifecycle_rules entry may use tag_status 'any' (AWS requires it to be the highest-priority rule)"
-    expression: "this.lifecycle_rules.filter(r, r.tag_status == 'any').size() <= 1"
+    message: "at most one lifecycle_rules entry may use tag_status 'any' per storage-class tier (one selecting standard images, one selecting archived images)"
+    expression: "this.lifecycle_rules.filter(r, r.tag_status == 'any' && r.storage_class != 'archive').size() <= 1 && this.lifecycle_rules.filter(r, r.tag_status == 'any' && r.storage_class == 'archive').size() <= 1"
   };
 
-  // AWS allows at most one rule selecting untagged images.
+  // AWS allows at most one rule selecting untagged images (per tier, the
+  // same shape as the 'any' cap).
   option (buf.validate.message).cel = {
     id: "lifecycle_single_untagged_rule"
-    message: "at most one lifecycle_rules entry may use tag_status 'untagged'"
-    expression: "this.lifecycle_rules.filter(r, r.tag_status == 'untagged').size() <= 1"
+    message: "at most one lifecycle_rules entry may use tag_status 'untagged' per storage-class tier"
+    expression: "this.lifecycle_rules.filter(r, r.tag_status == 'untagged' && r.storage_class != 'archive').size() <= 1 && this.lifecycle_rules.filter(r, r.tag_status == 'untagged' && r.storage_class == 'archive').size() <= 1"
   };
 }
 
-// AwsEcrRepoLifecycleRule is one image-expiration rule in the repository's
-// lifecycle policy — a structured model of the ECR lifecycle policy JSON rule
-// (selection + expire action; expire is the only action ECR supports, so it is
-// implied and not modeled).
+// AwsEcrRepoLifecycleRule is one image-lifecycle rule in the repository's
+// policy — a structured model of the ECR lifecycle policy JSON rule
+// (selection + action). Rules either EXPIRE selected images (the default) or
+// TRANSITION them to the cheaper archive storage class; a two-rule pair
+// (transition-by-disuse, then expire-from-archive) is the canonical
+// cost-optimization policy.
 message AwsEcrRepoLifecycleRule {
   // Evaluation order: lower priorities are evaluated first, and an image is
   // expired by the first rule that selects it. Must be unique across rules.
@@ -293,27 +302,75 @@ message AwsEcrRepoLifecycleRule {
     }
   }];
 
-  // How the rule counts images for expiry:
+  // How the rule counts images:
   // - "imageCountMoreThan": keep the newest count_number selected images and
-  //   expire the rest ("keep last N").
-  // - "sinceImagePushed": expire selected images older than count_number days
-  //   ("expire by age").
+  //   act on the rest ("keep last N").
+  // - "sinceImagePushed": act on selected images older than count_number days
+  //   ("by age").
+  // - "sinceImagePulled": act on selected images not pulled for count_number
+  //   days ("by disuse") — the natural selector for archive transitions.
+  // - "sinceImageTransitioned": act on selected images that have been in the
+  //   archive storage class for count_number days (requires storage_class
+  //   "archive").
   string count_type = 6 [
     (buf.validate.field).required = true,
     (buf.validate.field).string = {
       in: [
         "imageCountMoreThan",
-        "sinceImagePushed"
+        "sinceImagePushed",
+        "sinceImagePulled",
+        "sinceImageTransitioned"
       ]
     }
   ];
 
   // The count for count_type: an image count for "imageCountMoreThan", or a
-  // number of days for "sinceImagePushed" (the "days" unit is the only unit
-  // ECR supports and is implied).
+  // number of days for the three "since..." types (the "days" unit is the
+  // only unit ECR supports and is implied).
   int32 count_number = 7 [
     (buf.validate.field).required = true,
     (buf.validate.field).int32.gte = 1
+  ];
+
+  // Selects images by their CURRENT storage class: "standard" (the default
+  // when unset — freshly pushed images) or "archive" (images a transition
+  // rule already moved). "archive" is required with count_type
+  // "sinceImageTransitioned" and is only valid there — with every other
+  // count_type ECR supports only "standard".
+  string storage_class = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "standard",
+        "archive"
+      ]
+    }
+  ];
+
+  // What the rule does to selected images:
+  // - "expire" (the default when unset): delete them.
+  // - "transition": move them to the cheaper archive storage class instead of
+  //   deleting (pair with target_storage_class "archive"). The canonical
+  //   archive policy is two rules: transition after N days without a pull,
+  //   then expire after M days in archive (count_type
+  //   "sinceImageTransitioned" + storage_class "archive").
+  string action_type = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "expire",
+        "transition"
+      ]
+    }
+  ];
+
+  // For action_type "transition": the storage class images move to. "archive"
+  // is the only value ECR supports.
+  string target_storage_class = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: ["archive"]
+    }
   ];
 
   // tagged rules need exactly one selector list; untagged/any rules take none.
@@ -321,5 +378,26 @@ message AwsEcrRepoLifecycleRule {
     id: "tagged_requires_one_selector"
     message: "tag_status 'tagged' requires exactly one of tag_prefixes or tag_patterns; 'untagged' and 'any' take neither"
     expression: "this.tag_status == 'tagged' ? ((this.tag_prefixes.size() > 0) != (this.tag_patterns.size() > 0)) : (this.tag_prefixes.size() == 0 && this.tag_patterns.size() == 0)"
+  };
+
+  // the transition action and its target travel together.
+  option (buf.validate.message).cel = {
+    id: "transition_requires_target"
+    message: "action_type 'transition' requires target_storage_class 'archive'; target_storage_class is only valid with action_type 'transition'"
+    expression: "(this.action_type == 'transition') == (this.target_storage_class != '')"
+  };
+
+  // the archive selector pairs with sinceImageTransitioned, per ECR's contract.
+  option (buf.validate.message).cel = {
+    id: "storage_class_matches_count_type"
+    message: "count_type 'sinceImageTransitioned' requires storage_class 'archive'; every other count_type supports only 'standard'"
+    expression: "this.count_type == 'sinceImageTransitioned' ? this.storage_class == 'archive' : (this.storage_class == '' || this.storage_class == 'standard')"
+  };
+
+  // archived images cannot be archived again.
+  option (buf.validate.message).cel = {
+    id: "no_transition_from_archive"
+    message: "action_type 'transition' cannot select images already in the archive storage class"
+    expression: "this.action_type != 'transition' || this.count_type != 'sinceImageTransitioned'"
   };
 }

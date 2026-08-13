@@ -24,3 +24,7 @@ The **AzureDataProtectionBackupVault** component creates a Data Protection backu
 ## Future Enhancements
 
 - Backup instance kinds (the bindings that put specific disks, blobs, and clusters under a policy's protection) complete the modern Backup story as their contracts land in the catalog.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

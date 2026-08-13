@@ -66,3 +66,7 @@ planton apply -f trigger.yaml
 - **GcpPubSubTopic** -- bring-your-own transport topic for messagePublished triggers
 - **GcpServiceAccount** -- the trigger's identity
 - **GcpKmsKey** -- CMEK for partner channels and the google channel config
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

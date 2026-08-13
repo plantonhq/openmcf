@@ -113,13 +113,92 @@ func launchTemplate(ctx *pulumi.Context, locals *Locals, provider pulumi.Provide
 			CpuCredits: pulumi.StringPtr(spec.CpuCredits),
 		}
 	}
-	// Configuring spot_options makes every launch a Spot request; the
-	// market type is implied by the block's presence.
-	if spec.SpotOptions != nil {
-		args.InstanceMarketOptions = &ec2.LaunchTemplateInstanceMarketOptionsArgs{
-			MarketType:  pulumi.StringPtr("spot"),
-			SpotOptions: spotOptionsArgs(spec.SpotOptions),
+	// The purchase market: spot_options implies the spot market; an
+	// explicit market_type covers capacity-block (pre-purchased ML
+	// capacity, paired with capacity_reservation targeting). No block at
+	// all means On-Demand.
+	if spec.SpotOptions != nil || spec.MarketType != "" {
+		marketType := spec.MarketType
+		if marketType == "" {
+			marketType = "spot"
 		}
+		marketArgs := &ec2.LaunchTemplateInstanceMarketOptionsArgs{
+			MarketType: pulumi.StringPtr(marketType),
+		}
+		if spec.SpotOptions != nil {
+			marketArgs.SpotOptions = spotOptionsArgs(spec.SpotOptions)
+		}
+		args.InstanceMarketOptions = marketArgs
+	}
+	// Capacity Reservation targeting: a preference shapes how launches use
+	// reservations; a target pins them to one reservation or a resource
+	// group of reservations (the required form for Capacity Blocks).
+	if spec.CapacityReservation != nil {
+		reservationArgs := &ec2.LaunchTemplateCapacityReservationSpecificationArgs{}
+		if spec.CapacityReservation.Preference != "" {
+			reservationArgs.CapacityReservationPreference = pulumi.StringPtr(spec.CapacityReservation.Preference)
+		}
+		if spec.CapacityReservation.CapacityReservationId != "" || spec.CapacityReservation.CapacityReservationResourceGroupArn != "" {
+			targetArgs := &ec2.LaunchTemplateCapacityReservationSpecificationCapacityReservationTargetArgs{}
+			if spec.CapacityReservation.CapacityReservationId != "" {
+				targetArgs.CapacityReservationId = pulumi.StringPtr(spec.CapacityReservation.CapacityReservationId)
+			}
+			if spec.CapacityReservation.CapacityReservationResourceGroupArn != "" {
+				targetArgs.CapacityReservationResourceGroupArn = pulumi.StringPtr(spec.CapacityReservation.CapacityReservationResourceGroupArn)
+			}
+			reservationArgs.CapacityReservationTarget = targetArgs
+		}
+		args.CapacityReservationSpecification = reservationArgs
+	}
+	// Network bandwidth weighting -- a no-cost bias toward VPC or EBS
+	// bandwidth on supported types.
+	if spec.BandwidthWeighting != "" {
+		args.NetworkPerformanceOptions = &ec2.LaunchTemplateNetworkPerformanceOptionsArgs{
+			BandwidthWeighting: pulumi.StringPtr(spec.BandwidthWeighting),
+		}
+	}
+	// License Manager BYOL tracking: launched instances consume these
+	// license configurations.
+	if len(spec.LicenseConfigurationArns) > 0 {
+		licenses := make(ec2.LaunchTemplateLicenseSpecificationArray, 0, len(spec.LicenseConfigurationArns))
+		for _, licenseConfigurationArn := range spec.LicenseConfigurationArns {
+			licenses = append(licenses, &ec2.LaunchTemplateLicenseSpecificationArgs{
+				LicenseConfigurationArn: pulumi.String(licenseConfigurationArn),
+			})
+		}
+		args.LicenseSpecifications = licenses
+	}
+	// Additional interfaces beyond the primary set -- multi-homed
+	// launches. AWS accepts exactly one interface_type today
+	// ("secondary"), so the module wires it rather than surfacing a
+	// one-value choice.
+	if len(spec.SecondaryInterfaces) > 0 {
+		secondaries := make(ec2.LaunchTemplateSecondaryInterfaceArray, 0, len(spec.SecondaryInterfaces))
+		for _, secondaryInterface := range spec.SecondaryInterfaces {
+			secondaryArgs := &ec2.LaunchTemplateSecondaryInterfaceArgs{
+				InterfaceType: pulumi.StringPtr("secondary"),
+			}
+			if secondaryInterface.DeviceIndex > 0 {
+				secondaryArgs.DeviceIndex = pulumi.IntPtr(int(secondaryInterface.DeviceIndex))
+			}
+			if secondaryInterface.NetworkCardIndex > 0 {
+				secondaryArgs.NetworkCardIndex = pulumi.IntPtr(int(secondaryInterface.NetworkCardIndex))
+			}
+			if secondaryInterface.DeleteOnTermination {
+				secondaryArgs.DeleteOnTermination = pulumi.BoolPtr(true)
+			}
+			if secondaryInterface.SecondarySubnetId.GetValue() != "" {
+				secondaryArgs.SecondarySubnetId = pulumi.StringPtr(secondaryInterface.SecondarySubnetId.GetValue())
+			}
+			if secondaryInterface.PrivateIpAddressCount > 0 {
+				secondaryArgs.PrivateIpAddressCount = pulumi.IntPtr(int(secondaryInterface.PrivateIpAddressCount))
+			}
+			if len(secondaryInterface.PrivateIpAddresses) > 0 {
+				secondaryArgs.PrivateIpAddresses = pulumi.ToStringArray(secondaryInterface.PrivateIpAddresses)
+			}
+			secondaries = append(secondaries, secondaryArgs)
+		}
+		args.SecondaryInterfaces = secondaries
 	}
 	if spec.EnclaveEnabled {
 		args.EnclaveOptions = &ec2.LaunchTemplateEnclaveOptionsArgs{Enabled: pulumi.BoolPtr(true)}
@@ -205,6 +284,11 @@ func blockDeviceMappingArgs(mappings []*awslaunchtemplatev1alpha1.AwsLaunchTempl
 			if mapping.Ebs.DeleteOnTermination != nil {
 				ebsArgs.DeleteOnTermination = pulumi.StringPtr(fmt.Sprintf("%t", mapping.Ebs.GetDeleteOnTermination()))
 			}
+			// Paid snapshot hydration: without it, blocks load lazily on
+			// first read (restored-volume cold start).
+			if mapping.Ebs.VolumeInitializationRateMibps > 0 {
+				ebsArgs.VolumeInitializationRate = pulumi.IntPtr(int(mapping.Ebs.VolumeInitializationRateMibps))
+			}
 			mappingArgs.Ebs = ebsArgs
 		}
 		result = append(result, mappingArgs)
@@ -277,6 +361,42 @@ func networkInterfaceArgs(interfaces []*awslaunchtemplatev1alpha1.AwsLaunchTempl
 		}
 		if len(networkInterface.Ipv6Prefixes) > 0 {
 			interfaceArgs.Ipv6Prefixes = pulumi.ToStringArray(networkInterface.Ipv6Prefixes)
+		}
+		// Wavelength carrier IP and primary_ipv6 are nullable tri-states at
+		// AWS, so the provider takes strings: nil inherits, an explicit
+		// value overrides.
+		if networkInterface.AssociateCarrierIpAddress != nil {
+			interfaceArgs.AssociateCarrierIpAddress = pulumi.StringPtr(fmt.Sprintf("%t", networkInterface.GetAssociateCarrierIpAddress()))
+		}
+		if networkInterface.PrimaryIpv6 != nil {
+			interfaceArgs.PrimaryIpv6 = pulumi.StringPtr(fmt.Sprintf("%t", networkInterface.GetPrimaryIpv6()))
+		}
+		if networkInterface.EnaQueueCount > 0 {
+			interfaceArgs.EnaQueueCount = pulumi.IntPtr(int(networkInterface.EnaQueueCount))
+		}
+		if networkInterface.ConnectionTracking != nil {
+			trackingArgs := &ec2.LaunchTemplateNetworkInterfaceConnectionTrackingSpecificationArgs{}
+			if networkInterface.ConnectionTracking.TcpEstablishedTimeoutSeconds > 0 {
+				trackingArgs.TcpEstablishedTimeout = pulumi.IntPtr(int(networkInterface.ConnectionTracking.TcpEstablishedTimeoutSeconds))
+			}
+			if networkInterface.ConnectionTracking.UdpStreamTimeoutSeconds > 0 {
+				trackingArgs.UdpStreamTimeout = pulumi.IntPtr(int(networkInterface.ConnectionTracking.UdpStreamTimeoutSeconds))
+			}
+			if networkInterface.ConnectionTracking.UdpTimeoutSeconds > 0 {
+				trackingArgs.UdpTimeout = pulumi.IntPtr(int(networkInterface.ConnectionTracking.UdpTimeoutSeconds))
+			}
+			interfaceArgs.ConnectionTrackingSpecification = trackingArgs
+		}
+		if networkInterface.EnaSrd != nil {
+			srdArgs := &ec2.LaunchTemplateNetworkInterfaceEnaSrdSpecificationArgs{
+				EnaSrdEnabled: pulumi.BoolPtr(networkInterface.EnaSrd.Enabled),
+			}
+			if networkInterface.EnaSrd.UdpEnabled {
+				srdArgs.EnaSrdUdpSpecification = &ec2.LaunchTemplateNetworkInterfaceEnaSrdSpecificationEnaSrdUdpSpecificationArgs{
+					EnaSrdUdpEnabled: pulumi.BoolPtr(true),
+				}
+			}
+			interfaceArgs.EnaSrdSpecification = srdArgs
 		}
 		result = append(result, interfaceArgs)
 	}
@@ -456,11 +576,26 @@ func placementArgs(placement *awslaunchtemplatev1alpha1.AwsLaunchTemplatePlaceme
 	if placement.GroupName != "" {
 		args.GroupName = pulumi.StringPtr(placement.GroupName)
 	}
+	if placement.GroupId != "" {
+		args.GroupId = pulumi.StringPtr(placement.GroupId)
+	}
 	if placement.PartitionNumber > 0 {
 		args.PartitionNumber = pulumi.IntPtr(int(placement.PartitionNumber))
 	}
 	if placement.Tenancy != "" {
 		args.Tenancy = pulumi.StringPtr(placement.Tenancy)
+	}
+	if placement.HostId != "" {
+		args.HostId = pulumi.StringPtr(placement.HostId)
+	}
+	if placement.HostResourceGroupArn != "" {
+		args.HostResourceGroupArn = pulumi.StringPtr(placement.HostResourceGroupArn)
+	}
+	if placement.Affinity != "" {
+		args.Affinity = pulumi.StringPtr(placement.Affinity)
+	}
+	if placement.SpreadDomain != "" {
+		args.SpreadDomain = pulumi.StringPtr(placement.SpreadDomain)
 	}
 	return args
 }
@@ -476,6 +611,9 @@ func cpuOptionsArgs(options *awslaunchtemplatev1alpha1.AwsLaunchTemplateCpuOptio
 	}
 	if options.AmdSevSnp != "" {
 		args.AmdSevSnp = pulumi.StringPtr(options.AmdSevSnp)
+	}
+	if options.NestedVirtualization != "" {
+		args.NestedVirtualization = pulumi.StringPtr(options.NestedVirtualization)
 	}
 	return args
 }

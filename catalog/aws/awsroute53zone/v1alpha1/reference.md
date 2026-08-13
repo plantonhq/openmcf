@@ -64,6 +64,32 @@ spec:
     - vpcId:
         value: vpc-0fedcba9876543210
       vpcRegion: eu-west-1
+
+---
+# DNSSEC-signed public zone with accelerated recovery: the full
+# security/resilience shape. The KMS key must live in us-east-1 with key
+# spec ECC_NIST_P256 and the dnssec-route53.amazonaws.com key policy (see
+# the spec docs). The ds_record output carries the value to register at
+# the registrar — signing without the parent DS protects nobody.
+# keySigningKeyStatus defaults to ACTIVE; INACTIVE is the documented
+# diagnostics lever.
+
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRoute53Zone
+metadata:
+  name: secure.example.com
+spec:
+  region: us-east-1
+  comment: DNSSEC-signed zone
+  enableAcceleratedRecovery: true
+  dnssec:
+    kmsKeyArn:
+      value: arn:aws:kms:us-east-1:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+    keySigningKeyName: secure-example-ksk
+    keySigningKeyStatus: ACTIVE
+  queryLogging:
+    cloudwatchLogGroupArn:
+      value: arn:aws:logs:us-east-1:123456789012:log-group:/aws/route53/secure.example.com
 ```
 
 ## Spec Fields
@@ -84,6 +110,7 @@ spec:
 | `spec.dnssec` | `AwsRoute53ZoneDnssec` |  |  |  |
 | `spec.dnssec.kmsKeyArn` | `string \| valueFrom` | yes |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.dnssec.keySigningKeyName` | `string` |  |  |  |
+| `spec.dnssec.keySigningKeyStatus` | `string` |  |  |  |
 
 ## Field Details
 
@@ -173,11 +200,16 @@ still carries live records from accidental teardown.
 
 ### spec.enableAcceleratedRecovery
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enables accelerated recovery for the hosted zone: Route 53 pre-stages
 the zone's data so control-plane changes propagate faster during
 regional recovery events. Public zones only.
+
+Tri-state on purpose: AWS keeps the feature's CURRENT state when the
+field is omitted, so switching it off requires an EXPLICIT false — the
+provider documents that removing the argument does not disable it.
+Unset = leave as-is (off for new zones), true = enable, false = disable.
 
 ### spec.queryLogging
 
@@ -232,6 +264,26 @@ numbers, "._-"). Defaults to a name derived from the zone when omitted.
 
 - rule: {"string":{"pattern":"^$|^[0-9A-Za-z._-]{3,128}$"}}
 
+### spec.dnssec.keySigningKeyStatus
+
+`string`
+
+Operational status of the key-signing key: "ACTIVE" (default when
+omitted) or "INACTIVE". Deactivating the KSK stops Route 53 from using
+it to sign — the monitoring/troubleshooting lever AWS documents for
+investigating signing problems without tearing the DNSSEC config down.
+Updatable in place.
+
+Note: while signing is enabled, an INACTIVE KSK means signatures cannot
+refresh — deactivate only while diagnosing, or after a replacement KSK
+is active. AWS allows at most two KSKs per hosted zone (the rotation
+pair); this resource models the one steady-state KSK, so a
+zero-downtime rotation (create second KSK, retire the first) is
+performed with AWS tooling and then reconciled here by pointing
+kms_key_arn/key_signing_key_name at the new key.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ACTIVE","INACTIVE"]}}
+
 ## Validation Rules
 
 - `private_zone_requires_vpc`: at least one vpc_associations entry is required when is_private is true (AWS creates a private zone attached to its first VPC)
@@ -252,6 +304,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRoute53Zone, 
 | `status.outputs.nameservers` | `[]string` | The four authoritative name servers assigned to the zone. For a public zone, these are the values to set as the domain's NS delegation at the registrar. |
 | `status.outputs.primary_name_server` | `string` | The first (primary) name server of the zone's delegation set — the one used as the SOA MNAME. |
 | `status.outputs.zone_arn` | `string` | The Amazon Resource Name of the hosted zone (arn:aws:route53:::hostedzone/<zone_id>). Used in IAM policies scoping route53:ChangeResourceRecordSets to specific zones. |
+| `status.outputs.ds_record` | `string` | The DS (Delegation Signer) record for the zone's key-signing key, only populated when DNSSEC signing is enabled. This is the value to register with the PARENT zone (the domain registrar) to complete the DNSSEC chain of trust — signing without it protects nobody, because resolvers have no trust anchor to validate against. |
+| `status.outputs.dnskey_record` | `string` | The DNSKEY record for the zone's key-signing key (the public key in DNS record form), only populated when DNSSEC signing is enabled. Useful for out-of-band verification and for parents that take a DNSKEY instead of a DS. |
+| `status.outputs.key_signing_key_tag` | `string` | The key tag of the key-signing key, only populated when DNSSEC signing is enabled — the short integer identifier registrars display next to a DS record (matches the first field of ds_record). |
 
 ## References
 

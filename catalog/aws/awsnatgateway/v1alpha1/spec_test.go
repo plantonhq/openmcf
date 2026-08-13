@@ -121,6 +121,55 @@ var _ = ginkgo.Describe("AwsNatGatewaySpec Validation Tests", func() {
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
+
+			ginkgo.It("should not return a validation error for an explicit zonal availability_mode", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "zonal"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a regional gateway in auto mode", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.AllocationId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a regional gateway with an explicit AZ layout", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.AllocationId = nil
+				input.Spec.VpcId = newValueFromRef("my-vpc")
+				input.Spec.AvailabilityZoneAddresses = []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{
+					{
+						AvailabilityZone: "us-west-2a",
+						AllocationIds:    []*foreignkeyv1.StringValueOrRef{newStringValueOrRef("eipalloc-0abc123")},
+					},
+					{
+						AvailabilityZoneId: "usw2-az2",
+						AllocationIds:      []*foreignkeyv1.StringValueOrRef{newStringValueOrRef("eipalloc-0def456")},
+					},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+
+			ginkgo.It("should not return a validation error for a regional private gateway without EIPs", func() {
+				input := minimalValidPrivateNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				input.Spec.AvailabilityZoneAddresses = []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{
+					{AvailabilityZone: "us-west-2a"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
 		})
 	})
 
@@ -227,6 +276,85 @@ var _ = ginkgo.Describe("AwsNatGatewaySpec Validation Tests", func() {
 				input := minimalValidPrivateNatGateway()
 				input.Spec.SecondaryPrivateIpAddresses = []string{"10.0.1.11"}
 				input.Spec.SecondaryPrivateIpAddressCount = 2
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an unknown availability_mode", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "multi-az"
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a regional gateway without vpc_id", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.AllocationId = nil
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a regional gateway that also sets subnet_id", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.AllocationId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a zonal gateway that sets vpc_id", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a zonal gateway with availability_zone_addresses", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityZoneAddresses = []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{
+					{AvailabilityZone: "us-west-2a"},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a regional gateway with a top-level allocation_id", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				// allocation_id stays set from the zonal fixture -- regional must reject it.
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for an AZ-address entry with no zone identifier", func() {
+				input := minimalValidPublicNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.AllocationId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				input.Spec.AvailabilityZoneAddresses = []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{
+					{AllocationIds: []*foreignkeyv1.StringValueOrRef{newStringValueOrRef("eipalloc-0abc123")}},
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+
+			ginkgo.It("should return a validation error for a regional private gateway with per-AZ EIPs", func() {
+				input := minimalValidPrivateNatGateway()
+				input.Spec.AvailabilityMode = "regional"
+				input.Spec.SubnetId = nil
+				input.Spec.VpcId = newStringValueOrRef("vpc-0abc123")
+				input.Spec.AvailabilityZoneAddresses = []*AwsNatGatewaySpec_AwsNatGatewayAvailabilityZoneAddress{
+					{
+						AvailabilityZone: "us-west-2a",
+						AllocationIds:    []*foreignkeyv1.StringValueOrRef{newStringValueOrRef("eipalloc-0abc123")},
+					},
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).ToNot(gomega.BeNil())
 			})

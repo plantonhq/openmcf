@@ -190,7 +190,10 @@ type AwsCloudwatchAlarmSpec struct {
 	// is an ARN — typically an SNS topic ARN, but can also be an Auto Scaling
 	// policy, EC2 automation action, Lambda function, or SSM OpsItem.
 	//
-	// Maximum 5 actions.
+	// Maximum 5 actions — AWS's quota is 5 actions per alarm state. (The
+	// provider caps only ok_actions and insufficient_data_actions; the missing
+	// cap on alarm_actions is provider looseness — the spec holds AWS's
+	// contract.)
 	AlarmActions []*v1.StringValueOrRef `protobuf:"bytes,17,rep,name=alarm_actions,json=alarmActions,proto3" json:"alarm_actions,omitempty"`
 	// Actions to execute when the alarm transitions to OK state.
 	// Maximum 5 actions.
@@ -786,7 +789,7 @@ var File_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awscloudwatchalarm/v1alpha1/spec.proto\x12+dev.planton.aws.awscloudwatchalarm.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xf57\n" +
+	"2catalog/aws/awscloudwatchalarm/v1alpha1/spec.proto\x12+dev.planton.aws.awscloudwatchalarm.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xb6@\n" +
 	"\x16AwsCloudwatchAlarmSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12/\n" +
 	"\x13comparison_operator\x18\x02 \x01(\tR\x12comparisonOperator\x12-\n" +
@@ -818,7 +821,7 @@ const file_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13evaluation_interval\x18\x17 \x01(\x05R\x12evaluationInterval\x1a=\n" +
 	"\x0fDimensionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa9+\xbaH\xa5+\x1a\x91\x04\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xea3\xbaH\xe63\x1a\x91\x04\n" +
 	"\x19comparison_operator_valid\x12\xe3\x01comparison_operator must be one of: GreaterThanOrEqualToThreshold, GreaterThanThreshold, LessThanThreshold, LessThanOrEqualToThreshold, LessThanLowerOrGreaterThanUpperThreshold, LessThanLowerThreshold, GreaterThanUpperThreshold\x1a\x8d\x02this.comparison_operator == '' || this.comparison_operator in ['GreaterThanOrEqualToThreshold', 'GreaterThanThreshold', 'LessThanThreshold', 'LessThanOrEqualToThreshold', 'LessThanLowerOrGreaterThanUpperThreshold', 'LessThanLowerThreshold', 'GreaterThanUpperThreshold']\x1a\xc4\x01\n" +
 	"\x0fstatistic_valid\x12Nstatistic must be one of: SampleCount, Average, Sum, Minimum, Maximum when set\x1aathis.statistic == '' || this.statistic in ['SampleCount', 'Average', 'Sum', 'Minimum', 'Maximum']\x1a\xe0\x01\n" +
 	"\x18treat_missing_data_valid\x12Ttreat_missing_data must be one of: missing, ignore, breaching, notBreaching when set\x1anthis.treat_missing_data == '' || this.treat_missing_data in ['missing', 'ignore', 'breaching', 'notBreaching']\x1a\xf6\x01\n" +
@@ -842,7 +845,11 @@ const file_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto_rawDesc = "" +
 	"&metric_queries_exactly_one_return_data\x12dexactly one metric query must set return_data = true — that query is the alarm's evaluation signal\x1aRsize(this.metric_queries) == 0 || this.metric_queries.exists_one(q, q.return_data)\x1aU\n" +
 	"\x13alarm_actions_max_5\x12\x1fmaximum 5 alarm_actions allowed\x1a\x1dsize(this.alarm_actions) <= 5\x1aL\n" +
 	"\x10ok_actions_max_5\x12\x1cmaximum 5 ok_actions allowed\x1a\x1asize(this.ok_actions) <= 5\x1ay\n" +
-	"\x1finsufficient_data_actions_max_5\x12+maximum 5 insufficient_data_actions allowed\x1a)size(this.insufficient_data_actions) <= 5B\x12\n" +
+	"\x1finsufficient_data_actions_max_5\x12+maximum 5 insufficient_data_actions allowed\x1a)size(this.insufficient_data_actions) <= 5\x1a\xe3\x01\n" +
+	",threshold_conflicts_with_threshold_metric_id\x12zthreshold and threshold_metric_id are mutually exclusive — use a static threshold or an anomaly detection band, not both\x1a7this.threshold == 0.0 || this.threshold_metric_id == ''\x1a\x8e\x03\n" +
+	"*metric_queries_forbid_simple_metric_fields\x12\xa6\x01namespace, period, statistic, extended_statistic, dimensions, and unit must not be set together with metric_queries — define them inside each query's metric instead\x1a\xb6\x01size(this.metric_queries) == 0 || (this.namespace == '' && this.period == 0 && this.statistic == '' && this.extended_statistic == '' && size(this.dimensions) == 0 && this.unit == '')\x1a\xc9\x02\n" +
+	"\x19extended_statistic_format\x12rextended_statistic must be a percentile or trimmed statistic, e.g. 'p95', 'tm99', 'IQM', 'TM(10%:90%)', 'PR(:300)'\x1a\xb7\x01this.extended_statistic == '' || this.extended_statistic.matches('^((p|tm|wm|tc|ts)((\\\\d{1,2}(\\\\.\\\\d{1,2})?)|100)|IQM|(TM|WM|PR|TC|TS)\\\\((\\\\d+(\\\\.\\\\d+)?%?)?:(\\\\d+(\\\\.\\\\d+)?%?)?\\\\))$')\x1a|\n" +
+	"\x1anamespace_no_leading_colon\x12%namespace must not start with a colon\x1a7this.namespace == '' || !this.namespace.startsWith(':')B\x12\n" +
 	"\x10_actions_enabled\"\xfd\x05\n" +
 	"\x1dAwsCloudwatchAlarmMetricQuery\x12\x1b\n" +
 	"\x02id\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\x02id\x12(\n" +
@@ -857,7 +864,7 @@ const file_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\a \x01(\tB\b\xbaH\x05r\x03\x18\xff\x01R\taccountId:\xb2\x03\xbaH\xae\x03\x1a\xe7\x01\n" +
 	" expression_or_metric_exactly_one\x12\x95\x01each metric query must set exactly one of expression or metric — an expression computes from other queries, a metric retrieves data from CloudWatch\x1a+(this.expression != '') != has(this.metric)\x1a\xc1\x01\n" +
-	"\x19query_period_valid_values\x12=period must be 1, 5, 10, 20, 30, or a multiple of 60 when set\x1aethis.period == 0 || this.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\"\xbd\x04\n" +
+	"\x19query_period_valid_values\x12=period must be 1, 5, 10, 20, 30, or a multiple of 60 when set\x1aethis.period == 0 || this.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\"\xc2\b\n" +
 	"#AwsCloudwatchAlarmMetricQueryMetric\x12,\n" +
 	"\vmetric_name\x18\x01 \x01(\tB\v\xbaH\b\xc8\x01\x01r\x03\x18\xff\x01R\n" +
 	"metricName\x12&\n" +
@@ -870,8 +877,10 @@ const file_catalog_aws_awscloudwatchalarm_v1alpha1_spec_proto_rawDesc = "" +
 	"\x04unit\x18\x06 \x01(\tR\x04unit\x1a=\n" +
 	"\x0fDimensionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
-	"\x1ametric_period_valid_values\x124period must be 1, 5, 10, 20, 30, or a multiple of 60\x1aQthis.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\"\xa6\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb1\x05\xbaH\xad\x05\x1a\xa5\x01\n" +
+	"\x1ametric_period_valid_values\x124period must be 1, 5, 10, 20, 30, or a multiple of 60\x1aQthis.period in [1, 5, 10, 20, 30] || (this.period >= 60 && this.period % 60 == 0)\x1a\xfc\x02\n" +
+	"\x11stat_valid_format\x12\x93\x01stat must be a standard statistic (SampleCount, Average, Sum, Minimum, Maximum) or a percentile/trimmed statistic, e.g. 'p95', 'IQM', 'TM(10%:90%)'\x1a\xd0\x01this.stat in ['SampleCount', 'Average', 'Sum', 'Minimum', 'Maximum'] || this.stat.matches('^((p|tm|wm|tc|ts)((\\\\d{1,2}(\\\\.\\\\d{1,2})?)|100)|IQM|(TM|WM|PR|TC|TS)\\\\((\\\\d+(\\\\.\\\\d+)?%?)?:(\\\\d+(\\\\.\\\\d+)?%?)?\\\\))$')\x1a\x83\x01\n" +
+	"!metric_namespace_no_leading_colon\x12%namespace must not start with a colon\x1a7this.namespace == '' || !this.namespace.startsWith(':')\"\xa6\x01\n" +
 	"$AwsCloudwatchAlarmEvaluationCriteria\x12~\n" +
 	"\x0fpromql_criteria\x18\x01 \x01(\v2M.dev.planton.aws.awscloudwatchalarm.v1alpha1.AwsCloudwatchAlarmPromqlCriteriaB\x06\xbaH\x03\xc8\x01\x01R\x0epromqlCriteria\"\xb4\x04\n" +
 	" AwsCloudwatchAlarmPromqlCriteria\x12!\n" +

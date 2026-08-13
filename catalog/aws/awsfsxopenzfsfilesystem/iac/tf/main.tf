@@ -64,8 +64,12 @@ resource "aws_fsx_openzfs_file_system" "this" {
       record_size_kib        = root_volume_configuration.value.record_size_kib
       copy_tags_to_snapshots = root_volume_configuration.value.copy_tags_to_snapshots
 
+      # nfs_exports is keyed on a non-empty client list (CEL requires >= 1,
+      # but tfvars bypass validation): an nfs_exports block with zero
+      # client_configurations fails the provider's Required check on the
+      # nested block, where omitting the block deploys on AWS defaults.
       dynamic "nfs_exports" {
-        for_each = root_volume_configuration.value.nfs_exports != null ? [root_volume_configuration.value.nfs_exports] : []
+        for_each = root_volume_configuration.value.nfs_exports != null && length(try(root_volume_configuration.value.nfs_exports.client_configurations, [])) > 0 ? [root_volume_configuration.value.nfs_exports] : []
         content {
           dynamic "client_configurations" {
             for_each = nfs_exports.value.client_configurations

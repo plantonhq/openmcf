@@ -7,17 +7,28 @@ spec:
   # prerequisite, composes the versioned S3 bucket and zip-staging object-set
   # fixtures via the scenario's e2e-prerequisites annotation, then runs
   # deploy -> GetFunction verify -> destroy -> verify-destroyed on both
-  # provisioners. The scenario is a minimal zip-backed Node.js function --
-  # no VPC attachment, aliases, or function URL -- so the lane stays fast.
-  # Deliberately not in the live scenario: container images, provisioned
-  # concurrency, weighted alias routing, and resource policies -- all proven
-  # by CEL spec tests and the offline gate.
-  # green: both engines have passed the full live lane -- deploy ->
-  # GetFunction verify -> destroy -> verify-destroyed (Pulumi ~3m37s,
-  # Terraform ~3m53s) -- on top of the standing offline gate.
+  # provisioners. The scenario is a zip-backed Node.js function that also
+  # publishes a version and serves an alias-qualified function URL -- the
+  # verifier asserts the version, alias, and URL from the function's own
+  # state (GetAlias / qualified GetFunction / ListFunctionUrlConfigs).
+  # Deliberately not in the live scenario: publish_to (the $LATEST.PUBLISHED
+  # head -- first live contact 2026-08-11: us-west-2 CreateFunction rejects
+  # the SDK-exact value with InvalidParameterValueException; re-probed
+  # 2026-08-13: CreateFunction now ACCEPTS the value but the head is inert --
+  # the $LATEST.PUBLISHED qualifier stays ResourceNotFoundException after
+  # publishes via both the explicit and update-code paths, and
+  # UpdateFunctionCode still rejects the value outright. Mid-rollout
+  # acceptance is not availability: re-add only when a fresh-function probe
+  # shows the qualifier RESOLVING after a publish, never on create
+  # acceptance alone), container images, provisioned
+  # concurrency, weighted alias routing, resource policies (proven by CEL
+  # spec tests and the offline gate), plus the platform arms that need
+  # unavailable or billable backing -- capacity_provider_config (no Lambda
+  # capacity provider exists to reference until that kind ships),
+  # durable_config and tenancy_config (regional/feature availability on the
+  # test account unverified) -- all proven by offline plans and previews on
+  # both engines, never silent skips.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -24,3 +24,7 @@ The **AzureMachineLearningComputeInstance** component creates a compute instance
 ## Future Enhancements
 
 - Schedule-based auto-stop as the provider grows a schedule surface.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

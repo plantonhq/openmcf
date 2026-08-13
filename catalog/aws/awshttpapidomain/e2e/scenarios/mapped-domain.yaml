@@ -6,6 +6,11 @@
 # region-unique custom-domain namespace cannot collide with a real tenant.
 # DNS is deliberately not part of the lane -- the domain resource exists and
 # maps independently of any record pointing at it.
+#
+# Deliberately NO routing arm here: AWS rejects HTTP-API mappings on
+# rule-mode domains (live-verified 400 at CreateApiMapping; the spec CEL
+# now forbids the combination), so the routing-rule surface lives in the
+# routed-domain scenario instead.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsHttpApiDomain
 metadata:

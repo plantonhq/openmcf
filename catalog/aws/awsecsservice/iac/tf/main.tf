@@ -139,6 +139,16 @@ resource "aws_ecs_service" "this" {
       enabled   = service_connect_configuration.value.enabled
       namespace = service_connect_configuration.value.namespace != "" ? service_connect_configuration.value.namespace : null
 
+      # Per-request access logs from the Service Connect proxy, emitted to
+      # the proxy's log destination configured below.
+      dynamic "access_log_configuration" {
+        for_each = service_connect_configuration.value.access_log_configuration != null ? [service_connect_configuration.value.access_log_configuration] : []
+        content {
+          format                   = access_log_configuration.value.format
+          include_query_parameters = access_log_configuration.value.include_query_parameters != "" ? access_log_configuration.value.include_query_parameters : null
+        }
+      }
+
       dynamic "log_configuration" {
         for_each = service_connect_configuration.value.log_configuration != null ? [service_connect_configuration.value.log_configuration] : []
         content {
@@ -169,6 +179,23 @@ resource "aws_ecs_service" "this" {
             content {
               port     = client_alias.value.port
               dns_name = client_alias.value.dns_name != "" ? client_alias.value.dns_name : null
+
+              # Requests carrying a matching header route to the TEST
+              # revision during a blue/green deployment.
+              dynamic "test_traffic_rules" {
+                for_each = client_alias.value.test_traffic_rules
+                content {
+                  dynamic "header" {
+                    for_each = test_traffic_rules.value.header != null ? [test_traffic_rules.value.header] : []
+                    content {
+                      name = header.value.name
+                      value {
+                        exact = header.value.value.exact
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -220,7 +247,34 @@ resource "aws_ecs_service" "this" {
         kms_key_id       = volume_configuration.value.managed_ebs_volume.kms_key_id != "" ? volume_configuration.value.managed_ebs_volume.kms_key_id : null
         snapshot_id      = volume_configuration.value.managed_ebs_volume.snapshot_id != "" ? volume_configuration.value.managed_ebs_volume.snapshot_id : null
         file_system_type = volume_configuration.value.managed_ebs_volume.file_system_type != "" ? volume_configuration.value.managed_ebs_volume.file_system_type : null
+
+        # Snapshot hydration speed; only meaningful with snapshot_id
+        # (CEL/AWS both ignore it otherwise).
+        volume_initialization_rate = volume_configuration.value.managed_ebs_volume.volume_initialization_rate > 0 ? volume_configuration.value.managed_ebs_volume.volume_initialization_rate : null
+
+        # Creation-time tags on each per-task volume -- without these the
+        # volumes carry no cost-allocation tags at all.
+        dynamic "tag_specifications" {
+          for_each = volume_configuration.value.managed_ebs_volume.tag_specifications
+          content {
+            resource_type  = tag_specifications.value.resource_type
+            tags           = length(tag_specifications.value.tags) > 0 ? tag_specifications.value.tags : null
+            propagate_tags = tag_specifications.value.propagate_tags != "" ? tag_specifications.value.propagate_tags : null
+          }
+        }
       }
+    }
+  }
+
+  # VPC Lattice target-group attachments: ECS registers each task's named
+  # port with the target group as tasks start and stop, assuming the
+  # infrastructure role to do it.
+  dynamic "vpc_lattice_configurations" {
+    for_each = var.spec.vpc_lattice_configurations
+    content {
+      role_arn         = vpc_lattice_configurations.value.role_arn
+      target_group_arn = vpc_lattice_configurations.value.target_group_arn
+      port_name        = vpc_lattice_configurations.value.port_name
     }
   }
 

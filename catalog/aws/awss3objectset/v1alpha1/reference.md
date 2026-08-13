@@ -12,11 +12,13 @@ data, Lambda deployment artifacts, and any other content that should be
 created, updated, and destroyed alongside the infrastructure that consumes
 it.
 
-Each entry in `objects` is one `aws_s3_object`-equivalent upload: the object
-key, its content (inline UTF-8 text or base64-encoded binary), and the full
-per-object HTTP/storage surface (content headers, user metadata, storage
-class, encryption override, checksum, Object Lock retention, canned ACL,
-tags).
+Each entry in `objects` is one managed object: the object key, its source
+(inline UTF-8 text, base64-encoded binary, or a server-side COPY of an
+existing S3 object), and the full per-object HTTP/storage surface (content
+headers, user metadata, storage class, encryption override, checksum,
+Object Lock retention, canned ACL, tags). Content-sourced entries render as
+`aws_s3_object`; copy-sourced entries render as `aws_s3_object_copy` — the
+data never travels through the deploy host either way.
 
 Division of responsibility with AwsS3Bucket — read this before reaching for
 the per-object security knobs:
@@ -31,7 +33,8 @@ the per-object security knobs:
 
 Key behaviors:
 - `key` is the object's identity. Changing a key replaces that object
-  (delete + create); changing only content updates it in place.
+  (delete + create); changing only content updates it in place. A
+  copy-sourced object re-copies in place when its copy settings change.
 - On a versioning-enabled bucket, destroying an object removes ALL of its
   versions.
 - Object Lock fields require the BUCKET to have been created with Object
@@ -106,6 +109,38 @@ spec:
       # force_destroy pairs with GOVERNANCE retention: it sends the
       # governance-bypass flag on delete (lock-enabled buckets only).
       forceDestroy: true
+    # Copy-sourced object, default (COPY) directive: duplicates another object
+    # of this same set — the copy preserves the source's metadata and headers,
+    # and the engines order it after the set's content objects.
+    - key: config/app.backup.json
+      copyFrom:
+        sourceBucket:
+          value: my-demo-bucket
+        sourceKey: config/app.json
+    # Copy-sourced object, full copy surface: promotes an artifact from an
+    # external golden bucket with replaced metadata/headers, copy-time
+    # preconditions, an Expires header, Requester Pays acknowledgment, and
+    # its own destination placement.
+    - key: releases/app-v1.2.3.zip
+      copyFrom:
+        sourceBucket:
+          value: golden-artifacts-bucket
+        sourceKey: builds/app/1.2.3/app.zip
+        replaceMetadata: true
+        copyIfMatch: 9b2cf535f27731c974343645a3985328
+        copyIfUnmodifiedSince: "2026-08-01T00:00:00Z"
+        expires: "2027-08-01T00:00:00Z"
+        requestPayer: requester
+      contentType: application/zip
+      cacheControl: private, max-age=0
+      contentDisposition: attachment; filename="app-v1.2.3.zip"
+      metadata:
+        promoted-from: golden-artifacts-bucket
+        release-version: 1.2.3
+      storageClass: STANDARD_IA
+      checksumAlgorithm: CRC64NVME
+      tags:
+        purpose: release-artifact
 ```
 
 ## Spec Fields
@@ -118,6 +153,16 @@ spec:
 | `spec.objects[].key` | `string` | yes |  |  |
 | `spec.objects[].content` | `string` |  |  |  |
 | `spec.objects[].contentBase64` | `string` |  |  |  |
+| `spec.objects[].copyFrom` | `AwsS3ObjectCopyFrom` |  |  |  |
+| `spec.objects[].copyFrom.sourceBucket` | `string \| valueFrom` | yes |  | AwsS3Bucket (`status.outputs.bucket_id`) |
+| `spec.objects[].copyFrom.sourceKey` | `string` | yes |  |  |
+| `spec.objects[].copyFrom.replaceMetadata` | `bool` |  |  |  |
+| `spec.objects[].copyFrom.copyIfMatch` | `string` |  |  |  |
+| `spec.objects[].copyFrom.copyIfNoneMatch` | `string` |  |  |  |
+| `spec.objects[].copyFrom.copyIfModifiedSince` | `string` |  |  |  |
+| `spec.objects[].copyFrom.copyIfUnmodifiedSince` | `string` |  |  |  |
+| `spec.objects[].copyFrom.expires` | `string` |  |  |  |
+| `spec.objects[].copyFrom.requestPayer` | `string` |  |  |  |
 | `spec.objects[].contentType` | `string` |  | `application/octet-stream` |  |
 | `spec.objects[].cacheControl` | `string` |  |  |  |
 | `spec.objects[].contentEncoding` | `string` |  |  |  |
@@ -172,7 +217,8 @@ The objects to upload. At least one. Each object's `key` must be unique
 within the set — both engines key the underlying provider resources by it.
 
 - rule: {"repeated":{"minItems":"1"}}
-- rule: Exactly one of content or content_base64 must be specified
+- rule: Exactly one of content, content_base64, or copy_from must be specified
+- rule: metadata and header fields (cache_control, content_encoding, content_disposition, content_language, website_redirect) on a copy-sourced object require copy_from.replace_metadata: true — a COPY-directive copy preserves the source's metadata and ignores them
 - rule: object_lock_mode and object_lock_retain_until_date must be set together
 - rule: kms_key requires server_side_encryption to be unset, aws:kms, or aws:kms:dsse
 
@@ -200,6 +246,109 @@ Suitable for configuration files, JSON, YAML, HTML, and other text.
 Base64-encoded binary content.
 Suitable for images, zip archives, or any binary payload small enough
 to carry in a manifest.
+
+### spec.objects[].copyFrom
+
+`AwsS3ObjectCopyFrom`
+
+Server-side copy of an existing S3 object (any size — the bytes move
+inside S3, never through the deploy host). Suitable for promoting
+build artifacts between buckets, seeding environments from a golden
+bucket, or re-homing objects with new placement/encryption. The copy
+is taken at deploy time; it does not track later changes to the
+source object.
+
+### spec.objects[].copyFrom.sourceBucket
+
+`string | valueFrom` · required
+
+The bucket holding the source object.
+Can be a literal bucket name or a reference to an AwsS3Bucket component
+(resolved from status.outputs.bucket_id). The literal arm also accepts
+an S3 access-point ARN (`arn:aws:s3:<region>:<account>:accesspoint/
+<name>`) for sources reached through an access point. The deploying
+principal needs s3:GetObject on the source.
+
+- references: AwsS3Bucket (`status.outputs.bucket_id`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: AwsS3Bucket, name: <that resource's name>, fieldPath: status.outputs.bucket_id}} -- a bare string does not parse
+
+### spec.objects[].copyFrom.sourceKey
+
+`string` · required
+
+The key of the source object within `source_bucket`.
+Example: "releases/v1.2.3/app.zip"
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.objects[].copyFrom.replaceMetadata
+
+`bool`
+
+Replace the destination object's user metadata and content headers
+instead of preserving the source's (S3's REPLACE metadata directive).
+When true, the owning object's `metadata`, `content_type`,
+`cache_control`, `content_encoding`, `content_disposition`,
+`content_language`, and `website_redirect` are written to the copy;
+when false (the default) those fields must stay unset and the copy
+keeps everything the source object carried.
+
+### spec.objects[].copyFrom.copyIfMatch
+
+`string`
+
+Copy only if the source object's current ETag matches this value
+(a precondition evaluated by S3 at copy time; a failed precondition
+fails the deploy). Guards promotions against a source that changed
+since the ETag was recorded.
+
+### spec.objects[].copyFrom.copyIfNoneMatch
+
+`string`
+
+Copy only if the source object's current ETag does NOT match this
+value.
+
+### spec.objects[].copyFrom.copyIfModifiedSince
+
+`string`
+
+Copy only if the source object was modified after this RFC 3339
+timestamp (e.g. "2026-08-01T00:00:00Z").
+
+- rule: copy_if_modified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z
+
+### spec.objects[].copyFrom.copyIfUnmodifiedSince
+
+`string`
+
+Copy only if the source object has NOT been modified since this RFC
+3339 timestamp.
+
+- rule: copy_if_unmodified_since must be an RFC 3339 timestamp, e.g. 2026-08-01T00:00:00Z
+
+### spec.objects[].copyFrom.expires
+
+`string`
+
+The Expires header stored with the copied object, as an RFC 3339
+timestamp — the date after which the content is considered stale by
+caches. Only the copy path offers this header (the provider's
+content-object resource carries no expires argument).
+
+- rule: expires must be an RFC 3339 timestamp, e.g. 2027-01-01T00:00:00Z
+
+### spec.objects[].copyFrom.requestPayer
+
+`string`
+
+Confirms the copier pays request and data-transfer costs when the
+SOURCE bucket is a Requester Pays bucket. The only accepted value is
+"requester" — S3 rejects copies from Requester Pays buckets without
+this acknowledgment.
+
+- rule: request_payer accepts only "requester"
 
 ### spec.objects[].contentType
 
@@ -443,6 +592,7 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
+| `spec.objects[].copyFrom.sourceBucket` | AwsS3Bucket | `status.outputs.bucket_id` |
 | `spec.objects[].kmsKey` | AwsKmsKey | `status.outputs.key_arn` |
 
 ## See Also

@@ -13,6 +13,11 @@ spec:
   # tiering (r6gd cost), restore/multi-region (need pre-existing
   # sources), KMS/SNS pass-through refs. Verification is DescribeClusters
   # keyed on the cluster name, state-aware (deleting counts as absent).
+  # Since the deferral was recorded, the Pulumi module's data_tiering send
+  # converged to Terraform's always-send style (offline plan/preview proven
+  # arm-for-arm; the provider's schema default made both paths reach AWS
+  # identically) -- nothing new for a reopened lane to prove beyond the
+  # standing arms.
   tier: 2
   status: deferred
   deferred_reason: >-

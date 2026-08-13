@@ -42,7 +42,7 @@ variable "spec" {
       unauthenticated = optional(bool, false)
     }))
     scram_secret_arns = optional(list(string), [])
-    cluster_policy = optional(string, "")
+    cluster_policy = optional(any)
     configuration_arn = optional(string, "")
     configuration_revision = optional(number, 0)
     server_properties = optional(map(string), {})
@@ -65,5 +65,11 @@ variable "spec" {
     jmx_exporter_enabled = optional(bool, false)
     node_exporter_enabled = optional(bool, false)
     rebalancing_status = optional(string, "")
+    topics = optional(list(object({
+      name = string
+      partition_count = number
+      replication_factor = number
+      configs = optional(map(string), {})
+    })), [])
   })
 }

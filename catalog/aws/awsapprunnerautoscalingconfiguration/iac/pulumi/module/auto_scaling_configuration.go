@@ -41,10 +41,33 @@ func autoScalingConfiguration(ctx *pulumi.Context, locals *Locals, provider *aws
 		return errors.Wrap(err, "failed to create auto scaling configuration version")
 	}
 
+	// Account-default designation: claims this configuration as the
+	// account/region default for new App Runner services created without an
+	// explicit configuration. One default exists per account per region --
+	// claiming it silently displaces the previous holder, and only services
+	// created AFTERWARDS are affected. One-way at AWS: destroying this
+	// resource is a provider no-op (AWS has no restore API), so dropping
+	// the flag leaves the designation in place until another configuration
+	// claims it. is_default derives from the claim resource: its
+	// successful apply IS the claim (mirrors the Terraform module).
+	isDefault := false
+	if spec.SetAsAccountDefault {
+		_, err := apprunner.NewDefaultAutoScalingConfigurationVersion(ctx,
+			locals.AwsAppRunnerAutoScalingConfiguration.Metadata.Name+"-default",
+			&apprunner.DefaultAutoScalingConfigurationVersionArgs{
+				AutoScalingConfigurationArn: createdConfiguration.Arn,
+			}, pulumi.Provider(provider))
+		if err != nil {
+			return errors.Wrap(err, "failed to claim account-default designation")
+		}
+		isDefault = true
+	}
+
 	// Export outputs matching AwsAppRunnerAutoScalingConfigurationStackOutputs.
 	ctx.Export(OpConfigurationArn, createdConfiguration.Arn)
 	ctx.Export(OpConfigurationRevision, createdConfiguration.AutoScalingConfigurationRevision)
 	ctx.Export(OpLatest, createdConfiguration.Latest)
+	ctx.Export(OpIsDefault, pulumi.Bool(isDefault))
 
 	return nil
 }

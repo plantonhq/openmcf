@@ -51,6 +51,9 @@ spec:
   instances:
     - name: writer
       instanceClass: db.serverless
+  customEndpoints:
+    - name: analytics
+      endpointType: READER
 ```
 
 ## Spec Fields
@@ -100,6 +103,15 @@ spec:
 | `spec.neptuneInstanceParameterGroupName` | `string` |  |  |  |
 | `spec.applyImmediately` | `bool` |  |  |  |
 | `spec.allowMajorVersionUpgrade` | `bool` |  |  |  |
+| `spec.customEndpoints` | `[]AwsNeptuneClusterCustomEndpoint` |  |  |  |
+| `spec.customEndpoints[].name` | `string` | yes |  |  |
+| `spec.customEndpoints[].endpointType` | `string` | yes |  |  |
+| `spec.customEndpoints[].staticMembers` | `[]string` |  |  |  |
+| `spec.customEndpoints[].excludedMembers` | `[]string` |  |  |  |
+| `spec.instanceParameters` | `[]AwsNeptuneClusterParameter` |  |  |  |
+| `spec.instanceParameters[].name` | `string` | yes |  |  |
+| `spec.instanceParameters[].value` | `string` | yes |  |  |
+| `spec.instanceParameters[].applyMethod` | `string` |  |  |  |
 
 ## Field Details
 
@@ -167,7 +179,10 @@ and a later change replaces the cluster.
 
 The port the cluster accepts connections on. 0 keeps the AWS
 default (8182 -- the Neptune convention). Create-time only --
-changing the port replaces the cluster.
+changing the port replaces the cluster. Both engines also pin the
+cluster's port on every instance resource so instance state always
+converges with the cluster (instances have no port of their own --
+they listen on the cluster's).
 
 - rule: {"int32":{"lte":65535,"gte":0}}
 
@@ -213,7 +228,7 @@ instance identifier and the key both IaC engines manage the
 provider resource by -- renaming an entry replaces that instance
 (the others are untouched). Required.
 
-- rule: {"required":true,"string":{"pattern":"^[a-z][a-z0-9-]*$"}}
+- rule: {"required":true,"string":{"pattern":"^[a-z]([a-z0-9]|-[a-z0-9])*$"}}
 
 ### spec.instances[].instanceClass
 
@@ -308,11 +323,14 @@ instance. Required.
 
 ### spec.storageEncrypted
 
-`bool`
+`bool` · optional (explicit presence)
 
-Encrypt cluster storage at rest. Strongly recommended -- and
-create-time only: an unencrypted cluster cannot be encrypted later
-(requires a snapshot-restore migration).
+Encrypt cluster storage at rest. Defaults to TRUE (secure by
+default) -- and create-time only: an unencrypted cluster cannot be
+encrypted later (requires a snapshot-restore migration). Set an
+explicit false only where encryption cannot apply: restoring an
+UNENCRYPTED snapshot, or joining a global cluster whose primary is
+unencrypted (encryption must match the source in both cases).
 
 - default: `true`
 
@@ -334,6 +352,9 @@ key_arn output or pass a literal key ARN. Create-time only.
 Require SigV4-signed requests from IAM identities to query the
 database -- Neptune's only credential mechanism (there is no master
 username/password). Off relies purely on network reachability.
+(The AWS default is off; an explicit false at create time is
+indistinguishable from omitting it -- the provider only sends the
+flag on later changes.)
 
 ### spec.iamRoles
 
@@ -390,14 +411,21 @@ Copy the cluster's tags onto automated and manual snapshots.
 
 Skip the final snapshot when the cluster is deleted. When false
 (the safe default), final_snapshot_identifier must be set -- AWS
-refuses to delete without knowing the snapshot name.
+refuses to delete without knowing the snapshot name. Also forwarded
+to each cluster instance's delete (instance-level final snapshots
+do not apply to cluster members, but the flag keeps teardown intent
+consistent).
 
 ### spec.finalSnapshotIdentifier
 
 `string`
 
 The name for the final snapshot taken on deletion. Required when
-skip_final_snapshot is false.
+skip_final_snapshot is false. Letters, digits, and hyphens; no
+double or trailing hyphen (the provider validates this at plan
+time).
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[A-Za-z0-9]([A-Za-z0-9]|-[A-Za-z0-9])*$"}}
 
 ### spec.deletionProtection
 
@@ -436,10 +464,13 @@ Promote by clearing the field.
 
 `string`
 
-Join a Neptune global database: the identifier of the
-aws_neptune_global_cluster this cluster participates in. The first
-cluster joined becomes the global writer; clusters added afterwards
-become read-only secondaries.
+Join a Neptune global database: the identifier of the global
+cluster this cluster participates in. The first cluster joined
+becomes the global writer; clusters added afterwards become
+read-only secondaries. Letter-first; letters, digits, and hyphens;
+no double or trailing hyphen.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"255","pattern":"^[A-Za-z]([A-Za-z0-9]|-[A-Za-z0-9])*$"}}
 
 ### spec.neptuneClusterParameterGroupName
 
@@ -482,9 +513,11 @@ The parameter value. Required.
 
 `string`
 
-When the change lands: "immediate" (AWS default -- dynamic
-parameters apply now) or "pending-reboot" (static parameters wait
-for the next instance reboot).
+When the change lands: "immediate" (dynamic parameters apply now)
+or "pending-reboot" (static parameters wait for the next instance
+reboot). Empty defers to the provider default, which is
+"pending-reboot" at the pinned provider version -- set "immediate"
+explicitly when a dynamic parameter should land right away.
 
 ### spec.neptuneInstanceParameterGroupName
 
@@ -500,7 +533,10 @@ requires it when engine_version changes across a major version.
 
 Apply modifications immediately instead of waiting for the next
 maintenance window. Immediate changes can interrupt connections;
-deferred changes wait quietly. AWS defaults to deferred.
+deferred changes wait quietly. AWS defaults to deferred. Applies to
+cluster-scope changes AND to instance-scope changes (class resizes,
+per-instance windows, parameter group switches) -- both engines
+forward it to every cluster instance.
 
 ### spec.allowMajorVersionUpgrade
 
@@ -509,6 +545,95 @@ deferred changes wait quietly. AWS defaults to deferred.
 Permit engine_version changes that cross a major version. Off (the
 default) guards against an accidental major upgrade hidden in a
 version bump.
+
+### spec.customEndpoints
+
+`[]AwsNeptuneClusterCustomEndpoint`
+
+Custom cluster endpoints: stable DNS names over chosen subsets of
+the cluster's instances (e.g. an analytics endpoint fronting only
+the big readers). Each entry is managed as its own provider
+resource keyed by `name`, so endpoints come and go without touching
+the cluster. Per-endpoint addresses are exported in the
+custom_endpoint_addresses output keyed by name.
+
+- rule: static_members and excluded_members are mutually exclusive -- pin the member set or subtract from it, not both
+
+### spec.customEndpoints[].name
+
+`string` · required
+
+Endpoint name, unique within the cluster (lowercase letters,
+digits, hyphens; starts with a letter, no double or trailing
+hyphen). Becomes the DNS-visible endpoint identifier and the key
+both IaC engines manage the provider resource by -- renaming an
+entry replaces that endpoint (the cluster is untouched). Required.
+
+- rule: {"required":true,"string":{"pattern":"^[a-z]([a-z0-9]|-[a-z0-9])*$"}}
+
+### spec.customEndpoints[].endpointType
+
+`string` · required
+
+Which instances the endpoint fronts: "READER" (reader instances
+only), "WRITER" (the writer), or "ANY" (all instances). Required.
+
+- rule: {"required":true,"string":{"in":["READER","WRITER","ANY"]}}
+
+### spec.customEndpoints[].staticMembers
+
+`[]string`
+
+Pin the endpoint to exactly these instances, by their
+spec.instances entry names. Mutually exclusive with
+excluded_members. Both empty fronts every instance of the
+endpoint's type.
+
+### spec.customEndpoints[].excludedMembers
+
+`[]string`
+
+Front every instance of the endpoint's type EXCEPT these, by their
+spec.instances entry names. Mutually exclusive with static_members.
+
+### spec.instanceParameters
+
+`[]AwsNeptuneClusterParameter`
+
+DB (instance-level) engine parameters, managed as a dedicated
+instance parameter group owned by this cluster and applied to every
+instance that does not bring its own group (the group is glue -- a
+named parameter list -- so it stays folded, mirroring `parameters`).
+Mutually exclusive with neptune_instance_parameter_group_name.
+
+- rule: apply_method must be 'immediate' or 'pending-reboot' when set
+
+### spec.instanceParameters[].name
+
+`string` · required
+
+The parameter name (e.g. "neptune_enable_audit_log",
+"neptune_query_timeout"). Required.
+
+- rule: {"required":true}
+
+### spec.instanceParameters[].value
+
+`string` · required
+
+The parameter value. Required.
+
+- rule: {"required":true}
+
+### spec.instanceParameters[].applyMethod
+
+`string`
+
+When the change lands: "immediate" (dynamic parameters apply now)
+or "pending-reboot" (static parameters wait for the next instance
+reboot). Empty defers to the provider default, which is
+"pending-reboot" at the pinned provider version -- set "immediate"
+explicitly when a dynamic parameter should land right away.
 
 ## Validation Rules
 
@@ -521,6 +646,10 @@ version bump.
 - `own_parameters_xor_existing_group`: parameters and neptune_cluster_parameter_group_name are mutually exclusive -- manage parameters here or bring an existing group
 - `parameters_require_engine_version`: inline parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine
 - `major_upgrade_needs_instance_parameter_group`: allow_major_version_upgrade requires neptune_instance_parameter_group_name -- AWS applies it to the cluster's instances during the major version upgrade
+- `own_instance_parameters_xor_existing_group`: instance_parameters and neptune_instance_parameter_group_name are mutually exclusive -- manage the instance parameter group here or bring an existing one
+- `instance_parameters_require_engine_version`: inline instance_parameters require a pinned engine_version -- the managed parameter group's family is derived from it and must match the running engine
+- `custom_endpoint_names_unique`: custom_endpoints[].name must be unique -- names key the provider resources
+- `custom_endpoint_members_exist`: custom_endpoints member lists must name entries of spec.instances
 
 ## Outputs
 
@@ -539,6 +668,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsNeptuneCluste
 | `status.outputs.neptune_subnet_group_name` | `string` | The name of the Neptune subnet group the cluster runs in. |
 | `status.outputs.neptune_cluster_parameter_group_name` | `string` | The name of the cluster parameter group in use (module-managed or the referenced existing group). |
 | `status.outputs.instance_endpoints` | `[]string` | Per-instance endpoints of the cluster's folded instances, ordered as declared in spec.instances. Empty for headless shapes (restores, replicas, and global-cluster members created without instances). |
+| `status.outputs.custom_endpoint_addresses` | `map<string, string>` | Custom endpoint DNS addresses keyed by spec.custom_endpoints[].name (e.g. "analytics" -> "analytics.cluster-custom-...neptune.amazonaws.com"). |
+| `status.outputs.neptune_instance_parameter_group_name` | `string` | The name of the module-managed instance parameter group created from spec.instance_parameters. Empty when instance parameters are not managed here. |
 
 ## References
 

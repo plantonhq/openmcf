@@ -10,7 +10,10 @@ spec:
   # cycle plus the subnet/role prerequisite chain.
   tier: 1
   status: green
-  validated_provisioners:
-    - pulumi
-    - terraform
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60
+  # 2026-08-13 tag-convergence sweep: the Pulumi identity-tag map gained the
+  # canonical Name key, converging on the key set the Terraform module (and
+  # this badge's live proof) already sends. Declared-set equality is now
+  # machine-enforced by hack/guards/ensure_cross_engine_tag_keys.sh; the
+  # change class is live-re-proven once via Q31 (awssqsqueue represents it).

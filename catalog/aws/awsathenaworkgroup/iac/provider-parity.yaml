@@ -1,0 +1,100 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider wraps the whole workgroup surface in one `configuration`
+# block; the spec flattens that wrapper (a workgroup IS its configuration),
+# which is why almost every leaf is a mapping.
+
+resources:
+  aws_athena_workgroup:
+    mappings:
+      - spec: spec.bytes_scanned_cutoff_per_query
+        arg: configuration.bytes_scanned_cutoff_per_query
+      - spec: spec.enforce_workgroup_configuration
+        arg: configuration.enforce_workgroup_configuration
+      - spec: spec.publish_cloudwatch_metrics_enabled
+        arg: configuration.publish_cloudwatch_metrics_enabled
+      - spec: spec.requester_pays_enabled
+        arg: configuration.requester_pays_enabled
+      - spec: spec.enable_minimum_encryption_configuration
+        arg: configuration.enable_minimum_encryption_configuration
+      - spec: spec.execution_role
+        arg: configuration.execution_role
+      # The engine_version block's only configurable member, flattened to a
+      # scalar (its sibling effective_engine_version is computed, exported
+      # as an output).
+      - spec: spec.selected_engine_version
+        arg: configuration.engine_version.selected_engine_version
+      # The customer-content encryption block's only member, flattened.
+      - spec: spec.customer_content_encryption_kms_key
+        arg: configuration.customer_content_encryption_configuration.kms_key
+      # Result storage in customer S3.
+      - spec: spec.result_configuration.output_location
+        arg: configuration.result_configuration.output_location
+      - spec: spec.result_configuration.expected_bucket_owner
+        arg: configuration.result_configuration.expected_bucket_owner
+      - spec: spec.result_configuration.encryption_option
+        arg: configuration.result_configuration.encryption_configuration.encryption_option
+      - spec: spec.result_configuration.kms_key_arn
+        arg: configuration.result_configuration.encryption_configuration.kms_key_arn
+      - spec: spec.result_configuration.s3_acl_option
+        arg: configuration.result_configuration.acl_configuration.s3_acl_option
+      # Result storage in AWS-managed storage (presence = enabled; see the
+      # enabled exclusions below).
+      - spec: spec.managed_query_results.kms_key
+        arg: configuration.managed_query_results_configuration.encryption_configuration.kms_key
+      # Identity Center integration.
+      - spec: spec.identity_center.enable_identity_center
+        arg: configuration.identity_center_configuration.enable_identity_center
+      - spec: spec.identity_center.identity_center_instance_arn
+        arg: configuration.identity_center_configuration.identity_center_instance_arn
+      # S3 Access Grants.
+      - spec: spec.s3_access_grants.authentication_type
+        arg: configuration.query_results_s3_access_grants_configuration.authentication_type
+      - spec: spec.s3_access_grants.enable_s3_access_grants
+        arg: configuration.query_results_s3_access_grants_configuration.enable_s3_access_grants
+      - spec: spec.s3_access_grants.create_user_level_prefix
+        arg: configuration.query_results_s3_access_grants_configuration.create_user_level_prefix
+      # The three monitoring/logging arms (the spec names them for what
+      # they configure; the provider suffixes "_configuration").
+      - spec: spec.monitoring.cloud_watch_logging.log_group
+        arg: configuration.monitoring_configuration.cloud_watch_logging_configuration.log_group
+      - spec: spec.monitoring.cloud_watch_logging.log_stream_name_prefix
+        arg: configuration.monitoring_configuration.cloud_watch_logging_configuration.log_stream_name_prefix
+      - spec: spec.monitoring.cloud_watch_logging.log_types.key
+        arg: configuration.monitoring_configuration.cloud_watch_logging_configuration.log_type.key
+      - spec: spec.monitoring.cloud_watch_logging.log_types.values
+        arg: configuration.monitoring_configuration.cloud_watch_logging_configuration.log_type.values
+      - spec: spec.monitoring.managed_logging.kms_key
+        arg: configuration.monitoring_configuration.managed_logging_configuration.kms_key
+      - spec: spec.monitoring.s3_logging.log_location
+        arg: configuration.monitoring_configuration.s3_logging_configuration.log_location
+      - spec: spec.monitoring.s3_logging.kms_key
+        arg: configuration.monitoring_configuration.s3_logging_configuration.kms_key
+    exclusions:
+      # The four presence-as-enable flags: each block's presence in the
+      # spec IS the enable switch, and both modules hardcode true inside a
+      # rendered block. The provider's own diff suppression treats an
+      # absent block and enabled=false as the same state, so a separate
+      # spec flag would model a distinction AWS does not keep.
+      - arg: configuration.managed_query_results_configuration.enabled
+        reason: block presence is the enable switch (spec.managed_query_results); both modules hardcode true -- the provider suppresses absent-vs-disabled diffs
+      - arg: configuration.monitoring_configuration.cloud_watch_logging_configuration.enabled
+        reason: block presence is the enable switch (spec.monitoring.cloud_watch_logging); both modules hardcode true -- the provider suppresses absent-vs-disabled diffs
+      - arg: configuration.monitoring_configuration.managed_logging_configuration.enabled
+        reason: block presence is the enable switch (spec.monitoring.managed_logging); both modules hardcode true -- the provider suppresses absent-vs-disabled diffs
+      - arg: configuration.monitoring_configuration.s3_logging_configuration.enabled
+        reason: block presence is the enable switch (spec.monitoring.s3_logging); both modules hardcode true -- the provider suppresses absent-vs-disabled diffs
+      # Identity is the kind's own contract.
+      - arg: name
+        reason: derived from metadata.name (1-128 chars of [0-9A-Za-z_.-], create-time-immutable) -- never free-form user surface
+      # Tag machinery.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

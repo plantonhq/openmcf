@@ -4,7 +4,10 @@ This module provisions an Amazon DynamoDB table -- key schema and
 indexes, capacity in any of AWS's three shapes, streams, Global Tables
 v2 replication, encryption, recovery, and the table-scoped governance
 satellites (resource policy, Kinesis change-data destination,
-contributor insights) -- aligned with the Planton API. The KMS key, the
+contributor insights) -- aligned with the Planton API. On provisioned
+tables, Application Auto Scaling owns live read/write capacity (user
+bounds with target tracking, or pinned min = max targets from the
+declared throughput; see `module/autoscaling.go`). The KMS key, the
 Kinesis stream, and the S3 import bucket all attach by reference; the
 module never creates a resource that deserves to be its own node.
 

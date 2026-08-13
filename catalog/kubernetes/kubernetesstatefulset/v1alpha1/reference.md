@@ -1283,7 +1283,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -2127,7 +2127,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -4120,7 +4120,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -4964,7 +4964,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -6998,7 +6998,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.
@@ -7842,7 +7842,7 @@ Allowed values (use exactly as shown):
 - `AwsGlobalAccelerator`
 - `AwsSubnet`
 - `AwsInternetGateway`
-- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first.
+- `AwsNatGateway` -- AwsInternetGateway is a prerequisite because a public NAT gateway can only become available once the VPC it sits in has an internet gateway attached (AWS rejects the create otherwise) -- so the gateway must be deployed first. AwsVpc is a prerequisite because a REGIONAL NAT gateway (availability_mode = regional) references the VPC directly instead of a subnet.
 - `AwsEgressOnlyInternetGateway`
 - `AwsElasticFileSystem` -- AwsSubnet and AwsSecurityGroup are prerequisites because mount targets (required, min 1) place the file system's NFS endpoints into subnets and attach security groups -- both references must resolve before the CreateMountTarget calls.
 - `AwsEfsAccessPoint` -- AwsElasticFileSystem is a prerequisite because an access point is created INTO a file system -- the spec's required file_system_id reference must resolve before the CreateAccessPoint call.

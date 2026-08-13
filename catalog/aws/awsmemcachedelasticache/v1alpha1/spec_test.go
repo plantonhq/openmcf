@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestAwsMemcachedElasticacheSpec(t *testing.T) {
@@ -131,7 +132,7 @@ var _ = ginkgo.Describe("AwsMemcachedElasticacheSpec validations", func() {
 			strRef("sg-123"),
 		}
 		spec.MaintenanceWindow = "sun:05:00-sun:06:00"
-		spec.AutoMinorVersionUpgrade = true
+		spec.AutoMinorVersionUpgrade = proto.Bool(true)
 		spec.NotificationTopicArn = strRef("arn:aws:sns:us-east-1:123456789012:my-topic")
 		spec.ParameterGroupFamily = "memcached1.6"
 		spec.Parameters = []*AwsMemcachedElasticacheParameter{
@@ -154,6 +155,19 @@ var _ = ginkgo.Describe("AwsMemcachedElasticacheSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("accepts an explicit auto_minor_version_upgrade opt-out", func() {
+		spec.AutoMinorVersionUpgrade = proto.Bool(false)
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a single-AZ pin for all nodes", func() {
+		spec.NumCacheNodes = 3
+		spec.AvailabilityZone = "us-west-2a"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	// -------------------------------------------------------------------------
 	// Required field validations
 	// -------------------------------------------------------------------------
@@ -162,6 +176,12 @@ var _ = ginkgo.Describe("AwsMemcachedElasticacheSpec validations", func() {
 		spec.EngineVersion = ""
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when engine_version is not three-part (Memcached is x.y.z)", func() {
+		spec.EngineVersion = "1.6"
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
 	ginkgo.It("fails when node_type is missing", func() {
@@ -205,6 +225,26 @@ var _ = ginkgo.Describe("AwsMemcachedElasticacheSpec validations", func() {
 	ginkgo.It("fails when preferred_availability_zones provided for single node but length is 2", func() {
 		spec.NumCacheNodes = 1
 		spec.PreferredAvailabilityZones = []string{"us-east-1a", "us-east-1b"}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	// -------------------------------------------------------------------------
+	// CEL: availability_zone placement rules
+	// -------------------------------------------------------------------------
+
+	ginkgo.It("fails when availability_zone is combined with preferred_availability_zones", func() {
+		spec.NumCacheNodes = 2
+		spec.AvailabilityZone = "us-west-2a"
+		spec.PreferredAvailabilityZones = []string{"us-west-2a", "us-west-2b"}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("fails when availability_zone is combined with cross-az mode", func() {
+		spec.NumCacheNodes = 2
+		spec.AvailabilityZone = "us-west-2a"
+		spec.AzMode = "cross-az"
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})

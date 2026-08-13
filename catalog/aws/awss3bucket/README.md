@@ -1,6 +1,6 @@
 # AwsS3Bucket
 
-The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Planton. It models the bucket and every bucket-scoped behavior — versioning, encryption, public-access posture, policies, lifecycle management, replication, static website hosting, access logging, CORS, event notifications, Object Lock, transfer acceleration, requester pays, and Intelligent-Tiering archive configurations — as one declarative document.
+The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Planton. It models the bucket and every bucket-scoped behavior — versioning, encryption, public-access posture, policies, lifecycle management, replication, static website hosting, access logging, CORS, event notifications, Object Lock, transfer acceleration, requester pays, Intelligent-Tiering archive configurations, attribute-based access control (ABAC), storage-class analytics, inventory reports, request metrics, and S3 Metadata tables — as one declarative document.
 
 ## Spec Fields
 
@@ -9,6 +9,7 @@ The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Pl
 - **region**: AWS region for the bucket. Required.
 - **force_destroy**: Delete all objects (including versions) when the bucket is destroyed. Leave `false` for production data.
 - **object_lock_enabled**: Enable S3 Object Lock (WORM) at creation. Immutable after creation; requires `versioning_status: Enabled`. Pair with `object_lock_default_retention` to apply a default retention window.
+- **bucket_namespace**: Empty keeps the classic `global` namespace; `account-regional` scopes the bucket name to this account and region (account-scoped endpoints). Chosen at creation; changing it replaces the bucket.
 
 ### Versioning and Encryption
 
@@ -17,6 +18,7 @@ The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Pl
   - **sse_algorithm**: `AES256` (SSE-S3, free), `aws:kms` (SSE-KMS), or `aws:kms:dsse` (dual-layer SSE-KMS).
   - **kms_key_id**: Customer-managed KMS key. Accepts a literal ARN or a `valueFrom` reference to an `AwsKmsKey`.
   - **bucket_key_enabled**: Reuse a bucket-level data key to cut KMS request costs by up to 99%. Recommended with SSE-KMS.
+  - **blocked_encryption_types**: Encryption types PUT requests may no longer use — `SSE-C` (AWS's own default block on new buckets since March 2026) and/or `NONE`. Set it to state the posture explicitly or to manage it deliberately.
 
 ### Public Access, Ownership, and Policy
 
@@ -27,7 +29,7 @@ The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Pl
 
 ### Lifecycle Management
 
-- **lifecycle_rules**: Storage-class transitions and expiration. Each rule carries a filter (prefix, tags, and object-size bounds, AND-combined), current-version `transitions` (days or an absolute date, to STANDARD_IA / ONEZONE_IA / INTELLIGENT_TIERING / GLACIER_IR / GLACIER / DEEP_ARCHIVE), `expiration`, noncurrent-version transitions/expiration (with `newer_noncurrent_versions` retention), and incomplete-multipart-upload cleanup.
+- **lifecycle_rules**: Storage-class transitions and expiration. Each rule carries a filter (prefix, tags, and object-size bounds, AND-combined), current-version `transitions` (days — including `0` for transition-at-upload — or an absolute date, to STANDARD_IA / ONEZONE_IA / INTELLIGENT_TIERING / GLACIER_IR / GLACIER / DEEP_ARCHIVE), `expiration`, noncurrent-version transitions/expiration (with `newer_noncurrent_versions` retention), and incomplete-multipart-upload cleanup.
 - **transition_default_minimum_object_size**: `all_storage_classes_128K` (AWS default) or `varies_by_storage_class`.
 
 ### Replication
@@ -52,6 +54,14 @@ The **AwsS3Bucket** resource provisions and manages Amazon S3 buckets through Pl
 - **acceleration_status**: `Enabled`/`Suspended` — Transfer Acceleration through CloudFront edge locations.
 - **request_payer**: `BucketOwner` (default) or `Requester`.
 - **intelligent_tiering_configurations**: Named archive-tier configurations (ARCHIVE_ACCESS ≥ 90 days, DEEP_ARCHIVE_ACCESS ≥ 180 days) for objects in the INTELLIGENT_TIERING storage class.
+
+### Governance: ABAC, Analytics, Inventory, Metrics, S3 Metadata
+
+- **abac_status**: `Enabled` lets IAM policies authorize by principal tags vs bucket tags (attribute-based access control); `Disabled` states the off posture; empty leaves AWS's default unmanaged.
+- **analytics_configurations**: Named storage-class-analysis configurations (prefix/tag scoped) with an optional daily CSV `export` to a bucket — the data source for choosing lifecycle transition ages.
+- **inventory_configurations**: Named scheduled inventory reports (`Daily`/`Weekly`, `All`/`Current` versions, CSV/ORC/Parquet) with selectable metadata columns, delivered to a destination bucket (which may be the bucket itself — ARNs are name-derived). The destination needs a bucket policy allowing `s3.amazonaws.com` to `s3:PutObject` for delivery; use `disabled: true` to keep a configuration defined but paused.
+- **metrics_configurations**: Named CloudWatch request-metrics configurations scoped by access point, prefix, and/or tags (standard CloudWatch per-metric cost).
+- **metadata_configuration**: S3 Metadata — AWS-managed Apache Iceberg tables of this bucket's objects: the change-journal table (with its required record-expiration policy, ≥ 7 days when enabled) and an optional live inventory table, each with optional KMS encryption. Query them with Athena/Spark instead of listing the bucket.
 
 ## Stack Outputs
 

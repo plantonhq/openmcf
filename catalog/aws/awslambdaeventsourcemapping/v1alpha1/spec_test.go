@@ -227,4 +227,49 @@ var _ = ginkgo.Describe("AwsLambdaEventSourceMappingSpec validations", func() {
 		}
 		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 	})
+
+	// -----------------------------------------------------------------
+	// Poller groups, expanded metrics, and the concurrency ceiling
+	// -----------------------------------------------------------------
+
+	ginkgo.It("accepts a provisioned poller fleet shared through a poller group", func() {
+		spec.EventSourceArn = literal("arn:aws:kafka:us-west-2:123456789012:cluster/events/abc-123")
+		spec.StartingPosition = "LATEST"
+		spec.Topics = []string{"orders"}
+		spec.ProvisionedPollers = &AwsLambdaEventSourceMappingProvisionedPollers{
+			MinimumPollers:  2,
+			MaximumPollers:  50,
+			PollerGroupName: "shared-ingest-fleet",
+		}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a poller group name beyond 128 characters", func() {
+		longName := ""
+		for i := 0; i < 129; i++ {
+			longName += "a"
+		}
+		spec.EventSourceArn = literal("arn:aws:kafka:us-west-2:123456789012:cluster/events/abc-123")
+		spec.StartingPosition = "LATEST"
+		spec.Topics = []string{"orders"}
+		spec.ProvisionedPollers = &AwsLambdaEventSourceMappingProvisionedPollers{PollerGroupName: longName}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts the full metrics set and rejects unknown metrics", func() {
+		spec.Metrics = []string{"EventCount", "ErrorCount", "KafkaMetrics"}
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		spec.Metrics = []string{"LatencyP99"}
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts scaling_max_concurrency above the former 1000 cap", func() {
+		spec.ScalingMaxConcurrency = 5000
+		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects scaling_max_concurrency below the AWS floor of 2", func() {
+		spec.ScalingMaxConcurrency = 1
+		gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+	})
 })

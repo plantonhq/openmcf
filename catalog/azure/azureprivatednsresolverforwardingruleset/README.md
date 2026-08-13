@@ -23,3 +23,7 @@ The **AzurePrivateDnsResolverForwardingRuleset** component deploys a DNS forward
 ## Future Enhancements
 
 - The at-most-2-outbound-endpoints (same resolver) service rule stays documentation until cross-resource facts can be introspected offline.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -71,3 +71,7 @@ Every source change deploys a NEW revision; running executions finish on the rev
 - **GcpServiceAccount** -- the identity the workflow's steps run as
 - **GcpKmsKey** -- CMEK for workflow and execution data
 - **GcpProject** -- provides the GCP project the workflow lives in
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

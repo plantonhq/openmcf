@@ -63,17 +63,20 @@ type AwsOpenSearchDomainSpec struct {
 	// (all except certain storage-optimized types that use instance storage).
 	EbsOptions *AwsOpenSearchDomainEbsOptions `protobuf:"bytes,4,opt,name=ebs_options,json=ebsOptions,proto3" json:"ebs_options,omitempty"`
 	// Enable encryption at rest for indices and automated snapshots. Uses the
-	// AWS-managed `aws/es` key unless `kms_key_id` is provided.
-	// One-way: encryption cannot be disabled once enabled (ForceNew), and enabling
-	// it on very old Elasticsearch versions (< 6.7) also forces recreation.
-	EncryptAtRestEnabled bool `protobuf:"varint,5,opt,name=encrypt_at_rest_enabled,json=encryptAtRestEnabled,proto3" json:"encrypt_at_rest_enabled,omitempty"`
+	// AWS-managed `aws/es` key unless `kms_key_id` is provided. Defaults to
+	// TRUE (secure by default); set an explicit false only for legacy engine
+	// versions that cannot encrypt.
+	// One-way: encryption cannot be disabled once enabled (disabling forces
+	// domain recreation), and enabling it on very old Elasticsearch versions
+	// (< 6.7) also forces recreation.
+	EncryptAtRestEnabled *bool `protobuf:"varint,5,opt,name=encrypt_at_rest_enabled,json=encryptAtRestEnabled,proto3,oneof" json:"encrypt_at_rest_enabled,omitempty"`
 	// Customer-managed KMS key ARN or ID for at-rest encryption. ForceNew — the
 	// KMS key cannot be changed after domain creation.
 	KmsKeyId *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=kms_key_id,json=kmsKeyId,proto3" json:"kms_key_id,omitempty"`
 	// Enable TLS encryption for all traffic between nodes in the cluster.
-	// Strongly recommended for production. One-way: cannot be disabled once
-	// enabled (ForceNew).
-	NodeToNodeEncryptionEnabled bool `protobuf:"varint,7,opt,name=node_to_node_encryption_enabled,json=nodeToNodeEncryptionEnabled,proto3" json:"node_to_node_encryption_enabled,omitempty"`
+	// Defaults to TRUE (secure by default). One-way: cannot be disabled once
+	// enabled (disabling forces domain recreation).
+	NodeToNodeEncryptionEnabled *bool `protobuf:"varint,7,opt,name=node_to_node_encryption_enabled,json=nodeToNodeEncryptionEnabled,proto3,oneof" json:"node_to_node_encryption_enabled,omitempty"`
 	// VPC placement configuration. When provided, the domain is deployed into VPC
 	// subnets and is not publicly accessible. ForceNew — adding or removing VPC
 	// options destroys and recreates the domain.
@@ -113,7 +116,9 @@ type AwsOpenSearchDomainSpec struct {
 	// 10:00 PM local time when not configured.
 	OffPeakWindowOptions *AwsOpenSearchDomainOffPeakWindowOptions `protobuf:"bytes,16,opt,name=off_peak_window_options,json=offPeakWindowOptions,proto3" json:"off_peak_window_options,omitempty"`
 	// Enable automatic service software updates. When true, AWS applies mandatory
-	// and optional service software updates during the off-peak window.
+	// and optional service software updates during the off-peak window. Both
+	// engines always send this setting explicitly, so false actively turns
+	// auto-updates OFF (including on domains where they were previously on).
 	AutoSoftwareUpdateEnabled bool `protobuf:"varint,17,opt,name=auto_software_update_enabled,json=autoSoftwareUpdateEnabled,proto3" json:"auto_software_update_enabled,omitempty"`
 	// Blue/green deployment strategy for configuration changes that require one.
 	// "Default": AWS picks the standard strategy. "CapacityOptimized": AWS
@@ -136,8 +141,17 @@ type AwsOpenSearchDomainSpec struct {
 	// Dashboards and API access — workforce users sign in with their Identity
 	// Center identity instead of IAM credentials.
 	IdentityCenterOptions *AwsOpenSearchDomainIdentityCenterOptions `protobuf:"bytes,22,opt,name=identity_center_options,json=identityCenterOptions,proto3" json:"identity_center_options,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// SAML authentication for OpenSearch Dashboards: users sign in through an
+	// external SAML 2.0 identity provider (Okta, Entra ID, ...). Managed as its
+	// own provider resource alongside the domain; removing the block disables
+	// SAML. Requires fine-grained access control (advanced_security_options).
+	SamlOptions *AwsOpenSearchDomainSamlOptions `protobuf:"bytes,23,opt,name=saml_options,json=samlOptions,proto3" json:"saml_options,omitempty"`
+	// AWS account IDs authorized to create OpenSearch-managed VPC endpoints
+	// against this domain (the grantor side of cross-account private access).
+	// Each entry is managed as its own provider resource keyed by account ID.
+	AuthorizedVpcEndpointAccessAccounts []string `protobuf:"bytes,24,rep,name=authorized_vpc_endpoint_access_accounts,json=authorizedVpcEndpointAccessAccounts,proto3" json:"authorized_vpc_endpoint_access_accounts,omitempty"`
+	unknownFields                       protoimpl.UnknownFields
+	sizeCache                           protoimpl.SizeCache
 }
 
 func (x *AwsOpenSearchDomainSpec) Reset() {
@@ -199,8 +213,8 @@ func (x *AwsOpenSearchDomainSpec) GetEbsOptions() *AwsOpenSearchDomainEbsOptions
 }
 
 func (x *AwsOpenSearchDomainSpec) GetEncryptAtRestEnabled() bool {
-	if x != nil {
-		return x.EncryptAtRestEnabled
+	if x != nil && x.EncryptAtRestEnabled != nil {
+		return *x.EncryptAtRestEnabled
 	}
 	return false
 }
@@ -213,8 +227,8 @@ func (x *AwsOpenSearchDomainSpec) GetKmsKeyId() *v1.StringValueOrRef {
 }
 
 func (x *AwsOpenSearchDomainSpec) GetNodeToNodeEncryptionEnabled() bool {
-	if x != nil {
-		return x.NodeToNodeEncryptionEnabled
+	if x != nil && x.NodeToNodeEncryptionEnabled != nil {
+		return *x.NodeToNodeEncryptionEnabled
 	}
 	return false
 }
@@ -324,6 +338,20 @@ func (x *AwsOpenSearchDomainSpec) GetIdentityCenterOptions() *AwsOpenSearchDomai
 	return nil
 }
 
+func (x *AwsOpenSearchDomainSpec) GetSamlOptions() *AwsOpenSearchDomainSamlOptions {
+	if x != nil {
+		return x.SamlOptions
+	}
+	return nil
+}
+
+func (x *AwsOpenSearchDomainSpec) GetAuthorizedVpcEndpointAccessAccounts() []string {
+	if x != nil {
+		return x.AuthorizedVpcEndpointAccessAccounts
+	}
+	return nil
+}
+
 // AwsOpenSearchDomainClusterConfig defines the cluster topology including data
 // nodes, dedicated master nodes, coordinator node pools, zone awareness, and
 // UltraWarm/cold storage tiers.
@@ -360,12 +388,14 @@ type AwsOpenSearchDomainClusterConfig struct {
 	AvailabilityZoneCount int32 `protobuf:"varint,8,opt,name=availability_zone_count,json=availabilityZoneCount,proto3" json:"availability_zone_count,omitempty"`
 	// Enable UltraWarm storage tier for infrequently accessed, read-only data.
 	// UltraWarm uses S3-backed storage at lower cost per GB than hot storage.
+	// Requires warm_type and warm_count.
 	WarmEnabled bool `protobuf:"varint,9,opt,name=warm_enabled,json=warmEnabled,proto3" json:"warm_enabled,omitempty"`
-	// Instance type for UltraWarm nodes. Examples: "ultrawarm1.medium.search",
-	// "ultrawarm1.large.search". Only used when `warm_enabled` is true.
+	// Instance type for UltraWarm nodes: "ultrawarm1.medium.search",
+	// "ultrawarm1.large.search", or "ultrawarm1.xlarge.search". Required when
+	// `warm_enabled` is true.
 	WarmType string `protobuf:"bytes,10,opt,name=warm_type,json=warmType,proto3" json:"warm_type,omitempty"`
-	// Number of UltraWarm nodes. Range: 2-150.
-	// Only used when `warm_enabled` is true.
+	// Number of UltraWarm nodes. Range: 2-150. Required when `warm_enabled`
+	// is true.
 	WarmCount int32 `protobuf:"varint,11,opt,name=warm_count,json=warmCount,proto3" json:"warm_count,omitempty"`
 	// Enable cold storage backed by S3. Requires UltraWarm to be enabled.
 	// Cold storage provides the lowest-cost tier for data that is rarely queried.
@@ -510,9 +540,10 @@ type AwsOpenSearchDomainNodeOption struct {
 	// removing its nodes.
 	Enabled bool `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	// Instance type for nodes in this pool (`.search` suffix).
-	// Example: "m7g.large.search".
+	// Example: "m7g.large.search". Required when the pool is enabled.
 	InstanceType string `protobuf:"bytes,3,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
-	// Number of nodes in the pool.
+	// Number of nodes in the pool (at least 1). Required when the pool is
+	// enabled.
 	Count         int32 `protobuf:"varint,4,opt,name=count,proto3" json:"count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -729,8 +760,9 @@ type AwsOpenSearchDomainEndpointOptions struct {
 	// Strongly recommended for all environments.
 	EnforceHttps *bool `protobuf:"varint,1,opt,name=enforce_https,json=enforceHttps,proto3,oneof" json:"enforce_https,omitempty"`
 	// TLS security policy for the HTTPS endpoint. Controls the minimum TLS version
-	// and cipher suites. Example: "Policy-Min-TLS-1-2-PFS-2023-10" (recommended).
-	// Leave empty for the provider default.
+	// and cipher suites. "Policy-Min-TLS-1-2-PFS-2023-10" is the recommended
+	// baseline; the FIPS policy serves regulated workloads. Leave empty for the
+	// provider default.
 	TlsSecurityPolicy string `protobuf:"bytes,2,opt,name=tls_security_policy,json=tlsSecurityPolicy,proto3" json:"tls_security_policy,omitempty"`
 	// Enable a custom domain endpoint (e.g., "search.example.com") instead of the
 	// AWS-generated endpoint.
@@ -943,8 +975,10 @@ type AwsOpenSearchDomainJwtOptions struct {
 	// by definition -- it verifies signatures, it cannot create them.
 	PublicKey string `protobuf:"bytes,3,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
 	// The token claim that carries the user's roles/groups. Example: "roles".
+	// Up to 64 characters.
 	RolesKey string `protobuf:"bytes,4,opt,name=roles_key,json=rolesKey,proto3" json:"roles_key,omitempty"`
 	// The token claim that identifies the user. Example: "sub", "email".
+	// Up to 64 characters.
 	SubjectKey    string `protobuf:"bytes,5,opt,name=subject_key,json=subjectKey,proto3" json:"subject_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1248,9 +1282,11 @@ func (x *AwsOpenSearchDomainAutoTuneMaintenanceSchedule) GetCronExpressionForRec
 // Auto-Tune blue/green optimizations.
 type AwsOpenSearchDomainOffPeakWindowOptions struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Whether the off-peak window feature is active. AWS enables it by default
-	// on new domains.
-	Enabled bool `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	// Whether the off-peak window feature is active. Defaults to TRUE -- AWS
+	// enables the window on every new domain and requires it enabled at create
+	// time; false is only meaningful as a later update (AWS may still reject
+	// disabling it while features depend on the window).
+	Enabled *bool `protobuf:"varint,1,opt,name=enabled,proto3,oneof" json:"enabled,omitempty"`
 	// Hour (0-23, local time) when the 10-hour window opens. AWS defaults to
 	// 22 (10:00 PM) when not configured.
 	WindowStartHour *int32 `protobuf:"varint,2,opt,name=window_start_hour,json=windowStartHour,proto3,oneof" json:"window_start_hour,omitempty"`
@@ -1291,8 +1327,8 @@ func (*AwsOpenSearchDomainOffPeakWindowOptions) Descriptor() ([]byte, []int) {
 }
 
 func (x *AwsOpenSearchDomainOffPeakWindowOptions) GetEnabled() bool {
-	if x != nil {
-		return x.Enabled
+	if x != nil && x.Enabled != nil {
+		return *x.Enabled
 	}
 	return false
 }
@@ -1528,21 +1564,132 @@ func (x *AwsOpenSearchDomainLogPublishingOption) GetEnabled() bool {
 	return false
 }
 
+// AwsOpenSearchDomainSamlOptions configures SAML 2.0 authentication for
+// OpenSearch Dashboards under fine-grained access control. Managed as its
+// own provider resource alongside the domain -- removing the block turns
+// SAML sign-in off without touching the domain.
+type AwsOpenSearchDomainSamlOptions struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The identity provider's entity ID (from the IdP metadata).
+	// Example: "https://idp.example.com/saml/metadata".
+	IdpEntityId string `protobuf:"bytes,1,opt,name=idp_entity_id,json=idpEntityId,proto3" json:"idp_entity_id,omitempty"`
+	// The IdP's SAML metadata document, as an XML string (typically downloaded
+	// from the IdP's metadata endpoint).
+	IdpMetadataContent string `protobuf:"bytes,2,opt,name=idp_metadata_content,json=idpMetadataContent,proto3" json:"idp_metadata_content,omitempty"`
+	// The SAML backend role granted master (admin) access in Dashboards --
+	// mutually exclusive with master_user_name. Empty grants no SAML
+	// principal master access (map roles inside Dashboards instead).
+	MasterBackendRole string `protobuf:"bytes,3,opt,name=master_backend_role,json=masterBackendRole,proto3" json:"master_backend_role,omitempty"`
+	// The SAML username granted master (admin) access in Dashboards --
+	// mutually exclusive with master_backend_role.
+	MasterUserName string `protobuf:"bytes,4,opt,name=master_user_name,json=masterUserName,proto3" json:"master_user_name,omitempty"`
+	// The SAML assertion attribute that carries the user's roles/groups.
+	// Empty uses the IdP's roles attribute conventions.
+	RolesKey string `protobuf:"bytes,5,opt,name=roles_key,json=rolesKey,proto3" json:"roles_key,omitempty"`
+	// The SAML assertion attribute that identifies the user. Empty uses
+	// NameID.
+	SubjectKey string `protobuf:"bytes,6,opt,name=subject_key,json=subjectKey,proto3" json:"subject_key,omitempty"`
+	// Dashboards session lifetime in minutes, 1-1440. 0 keeps the AWS
+	// default (60).
+	SessionTimeoutMinutes int32 `protobuf:"varint,7,opt,name=session_timeout_minutes,json=sessionTimeoutMinutes,proto3" json:"session_timeout_minutes,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) Reset() {
+	*x = AwsOpenSearchDomainSamlOptions{}
+	mi := &file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsOpenSearchDomainSamlOptions) ProtoMessage() {}
+
+func (x *AwsOpenSearchDomainSamlOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsOpenSearchDomainSamlOptions.ProtoReflect.Descriptor instead.
+func (*AwsOpenSearchDomainSamlOptions) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetIdpEntityId() string {
+	if x != nil {
+		return x.IdpEntityId
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetIdpMetadataContent() string {
+	if x != nil {
+		return x.IdpMetadataContent
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetMasterBackendRole() string {
+	if x != nil {
+		return x.MasterBackendRole
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetMasterUserName() string {
+	if x != nil {
+		return x.MasterUserName
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetRolesKey() string {
+	if x != nil {
+		return x.RolesKey
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetSubjectKey() string {
+	if x != nil {
+		return x.SubjectKey
+	}
+	return ""
+}
+
+func (x *AwsOpenSearchDomainSamlOptions) GetSessionTimeoutMinutes() int32 {
+	if x != nil {
+		return x.SessionTimeoutMinutes
+	}
+	return 0
+}
+
 var File_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsopensearchdomain/v1alpha1/spec.proto\x12,dev.planton.aws.awsopensearchdomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda\x19\n" +
+	"3catalog/aws/awsopensearchdomain/v1alpha1/spec.proto\x12,dev.planton.aws.awsopensearchdomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x96\"\n" +
 	"\x17AwsOpenSearchDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12-\n" +
 	"\x0eengine_version\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rengineVersion\x12}\n" +
 	"\x0ecluster_config\x18\x03 \x01(\v2N.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainClusterConfigB\x06\xbaH\x03\xc8\x01\x01R\rclusterConfig\x12t\n" +
 	"\vebs_options\x18\x04 \x01(\v2K.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEbsOptionsB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"ebsOptions\x12?\n" +
-	"\x17encrypt_at_rest_enabled\x18\x05 \x01(\bB\b\x92\xa6\x1d\x04trueR\x14encryptAtRestEnabled\x12q\n" +
+	"ebsOptions\x12D\n" +
+	"\x17encrypt_at_rest_enabled\x18\x05 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x14encryptAtRestEnabled\x88\x01\x01\x12q\n" +
 	"\n" +
-	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12N\n" +
-	"\x1fnode_to_node_encryption_enabled\x18\a \x01(\bB\b\x92\xa6\x1d\x04trueR\x1bnodeToNodeEncryptionEnabled\x12l\n" +
+	"kms_key_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12S\n" +
+	"\x1fnode_to_node_encryption_enabled\x18\a \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x1bnodeToNodeEncryptionEnabled\x88\x01\x01\x12l\n" +
 	"\vvpc_options\x18\b \x01(\v2K.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptionsR\n" +
 	"vpcOptions\x12\x88\x01\n" +
 	"\x17domain_endpoint_options\x18\t \x01(\v2P.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEndpointOptionsR\x15domainEndpointOptions\x12\x94\x01\n" +
@@ -1552,23 +1699,30 @@ const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x16log_publishing_options\x18\f \x03(\v2T.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainLogPublishingOptionR\x14logPublishingOptions\x12@\n" +
 	"\x0faccess_policies\x18\r \x01(\v2\x17.google.protobuf.StructR\x0eaccessPolicies\x12|\n" +
 	"\x11auto_tune_options\x18\x0e \x01(\v2P.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneOptionsR\x0fautoTuneOptions\x12Q\n" +
-	"\x1dautomated_snapshot_start_hour\x18\x0f \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00H\x00R\x1aautomatedSnapshotStartHour\x88\x01\x01\x12\x8c\x01\n" +
+	"\x1dautomated_snapshot_start_hour\x18\x0f \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00H\x02R\x1aautomatedSnapshotStartHour\x88\x01\x01\x12\x8c\x01\n" +
 	"\x17off_peak_window_options\x18\x10 \x01(\v2U.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainOffPeakWindowOptionsR\x14offPeakWindowOptions\x12?\n" +
 	"\x1cauto_software_update_enabled\x18\x11 \x01(\bR\x19autoSoftwareUpdateEnabled\x12U\n" +
 	"\x13deployment_strategy\x18\x12 \x01(\tB$\xbaH!\xd8\x01\x01r\x1cR\aDefaultR\x11CapacityOptimizedR\x12deploymentStrategy\x12&\n" +
 	"\x0fip_address_type\x18\x13 \x01(\tR\ripAddressType\x12\x85\x01\n" +
 	"\x10advanced_options\x18\x14 \x03(\v2Z.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.AdvancedOptionsEntryR\x0fadvancedOptions\x12o\n" +
 	"\faiml_options\x18\x15 \x01(\v2L.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAimlOptionsR\vaimlOptions\x12\x8e\x01\n" +
-	"\x17identity_center_options\x18\x16 \x01(\v2V.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainIdentityCenterOptionsR\x15identityCenterOptions\x1aB\n" +
+	"\x17identity_center_options\x18\x16 \x01(\v2V.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainIdentityCenterOptionsR\x15identityCenterOptions\x12o\n" +
+	"\fsaml_options\x18\x17 \x01(\v2L.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSamlOptionsR\vsamlOptions\x12^\n" +
+	"'authorized_vpc_endpoint_access_accounts\x18\x18 \x03(\tB\b\xbaH\x05\x92\x01\x02\x18\x01R#authorizedVpcEndpointAccessAccounts\x1aB\n" +
 	"\x14AdvancedOptionsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\x8c\a\xbaH\x88\a\x1a\xde\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xad\r\xbaH\xa9\r\x1a\xde\x01\n" +
 	"\x15engine_version_format\x12xengine_version must match 'OpenSearch_X.Y' or 'Elasticsearch_X.Y' format (e.g., 'OpenSearch_2.11', 'Elasticsearch_7.10')\x1aKthis.engine_version.matches('^(OpenSearch|Elasticsearch)_[0-9]+\\\\.[0-9]+$')\x1a\x88\x01\n" +
 	"\x17kms_requires_encryption\x126kms_key_id requires encrypt_at_rest_enabled to be true\x1a5!has(this.kms_key_id) || this.encrypt_at_rest_enabled\x1a\x9c\x01\n" +
 	"\x15ip_address_type_valid\x126ip_address_type must be 'ipv4' or 'dualstack' when set\x1aKthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack']\x1a\x80\x01\n" +
 	"\x14log_options_max_four\x12?at most 4 log publishing options are allowed (one per log_type)\x1a'this.log_publishing_options.size() <= 4\x1a\xf7\x01\n" +
-	"\x17audit_logs_require_fgac\x12DAUDIT_LOGS log type requires advanced_security_options to be enabled\x1a\x95\x01!this.log_publishing_options.exists(l, l.log_type == 'AUDIT_LOGS') || (has(this.advanced_security_options) && this.advanced_security_options.enabled)B \n" +
-	"\x1e_automated_snapshot_start_hour\"\xa3\x0f\n" +
+	"\x17audit_logs_require_fgac\x12DAUDIT_LOGS log type requires advanced_security_options to be enabled\x1a\x95\x01!this.log_publishing_options.exists(l, l.log_type == 'AUDIT_LOGS') || (has(this.advanced_security_options) && this.advanced_security_options.enabled)\x1a\xf4\x01\n" +
+	"\x12saml_requires_fgac\x12rsaml_options requires advanced_security_options to be enabled (SAML roles map through fine-grained access control)\x1aj!has(this.saml_options) || (has(this.advanced_security_options) && this.advanced_security_options.enabled)\x1a\xe7\x02\n" +
+	"\x1cjwt_requires_opensearch_2_11\x12\x7fadvanced_security_options.jwt_options requires engine_version OpenSearch_2.11 or newer (not available on Elasticsearch engines)\x1a\xc5\x01!has(this.advanced_security_options) || !has(this.advanced_security_options.jwt_options) || this.engine_version.matches('^OpenSearch_(2\\\\.(1[1-9]|[2-9][0-9])|[3-9]\\\\.[0-9]+|[1-9][0-9]+\\\\.[0-9]+)$')\x1a\xbd\x01\n" +
+	"\x1aauthorized_accounts_format\x12Pauthorized_vpc_endpoint_access_accounts entries must be 12-digit AWS account IDs\x1aMthis.authorized_vpc_endpoint_access_accounts.all(a, a.matches('^[0-9]{12}$'))B\x1a\n" +
+	"\x18_encrypt_at_rest_enabledB\"\n" +
+	" _node_to_node_encryption_enabledB \n" +
+	"\x1e_automated_snapshot_start_hour\"\x8f\x11\n" +
 	" AwsOpenSearchDomainClusterConfig\x12+\n" +
 	"\rinstance_type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\finstanceType\x121\n" +
 	"\x0einstance_count\x18\x02 \x01(\x05B\x05\x8a\xa6\x1d\x011H\x00R\rinstanceCount\x88\x01\x01\x128\n" +
@@ -1578,27 +1732,31 @@ const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\fnode_options\x18\x06 \x03(\v2K.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainNodeOptionR\vnodeOptions\x124\n" +
 	"\x16zone_awareness_enabled\x18\a \x01(\bR\x14zoneAwarenessEnabled\x126\n" +
 	"\x17availability_zone_count\x18\b \x01(\x05R\x15availabilityZoneCount\x12!\n" +
-	"\fwarm_enabled\x18\t \x01(\bR\vwarmEnabled\x12\x1b\n" +
+	"\fwarm_enabled\x18\t \x01(\bR\vwarmEnabled\x12r\n" +
 	"\twarm_type\x18\n" +
-	" \x01(\tR\bwarmType\x12\x1d\n" +
+	" \x01(\tBU\xbaHR\xd8\x01\x01rMR\x18ultrawarm1.medium.searchR\x17ultrawarm1.large.searchR\x18ultrawarm1.xlarge.searchR\bwarmType\x12\x1d\n" +
 	"\n" +
 	"warm_count\x18\v \x01(\x05R\twarmCount\x120\n" +
 	"\x14cold_storage_enabled\x18\f \x01(\bR\x12coldStorageEnabled\x12@\n" +
-	"\x1dmulti_az_with_standby_enabled\x18\r \x01(\bR\x19multiAzWithStandbyEnabled:\xb6\t\xbaH\xb2\t\x1a\xa5\x01\n" +
+	"\x1dmulti_az_with_standby_enabled\x18\r \x01(\bR\x19multiAzWithStandbyEnabled:\xcb\n" +
+	"\xbaH\xc7\n" +
+	"\x1a\xa5\x01\n" +
 	"\x1cmaster_type_requires_enabled\x12Bdedicated_master_type requires dedicated_master_enabled to be true\x1aAthis.dedicated_master_type == '' || this.dedicated_master_enabled\x1a\xa7\x01\n" +
 	"\x1dmaster_count_requires_enabled\x12Cdedicated_master_count requires dedicated_master_enabled to be true\x1aAthis.dedicated_master_count == 0 || this.dedicated_master_enabled\x1a\xa8\x01\n" +
 	" az_count_requires_zone_awareness\x12Bavailability_zone_count requires zone_awareness_enabled to be true\x1a@this.availability_zone_count == 0 || this.zone_awareness_enabled\x1a\x95\x01\n" +
 	"\x15az_count_valid_values\x12/availability_zone_count must be 2 or 3 when set\x1aKthis.availability_zone_count == 0 || this.availability_zone_count in [2, 3]\x1as\n" +
 	"\x1awarm_type_requires_enabled\x12*warm_type requires warm_enabled to be true\x1a)this.warm_type == '' || this.warm_enabled\x1au\n" +
 	"\x1bwarm_count_requires_enabled\x12+warm_count requires warm_enabled to be true\x1a)this.warm_count == 0 || this.warm_enabled\x1a\x8b\x01\n" +
-	"\x10warm_count_range\x12-warm_count must be between 2 and 150 when set\x1aHthis.warm_count == 0 || (this.warm_count >= 2 && this.warm_count <= 150)\x1a\xa0\x01\n" +
+	"\x10warm_count_range\x12-warm_count must be between 2 and 150 when set\x1aHthis.warm_count == 0 || (this.warm_count >= 2 && this.warm_count <= 150)\x1a\x92\x01\n" +
+	"\x1bwarm_enabled_requires_shape\x12.warm_enabled requires warm_type and warm_count\x1aC!this.warm_enabled || (this.warm_type != '' && this.warm_count > 0)\x1a\xa0\x01\n" +
 	"\x12cold_requires_warm\x12Ycold_storage_enabled requires warm_enabled to be true (cold storage depends on UltraWarm)\x1a/!this.cold_storage_enabled || this.warm_enabledB\x11\n" +
-	"\x0f_instance_count\"\xa8\x01\n" +
+	"\x0f_instance_count\"\xd2\x02\n" +
 	"\x1dAwsOpenSearchDomainNodeOption\x122\n" +
 	"\tnode_type\x18\x01 \x01(\tB\x15\xbaH\x12\xc8\x01\x01r\rR\vcoordinatorR\bnodeType\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x12#\n" +
 	"\rinstance_type\x18\x03 \x01(\tR\finstanceType\x12\x14\n" +
-	"\x05count\x18\x04 \x01(\x05R\x05count\"\xc0\a\n" +
+	"\x05count\x18\x04 \x01(\x05R\x05count:\xa7\x01\xbaH\xa3\x01\x1a\xa0\x01\n" +
+	"\x1benabled_pool_requires_shape\x12Ban enabled node pool requires instance_type and count (at least 1)\x1a=!this.enabled || (this.instance_type != '' && this.count > 0)\"\xc0\a\n" +
 	"\x1dAwsOpenSearchDomainEbsOptions\x12\x1f\n" +
 	"\vebs_enabled\x18\x01 \x01(\bR\n" +
 	"ebsEnabled\x12\x1f\n" +
@@ -1614,20 +1772,22 @@ const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x11volume_type_valid\x12?volume_type must be 'gp3', 'gp2', 'io1', or 'standard' when set\x1aOthis.volume_type == '' || this.volume_type in ['gp3', 'gp2', 'io1', 'standard']\x1a\x85\x01\n" +
 	"\x19iops_requires_volume_type\x122iops is only valid for 'gp3' or 'io1' volume types\x1a4this.iops == 0 || this.volume_type in ['gp3', 'io1']\x1a|\n" +
 	"\x17throughput_requires_gp3\x12.throughput is only valid for 'gp3' volume type\x1a1this.throughput == 0 || this.volume_type == 'gp3'\x1at\n" +
-	"\x12throughput_minimum\x12.throughput must be at least 125 MiB/s when set\x1a.this.throughput == 0 || this.throughput >= 125\"\xa3\x02\n" +
+	"\x12throughput_minimum\x12.throughput must be at least 125 MiB/s when set\x1a.this.throughput == 0 || this.throughput >= 125\"\x89\x03\n" +
 	"\x1dAwsOpenSearchDomainVpcOptions\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xf8\x05\n" +
+	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds:d\xbaHa\x1a_\n" +
+	"\x14vpc_requires_subnets\x12+vpc_options requires at least one subnet_id\x1a\x1athis.subnet_ids.size() > 0\"\x95\t\n" +
 	"\"AwsOpenSearchDomainEndpointOptions\x122\n" +
-	"\renforce_https\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\fenforceHttps\x88\x01\x01\x12.\n" +
-	"\x13tls_security_policy\x18\x02 \x01(\tR\x11tlsSecurityPolicy\x126\n" +
+	"\renforce_https\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\fenforceHttps\x88\x01\x01\x12\xbc\x01\n" +
+	"\x13tls_security_policy\x18\x02 \x01(\tB\x8b\x01\xbaH\x87\x01\xd8\x01\x01r\x81\x01R\x1aPolicy-Min-TLS-1-0-2019-07R\x1aPolicy-Min-TLS-1-2-2019-07R\x1ePolicy-Min-TLS-1-2-PFS-2023-10R'Policy-Min-TLS-1-2-RFC9151-FIPS-2024-08R\x11tlsSecurityPolicy\x126\n" +
 	"\x17custom_endpoint_enabled\x18\x03 \x01(\bR\x15customEndpointEnabled\x12'\n" +
 	"\x0fcustom_endpoint\x18\x04 \x01(\tR\x0ecustomEndpoint\x12\x9b\x01\n" +
-	"\x1fcustom_endpoint_certificate_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x1ccustomEndpointCertificateArn:\xdc\x02\xbaH\xd8\x02\x1a\x9b\x01\n" +
+	"\x1fcustom_endpoint_certificate_arn\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xe9\a\x92\xd4a\x17status.outputs.cert_arnR\x1ccustomEndpointCertificateArn:\xea\x04\xbaH\xe6\x04\x1a\x9b\x01\n" +
 	" custom_endpoint_requires_enabled\x12;custom_endpoint requires custom_endpoint_enabled to be true\x1a:this.custom_endpoint == '' || this.custom_endpoint_enabled\x1a\xb7\x01\n" +
-	"\x1ccert_requires_custom_enabled\x12Kcustom_endpoint_certificate_arn requires custom_endpoint_enabled to be true\x1aJ!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_enabledB\x10\n" +
-	"\x0e_enforce_https\"\x9c\x0e\n" +
+	"\x1ccert_requires_custom_enabled\x12Kcustom_endpoint_certificate_arn requires custom_endpoint_enabled to be true\x1aJ!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_enabled\x1a\x8b\x02\n" +
+	"\x0fcert_arn_format\x12Vcustom_endpoint_certificate_arn literal value must be an ACM certificate ARN (arn:...)\x1a\x9f\x01!has(this.custom_endpoint_certificate_arn) || this.custom_endpoint_certificate_arn.value == '' || this.custom_endpoint_certificate_arn.value.startsWith('arn:')B\x10\n" +
+	"\x0e_enforce_https\"\xf1\x0f\n" +
 	"*AwsOpenSearchDomainAdvancedSecurityOptions\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12C\n" +
 	"\x1einternal_user_database_enabled\x18\x02 \x01(\bR\x1binternalUserDatabaseEnabled\x124\n" +
@@ -1636,23 +1796,24 @@ const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\x10master_user_name\x18\x05 \x01(\tR\x0emasterUserName\x12j\n" +
 	"\x14master_user_password\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\x12masterUserPassword\x12l\n" +
 	"\vjwt_options\x18\a \x01(\v2K.dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainJwtOptionsR\n" +
-	"jwtOptions:\xd6\t\xbaH\xd2\t\x1a\xa1\x01\n" +
+	"jwtOptions:\xab\v\xbaH\xa7\v\x1a\xa1\x01\n" +
 	"\x19internal_db_requires_fgac\x12Ninternal_user_database_enabled requires advanced security (enabled) to be true\x1a4!this.internal_user_database_enabled || this.enabled\x1a\x94\x01\n" +
 	"\x1canonymous_auth_requires_fgac\x12Fanonymous_auth_enabled requires advanced security (enabled) to be true\x1a,!this.anonymous_auth_enabled || this.enabled\x1a\xf0\x01\n" +
 	"\x1cmaster_user_mutual_exclusion\x12\x92\x01master_user_arn and master_user_name/master_user_password are mutually exclusive; use IAM-based OR internal user database authentication, not both\x1a;!(has(this.master_user_arn) && this.master_user_name != '')\x1a\xfc\x01\n" +
 	"!master_user_required_when_enabled\x12\x8b\x01when advanced security is enabled, provide either master_user_arn (IAM) or master_user_name + master_user_password (internal user database)\x1aI!this.enabled || has(this.master_user_arn) || this.master_user_name != ''\x1a\x96\x01\n" +
 	"\x1apassword_requires_username\x128master_user_password requires master_user_name to be set\x1a>!has(this.master_user_password) || this.master_user_name != ''\x1a\x8f\x01\n" +
 	"\x1emaster_user_name_requires_fgac\x12@master_user_name requires advanced security (enabled) to be true\x1a+this.master_user_name == '' || this.enabled\x1ax\n" +
-	"\x11jwt_requires_fgac\x12;jwt_options requires advanced security (enabled) to be true\x1a&!has(this.jwt_options) || this.enabled\"\xe7\x02\n" +
+	"\x11jwt_requires_fgac\x12;jwt_options requires advanced security (enabled) to be true\x1a&!has(this.jwt_options) || this.enabled\x1a\xd2\x01\n" +
+	"\x16master_user_arn_format\x12Gmaster_user_arn literal value must be an IAM user or role ARN (arn:...)\x1ao!has(this.master_user_arn) || this.master_user_arn.value == '' || this.master_user_arn.value.startsWith('arn:')\"\xe4\x02\n" +
 	"\x1dAwsOpenSearchDomainJwtOptions\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12#\n" +
 	"\bjwks_url\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\x10R\ajwksUrl\x12\x1d\n" +
 	"\n" +
-	"public_key\x18\x03 \x01(\tR\tpublicKey\x12\x1b\n" +
-	"\troles_key\x18\x04 \x01(\tR\brolesKey\x12\x1f\n" +
-	"\vsubject_key\x18\x05 \x01(\tR\n" +
-	"subjectKey:\xa9\x01\xbaH\xa5\x01\x1a\xa2\x01\n" +
-	"\x1ejwt_validation_source_required\x12Aprovide jwks_url or public_key when JWT authentication is enabled\x1a=!this.enabled || this.jwks_url != '' || this.public_key != ''\"\xca\x04\n" +
+	"public_key\x18\x03 \x01(\tR\tpublicKey\x12$\n" +
+	"\troles_key\x18\x04 \x01(\tB\a\xbaH\x04r\x02\x18@R\brolesKey\x12(\n" +
+	"\vsubject_key\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x18@R\n" +
+	"subjectKey:\x94\x01\xbaH\x90\x01\x1a\x8d\x01\n" +
+	"\x1ejwt_validation_source_required\x12=provide jwks_url or public_key when jwt_options is configured\x1a,this.jwks_url != '' || this.public_key != ''\"\xca\x04\n" +
 	"!AwsOpenSearchDomainCognitoOptions\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12~\n" +
 	"\fuser_pool_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\x88\xd4a\xcc\b\x92\xd4a\x1bstatus.outputs.user_pool_id\x98\xd4a\x01R\n" +
@@ -1670,31 +1831,45 @@ const file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\bstart_at\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\astartAt\x121\n" +
 	"\x0eduration_hours\x18\x02 \x01(\x05B\n" +
 	"\xbaH\a\xc8\x01\x01\x1a\x02(\x01R\rdurationHours\x12K\n" +
-	"\x1ecron_expression_for_recurrence\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x1bcronExpressionForRecurrence\"\xed\x01\n" +
-	"'AwsOpenSearchDomainOffPeakWindowOptions\x12\x18\n" +
-	"\aenabled\x18\x01 \x01(\bR\aenabled\x12:\n" +
-	"\x11window_start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00H\x00R\x0fwindowStartHour\x88\x01\x01\x12>\n" +
-	"\x13window_start_minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00H\x01R\x11windowStartMinute\x88\x01\x01B\x14\n" +
+	"\x1ecron_expression_for_recurrence\x18\x03 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x1bcronExpressionForRecurrence\"\x88\x02\n" +
+	"'AwsOpenSearchDomainOffPeakWindowOptions\x12'\n" +
+	"\aenabled\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01\x12:\n" +
+	"\x11window_start_hour\x18\x02 \x01(\x05B\t\xbaH\x06\x1a\x04\x18\x17(\x00H\x01R\x0fwindowStartHour\x88\x01\x01\x12>\n" +
+	"\x13window_start_minute\x18\x03 \x01(\x05B\t\xbaH\x06\x1a\x04\x18;(\x00H\x02R\x11windowStartMinute\x88\x01\x01B\n" +
+	"\n" +
+	"\b_enabledB\x14\n" +
 	"\x12_window_start_hourB\x16\n" +
 	"\x14_window_start_minute\"\xb3\x02\n" +
 	"\x1eAwsOpenSearchDomainAimlOptions\x12\x80\x01\n" +
 	"/natural_language_query_generation_desired_state\x18\x01 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aENABLEDR\bDISABLEDR*naturalLanguageQueryGenerationDesiredState\x129\n" +
 	"\x19s3_vectors_engine_enabled\x18\x02 \x01(\bR\x16s3VectorsEngineEnabled\x12S\n" +
-	"&serverless_vector_acceleration_enabled\x18\x03 \x01(\bR#serverlessVectorAccelerationEnabled\"\xd5\x03\n" +
+	"&serverless_vector_acceleration_enabled\x18\x03 \x01(\bR#serverlessVectorAccelerationEnabled\"\xe6\x03\n" +
 	"(AwsOpenSearchDomainIdentityCenterOptions\x12,\n" +
-	"\x12enabled_api_access\x18\x01 \x01(\bR\x10enabledApiAccess\x12?\n" +
-	"\x1cidentity_center_instance_arn\x18\x02 \x01(\tR\x19identityCenterInstanceArn\x129\n" +
+	"\x12enabled_api_access\x18\x01 \x01(\bR\x10enabledApiAccess\x12P\n" +
+	"\x1cidentity_center_instance_arn\x18\x02 \x01(\tB\x0f\xbaH\f\xd8\x01\x01r\a2\x05^arn:R\x19identityCenterInstanceArn\x129\n" +
 	"\troles_key\x18\x03 \x01(\tB\x1c\xbaH\x19\xd8\x01\x01r\x14R\tGroupNameR\aGroupIdR\brolesKey\x12B\n" +
 	"\vsubject_key\x18\x04 \x01(\tB!\xbaH\x1e\xd8\x01\x01r\x19R\bUserNameR\x06UserIdR\x05EmailR\n" +
 	"subjectKey:\xba\x01\xbaH\xb6\x01\x1a\xb3\x01\n" +
-	"\"instance_arn_required_when_enabled\x12Hidentity_center_instance_arn is required when enabled_api_access is true\x1aC!this.enabled_api_access || this.identity_center_instance_arn != ''\"\xf4\x03\n" +
+	"\"instance_arn_required_when_enabled\x12Hidentity_center_instance_arn is required when enabled_api_access is true\x1aC!this.enabled_api_access || this.identity_center_instance_arn != ''\"\xef\x05\n" +
 	"&AwsOpenSearchDomainLogPublishingOption\x12!\n" +
 	"\blog_type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\alogType\x12\x98\x01\n" +
 	"\x18cloudwatch_log_group_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB+\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\b\x92\xd4a\x1cstatus.outputs.log_group_arnR\x15cloudwatchLogGroupArn\x12'\n" +
-	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01:\xd6\x01\xbaH\xd2\x01\x1a\xcf\x01\n" +
+	"\aenabled\x18\x03 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\aenabled\x88\x01\x01:\xd1\x03\xbaH\xcd\x03\x1a\xf8\x01\n" +
+	"\x14log_group_arn_format\x12Scloudwatch_log_group_arn literal value must be a CloudWatch log group ARN (arn:...)\x1a\x8a\x01!has(this.cloudwatch_log_group_arn) || this.cloudwatch_log_group_arn.value == '' || this.cloudwatch_log_group_arn.value.startsWith('arn:')\x1a\xcf\x01\n" +
 	"\x0elog_type_valid\x12^log_type must be 'INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', or 'AUDIT_LOGS'\x1a]this.log_type in ['INDEX_SLOW_LOGS', 'SEARCH_SLOW_LOGS', 'ES_APPLICATION_LOGS', 'AUDIT_LOGS']B\n" +
 	"\n" +
-	"\b_enabledB\xf5\x02\n" +
+	"\b_enabled\"\x8a\x04\n" +
+	"\x1eAwsOpenSearchDomainSamlOptions\x12+\n" +
+	"\ridp_entity_id\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\vidpEntityId\x129\n" +
+	"\x14idp_metadata_content\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x12idpMetadataContent\x12.\n" +
+	"\x13master_backend_role\x18\x03 \x01(\tR\x11masterBackendRole\x12.\n" +
+	"\x10master_user_name\x18\x04 \x01(\tB\x04\xa0\xa6\x1d\x01R\x0emasterUserName\x12\x1b\n" +
+	"\troles_key\x18\x05 \x01(\tR\brolesKey\x12\x1f\n" +
+	"\vsubject_key\x18\x06 \x01(\tR\n" +
+	"subjectKey\x12B\n" +
+	"\x17session_timeout_minutes\x18\a \x01(\x05B\n" +
+	"\xbaH\a\x1a\x05\x18\xa0\v(\x00R\x15sessionTimeoutMinutes:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
+	"\x14one_master_principal\x12?master_backend_role and master_user_name are mutually exclusive\x1a=this.master_backend_role == '' || this.master_user_name == ''B\xf5\x02\n" +
 	"0com.dev.planton.aws.awsopensearchdomain.v1alpha1B\tSpecProtoP\x01Zagithub.com/plantonhq/planton/catalog/aws/awsopensearchdomain/v1alpha1;awsopensearchdomainv1alpha1\xa2\x02\x04DPAA\xaa\x02,Dev.Planton.Aws.Awsopensearchdomain.V1alpha1\xca\x02,Dev\\Planton\\Aws\\Awsopensearchdomain\\V1alpha1\xe2\x028Dev\\Planton\\Aws\\Awsopensearchdomain\\V1alpha1\\GPBMetadata\xea\x020Dev::Planton::Aws::Awsopensearchdomain::V1alpha1b\x06proto3"
 
 var (
@@ -1709,7 +1884,7 @@ func file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDescGZIP() []by
 	return file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsOpenSearchDomainSpec)(nil),                        // 0: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec
 	(*AwsOpenSearchDomainClusterConfig)(nil),               // 1: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainClusterConfig
@@ -1726,41 +1901,43 @@ var file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsOpenSearchDomainAimlOptions)(nil),                 // 12: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAimlOptions
 	(*AwsOpenSearchDomainIdentityCenterOptions)(nil),       // 13: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainIdentityCenterOptions
 	(*AwsOpenSearchDomainLogPublishingOption)(nil),         // 14: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainLogPublishingOption
-	nil,                         // 15: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.AdvancedOptionsEntry
-	(*v1.StringValueOrRef)(nil), // 16: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*structpb.Struct)(nil),     // 17: google.protobuf.Struct
+	(*AwsOpenSearchDomainSamlOptions)(nil),                 // 15: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSamlOptions
+	nil,                                                    // 16: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.AdvancedOptionsEntry
+	(*v1.StringValueOrRef)(nil),                            // 17: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                                // 18: google.protobuf.Struct
 }
 var file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_depIdxs = []int32{
 	1,  // 0: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.cluster_config:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainClusterConfig
 	3,  // 1: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.ebs_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEbsOptions
-	16, // 2: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 2: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	4,  // 3: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.vpc_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptions
 	5,  // 4: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.domain_endpoint_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEndpointOptions
 	6,  // 5: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.advanced_security_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions
 	8,  // 6: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.cognito_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainCognitoOptions
 	14, // 7: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.log_publishing_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainLogPublishingOption
-	17, // 8: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.access_policies:type_name -> google.protobuf.Struct
+	18, // 8: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.access_policies:type_name -> google.protobuf.Struct
 	9,  // 9: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.auto_tune_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneOptions
 	11, // 10: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.off_peak_window_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainOffPeakWindowOptions
-	15, // 11: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.advanced_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.AdvancedOptionsEntry
+	16, // 11: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.advanced_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.AdvancedOptionsEntry
 	12, // 12: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.aiml_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAimlOptions
 	13, // 13: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.identity_center_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainIdentityCenterOptions
-	2,  // 14: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainClusterConfig.node_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainNodeOption
-	16, // 15: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptions.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 16: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptions.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 17: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEndpointOptions.custom_endpoint_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 18: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.master_user_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 19: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.master_user_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7,  // 20: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.jwt_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainJwtOptions
-	16, // 21: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainCognitoOptions.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	16, // 22: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainCognitoOptions.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	10, // 23: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneOptions.maintenance_schedules:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneMaintenanceSchedule
-	16, // 24: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainLogPublishingOption.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // [25:25] is the sub-list for method output_type
-	25, // [25:25] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	15, // 14: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSpec.saml_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainSamlOptions
+	2,  // 15: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainClusterConfig.node_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainNodeOption
+	17, // 16: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptions.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 17: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainVpcOptions.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 18: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainEndpointOptions.custom_endpoint_certificate_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 19: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.master_user_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 20: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.master_user_password:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7,  // 21: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAdvancedSecurityOptions.jwt_options:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainJwtOptions
+	17, // 22: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainCognitoOptions.user_pool_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	17, // 23: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainCognitoOptions.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // 24: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneOptions.maintenance_schedules:type_name -> dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainAutoTuneMaintenanceSchedule
+	17, // 25: dev.planton.aws.awsopensearchdomain.v1alpha1.AwsOpenSearchDomainLogPublishingOption.cloudwatch_log_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	26, // [26:26] is the sub-list for method output_type
+	26, // [26:26] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_init() }
@@ -1779,7 +1956,7 @@ func file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsopensearchdomain_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

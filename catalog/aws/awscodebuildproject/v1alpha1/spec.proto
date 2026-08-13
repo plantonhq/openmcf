@@ -578,7 +578,37 @@ message AwsCodeBuildEnvironment {
   // time; required for MAC_ARM and the EC2 environment types). The fleet is
   // a shared, account-level resource managed outside this project; reference
   // it by ARN.
-  string fleet_arn = 10;
+  string fleet_arn = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^arn:aws[a-zA-Z-]*:codebuild:[a-z0-9-]+:[0-9]{12}:fleet/.+$"
+  ];
+
+  // host_kernel selects the Linux kernel version for the build hosts.
+  //   LINUX_KERNEL_4:      Kernel 4.x (the long-standing default)
+  //   LINUX_KERNEL_6:      Kernel 6.x (newer eBPF/io_uring features)
+  //   LINUX_KERNEL_LATEST: Always the newest kernel CodeBuild offers
+  // Applies only to the LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and
+  // ARM_EC2 environment types — AWS's contract; Windows, Lambda, and Mac
+  // environments have no kernel selection. Omit to let AWS choose.
+  string host_kernel = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "LINUX_KERNEL_4",
+        "LINUX_KERNEL_6",
+        "LINUX_KERNEL_LATEST"
+      ]
+    }
+  ];
+
+  // AWS scopes kernel selection to the Linux container/EC2 environment
+  // types (the provider does not enforce this — caught here at validation
+  // time instead of at apply time).
+  option (buf.validate.message).cel = {
+    id: "host_kernel_requires_linux_environment"
+    message: "host_kernel applies only to LINUX_CONTAINER, ARM_CONTAINER, LINUX_EC2, and ARM_EC2 environment types"
+    expression: "this.host_kernel == '' || this.type in ['LINUX_CONTAINER', 'ARM_CONTAINER', 'LINUX_EC2', 'ARM_EC2']"
+  };
 }
 
 // AwsCodeBuildDockerServer configures the project's persistent Docker server.

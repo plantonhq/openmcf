@@ -20,21 +20,30 @@ func jobDefinition(
 ) (*batch.JobDefinition, error) {
 	spec := locals.AwsBatchJobDefinition.Spec
 
-	containerProperties, err := buildContainerProperties(spec)
-	if err != nil {
-		return nil, errors.Wrap(err, "build container properties")
-	}
-
 	args := &batch.JobDefinitionArgs{
 		// The cloud name comes from metadata.name (the catalog naming
 		// basis) -- revisions register under this name in both engines.
 		Name: pulumi.StringPtr(locals.AwsBatchJobDefinition.Metadata.Name),
-		// Only single-container ECS-based jobs are modeled; multinode
-		// (nodeProperties), multi-container ECS (ecsProperties), and
-		// Batch-on-EKS (eksProperties) are separate long-tail arms.
-		Type:                pulumi.String("container"),
-		ContainerProperties: pulumi.StringPtr(containerProperties),
-		Tags:                pulumi.ToStringMap(locals.AwsTags),
+		// Two workload arms are modeled, both of AWS type "container":
+		// ECS-based container jobs (containerProperties) and Batch-on-EKS
+		// pod jobs (eksProperties). The spec guarantees exactly one arm is
+		// set. Multinode (nodeProperties, type "multinode") and
+		// multi-container ECS (ecsProperties) remain unmodeled long-tail
+		// shapes.
+		Type: pulumi.String("container"),
+		Tags: pulumi.ToStringMap(locals.AwsTags),
+	}
+
+	if spec.Container != nil {
+		containerProperties, err := buildContainerProperties(spec)
+		if err != nil {
+			return nil, errors.Wrap(err, "build container properties")
+		}
+		args.ContainerProperties = pulumi.StringPtr(containerProperties)
+	}
+
+	if spec.Eks != nil {
+		args.EksProperties = buildEksProperties(spec.Eks)
 	}
 
 	if len(spec.PlatformCapabilities) > 0 {

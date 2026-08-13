@@ -11,6 +11,7 @@ import (
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -114,8 +115,12 @@ type AwsVpcEndpointSpec struct {
 	// reach the service with zero code changes. Requires the VPC to have
 	// BOTH DNS support and DNS hostnames enabled. Interface endpoints
 	// only (AWS replaces the endpoint if this changes on other types --
-	// on Interface it updates in place). Off by default, matching AWS.
-	PrivateDnsEnabled bool `protobuf:"varint,10,opt,name=private_dns_enabled,json=privateDnsEnabled,proto3" json:"private_dns_enabled,omitempty"`
+	// on Interface it updates in place). Tri-state: unset lets AWS use
+	// its default (off) and keeps an existing endpoint's current setting
+	// (the provider attribute is Optional+Computed -- an omitted value is
+	// never sent); true enables private DNS; an EXPLICIT false is the
+	// only way to turn it back off once enabled.
+	PrivateDnsEnabled *bool `protobuf:"varint,10,opt,name=private_dns_enabled,json=privateDnsEnabled,proto3,oneof" json:"private_dns_enabled,omitempty"`
 	// Fine-grained DNS behavior for the endpoint. Only meaningful when
 	// the endpoint creates DNS records (interface endpoints, and the
 	// Lattice types for the preference/domain fields).
@@ -125,13 +130,15 @@ type AwsVpcEndpointSpec struct {
 	// effectively ipv4 for nearly every service today. The service must
 	// support the chosen type. Updates in place.
 	IpAddressType string `protobuf:"bytes,12,opt,name=ip_address_type,json=ipAddressType,proto3" json:"ip_address_type,omitempty"`
-	// An IAM policy document (JSON) controlling which principals may use
-	// the endpoint to reach which resources -- e.g. "only this account's
+	// An IAM policy document controlling which principals may use the
+	// endpoint to reach which resources -- e.g. "only this account's
 	// buckets" on an S3 gateway endpoint, turning the endpoint into a
-	// data-exfiltration control. Empty means full access (AWS's
-	// default). All gateway and most interface endpoints support
-	// policies. Updates in place.
-	Policy string `protobuf:"bytes,13,opt,name=policy,proto3" json:"policy,omitempty"`
+	// data-exfiltration control. Expressed as a structured document
+	// (standard IAM policy shape: Version, Statement, ...) rather than an
+	// embedded JSON string. Empty means full access (AWS's default). All
+	// gateway and most interface endpoints support policies. Updates in
+	// place.
+	Policy *structpb.Struct `protobuf:"bytes,13,opt,name=policy,proto3" json:"policy,omitempty"`
 	// Pin specific IPv4/IPv6 addresses for the endpoint's ENI in chosen
 	// subnets -- for appliances or firewall rules that need stable
 	// endpoint IPs. Every subnet_id listed here must also appear in
@@ -245,8 +252,8 @@ func (x *AwsVpcEndpointSpec) GetSecurityGroupIds() []*v1.StringValueOrRef {
 }
 
 func (x *AwsVpcEndpointSpec) GetPrivateDnsEnabled() bool {
-	if x != nil {
-		return x.PrivateDnsEnabled
+	if x != nil && x.PrivateDnsEnabled != nil {
+		return *x.PrivateDnsEnabled
 	}
 	return false
 }
@@ -265,11 +272,11 @@ func (x *AwsVpcEndpointSpec) GetIpAddressType() string {
 	return ""
 }
 
-func (x *AwsVpcEndpointSpec) GetPolicy() string {
+func (x *AwsVpcEndpointSpec) GetPolicy() *structpb.Struct {
 	if x != nil {
 		return x.Policy
 	}
-	return ""
+	return nil
 }
 
 func (x *AwsVpcEndpointSpec) GetSubnetConfigurations() []*AwsVpcEndpointSubnetConfiguration {
@@ -454,7 +461,7 @@ var File_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto protoreflect.FileDescrip
 
 const file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	".catalog/aws/awsvpcendpoint/v1alpha1/spec.proto\x12'dev.planton.aws.awsvpcendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd0\x19\n" +
+	".catalog/aws/awsvpcendpoint/v1alpha1/spec.proto\x12'dev.planton.aws.awsvpcendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xba\x1c\n" +
 	"\x12AwsVpcEndpointSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12o\n" +
 	"\x06vpc_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12#\n" +
@@ -465,25 +472,27 @@ const file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0froute_table_ids\x18\a \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\x88\xd4a\xbc\b\x92\xd4a\x1dstatus.outputs.route_table_id\x98\xd4a\x01R\rrouteTableIds\x12t\n" +
 	"\n" +
 	"subnet_ids\x18\b \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB!\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
-	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12.\n" +
+	"\x12security_group_ids\x18\t \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x123\n" +
 	"\x13private_dns_enabled\x18\n" +
-	" \x01(\bR\x11privateDnsEnabled\x12b\n" +
+	" \x01(\bH\x00R\x11privateDnsEnabled\x88\x01\x01\x12b\n" +
 	"\vdns_options\x18\v \x01(\v2A.dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointDnsOptionsR\n" +
 	"dnsOptions\x12&\n" +
-	"\x0fip_address_type\x18\f \x01(\tR\ripAddressType\x12\x16\n" +
-	"\x06policy\x18\r \x01(\tR\x06policy\x12\x7f\n" +
+	"\x0fip_address_type\x18\f \x01(\tR\ripAddressType\x12/\n" +
+	"\x06policy\x18\r \x01(\v2\x17.google.protobuf.StructR\x06policy\x12\x7f\n" +
 	"\x15subnet_configurations\x18\x0e \x03(\v2J.dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfigurationR\x14subnetConfigurations\x12%\n" +
 	"\x0eservice_region\x18\x0f \x01(\tR\rserviceRegion\x12\x1f\n" +
 	"\vauto_accept\x18\x10 \x01(\bR\n" +
-	"autoAccept:\xc7\x10\xbaH\xc3\x10\x1a\xff\x01\n" +
+	"autoAccept:\xfb\x12\xbaH\xf7\x12\x1a\xff\x01\n" +
 	"\x1aservice_target_exactly_one\x12[exactly one of service_name, resource_configuration_arn, or service_network_arn must be set\x1a\x83\x01(this.service_name != '' ? 1 : 0) + (this.resource_configuration_arn != '' ? 1 : 0) + (this.service_network_arn != '' ? 1 : 0) == 1\x1a\xa9\x02\n" +
 	"\x13endpoint_type_valid\x12\x90\x01endpoint_type must be one of 'Gateway', 'Interface', 'GatewayLoadBalancer', 'Resource', or 'ServiceNetwork' when set (empty defaults to Gateway)\x1a\x7fthis.endpoint_type == '' || this.endpoint_type in ['Gateway', 'Interface', 'GatewayLoadBalancer', 'Resource', 'ServiceNetwork']\x1a\xb7\x02\n" +
 	"\x1alattice_targets_match_type\x12}resource_configuration_arn requires endpoint_type 'Resource', and service_network_arn requires endpoint_type 'ServiceNetwork'\x1a\x99\x01(this.resource_configuration_arn == '' || this.endpoint_type == 'Resource') && (this.service_network_arn == '' || this.endpoint_type == 'ServiceNetwork')\x1a\xc5\x01\n" +
-	"\x19route_tables_gateway_only\x12^route_table_ids apply only to Gateway endpoints (the default type when endpoint_type is empty)\x1aHsize(this.route_table_ids) == 0 || this.endpoint_type in ['', 'Gateway']\x1a\xc4\x03\n" +
-	"\x16eni_fields_not_gateway\x12\xc0\x01subnet_ids, security_group_ids, private_dns_enabled, subnet_configurations, and service_region do not apply to Gateway endpoints -- set endpoint_type to 'Interface' (or another ENI-based type)\x1a\xe6\x01(this.endpoint_type != '' && this.endpoint_type != 'Gateway') || (size(this.subnet_ids) == 0 && size(this.security_group_ids) == 0 && !this.private_dns_enabled && size(this.subnet_configurations) == 0 && this.service_region == '')\x1a\xea\x01\n" +
-	"!sg_and_private_dns_interface_only\x12Lsecurity_group_ids and private_dns_enabled apply only to Interface endpoints\x1awthis.endpoint_type in ['', 'Gateway', 'Interface'] || (size(this.security_group_ids) == 0 && !this.private_dns_enabled)\x1a\xac\x01\n" +
-	"\x1dservice_region_interface_only\x12Kservice_region (cross-region endpoints) applies only to Interface endpoints\x1a>this.service_region == '' || this.endpoint_type == 'Interface'\x1a\xad\x01\n" +
-	"\x15ip_address_type_valid\x12?ip_address_type must be 'ipv4', 'dualstack', or 'ipv6' when set\x1aSthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack', 'ipv6']\"\xc1\t\n" +
+	"\x19route_tables_gateway_only\x12^route_table_ids apply only to Gateway endpoints (the default type when endpoint_type is empty)\x1aHsize(this.route_table_ids) == 0 || this.endpoint_type in ['', 'Gateway']\x1a\xc9\x03\n" +
+	"\x16eni_fields_not_gateway\x12\xc0\x01subnet_ids, security_group_ids, private_dns_enabled, subnet_configurations, and service_region do not apply to Gateway endpoints -- set endpoint_type to 'Interface' (or another ENI-based type)\x1a\xeb\x01(this.endpoint_type != '' && this.endpoint_type != 'Gateway') || (size(this.subnet_ids) == 0 && size(this.security_group_ids) == 0 && !has(this.private_dns_enabled) && size(this.subnet_configurations) == 0 && this.service_region == '')\x1a\xef\x01\n" +
+	"!sg_and_private_dns_interface_only\x12Lsecurity_group_ids and private_dns_enabled apply only to Interface endpoints\x1a|this.endpoint_type in ['', 'Gateway', 'Interface'] || (size(this.security_group_ids) == 0 && !has(this.private_dns_enabled))\x1a\xac\x01\n" +
+	"\x1dservice_region_interface_only\x12Kservice_region (cross-region endpoints) applies only to Interface endpoints\x1a>this.service_region == '' || this.endpoint_type == 'Interface'\x1a\xa7\x02\n" +
+	"%inbound_resolver_requires_private_dns\x12bdns_options.private_dns_only_for_inbound_resolver_endpoint requires private_dns_enabled to be true\x1a\x99\x01!has(this.dns_options) || !this.dns_options.private_dns_only_for_inbound_resolver_endpoint || (has(this.private_dns_enabled) && this.private_dns_enabled)\x1a\xad\x01\n" +
+	"\x15ip_address_type_valid\x12?ip_address_type must be 'ipv4', 'dualstack', or 'ipv6' when set\x1aSthis.ip_address_type == '' || this.ip_address_type in ['ipv4', 'dualstack', 'ipv6']B\x16\n" +
+	"\x14_private_dns_enabled\"\xc1\t\n" +
 	"\x18AwsVpcEndpointDnsOptions\x12+\n" +
 	"\x12dns_record_ip_type\x18\x01 \x01(\tR\x0fdnsRecordIpType\x12`\n" +
 	".private_dns_only_for_inbound_resolver_endpoint\x18\x02 \x01(\bR(privateDnsOnlyForInboundResolverEndpoint\x124\n" +
@@ -517,6 +526,7 @@ var file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_goTypes = []any{
 	(*AwsVpcEndpointDnsOptions)(nil),          // 1: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointDnsOptions
 	(*AwsVpcEndpointSubnetConfiguration)(nil), // 2: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfiguration
 	(*v1.StringValueOrRef)(nil),               // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*structpb.Struct)(nil),                   // 4: google.protobuf.Struct
 }
 var file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_depIdxs = []int32{
 	3, // 0: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.vpc_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
@@ -524,13 +534,14 @@ var file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_depIdxs = []int32{
 	3, // 2: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.subnet_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	3, // 3: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.security_group_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1, // 4: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.dns_options:type_name -> dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointDnsOptions
-	2, // 5: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.subnet_configurations:type_name -> dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfiguration
-	3, // 6: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfiguration.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	4, // 5: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.policy:type_name -> google.protobuf.Struct
+	2, // 6: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSpec.subnet_configurations:type_name -> dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfiguration
+	3, // 7: dev.planton.aws.awsvpcendpoint.v1alpha1.AwsVpcEndpointSubnetConfiguration.subnet_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_init() }
@@ -538,6 +549,7 @@ func file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_init() {
 	if File_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto != nil {
 		return
 	}
+	file_catalog_aws_awsvpcendpoint_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

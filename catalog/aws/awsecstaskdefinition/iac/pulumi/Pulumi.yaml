@@ -1,4 +1,4 @@
-name: awsecstaskdefinition-pulumi-project
+name: awsecstaskdefinition
 runtime:
   name: go
 # options:

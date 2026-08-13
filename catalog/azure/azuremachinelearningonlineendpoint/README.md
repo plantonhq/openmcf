@@ -25,3 +25,7 @@ The **AzureMachineLearningOnlineEndpoint** component creates a managed online en
 
 - Batch endpoint kinds for asynchronous, job-based scoring as their contracts land in the catalog.
 - Migration to azurerm's native ML endpoint resources when the provider ships them (tracked upstream), with no manifest change.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

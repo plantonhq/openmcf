@@ -6,7 +6,7 @@ spec:
   region: us-east-1
   zoneId:
     value: "<route53-hosted-zone-id>"
-  name: <your-domain.com>
+  name: app.example.com  # replace with your record's fully qualified name
   type: A
   aliasTarget:
     dnsName:

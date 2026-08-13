@@ -2,6 +2,7 @@ package module
 
 import (
 	"github.com/plantonhq/planton/internal/valuefrom"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/datatypes/stringmaps"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
@@ -23,8 +24,10 @@ func nlb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 	nlbName := truncateName(locals.Nlb.Metadata.Name, 32)
 
 	// Each mapping pins one NLB node to a subnet, optionally with a static
-	// Elastic IP (internet-facing) or a fixed private address (internal) --
-	// the static-IP story that differentiates NLB from ALB.
+	// Elastic IP (internet-facing), a fixed private IPv4 address (internal),
+	// or a fixed IPv6 address (dualstack) -- the static-IP story that
+	// differentiates NLB from ALB. Provider-verified: modifying an EXISTING
+	// mapping replaces the load balancer; pure additions do not.
 	subnetMappings := lb.LoadBalancerSubnetMappingArray{}
 	for _, subnetMapping := range spec.SubnetMappings {
 		mapping := lb.LoadBalancerSubnetMappingArgs{
@@ -36,6 +39,9 @@ func nlb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 		if subnetMapping.PrivateIpv4Address != "" {
 			mapping.PrivateIpv4Address = pulumi.StringPtr(subnetMapping.PrivateIpv4Address)
 		}
+		if subnetMapping.Ipv6Address != "" {
+			mapping.Ipv6Address = pulumi.StringPtr(subnetMapping.Ipv6Address)
+		}
 		subnetMappings = append(subnetMappings, mapping)
 	}
 
@@ -45,7 +51,10 @@ func nlb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 		Internal:                 pulumi.Bool(spec.Internal),
 		EnableDeletionProtection: pulumi.Bool(spec.DeleteProtectionEnabled),
 		SubnetMappings:           subnetMappings,
-		Tags:                     pulumi.ToStringMap(locals.AwsTags),
+		// The Name tag carries the truncated NLB name so both engines tag the
+		// resource identically (the Terraform module does the same in its
+		// locals).
+		Tags: pulumi.ToStringMap(stringmaps.AddEntry(locals.AwsTags, "Name", nlbName)),
 	}
 
 	// Cross-zone distribution is a real cost decision on NLB (inter-AZ data
@@ -69,6 +78,30 @@ func nlb(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*lb.LoadB
 	}
 	if spec.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic != "" {
 		args.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic = pulumi.StringPtr(spec.EnforceSecurityGroupInboundRulesOnPrivateLinkTraffic)
+	}
+
+	// Prefix-based IPv6 source NAT (dualstack only; required for UDP
+	// listeners on a dualstack NLB). "on"/"off" strings mirror the
+	// provider's enum.
+	if spec.EnablePrefixForIpv6SourceNat != "" {
+		args.EnablePrefixForIpv6SourceNat = pulumi.StringPtr(spec.EnablePrefixForIpv6SourceNat)
+	}
+
+	// Secondary private IPv4 addresses AWS auto-assigns per subnet (0-7),
+	// raising the source-port budget for very high connection counts.
+	// Provider-verified: DECREASING this on a live NLB forces replacement
+	// (AWS cannot release secondary IPs in place).
+	if spec.SecondaryIpsAutoAssignedPerSubnet != nil {
+		args.SecondaryIpsAutoAssignedPerSubnet = pulumi.IntPtr(int(spec.GetSecondaryIpsAutoAssignedPerSubnet()))
+	}
+
+	// Reserved capacity (LCU reservation). Sent only when the spec asks for
+	// a reservation; unset keeps normal on-demand scaling and no
+	// reservation billing.
+	if spec.MinimumLoadBalancerCapacityUnits != nil {
+		args.MinimumLoadBalancerCapacity = &lb.LoadBalancerMinimumLoadBalancerCapacityArgs{
+			CapacityUnits: pulumi.Int(int(spec.GetMinimumLoadBalancerCapacityUnits())),
+		}
 	}
 
 	// Optional for NLB (unlike ALB) -- and once attached, AWS never allows

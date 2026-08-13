@@ -25,6 +25,7 @@ func initializeLocals(ctx *pulumi.Context, stackInput *awsalbv1alpha1.AwsAlbStac
 	locals.AwsAlb = stackInput.Target
 
 	locals.AwsTags = map[string]string{
+		awstagkeys.Name:         locals.AwsAlb.Metadata.Name,
 		awstagkeys.Resource:     strconv.FormatBool(true),
 		awstagkeys.Organization: locals.AwsAlb.Metadata.Org,
 		awstagkeys.Environment:  locals.AwsAlb.Metadata.Env,

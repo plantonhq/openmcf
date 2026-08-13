@@ -15,3 +15,15 @@ spec:
         VPC console -> Security groups (the Security group ID column), or
         `aws ec2 describe-security-groups
         --filters Name=group-name,Values=<name>` (GroupId).
+    - name: vpc_id
+      derivations:
+        # The association imports by "<group_id>,<vpc_id>" -- both halves are
+        # config-time identity: the module keys each for_each instance by the
+        # resolved VPC id, so the enumerated address carries it (the module
+        # also exports the composed import ids as the
+        # additional_vpc_association_ids map keyed the same way).
+        - from_address_key: true
+      where_to_find: >-
+        `aws ec2 describe-security-group-vpc-associations
+        --filters Name=group-id,Values=<group_id>` (each association's
+        VpcId; the import id is "<group_id>,<vpc_id>").

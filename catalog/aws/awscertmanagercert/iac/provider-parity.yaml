@@ -1,0 +1,52 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_acm_certificate:
+    mappings:
+      # The spec names the certificate's main domain explicitly and calls
+      # the SANs what AWS's own console calls them.
+      - spec: spec.primary_domain_name
+        arg: domain_name
+      - spec: spec.alternate_domain_names
+        arg: subject_alternative_names
+      # The imported (bring-your-own material) arm groups the three PEM
+      # leaves under one message so CEL can keep the creation modes honest.
+      - spec: spec.imported.certificate_body
+        arg: certificate_body
+      - spec: spec.imported.certificate_chain
+        arg: certificate_chain
+      - spec: spec.imported.private_key
+        arg: private_key
+      # The spec pluralizes the repeated block.
+      - spec: spec.validation_options
+        arg: validation_option
+    exclusions:
+      - arg: private_key_wo
+        reason: write-only variant of the covered private_key -- the platform's secret handling already keeps the modeled field out of outputs and state exports, so the ephemeral twin adds no capability
+      - arg: private_key_wo_version
+        reason: version counter that exists only to trigger updates of private_key_wo -- excluded with it
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_acm_certificate_validation:
+    internal: the issuance waiter, created when the module manages DNS validation records and spec.wait_for_validation holds -- certificate_arn and validation_record_fqdns are both wired from the certificate and its validation records, never user surface
+
+  aws_route53_record:
+    internal: narrow validation-CNAME glue driven from spec.route53_hosted_zone_id (name/type/value come from the certificate's domain_validation_options; ttl and allow_overwrite are module decisions); the full Route53 record surface belongs to AwsRoute53DnsRecord, deliberately out of this kind's scope
+
+specExclusions:
+  # Drives the internal aws_route53_record glue above and gates the
+  # internal validation waiter.
+  - field: spec.route53_hosted_zone_id
+    reason: selects the zone for the folded aws_route53_record validation glue (judged on that resource's internal entry); no aws_acm_certificate argument corresponds
+  # Drives the internal aws_acm_certificate_validation waiter above.
+  - field: spec.wait_for_validation
+    reason: gates the folded aws_acm_certificate_validation issuance waiter (judged on that resource's internal entry); no aws_acm_certificate argument corresponds

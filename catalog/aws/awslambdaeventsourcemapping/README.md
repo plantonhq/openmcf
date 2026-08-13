@@ -39,7 +39,7 @@ spec: { ... }
 | `filters` | list | no | — | EventBridge-style patterns (max 10). |
 | `functionResponseTypes` | list | no | — | `ReportBatchItemFailures` for partial-batch retry. |
 | `startingPosition` | string | stream/Kafka | — | `TRIM_HORIZON`, `LATEST`, or `AT_TIMESTAMP`. **ForceNew**. |
-| `scalingMaxConcurrency` | int32 | no | AWS default | SQS-only per-mapping concurrency throttle (2–1000). |
+| `scalingMaxConcurrency` | int32 | no | AWS default | SQS-only per-mapping concurrency throttle (minimum 2; ceiling is the function's own concurrency). |
 
 See `spec.proto` for the full surface including Kafka schema registry, provisioned pollers, MQ, and DocumentDB options.
 

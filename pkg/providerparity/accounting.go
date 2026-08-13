@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -389,7 +390,13 @@ func (m argMatcher) derive(argPath string) ([]string, bool) {
 			specs = append(specs, mp.Spec)
 			matchLen = len(mp.Arg)
 		} else if strings.HasPrefix(argPath, mp.Arg+".") {
-			specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			if mp.Collapse {
+				// Subtree-to-leaf judgment: everything under the arg
+				// subtree is the one spec leaf (recursive grammars).
+				specs = append(specs, mp.Spec)
+			} else {
+				specs = append(specs, mp.Spec+argPath[len(mp.Arg):])
+			}
 			matchLen = len(mp.Arg)
 		}
 	}
@@ -423,6 +430,18 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 	schemaWalked := false
 	for _, res := range m.Resources {
 		consumed[res] = true
+
+		// An internal judgment is the whole judgment -- module plumbing
+		// with no arguments to account. Checked BEFORE the schema lookup
+		// so utility-provider resources (e.g. hashicorp/time's time_sleep,
+		// which no cloud-provider schema knows) can be judged internal
+		// instead of tripping the stale-artifact guard.
+		rm := manifest.Resources[res]
+		if rm != nil && rm.Internal != "" {
+			ka.InternalResources = append(ka.InternalResources, res)
+			continue
+		}
+
 		var block *Block
 		for _, name := range schemaNames {
 			if b, ok := schemas[name].Resources[res]; ok {
@@ -430,7 +449,6 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 				break
 			}
 		}
-		rm := manifest.Resources[res]
 		if rm != nil && rm.External != "" {
 			if block != nil {
 				// The judgment claims the resource lives outside the loaded
@@ -447,10 +465,6 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 		if block == nil {
 			ka.ManifestStale = append(ka.ManifestStale,
 				fmt.Sprintf("consumed resource %s is unknown to every loaded schema -- the module outruns its pin or the artifacts are stale", res))
-			continue
-		}
-		if rm != nil && rm.Internal != "" {
-			ka.InternalResources = append(ka.InternalResources, res)
 			continue
 		}
 		schemaWalked = true
@@ -512,6 +526,13 @@ func accountKind(m ModuleCensus, kindSpecPaths []string, schemas map[string]*Sch
 			if !underPath(kindSpecPaths, mp.Spec) {
 				ka.ManifestStale = append(ka.ManifestStale,
 					fmt.Sprintf("%s: mapping spec %s matches no spec field", res, mp.Spec))
+			}
+			// A collapse mapping folds a whole arg subtree onto ONE leaf, so
+			// its spec side must BE a census leaf — a subtree would make the
+			// fold ambiguous and overclaim silently.
+			if mp.Collapse && !slices.Contains(kindSpecPaths, mp.Spec) {
+				ka.ManifestStale = append(ka.ManifestStale,
+					fmt.Sprintf("%s: collapse mapping spec %s must name a spec census leaf, not a subtree", res, mp.Spec))
 			}
 		}
 		for _, ex := range rm.Exclusions {

@@ -68,6 +68,9 @@ type AwsMemorydbClusterSpec struct {
 	// Engine version to deploy. Examples: "7.1", "7.0", "6.2" for Redis;
 	// "7.2", "7.3" for Valkey. Leave empty to let AWS pick the default for
 	// the engine. Upgrades apply in place; downgrades are not supported.
+	// One-way once applied: removing the field keeps the running version
+	// (the provider adopts the live value rather than reverting) — change
+	// it by naming the new version explicitly.
 	EngineVersion string `protobuf:"bytes,3,opt,name=engine_version,json=engineVersion,proto3" json:"engine_version,omitempty"`
 	// Human-readable description shown in the AWS console. Leave empty for
 	// none — the modules always send an explicit value so the two IaC engines
@@ -126,7 +129,9 @@ type AwsMemorydbClusterSpec struct {
 	// in place.
 	IpDiscovery string `protobuf:"bytes,14,opt,name=ip_discovery,json=ipDiscovery,proto3" json:"ip_discovery,omitempty"`
 	// Enable TLS for in-transit encryption on all client connections. Default
-	// true. When false, AWS only accepts the "open-access" ACL (no
+	// true — and the provider enforces that default itself, so omitting the
+	// field is identical to sending true; explicit false is the only way to
+	// disable. When false, AWS only accepts the "open-access" ACL (no
 	// authentication without encryption). ForceNew — changing it destroys and
 	// recreates the cluster. IAM-authenticated users also require TLS.
 	TlsEnabled *bool `protobuf:"varint,15,opt,name=tls_enabled,json=tlsEnabled,proto3,oneof" json:"tls_enabled,omitempty"`
@@ -136,22 +141,32 @@ type AwsMemorydbClusterSpec struct {
 	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,16,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
 	// Weekly maintenance window in UTC, minimum 60 minutes.
 	// Format: "ddd:hh24:mi-ddd:hh24:mi". Example: "sun:05:00-sun:06:00".
-	// Leave empty for an AWS-assigned window.
+	// Leave empty for an AWS-assigned window. One-way once applied: removing
+	// the field keeps the current window rather than reverting to an
+	// AWS-assigned one — change it by naming a new window explicitly.
 	MaintenanceWindow string `protobuf:"bytes,17,opt,name=maintenance_window,json=maintenanceWindow,proto3" json:"maintenance_window,omitempty"`
 	// Number of days to retain automatic snapshots. 0 disables automatic
 	// snapshots. Range: 0–35. Updates in place.
 	SnapshotRetentionLimit int32 `protobuf:"varint,18,opt,name=snapshot_retention_limit,json=snapshotRetentionLimit,proto3" json:"snapshot_retention_limit,omitempty"`
 	// Daily snapshot window in UTC. Format: "hh24:mi-hh24:mi".
 	// Example: "05:00-09:00". Leave empty for an AWS-assigned window.
+	// One-way once applied: removing the field keeps the current window
+	// rather than reverting to an AWS-assigned one — change it by naming a
+	// new window explicitly.
 	SnapshotWindow string `protobuf:"bytes,19,opt,name=snapshot_window,json=snapshotWindow,proto3" json:"snapshot_window,omitempty"`
 	// Name of the final snapshot to create when the cluster is deleted. If not
 	// provided, the cluster's data is gone when the cluster is. Consumed only
-	// at delete time — it never affects the running cluster.
+	// at delete time — it never affects the running cluster. Format: 1–255
+	// lowercase alphanumeric or hyphen characters, no consecutive hyphens, no
+	// trailing hyphen (the provider rejects violations at plan time; the rule
+	// below fails them at manifest time, before any engine runs).
 	FinalSnapshotName string `protobuf:"bytes,20,opt,name=final_snapshot_name,json=finalSnapshotName,proto3" json:"final_snapshot_name,omitempty"`
 	// ARN(s) of RDB snapshot files stored in S3 to seed the new cluster from
 	// (the offline-migration path from self-managed Redis). ForceNew — only
-	// read at cluster creation. Mutually exclusive with snapshot_name. Object
-	// names must not contain commas (an AWS API constraint).
+	// read at cluster creation. Mutually exclusive with snapshot_name. Each
+	// entry must be an S3 object ARN (AWS's CreateCluster contract; the
+	// provider itself accepts any ARN shape — a recorded looseness) and must
+	// not contain commas (an AWS API constraint).
 	SnapshotArns []string `protobuf:"bytes,21,rep,name=snapshot_arns,json=snapshotArns,proto3" json:"snapshot_arns,omitempty"`
 	// Name of a MemoryDB snapshot to restore from. ForceNew — only read at
 	// cluster creation. Mutually exclusive with snapshot_arns.
@@ -181,7 +196,9 @@ type AwsMemorydbClusterSpec struct {
 	// notifications.
 	SnsTopicArn *v1.StringValueOrRef `protobuf:"bytes,27,opt,name=sns_topic_arn,json=snsTopicArn,proto3" json:"sns_topic_arn,omitempty"`
 	// Automatically apply minor engine version upgrades during maintenance
-	// windows. Default: true. ForceNew — AWS fixes this posture at create
+	// windows. Default: true — and the provider enforces that default itself,
+	// so omitting the field is identical to sending true; explicit false is
+	// the only way to opt out. ForceNew — AWS fixes this posture at create
 	// time.
 	AutoMinorVersionUpgrade *bool `protobuf:"varint,28,opt,name=auto_minor_version_upgrade,json=autoMinorVersionUpgrade,proto3,oneof" json:"auto_minor_version_upgrade,omitempty"`
 	// Enable data tiering — automatically moves less-frequently-accessed data
@@ -486,7 +503,7 @@ var File_catalog_aws_awsmemorydbcluster_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_aws_awsmemorydbcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/aws/awsmemorydbcluster/v1alpha1/spec.proto\x12+dev.planton.aws.awsmemorydbcluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8d\x19\n" +
+	"2catalog/aws/awsmemorydbcluster/v1alpha1/spec.proto\x12+dev.planton.aws.awsmemorydbcluster.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbb\x1b\n" +
 	"\x16AwsMemorydbClusterSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x1e\n" +
 	"\x06engine\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06engine\x12%\n" +
@@ -511,9 +528,10 @@ const file_catalog_aws_awsmemorydbcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\vkms_key_arn\x18\x10 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12\xb4\x01\n" +
 	"\x12maintenance_window\x18\x11 \x01(\tB\x84\x01\xbaH\x80\x01\xd8\x01\x01r{2y^(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):([01][0-9]|2[0-3]):[0-5][0-9]$R\x11maintenanceWindow\x12C\n" +
 	"\x18snapshot_retention_limit\x18\x12 \x01(\x05B\t\xbaH\x06\x1a\x04\x18#(\x00R\x16snapshotRetentionLimit\x12p\n" +
-	"\x0fsnapshot_window\x18\x13 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x0esnapshotWindow\x12.\n" +
-	"\x13final_snapshot_name\x18\x14 \x01(\tR\x11finalSnapshotName\x12#\n" +
-	"\rsnapshot_arns\x18\x15 \x03(\tR\fsnapshotArns\x12#\n" +
+	"\x0fsnapshot_window\x18\x13 \x01(\tBG\xbaHD\xd8\x01\x01r?2=^([01][0-9]|2[0-3]):[0-5][0-9]-([01][0-9]|2[0-3]):[0-5][0-9]$R\x0esnapshotWindow\x12\xaf\x02\n" +
+	"\x13final_snapshot_name\x18\x14 \x01(\tB\xfe\x01\xbaH\xfa\x01\xba\x01\xf3\x01\n" +
+	"\x1afinal_snapshot_name_format\x12\x81\x01final_snapshot_name must be 1-255 lowercase alphanumeric or hyphen characters, with no consecutive hyphens and no trailing hyphen\x1aQthis.matches('^[0-9a-z-]{1,255}$') && !this.contains('--') && !this.endsWith('-')\xd8\x01\x01R\x11finalSnapshotName\x12O\n" +
+	"\rsnapshot_arns\x18\x15 \x03(\tB*\xbaH'\x92\x01$\"\"r 2\x1e^arn:aws[a-zA-Z-]*:s3:::[^,]+$R\fsnapshotArns\x12#\n" +
 	"\rsnapshot_name\x18\x16 \x01(\tR\fsnapshotName\x124\n" +
 	"\x16parameter_group_family\x18\x17 \x01(\tR\x14parameterGroupFamily\x12h\n" +
 	"\n" +

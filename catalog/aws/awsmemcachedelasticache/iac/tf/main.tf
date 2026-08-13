@@ -50,12 +50,15 @@ resource "aws_elasticache_cluster" "this" {
   num_cache_nodes = local.num_cache_nodes
   port            = local.port
 
-  # AZ mode
+  # Node placement: single-AZ pin or per-node AZ list (mutually
+  # exclusive, CEL-enforced).
   az_mode                      = local.az_mode
+  availability_zone            = local.availability_zone
   preferred_availability_zones = length(local.preferred_availability_zones) > 0 ? local.preferred_availability_zones : null
 
-  # Encryption
-  transit_encryption_enabled = local.transit_encryption_enabled
+  # Encryption — rendered only when enabled (AWS defaults it off;
+  # matches the Pulumi module's rendering).
+  transit_encryption_enabled = local.transit_encryption_enabled ? true : null
 
   # Networking: the subnet group managed here (or referenced), security
   # groups by reference, and optional dual-stack addressing.
@@ -68,10 +71,11 @@ resource "aws_elasticache_cluster" "this" {
   # group, or the engine default.
   parameter_group_name = local.effective_parameter_group_name
 
-  # Maintenance
+  # Maintenance. auto_minor_version_upgrade omits when unset so AWS's
+  # enabled-by-default stands.
   maintenance_window         = local.maintenance_window
   apply_immediately          = local.apply_immediately
-  auto_minor_version_upgrade = local.auto_minor_version_upgrade ? "true" : "false"
+  auto_minor_version_upgrade = local.auto_minor_version_upgrade
 
   # Notifications
   notification_topic_arn = local.notification_topic_arn

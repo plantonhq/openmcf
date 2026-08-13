@@ -9,7 +9,9 @@ terraform {
       # argument needs. Only the sweep moves this line — never a single kind.
       #
       # Feature floor 6.4.0: options.export (exportable certificates) landed there;
-      # everything else this module renders is older.
+      # everything else this module renders is older (early_renewal_duration predates
+      # 6.0). The HTTP validation-method VALUE requires a provider whose vendored
+      # AWS SDK carries it -- satisfied well below this pin.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

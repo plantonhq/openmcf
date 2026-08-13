@@ -16,7 +16,10 @@ variable "spec" {
   type = object({
     region = string
     transit_gateway_id = string
-    associations = optional(list(string), [])
+    associations = optional(list(object({
+      attachment_id = string
+      replace_existing_association = optional(bool, false)
+    })), [])
     propagations = optional(list(string), [])
     routes = optional(list(object({
       destination_cidr_block = string
@@ -28,5 +31,7 @@ variable "spec" {
       attachment_id = optional(string, "")
       blackhole = optional(bool, false)
     })), [])
+    set_as_default_association_table = optional(bool, false)
+    set_as_default_propagation_table = optional(bool, false)
   })
 }

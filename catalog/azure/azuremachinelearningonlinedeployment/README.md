@@ -25,3 +25,7 @@ The **AzureMachineLearningOnlineDeployment** component creates a MANAGED online 
 
 - Kubernetes-attached deployment variants when a supported compute-attach story lands.
 - Migration to azurerm's native ML deployment resources when the provider ships them (tracked upstream), with no manifest change.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

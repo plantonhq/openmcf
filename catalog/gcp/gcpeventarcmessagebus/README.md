@@ -65,3 +65,7 @@ planton apply -f message-bus.yaml
 - **GcpServiceAccount** -- pipeline authentication identities (OIDC / OAuth)
 - **GcpKmsKey** -- CMEK on the bus and every satellite
 - **GcpProject** -- provides the GCP project the family lives in
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

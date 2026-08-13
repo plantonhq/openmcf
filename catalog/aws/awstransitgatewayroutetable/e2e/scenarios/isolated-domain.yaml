@@ -5,9 +5,17 @@
 # so the blackhole is provable regardless of what the attachment
 # advertises).
 #
-# The e2e-prerequisites annotation composes the attachment fixture
-# (optional composition -- an empty table deploys with only the gateway);
-# the gateway arrives through the registry chain. The attachment fixture
+# The association carries replaceExistingAssociation: true -- the takeover
+# flag's live send path. The attachment fixture has no existing association
+# (its default-table membership is off), so the provider takes the plain
+# associate branch; a REAL takeover (existing association present) needs a
+# default-enabled gateway fixture and is offline-proven via the canonical
+# manifest -- see the profile comment.
+#
+# The e2e-prerequisites annotation composes the attachment fixture;
+# the gateway (and its VPC/subnet chain) arrives TRANSITIVELY through the
+# attachment's registry prerequisites -- this kind itself declares no
+# registry prerequisites. The attachment fixture
 # pins its default-table membership off, so the association here is its
 # only one (AWS allows one association per attachment, gateway-wide).
 # Full metadata is supplied for tagging/orphan cleanup.
@@ -34,10 +42,12 @@ spec:
       name: planton-oss-e2e-awstgw-prereq
       fieldPath: status.outputs.transit_gateway_id
   associations:
-    - valueFrom:
-        kind: AwsTransitGatewayVpcAttachment
-        name: planton-oss-e2e-awstgwa-prereq
-        fieldPath: status.outputs.attachment_id
+    - attachmentId:
+        valueFrom:
+          kind: AwsTransitGatewayVpcAttachment
+          name: planton-oss-e2e-awstgwa-prereq
+          fieldPath: status.outputs.attachment_id
+      replaceExistingAssociation: true
   propagations:
     - valueFrom:
         kind: AwsTransitGatewayVpcAttachment

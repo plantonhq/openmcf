@@ -19,7 +19,7 @@ This preset creates an IAM user for CI/CD pipelines with permissions to push con
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<ci-cd-user-name>` | IAM user name (e.g., `github-actions-deployer`); must match `[a-zA-Z0-9+=,.@_-]{1,64}` | Your CI/CD naming convention |
+| `github-actions-deployer` | Rename to your IAM user name; must match `[a-zA-Z0-9+=,.@_-]{1,64}` | Your CI/CD naming convention |
 
 ## Related Presets
 

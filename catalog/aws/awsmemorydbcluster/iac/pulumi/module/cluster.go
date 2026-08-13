@@ -153,9 +153,11 @@ func cluster(
 	if spec.AutoMinorVersionUpgrade != nil {
 		args.AutoMinorVersionUpgrade = pulumi.Bool(*spec.AutoMinorVersionUpgrade)
 	}
-	if spec.DataTiering {
-		args.DataTiering = pulumi.Bool(true)
-	}
+	// Always sent, mirroring Terraform's unconditional render — the provider
+	// defaults an omitted value to false, so both paths reach AWS
+	// identically, but the explicit send keeps the two engines' state
+	// literally symmetric.
+	args.DataTiering = pulumi.Bool(spec.DataTiering)
 
 	c, err := memorydb.NewCluster(ctx, locals.ClusterName, args, pulumi.Provider(provider))
 	if err != nil {

@@ -1,0 +1,89 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_vpc:
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_vpc_ipv4_cidr_block_association:
+    # One association per spec.secondary_ipv4_cidrs entry so address space
+    # grows and shrinks without recreating the VPC.
+    specRoot: spec.secondary_ipv4_cidrs
+    mappings:
+      # The entry message's type name carries the ipv4 qualifier; the
+      # provider prefixes the leaf arguments instead.
+      - spec: spec.secondary_ipv4_cidrs.ipam_pool_id
+        arg: ipv4_ipam_pool_id
+      - spec: spec.secondary_ipv4_cidrs.netmask_length
+        arg: ipv4_netmask_length
+    exclusions:
+      - arg: vpc_id
+        reason: wired by the module to the VPC it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- associations follow the VPC's spec.region through the provider connection
+
+  aws_vpc_ipv6_cidr_block_association:
+    # One association per spec.secondary_ipv6_cidrs entry; exactly one
+    # source per entry (Amazon-provided, BYOIP pool, or IPAM pool).
+    specRoot: spec.secondary_ipv6_cidrs
+    mappings:
+      # The entry message's type name carries the ipv6 qualifier; the
+      # provider prefixes the leaf arguments instead.
+      - spec: spec.secondary_ipv6_cidrs.assign_generated
+        arg: assign_generated_ipv6_cidr_block
+      - spec: spec.secondary_ipv6_cidrs.cidr_block
+        arg: ipv6_cidr_block
+      - spec: spec.secondary_ipv6_cidrs.ipam_pool_id
+        arg: ipv6_ipam_pool_id
+      - spec: spec.secondary_ipv6_cidrs.netmask_length
+        arg: ipv6_netmask_length
+    exclusions:
+      - arg: vpc_id
+        reason: wired by the module to the VPC it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- associations follow the VPC's spec.region through the provider connection
+
+  aws_vpc_encryption_control:
+    # Folded VPC-wide encryption-in-transit control: created when
+    # spec.encryption_control is set.
+    specRoot: spec.encryption_control
+    mappings:
+      # The spec names the decision (exclude_*); the provider suffixes the
+      # service (_exclusion) and takes enable/disable strings the module
+      # renders from the booleans.
+      - spec: spec.encryption_control.exclude_internet_gateway
+        arg: internet_gateway_exclusion
+      - spec: spec.encryption_control.exclude_egress_only_internet_gateway
+        arg: egress_only_internet_gateway_exclusion
+      - spec: spec.encryption_control.exclude_nat_gateway
+        arg: nat_gateway_exclusion
+      - spec: spec.encryption_control.exclude_virtual_private_gateway
+        arg: virtual_private_gateway_exclusion
+      - spec: spec.encryption_control.exclude_vpc_peering
+        arg: vpc_peering_exclusion
+      - spec: spec.encryption_control.exclude_vpc_lattice
+        arg: vpc_lattice_exclusion
+      - spec: spec.encryption_control.exclude_lambda
+        arg: lambda_exclusion
+      - spec: spec.encryption_control.exclude_elastic_file_system
+        arg: elastic_file_system_exclusion
+    exclusions:
+      - arg: vpc_id
+        reason: wired by the module to the VPC it creates -- never user surface
+      - arg: region
+        reason: wired by the module -- the control follows the VPC's spec.region through the provider connection
+      # tags_all is Computed-only on this Plugin Framework resource at the
+      # pin, so only tags appears here.
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never free-form user surface
+
+specExclusions: []

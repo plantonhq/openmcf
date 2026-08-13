@@ -1,10 +1,10 @@
 # Auto-Tag and Auto-Release System
 
-Automated tag creation and release pipeline that triggers builds whenever code changes land on `main`.
+Automated tag creation and release pipeline that triggers per-module builds whenever IaC module changes land on `main`.
 
 ## Why it exists
 
-Manual releases are error-prone and create bottlenecks. Developers forget to tag, version numbers drift, and releases pile up. The auto-tag system eliminates this friction: push code, get a release. Every commit to `main` that touches relevant paths automatically creates a semver-compliant tag and triggers the appropriate build pipeline.
+Manual releases are error-prone and create bottlenecks. Developers forget to tag, version numbers drift, and releases pile up. The auto-tag system eliminates this friction: push module code, get a module release. Every commit to `main` that touches a component's IaC module automatically creates a semver-compliant tag and triggers the appropriate build pipeline.
 
 ## How it works
 
@@ -12,24 +12,15 @@ Manual releases are error-prone and create bottlenecks. Developers forget to tag
 flowchart LR
     A[Push to main] --> B[auto-tag.yaml]
     B --> C{Detect changes}
-    C -->|CLI files| D[Create CLI tag]
-    C -->|App files| E[Create App tag]
-    C -->|Site files| F[Create Website tag]
     C -->|Pulumi modules| G[Create Pulumi tags]
     C -->|Terraform modules| H[Create Terraform tags]
-    D --> I[auto-release.cli]
-    E --> J[auto-release.app]
-    F --> K[auto-release.website]
     G --> L[auto-release.pulumi-modules]
     H --> M[auto-release.terraform-modules]
 ```
 
 The `auto-tag.yaml` workflow triggers component-specific release workflows directly:
 
-- **`auto-tag.yaml`** - Detects changes, creates tags, triggers component releases
-- **`auto-release.cli.yaml`** - Builds CLI with GoReleaser
-- **`auto-release.app.yaml`** - Builds Docker image
-- **`auto-release.website.yaml`** - Deploys to GitHub Pages
+- **`auto-tag.yaml`** - Detects changes, creates tags, triggers module releases
 - **`auto-release.pulumi-modules.yaml`** - Builds Pulumi binaries
 - **`auto-release.terraform-modules.yaml`** - Creates Terraform zips
 
@@ -38,20 +29,17 @@ The `auto-tag.yaml` workflow triggers component-specific release workflows direc
 Tags use semver pre-release format based on the _next_ patch version:
 
 ```
-v{next_patch}-{component}.{YYYYMMDD}.{sequence}
+v{next_patch}-{engine}.{component}.{YYYYMMDD}.{sequence}
 ```
 
 | Component | Example Tag                            | Sorted Position |
 | --------- | -------------------------------------- | --------------- |
-| CLI       | `v0.3.5-cli.20260108.0`                | Above `v0.3.4`  |
-| App       | `v0.3.5-app.20260108.0`                | Above `v0.3.4`  |
-| Website   | `v0.3.5-website.20260108.0`            | Above `v0.3.4`  |
 | Pulumi    | `v0.3.5-pulumi.postgres.20260108.0`    | Above `v0.3.4`  |
 | Terraform | `v0.3.5-terraform.postgres.20260108.0` | Above `v0.3.4`  |
 
 ### Why next version?
 
-Auto-release tags are based on the _next_ patch version so they appear **above** the current stable release in GitHub's tag list. If the latest release is `v0.3.4`, auto-releases become `v0.3.5-cli.*`. This provides immediate visibility into what's been built since the last official release.
+Auto-release tags are based on the _next_ patch version so they appear **above** the current stable release in GitHub's tag list. If the latest release is `v0.3.4`, auto-releases become `v0.3.5-pulumi.*`. This provides immediate visibility into what's been built since the last official release.
 
 ### Why hyphen, not plus?
 
@@ -60,21 +48,18 @@ Semver supports two metadata formats:
 - **Pre-release** (`-`): `v1.0.0-alpha.1` - affects version precedence
 - **Build metadata** (`+`): `v1.0.0+build.123` - ignored for precedence
 
-We use hyphen (`-`) because GitHub Actions tag patterns don't support the `+` character. The hyphen format is valid semver and works with both GitHub Actions and GoReleaser.
+We use hyphen (`-`) because GitHub Actions tag patterns don't support the `+` character. The hyphen format is valid semver.
 
 ## Path detection
 
-The system monitors specific paths to determine which components need releases:
+The system monitors the IaC module paths to determine which components need releases:
 
-| Component | Monitored Paths                                            |
-| --------- | ---------------------------------------------------------- |
-| CLI       | `cmd/`, `internal/`, `pkg/`, `main.go`, `go.mod`, `go.sum` |
-| App       | `app/`                                                     |
-| Website   | `site/`                                                    |
-| Pulumi    | `catalog/**/iac/pulumi/`                                      |
-| Terraform | `catalog/**/iac/tf/`                                          |
+| Component | Monitored Paths          |
+| --------- | ------------------------ |
+| Pulumi    | `catalog/**/iac/pulumi/` |
+| Terraform | `catalog/**/iac/tf/`     |
 
-A single commit can trigger multiple releases if it touches multiple components.
+A single commit can trigger multiple releases if it touches multiple components. The detection patterns live in `tools/ci/release/detect_module_dirs.sh` (single source, maturity-grammar-aware, self-tested before every detection run).
 
 ## Mass-change guard
 
@@ -89,8 +74,6 @@ unique changed components reaches a threshold:
 - **Counting:** unique `provider/component` pairs. A component changed in both
   its `iac/pulumi` and `iac/tf` directories counts once; `_test` providers are
   excluded.
-- **Scope:** only Pulumi and Terraform module tags are skipped. CLI and
-  Website tags are unaffected.
 - **Bypass:** the guard applies only to push events. Manual dispatch with
   `force_pulumi_all` / `force_terraform_all` always tags, regardless of count.
 
@@ -103,9 +86,8 @@ via manual dispatch.
 Multiple releases on the same day increment a sequence number:
 
 ```
-v0.3.5-cli.20260108.0  # First CLI release today
-v0.3.5-cli.20260108.1  # Second CLI release today
-v0.3.5-cli.20260108.2  # Third CLI release today
+v0.3.5-pulumi.awsvpc.20260108.0  # First release of this module today
+v0.3.5-pulumi.awsvpc.20260108.1  # Second release of this module today
 ```
 
 The sequence resets when the base semver changes (after a new official release).
@@ -150,13 +132,10 @@ flowchart TB
 
 ### Component release workflows
 
-Each component has its own release workflow triggered directly by `auto-tag.yaml`:
+Each engine has its own release workflow triggered directly by `auto-tag.yaml`:
 
 | Workflow                              | Trigger Inputs                         |
 | ------------------------------------- | -------------------------------------- |
-| `auto-release.cli.yaml`               | `tag`                                  |
-| `auto-release.app.yaml`               | `tag`                                  |
-| `auto-release.website.yaml`           | `tag`                                  |
 | `auto-release.pulumi-modules.yaml`    | `tag`, `component`, `provider`, `path` |
 | `auto-release.terraform-modules.yaml` | `tag`, `component`, `provider`, `path` |
 
@@ -164,7 +143,7 @@ Each component has its own release workflow triggered directly by `auto-tag.yaml
 
 GitHub's `GITHUB_TOKEN` has a security feature: events triggered by it don't create new workflow runs. This prevents infinite loops but means tag pushes from `auto-tag` won't trigger release workflows.
 
-We solve this by having `auto-tag` explicitly call each component's release workflow via `workflow_dispatch`. This provides:
+We solve this by having `auto-tag` explicitly call each engine's release workflow via `workflow_dispatch`. This provides:
 
 - **Explicit control** - Clear which tags trigger which releases
 - **No external tokens** - Uses built-in `GITHUB_TOKEN`
@@ -173,31 +152,24 @@ We solve this by having `auto-tag` explicitly call each component's release work
 
 ## Manual triggers
 
-### Force a specific component
+### Force all modules
 
 Run `auto-tag` manually with force flags:
 
 ```
-gh workflow run auto-tag.yaml -f force_cli=true
+gh workflow run auto-tag.yaml -f force_pulumi_all=true
 ```
 
 Available flags:
 
-- `force_cli` - Force CLI tag even without changes
-- `force_app` - Force App tag
-- `force_website` - Force Website tag
 - `force_pulumi_all` - Force tags for all Pulumi modules
 - `force_terraform_all` - Force tags for all Terraform modules
 
 ### Re-run a failed release
 
-If a release fails, run the specific component workflow manually:
+If a release fails, run the specific engine workflow manually:
 
 ```bash
-# CLI
-gh workflow run auto-release.cli.yaml -f tag=v0.3.5-cli.20260108.0
-
-# Pulumi module
 gh workflow run auto-release.pulumi-modules.yaml \
   -f tag=v0.3.5-pulumi.awsecsservice.20260108.0 \
   -f component=awsecsservice \
@@ -207,27 +179,20 @@ gh workflow run auto-release.pulumi-modules.yaml \
 
 ## Release artifacts by component
 
-| Component | Build Tool  | Output                                                |
-| --------- | ----------- | ----------------------------------------------------- |
-| CLI       | GoReleaser  | Binaries for darwin/linux (amd64/arm64), Homebrew tap |
-| App       | Docker      | Image pushed to GHCR                                  |
-| Website   | Hugo/Static | Deployed to GitHub Pages                              |
-| Pulumi    | Go build    | Pre-compiled binaries per module                      |
-| Terraform | Archive     | Zip files attached to release                         |
+| Component | Build Tool | Output                            |
+| --------- | ---------- | --------------------------------- |
+| Pulumi    | Go build   | Pre-compiled binaries per module  |
+| Terraform | Archive    | Zip files uploaded per module     |
 
 ## Troubleshooting
 
 ### Tag created but no release
 
-Check if `trigger-releases` job ran in `auto-tag`. If it failed, manually trigger:
-
-```bash
-gh workflow run auto-release.yaml -f tag=<the-tag>
-```
+Check if `trigger-releases` job ran in `auto-tag`. If it failed, manually trigger the engine workflow with the tag (see "Re-run a failed release").
 
 ### Wrong component detected
 
-The path regex in `auto-tag.yaml` determines component type. Verify your changes match the expected patterns in the "Path detection" section above.
+The detection patterns in `tools/ci/release/detect_module_dirs.sh` determine component type. Verify your changes match the expected patterns in the "Path detection" section above.
 
 ### Sequence number collision
 
@@ -237,16 +202,9 @@ If you delete and recreate tags on the same day, sequence detection uses `git ta
 git fetch --tags
 ```
 
-### GoReleaser fails on tag
-
-GoReleaser requires strict semver. The hyphen format (`v0.3.5-cli.20260108.0`) is valid. If you see semver errors, check for typos in the tag format.
-
 ## Related files
 
 - [`auto-tag.yaml`](../auto-tag.yaml) - Tag creation and release triggering
-- [`auto-release.cli.yaml`](../auto-release.cli.yaml) - CLI build with GoReleaser
-- [`auto-release.app.yaml`](../auto-release.app.yaml) - Docker image build
-- [`auto-release.website.yaml`](../auto-release.website.yaml) - Website deployment
 - [`auto-release.pulumi-modules.yaml`](../auto-release.pulumi-modules.yaml) - Pulumi binary builds
 - [`auto-release.terraform-modules.yaml`](../auto-release.terraform-modules.yaml) - Terraform zip archives
 - [`release.yaml`](../release.yaml) - Manual semver releases (separate from auto-release)

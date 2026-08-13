@@ -1,0 +1,30 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_eip:
+    exclusions:
+      - arg: domain
+        reason: module-wired constant "vpc" -- AWS retired EC2-Classic ("standard" domain) addresses and the provider itself refuses to read or delete them, so the legacy value is not configuration
+      - arg: customer_owned_ipv4_pool
+        reason: Outposts customer-owned IP pools -- the catalog's recorded Outposts exclusion class (no Outposts surface is modeled)
+      - arg: tags
+        reason: wired by the module from metadata (planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The folded reverse-DNS (PTR) record -- AWS models it as a separate
+  # address-attribute API keyed by the allocation id; it has no identity of
+  # its own and follows the address's lifecycle.
+  aws_eip_domain_name:
+    mappings:
+      - spec: spec.reverse_dns_domain_name
+        arg: domain_name
+    exclusions:
+      - arg: allocation_id
+        reason: wired by the module to the allocation id of the EIP this kind creates -- never free-form user surface

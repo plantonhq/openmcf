@@ -17,4 +17,12 @@ message AwsKmsKeyStackOutputs {
   // order -- the human-friendly addresses SDK callers may use instead
   // of the key ID.
   repeated string alias_names = 3;
+
+  // The AWS-generated grant IDs, keyed exactly as the module keys each
+  // grant: by the entry's position in spec.grants ("0", "1", ...). Grant
+  // identity lives in these IDs, not in the optional friendly name --
+  // RetireGrant/RevokeGrant and state import take them. (The one-time
+  // grant TOKEN from creation stays deliberately unexposed: it is a
+  // sensitive eventual-consistency bridge, not an identifier.)
+  map<string, string> grant_ids = 4;
 }

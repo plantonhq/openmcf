@@ -41,14 +41,13 @@ metadata:
   org: test-org
   env: dev
   id: test-workflow-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsStepFunction.test-workflow
 spec:
   region: us-west-2
   type: STANDARD
+  publish: true
+  aliases:
+    - name: live
+      description: Follows the version published by the current deployment
   roleArn:
     value: arn:aws:iam::123456789012:role/StepFunctionsExecRole
   definition:
@@ -69,6 +68,9 @@ spec:
 | `spec.definition` | `object` | yes |  |  |
 | `spec.roleArn` | `string \| valueFrom` | yes |  | AwsIamRole (`status.outputs.role_arn`) |
 | `spec.publish` | `bool` |  |  |  |
+| `spec.aliases` | `[]AwsStepFunctionAlias` |  |  |  |
+| `spec.aliases[].name` | `string` |  |  |  |
+| `spec.aliases[].description` | `string` |  |  |  |
 | `spec.logging` | `AwsStepFunctionLoggingConfig` |  |  |  |
 | `spec.logging.level` | `string` |  |  |  |
 | `spec.logging.includeExecutionData` | `bool` |  |  |  |
@@ -140,13 +142,50 @@ version ARN (or an alias routing between two versions) instead of the
 mutable state machine ARN. When false (the default), executions always run
 the latest saved revision.
 
+### spec.aliases
+
+`[]AwsStepFunctionAlias`
+
+Named aliases for the state machine. Each alias points at the version
+published by this deployment (requires publish: true) and exposes a
+stable ARN consumers can invoke while the underlying version advances
+on every configuration change. Aliases are keyed by name: renaming an
+entry replaces that alias without touching its siblings.
+
+Weighted canary routing between two specific versions is an imperative
+deployment-shift operation (the routing weights change DURING a
+rollout, not in a declarative snapshot) and is deliberately not
+modeled; each alias here routes 100% of traffic to the version this
+deployment published.
+
+### spec.aliases[].name
+
+`string`
+
+Alias name. 1-80 characters matching [0-9A-Za-z_-]. The name keys the
+provider resource: renaming replaces this alias without touching
+siblings.
+
+- rule: {"string":{"pattern":"^[0-9A-Za-z_-]{1,80}$"}}
+
+### spec.aliases[].description
+
+`string`
+
+Optional human-readable description of the alias (up to 256 characters).
+
+- rule: {"string":{"maxLen":"256"}}
+
 ### spec.logging
 
 `AwsStepFunctionLoggingConfig`
 
-Logging configuration for execution history events. When omitted, logging
-is disabled (level OFF). Logging is supported for both STANDARD and EXPRESS
-state machines.
+Logging configuration for execution history events. When omitted, no
+logging configuration is sent (new state machines default to level OFF).
+To explicitly turn logging OFF on a state machine that previously had it
+on, keep this block with level: "OFF" — removing the block entirely
+sends nothing and the provider keeps the last applied logging state.
+Logging is supported for both STANDARD and EXPRESS state machines.
 
 - rule: logging.level must be 'ALL', 'ERROR', 'FATAL', or 'OFF' when set
 
@@ -184,12 +223,18 @@ directly without worrying about the suffix.
 
 ### spec.tracingEnabled
 
-`bool`
+`bool` · optional (explicit presence)
 
 Enable AWS X-Ray tracing for the state machine. When true, Step Functions
 sends trace data to X-Ray for visualizing request flows. Ensure the
 execution role has xray:PutTraceSegments and xray:PutTelemetryRecords
 permissions.
+
+Tri-state: leave unset to keep the AWS default (tracing off, and no
+tracing configuration is sent). Set explicitly to true or false to pin
+the state — an explicit false is what turns tracing OFF on a state
+machine that previously had it on (simply removing a true value sends
+nothing, and the provider keeps the last applied state).
 
 ### spec.encryption
 
@@ -199,6 +244,11 @@ Encryption configuration for data at rest. When omitted, AWS uses
 AWS-owned keys (default, no additional cost). Provide this block to
 use a customer-managed KMS key for encrypting state machine data,
 execution history, and input/output payloads.
+
+One-way in practice: once a customer-managed key has been applied,
+REMOVING this block does not revert the state machine to AWS-owned
+keys — the provider suppresses the block's removal and keeps the last
+applied key. Reverting requires an out-of-band update today.
 
 - rule: kms_data_key_reuse_period_seconds must be between 60 and 900 when set
 
@@ -229,6 +279,9 @@ Leave at 0 to use the AWS default.
 
 - `type_valid_values`: type must be 'STANDARD' or 'EXPRESS' when set
 - `logging_destination_required_when_enabled`: logging.log_destination is required when logging.level is not 'OFF'
+- `aliases_require_publish`: aliases require publish: true (an alias routes to the published version)
+- `alias_names_unique`: aliases[].name must be unique
+- `role_arn_format`: role_arn literal value must be an IAM role ARN (arn:...)
 
 ## Outputs
 
@@ -242,6 +295,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsStepFunction,
 | `status.outputs.revision_id` | `string` | The revision identifier of the current state machine definition. AWS assigns a new revision id on every definition or configuration change, whether or not a version is published. Useful for change auditing. |
 | `status.outputs.status` | `string` | Lifecycle status of the state machine as reported by AWS (e.g. "ACTIVE", "DELETING"). |
 | `status.outputs.creation_date` | `string` | RFC3339 timestamp of when the state machine was created. |
+| `status.outputs.alias_arns` | `map<string, string>` | Alias ARNs keyed by alias name (spec.aliases[].name), e.g. "prod" -> "...:stateMachine:orders:prod". Each alias routes to the version this deployment published; consumers invoke the alias ARN to follow deployments without repointing. |
 
 ## References
 

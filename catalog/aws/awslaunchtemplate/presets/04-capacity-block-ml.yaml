@@ -1,0 +1,36 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsLaunchTemplate
+metadata:
+  name: <training-fleet-name>
+spec:
+  region: <aws-region>
+  imageId: ami-<your-ami-id>
+  instanceType: <gpu-instance-type>
+  marketType: capacity-block
+  capacityReservation:
+    capacityReservationId: cr-<your-capacity-block-id>
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: <security-group-resource-name>
+        fieldPath: status.outputs.security_group_id
+  instanceProfile:
+    valueFrom:
+      kind: AwsIamInstanceProfile
+      name: <instance-profile-resource-name>
+      fieldPath: status.outputs.instance_profile_arn
+  metadataOptions:
+    httpTokens: required
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSizeGb: 200
+        volumeType: gp3
+        throughputMibps: 500
+        encrypted: true
+    - deviceName: /dev/xvdb
+      ebs:
+        snapshotId: snap-<your-dataset-snapshot-id>
+        volumeType: gp3
+        volumeInitializationRateMibps: 300
+        deleteOnTermination: true

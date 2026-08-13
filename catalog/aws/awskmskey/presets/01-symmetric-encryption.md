@@ -22,7 +22,7 @@ This preset creates a customer-managed symmetric KMS key (`SYMMETRIC_DEFAULT`) w
 | --- | --- | --- |
 | `<aws-region>` | AWS region where the key lives | Your deployment region |
 | `<key-description>` | Purpose of the key (e.g. "Production database encryption") | Your team's naming conventions |
-| `<key-alias>` | Short alias suffix (e.g. `myapp/data-encryption`) | Must match `alias/[0-9A-Za-z_/-]+` |
+| `alias/my-symmetric-key` | Rename to your alias (e.g. `alias/myapp/data-encryption`) | Must match `alias/[0-9A-Za-z_/-]+` |
 
 ## Related Presets
 

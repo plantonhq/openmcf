@@ -87,7 +87,7 @@ spec: { ... }
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `webserverAccessMode` | string | no | `PRIVATE_ONLY` | `PRIVATE_ONLY`: accessible only within VPC via VPC endpoint. `PUBLIC_ONLY`: internet-accessible with IAM login. |
+| `webserverAccessMode` | string | no | `PRIVATE_ONLY` | `PRIVATE_ONLY`: accessible only within VPC via VPC endpoint. `PUBLIC_ONLY`: internet-accessible with IAM login. `PUBLIC_AND_PRIVATE`: reachable both ways. |
 | `endpointManagement` | string | no | `SERVICE` | `SERVICE`: AWS manages VPC endpoints. `CUSTOMER`: you manage endpoints yourself (advanced). **ForceNew**. |
 
 ### Logging

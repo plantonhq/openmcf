@@ -6,6 +6,20 @@
 # The e2e-prerequisites annotation composes the object-set fixture, which
 # pulls in its bucket through its own registry prerequisite (AwsS3Bucket);
 # the execution role is a registry prerequisite (AwsIamRole).
+#
+# Free versioning arms (versions, aliases, and function URLs bill
+# nothing): the function publishes and serves an alias-qualified URL --
+# the live proof that the versioning satellites render on both engines.
+#
+# publishTo (the $LATEST.PUBLISHED head) is DELIBERATELY absent: us-west-2
+# rejected the SDK-exact value at CreateFunction on first live contact
+# (InvalidParameterValueException, 2026-08-11 -- the feature has not
+# rolled out to the region/account; both engines render the value
+# faithfully, so this is availability, not a module defect). The arm is
+# offline-proven via the canonical manifest; re-add it when CreateFunction
+# in the test region accepts the value. Note AWS created the function
+# BEFORE rejecting the parameter, orphaning it outside engine state --
+# sweep the function before re-running after any such failure.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
@@ -40,3 +54,16 @@ spec:
   handler: index.handler
   memorySizeMb: 128
   timeoutSeconds: 3
+  publish: true
+  aliases:
+    # $LATEST, not a literal version number: AWS never reuses version
+    # numbers for a function name, so the dual-engine recreate publishes
+    # version 1 on the first engine and version 2 on the second -- any
+    # literal pin 404s at CreateAlias on the second engine (live-caught
+    # 2026-08-11). The publish arm itself is proven via the version
+    # output (the verifier retrieves the qualified function).
+    - name: live
+      functionVersion: "$LATEST"
+  functionUrl:
+    authorizationType: AWS_IAM
+    qualifier: live

@@ -24,3 +24,7 @@ The **AzureMachineLearningWorkspace** component deploys an Azure Machine Learnin
 ## Future Enhancements
 
 - Managed online/batch endpoint kinds (the model-serving layer) join the family next.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

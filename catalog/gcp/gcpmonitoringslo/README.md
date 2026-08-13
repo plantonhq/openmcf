@@ -68,3 +68,7 @@ planton apply -f slo.yaml
 - **GcpMonitoringAlertPolicy** -- burn-rate alerts filter on `select_slo_burn_rate("{slo_name}", ...)` — the pairing that turns an SLO into pages
 - **GcpLogMetric** -- log-based metrics feed request-based SLIs for services whose truth lives in logs
 - **GcpProject** -- provides the GCP project where the SLO is created
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

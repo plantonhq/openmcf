@@ -27,5 +27,20 @@ variable "spec" {
       stage = string
       api_mapping_key = optional(string, "")
     })), [])
+    ownership_verification_certificate_arn = optional(string, "")
+    routing_mode = optional(string, "")
+    routing_rules = optional(list(object({
+      priority = optional(number, 0)
+      conditions = list(object({
+        base_paths = optional(list(string), [])
+        header = optional(object({
+          name = string
+          value_glob = string
+        }))
+      }))
+      api_id = string
+      stage = string
+      strip_base_path = optional(bool, false)
+    })), [])
   })
 }

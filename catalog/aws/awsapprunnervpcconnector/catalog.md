@@ -21,6 +21,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Same-VPC subnets** -- all attached subnets must belong to one VPC; provide at least two Availability Zones for high availability.
 - **The two-sided handshake** -- the connector's security groups must allow egress to the target ports, AND the targets' security groups must admit ingress from these groups. Reference by group id, never by CIDR — the ENI addresses are AWS-managed.
+- **Name length** -- the connector's cloud name is `metadata.name`, and the provider validates it at 4–40 characters; keep resource names inside that range.
 
 ## Deploy
 

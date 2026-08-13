@@ -33,6 +33,27 @@ resource "aws_ecs_task_definition" "this" {
   execution_role_arn = local.execution_role_arn
   task_role_arn      = local.task_role_arn
 
+  # The FIS opt-in that lets chaos experiments target this task's
+  # containers; false must render as null (the attribute is
+  # Optional+Computed at the provider -- sending false forces a diff on
+  # definitions registered before the field existed).
+  enable_fault_injection = var.spec.enable_fault_injection ? true : null
+
+  # Namespace sharing is EC2-surface (CEL guards the Fargate rules);
+  # empty renders null so Docker's per-container default stays in charge.
+  ipc_mode = var.spec.ipc_mode != "" ? var.spec.ipc_mode : null
+  pid_mode = var.spec.pid_mode != "" ? var.spec.pid_mode : null
+
+  # Task-level placement rules, evaluated when tasks schedule onto EC2
+  # container instances.
+  dynamic "placement_constraints" {
+    for_each = var.spec.placement_constraints
+    content {
+      type       = placement_constraints.value.type
+      expression = placement_constraints.value.expression
+    }
+  }
+
   # runtime_platform is a pruned optional message: guard with a ternary
   # (HCL's && does not short-circuit on null).
   dynamic "runtime_platform" {
@@ -56,9 +77,14 @@ resource "aws_ecs_task_definition" "this" {
     for_each = var.spec.volumes
     content {
       name = volume.value.name
-      # host_path and efs are mutually exclusive (CEL-enforced); an empty
+      # Backings are mutually exclusive (CEL-enforced); an empty
       # host_path must be null, not "", or AWS rejects the registration.
       host_path = volume.value.host_path != "" ? volume.value.host_path : null
+
+      # A launch-time volume declares only its name here -- the consuming
+      # service's volume_configuration supplies the managed-EBS backing.
+      # false renders null (Optional+Computed at the provider).
+      configure_at_launch = volume.value.configure_at_launch ? true : null
 
       dynamic "efs_volume_configuration" {
         for_each = volume.value.efs != null ? [volume.value.efs] : []
@@ -68,7 +94,8 @@ resource "aws_ecs_task_definition" "this" {
           # Transit encryption is always on: AWS requires it with access
           # points or IAM auth, and there is no good reason to mount EFS
           # unencrypted in transit without them.
-          transit_encryption = "ENABLED"
+          transit_encryption      = "ENABLED"
+          transit_encryption_port = efs_volume_configuration.value.transit_encryption_port != 0 ? efs_volume_configuration.value.transit_encryption_port : null
 
           dynamic "authorization_config" {
             for_each = (efs_volume_configuration.value.access_point_id != "" || efs_volume_configuration.value.iam_authorization) ? [efs_volume_configuration.value] : []
@@ -77,6 +104,27 @@ resource "aws_ecs_task_definition" "this" {
               iam             = authorization_config.value.iam_authorization ? "ENABLED" : null
             }
           }
+        }
+      }
+
+      dynamic "docker_volume_configuration" {
+        for_each = volume.value.docker != null ? [volume.value.docker] : []
+        content {
+          autoprovision = docker_volume_configuration.value.autoprovision ? true : null
+          driver        = docker_volume_configuration.value.driver != "" ? docker_volume_configuration.value.driver : null
+          driver_opts   = length(docker_volume_configuration.value.driver_opts) > 0 ? docker_volume_configuration.value.driver_opts : null
+          labels        = length(docker_volume_configuration.value.labels) > 0 ? docker_volume_configuration.value.labels : null
+          scope         = docker_volume_configuration.value.scope != "" ? docker_volume_configuration.value.scope : null
+        }
+      }
+
+      dynamic "s3files_volume_configuration" {
+        for_each = volume.value.s3files != null ? [volume.value.s3files] : []
+        content {
+          file_system_arn         = s3files_volume_configuration.value.file_system_arn
+          access_point_arn        = s3files_volume_configuration.value.access_point_arn != "" ? s3files_volume_configuration.value.access_point_arn : null
+          root_directory          = s3files_volume_configuration.value.root_directory != "" ? s3files_volume_configuration.value.root_directory : null
+          transit_encryption_port = s3files_volume_configuration.value.transit_encryption_port != 0 ? s3files_volume_configuration.value.transit_encryption_port : null
         }
       }
     }

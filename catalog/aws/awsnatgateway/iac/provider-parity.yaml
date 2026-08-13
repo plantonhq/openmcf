@@ -1,0 +1,22 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_nat_gateway:
+    mappings:
+      # Repeated-message fields are plural per proto style; provider blocks
+      # are singular. Exact matching resumes below the mapped subtree
+      # (availability_zone, availability_zone_id, allocation_ids all match
+      # by name).
+      - spec: spec.availability_zone_addresses
+        arg: availability_zone_address
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the Name tag plus the planton.ai identity keys) -- never user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

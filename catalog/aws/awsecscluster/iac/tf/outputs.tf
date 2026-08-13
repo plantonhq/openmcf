@@ -13,11 +13,14 @@ output "cluster_arn" {
 }
 
 output "capacity_provider_names" {
-  description = "Every associated capacity provider: the Fargate built-ins plus the folded EC2 provider names, in spec order"
-  value       = local.associated_capacity_providers
+  description = "Every associated capacity provider: the Fargate built-ins plus the folded EC2 and managed-instances provider names, in spec order"
+  value       = local.all_capacity_provider_names
 }
 
 output "capacity_provider_arns" {
-  description = "The ARNs of the EC2 capacity providers this cluster defines (empty for Fargate-only clusters), in spec order"
-  value       = [for p in var.spec.ec2_capacity_providers : aws_ecs_capacity_provider.this[p.name].arn]
+  description = "The ARNs of the folded capacity providers this cluster defines (EC2 then managed-instances, each in spec order; empty for Fargate-only clusters)"
+  value = concat(
+    [for p in var.spec.ec2_capacity_providers : aws_ecs_capacity_provider.this[p.name].arn],
+    [for p in var.spec.managed_instances_capacity_providers : aws_ecs_capacity_provider.managed_instances[p.name].arn],
+  )
 }

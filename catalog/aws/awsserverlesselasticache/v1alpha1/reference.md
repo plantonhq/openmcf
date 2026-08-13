@@ -43,11 +43,6 @@ metadata:
   org: test-org
   env: dev
   id: test-serverless-cache-dev
-  annotations:
-    planton.dev/provisioner: pulumi
-    pulumi.planton.dev/organization: test-org
-    pulumi.planton.dev/project: test-project
-    pulumi.planton.dev/stack.name: dev.AwsServerlessElasticache.test-serverless-cache
 spec:
   region: us-west-2
   engine: redis

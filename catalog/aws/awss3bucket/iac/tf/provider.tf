@@ -8,10 +8,13 @@ terraform {
       # means the constraint never understates what any module's newest
       # argument needs. Only the sweep moves this line — never a single kind.
       #
-      # Feature floor (v6 family baseline): every attribute this module renders (incl.
-      # transition_default_minimum_object_size, partitioned log prefixes,
-      # and DSSE-KMS) predates 6.0, so the floor is the family baseline
-      # rather than a feature-driven minimum.
+      # Feature floor (from the provider changelog): the classic surface
+      # (transition_default_minimum_object_size, partitioned log prefixes,
+      # DSSE-KMS) predates 6.0, but this module also renders
+      # aws_s3_bucket_metadata_configuration (6.5.0), the SSE rule's
+      # blocked_encryption_types (6.22.0), aws_s3_bucket_abac (6.23.0), and
+      # the bucket's bucket_namespace (6.37.0) — all comfortably under the
+      # ~> 6.58 pin.
       source  = "hashicorp/aws"
       version = "~> 6.58"
     }

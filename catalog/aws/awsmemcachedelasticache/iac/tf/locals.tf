@@ -62,15 +62,21 @@ locals {
     null
   )
 
-  # Maintenance
+  # Maintenance. auto_minor_version_upgrade is PRESENCE-typed: AWS (and
+  # the provider, whose default is "true") enables minor upgrades by
+  # default, so unset must be OMITTED — never forced to "false". The
+  # provider types it as a nullable bool (string), hence the
+  # "true"/"false" rendering when set.
   maintenance_window         = try(var.spec.maintenance_window, null) != "" ? var.spec.maintenance_window : null
   apply_immediately          = coalesce(try(var.spec.apply_immediately, null), false)
-  auto_minor_version_upgrade = coalesce(try(var.spec.auto_minor_version_upgrade, null), false)
+  auto_minor_version_upgrade = try(var.spec.auto_minor_version_upgrade, null) == null ? null : (var.spec.auto_minor_version_upgrade ? "true" : "false")
 
   # Notifications
   notification_topic_arn = try(var.spec.notification_topic_arn, "") != "" ? var.spec.notification_topic_arn : null
 
-  # Node placement
+  # Node placement: pin ALL nodes to one AZ, or place nodes per-AZ via
+  # the list (mutually exclusive, CEL-enforced).
+  availability_zone            = try(var.spec.availability_zone, "") != "" ? var.spec.availability_zone : null
   preferred_availability_zones = coalesce(try(var.spec.preferred_availability_zones, []), [])
 
   # Port

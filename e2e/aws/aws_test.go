@@ -1017,7 +1017,12 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		switch cp.Spec.Status {
 		case componentv1.ComponentE2EProfileSpec_deferred,
 			componentv1.ComponentE2EProfileSpec_skip,
-			componentv1.ComponentE2EProfileSpec_stub:
+			componentv1.ComponentE2EProfileSpec_stub,
+			// pending_proof: fully authored, offline-validated, awaiting its
+			// first live proof. The proving session flips the profile to green
+			// immediately before executing the lanes; until then a sweep must
+			// never run it.
+			componentv1.ComponentE2EProfileSpec_pending_proof:
 			reason := cp.Spec.DeferredReason
 			if reason == "" {
 				reason = cp.Spec.Status.String()

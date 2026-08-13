@@ -1,0 +1,101 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_docdb_cluster:
+    mappings:
+      - spec: spec.security_group_ids
+        arg: vpc_security_group_ids
+      # Subtree mapping: exact matching resumes below the block.
+      - spec: spec.serverless_v2_scaling
+        arg: serverless_v2_scaling_configuration
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module from metadata.name -- the identifier is platform naming, never free-form spec surface
+      - arg: cluster_identifier_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity -- the module always names the cluster exactly
+      - arg: cluster_members
+        reason: legacy inline member set -- cluster compute is modeled as spec.instances, each entry its own aws_docdb_cluster_instance resource
+      - arg: engine
+        reason: '"docdb" is the only value the provider accepts -- wired by the module as an implied constant'
+      - arg: master_password_wo
+        reason: write-only ephemeral password variant -- the managed-password posture (manage_master_user_password) supersedes it; the platform never round-trips raw credentials through manifests
+      - arg: master_password_wo_version
+        reason: version companion of the excluded write-only password
+      - arg: tags
+        reason: wired by the module from metadata (user labels merged beneath the Name tag and planton.ai identity keys) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_docdb_cluster_instance:
+    # One instance per spec.instances entry, keyed by the entry's name so
+    # readers scale in and out without touching the cluster.
+    specRoot: spec.instances
+    mappings:
+      # The AWS identifier is the entry's name under the module's
+      # "<cluster>-<name>" composition.
+      - spec: spec.instances.name
+        arg: identifier
+      # DocumentDB spells the toggle differently from the RDS family; the
+      # spec keeps the family-uniform name.
+      - spec: spec.instances.performance_insights_enabled
+        arg: enable_performance_insights
+    exclusions:
+      - arg: cluster_identifier
+        reason: wired by the module to the cluster it creates -- never user surface
+      - arg: identifier_prefix
+        reason: prefix-based random naming conflicts with deterministic entry naming -- the module always names each instance exactly
+      - arg: engine
+        reason: '"docdb" is the only value the provider accepts -- the provider defaults it; the module never sets it'
+      - arg: region
+        reason: wired by the module -- instances follow the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_docdb_cluster_parameter_group:
+    # The managed group for inline spec.parameters -- pure glue (a named
+    # parameter list), created only when the spec brings parameters.
+    specRoot: spec.parameters
+    mappings:
+      # The provider nests entries under a "parameter" block; the spec IS
+      # that list.
+      - spec: spec.parameters
+        arg: parameter
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: family
+        reason: derived by the module from spec.engine_version per AWS's own family naming (docdb5.0) -- a second source of the same fact would only drift
+      - arg: region
+        reason: wired by the module -- the group follows the cluster's spec.region through the provider connection
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_docdb_subnet_group:
+    # The subnet group is pure glue (a named list of subnets), managed only
+    # when the spec brings raw subnet_ids; subnet_ids exact-matches
+    # spec.subnet_ids under the default root.
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the group is owned by exactly one cluster
+      - arg: name_prefix
+        reason: prefix-based random naming conflicts with deterministic metadata.name identity
+      - arg: description
+        reason: wired by the module (a fixed management notice) -- carries no configuration
+      - arg: tags
+        reason: wired by the module from metadata -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

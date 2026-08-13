@@ -53,6 +53,11 @@ type AwsLbListenerRuleSpec struct {
 	// assigns the next free priority after the current highest -- fine for
 	// append-only routing, but set explicit priorities when rules shadow each
 	// other (a "/api/*" rule must outrank a catch-all "/*" rule).
+	//
+	// The provider nominally also admits 99999 -- the slot reserved for the
+	// listener's own default rule -- but AWS rejects creating a rule there,
+	// so this spec deliberately keeps the 1-50000 domain (the default action
+	// lives on the listener, not here).
 	Priority int32 `protobuf:"varint,3,opt,name=priority,proto3" json:"priority,omitempty"`
 	// What a request must match for the rule to fire. Required, 1-5 condition
 	// blocks; a request must satisfy ALL of them (conditions AND together;
@@ -245,8 +250,10 @@ type AwsLbListenerRuleHostHeaderCondition struct {
 	// matches when ANY pattern matches.
 	Values []string `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
 	// Regular-expression hostname patterns, each up to 128 characters. Regex
-	// matching must be enabled on the load balancer's attributes; prefer
-	// wildcards when they express the intent.
+	// matching is an opt-in load balancer attribute that the Terraform
+	// provider does not expose -- enable it on the ALB via the AWS console or
+	// CLI before regex rules can match. Prefer wildcards when they express
+	// the intent.
 	RegexValues   []string `protobuf:"bytes,2,rep,name=regex_values,json=regexValues,proto3" json:"regex_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -304,8 +311,10 @@ type AwsLbListenerRulePathPatternCondition struct {
 	// condition matches when ANY pattern matches.
 	Values []string `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
 	// Regular-expression path patterns, each up to 128 characters. Regex
-	// matching must be enabled on the load balancer's attributes; prefer
-	// wildcards when they express the intent.
+	// matching is an opt-in load balancer attribute that the Terraform
+	// provider does not expose -- enable it on the ALB via the AWS console or
+	// CLI before regex rules can match. Prefer wildcards when they express
+	// the intent.
 	RegexValues   []string `protobuf:"bytes,2,rep,name=regex_values,json=regexValues,proto3" json:"regex_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -358,14 +367,17 @@ func (x *AwsLbListenerRulePathPatternCondition) GetRegexValues() []string {
 // AwsLbListenerRuleHttpHeaderCondition matches an arbitrary request header.
 type AwsLbListenerRuleHttpHeaderCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The header name to inspect, 1-40 characters (RFC 7230 token characters).
+	// The header name to inspect, 1-40 characters of RFC 7230 token
+	// characters (alphanumerics and !#$%&'*+,.^_`|~-), mirroring the
+	// provider's own validation. Wildcards are not supported in the name.
 	HttpHeaderName string `protobuf:"bytes,1,opt,name=http_header_name,json=httpHeaderName,proto3" json:"http_header_name,omitempty"`
 	// Wildcard patterns for the header value, each up to 128 characters; the
 	// condition matches when ANY pattern matches.
 	Values []string `protobuf:"bytes,2,rep,name=values,proto3" json:"values,omitempty"`
 	// Regular-expression patterns for the header value, each up to 128
-	// characters. Regex matching must be enabled on the load balancer's
-	// attributes.
+	// characters. Regex matching is an opt-in load balancer attribute that
+	// the Terraform provider does not expose -- enable it on the ALB via the
+	// AWS console or CLI before regex rules can match.
 	RegexValues   []string `protobuf:"bytes,3,rep,name=regex_values,json=regexValues,proto3" json:"regex_values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -578,8 +590,9 @@ func (x *AwsLbListenerRuleQueryStringPair) GetValue() string {
 type AwsLbListenerRuleSourceIpCondition struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// CIDR blocks to match (IPv4 or IPv6), e.g. "10.0.0.0/8",
-	// "203.0.113.0/24". The condition matches when the client address falls in
-	// ANY block.
+	// "203.0.113.0/24", "2001:db8::/32". The condition matches when the
+	// client address falls in ANY block. A bare address is not accepted --
+	// give it a full prefix length (e.g. "203.0.113.7/32").
 	Values        []string `protobuf:"bytes,1,rep,name=values,proto3" json:"values,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1643,10 +1656,9 @@ const file_catalog_aws_awslblistenerrule_v1alpha1_spec_proto_rawDesc = "" +
 	"\x92\x01\a\"\x05r\x03\x18\x80\x01R\x06values\x120\n" +
 	"\fregex_values\x18\x02 \x03(\tB\r\xbaH\n" +
 	"\x92\x01\a\"\x05r\x03\x18\x80\x01R\vregexValues:\x96\x01\xbaH\x92\x01\x1a\x8f\x01\n" +
-	"\x1bpath_pattern_values_present\x128at least one of values or regex_values must be non-empty\x1a6this.values.size() > 0 || this.regex_values.size() > 0\"\xcd\x02\n" +
-	"$AwsLbListenerRuleHttpHeaderCondition\x124\n" +
-	"\x10http_header_name\x18\x01 \x01(\tB\n" +
-	"\xbaH\a\xc8\x01\x01r\x02\x18(R\x0ehttpHeaderName\x12%\n" +
+	"\x1bpath_pattern_values_present\x128at least one of values or regex_values must be non-empty\x1a6this.values.size() > 0 || this.regex_values.size() > 0\"\xf2\x02\n" +
+	"$AwsLbListenerRuleHttpHeaderCondition\x12Y\n" +
+	"\x10http_header_name\x18\x01 \x01(\tB/\xbaH,\xc8\x01\x01r'\x18(2#^[0-9A-Za-z_!#$%&'*+,.^`|~-]{1,40}$R\x0ehttpHeaderName\x12%\n" +
 	"\x06values\x18\x02 \x03(\tB\r\xbaH\n" +
 	"\x92\x01\a\"\x05r\x03\x18\x80\x01R\x06values\x120\n" +
 	"\fregex_values\x18\x03 \x03(\tB\r\xbaH\n" +
@@ -1658,9 +1670,10 @@ const file_catalog_aws_awslblistenerrule_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05pairs\x18\x01 \x03(\v2L.dev.planton.aws.awslblistenerrule.v1alpha1.AwsLbListenerRuleQueryStringPairB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x05pairs\"R\n" +
 	" AwsLbListenerRuleQueryStringPair\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1c\n" +
-	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"I\n" +
+	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\"\xcf\x02\n" +
 	"\"AwsLbListenerRuleSourceIpCondition\x12#\n" +
-	"\x06values\x18\x01 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x06values\"\xec\x11\n" +
+	"\x06values\x18\x01 \x03(\tB\v\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01R\x06values:\x83\x02\xbaH\xff\x01\x1a\xfc\x01\n" +
+	"\x1asource_ip_values_are_cidrs\x12Xeach source_ip value must be an IPv4 or IPv6 CIDR block like 10.0.0.0/8 or 2001:db8::/32\x1a\x83\x01this.values.all(v, v.matches('^([0-9]{1,3}\\\\.){3}[0-9]{1,3}/[0-9]{1,2}$') || v.matches('^[0-9A-Fa-f:]+:[0-9A-Fa-f:]*/[0-9]{1,3}$'))\"\xec\x11\n" +
 	"\x17AwsLbListenerRuleAction\x12\x1a\n" +
 	"\x04type\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04type\x12\x14\n" +
 	"\x05order\x18\x02 \x01(\x05R\x05order\x12d\n" +

@@ -95,6 +95,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
           kms_key_arn         = bkp.value.kms_key_arn != "" ? bkp.value.kms_key_arn : null
           buffering_interval  = try(bkp.value.buffering.interval_in_seconds, 0) > 0 ? bkp.value.buffering.interval_in_seconds : null
           buffering_size      = try(bkp.value.buffering.size_in_mbs, 0) > 0 ? bkp.value.buffering.size_in_mbs : null
+
+          # CloudWatch logging for the backup S3 leg — distinct from the
+          # destination-level logging block.
+          dynamic "cloudwatch_logging_options" {
+            for_each = try(bkp.value.logging.enabled, false) ? [bkp.value.logging] : []
+            iterator = s3log
+            content {
+              enabled         = true
+              log_group_name  = s3log.value.log_group_name
+              log_stream_name = s3log.value.log_stream_name
+            }
+          }
         }
       }
 
@@ -153,33 +165,62 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         content {
           enabled = true
 
-          # Input format (deserializer) — defaults to OpenX JSON
+          # Input format (deserializer) — the spec enforces exactly one arm.
+          # Unset optional leaves are omitted so the AWS defaults win.
           input_format_configuration {
             deserializer {
               dynamic "open_x_json_ser_de" {
-                for_each = coalesce(try(dfc.value.input_format, null), "OPENX_JSON") != "HIVE_JSON" ? [1] : []
-                content {}
+                for_each = try(dfc.value.open_x_json, null) != null ? [dfc.value.open_x_json] : []
+                iterator = oxj
+                content {
+                  # AWS defaults case_insensitive to true; a null passes
+                  # through as "omitted" so only an explicit false is sent.
+                  case_insensitive                         = try(oxj.value.case_insensitive, null)
+                  column_to_json_key_mappings              = length(try(oxj.value.column_to_json_key_mappings, {})) > 0 ? oxj.value.column_to_json_key_mappings : null
+                  convert_dots_in_json_keys_to_underscores = try(oxj.value.convert_dots_in_json_keys_to_underscores, false) ? true : null
+                }
               }
               dynamic "hive_json_ser_de" {
-                for_each = try(dfc.value.input_format, "") == "HIVE_JSON" ? [1] : []
-                content {}
+                for_each = try(dfc.value.hive_json, null) != null ? [dfc.value.hive_json] : []
+                iterator = hj
+                content {
+                  timestamp_formats = length(try(hj.value.timestamp_formats, [])) > 0 ? hj.value.timestamp_formats : null
+                }
               }
             }
           }
 
-          # Output format (serializer) — PARQUET or ORC
+          # Output format (serializer) — the spec enforces exactly one arm.
           output_format_configuration {
             serializer {
               dynamic "parquet_ser_de" {
-                for_each = try(dfc.value.output_format, "PARQUET") != "ORC" ? [1] : []
+                for_each = try(dfc.value.parquet, null) != null ? [dfc.value.parquet] : []
+                iterator = pq
                 content {
-                  compression = try(dfc.value.parquet_compression, null) != "" ? dfc.value.parquet_compression : null
+                  compression                   = try(pq.value.compression, null) != "" ? pq.value.compression : null
+                  block_size_bytes              = try(pq.value.block_size_bytes, 0) > 0 ? pq.value.block_size_bytes : null
+                  page_size_bytes               = try(pq.value.page_size_bytes, 0) > 0 ? pq.value.page_size_bytes : null
+                  max_padding_bytes             = try(pq.value.max_padding_bytes, 0) > 0 ? pq.value.max_padding_bytes : null
+                  enable_dictionary_compression = try(pq.value.enable_dictionary_compression, false) ? true : null
+                  writer_version                = try(pq.value.writer_version, null) != "" ? pq.value.writer_version : null
                 }
               }
               dynamic "orc_ser_de" {
-                for_each = try(dfc.value.output_format, "") == "ORC" ? [1] : []
+                for_each = try(dfc.value.orc, null) != null ? [dfc.value.orc] : []
+                iterator = orc
                 content {
-                  compression = try(dfc.value.orc_compression, null) != "" ? dfc.value.orc_compression : null
+                  compression          = try(orc.value.compression, null) != "" ? orc.value.compression : null
+                  block_size_bytes     = try(orc.value.block_size_bytes, 0) > 0 ? orc.value.block_size_bytes : null
+                  stripe_size_bytes    = try(orc.value.stripe_size_bytes, 0) > 0 ? orc.value.stripe_size_bytes : null
+                  bloom_filter_columns = length(try(orc.value.bloom_filter_columns, [])) > 0 ? orc.value.bloom_filter_columns : null
+                  # Optional-with-presence in the spec: explicit 0 is
+                  # AWS-legal here, distinct from "unset -> AWS default".
+                  bloom_filter_false_positive_probability = try(orc.value.bloom_filter_false_positive_probability, null)
+                  dictionary_key_threshold                = try(orc.value.dictionary_key_threshold, 0) > 0 ? orc.value.dictionary_key_threshold : null
+                  enable_padding                          = try(orc.value.enable_padding, false) ? true : null
+                  padding_tolerance                       = try(orc.value.padding_tolerance, null)
+                  format_version                          = try(orc.value.format_version, null) != "" ? orc.value.format_version : null
+                  row_index_stride                        = try(orc.value.row_index_stride, 0) > 0 ? orc.value.row_index_stride : null
                 }
               }
             }
@@ -245,6 +286,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---
@@ -328,6 +381,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---
@@ -425,6 +490,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---
@@ -534,6 +611,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- S3 backup configuration (source record backup) ---
@@ -550,6 +639,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
           kms_key_arn         = bkp.value.kms_key_arn != "" ? bkp.value.kms_key_arn : null
           buffering_interval  = try(bkp.value.buffering.interval_in_seconds, 0) > 0 ? bkp.value.buffering.interval_in_seconds : null
           buffering_size      = try(bkp.value.buffering.size_in_mbs, 0) > 0 ? bkp.value.buffering.size_in_mbs : null
+
+          # CloudWatch logging for the backup S3 leg — distinct from the
+          # destination-level logging block.
+          dynamic "cloudwatch_logging_options" {
+            for_each = try(bkp.value.logging.enabled, false) ? [bkp.value.logging] : []
+            iterator = s3log
+            content {
+              enabled         = true
+              log_group_name  = s3log.value.log_group_name
+              log_stream_name = s3log.value.log_stream_name
+            }
+          }
         }
       }
 
@@ -637,6 +738,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---
@@ -752,6 +865,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---
@@ -839,6 +964,18 @@ resource "aws_kinesis_firehose_delivery_stream" "this" {
         kms_key_arn         = dest.value.s3_config.kms_key_arn != "" ? dest.value.s3_config.kms_key_arn : null
         buffering_interval  = try(dest.value.s3_config.buffering.interval_in_seconds, 0) > 0 ? dest.value.s3_config.buffering.interval_in_seconds : null
         buffering_size      = try(dest.value.s3_config.buffering.size_in_mbs, 0) > 0 ? dest.value.s3_config.buffering.size_in_mbs : null
+
+        # CloudWatch logging for THIS S3 leg (backup/staging errors) —
+        # distinct from the destination-level logging block below.
+        dynamic "cloudwatch_logging_options" {
+          for_each = try(dest.value.s3_config.logging.enabled, false) ? [dest.value.s3_config.logging] : []
+          iterator = s3log
+          content {
+            enabled         = true
+            log_group_name  = s3log.value.log_group_name
+            log_stream_name = s3log.value.log_stream_name
+          }
+        }
       }
 
       # --- Processing pipeline (normalized typed processors) ---

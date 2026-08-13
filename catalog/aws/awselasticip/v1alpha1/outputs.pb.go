@@ -39,7 +39,13 @@ type AwsElasticIpStackOutputs struct {
 	Arn string `protobuf:"bytes,3,opt,name=arn,proto3" json:"arn,omitempty"`
 	// The public DNS hostname associated with the Elastic IP
 	// (e.g., "ec2-1-2-3-4.compute-1.amazonaws.com").
-	PublicDns     string `protobuf:"bytes,4,opt,name=public_dns,json=publicDns,proto3" json:"public_dns,omitempty"`
+	PublicDns string `protobuf:"bytes,4,opt,name=public_dns,json=publicDns,proto3" json:"public_dns,omitempty"`
+	// The association ID (e.g., "eipassoc-...") when the spec attaches this
+	// EIP to an instance or network interface; empty for an unattached EIP.
+	AssociationId string `protobuf:"bytes,5,opt,name=association_id,json=associationId,proto3" json:"association_id,omitempty"`
+	// The reverse DNS (PTR) record AWS granted for this address when
+	// spec.reverse_dns_domain_name is set; empty otherwise.
+	PtrRecord     string `protobuf:"bytes,6,opt,name=ptr_record,json=ptrRecord,proto3" json:"ptr_record,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -102,17 +108,34 @@ func (x *AwsElasticIpStackOutputs) GetPublicDns() string {
 	return ""
 }
 
+func (x *AwsElasticIpStackOutputs) GetAssociationId() string {
+	if x != nil {
+		return x.AssociationId
+	}
+	return ""
+}
+
+func (x *AwsElasticIpStackOutputs) GetPtrRecord() string {
+	if x != nil {
+		return x.PtrRecord
+	}
+	return ""
+}
+
 var File_catalog_aws_awselasticip_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awselasticip_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"/catalog/aws/awselasticip/v1alpha1/outputs.proto\x12%dev.planton.aws.awselasticip.v1alpha1\"\x8d\x01\n" +
+	"/catalog/aws/awselasticip/v1alpha1/outputs.proto\x12%dev.planton.aws.awselasticip.v1alpha1\"\xd3\x01\n" +
 	"\x18AwsElasticIpStackOutputs\x12#\n" +
 	"\rallocation_id\x18\x01 \x01(\tR\fallocationId\x12\x1b\n" +
 	"\tpublic_ip\x18\x02 \x01(\tR\bpublicIp\x12\x10\n" +
 	"\x03arn\x18\x03 \x01(\tR\x03arn\x12\x1d\n" +
 	"\n" +
-	"public_dns\x18\x04 \x01(\tR\tpublicDnsB\xc7\x02\n" +
+	"public_dns\x18\x04 \x01(\tR\tpublicDns\x12%\n" +
+	"\x0eassociation_id\x18\x05 \x01(\tR\rassociationId\x12\x1d\n" +
+	"\n" +
+	"ptr_record\x18\x06 \x01(\tR\tptrRecordB\xc7\x02\n" +
 	")com.dev.planton.aws.awselasticip.v1alpha1B\fOutputsProtoP\x01ZSgithub.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1;awselasticipv1alpha1\xa2\x02\x04DPAA\xaa\x02%Dev.Planton.Aws.Awselasticip.V1alpha1\xca\x02%Dev\\Planton\\Aws\\Awselasticip\\V1alpha1\xe2\x021Dev\\Planton\\Aws\\Awselasticip\\V1alpha1\\GPBMetadata\xea\x02)Dev::Planton::Aws::Awselasticip::V1alpha1b\x06proto3"
 
 var (

@@ -55,6 +55,23 @@ var _ = ginkgo.Describe("AwsCloudFront", func() {
 		})
 	})
 
+	ginkgo.Context("cache_tag_header_name (lowercase format)", func() {
+		ginkgo.It("should accept a lowercase header name", func() {
+			input.Spec.CacheTagHeaderName = "cache-tag"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		// AWS stores the header name lowercased while the provider passes
+		// the value through verbatim -- a mixed-case value would re-plan as
+		// a perpetual cosmetic diff on both engines (live-verified).
+		ginkgo.It("should reject a mixed-case header name", func() {
+			input.Spec.CacheTagHeaderName = "Cache-Tag"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
 	ginkgo.Context("Aliases (aliases_require_certificate)", func() {
 		ginkgo.It("should reject aliases without a viewer certificate", func() {
 			input.Spec.Aliases = []string{"cdn.example.com"}
@@ -243,11 +260,27 @@ var _ = ginkgo.Describe("AwsCloudFront", func() {
 		})
 	})
 
-	ginkgo.Context("S3 origin access arms (at_most_one_access_arm)", func() {
+	ginkgo.Context("Origin access control (oac_attach_or_create / at_most_one_access_arm)", func() {
 		ginkgo.It("should reject creating an OAC while also attaching one by ID", func() {
+			input.Spec.Origins[0].OriginAccessControlId = "E2EXAMPLEOAC"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept attaching an existing OAC to a custom origin", func() {
+			input.Spec.Origins[0].S3Origin = nil
+			input.Spec.Origins[0].CustomOrigin = &AwsCloudFrontCustomOrigin{
+				ProtocolPolicy: "https-only",
+			}
+			input.Spec.Origins[0].OriginAccessControlId = "E2EXAMPLEOAC"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject creating an OAC alongside a legacy OAI", func() {
 			input.Spec.Origins[0].S3Origin = &AwsCloudFrontS3Origin{
 				CreateOriginAccessControl: true,
-				OriginAccessControlId:     "E2EXAMPLEOAC",
+				OriginAccessIdentity:      "origin-access-identity/cloudfront/E2EXAMPLEOAI",
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -498,6 +531,271 @@ var _ = ginkgo.Describe("AwsCloudFront", func() {
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept an empty bucket (v1 delivery off, cookie preference kept)", func() {
+			input.Spec.Logging = &AwsCloudFrontLogging{
+				IncludeCookies: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Continuous deployment (continuous_deployment_arms_exclusive / exactly_one_traffic_arm)", func() {
+		stagingDNS := func() []*foreignkeyv1.StringValueOrRef {
+			return []*foreignkeyv1.StringValueOrRef{
+				{LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "d111111abcdef8.cloudfront.net"}},
+			}
+		}
+
+		ginkgo.It("should accept a weight-routed policy", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight: &AwsCloudFrontContinuousDeploymentSingleWeight{
+					Weight: 0.10,
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a header-routed policy with stickiness-free shape", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleHeader: &AwsCloudFrontContinuousDeploymentSingleHeader{
+					Header: "aws-cf-cd-canary",
+					Value:  "team-a",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject owning a policy while also attaching one by ID", func() {
+			input.Spec.ContinuousDeploymentPolicyId = "cdp-example123"
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight:                &AwsCloudFrontContinuousDeploymentSingleWeight{Weight: 0.05},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a policy with no routing arm", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a policy with both routing arms", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight:                &AwsCloudFrontContinuousDeploymentSingleWeight{Weight: 0.05},
+				SingleHeader: &AwsCloudFrontContinuousDeploymentSingleHeader{
+					Header: "aws-cf-cd-canary",
+					Value:  "team-a",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a policy without a staging distribution", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				SingleWeight: &AwsCloudFrontContinuousDeploymentSingleWeight{Weight: 0.05},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a weight over AWS's 15% cap", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight:                &AwsCloudFrontContinuousDeploymentSingleWeight{Weight: 0.2},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the maximum 15% weight with session stickiness", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight: &AwsCloudFrontContinuousDeploymentSingleWeight{
+					Weight: 0.15,
+					SessionStickiness: &AwsCloudFrontSessionStickiness{
+						IdleTtlSeconds:    300,
+						MaximumTtlSeconds: 3600,
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject stickiness with idle TTL above the maximum TTL", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight: &AwsCloudFrontContinuousDeploymentSingleWeight{
+					Weight: 0.05,
+					SessionStickiness: &AwsCloudFrontSessionStickiness{
+						IdleTtlSeconds:    3600,
+						MaximumTtlSeconds: 300,
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject stickiness TTLs outside 300-3600", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleWeight: &AwsCloudFrontContinuousDeploymentSingleWeight{
+					Weight: 0.05,
+					SessionStickiness: &AwsCloudFrontSessionStickiness{
+						IdleTtlSeconds:    60,
+						MaximumTtlSeconds: 300,
+					},
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a routing header without the aws-cf-cd- prefix", func() {
+			input.Spec.ContinuousDeployment = &AwsCloudFrontContinuousDeployment{
+				StagingDistributionDnsNames: stagingDNS(),
+				SingleHeader: &AwsCloudFrontContinuousDeploymentSingleHeader{
+					Header: "x-canary",
+					Value:  "team-a",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the staging flag on its own", func() {
+			input.Spec.Staging = true
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Viewer mTLS (trust_store_knobs_require_trust_store)", func() {
+		ginkgo.It("should accept required mode with a trust store", func() {
+			input.Spec.ViewerMtls = &AwsCloudFrontViewerMtls{
+				Mode:                       "required",
+				TrustStoreId:               "ts-example123",
+				AdvertiseTrustStoreCaNames: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept passthrough mode without a trust store", func() {
+			input.Spec.ViewerMtls = &AwsCloudFrontViewerMtls{
+				Mode: "passthrough",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject trust-store knobs without a trust store", func() {
+			input.Spec.ViewerMtls = &AwsCloudFrontViewerMtls{
+				Mode:                    "required",
+				IgnoreCertificateExpiry: true,
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unknown mode", func() {
+			input.Spec.ViewerMtls = &AwsCloudFrontViewerMtls{
+				Mode: "strict",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("New origin leaves", func() {
+		ginkgo.BeforeEach(func() {
+			input.Spec.Origins[0].S3Origin = nil
+			input.Spec.Origins[0].CustomOrigin = &AwsCloudFrontCustomOrigin{
+				ProtocolPolicy: "https-only",
+			}
+		})
+
+		ginkgo.It("should accept a dualstack origin with origin-side mTLS", func() {
+			input.Spec.Origins[0].CustomOrigin.IpAddressType = "dualstack"
+			input.Spec.Origins[0].CustomOrigin.MtlsClientCertificateArn = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:acm:us-east-1:123456789012:certificate/def"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject an unknown origin IP address type", func() {
+			input.Spec.Origins[0].CustomOrigin.IpAddressType = "ipv5"
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a completion timeout covering the read timeout", func() {
+			input.Spec.Origins[0].CustomOrigin.ReadTimeoutSeconds = 60
+			input.Spec.Origins[0].ResponseCompletionTimeoutSeconds = 120
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a completion timeout below the read timeout", func() {
+			input.Spec.Origins[0].CustomOrigin.ReadTimeoutSeconds = 60
+			input.Spec.Origins[0].ResponseCompletionTimeoutSeconds = 30
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed cross-account VPC origin owner", func() {
+			input.Spec.Origins[0].CustomOrigin = nil
+			input.Spec.Origins[0].VpcOrigin = &AwsCloudFrontVpcOrigin{
+				VpcOriginId:    "vo-0123456789abcdef0",
+				OwnerAccountId: "not-an-account",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a cross-account VPC origin", func() {
+			input.Spec.Origins[0].CustomOrigin = nil
+			input.Spec.Origins[0].VpcOrigin = &AwsCloudFrontVpcOrigin{
+				VpcOriginId:    "vo-0123456789abcdef0",
+				OwnerAccountId: "210987654321",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+	})
+
+	ginkgo.Context("Current-generation TLS policies", func() {
+		ginkgo.It("should accept the TLSv1.3_2025 security policy", func() {
+			input.Spec.ViewerCertificate = &AwsCloudFrontViewerCertificate{
+				IamCertificateId:       "ASCAJRRE5XYZ",
+				MinimumProtocolVersion: "TLSv1.3_2025",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the static-ip support method", func() {
+			input.Spec.ViewerCertificate = &AwsCloudFrontViewerCertificate{
+				IamCertificateId: "ASCAJRRE5XYZ",
+				SslSupportMethod: "static-ip",
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 

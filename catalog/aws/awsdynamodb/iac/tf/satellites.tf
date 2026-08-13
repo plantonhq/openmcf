@@ -4,12 +4,15 @@
 # referenced by nothing else.
 
 # A resource-based IAM policy on the table -- cross-account access
-# grants without role assumption.
+# grants without role assumption. The confirm flag is AWS's guard against
+# locking yourself out: a policy that removes the applying caller's own
+# access is refused unless it is set.
 resource "aws_dynamodb_resource_policy" "this" {
-  count = var.spec.resource_policy != "" ? 1 : 0
+  count = var.spec.resource_policy != null ? 1 : 0
 
-  resource_arn = aws_dynamodb_table.this.arn
-  policy       = var.spec.resource_policy
+  resource_arn                        = aws_dynamodb_table.this.arn
+  policy                              = jsonencode(var.spec.resource_policy.policy)
+  confirm_remove_self_resource_access = var.spec.resource_policy.confirm_remove_self_resource_access
 }
 
 # Item-level change data into a Kinesis Data Stream (independent of

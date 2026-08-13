@@ -19,7 +19,7 @@ output "network_interface_id" {
 }
 
 output "subnet_id" {
-  description = "The id of the subnet the gateway lives in"
+  description = "The id of the subnet the gateway lives in (empty for a regional gateway, which spans the VPC)"
   value       = var.spec.subnet_id
 }
 

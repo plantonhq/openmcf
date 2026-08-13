@@ -78,13 +78,27 @@ message AwsFsxWindowsFileSystemSpec {
   //   SINGLE_AZ_2 and MULTI_AZ_1 deployment types. Requires minimum 2000 GiB
   //   storage capacity.
   //
+  // The provider's shared storage-type enum also accepts INTELLIGENT_TIERING,
+  // but AWS's CreateFileSystem contract scopes Intelligent-Tiering to OpenZFS
+  // multi-AZ and Lustre PERSISTENT_2 file systems only — it is not valid for
+  // Windows. The two-value domain here is deliberate (spec mirrors AWS where
+  // the provider is loose).
+  //
   // Default: SSD
   optional string storage_type = 4 [(dev.planton.shared.options.default) = "SSD"];
 
   // Throughput capacity in MB/s. Required.
   //
   // Valid values: 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4608, 6144, 9216, 12288.
-  // The maximum available throughput depends on the deployment type.
+  // The maximum available throughput depends on the deployment type, and the
+  // 4608+ tiers are available only in a handful of regions (per the FSx for
+  // Windows performance documentation).
+  //
+  // Known provider defect at the pinned release: the provider's value list
+  // carries a digit-transposition typo — it validates 12228 where AWS's
+  // documented top tier is 12288 — so the 12288 tier fails the provider's
+  // plan-time validation on both engines until a provider release fixes the
+  // list. The spec mirrors AWS's contract, never the typo.
   //
   // Throughput can be changed after creation to scale performance up or down.
   int32 throughput_capacity = 5 [(buf.validate.field).int32.gt = 0];
@@ -265,18 +279,20 @@ message AwsFsxWindowsFileSystemSpec {
   // CEL Validations
   // ---------------------------------------------------------------------------
 
-  // deployment_type valid values.
+  // deployment_type valid values. The !has() form (not an == '' arm) rejects
+  // an explicit empty string: the field is presence-typed, so "" would survive
+  // default materialization and reach the provider's enum validation.
   option (buf.validate.message).cel = {
     id: "deployment_type_valid"
     message: "deployment_type must be 'SINGLE_AZ_1', 'SINGLE_AZ_2', or 'MULTI_AZ_1'"
-    expression: "this.deployment_type == '' || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']"
+    expression: "!has(this.deployment_type) || this.deployment_type in ['SINGLE_AZ_1', 'SINGLE_AZ_2', 'MULTI_AZ_1']"
   };
 
-  // storage_type valid values.
+  // storage_type valid values (!has() form — see deployment_type_valid).
   option (buf.validate.message).cel = {
     id: "storage_type_valid"
     message: "storage_type must be 'SSD' or 'HDD'"
-    expression: "this.storage_type == '' || this.storage_type in ['SSD', 'HDD']"
+    expression: "!has(this.storage_type) || this.storage_type in ['SSD', 'HDD']"
   };
 
   // HDD requires SINGLE_AZ_2 or MULTI_AZ_1.
@@ -431,6 +447,15 @@ message AwsFsxWindowsFileSystemSelfManagedActiveDirectory {
     message: "when using direct credentials, both username and password must be provided"
     expression: "(this.username == '' && this.password == '') || (this.username != '' && this.password != '')"
   };
+
+  // file_system_administrators_group length when set. The !has() form rejects
+  // an explicit empty string: the field is presence-typed, so "" would survive
+  // default materialization and reach the provider's length validation.
+  option (buf.validate.message).cel = {
+    id: "administrators_group_length"
+    message: "file_system_administrators_group must be 1-256 characters when provided"
+    expression: "!has(this.file_system_administrators_group) || (size(this.file_system_administrators_group) >= 1 && size(this.file_system_administrators_group) <= 256)"
+  };
 }
 
 // AwsFsxWindowsFileSystemAuditLogConfiguration configures Windows audit logging
@@ -470,18 +495,21 @@ message AwsFsxWindowsFileSystemAuditLogConfiguration {
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
   ];
 
-  // file_access_audit_log_level valid values.
+  // file_access_audit_log_level valid values. The !has() form (not an == ''
+  // arm) rejects an explicit empty string: the field is presence-typed, so ""
+  // would survive default materialization and reach the provider's enum
+  // validation.
   option (buf.validate.message).cel = {
     id: "file_access_level_valid"
     message: "file_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'"
-    expression: "this.file_access_audit_log_level == '' || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']"
+    expression: "!has(this.file_access_audit_log_level) || this.file_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']"
   };
 
-  // file_share_access_audit_log_level valid values.
+  // file_share_access_audit_log_level valid values (!has() form — see above).
   option (buf.validate.message).cel = {
     id: "file_share_access_level_valid"
     message: "file_share_access_audit_log_level must be 'DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', or 'SUCCESS_AND_FAILURE'"
-    expression: "this.file_share_access_audit_log_level == '' || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']"
+    expression: "!has(this.file_share_access_audit_log_level) || this.file_share_access_audit_log_level in ['DISABLED', 'SUCCESS_ONLY', 'FAILURE_ONLY', 'SUCCESS_AND_FAILURE']"
   };
 }
 
@@ -508,11 +536,13 @@ message AwsFsxWindowsFileSystemDiskIopsConfiguration {
     lte: 350000
   }];
 
-  // mode valid values.
+  // mode valid values. The !has() form (not an == '' arm) rejects an explicit
+  // empty string: the field is presence-typed, so "" would survive default
+  // materialization and reach the provider's enum validation.
   option (buf.validate.message).cel = {
     id: "iops_mode_valid"
     message: "mode must be 'AUTOMATIC' or 'USER_PROVISIONED'"
-    expression: "this.mode == '' || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']"
+    expression: "!has(this.mode) || this.mode in ['AUTOMATIC', 'USER_PROVISIONED']"
   };
 
   // iops requires USER_PROVISIONED mode.

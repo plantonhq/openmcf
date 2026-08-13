@@ -134,6 +134,9 @@ spec:
 | `spec.lifecycleRules[].tagPatterns` | `[]string` |  |  |  |
 | `spec.lifecycleRules[].countType` | `string` | yes |  |  |
 | `spec.lifecycleRules[].countNumber` | `int32` | yes |  |  |
+| `spec.lifecycleRules[].storageClass` | `string` |  |  |  |
+| `spec.lifecycleRules[].actionType` | `string` |  |  |  |
+| `spec.lifecycleRules[].targetStorageClass` | `string` |  |  |  |
 | `spec.repositoryPolicy` | `object` |  |  |  |
 
 ## Field Details
@@ -267,10 +270,15 @@ lifecycle rules, storage grows unbounded.
 Rules are evaluated by ascending rule_priority; an image is expired by the
 first rule that selects it. AWS constraints (enforced here so they fail at
 authoring time, not at apply): rule priorities must be unique, and at most
-one rule may use tag_status "any" (AWS additionally requires that rule to
-carry the highest priority — keep it last).
+one rule may use tag_status "any" PER storage class — the provider's own
+tested archive example pairs an "any" transition rule (standard images)
+with an "any" expire rule selecting storage_class "archive", so the cap
+applies per selection tier, not per policy.
 
 - rule: tag_status 'tagged' requires exactly one of tag_prefixes or tag_patterns; 'untagged' and 'any' take neither
+- rule: action_type 'transition' requires target_storage_class 'archive'; target_storage_class is only valid with action_type 'transition'
+- rule: count_type 'sinceImageTransitioned' requires storage_class 'archive'; every other count_type supports only 'standard'
+- rule: action_type 'transition' cannot select images already in the archive storage class
 
 ### spec.lifecycleRules[].rulePriority
 
@@ -328,23 +336,63 @@ Maximum 100 patterns.
 
 `string` · required
 
-How the rule counts images for expiry:
+How the rule counts images:
 - "imageCountMoreThan": keep the newest count_number selected images and
-  expire the rest ("keep last N").
-- "sinceImagePushed": expire selected images older than count_number days
-  ("expire by age").
+  act on the rest ("keep last N").
+- "sinceImagePushed": act on selected images older than count_number days
+  ("by age").
+- "sinceImagePulled": act on selected images not pulled for count_number
+  days ("by disuse") — the natural selector for archive transitions.
+- "sinceImageTransitioned": act on selected images that have been in the
+  archive storage class for count_number days (requires storage_class
+  "archive").
 
-- rule: {"required":true,"string":{"in":["imageCountMoreThan","sinceImagePushed"]}}
+- rule: {"required":true,"string":{"in":["imageCountMoreThan","sinceImagePushed","sinceImagePulled","sinceImageTransitioned"]}}
 
 ### spec.lifecycleRules[].countNumber
 
 `int32` · required
 
 The count for count_type: an image count for "imageCountMoreThan", or a
-number of days for "sinceImagePushed" (the "days" unit is the only unit
-ECR supports and is implied).
+number of days for the three "since..." types (the "days" unit is the
+only unit ECR supports and is implied).
 
 - rule: {"required":true,"int32":{"gte":1}}
+
+### spec.lifecycleRules[].storageClass
+
+`string`
+
+Selects images by their CURRENT storage class: "standard" (the default
+when unset — freshly pushed images) or "archive" (images a transition
+rule already moved). "archive" is required with count_type
+"sinceImageTransitioned" and is only valid there — with every other
+count_type ECR supports only "standard".
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["standard","archive"]}}
+
+### spec.lifecycleRules[].actionType
+
+`string`
+
+What the rule does to selected images:
+- "expire" (the default when unset): delete them.
+- "transition": move them to the cheaper archive storage class instead of
+  deleting (pair with target_storage_class "archive"). The canonical
+  archive policy is two rules: transition after N days without a pull,
+  then expire after M days in archive (count_type
+  "sinceImageTransitioned" + storage_class "archive").
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["expire","transition"]}}
+
+### spec.lifecycleRules[].targetStorageClass
+
+`string`
+
+For action_type "transition": the storage class images move to. "archive"
+is the only value ECR supports.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["archive"]}}
 
 ### spec.repositoryPolicy
 
@@ -364,8 +412,8 @@ lifecycle.
 - `exclusion_mode_requires_filters`: at least one image_tag_mutability_exclusion_filters entry is required when image_tag_mutability is 'IMMUTABLE_WITH_EXCLUSION' or 'MUTABLE_WITH_EXCLUSION'
 - `kms_key_requires_kms_encryption`: kms_key_id can only be set when encryption_type is 'KMS' or 'KMS_DSSE' (AES256 uses an Amazon-managed key)
 - `lifecycle_rule_priorities_unique`: each lifecycle_rules entry must have a unique rule_priority
-- `lifecycle_single_any_rule`: at most one lifecycle_rules entry may use tag_status 'any' (AWS requires it to be the highest-priority rule)
-- `lifecycle_single_untagged_rule`: at most one lifecycle_rules entry may use tag_status 'untagged'
+- `lifecycle_single_any_rule`: at most one lifecycle_rules entry may use tag_status 'any' per storage-class tier (one selecting standard images, one selecting archived images)
+- `lifecycle_single_untagged_rule`: at most one lifecycle_rules entry may use tag_status 'untagged' per storage-class tier
 
 ## Outputs
 

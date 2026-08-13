@@ -25,12 +25,17 @@ An **Elastic IP (EIP)** is a static, public IPv4 address that you allocate from 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `public_ipv4_pool` | string | No | BYOIP pool ID to allocate from. Omit to use Amazon's pool. ForceNew. |
-| `address` | string | No | Specific IP from BYOIP pool. Requires `public_ipv4_pool`. ForceNew. |
+| `address` | string | No | Specific IP from a BYOIP or IPAM pool. Requires one of the pool fields. ForceNew. |
 | `network_border_group` | string | No | Location scope (Local Zone / Wavelength). Omit for Region default. ForceNew. |
+| `ipam_pool_id` | string | No | Amazon VPC IPAM public pool to allocate from — centrally planned/audited address space. ForceNew. |
+| `instance` | ref/string | No | EC2 instance to attach the address to (references an AwsEc2Instance's `instance_id`). At most one of `instance` / `network_interface`. Updates in place. |
+| `network_interface` | ref/string | No | ENI to attach the address to — the precise form (references an AwsEc2Instance's `primary_network_interface_id`, or a literal `eni-...`). Updates in place. |
+| `associate_with_private_ip` | string | No | The specific private IP on the target the address maps to (multi-IP targets). Requires a target. Updates in place. |
+| `reverse_dns_domain_name` | string | No | Reverse DNS (PTR) domain for the address — mail providers require it. AWS grants it only after a forward A record for the domain already resolves to the EIP. Updates in place. |
 
-**Note:** For the 95%+ use case (allocate a standard VPC EIP), no spec fields are needed. Simply provide an empty spec.
+**Note:** For the most common case (allocate a standard VPC EIP), no spec fields are needed. Simply provide an empty spec.
 
-**ForceNew warning:** All optional fields trigger EIP replacement when changed. Treat allocated EIPs as immutable.
+**Mutability:** the allocation-shaping fields (pools, address, border group) are ForceNew — changing them replaces the EIP with a NEW public address. The association fields and reverse DNS update in place without re-allocating.
 
 ## Outputs
 
@@ -40,6 +45,8 @@ An **Elastic IP (EIP)** is a static, public IPv4 address that you allocate from 
 | `public_ip` | The public IPv4 address. |
 | `arn` | EIP ARN for IAM policies. |
 | `public_dns` | Public DNS hostname (e.g., `ec2-1-2-3-4.compute-1.amazonaws.com`). |
+| `association_id` | Association ID (`eipassoc-xxx`) when the spec attaches the address; empty when unattached. |
+| `ptr_record` | The granted reverse DNS record when `reverse_dns_domain_name` is set; empty otherwise. |
 
 ## Minimal Example
 
@@ -92,13 +99,24 @@ spec:
           fieldPath: status.outputs.allocation_id
 ```
 
-## What Is Deliberately Omitted (v1)
+## Attaching the Address
 
-- **EIP association** (`instance`, `network_interface`) — Association has an independent lifecycle and should be managed by the consumer resource (NLB, NAT Gateway) or via a separate AwsEipAssociation component.
-- **IPAM pool support** (`ipam_pool_id`) — Enterprise IPAM, <5% adoption.
-- **Customer-owned IP pool** — AWS Outpost only, <1% adoption.
-- **PTR record management** — Separate AWS resource, niche use case.
-- **`domain` field** — Hardcoded to `"vpc"` (EC2-Classic is deprecated).
+Two composition directions exist, and both are first-class:
+
+- **Consumers that take an allocation** (NLB subnet mappings, NAT gateways)
+  reference this component's `allocation_id` output — the EIP spec stays
+  empty.
+- **EC2 instances and ENIs** cannot pull an address themselves (the AWS
+  instance API has no EIP argument), so the attachment is declared HERE:
+  `spec.instance` or `spec.network_interface` points the address at its
+  target, mirroring the AWS provider's own inline association surface.
+
+## What Is Deliberately Omitted
+
+- **Customer-owned IP pool** (`customer_owned_ipv4_pool`) — AWS Outposts
+  surface; the catalog's recorded Outposts exclusion class.
+- **`domain` field** — Module-wired to `"vpc"`: AWS retired EC2-Classic
+  addresses, and the provider itself refuses to read them.
 
 ---
 

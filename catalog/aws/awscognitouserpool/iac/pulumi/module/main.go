@@ -38,5 +38,15 @@ func Resources(ctx *pulumi.Context, stackInput *awscognitouserpoolv1alpha1.AwsCo
 		return errors.Wrap(err, "cognito user pool log delivery")
 	}
 
+	// User groups (pool-scoped; membership is data-plane, managed at runtime)
+	if err := userGroups(ctx, locals, createdPool, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool groups")
+	}
+
+	// Pool-wide risk configuration (threat protection's automated responses)
+	if err := riskConfiguration(ctx, locals, createdPool, provider); err != nil {
+		return errors.Wrap(err, "cognito user pool risk configuration")
+	}
+
 	return nil
 }

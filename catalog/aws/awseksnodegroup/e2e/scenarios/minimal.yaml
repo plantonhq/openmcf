@@ -5,6 +5,11 @@
 # and creates the backing Auto Scaling group without launching a single
 # instance -- the same zero-instance proof the AwsAutoScalingGroup E2E
 # uses. Full metadata is supplied for tagging/orphan cleanup.
+#
+# warm_pool_config is DELIBERATELY absent: a warm pool prepares real
+# instances (they launch, then stop), so even a STOPPED pool bills EBS --
+# that arm is proven by offline plan/preview against the canonical
+# manifest, never by this live lane.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:

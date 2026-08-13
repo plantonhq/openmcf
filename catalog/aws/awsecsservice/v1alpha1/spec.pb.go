@@ -136,9 +136,10 @@ type AwsEcsServiceSpec struct {
 	// already resolve the Cloud Map DNS name.
 	ServiceRegistries *AwsEcsServiceServiceRegistries `protobuf:"bytes,19,opt,name=service_registries,json=serviceRegistries,proto3" json:"service_registries,omitempty"`
 	// A per-deployment managed EBS volume attached to each task, configured
-	// at deployment time against a volume declared (by name) in the task
-	// definition. How ECS tasks get real block storage beyond ephemeral
-	// scratch space.
+	// at deployment time against a volume the task definition declares with
+	// configure_at_launch (AwsEcsTaskDefinition spec.volumes) -- name must
+	// match that volume's name. How ECS tasks get real block storage beyond
+	// ephemeral scratch space.
 	VolumeConfiguration *AwsEcsServiceVolumeConfiguration `protobuf:"bytes,20,opt,name=volume_configuration,json=volumeConfiguration,proto3" json:"volume_configuration,omitempty"`
 	// Task placement strategies, applied in order (EC2 launch type only --
 	// Fargate places tasks itself). Example: spread across AZs, then
@@ -174,9 +175,16 @@ type AwsEcsServiceSpec struct {
 	// this service (one scalable target per service); the CloudWatch alarms
 	// the policies create are managed by AWS. Not applicable to DAEMON
 	// services.
-	Autoscaling   *AwsEcsServiceAutoscaling `protobuf:"bytes,28,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Autoscaling *AwsEcsServiceAutoscaling `protobuf:"bytes,28,opt,name=autoscaling,proto3" json:"autoscaling,omitempty"`
+	// VPC Lattice target-group attachments: register this service's tasks
+	// into VPC Lattice target groups so Lattice services route to them --
+	// the application-network alternative to a load balancer for
+	// cross-VPC/cross-account traffic. Each entry names the target group,
+	// the port name (from the task definition's port_mappings) to register,
+	// and the infrastructure role ECS assumes to manage the registration.
+	VpcLatticeConfigurations []*AwsEcsServiceVpcLatticeConfiguration `protobuf:"bytes,29,rep,name=vpc_lattice_configurations,json=vpcLatticeConfigurations,proto3" json:"vpc_lattice_configurations,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsEcsServiceSpec) Reset() {
@@ -401,6 +409,13 @@ func (x *AwsEcsServiceSpec) GetForceDelete() bool {
 func (x *AwsEcsServiceSpec) GetAutoscaling() *AwsEcsServiceAutoscaling {
 	if x != nil {
 		return x.Autoscaling
+	}
+	return nil
+}
+
+func (x *AwsEcsServiceSpec) GetVpcLatticeConfigurations() []*AwsEcsServiceVpcLatticeConfiguration {
+	if x != nil {
+		return x.VpcLatticeConfigurations
 	}
 	return nil
 }
@@ -1134,8 +1149,13 @@ type AwsEcsServiceServiceConnect struct {
 	// Where the Service Connect proxy's own logs go (the injected agent's
 	// logs, not the application's).
 	LogConfiguration *AwsEcsServiceLogConfiguration `protobuf:"bytes,4,opt,name=log_configuration,json=logConfiguration,proto3" json:"log_configuration,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Per-request access logging by the Service Connect proxy -- one line
+	// per mesh request (caller, target, status, latency), emitted to the
+	// proxy's log destination above. The mesh-level equivalent of load
+	// balancer access logs.
+	AccessLogConfiguration *AwsEcsServiceServiceConnectAccessLog `protobuf:"bytes,5,opt,name=access_log_configuration,json=accessLogConfiguration,proto3" json:"access_log_configuration,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *AwsEcsServiceServiceConnect) Reset() {
@@ -1196,6 +1216,72 @@ func (x *AwsEcsServiceServiceConnect) GetLogConfiguration() *AwsEcsServiceLogCon
 	return nil
 }
 
+func (x *AwsEcsServiceServiceConnect) GetAccessLogConfiguration() *AwsEcsServiceServiceConnectAccessLog {
+	if x != nil {
+		return x.AccessLogConfiguration
+	}
+	return nil
+}
+
+// AwsEcsServiceServiceConnectAccessLog turns on per-request access logs
+// from the Service Connect proxy.
+type AwsEcsServiceServiceConnectAccessLog struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The log line format: "TEXT" or "JSON" (structured -- the right choice
+	// when logs feed a query engine).
+	Format string `protobuf:"bytes,1,opt,name=format,proto3" json:"format,omitempty"`
+	// Include request query parameters in the log lines: "ENABLED" or
+	// "DISABLED". Unset keeps AWS's default (disabled -- query strings
+	// often carry sensitive values).
+	IncludeQueryParameters string `protobuf:"bytes,2,opt,name=include_query_parameters,json=includeQueryParameters,proto3" json:"include_query_parameters,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceServiceConnectAccessLog) Reset() {
+	*x = AwsEcsServiceServiceConnectAccessLog{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceServiceConnectAccessLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceServiceConnectAccessLog) ProtoMessage() {}
+
+func (x *AwsEcsServiceServiceConnectAccessLog) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceServiceConnectAccessLog.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceServiceConnectAccessLog) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *AwsEcsServiceServiceConnectAccessLog) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceServiceConnectAccessLog) GetIncludeQueryParameters() string {
+	if x != nil {
+		return x.IncludeQueryParameters
+	}
+	return ""
+}
+
 // AwsEcsServiceServiceConnectService publishes one named container port to
 // the Service Connect mesh.
 type AwsEcsServiceServiceConnectService struct {
@@ -1221,7 +1307,7 @@ type AwsEcsServiceServiceConnectService struct {
 
 func (x *AwsEcsServiceServiceConnectService) Reset() {
 	*x = AwsEcsServiceServiceConnectService{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1233,7 +1319,7 @@ func (x *AwsEcsServiceServiceConnectService) String() string {
 func (*AwsEcsServiceServiceConnectService) ProtoMessage() {}
 
 func (x *AwsEcsServiceServiceConnectService) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[12]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,7 +1332,7 @@ func (x *AwsEcsServiceServiceConnectService) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsEcsServiceServiceConnectService.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceServiceConnectService) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{12}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AwsEcsServiceServiceConnectService) GetPortName() string {
@@ -1299,14 +1385,18 @@ type AwsEcsServiceServiceConnectClientAlias struct {
 	Port int32 `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
 	// The DNS name clients use (e.g. "orders" or "orders.internal").
 	// Default: the discovery name.
-	DnsName       string `protobuf:"bytes,2,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DnsName string `protobuf:"bytes,2,opt,name=dns_name,json=dnsName,proto3" json:"dns_name,omitempty"`
+	// Route requests carrying a matching header to this service's TEST
+	// revision during a blue/green deployment -- how testers reach the new
+	// version through the mesh before traffic shifts.
+	TestTrafficRules []*AwsEcsServiceServiceConnectTestTrafficRules `protobuf:"bytes,3,rep,name=test_traffic_rules,json=testTrafficRules,proto3" json:"test_traffic_rules,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AwsEcsServiceServiceConnectClientAlias) Reset() {
 	*x = AwsEcsServiceServiceConnectClientAlias{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1318,7 +1408,7 @@ func (x *AwsEcsServiceServiceConnectClientAlias) String() string {
 func (*AwsEcsServiceServiceConnectClientAlias) ProtoMessage() {}
 
 func (x *AwsEcsServiceServiceConnectClientAlias) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[13]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1331,7 +1421,7 @@ func (x *AwsEcsServiceServiceConnectClientAlias) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AwsEcsServiceServiceConnectClientAlias.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceServiceConnectClientAlias) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{13}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AwsEcsServiceServiceConnectClientAlias) GetPort() int32 {
@@ -1344,6 +1434,163 @@ func (x *AwsEcsServiceServiceConnectClientAlias) GetPort() int32 {
 func (x *AwsEcsServiceServiceConnectClientAlias) GetDnsName() string {
 	if x != nil {
 		return x.DnsName
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceServiceConnectClientAlias) GetTestTrafficRules() []*AwsEcsServiceServiceConnectTestTrafficRules {
+	if x != nil {
+		return x.TestTrafficRules
+	}
+	return nil
+}
+
+// AwsEcsServiceServiceConnectTestTrafficRules is one test-traffic routing
+// rule: requests whose header matches route to the deployment's test
+// revision.
+type AwsEcsServiceServiceConnectTestTrafficRules struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The header match selecting test traffic.
+	Header        *AwsEcsServiceServiceConnectTestTrafficHeader `protobuf:"bytes,1,opt,name=header,proto3" json:"header,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficRules) Reset() {
+	*x = AwsEcsServiceServiceConnectTestTrafficRules{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficRules) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceServiceConnectTestTrafficRules) ProtoMessage() {}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficRules) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceServiceConnectTestTrafficRules.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceServiceConnectTestTrafficRules) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficRules) GetHeader() *AwsEcsServiceServiceConnectTestTrafficHeader {
+	if x != nil {
+		return x.Header
+	}
+	return nil
+}
+
+// AwsEcsServiceServiceConnectTestTrafficHeader matches one request header.
+type AwsEcsServiceServiceConnectTestTrafficHeader struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The header name to match (e.g. "x-canary-test").
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// The header value match.
+	Value         *AwsEcsServiceServiceConnectTestTrafficHeaderValue `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeader) Reset() {
+	*x = AwsEcsServiceServiceConnectTestTrafficHeader{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceServiceConnectTestTrafficHeader) ProtoMessage() {}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeader) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceServiceConnectTestTrafficHeader.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceServiceConnectTestTrafficHeader) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeader) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeader) GetValue() *AwsEcsServiceServiceConnectTestTrafficHeaderValue {
+	if x != nil {
+		return x.Value
+	}
+	return nil
+}
+
+// AwsEcsServiceServiceConnectTestTrafficHeaderValue is the value match for
+// a test-traffic header rule.
+type AwsEcsServiceServiceConnectTestTrafficHeaderValue struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The exact header value that selects test traffic.
+	Exact         string `protobuf:"bytes,1,opt,name=exact,proto3" json:"exact,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeaderValue) Reset() {
+	*x = AwsEcsServiceServiceConnectTestTrafficHeaderValue{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeaderValue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceServiceConnectTestTrafficHeaderValue) ProtoMessage() {}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeaderValue) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceServiceConnectTestTrafficHeaderValue.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceServiceConnectTestTrafficHeaderValue) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AwsEcsServiceServiceConnectTestTrafficHeaderValue) GetExact() string {
+	if x != nil {
+		return x.Exact
 	}
 	return ""
 }
@@ -1363,7 +1610,7 @@ type AwsEcsServiceServiceConnectTimeout struct {
 
 func (x *AwsEcsServiceServiceConnectTimeout) Reset() {
 	*x = AwsEcsServiceServiceConnectTimeout{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1375,7 +1622,7 @@ func (x *AwsEcsServiceServiceConnectTimeout) String() string {
 func (*AwsEcsServiceServiceConnectTimeout) ProtoMessage() {}
 
 func (x *AwsEcsServiceServiceConnectTimeout) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[14]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1388,7 +1635,7 @@ func (x *AwsEcsServiceServiceConnectTimeout) ProtoReflect() protoreflect.Message
 
 // Deprecated: Use AwsEcsServiceServiceConnectTimeout.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceServiceConnectTimeout) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{14}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AwsEcsServiceServiceConnectTimeout) GetIdleTimeoutSeconds() int32 {
@@ -1424,7 +1671,7 @@ type AwsEcsServiceServiceConnectTls struct {
 
 func (x *AwsEcsServiceServiceConnectTls) Reset() {
 	*x = AwsEcsServiceServiceConnectTls{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1683,7 @@ func (x *AwsEcsServiceServiceConnectTls) String() string {
 func (*AwsEcsServiceServiceConnectTls) ProtoMessage() {}
 
 func (x *AwsEcsServiceServiceConnectTls) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[15]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1696,7 @@ func (x *AwsEcsServiceServiceConnectTls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceServiceConnectTls.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceServiceConnectTls) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{15}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *AwsEcsServiceServiceConnectTls) GetAwsPcaAuthorityArn() string {
@@ -1492,7 +1739,7 @@ type AwsEcsServiceLogConfiguration struct {
 
 func (x *AwsEcsServiceLogConfiguration) Reset() {
 	*x = AwsEcsServiceLogConfiguration{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1504,7 +1751,7 @@ func (x *AwsEcsServiceLogConfiguration) String() string {
 func (*AwsEcsServiceLogConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsServiceLogConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[16]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1517,7 +1764,7 @@ func (x *AwsEcsServiceLogConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceLogConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceLogConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{16}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AwsEcsServiceLogConfiguration) GetLogDriver() string {
@@ -1562,7 +1809,7 @@ type AwsEcsServiceServiceRegistries struct {
 
 func (x *AwsEcsServiceServiceRegistries) Reset() {
 	*x = AwsEcsServiceServiceRegistries{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1574,7 +1821,7 @@ func (x *AwsEcsServiceServiceRegistries) String() string {
 func (*AwsEcsServiceServiceRegistries) ProtoMessage() {}
 
 func (x *AwsEcsServiceServiceRegistries) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[17]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1587,7 +1834,7 @@ func (x *AwsEcsServiceServiceRegistries) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceServiceRegistries.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceServiceRegistries) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{17}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AwsEcsServiceServiceRegistries) GetRegistryArn() string {
@@ -1634,7 +1881,7 @@ type AwsEcsServiceVolumeConfiguration struct {
 
 func (x *AwsEcsServiceVolumeConfiguration) Reset() {
 	*x = AwsEcsServiceVolumeConfiguration{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1646,7 +1893,7 @@ func (x *AwsEcsServiceVolumeConfiguration) String() string {
 func (*AwsEcsServiceVolumeConfiguration) ProtoMessage() {}
 
 func (x *AwsEcsServiceVolumeConfiguration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[18]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1659,7 +1906,7 @@ func (x *AwsEcsServiceVolumeConfiguration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceVolumeConfiguration.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceVolumeConfiguration) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{18}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *AwsEcsServiceVolumeConfiguration) GetName() string {
@@ -1706,13 +1953,20 @@ type AwsEcsServiceManagedEbsVolume struct {
 	// The filesystem ECS formats the volume with: "xfs" (default), "ext4",
 	// "ext3", or "ntfs" (Windows tasks).
 	FileSystemType string `protobuf:"bytes,9,opt,name=file_system_type,json=fileSystemType,proto3" json:"file_system_type,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Tags applied to each created EBS volume at creation time -- without
+	// this, per-task volumes carry no cost-allocation tags at all.
+	TagSpecifications []*AwsEcsServiceEbsTagSpecification `protobuf:"bytes,10,rep,name=tag_specifications,json=tagSpecifications,proto3" json:"tag_specifications,omitempty"`
+	// How fast a snapshot-restored volume hydrates, in MiB/s. Only
+	// meaningful with snapshot_id; 0 (unset) uses the EBS default lazy
+	// loading.
+	VolumeInitializationRate int32 `protobuf:"varint,11,opt,name=volume_initialization_rate,json=volumeInitializationRate,proto3" json:"volume_initialization_rate,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *AwsEcsServiceManagedEbsVolume) Reset() {
 	*x = AwsEcsServiceManagedEbsVolume{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1724,7 +1978,7 @@ func (x *AwsEcsServiceManagedEbsVolume) String() string {
 func (*AwsEcsServiceManagedEbsVolume) ProtoMessage() {}
 
 func (x *AwsEcsServiceManagedEbsVolume) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[19]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1737,7 +1991,7 @@ func (x *AwsEcsServiceManagedEbsVolume) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceManagedEbsVolume.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceManagedEbsVolume) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{19}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *AwsEcsServiceManagedEbsVolume) GetRoleArn() *v1.StringValueOrRef {
@@ -1803,6 +2057,160 @@ func (x *AwsEcsServiceManagedEbsVolume) GetFileSystemType() string {
 	return ""
 }
 
+func (x *AwsEcsServiceManagedEbsVolume) GetTagSpecifications() []*AwsEcsServiceEbsTagSpecification {
+	if x != nil {
+		return x.TagSpecifications
+	}
+	return nil
+}
+
+func (x *AwsEcsServiceManagedEbsVolume) GetVolumeInitializationRate() int32 {
+	if x != nil {
+		return x.VolumeInitializationRate
+	}
+	return 0
+}
+
+// AwsEcsServiceVpcLatticeConfiguration registers the service's tasks into
+// one VPC Lattice target group -- the application-network path for
+// cross-VPC and cross-account traffic without a load balancer in every
+// VPC.
+type AwsEcsServiceVpcLatticeConfiguration struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The IAM role ECS assumes to register and deregister task targets with
+	// VPC Lattice (the ECS service principal must be able to assume it, and
+	// it needs the Lattice target-management permissions). Reference an
+	// AwsIamRole's role_arn output or pass a literal ARN.
+	RoleArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=role_arn,json=roleArn,proto3" json:"role_arn,omitempty"`
+	// The VPC Lattice target group (by ARN) the tasks register into. A
+	// literal ARN -- Planton has no VPC Lattice kinds yet.
+	TargetGroupArn string `protobuf:"bytes,2,opt,name=target_group_arn,json=targetGroupArn,proto3" json:"target_group_arn,omitempty"`
+	// The name of a port mapping in the task definition (the port_mappings
+	// entry must set name) whose port is registered with the target group.
+	// 1-64 characters: lowercase letters, digits, underscores, hyphens.
+	PortName      string `protobuf:"bytes,3,opt,name=port_name,json=portName,proto3" json:"port_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) Reset() {
+	*x = AwsEcsServiceVpcLatticeConfiguration{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceVpcLatticeConfiguration) ProtoMessage() {}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceVpcLatticeConfiguration.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceVpcLatticeConfiguration) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) GetRoleArn() *v1.StringValueOrRef {
+	if x != nil {
+		return x.RoleArn
+	}
+	return nil
+}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) GetTargetGroupArn() string {
+	if x != nil {
+		return x.TargetGroupArn
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceVpcLatticeConfiguration) GetPortName() string {
+	if x != nil {
+		return x.PortName
+	}
+	return ""
+}
+
+// AwsEcsServiceEbsTagSpecification tags the EBS volumes ECS creates for
+// managed task storage.
+type AwsEcsServiceEbsTagSpecification struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The resource type being tagged; "volume" is the only type EBS task
+	// volumes support.
+	ResourceType string `protobuf:"bytes,1,opt,name=resource_type,json=resourceType,proto3" json:"resource_type,omitempty"`
+	// The tags applied to each created volume.
+	Tags map[string]string `protobuf:"bytes,2,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Also propagate tags from "SERVICE" or "TASK_DEFINITION" ("NONE"
+	// disables propagation) onto the created volumes.
+	PropagateTags string `protobuf:"bytes,3,opt,name=propagate_tags,json=propagateTags,proto3" json:"propagate_tags,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AwsEcsServiceEbsTagSpecification) Reset() {
+	*x = AwsEcsServiceEbsTagSpecification{}
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AwsEcsServiceEbsTagSpecification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AwsEcsServiceEbsTagSpecification) ProtoMessage() {}
+
+func (x *AwsEcsServiceEbsTagSpecification) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AwsEcsServiceEbsTagSpecification.ProtoReflect.Descriptor instead.
+func (*AwsEcsServiceEbsTagSpecification) Descriptor() ([]byte, []int) {
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *AwsEcsServiceEbsTagSpecification) GetResourceType() string {
+	if x != nil {
+		return x.ResourceType
+	}
+	return ""
+}
+
+func (x *AwsEcsServiceEbsTagSpecification) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *AwsEcsServiceEbsTagSpecification) GetPropagateTags() string {
+	if x != nil {
+		return x.PropagateTags
+	}
+	return ""
+}
+
 // AwsEcsServicePlacementStrategy is one ordered placement rule for EC2
 // tasks.
 type AwsEcsServicePlacementStrategy struct {
@@ -1820,7 +2228,7 @@ type AwsEcsServicePlacementStrategy struct {
 
 func (x *AwsEcsServicePlacementStrategy) Reset() {
 	*x = AwsEcsServicePlacementStrategy{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1832,7 +2240,7 @@ func (x *AwsEcsServicePlacementStrategy) String() string {
 func (*AwsEcsServicePlacementStrategy) ProtoMessage() {}
 
 func (x *AwsEcsServicePlacementStrategy) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[20]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1845,7 +2253,7 @@ func (x *AwsEcsServicePlacementStrategy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServicePlacementStrategy.ProtoReflect.Descriptor instead.
 func (*AwsEcsServicePlacementStrategy) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{20}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *AwsEcsServicePlacementStrategy) GetType() string {
@@ -1878,7 +2286,7 @@ type AwsEcsServicePlacementConstraint struct {
 
 func (x *AwsEcsServicePlacementConstraint) Reset() {
 	*x = AwsEcsServicePlacementConstraint{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +2298,7 @@ func (x *AwsEcsServicePlacementConstraint) String() string {
 func (*AwsEcsServicePlacementConstraint) ProtoMessage() {}
 
 func (x *AwsEcsServicePlacementConstraint) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[21]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +2311,7 @@ func (x *AwsEcsServicePlacementConstraint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServicePlacementConstraint.ProtoReflect.Descriptor instead.
 func (*AwsEcsServicePlacementConstraint) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{21}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *AwsEcsServicePlacementConstraint) GetType() string {
@@ -1948,7 +2356,7 @@ type AwsEcsServiceAutoscaling struct {
 
 func (x *AwsEcsServiceAutoscaling) Reset() {
 	*x = AwsEcsServiceAutoscaling{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1960,7 +2368,7 @@ func (x *AwsEcsServiceAutoscaling) String() string {
 func (*AwsEcsServiceAutoscaling) ProtoMessage() {}
 
 func (x *AwsEcsServiceAutoscaling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[22]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1973,7 +2381,7 @@ func (x *AwsEcsServiceAutoscaling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceAutoscaling.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceAutoscaling) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{22}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AwsEcsServiceAutoscaling) GetMinTasks() int32 {
@@ -2033,7 +2441,7 @@ type AwsEcsServiceAutoscalingTarget struct {
 
 func (x *AwsEcsServiceAutoscalingTarget) Reset() {
 	*x = AwsEcsServiceAutoscalingTarget{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2045,7 +2453,7 @@ func (x *AwsEcsServiceAutoscalingTarget) String() string {
 func (*AwsEcsServiceAutoscalingTarget) ProtoMessage() {}
 
 func (x *AwsEcsServiceAutoscalingTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[23]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2058,7 +2466,7 @@ func (x *AwsEcsServiceAutoscalingTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AwsEcsServiceAutoscalingTarget.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceAutoscalingTarget) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{23}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AwsEcsServiceAutoscalingTarget) GetTargetPercent() int32 {
@@ -2117,7 +2525,7 @@ type AwsEcsServiceAutoscalingRequestCountTarget struct {
 
 func (x *AwsEcsServiceAutoscalingRequestCountTarget) Reset() {
 	*x = AwsEcsServiceAutoscalingRequestCountTarget{}
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2129,7 +2537,7 @@ func (x *AwsEcsServiceAutoscalingRequestCountTarget) String() string {
 func (*AwsEcsServiceAutoscalingRequestCountTarget) ProtoMessage() {}
 
 func (x *AwsEcsServiceAutoscalingRequestCountTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[24]
+	mi := &file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2142,7 +2550,7 @@ func (x *AwsEcsServiceAutoscalingRequestCountTarget) ProtoReflect() protoreflect
 
 // Deprecated: Use AwsEcsServiceAutoscalingRequestCountTarget.ProtoReflect.Descriptor instead.
 func (*AwsEcsServiceAutoscalingRequestCountTarget) Descriptor() ([]byte, []int) {
-	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{24}
+	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *AwsEcsServiceAutoscalingRequestCountTarget) GetTargetRequestsPerTarget() float64 {
@@ -2191,7 +2599,7 @@ var File_catalog_aws_awsecsservice_v1alpha1_spec_proto protoreflect.FileDescript
 
 const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"-catalog/aws/awsecsservice/v1alpha1/spec.proto\x12&dev.planton.aws.awsecsservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xcb&\n" +
+	"-catalog/aws/awsecsservice/v1alpha1/spec.proto\x12&dev.planton.aws.awsecsservice.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd8'\n" +
 	"\x11AwsEcsServiceSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12~\n" +
 	"\vcluster_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xed\a\x92\xd4a\x1astatus.outputs.cluster_arnR\n" +
@@ -2224,7 +2632,8 @@ const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x17enable_ecs_managed_tags\x18\x19 \x01(\bR\x14enableEcsManagedTags\x124\n" +
 	"\x16enable_execute_command\x18\x1a \x01(\bR\x14enableExecuteCommand\x12!\n" +
 	"\fforce_delete\x18\x1b \x01(\bR\vforceDelete\x12b\n" +
-	"\vautoscaling\x18\x1c \x01(\v2@.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingR\vautoscaling:\xec\x11\xbaH\xe8\x11\x1a\x9f\x01\n" +
+	"\vautoscaling\x18\x1c \x01(\v2@.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingR\vautoscaling\x12\x8a\x01\n" +
+	"\x1avpc_lattice_configurations\x18\x1d \x03(\v2L.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVpcLatticeConfigurationR\x18vpcLatticeConfigurations:\xec\x11\xbaH\xe8\x11\x1a\x9f\x01\n" +
 	"\x11launch_type_valid\x12<launch_type must be 'FARGATE', 'EC2', or 'EXTERNAL' when set\x1aLthis.launch_type == '' || this.launch_type in ['FARGATE', 'EC2', 'EXTERNAL']\x1a\xed\x01\n" +
 	"\"launch_type_xor_capacity_providers\x12\x80\x01launch_type and capacity_provider_strategy are mutually exclusive -- name one launch type, or blend capacity providers, not both\x1aDthis.launch_type == '' || size(this.capacity_provider_strategy) == 0\x1a\xac\x01\n" +
 	"\x19scheduling_strategy_valid\x12:scheduling_strategy must be 'REPLICA' or 'DAEMON' when set\x1aSthis.scheduling_strategy == '' || this.scheduling_strategy in ['REPLICA', 'DAEMON']\x1a\xc8\x01\n" +
@@ -2294,13 +2703,19 @@ const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x0fhook_target_arn\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\rhookTargetArn\x12u\n" +
 	"\brole_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\xd4\x01\n" +
 	"\x10lifecycle_stages\x18\x03 \x03(\tB\xa8\x01\xbaH\xa4\x01\x92\x01\xa0\x01\b\x01\x18\x01\"\x99\x01r\x96\x01R\x11RECONCILE_SERVICER\fPRE_SCALE_UPR\rPOST_SCALE_UPR\x12TEST_TRAFFIC_SHIFTR\x17POST_TEST_TRAFFIC_SHIFTR\x18PRODUCTION_TRAFFIC_SHIFTR\x1dPOST_PRODUCTION_TRAFFIC_SHIFTR\x0flifecycleStages\x12!\n" +
-	"\fhook_details\x18\x04 \x01(\tR\vhookDetails\"\xc2\x03\n" +
+	"\fhook_details\x18\x04 \x01(\tR\vhookDetails\"\xe1\x05\n" +
 	"\x1bAwsEcsServiceServiceConnect\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12f\n" +
 	"\bservices\x18\x03 \x03(\v2J.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectServiceR\bservices\x12r\n" +
-	"\x11log_configuration\x18\x04 \x01(\v2E.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfigurationR\x10logConfiguration:\x8e\x01\xbaH\x8a\x01\x1a\x87\x01\n" +
-	"\x18services_require_enabled\x12Adeclaring exposed services requires Service Connect to be enabled\x1a(size(this.services) == 0 || this.enabled\"\x83\x04\n" +
+	"\x11log_configuration\x18\x04 \x01(\v2E.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfigurationR\x10logConfiguration\x12\x86\x01\n" +
+	"\x18access_log_configuration\x18\x05 \x01(\v2L.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectAccessLogR\x16accessLogConfiguration:\xa4\x02\xbaH\xa0\x02\x1a\x87\x01\n" +
+	"\x18services_require_enabled\x12Adeclaring exposed services requires Service Connect to be enabled\x1a(size(this.services) == 0 || this.enabled\x1a\x93\x01\n" +
+	"\x1baccess_log_requires_enabled\x12?access_log_configuration requires Service Connect to be enabled\x1a3!has(this.access_log_configuration) || this.enabled\"\xd9\x02\n" +
+	"$AwsEcsServiceServiceConnectAccessLog\x12)\n" +
+	"\x06format\x18\x01 \x01(\tB\x11\xbaH\x0er\fR\x04TEXTR\x04JSONR\x06format\x128\n" +
+	"\x18include_query_parameters\x18\x02 \x01(\tR\x16includeQueryParameters:\xcb\x01\xbaH\xc7\x01\x1a\xc4\x01\n" +
+	"\x1einclude_query_parameters_valid\x12Ainclude_query_parameters must be 'ENABLED' or 'DISABLED' when set\x1a_this.include_query_parameters == '' || this.include_query_parameters in ['ENABLED', 'DISABLED']\"\x83\x04\n" +
 	"\"AwsEcsServiceServiceConnectService\x12#\n" +
 	"\tport_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\bportName\x12%\n" +
 	"\x0ediscovery_name\x18\x02 \x01(\tR\rdiscoveryName\x12q\n" +
@@ -2308,10 +2723,18 @@ const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15ingress_port_override\x18\x04 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x00H\x00R\x13ingressPortOverride\x88\x01\x01\x12d\n" +
 	"\atimeout\x18\x05 \x01(\v2J.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTimeoutR\atimeout\x12X\n" +
 	"\x03tls\x18\x06 \x01(\v2F.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTlsR\x03tlsB\x18\n" +
-	"\x16_ingress_port_override\"d\n" +
+	"\x16_ingress_port_override\"\xe8\x01\n" +
 	"&AwsEcsServiceServiceConnectClientAlias\x12\x1f\n" +
 	"\x04port\x18\x01 \x01(\x05B\v\xbaH\b\x1a\x06\x18\xff\xff\x03(\x01R\x04port\x12\x19\n" +
-	"\bdns_name\x18\x02 \x01(\tR\adnsName\"\xa7\x01\n" +
+	"\bdns_name\x18\x02 \x01(\tR\adnsName\x12\x81\x01\n" +
+	"\x12test_traffic_rules\x18\x03 \x03(\v2S.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficRulesR\x10testTrafficRules\"\x9b\x01\n" +
+	"+AwsEcsServiceServiceConnectTestTrafficRules\x12l\n" +
+	"\x06header\x18\x01 \x01(\v2T.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeaderR\x06header\"\xc3\x01\n" +
+	",AwsEcsServiceServiceConnectTestTrafficHeader\x12\x1a\n" +
+	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12w\n" +
+	"\x05value\x18\x02 \x01(\v2Y.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeaderValueB\x06\xbaH\x03\xc8\x01\x01R\x05value\"Q\n" +
+	"1AwsEcsServiceServiceConnectTestTrafficHeaderValue\x12\x1c\n" +
+	"\x05exact\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05exact\"\xa7\x01\n" +
 	"\"AwsEcsServiceServiceConnectTimeout\x129\n" +
 	"\x14idle_timeout_seconds\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x12idleTimeoutSeconds\x12F\n" +
 	"\x1bper_request_timeout_seconds\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x18perRequestTimeoutSeconds\"\xba\x02\n" +
@@ -2340,8 +2763,7 @@ const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\x05_port\"\xbb\x01\n" +
 	" AwsEcsServiceVolumeConfiguration\x12\x1a\n" +
 	"\x04name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x04name\x12{\n" +
-	"\x12managed_ebs_volume\x18\x02 \x01(\v2E.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolumeB\x06\xbaH\x03\xc8\x01\x01R\x10managedEbsVolume\"\xc5\n" +
-	"\n" +
+	"\x12managed_ebs_volume\x18\x02 \x01(\v2E.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolumeB\x06\xbaH\x03\xc8\x01\x01R\x10managedEbsVolume\"\xfc\v\n" +
 	"\x1dAwsEcsServiceManagedEbsVolume\x12u\n" +
 	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x12\x1c\n" +
 	"\n" +
@@ -2357,14 +2779,30 @@ const file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc = "" +
 	"kms_key_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\bkmsKeyId\x12\x1f\n" +
 	"\vsnapshot_id\x18\b \x01(\tR\n" +
 	"snapshotId\x12(\n" +
-	"\x10file_system_type\x18\t \x01(\tR\x0efileSystemType:\xca\x06\xbaH\xc6\x06\x1a\x83\x01\n" +
+	"\x10file_system_type\x18\t \x01(\tR\x0efileSystemType\x12w\n" +
+	"\x12tag_specifications\x18\n" +
+	" \x03(\v2H.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecificationR\x11tagSpecifications\x12<\n" +
+	"\x1avolume_initialization_rate\x18\v \x01(\x05R\x18volumeInitializationRate:\xca\x06\xbaH\xc6\x06\x1a\x83\x01\n" +
 	"\x10size_or_snapshot\x12@set size_in_gb, or snapshot_id (whose snapshot defines the size)\x1a-this.size_in_gb > 0 || this.snapshot_id != ''\x1a\xbd\x01\n" +
 	"\x11volume_type_valid\x12Bvolume_type must be one of: gp2, gp3, io1, io2, st1, sc1, standard\x1adthis.volume_type == '' || this.volume_type in ['gp2', 'gp3', 'io1', 'io2', 'st1', 'sc1', 'standard']\x1a\xb8\x01\n" +
 	"\x13throughput_gp3_only\x127throughput only applies to gp3 volumes (125-1000 MiB/s)\x1ahthis.throughput == 0 || (this.volume_type == 'gp3' && this.throughput >= 125 && this.throughput <= 1000)\x1a\x8a\x01\n" +
 	"\x1biops_provisioned_types_only\x12.iops only applies to gp3, io1, and io2 volumes\x1a;this.iops == 0 || this.volume_type in ['gp3', 'io1', 'io2']\x1a\xb5\x01\n" +
 	"\x16file_system_type_valid\x12Bfile_system_type must be 'xfs', 'ext4', 'ext3', or 'ntfs' when set\x1aWthis.file_system_type == '' || this.file_system_type in ['xfs', 'ext4', 'ext3', 'ntfs']B\f\n" +
 	"\n" +
-	"_encrypted\"j\n" +
+	"_encrypted\"\x93\x02\n" +
+	"$AwsEcsServiceVpcLatticeConfiguration\x12u\n" +
+	"\brole_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\aroleArn\x120\n" +
+	"\x10target_group_arn\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x0etargetGroupArn\x12B\n" +
+	"\tport_name\x18\x03 \x01(\tB%\xbaH\"\xc8\x01\x01r\x1d2\x1b^[0-9a-z_][0-9a-z_-]{0,63}$R\bportName\"\xe3\x03\n" +
+	" AwsEcsServiceEbsTagSpecification\x122\n" +
+	"\rresource_type\x18\x01 \x01(\tB\r\xbaH\n" +
+	"r\bR\x06volumeR\fresourceType\x12f\n" +
+	"\x04tags\x18\x02 \x03(\v2R.dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification.TagsEntryR\x04tags\x12%\n" +
+	"\x0epropagate_tags\x18\x03 \x01(\tR\rpropagateTags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xc2\x01\xbaH\xbe\x01\x1a\xbb\x01\n" +
+	"\x14propagate_tags_valid\x12Gpropagate_tags must be 'SERVICE', 'TASK_DEFINITION', or 'NONE' when set\x1aZthis.propagate_tags == '' || this.propagate_tags in ['SERVICE', 'TASK_DEFINITION', 'NONE']\"j\n" +
 	"\x1eAwsEcsServicePlacementStrategy\x122\n" +
 	"\x04type\x18\x01 \x01(\tB\x1e\xbaH\x1br\x19R\abinpackR\x06randomR\x06spreadR\x04type\x12\x14\n" +
 	"\x05field\x18\x02 \x01(\tR\x05field\"y\n" +
@@ -2411,40 +2849,47 @@ func file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescGZIP() []byte {
 	return file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
 var file_catalog_aws_awsecsservice_v1alpha1_spec_proto_goTypes = []any{
-	(*AwsEcsServiceSpec)(nil),                              // 0: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec
-	(*AwsEcsServiceCapacityProviderStrategy)(nil),          // 1: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceCapacityProviderStrategy
-	(*AwsEcsServiceNetwork)(nil),                           // 2: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork
-	(*AwsEcsServiceLoadBalancer)(nil),                      // 3: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer
-	(*AwsEcsServiceLoadBalancerAdvancedConfiguration)(nil), // 4: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration
-	(*AwsEcsServiceDeploymentCircuitBreaker)(nil),          // 5: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCircuitBreaker
-	(*AwsEcsServiceDeploymentAlarms)(nil),                  // 6: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentAlarms
-	(*AwsEcsServiceDeploymentConfiguration)(nil),           // 7: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration
-	(*AwsEcsServiceDeploymentCanary)(nil),                  // 8: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCanary
-	(*AwsEcsServiceDeploymentLinear)(nil),                  // 9: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLinear
-	(*AwsEcsServiceDeploymentLifecycleHook)(nil),           // 10: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook
-	(*AwsEcsServiceServiceConnect)(nil),                    // 11: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect
-	(*AwsEcsServiceServiceConnectService)(nil),             // 12: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService
-	(*AwsEcsServiceServiceConnectClientAlias)(nil),         // 13: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectClientAlias
-	(*AwsEcsServiceServiceConnectTimeout)(nil),             // 14: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTimeout
-	(*AwsEcsServiceServiceConnectTls)(nil),                 // 15: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls
-	(*AwsEcsServiceLogConfiguration)(nil),                  // 16: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration
-	(*AwsEcsServiceServiceRegistries)(nil),                 // 17: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceRegistries
-	(*AwsEcsServiceVolumeConfiguration)(nil),               // 18: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration
-	(*AwsEcsServiceManagedEbsVolume)(nil),                  // 19: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume
-	(*AwsEcsServicePlacementStrategy)(nil),                 // 20: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementStrategy
-	(*AwsEcsServicePlacementConstraint)(nil),               // 21: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementConstraint
-	(*AwsEcsServiceAutoscaling)(nil),                       // 22: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling
-	(*AwsEcsServiceAutoscalingTarget)(nil),                 // 23: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
-	(*AwsEcsServiceAutoscalingRequestCountTarget)(nil),     // 24: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget
-	nil,                         // 25: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.OptionsEntry
-	nil,                         // 26: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.SecretOptionsEntry
-	(*v1.StringValueOrRef)(nil), // 27: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*AwsEcsServiceSpec)(nil),                                 // 0: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec
+	(*AwsEcsServiceCapacityProviderStrategy)(nil),             // 1: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceCapacityProviderStrategy
+	(*AwsEcsServiceNetwork)(nil),                              // 2: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork
+	(*AwsEcsServiceLoadBalancer)(nil),                         // 3: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer
+	(*AwsEcsServiceLoadBalancerAdvancedConfiguration)(nil),    // 4: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration
+	(*AwsEcsServiceDeploymentCircuitBreaker)(nil),             // 5: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCircuitBreaker
+	(*AwsEcsServiceDeploymentAlarms)(nil),                     // 6: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentAlarms
+	(*AwsEcsServiceDeploymentConfiguration)(nil),              // 7: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration
+	(*AwsEcsServiceDeploymentCanary)(nil),                     // 8: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCanary
+	(*AwsEcsServiceDeploymentLinear)(nil),                     // 9: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLinear
+	(*AwsEcsServiceDeploymentLifecycleHook)(nil),              // 10: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook
+	(*AwsEcsServiceServiceConnect)(nil),                       // 11: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect
+	(*AwsEcsServiceServiceConnectAccessLog)(nil),              // 12: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectAccessLog
+	(*AwsEcsServiceServiceConnectService)(nil),                // 13: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService
+	(*AwsEcsServiceServiceConnectClientAlias)(nil),            // 14: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectClientAlias
+	(*AwsEcsServiceServiceConnectTestTrafficRules)(nil),       // 15: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficRules
+	(*AwsEcsServiceServiceConnectTestTrafficHeader)(nil),      // 16: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeader
+	(*AwsEcsServiceServiceConnectTestTrafficHeaderValue)(nil), // 17: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeaderValue
+	(*AwsEcsServiceServiceConnectTimeout)(nil),                // 18: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTimeout
+	(*AwsEcsServiceServiceConnectTls)(nil),                    // 19: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls
+	(*AwsEcsServiceLogConfiguration)(nil),                     // 20: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration
+	(*AwsEcsServiceServiceRegistries)(nil),                    // 21: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceRegistries
+	(*AwsEcsServiceVolumeConfiguration)(nil),                  // 22: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration
+	(*AwsEcsServiceManagedEbsVolume)(nil),                     // 23: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume
+	(*AwsEcsServiceVpcLatticeConfiguration)(nil),              // 24: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVpcLatticeConfiguration
+	(*AwsEcsServiceEbsTagSpecification)(nil),                  // 25: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification
+	(*AwsEcsServicePlacementStrategy)(nil),                    // 26: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementStrategy
+	(*AwsEcsServicePlacementConstraint)(nil),                  // 27: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementConstraint
+	(*AwsEcsServiceAutoscaling)(nil),                          // 28: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling
+	(*AwsEcsServiceAutoscalingTarget)(nil),                    // 29: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
+	(*AwsEcsServiceAutoscalingRequestCountTarget)(nil),        // 30: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget
+	nil,                         // 31: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.OptionsEntry
+	nil,                         // 32: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.SecretOptionsEntry
+	nil,                         // 33: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification.TagsEntry
+	(*v1.StringValueOrRef)(nil), // 34: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_aws_awsecsservice_v1alpha1_spec_proto_depIdxs = []int32{
-	27, // 0: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.cluster_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 1: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.task_definition:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 0: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.cluster_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 1: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.task_definition:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	1,  // 2: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.capacity_provider_strategy:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceCapacityProviderStrategy
 	2,  // 3: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.network:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork
 	3,  // 4: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.load_balancers:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer
@@ -2452,46 +2897,54 @@ var file_catalog_aws_awsecsservice_v1alpha1_spec_proto_depIdxs = []int32{
 	6,  // 6: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.alarms:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentAlarms
 	7,  // 7: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.deployment_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration
 	11, // 8: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.service_connect:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect
-	17, // 9: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.service_registries:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceRegistries
-	18, // 10: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.volume_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration
-	20, // 11: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.ordered_placement_strategy:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementStrategy
-	21, // 12: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.placement_constraints:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementConstraint
-	22, // 13: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.autoscaling:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling
-	27, // 14: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 15: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 16: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer.target_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4,  // 17: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer.advanced_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration
-	27, // 18: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.alternate_target_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 19: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.production_listener_rule:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 20: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.test_listener_rule:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 21: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 22: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentAlarms.alarm_names:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8,  // 23: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.canary_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCanary
-	9,  // 24: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.linear_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLinear
-	10, // 25: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.lifecycle_hooks:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook
-	27, // 26: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	12, // 27: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect.services:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService
-	16, // 28: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect.log_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration
-	13, // 29: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.client_alias:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectClientAlias
-	14, // 30: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.timeout:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTimeout
-	15, // 31: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.tls:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls
-	27, // 32: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 33: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	25, // 34: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.options:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.OptionsEntry
-	26, // 35: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.secret_options:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.SecretOptionsEntry
-	19, // 36: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration.managed_ebs_volume:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume
-	27, // 37: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 38: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	23, // 39: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.cpu:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
-	23, // 40: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.memory:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
-	24, // 41: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.requests_per_target:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget
-	27, // 42: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget.load_balancer_arn_suffix:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	27, // 43: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget.target_group_arn_suffix:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	44, // [44:44] is the sub-list for method output_type
-	44, // [44:44] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	21, // 9: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.service_registries:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceRegistries
+	22, // 10: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.volume_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration
+	26, // 11: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.ordered_placement_strategy:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementStrategy
+	27, // 12: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.placement_constraints:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServicePlacementConstraint
+	28, // 13: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.autoscaling:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling
+	24, // 14: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceSpec.vpc_lattice_configurations:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVpcLatticeConfiguration
+	34, // 15: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork.subnets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 16: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceNetwork.security_groups:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 17: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer.target_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4,  // 18: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancer.advanced_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration
+	34, // 19: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.alternate_target_group_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 20: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.production_listener_rule:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 21: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.test_listener_rule:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 22: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLoadBalancerAdvancedConfiguration.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 23: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentAlarms.alarm_names:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	8,  // 24: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.canary_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentCanary
+	9,  // 25: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.linear_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLinear
+	10, // 26: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentConfiguration.lifecycle_hooks:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook
+	34, // 27: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceDeploymentLifecycleHook.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	13, // 28: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect.services:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService
+	20, // 29: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect.log_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration
+	12, // 30: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnect.access_log_configuration:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectAccessLog
+	14, // 31: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.client_alias:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectClientAlias
+	18, // 32: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.timeout:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTimeout
+	19, // 33: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectService.tls:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls
+	15, // 34: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectClientAlias.test_traffic_rules:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficRules
+	16, // 35: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficRules.header:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeader
+	17, // 36: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeader.value:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTestTrafficHeaderValue
+	34, // 37: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls.kms_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 38: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceServiceConnectTls.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	31, // 39: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.options:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.OptionsEntry
+	32, // 40: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.secret_options:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceLogConfiguration.SecretOptionsEntry
+	23, // 41: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVolumeConfiguration.managed_ebs_volume:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume
+	34, // 42: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 43: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume.kms_key_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	25, // 44: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceManagedEbsVolume.tag_specifications:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification
+	34, // 45: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceVpcLatticeConfiguration.role_arn:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	33, // 46: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification.tags:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceEbsTagSpecification.TagsEntry
+	29, // 47: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.cpu:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
+	29, // 48: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.memory:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingTarget
+	30, // 49: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscaling.requests_per_target:type_name -> dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget
+	34, // 50: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget.load_balancer_arn_suffix:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	34, // 51: dev.planton.aws.awsecsservice.v1alpha1.AwsEcsServiceAutoscalingRequestCountTarget.target_group_arn_suffix:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	52, // [52:52] is the sub-list for method output_type
+	52, // [52:52] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsecsservice_v1alpha1_spec_proto_init() }
@@ -2503,18 +2956,18 @@ func file_catalog_aws_awsecsservice_v1alpha1_spec_proto_init() {
 	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[7].OneofWrappers = []any{}
 	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[8].OneofWrappers = []any{}
 	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[9].OneofWrappers = []any{}
-	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[12].OneofWrappers = []any{}
-	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[17].OneofWrappers = []any{}
-	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[19].OneofWrappers = []any{}
+	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[13].OneofWrappers = []any{}
+	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[21].OneofWrappers = []any{}
 	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[23].OneofWrappers = []any{}
-	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[24].OneofWrappers = []any{}
+	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[29].OneofWrappers = []any{}
+	file_catalog_aws_awsecsservice_v1alpha1_spec_proto_msgTypes[30].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc), len(file_catalog_aws_awsecsservice_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   27,
+			NumMessages:   34,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

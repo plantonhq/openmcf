@@ -117,6 +117,50 @@ variable "spec" {
       advanced_security_mode = string
       custom_auth_mode = optional(string, "")
     }))
+    risk_configuration = optional(object({
+      account_takeover = optional(object({
+        low_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        medium_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        high_action = optional(object({
+          event_action = string
+          notify = optional(bool, false)
+        }))
+        notify_configuration = optional(object({
+          source_arn = string
+          from = optional(string, "")
+          reply_to = optional(string, "")
+          block_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+          mfa_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+          no_action_email = optional(object({
+            subject = string
+            html_body = string
+            text_body = string
+          }))
+        }))
+      }))
+      compromised_credentials = optional(object({
+        event_action = string
+        event_filter = optional(list(string), [])
+      }))
+      risk_exception = optional(object({
+        blocked_ip_ranges = optional(list(string), [])
+        skipped_ip_ranges = optional(list(string), [])
+      }))
+    }))
     log_configurations = optional(list(object({
       event_source = string
       log_level = string
@@ -129,5 +173,11 @@ variable "spec" {
       certificate_arn = optional(string, "")
       managed_login_version = optional(number)
     }))
+    user_groups = optional(list(object({
+      name = string
+      description = optional(string, "")
+      precedence = optional(number, 0)
+      role_arn = optional(string, "")
+    })), [])
   })
 }

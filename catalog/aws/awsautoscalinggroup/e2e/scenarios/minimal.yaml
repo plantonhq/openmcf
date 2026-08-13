@@ -41,6 +41,18 @@ spec:
   terminationPolicies:
     - OldestLaunchTemplate
     - Default
+  # New-surface arms that bill nothing on a zero-capacity group: the
+  # creation-time launch hook (attached atomically with the group -- the
+  # arm that proves initial hook wiring), and the terminate-hook retention
+  # policy.
+  instanceLifecyclePolicy:
+    terminateHookAbandon: retain
+  lifecycleHooks:
+    - name: warm-cache
+      lifecycleTransition: autoscaling:EC2_INSTANCE_LAUNCHING
+      defaultResult: CONTINUE
+      heartbeatTimeoutSeconds: 120
+      applyAtLaunch: true
   enabledMetrics:
     - GroupMinSize
     - GroupMaxSize

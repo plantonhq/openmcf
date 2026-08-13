@@ -36,7 +36,7 @@ variable "spec" {
       min_capacity = number
       max_capacity = number
     }))
-    storage_encrypted = optional(bool, false)
+    storage_encrypted = optional(bool)
     kms_key_id = optional(string, "")
     iam_database_authentication_enabled = optional(bool, false)
     iam_roles = optional(list(string), [])
@@ -60,5 +60,16 @@ variable "spec" {
     neptune_instance_parameter_group_name = optional(string, "")
     apply_immediately = optional(bool, false)
     allow_major_version_upgrade = optional(bool, false)
+    custom_endpoints = optional(list(object({
+      name = string
+      endpoint_type = string
+      static_members = optional(list(string), [])
+      excluded_members = optional(list(string), [])
+    })), [])
+    instance_parameters = optional(list(object({
+      name = string
+      value = string
+      apply_method = optional(string, "")
+    })), [])
   })
 }
