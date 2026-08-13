@@ -1,0 +1,94 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsdynamodb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DynamoDB always encrypts tables at rest with an AWS-owned key even when server_side_encryption is unset; encryption cannot be disabled at any configuration level.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: server_side_encryption.kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset keeps the AWS-owned key; enabling server_side_encryption switches to the AWS-managed aws/dynamodb key, and kms_key_arn selects a customer-managed KMS key.
+      notes: The 02-provisioned-production and 04-provisioned-autoscaled presets enable server-side encryption. Per-replica keys are set via replicas.kms_key_arn.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DynamoDB is reached exclusively through its HTTPS API endpoints; all client traffic is TLS.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: The table is a regional AWS API resource, not a network-placed endpoint -- there is no network exposure to close. Every request is IAM-authorized (see rbac); private connectivity via VPC endpoints is account networking posture, not a table choice.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No network ingress surface of its own (see no-public-access).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No HTTP edge of its own to front with a request filter; the AWS API layer is provider-operated.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every DynamoDB API call is authorized by AWS IAM; no anonymous or unauthenticated path to the table exists.
+      notes: The resource_policy field adds a resource-based policy for cross-account or scoped-principal access on top of identity-based IAM.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The table runs no workloads and holds no credentials; the identity posture of callers belongs to the calling workloads.
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Only SigV4-signed, IAM-authorized requests are accepted; no legacy or unauthenticated protocol path exists.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table management operations (create, update, delete, policy changes) are recorded as CloudTrail management events, which are enabled account-wide by default.
+      notes: Item-level read/write logging (CloudTrail data events) is an account-level, additional-cost opt-in -- not a table-spec choice.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Table metrics (consumed capacity, throttles, latencies, errors) publish to CloudWatch automatically.
+      notes: contributor_insights adds per-partition-key hot/throttled visibility, at table and per-GSI level.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: point_in_time_recovery.enabled
+      evidence:
+        type: spec_default
+        reference: Off unless enabled; point-in-time recovery provides continuous backups with restore to any second in the recovery window.
+      notes: Every shipped preset enables it. The restore_* fields drive table creation from a backup or point in time.
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: point_in_time_recovery.recovery_period_in_days
+      evidence:
+        type: spec_default
+        reference: Recovery window is configurable from 1 to 35 days; unset keeps the AWS default of 35.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DynamoDB synchronously replicates every table across multiple Availability Zones in the region; this is intrinsic to the service.
+      notes: The replicas field extends availability across regions (global tables); the 03-global-table preset demonstrates it.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, AWS refuses to delete the table until protection is lifted (an in-place flip).
+      notes: Every shipped preset enables it; replicas carry their own per-region flag (replicas.deletion_protection_enabled).
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the underlying fleet; no customer-visible patch surface exists.

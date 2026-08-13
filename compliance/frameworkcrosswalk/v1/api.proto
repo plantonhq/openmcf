@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.compliance.frameworkcrosswalk.v1;
+
+import "compliance/frameworkcrosswalk/v1/spec.proto";
+import "shared/metadata.proto";
+
+// FrameworkCrosswalk maps one external compliance framework's requirements
+// onto the central control catalog. This is the ONLY place framework
+// vocabulary (HIPAA, CIS, SOC 2, ...) appears in catalog data: components
+// declare technical controls, crosswalks translate them into framework
+// terms, and a framework revision touches one crosswalk file instead of
+// hundreds of components. Follows the KRM pattern (apiVersion + kind +
+// metadata + spec). Lives at catalog/_compliance/frameworks/{framework}.yaml
+// where {framework} equals metadata.name.
+//
+// Language discipline: a crosswalk says a control MAPS TO a requirement --
+// it never says a component or deployment IS COMPLIANT. Compliance is a
+// property of a whole program (people, process, and technology); this data
+// covers the technology half of specific requirements, and every consumer
+// surface must present it that way.
+//
+// Example:
+//   apiVersion: compliance.planton.dev/v1
+//   kind: FrameworkCrosswalk
+//   metadata:
+//     name: hipaa-security-rule
+//   spec:
+//     framework_name: HIPAA Security Rule
+//     mappings:
+//       - requirement_id: 164.312(a)(2)(iv)
+//         requirement_name: Encryption and decryption
+//         control_ids: [enc-at-rest, enc-at-rest-cmk]
+message FrameworkCrosswalk {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  FrameworkCrosswalkSpec spec = 4;
+}

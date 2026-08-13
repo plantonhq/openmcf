@@ -10,9 +10,12 @@
 //	├── catalog.md         the catalog page                       (required)
 //	├── logo.svg           the component logo                     (required)
 //	├── GUIDE.md           authored operational judgment          (optional)
+//	├── cost.yaml          the component's cost profile           (required)
+//	├── controls.yaml      the component's control profile        (required)
 //	├── iac/               ONE live module set per component      (required)
 //	│   ├── pulumi/        with README.md, no Makefile            (required)
 //	│   ├── tf/            with README.md, no .gitignore          (required)
+//	│   ├── permissions.yaml   runner least-privilege manifest    (required)
 //	│   ├── import-map.yaml                                       (optional)
 //	│   └── provider-parity.yaml   recorded parity judgment       (optional)
 //	├── presets/           .yaml manifests + .md sidecar pairs    (required)
@@ -23,7 +26,9 @@
 //	    their .pb.go stubs, BUILD.bazel, spec_test.go, reference.md
 //
 // Two prefix conventions coexist deliberately: underscore dirs at the catalog
-// root (_docs/, _patterns/) hold docs-only content Go tooling must ignore,
+// root (_docs/, _patterns/, _compliance/) hold non-component content Go
+// tooling must ignore (_compliance/ carries the authored control catalog and
+// framework crosswalks the per-component controls.yaml files reference),
 // while aa_-prefixed dirs inside providers (aa_e2e/, aa_eval/, aa_import/)
 // hold provider infrastructure that CONTAINS buildable Go -- Go tooling skips
 // underscore dirs entirely, so Go-bearing infrastructure cannot use one.
@@ -70,37 +75,42 @@ func (v Violation) ID() string { return v.Path + ":" + v.Rule }
 
 // Rule identifiers. Stable: baseline.yaml entries reference them.
 const (
-	RuleUnregisteredDir    = "unregistered-component-dir"
-	RuleMissingComponent   = "missing-component-dir"
-	RuleUnexpectedEntry    = "unexpected-entry"
-	RuleMissingReadme      = "missing-readme"
-	RuleMissingCatalogPage = "missing-catalog-md"
-	RuleMissingLogo        = "missing-logo"
-	RuleMissingIac         = "missing-iac"
-	RuleMissingPulumi      = "missing-pulumi-module"
-	RuleMissingTf          = "missing-tf-module"
-	RuleMissingIacReadme   = "missing-iac-readme"
-	RuleForbiddenFile      = "forbidden-file"
-	RuleMissingPresets     = "missing-presets"
-	RuleMissingSidecar     = "missing-preset-sidecar"
-	RuleMissingProto       = "missing-proto"
-	RuleMissingStub        = "missing-stub"
-	RuleMissingSpecTest    = "missing-spec-test"
-	RuleMissingReference   = "missing-reference"
+	RuleUnregisteredDir       = "unregistered-component-dir"
+	RuleMissingComponent      = "missing-component-dir"
+	RuleUnexpectedEntry       = "unexpected-entry"
+	RuleMissingReadme         = "missing-readme"
+	RuleMissingCatalogPage    = "missing-catalog-md"
+	RuleMissingLogo           = "missing-logo"
+	RuleMissingIac            = "missing-iac"
+	RuleMissingPulumi         = "missing-pulumi-module"
+	RuleMissingTf             = "missing-tf-module"
+	RuleMissingIacReadme      = "missing-iac-readme"
+	RuleForbiddenFile         = "forbidden-file"
+	RuleMissingPresets        = "missing-presets"
+	RuleMissingSidecar        = "missing-preset-sidecar"
+	RuleMissingProto          = "missing-proto"
+	RuleMissingStub           = "missing-stub"
+	RuleMissingSpecTest       = "missing-spec-test"
+	RuleMissingReference      = "missing-reference"
+	RuleMissingCostProfile    = "missing-cost-profile"
+	RuleMissingControlProfile = "missing-control-profile"
+	RuleMissingPermissions    = "missing-permissions"
 )
 
 // componentEntries is the CLOSED set of names allowed at a component root
 // (plus version dirs, matched by grammar). An entry outside this set is the
 // exact drift class this gate exists to catch.
 var componentEntries = map[string]bool{
-	"README.md":   true,
-	"catalog.md":  true,
-	"GUIDE.md":    true,
-	"logo.svg":    true,
-	"iac":         true,
-	"presets":     true,
-	"e2e":         true,
-	"conversions": true,
+	"README.md":     true,
+	"catalog.md":    true,
+	"GUIDE.md":      true,
+	"logo.svg":      true,
+	"cost.yaml":     true,
+	"controls.yaml": true,
+	"iac":           true,
+	"presets":       true,
+	"e2e":           true,
+	"conversions":   true,
 }
 
 // versionEntries is the CLOSED set of names allowed inside a version dir:
@@ -152,12 +162,12 @@ func Check(repoRoot string) ([]Violation, error) {
 		return nil, err
 	}
 	for _, p := range providers {
-		if p.Name() == "_docs" || p.Name() == "_patterns" {
-			continue // docs-only homes at the catalog root
+		if p.Name() == "_docs" || p.Name() == "_patterns" || p.Name() == "_compliance" {
+			continue // non-component homes at the catalog root
 		}
 		if !p.IsDir() {
 			add(filepath.Join("catalog", p.Name()), RuleUnexpectedEntry,
-				"the catalog root holds only provider directories (and _docs/, _patterns/)")
+				"the catalog root holds only provider directories (and _docs/, _patterns/, _compliance/)")
 			continue
 		}
 		providerRel := filepath.Join("catalog", p.Name())
@@ -231,9 +241,11 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 		add(componentRel, RuleMissingProto, "component has no version directory serving its contract")
 	}
 	for name, rule := range map[string]string{
-		"README.md":  RuleMissingReadme,
-		"catalog.md": RuleMissingCatalogPage,
-		"logo.svg":   RuleMissingLogo,
+		"README.md":     RuleMissingReadme,
+		"catalog.md":    RuleMissingCatalogPage,
+		"logo.svg":      RuleMissingLogo,
+		"cost.yaml":     RuleMissingCostProfile,
+		"controls.yaml": RuleMissingControlProfile,
 	} {
 		if !names[name] {
 			add(componentRel, rule, "required at the component root")
@@ -247,16 +259,23 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 	} else {
 		iacRel := filepath.Join(componentRel, "iac")
 		iacEntries, _ := os.ReadDir(filepath.Join(repoRoot, iacRel))
+		hasPermissions := false
 		for _, e := range iacEntries {
 			switch e.Name() {
+			case "permissions.yaml":
+				hasPermissions = true
 			case "pulumi", "tf", "import-map.yaml", "provider-parity.yaml":
 			case "crds":
 				// Operator kinds stage the CRD manifests their modules apply
 				// (both engines read them) -- declared-optional module payload.
 			default:
 				add(filepath.Join(iacRel, e.Name()), RuleUnexpectedEntry,
-					"iac/ holds exactly pulumi/, tf/, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
+					"iac/ holds exactly pulumi/, tf/, permissions.yaml, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
 			}
+		}
+		if !hasPermissions {
+			add(iacRel, RuleMissingPermissions,
+				"every module set declares the runner permissions it needs (iac/permissions.yaml)")
 		}
 		for _, engine := range []string{"pulumi", "tf"} {
 			engineRel := filepath.Join(iacRel, engine)

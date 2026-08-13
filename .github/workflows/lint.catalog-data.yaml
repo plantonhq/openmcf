@@ -1,0 +1,57 @@
+# =============================================================================
+# Catalog Data Guard
+# =============================================================================
+# Fails the PR when the catalog's authored data products break their
+# contracts: a component cost profile (cost.yaml), control profile
+# (controls.yaml), or runner permissions manifest (iac/permissions.yaml)
+# that fails strict schema parsing, references a control the central catalog
+# does not define, skips a control the catalog does define, names a spec
+# field path that no longer resolves against the served contract, or ships
+# a permission entry without provenance or structural validity. Also guards
+# the central control catalog and framework crosswalks themselves
+# (catalog/_compliance/).
+#
+# Enrollment is file presence -- every discovered sidecar is checked, no
+# allowlist. See pkg/finops/costprofile, pkg/compliance/controlcatalog,
+# pkg/compliance/controlprofile, pkg/iac/permissions.
+# =============================================================================
+
+name: lint.catalog-data
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**'
+      - 'pkg/finops/**'
+      - 'pkg/compliance/**'
+      - 'pkg/iac/permissions/**'
+      - 'pkg/specpath/**'
+      - '.github/workflows/lint.catalog-data.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**'
+      - 'pkg/finops/**'
+      - 'pkg/compliance/**'
+      - 'pkg/iac/permissions/**'
+      - 'pkg/specpath/**'
+      - '.github/workflows/lint.catalog-data.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run catalog-data gates
+        run: go test ./pkg/specpath/... ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/...

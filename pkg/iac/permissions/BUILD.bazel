@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "permissions",
+    srcs = ["permissions.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/permissions",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//iac/componentpermissions/v1:componentpermissions",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "permissions_test",
+    srcs = ["conformance_test.go"],
+    embed = [":permissions"],
+    deps = ["//iac/componentpermissions/v1:componentpermissions"],
+)

@@ -90,8 +90,10 @@ func TestCheck_HermeticFixture(t *testing.T) {
 	write("catalog/aws/awss3bucket/iac/provider-parity.yaml") // allowed: recorded parity judgment
 	write("catalog/aws/awss3bucket/iac/provider-parity.md")   // -> unexpected-entry (only the .yaml is declared)
 	write("catalog/aws/awss3bucket/presets/01-basic.yaml")    // no sidecar -> missing-preset-sidecar
+	write("catalog/aws/awss3bucket/cost.yaml")                // allowed: the cost profile (controls.yaml deliberately absent)
 	write("catalog/aws/notakinddir/spec.proto")               // -> unregistered-component-dir
 	write("catalog/stray-file.txt")                           // -> unexpected-entry (catalog root)
+	write("catalog/_compliance/controls-catalog.yaml")        // ignored: non-component home at the catalog root
 
 	violations, err := Check(root)
 	if err != nil {
@@ -118,6 +120,8 @@ func TestCheck_HermeticFixture(t *testing.T) {
 		"catalog/aws/awss3bucket/presets/01-basic.yaml:missing-preset-sidecar",
 		"catalog/aws/awss3bucket:missing-catalog-md",
 		"catalog/aws/awss3bucket:missing-logo",
+		"catalog/aws/awss3bucket:missing-control-profile",
+		"catalog/aws/awss3bucket/iac:missing-permissions",
 		"catalog/aws/notakinddir:unregistered-component-dir",
 		"catalog/stray-file.txt:unexpected-entry",
 		"AwsEcsService:missing-component-dir", // representative of the completeness half
@@ -131,8 +135,11 @@ func TestCheck_HermeticFixture(t *testing.T) {
 	for _, wrong := range []string{
 		"catalog/aws/awss3bucket:missing-readme",
 		"catalog/aws/awss3bucket:missing-iac",
+		"catalog/aws/awss3bucket:missing-cost-profile",
+		"catalog/aws/awss3bucket/cost.yaml:unexpected-entry",
 		"catalog/aws/awss3bucket/v1alpha1/api.proto:unexpected-entry",
 		"catalog/aws/awss3bucket/iac/provider-parity.yaml:unexpected-entry",
+		"catalog/_compliance:unregistered-component-dir",
 	} {
 		if got[wrong] {
 			t.Errorf("violation %s must not fire on the well-formed part", wrong)

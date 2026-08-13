@@ -232,6 +232,8 @@ catalog/gcp/gcpcertmanagercert/
 ├── catalog.md                   # THE catalog page
 ├── logo.svg                     # Component logo
 ├── GUIDE.md                     # Authored operational judgment (optional)
+├── cost.yaml                    # Cost profile: billing model + the spec fields that drive the bill
+├── controls.yaml                # Control profile: posture per central-catalog control, with evidence
 ├── v1alpha1/                    # The versioned contract ONLY
 │   ├── api.proto
 │   ├── spec.proto
@@ -256,6 +258,7 @@ catalog/gcp/gcpcertmanagercert/
 │   └── scenarios/               # (optional) manifest variants
 ├── conversions/                 # (optional) cross-version conversion specs
 └── iac/
+    ├── permissions.yaml         # Least-privilege runner permissions (derived or proven)
     ├── import-map.yaml          # (optional)
     ├── pulumi/                  # No Makefile, no .gitignore
     │   ├── main.go

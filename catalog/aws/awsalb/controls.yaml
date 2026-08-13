@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsalb
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The load balancer stores no customer data at rest; it terminates and forwards traffic. TLS certificates live in ACM and attach through listeners (AwsLbListener), a separate kind.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: TLS termination is owned by listeners (AwsLbListener), which attach to this load balancer and carry ports, TLS policy, and certificates. This spec's tls_version_and_cipher_suite_headers_enabled only forwards negotiated-TLS metadata to targets.
+    - control_id: no-public-access
+      status: configurable
+      field_path: internal
+      evidence:
+        type: spec_default
+        reference: internal defaults to false (internet-facing with public DNS); setting internal=true makes the load balancer reachable only inside the VPC. Immutable at creation.
+      notes: The 02-internal-hardened preset enables it. Changing the scheme replaces the load balancer.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_groups
+      evidence:
+        type: spec_default
+        reference: When security_groups is omitted, AWS attaches the VPC's default security group; attaching explicit groups restricts inbound traffic to exactly the declared ports and sources.
+      notes: All three presets attach explicit security groups. The spec doc itself calls the default-group fallback "fine for a first boot, wrong for production".
+    - control_id: edge-protection
+      status: configurable
+      field_path: web_acl_arn
+      evidence:
+        type: spec_default
+        reference: Unset means no WAF; setting web_acl_arn associates a REGIONAL WAFv2 web ACL (the modules create the association alongside the load balancer).
+      notes: waf_fail_open_enabled decides availability-versus-security when the WAF is unreachable (AWS default fails closed). Protocol-level hardening is adjacent -- desync_mitigation_mode and drop_invalid_header_fields, enabled by the 02-internal-hardened preset.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is AWS-account IAM posture, not a component choice; the load balancer exposes no authentication plane of its own -- routing attaches through listener kinds.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The load balancer runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; TLS protocol floors (legacy-cipher refusal) are owned by listener TLS policies (AwsLbListener).
+    - control_id: audit-logging
+      status: configurable
+      field_path: access_logs
+      evidence:
+        type: spec_default
+        reference: Unset means access logging is off; configuring access_logs delivers one entry per request to the named S3 bucket.
+      notes: connection_logs (TLS handshakes that never became requests) and health_check_logs complement it. The 02-internal-hardened preset enables access logging.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS publishes load balancer metrics (request counts, latencies, target health) to CloudWatch automatically for every ALB; this cannot be disabled.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless traffic router -- no data to back up. The configuration itself is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: The spec requires at least two subnets (subnets min_items=2), in different Availability Zones per the AWS placement requirement -- a single-zone load balancer is unrepresentable.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: delete_protection_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, AWS refuses to delete the load balancer until protection is lifted.
+      notes: The 01-internet-facing preset enables it. Deleting an ALB silently orphans every listener and rule attached to it -- the spec doc recommends protection for production.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- AWS operates and patches the load balancer fleet; no customer-visible patch surface exists.

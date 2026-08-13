@@ -20,6 +20,8 @@ catalog/aws/awss3bucket/
 |-- README.md              # Component overview
 |-- catalog.md             # Public catalog page rendered on the docs site
 |-- logo.svg               # Component icon
+|-- cost.yaml              # Cost profile: billing model + spec fields that drive the bill
+|-- controls.yaml          # Control profile: security posture per catalog control, with evidence
 |-- v1alpha1/
 |   |-- api.proto          # KRM resource model (apiVersion, kind, metadata, spec, status)
 |   |-- spec.proto         # Configuration fields for the resource
@@ -28,6 +30,7 @@ catalog/aws/awss3bucket/
 |   |-- spec_test.go       # Validation tests for the spec
 |   \-- reference.md       # Field reference for the spec
 |-- iac/
+|   |-- permissions.yaml   # Least-privilege runner permissions (derived or proven)
 |   |-- pulumi/
 |   |   |-- main.go        # Pulumi entrypoint (loads stack input, calls module)
 |   |   |-- Pulumi.yaml    # Pulumi project configuration
@@ -49,6 +52,8 @@ catalog/aws/awss3bucket/
 ```
 
 Generated Go stubs (`*.pb.go`) and Bazel `BUILD.bazel` files sit alongside the protos in `v1alpha1/`. This file set is machine-enforced: the `pkg/anatomy` conformance gate runs in CI (`lint.component-anatomy.yaml`) and fails any component that drifts from it.
+
+The three data files carry their own contracts, enforced by a second CI gate (`lint.catalog-data.yaml`): `cost.yaml` and `controls.yaml` may only reference spec fields that exist on the served contract, `controls.yaml` must examine every control in the central control catalog (`catalog/_compliance/controls-catalog.yaml`), and every permission entry in `iac/permissions.yaml` states whether it was derived from module sources or proven by live runs. The schemas live at `finops/componentcostprofile/v1`, `compliance/componentcontrolprofile/v1`, and `iac/componentpermissions/v1`; `catalog/aws/awsalb` and `catalog/aws/awsdynamodb` are reference examples.
 
 ## Naming Conventions
 

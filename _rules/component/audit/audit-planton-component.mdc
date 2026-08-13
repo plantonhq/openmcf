@@ -292,6 +292,25 @@ This only applies to providers with committed schema artifacts under
 `pkg/providerparity/schemas/`; for a provider without artifacts, record the gate as
 NOT INSTRUMENTED (not a defect of the component).
 
+#### Category 5d: Catalog Data Sidecars (mechanical gate — no separate weight)
+
+The component's authored data files -- `cost.yaml`, `controls.yaml`,
+`iac/permissions.yaml` -- are held to schema and referential integrity by the
+`lint.catalog-data` lane. Evaluation is mechanical:
+
+```bash
+go test ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/...
+```
+
+Beyond the gate, audit the JUDGMENT the gate cannot check: do the cost drivers
+name the fields that actually dominate the bill, does every control posture's
+evidence hold against the current spec and modules, and do the derived
+permission statements still cover the module's declared resources (notes cite
+the terraform resource types -- compare against `iac/tf/*.tf`). A component
+whose sidecars are missing entirely appears in `pkg/anatomy/baseline.yaml`
+burn-down entries -- record that as pending adoption, not a defect introduced
+by this audit.
+
 **Gate outcome (record this explicitly):**
 - **PROVIDER PARITY ✅** — the kind is at total accounting: every configurable argument
   matched/mapped/excluded, every spec field reaches provider surface, no stale manifest
