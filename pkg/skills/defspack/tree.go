@@ -33,6 +33,11 @@ type Skill struct {
 	// CitedReferences lists the references/<name>.md tokens SKILL.md cites,
 	// deduplicated and sorted.
 	CitedReferences []string
+	// PackFiles carries content assembled from OUTSIDE the skill directory
+	// at package time, keyed by archive path. Today only the catalog skill
+	// uses it (the component reference pack under components/ -- see
+	// catalogpack.go); the git tree never duplicates these files.
+	PackFiles map[string][]byte
 }
 
 // Agent is one agents/<slug>/ directory carrying the agent's instructions.
@@ -74,6 +79,13 @@ func LoadTree(root string) (*Tree, error) {
 		skill, err := loadSkill(filepath.Join(skillsDir, entry.Name()), entry.Name())
 		if err != nil {
 			return nil, err
+		}
+		if skill.Slug == catalogPackSkillSlug {
+			pack, err := loadCatalogPack(root)
+			if err != nil {
+				return nil, err
+			}
+			skill.PackFiles = pack
 		}
 		tree.Skills = append(tree.Skills, *skill)
 	}
@@ -142,6 +154,50 @@ func loadSkill(dir, slug string) (*Skill, error) {
 	}
 
 	return skill, nil
+}
+
+// validatePack holds the catalog skill's assembled pack to its contract:
+// present and recognizably a pack (the commons root marker plus at least
+// one component reference page -- an empty or misrooted assembly would
+// ship a research skill with nothing to research), every file non-empty,
+// and the whole archive comfortably inside the serving engine's push
+// ceilings so catalog growth fails HERE with a clear message instead of
+// failing the engine push at release time.
+func validatePack(skill Skill, report func(format string, args ...any)) {
+	if skill.Slug != catalogPackSkillSlug {
+		return
+	}
+	if len(skill.PackFiles) == 0 {
+		report("skills/%s: catalog pack is empty -- no catalog/ tree was found to assemble", skill.Slug)
+		return
+	}
+	if _, ok := skill.PackFiles[packDirName+"/_docs/reference-commons.md"]; !ok {
+		report("skills/%s: assembled pack is missing its root marker (%s/_docs/reference-commons.md)", skill.Slug, packDirName)
+	}
+	referencePages := 0
+	totalBytes := len(skill.SkillMD)
+	for _, content := range skill.ReferenceFiles {
+		totalBytes += len(content)
+	}
+	for path, content := range skill.PackFiles {
+		if len(content) == 0 {
+			report("skills/%s: pack file %s is empty", skill.Slug, path)
+		}
+		if strings.HasSuffix(path, "/reference.md") {
+			referencePages++
+		}
+		totalBytes += len(content)
+	}
+	if referencePages == 0 {
+		report("skills/%s: assembled pack carries no component reference pages", skill.Slug)
+	}
+	totalFiles := 1 + len(skill.ReferenceFiles) + len(skill.PackFiles)
+	if totalFiles > maxSkillArchiveFiles {
+		report("skills/%s: archive would carry %d files (limit %d, engine ceiling 10000) -- the pack has outgrown its margins", skill.Slug, totalFiles, maxSkillArchiveFiles)
+	}
+	if totalBytes > maxSkillArchiveBytes {
+		report("skills/%s: archive would carry %d bytes (limit %d, engine ceiling 100MB compressed) -- the pack has outgrown its margins", skill.Slug, totalBytes, maxSkillArchiveBytes)
+	}
 }
 
 // parseFrontmatter extracts name and description from SKILL.md's leading
@@ -219,6 +275,8 @@ func Validate(tree *Tree) []error {
 				report("skills/%s: references/%s is empty", skill.Slug, name)
 			}
 		}
+
+		validatePack(skill, report)
 	}
 
 	if len(tree.Agents) == 0 {

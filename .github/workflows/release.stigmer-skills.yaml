@@ -1,0 +1,126 @@
+# =============================================================================
+# Stigmer Skills Publish (Reusable Workflow)
+# =============================================================================
+# Publishes every skill in the definitions tree to the hosted Stigmer engine
+# (Stigmer Cloud, org "planton"), so conversations pick up released skill
+# content on their next message -- agents resolve skill references to the
+# engine's latest version at every execution, no client update required.
+#
+# The publish pushes the SAME deterministic archives the definitions release
+# uploads to the CDN (pkg/skills/defspack builds them; the engine keys a
+# skill version on the archive's SHA-256), and pkg/skills/stigmerpublish
+# asserts after every push that the engine registered exactly the manifest's
+# checksum. One content state, one checksum, everywhere. Re-publishing
+# unchanged content is a no-op by construction, so running on every release
+# can never spam versions.
+#
+# Job shape -- the Actions UI shows exactly what reached the engine:
+#   package             builds the definitions release once and discovers
+#                       the skill slugs from its manifest
+#   publish (<slug>)    one job per skill, pushes and verifies that skill
+#
+# There is deliberately NO probe gate here: the same content already flows
+# ungated to every local desktop through the definitions channel pointer,
+# and probe-gating this lane only starved it (the founder retired the gate,
+# 2026-08-13).
+#
+# Called by: .github/workflows/release.yaml (every full semver release) and
+# auto-release.stigmer-skills.yaml (per-skill auto-releases).
+# =============================================================================
+
+name: release.stigmer-skills
+
+on:
+  workflow_call:
+    inputs:
+      skill:
+        description: 'Limit the publish to one skill slug (default: every skill in the manifest)'
+        required: false
+        type: string
+        default: ''
+      version:
+        description: 'Version stamped into the packaged manifest (default: the triggering ref name)'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      STIGMER_API_KEY:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      skills: ${{ steps.discover.outputs.skills }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Package definitions release
+        run: |
+          VERSION="${{ inputs.version }}"
+          go run ./pkg/skills/defspack -version "${VERSION:-$GITHUB_REF_NAME}" -out build/definitions
+
+      - name: Discover skills
+        id: discover
+        run: |
+          cd build/definitions
+          if [ -n "${{ inputs.skill }}" ]; then
+            # Scoped run: publish exactly the requested skill; a slug the
+            # manifest does not carry must fail loudly, not publish nothing.
+            if [ ! -f "skill-${{ inputs.skill }}.zip" ]; then
+              echo "ERROR: skill '${{ inputs.skill }}' is not in the packaged manifest"
+              exit 1
+            fi
+            skills=$(printf '%s' "${{ inputs.skill }}" | jq -R . | jq -cs .)
+          else
+            skills=$(find . -maxdepth 1 -name 'skill-*.zip' | sed -E 's|^\./skill-(.+)\.zip$|\1|' | sort | jq -R . | jq -cs .)
+          fi
+          echo "skills=$skills" >> "$GITHUB_OUTPUT"
+          echo "skills: $skills"
+
+      - name: Share the packaged release with the publish jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: definitions-for-stigmer
+          path: build/definitions/
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.package.outputs.skills) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions-for-stigmer
+          path: build/definitions
+
+      - name: Publish skill ${{ matrix.slug }} to Stigmer Cloud
+        env:
+          STIGMER_API_KEY: ${{ secrets.STIGMER_API_KEY }}
+        run: |
+          go run ./pkg/skills/stigmerpublish \
+            -dir build/definitions \
+            -org planton \
+            -skill "${{ matrix.slug }}" | tee -a "$GITHUB_STEP_SUMMARY"

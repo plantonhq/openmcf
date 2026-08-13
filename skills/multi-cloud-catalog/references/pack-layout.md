@@ -1,64 +1,64 @@
 # Pack Layout and Where to Find It
 
-The reference pack is one directory tree. The pack root is the directory
-that contains `reference-commons.md` -- that filename exists exactly once in
-the pack, which makes it the reliable root marker.
+The reference pack is one directory tree. When this skill ships
+self-contained, the pack travels inside it and sits beside this file in
+`components/` -- no repo checkout, network fetch, or marker hunt needed.
+Probe for that directory first; when it is absent, the ladder below
+resolves the pack from where you are working.
 
 ## The shape
 
 ```
 <pack-root>/
-├── reference-index.md            # root index: provider table with kind,
-│                                 # example, and guide counts (live numbers)
-├── reference-commons.md          # the manifest grammar every component
-│                                 # shares + the pack's search grammar
-├── reference-graph.yaml          # every foreign-key edge in the catalog
-├── GUIDE.md                      # catalog-level wisdom: the substitution
+├── _docs/
+│   ├── reference-index.md        # root index: provider table with kind,
+│   │                             # example, and guide counts (live numbers)
+│   ├── reference-commons.md      # the manifest grammar every component
+│   │                             # shares + the pack's search grammar
+│   ├── reference-graph.yaml      # every foreign-key edge in the catalog
+│   └── GUIDE.md                  # catalog-level wisdom: the substitution
 │                                 # workflow and verified alternatives
-├── patterns/                     # architecture patterns (README.md lists
+├── _patterns/                    # architecture patterns (README.md lists
 │                                 # them; one .md per pattern, each with
 │                                 # validated manifests)
 └── <provider>/                   # aws/, gcp/, azure/, kubernetes/, ...
     ├── reference-index.md        # every kind in the provider, one line each
-    └── <kind>/<api-version>/
-        ├── reference.md          # the component's complete reference page
-        └── GUIDE.md              # authored judgment -- present only where
-                                  # wisdom has been written
+    └── <kind>/
+        ├── GUIDE.md              # authored judgment -- present only where
+        │                         # wisdom has been written
+        └── <api-version>/
+            └── reference.md      # the component's complete reference page
 ```
 
 ## Finding the pack, in order
 
 Every probe below stays inside the filesystem your session already grants
 -- the working tree, an attached workspace, or a mount your tools handed
-you. Your skill mount (the `.stigmer/` folder beside your workspace) holds
-skill files only: the pack never lives inside it, and finding it is never
-an invitation to search the HOST's `.stigmer` home. Never search the wider
-machine for pack files (home directories -- `~/.stigmer` included -- tool
-install paths, other checkouts that happen to exist on the host): a pack
-that is not reachable inside that boundary is simply not reachable -- take
-the fallback below.
+you. Never search the wider machine for pack files (home directories --
+`~/.stigmer` included -- tool install paths, other checkouts that happen
+to exist on the host): a pack that is not reachable inside that boundary
+is simply not reachable -- take the fallback below.
 
-1. **A Planton open-source repo checkout** -- the pack root is
-   `catalog/` under the repo root. This is the common case
-   for coding agents working in or beside the repo.
-2. **The release artifact** -- every Planton release publishes the pack as
-   one zip:
+1. **Your own skill mount** -- probe for `components/` in the same
+   directory as this skill's `SKILL.md`. On a hit it is the pack root:
+   the skill and its pack are one artifact, published and versioned
+   together, so it is always exactly as fresh as the skill teaching you
+   to read it. On a miss, continue down this ladder -- never search the
+   host for it.
+2. **A Planton open-source repo checkout** -- the pack root is `catalog/`
+   under the repo root. Prefer it over the mount only when you are working
+   IN the repo (contributing, or reviewing unreleased changes): a checkout
+   may carry pages newer than any published skill.
+3. **The release artifact** -- every Planton release also publishes the
+   pack as one zip:
 
    ```
    https://downloads.planton.dev/releases/<version>/content/reference-pack.zip
    ```
 
    Entries carry repo-relative paths, so after extracting into an empty
-   directory the pack root is
-   `<dir>/catalog/`.
-3. **A vendored copy**, when the tree you are working in embeds one. Do not
-   assume it exists -- probe for the root marker and use it only on a hit:
-
-   ```
-   rg --files -g 'reference-commons.md' <tree>
-   ```
-
-   Its directory is the pack root.
+   directory the pack root is `<dir>/catalog/`. Useful for tools that want
+   the pack without the skill; as a mounted agent you should never need it.
 
 ## When no pack is reachable
 
@@ -91,6 +91,8 @@ instead of approximating.
 ## Freshness
 
 The pack is regenerated from the schemas and shipped whole: within one
-checkout or one release zip, every page, index, and the graph are mutually
-consistent. Never combine files from two different pack versions in one
-answer -- resolve one pack root and stay in it.
+skill mount, one checkout, or one release zip, every page, index, and the
+graph are mutually consistent. Never combine files from two different pack
+versions in one answer -- resolve one pack root and stay in it. A pack
+mounted inside the skill matches the skill's version by construction; only
+a repo checkout can legitimately be newer.
