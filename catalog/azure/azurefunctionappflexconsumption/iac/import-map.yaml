@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurefunctionappflexconsumption
+spec:
+  # The app's identity is its full ARM site resource ID. NOTE for import
+  # round-trips: the write-only class does not round-trip -- the storage
+  # access key (returned only inside the AzureWebJobsStorage app setting
+  # in connection-string mode), zip_deploy_file (never returned), and
+  # app_service_logs (update-only, never read) must be re-supplied in the
+  # manifest; their absence after import is expected, not drift.
+  values:
+    - name: function_app_id
+      derivations:
+        - from_stack_output: function_app_id
+      where_to_find: >-
+        Portal -> Function App -> the app -> Properties -> Resource ID,
+        or `az functionapp show --name <name> -g <rg> --query id`.

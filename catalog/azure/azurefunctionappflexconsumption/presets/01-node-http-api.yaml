@@ -1,0 +1,37 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: orders-api
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # Globally unique -- it forms orders-api-acme.azurewebsites.net.
+  functionAppName: orders-api-acme
+  region: eastus
+  # The plan's SKU must be FLEX_CONSUMPTION_FC1; one plan hosts many
+  # flex apps and costs nothing at rest.
+  servicePlanId:
+    valueFrom:
+      name: <your-flex-service-plan>
+  # The blob container holding the deployment package:
+  # {account blob endpoint}/{container}.
+  storageContainerEndpoint: https://<your-storage-account>.blob.core.windows.net/deployments
+  storageAuthenticationType: STORAGE_ACCOUNT_CONNECTION_STRING
+  # References the storage account's primary key output by default.
+  storageAccessKey:
+    valueFrom:
+      name: <your-storage-account>
+  runtimeName: NODE
+  runtimeVersion: "20"
+  # One warm instance keeps the HTTP hot path cold-start-free; the
+  # ceiling caps the bill on traffic spikes.
+  maximumInstanceCount: 100
+  alwaysReady:
+    - name: http
+      instanceCount: 1
+  httpsOnly: true
+  siteConfig:
+    minimumTlsVersion: TLS_1_2
+    healthCheckPath: /api/health
+    healthCheckEvictionTimeInMin: 5

@@ -1,0 +1,83 @@
+# Minimal AzureFunctionAppFlexConsumption scenario: a Node app on a
+# scenario-local FC1 plan with connection-string deployment-storage
+# auth -- proving the FC1-plan FK seam, the endpoint + access-key
+# binding through the account's captured outputs, the flex scale dials
+# (per-instance memory, fan-out ceiling, HTTP concurrency, an
+# always-ready pool), the health-check app-setting seam, and the
+# Front Door origin-lockdown wire path. Every hop is declared here:
+# path-declared prerequisite manifests do not chain transitively, and
+# the FC1 plan is scenario-local because the shared plan fixture's
+# Basic B1 SKU is rejected for flex apps.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: planton-oss-e2e-azurefunctionappflexconsumption-smoke
+  id: planton-oss-e2e-azurefunctionappflexconsumption-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefunctionappflexconsumption
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/azure/azurefunctionappflexconsumption/e2e/minimal-plan.yaml,catalog/azure/azurefunctionappflexconsumption/e2e/minimal-account.yaml,catalog/azure/azurefunctionappflexconsumption/e2e/minimal-container.yaml"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: the app must live in its plan's region, and the
+  # scenario-local FC1 plan runs in centralus alongside the fixture
+  # resource group.
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  functionAppName: pltn-oss-e2e-azflex-smoke
+  servicePlanId:
+    valueFrom:
+      name: planton-oss-e2e-flex-plan-min
+  # The deployment-storage endpoint composes the scenario account's
+  # blob endpoint with the scenario container's name; the account name
+  # is fixed (globally unique), so the literal is exact.
+  storageContainerEndpoint: https://pltnosse2eflexsa.blob.core.windows.net/deployments
+  storageAuthenticationType: STORAGE_ACCOUNT_CONNECTION_STRING
+  storageAccessKey:
+    valueFrom:
+      name: planton-oss-e2e-flex-fixture-account
+  runtimeName: NODE
+  runtimeVersion: "20"
+  # The flex scale dials, all live: 2 GB instances, a 40-instance
+  # ceiling, 16 concurrent HTTP requests per instance, and one warm
+  # instance for HTTP triggers (the pool bills for uptime, but the lane
+  # destroys within minutes -- effectively $0).
+  instanceMemoryInMb: 2048
+  maximumInstanceCount: 40
+  httpConcurrency: 16
+  alwaysReady:
+    - name: http
+      instanceCount: 1
+  httpsOnly: true
+  siteConfig:
+    minimumTlsVersion: TLS_1_2
+    healthCheckPath: /api/health
+    healthCheckEvictionTimeInMin: 5
+    cors:
+      allowedOrigins:
+        - https://portal.azure.com
+    # The Front Door origin-lockdown wire path (literal form; the
+    # reference-resolution path of this field class is live-proven by
+    # the DNS-record reference scenarios).
+    ipRestrictions:
+      - name: front-door-only
+        priority: 100
+        action: ALLOW
+        serviceTag: AzureFrontDoor.Backend
+        headers:
+          xAzureFdid:
+            - value: 11111111-2222-3333-4444-555555555555
+      - name: e2e-probe
+        priority: 200
+        action: ALLOW
+        ipAddress: 0.0.0.0/0
+    ipRestrictionDefaultAction: DENY
+  tags:
+    e2e-suite: azure

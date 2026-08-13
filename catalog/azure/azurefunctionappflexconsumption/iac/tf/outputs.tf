@@ -1,0 +1,57 @@
+output "function_app_id" {
+  description = "The Azure Resource Manager ID of the Function App"
+  value       = azurerm_function_app_flex_consumption.main.id
+}
+
+output "default_hostname" {
+  description = "The default hostname of the Function App ({name}.azurewebsites.net)"
+  value       = azurerm_function_app_flex_consumption.main.default_hostname
+}
+
+output "outbound_ip_addresses" {
+  description = "Outbound IP addresses used by the Function App"
+  value       = azurerm_function_app_flex_consumption.main.outbound_ip_address_list
+}
+
+output "identity_principal_id" {
+  description = "The principal ID of the system-assigned managed identity"
+  value       = try(azurerm_function_app_flex_consumption.main.identity[0].principal_id, "")
+}
+
+output "identity_tenant_id" {
+  description = "The tenant ID of the system-assigned managed identity"
+  value       = try(azurerm_function_app_flex_consumption.main.identity[0].tenant_id, "")
+}
+
+output "custom_domain_verification_id" {
+  description = "The custom domain verification ID for DNS TXT record verification"
+  value       = azurerm_function_app_flex_consumption.main.custom_domain_verification_id
+  # azurerm marks this attribute sensitive (it proves domain ownership), so
+  # the output must be sensitive too or OpenTofu rejects the configuration.
+  sensitive = true
+}
+
+output "kind" {
+  description = "The resource kind string as reported by Azure (e.g., functionapp,linux)"
+  value       = azurerm_function_app_flex_consumption.main.kind
+}
+
+output "possible_outbound_ip_addresses" {
+  description = "Every outbound IP the platform could ever route this app through -- use for durable firewall allowlists"
+  value       = azurerm_function_app_flex_consumption.main.possible_outbound_ip_address_list
+}
+
+output "site_credential_name" {
+  description = "The site-level publishing credential's username (Kudu/SCM basic auth)"
+  value       = try(azurerm_function_app_flex_consumption.main.site_credential[0].name, "")
+  # azurerm marks the whole site_credential block sensitive (the name is
+  # half of a working credential), so this output must be sensitive too or
+  # OpenTofu rejects the configuration outright.
+  sensitive = true
+}
+
+output "site_credential_password" {
+  description = "The site-level publishing credential's password -- grants deploy access while basic-auth publishing is enabled"
+  value       = try(azurerm_function_app_flex_consumption.main.site_credential[0].password, "")
+  sensitive   = true
+}

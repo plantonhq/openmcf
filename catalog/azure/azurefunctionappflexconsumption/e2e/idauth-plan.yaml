@@ -1,0 +1,25 @@
+# Dedicated FC1-SKU AzureServicePlan for the identity-auth scenario
+# (per-scenario plan names keep parallel lanes from colliding on one
+# plan resource; FC1 plans are free at rest).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServicePlan
+metadata:
+  name: planton-oss-e2e-flex-plan-idauth
+  id: planton-oss-e2e-flex-plan-idauth
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureserviceplan
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  servicePlanName: planton-oss-e2e-flex-plan-idauth
+  osType: LINUX
+  skuName: FLEX_CONSUMPTION_FC1

@@ -1,0 +1,22 @@
+# The blob container for the identity-auth scenario's deployment
+# storage endpoint
+# (https://pltnosse2eflexsb.blob.core.windows.net/deployments).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-flex-idauth-container
+  id: planton-oss-e2e-flex-idauth-container
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-flex-idauth-account
+  containerName: deployments

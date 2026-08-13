@@ -1,0 +1,48 @@
+# Identity-auth AzureFunctionAppFlexConsumption scenario: the
+# credential-free deployment-storage posture -- the app authenticates
+# to its blob container as its own system-assigned identity, so no
+# storage key travels anywhere. The lane proves the identity-mode wire
+# contract (create/read/import/destroy) and the identity outputs; the
+# "Storage Blob Data Contributor" grant the identity needs before a
+# real package deployment is day-2 RBAC (the identity exists only
+# after the app does), documented in the GUIDE.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: planton-oss-e2e-azurefunctionappflexconsumption-idauth
+  id: planton-oss-e2e-azurefunctionappflexconsumption-idauth
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefunctionappflexconsumption
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/azure/azurefunctionappflexconsumption/e2e/idauth-plan.yaml,catalog/azure/azurefunctionappflexconsumption/e2e/idauth-account.yaml,catalog/azure/azurefunctionappflexconsumption/e2e/idauth-container.yaml"
+  tags:
+    - planton-e2e
+spec:
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  functionAppName: pltn-oss-e2e-azflex-idauth
+  servicePlanId:
+    valueFrom:
+      name: planton-oss-e2e-flex-plan-idauth
+  storageContainerEndpoint: https://pltnosse2eflexsb.blob.core.windows.net/deployments
+  storageAuthenticationType: SYSTEM_ASSIGNED_IDENTITY
+  runtimeName: PYTHON
+  runtimeVersion: "3.12"
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Hardened posture: identity-based deployment only (the basic-auth
+  # publishing path is closed).
+  webdeployPublishBasicAuthenticationEnabled: false
+  httpsOnly: true
+  # site_config is required by the wire contract even at full defaults;
+  # the TLS floor is this lane's only dial.
+  siteConfig:
+    minimumTlsVersion: TLS_1_2
+  tags:
+    e2e-suite: azure

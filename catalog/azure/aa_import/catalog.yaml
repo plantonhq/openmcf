@@ -728,6 +728,13 @@ spec:
     - terraform_type: azurerm_snapshot
       pulumi_type: azure:compute/snapshot:Snapshot
       id_format: "{snapshot_id}"
+      # No tolerance rows for the create-only source fields
+      # (source_resource_id/source_uri): the provider never reads them
+      # back, and because they are ForceNew the post-import diff would
+      # be a REPLACE -- outside what tolerances may allow. The modules
+      # carry lifecycle ignore_changes on the pair instead (the
+      # create-time-only contract on the spec fields), which is what
+      # makes the blind round-trip plan clean.
 
     # --- Container Instances --------------------------------------------------------
     - terraform_type: azurerm_container_group
@@ -736,3 +743,13 @@ spec:
       # Import cannot recover the group's secrets (secure environment
       # variables, volume storage keys/secret files, registry passwords,
       # the Log Analytics workspace key) -- Azure never returns them.
+
+    # --- App Service: Flex Consumption -------------------------------------
+    - terraform_type: azurerm_function_app_flex_consumption
+      pulumi_type: azure:appservice/appFlexConsumption:AppFlexConsumption
+      id_format: "{function_app_id}"
+      # Import cannot recover the write-only class: the storage access key
+      # (returned only inside the AzureWebJobsStorage app setting in
+      # connection-string mode), zip_deploy_file (never returned), and
+      # app_service_logs (update-only, never read) -- re-supply them in
+      # the manifest.

@@ -1,0 +1,50 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: internal-api
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  functionAppName: internal-api-acme
+  region: eastus
+  servicePlanId:
+    valueFrom:
+      name: <your-flex-service-plan>
+  storageContainerEndpoint: https://<your-storage-account>.blob.core.windows.net/deployments
+  storageAuthenticationType: STORAGE_ACCOUNT_CONNECTION_STRING
+  storageAccessKey:
+    valueFrom:
+      name: <your-storage-account>
+  runtimeName: DOTNET_ISOLATED
+  runtimeVersion: "8.0"
+  maximumInstanceCount: 100
+  alwaysReady:
+    - name: http
+      instanceCount: 1
+  httpsOnly: true
+  # Application Insights telemetry, wired from the APM resource's
+  # connection-string output.
+  applicationInsightsConnectionString:
+    valueFrom:
+      name: <your-application-insights>
+  # Easy Auth v2: Azure validates Entra ID tokens at the platform layer
+  # before requests reach function code. The client secret lives in
+  # appSettings under the name the block references -- ideally as a
+  # Key Vault reference.
+  authSettingsV2:
+    authEnabled: true
+    requireAuthentication: true
+    unauthenticatedAction: RETURN_401
+    login:
+      tokenStoreEnabled: true
+    activeDirectoryV2:
+      clientId: <your-entra-app-client-id>
+      tenantAuthEndpoint: https://login.microsoftonline.com/v2.0/<your-tenant-id>/
+      clientSecretSettingName: AAD_CLIENT_SECRET
+  appSettings:
+    AAD_CLIENT_SECRET: "@Microsoft.KeyVault(SecretUri=<your-secret-uri>)"
+  siteConfig:
+    minimumTlsVersion: TLS_1_2
+    healthCheckPath: /api/health
+    healthCheckEvictionTimeInMin: 5

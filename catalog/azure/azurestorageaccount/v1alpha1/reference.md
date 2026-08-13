@@ -1809,6 +1809,7 @@ Fields on other kinds that can point at this resource:
 | AzureFunctionApp | `spec.storageAccountName` | `status.outputs.storage_account_name` |
 | AzureFunctionApp | `spec.storageAccountAccessKey` | `status.outputs.primary_access_key` |
 | AzureFunctionApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |
+| AzureFunctionAppFlexConsumption | `spec.storageAccessKey` | `status.outputs.primary_access_key` |
 | AzureLinuxWebApp | `spec.storageMounts[].accessKey` | `status.outputs.primary_access_key` |
 | AzureMachineLearningWorkspace | `spec.storageAccountId` | `status.outputs.storage_account_id` |
 | AzureMonitorDataCollectionRule | `spec.destinations.storageBlobs[].storageAccountId` | `status.outputs.storage_account_id` |

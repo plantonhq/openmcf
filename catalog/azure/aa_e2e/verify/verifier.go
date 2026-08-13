@@ -115,6 +115,7 @@ var verifiers = map[string]Verifier{
 	"azurefrontdoorsecret":                           &frontDoorSecretVerifier{},
 	"azurefrontdoorsecuritypolicy":                   &frontDoorSecurityPolicyVerifier{},
 	"azurefunctionapp":                               &functionAppVerifier{},
+	"azurefunctionappflexconsumption":                &functionAppFlexConsumptionVerifier{},
 	"azureipgroup":                                   &ipGroupVerifier{},
 	"azurekeyvault":                                  &keyVaultVerifier{},
 	"azurekeyvaultcertificate":                       &keyVaultCertificateVerifier{},
