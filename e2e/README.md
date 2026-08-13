@@ -320,6 +320,19 @@ teardown runs in reverse across the merged chain. Every kind that appears in
 the annotation needs a verifier and an install profile, exactly like a
 registry prerequisite.
 
+**A path-declared fixture manifest's own annotation is NEVER read.** "Its
+own transitive prerequisites" above means the path entry's KIND-level
+registry edges only -- the resolver does not open a path-declared manifest
+to read a further `e2e-prerequisites` annotation from it (that reading
+happens only for the scenario under test and for install manifests). A
+fixture chain that hops through extra instances (an extra instance A whose
+`value_from` references another extra instance B, which references fixture
+C) must therefore be declared IN FULL on the scenario under test, in
+deploy-first order: `"C-kind, path/to/B.yaml, path/to/A.yaml"`. An
+annotation left on the intermediate manifest is silently ignored -- the
+lane fails at reference resolution with the hop's instance missing, which
+reads like a naming defect and is actually a never-resolved fixture.
+
 A dependency whose `pulumi up` FAILS is still tracked for teardown: a failed
 update may have created any number of resources before erroring, and skipping
 its destroy would orphan them -- and, because Azure-style parents refuse to
@@ -489,6 +502,23 @@ lane, smoke-check it within a minute: the PID must still be alive AND the log
 must be non-empty (the harness prints its authentication line first). If the
 process is gone with an empty log, relaunch under a supervised/managed shell
 rather than retrying `nohup` from another transient shell.
+
+### `AzureCLICredential: signal: killed` is host starvation, not Azure
+
+The Azure verifiers authenticate through the ambient `az` login, which
+shells out to `az account get-access-token` on every credential refresh.
+On a machine under extreme CPU load (observed live: 1-minute load average
+in the hundreds while a concurrent whole-tree build ran on the same host),
+that child process can be killed by the OS or its watchdog before it
+answers, and the lane fails with
+`verify-exists failed ...: AzureCLICredential: signal: killed` -- typically
+on a fixture that deploys fine, minutes into a slow dependency chain. This
+is a MACHINE class, not a credential or module defect: `az account show`
+still works once load recedes. The tell to check is `uptime` -- if the
+1-minute load average is far above the core count, wait for the spike to
+pass (do not relaunch into it; the retry burns the whole chain again), then
+re-run only the failed scenario. Memory can read healthy throughout; CPU
+scheduler starvation alone is enough to trigger it.
 
 ### Long-running Azure components (AKS)
 

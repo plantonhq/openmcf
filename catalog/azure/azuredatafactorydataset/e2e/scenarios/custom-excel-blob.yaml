@@ -17,10 +17,10 @@ metadata:
     e2e-component: azuredatafactorydataset
   annotations:
     planton.dev/e2e: "true"
-    # The blob linked service instance this dataset reads through --
-    # a scenario-declared extra instance (the linked service kind
-    # publishes no install profile).
-    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/blob-managed-identity.yaml"
+    # The blob linked service instance this dataset reads through
+    # installs via the kind's registry prerequisite (the linked
+    # service publishes e2e/prerequisite.yaml -- the blob-variant
+    # instance this scenario references by name).
   tags:
     - planton-e2e
 spec:

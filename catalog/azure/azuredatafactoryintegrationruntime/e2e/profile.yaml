@@ -3,36 +3,33 @@ kind: ComponentE2EProfile
 metadata:
   name: azuredatafactoryintegrationruntime
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green across five shapes);
-  # live dual-engine proof has not yet run. THREE scenarios run -- one
-  # per engine flavor: azure-dataflow-vnet (the managed compute JOINED
-  # to the factory smoke instance's managed virtual network -- the
-  # variant's only ForceNew contract, proven live because the smoke
-  # factory deploys managedVirtualNetworkEnabled), self-hosted-bridge
-  # (the registration plus the sensitive authorization-key outputs
-  # through the secrets reader -- Azure issues real keys at create),
-  # and ssis-stopped (the SSIS cluster definition, created STOPPED and
-  # unbilled -- the provider only creates it; starting is an
-  # operational action no lane performs). All three carry ZERO secret
-  # material. The deep arms are OFFLINE-PROVEN by design: the azure
-  # interactive-authoring TTL (its enable operation starts a BILLED
-  # debug session), the SSIS catalog/custom-setup/vnet-injection/proxy
-  # blocks (each needs an external system -- a SQL server, a setup
-  # container, a delegated subnet, a real self-hosted NODE -- E2E
-  # cannot honestly stand up; ARM validates them at save time as
-  # payload shapes). Their tofu plans are render-inspected instead.
-  # Runtimes are authoring metadata at rest -- the azure and
-  # self-hosted lanes are free; SSIS bills only when STARTED, which no
-  # lane does.
-  # WATCH: whether ARM validates the SSIS definition eagerly at save
-  # time (node size vs region availability); ListAuthKeys timing right
-  # after the self-hosted create (the read happens in the same apply);
-  # the SSIS pipeline_external_compute_scale read seam stays out of
-  # the lanes deliberately (the provider mirrors pipeline nodes back
-  # for external nodes -- exercising it would fail the zero-diff
-  # import round-trip through no fault of the modules).
+  # PROVEN live on both engines: all THREE flavors through the full
+  # lifecycle (deploy / ARM verify / destroy / verify-absent) with
+  # blind import round-trips on the terraform lanes, all zero-change:
+  # azure-dataflow-vnet (~10-12 min/engine -- the managed compute
+  # joined the smoke factory's managed virtual network on first
+  # contact, the variant's only ForceNew contract proven; IMPORT-RT
+  # 16s), self-hosted-bridge (~9-11 min/engine -- Azure issued REAL
+  # authorization keys at create and BOTH engines surfaced them
+  # through the secrets reader, 4/4 outputs populated; ListAuthKeys
+  # answered in the same apply with no timing gap; IMPORT-RT 17s),
+  # and ssis-stopped (~10-11 min/engine -- ARM accepted the
+  # Standard_D2_v3 eastus definition at save with no eager
+  # region-availability rejection, created STOPPED, never billed;
+  # IMPORT-RT 12s). The deep arms are OFFLINE-PROVEN by design: the
+  # azure interactive-authoring TTL (its enable operation starts a
+  # BILLED debug session), the SSIS
+  # catalog/custom-setup/vnet-injection/proxy blocks (each needs an
+  # external system -- a SQL server, a setup container, a delegated
+  # subnet, a real self-hosted NODE -- E2E cannot honestly stand up;
+  # ARM validates them at save time as payload shapes). Their tofu
+  # plans are render-inspected instead. The SSIS
+  # pipeline_external_compute_scale read seam stays out of the lanes
+  # deliberately (the provider mirrors pipeline nodes back for
+  # external nodes -- exercising it would fail the zero-diff import
+  # round-trip through no fault of the modules). Runtimes are
+  # authoring metadata at rest (measured lane spend ~= $0).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 60

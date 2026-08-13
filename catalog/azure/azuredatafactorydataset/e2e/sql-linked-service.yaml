@@ -17,9 +17,11 @@ metadata:
     e2e-component: azuredatafactorydataset
   annotations:
     planton.dev/e2e: "true"
-    # The Key Vault linked service (and its vault chain) must exist
-    # before this connection references it by name.
-    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/key-vault.yaml"
+    # The Key Vault linked service this connection references (and
+    # its vault chain) is declared by the CONSUMING scenario
+    # (scenarios/sql-table-by-id.yaml) -- the harness never reads
+    # e2e-prerequisites from a path-declared fixture manifest, so
+    # declaring the chain here would be a false promise.
   tags:
     - planton-e2e
 spec:

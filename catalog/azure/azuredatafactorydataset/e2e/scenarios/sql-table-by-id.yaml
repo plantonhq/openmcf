@@ -19,9 +19,14 @@ metadata:
     e2e-component: azuredatafactorydataset
   annotations:
     planton.dev/e2e: "true"
-    # The scenario-local SQL linked service (which itself chains the
-    # Key Vault linked service instance and the fixture vault).
-    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorydataset/e2e/sql-linked-service.yaml"
+    # The SQL connection's whole chain, declared explicitly in
+    # deploy-first order: the fixture Key Vault, the Key Vault
+    # linked service instance, then the scenario-local SQL linked
+    # service that references both. The harness reads this annotation
+    # only on the scenario under test -- an annotation on a
+    # path-declared fixture manifest is never resolved -- so every
+    # hop must be listed HERE, not on the fixtures themselves.
+    planton.dev/e2e-prerequisites: "AzureKeyVault,catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/key-vault.yaml,catalog/azure/azuredatafactorydataset/e2e/sql-linked-service.yaml"
   tags:
     - planton-e2e
 spec:
