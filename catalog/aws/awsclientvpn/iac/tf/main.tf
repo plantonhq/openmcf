@@ -148,4 +148,13 @@ resource "aws_ec2_client_vpn_route" "this" {
   description            = each.value.description != "" ? each.value.description : null
 
   depends_on = [aws_ec2_client_vpn_network_association.this]
+
+  # AWS deletes a route through the endpoint's associated target network
+  # slowly -- observed live 'deleting' past the provider's 4-minute default
+  # delete timeout (twice, 2026-08-13); the delete does complete, just late.
+  # Both timeouts are pinned above the observed worst case.
+  timeouts {
+    create = "10m"
+    delete = "10m"
+  }
 }

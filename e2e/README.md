@@ -838,6 +838,17 @@ failed run's teardown to ALSO have failed on credentials — sweep its fixture
 chain before relaunching (deployed dependencies stay cloud-side when
 DEPENDENCIES-DOWN never got usable credentials).
 
+The rescue's granularity is PER PROCESS, not per lane (live hit
+2026-08-13): a `pulumi destroy` SPAWNED while the token was dead can wedge
+inside its provider-configure refresh loop and never consult the fresh
+cache — observed hung 40+ minutes after the login landed, while sibling
+CLI calls succeeded. When a dependency-teardown retry ladder is cycling
+and one attempt's child process outlives its plausible runtime, kill THAT
+process (SIGKILL if needed — destroys are state-safe to interrupt) and
+let the ladder's next attempt relaunch with a fresh process that reads
+the new token. Killing the hung child is the in-place rescue; killing the
+lane is still the last resort.
+
 Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
 engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
 ~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
@@ -873,7 +884,16 @@ CreateHealthCheck rejects reserved/documentation IP addresses
 TEST-NET ranges included, and DISABLED does not exempt the check), so an
 endpoint-check fixture must place its placeholder in `fqdn`, never in
 `ip_address` (AWS resolves domains at probe time and a disabled check
-never probes — the domain placeholder deploys cleanly). When a lane fails with a 4xx the offline
+never probes — the domain placeholder deploys cleanly); on SageMaker,
+CreateSpace rejects a space idle timeout wherever idle shutdown resolves
+DISABLED for the space through the domain/owner-profile inheritance chain
+("Idle Shutdown is disabled for this space, SpaceIdleSettings cannot be set
+for this space" — identical 400 on both engines, 2026-08-13: a scenario that
+proves the defined-but-disabled profile plane must NOT also set an idle
+timeout on a space that profile owns; cross-RESOURCE contracts like this
+live in no provider schema, so scenario design must resolve the inheritance
+chain by hand — the kind's spec now CEL-rejects the in-manifest
+contradiction). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -1052,7 +1072,14 @@ gate-vs-print failure the lock protocol records); (2) after every
 launch, verify exactly ONE `go test` driver + ONE `*.test` binary exist
 for the pattern; (3) count `^ok |^FAIL` package trailers in the lane log
 before citing it as evidence — two trailer sets means two executions and
-the log's phases interleave.
+the log's phases interleave; (4) in a PERSISTENT/stateful agent shell, the
+gate must block by SKIPPING the launch (an `if` that simply does not run
+it), never by `exit` — an `exit` kills the shell itself, agent tooling
+restarts it and can RE-RUN the whole chain, and the re-execution races the
+first (two live hits 2026-08-13: a "blocked" gate report belonged to the
+duplicate execution while the first was already running the lanes; the
+truth is always the process table + the log file, never the launcher's
+printed verdict).
 
 **A stale AWS CLI silently DROPS new API surface from its output — verify
 the CLI's model before diagnosing a missing field.** The CLI parses

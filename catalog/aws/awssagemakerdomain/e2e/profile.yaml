@@ -39,12 +39,18 @@ spec:
   # clean -- the Delete retention policy removed the auto-created EFS
   # home file system in every lane.
   #
-  # pending_proof: the depth closure folded the user-profile and space
-  # satellites (full-surface gains one profile with a DISABLED-lifecycle
-  # override and one private space), healed the idle lifecycle_management
-  # tri-state, and added value-domain rules; the previous green run predates
-  # this surface. The raised verifier asserts every folded profile/space
-  # InService from the output maps.
+  # Re-proven live 2026-08-13, both engines, both scenarios, through the
+  # folded profile/space surface: DescribeUserProfile echoed InService
+  # with the JupyterLab override carrying LifecycleManagement DISABLED
+  # explicitly (the defined-but-disabled state's first live proof);
+  # DescribeSpace echoed the private space InService with authored
+  # ownership/sharing; destroy ordered space -> profile -> domain
+  # (server-side visible); the Delete retention removed the auto-created
+  # EFS home file system in every lane. ONE live catch, fixed at the full
+  # bar in-session: CreateSpace rejects a space idle timeout when idle
+  # shutdown resolves DISABLED through the owner profile (server-side
+  # contract; scenario fixed, spec CELs + field teaching added).
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

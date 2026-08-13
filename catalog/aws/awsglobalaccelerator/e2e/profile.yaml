@@ -21,12 +21,13 @@ spec:
   # composed 3m02s / 1m16s, minimal 3m13s / 1m26s; all verify stages green;
   # zero-orphan sweep clean.
   #
-  # pending_proof: the depth closure healed the endpoint weight zero-drain
-  # defect (both modules now materialize AWS's documented 128 default; an
-  # omitted weight previously transmitted 0 = route-no-traffic). The
-  # composed scenario now OMITS the endpoint weight so the lane proves the
-  # heal's path directly (DescribeEndpointGroup must echo Weight=128); the
-  # explicit-weight path is proven by spec tests and the offline plan gate.
+  # Re-proven live 2026-08-13, both engines, both scenarios, after the
+  # weight zero-drain heal: the composed scenario's endpoint (authored
+  # WITHOUT weight) echoed Weight=128 from the endpoint group on BOTH
+  # engines' instances (distinct EIP allocation IDs attribute the
+  # windows), with SOURCE_IP affinity, the 10s health-check interval,
+  # dial 100, and the 443->8443 port override all echoed as authored.
   tier: 1
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40
