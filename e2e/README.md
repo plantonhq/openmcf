@@ -148,6 +148,27 @@ service networking connection chain):
   the VPC, stranding a producer-side connection record that poisons the next
   scenario's same-named prerequisite chain (its connection create silently
   attaches to the stale record and no peering ever materializes).
+  **A prerequisite whose producer release is measured in TENS OF MINUTES
+  can declare its own wider budget** via `planton.dev/e2e-teardown-attempts:
+  "N"` on its install manifest (total attempts, same 60s spacing) — the
+  global default stays tight so genuinely failed teardowns keep reporting
+  fast. Know the class boundary before reaching for it: the Cloud SQL
+  chain's connection hold, historically ~4 minutes, was live-measured
+  UNRELEASED after 43 minutes of solo-verified retries (2026-08-12) — for
+  an EPHEMERAL fixture chain that unbounded wait buys nothing, so the
+  fixture instead sets `deletionPolicy: ABANDON` on the connection: the
+  teardown succeeds instantly, the (scenario+run-scoped, never-reused) VPC
+  delete clears the consumer-side peering, and the producer record is
+  unreachable, unbillable residue GCP reaps on its own schedule — the
+  undeletable-classes zero-orphan posture, chosen at the fixture, never
+  forced on customers (the kind's own DELETE semantics stay live-proven).
+  The ghost-poisoning above was ALSO live-confirmed the same day: after a
+  budget-exhausted teardown force-deleted the VPC, the NEXT scenario's
+  same-named fresh chain deployed clean but its connection teardown failed
+  "still using" with zero producer instances ever attached — the fix is
+  scenario-scoped cloud-side names (`${E2E_SCENARIO}` beside
+  `${E2E_RUN_ID}`) on the chain's VPC and range, so no scenario ever
+  recreates a predecessor's name.
 - **Dependency deploys run `pulumi up --refresh`** ([pulumi.go](framework/runner/pulumi.go)).
   Dependency stacks are keyed by run id, so every scenario in a run reuses the
   same stack name; if an earlier scenario's teardown half-completed, stale
@@ -940,6 +961,13 @@ their subnetwork fixture, the kind's WHOLE chain (all scenarios + the
 consumer-scoped subnetwork + the cluster install profile, including
 same-shaped copies under consuming kinds) moves together.
 
+The class also has a DATAPROC flavor, and auto-zone placement does NOT
+dodge it: with no zone pinned, Dataproc's own placement still chose the
+exhausted us-central1-a and the create failed with
+ZONE_RESOURCE_POOL_EXHAUSTED / "does not have enough resources" on
+e2-standard-2 (live-hit 2026-08-12; single-node AND multi-node shapes
+alike). Same response: relocate the kind's whole region-matched chain.
+
 **Some GCP APIs require a quota project on user-credential calls:** the
 Identity Toolkit API (Identity Platform) rejects calls made with plain
 user ADC — 403 "requires a quota project, which is not set by default" —
@@ -978,21 +1006,30 @@ fields the posture assertions need. Swap to the typed client whenever the
 dependency is next upgraded for its own reasons.
 
 **Shell harnesses can DOUBLE-SPAWN a lane invocation — and an interrupted
-invocation orphans the second spawn's fixtures.** Thrice-observed signature:
-one launch produces TWO concurrent `go test` processes with different run
-ids; the first runs to a clean PASS while the second either 409s on the
-first's fixtures or — if the invocation is interrupted/killed — dies
-mid-scenario with its run-scoped chain undestroyed. The third observation
-adds two facts: it strikes WITHOUT any interrupt (a chained
+invocation orphans the second spawn's fixtures.** Four-times-observed
+signature: one launch produces TWO OR MORE `go test` processes with
+different run ids; the first runs to a clean PASS while the second either
+409s on the first's fixtures or — if the invocation is interrupted/killed —
+dies mid-scenario with its run-scoped chain undestroyed. The third
+observation adds two facts: it strikes WITHOUT any interrupt (a chained
 `go test ... && go test ...` command was doubled whole, both siblings ran
 to clean completion), and the collision surface includes the SHARED module
 source directories — the sibling's dependency deploy overwrote the kind's
 `stack-input.yaml` between a lane's apply and its IDEMPOTENCY preview, so
 the preview compiled against the sibling's prerequisite manifest and
 reported a bogus replace (a different cloud-side name from a run id no
-logged lane used is the tell). Mitigations: launch ONE `go test` invocation
-per shell command (never chain lanes — a doubled chain multiplies the
-overlap window), and smoke-check for a sibling process right after launch.
+logged lane used is the tell). The fourth observation adds a SERIAL
+flavor with two new tells: a single un-chained invocation was spawned
+THREE times back-to-back (edges overlapping), and because the launch
+piped through `tee` without `-a`, each respawn TRUNCATED the log — the
+surviving file and the reported wall-clock describe only the LAST spawn,
+so the invocation looks singular unless you reconstruct from the cloud
+audit log (query the service's create/delete methods for the window and
+group by the run-id embedded in resource names; every run id beyond the
+logged one is a phantom spawn). Mitigations: launch ONE `go test`
+invocation per shell command (never chain lanes — a doubled chain
+multiplies the overlap window), and smoke-check for a sibling process
+right after launch.
 When killing a sibling spawn, kill its PROCESS GROUP (`kill -- -<pgid>`),
 not just the `go test`/test-binary PIDs: an in-flight `pulumi up` child
 survives a parent-only kill and COMPLETES its deploy minutes later,

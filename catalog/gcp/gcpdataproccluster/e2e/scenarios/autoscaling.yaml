@@ -21,7 +21,10 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1 with the whole Dataproc chain (2026-08-12 us-central1
+  # ZONE_RESOURCE_POOL_EXHAUSTED on e2-standard-2 across master and
+  # both primary workers).
+  region: us-east1
   clusterName: e2e-dpc-as-${E2E_RUN_ID}
   clusterConfig:
     gceConfig:
@@ -46,7 +49,10 @@ spec:
         bootDiskType: pd-balanced
     workerConfig:
       numInstances: 2
-      machineType: e2-standard-2
+      # No machineType here: the flexibility policy REPLACES it (the API
+      # drops a paired machineTypeUri from the stored config, which
+      # re-plans as cluster replacement — CEL-enforced exclusivity,
+      # live-caught 2026-08-12).
       diskConfig:
         bootDiskSizeGb: 50
         bootDiskType: pd-balanced

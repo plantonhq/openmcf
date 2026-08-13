@@ -6,6 +6,10 @@ spec:
   # Composed scenario: deploys the GcpCloudSql prerequisite then creates a
   # BUILT_IN user on it.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  # Live-proven 2026-08-13 on both engines at the total-accounting spec:
+  # minimal scenario (BUILT_IN user + database_roles [cloudsqlsuperuser]
+  # accepted by the live API + explicit deletionPolicy DELETE) x 2
+  # engines, all phases green under the apply-idempotency gate.
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

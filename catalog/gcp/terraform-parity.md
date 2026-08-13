@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 85 proven live.**
+**98 of 98 kinds are at total accounting; 90 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -72,15 +72,15 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | — |
 | GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
-| GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
+| GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeMig | 413 | 70 | 310 | 33 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
-| GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
+| GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | ✅ pulumi, terraform |
