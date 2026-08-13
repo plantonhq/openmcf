@@ -19,9 +19,11 @@ spec:
   # additional_model_request_fields (model-specific passthrough --
   # offline-proven).
   #
-  # pending_proof: forged this session to the full offline bar -- Q34
-  # proves it live.
+  # Live dual-engine run 2026-08-14 (session 056): Pulumi both
+  # scenarios ~85s; Terraform both scenarios ~91s after the catalog
+  # declared variant inference floats write-normalized (Bedrock stores
+  # them as float32; 0.9 reads back 0.8999999761581421 on blind import).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

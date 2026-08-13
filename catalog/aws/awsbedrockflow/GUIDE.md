@@ -44,6 +44,13 @@ in production.
 - **Socket types are contracts.** A String output feeding an
   Object-typed input fails validation at create — align the node IO
   types before reaching for expressions.
+- **Importing an existing flow shows a one-time inference-float
+  reconcile.** Bedrock stores node `temperature`/`top_p` as 32-bit
+  floats, so a value that is not float32-exact (0.2, 0.9) reads back
+  slightly widened on import, and the first plan proposes an in-place
+  update back to your manifest's value. Applying it is a server-side
+  no-op and the plan is clean thereafter. Normal deploys never see this
+  — state keeps the manifest's value. Same class as AwsBedrockPrompt.
 
 ## Cost model
 

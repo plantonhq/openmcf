@@ -41,7 +41,9 @@ spec:
     questions and retrieve documentation for how-to questions.
   idleSessionTtlSeconds: 900
   memory:
-    storageDays: 30
+    # CEL upper bound (AWS documents 0-365; omitted = 30). The live
+    # lane is the service-acceptance proof the GUIDE defers to.
+    storageDays: 365
     maxRecentSessions: 5
   promptOverride:
     promptConfigurations:

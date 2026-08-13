@@ -750,10 +750,15 @@ type AwsBedrockPromptInferenceConfiguration struct {
 	MaxTokens *int32 `protobuf:"varint,1,opt,name=max_tokens,json=maxTokens,proto3,oneof" json:"max_tokens,omitempty"`
 	// Sequences that stop generation when the model emits them.
 	StopSequences []string `protobuf:"bytes,2,rep,name=stop_sequences,json=stopSequences,proto3" json:"stop_sequences,omitempty"`
-	// Sampling temperature (0 = deterministic, 1 = most random).
+	// Sampling temperature (0 = deterministic, 1 = most random). Bedrock
+	// stores it as a 32-bit float: a value that is not float32-exact (0.9,
+	// 0.7) reads back slightly widened (0.8999999761581421) from the API -
+	// harmless for deploys (state keeps your value), visible only when
+	// importing a pre-existing prompt.
 	Temperature *float64 `protobuf:"fixed64,3,opt,name=temperature,proto3,oneof" json:"temperature,omitempty"`
 	// Nucleus sampling - consider tokens covering the top P probability
-	// mass (0-1).
+	// mass (0-1). Stored by Bedrock as a 32-bit float; see temperature for
+	// the read-back precision note.
 	TopP          *float64 `protobuf:"fixed64,4,opt,name=top_p,json=topP,proto3,oneof" json:"top_p,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

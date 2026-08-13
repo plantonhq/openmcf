@@ -30,9 +30,23 @@ spec:
   # alias routing pins (needs a pre-existing numbered version or
   # provisioned throughput -- offline-proven).
   #
-  # pending_proof: forged this session to the full offline bar -- Q34
-  # proves it live.
+  # ENVIRONMENT-DEFERRED (session 056, 2026-08-14): CreateAgent is
+  # 403 AccessDeniedException on this account -- "Bedrock Agents is in
+  # Maintenance Mode. New agent creation is not available for accounts
+  # without prior service usage." AWS closed Agents Classic to new
+  # customers on 2026-07-30; allowlisting is automatic per-account from
+  # 12 months of prior CreateAgent/InvokeInlineAgent usage, and there
+  # is no exception process. Both engines, both scenarios, same 403
+  # (Pulumi full-surface RequestID 8b1c80ec-598b-406d-9139-4d3c48a93a75;
+  # Terraform full-surface RequestID 9ec0ae16-74cd-4f06-af1f-e2653067dd58).
+  # Not a module or spec defect: IAM + MANAGED-KB prerequisites deployed
+  # and verified; the first CreateAgent call is the wall. Unblock: run
+  # the lanes on an allowlisted account (one that created or invoked an
+  # agent before the cutoff), or accept that new-account proof of this
+  # kind is closed and new agent work belongs on AgentCore (Q35).
+  # Docs: https://docs.aws.amazon.com/bedrock/latest/userguide/agents-classic-maintenance-mode.html
   tier: 1
-  status: pending_proof
+  status: deferred
+  deferred_reason: "environment-deferred 2026-08-14: Bedrock Agents Classic maintenance mode -- CreateAgent 403 on accounts without prior usage (test account 859666865785 is not allowlisted; no exception process). Unblock: an allowlisted account, then run both engines' lanes."
   validated_provisioners: []
   timeout_minutes: 45

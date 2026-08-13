@@ -11,7 +11,13 @@ running knowledge bases in production.
   type; the spec carries exactly one of `vector`/`managed`/`kendra`/`sql`
   (CEL-guarded) and the modules derive AWS's discriminator. A leaf that
   must agree with structure is drift surface, not configuration — the
-  same rule derives the storage backend and data-source connector types.
+  same rule derives the storage backend, data-source connector types, and
+  the managed type's `embedding_model_type` (CUSTOM exactly when an
+  embedding-model ARN is brought, MANAGED otherwise). That last leaf is
+  also always *sent*: the provider marks it Optional+Computed, and
+  leaving it unknown lets AWS create the knowledge base then fails the
+  Pulumi apply with "unexpected unknown property value", stranding the
+  resource outside engine state (live-caught 2026-08-14).
 - **`storage` pairs with `vector` and nothing else.** The CEL guard
   `has(vector) == has(storage)` encodes AWS's real contract: managed
   brings AWS's store, Kendra and SQL delegate storage entirely.
@@ -46,6 +52,10 @@ running knowledge bases in production.
 - **Ingestion is a separate step.** Deploying the component creates the
   knowledge base and data sources; document syncs
   (`StartIngestionJob`) run from the console, CLI, or your pipeline.
+  Live-proven 2026-08-14 on the VECTOR + S3 Vectors 256-dim pairing: a
+  one-object `StartIngestionJob` reached COMPLETE (1 scanned, 1 indexed,
+  0 failed) and the DELETE data-deletion policy still let destroy
+  finish cleanly.
 - **The role fails at create, not at query.** AWS validates assume-role
   and store access at CreateKnowledgeBase with a propagation retry
   window (~2 minutes) — a missing s3vectors/aoss permission is a deploy

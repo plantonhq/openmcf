@@ -246,17 +246,18 @@ func (x *AwsBedrockKnowledgeBaseVectorConfig) GetSupplementalDataS3Uri() string 
 // retrieval with the vector store fully managed by AWS.
 type AwsBedrockKnowledgeBaseManagedConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// ARN of the embedding foundation model. Omitted = AWS picks its
-	// default embedding model.
+	// ARN of the embedding foundation model. Omitted = AWS uses its
+	// service-managed embedding model. Setting an ARN switches the
+	// embedding-model type to CUSTOM; the modules derive and always send
+	// that discriminator (AWS's embeddingModelType is CUSTOM exactly when
+	// an ARN is brought, MANAGED otherwise - a leaf that must agree with
+	// structure is drift surface, not configuration).
 	EmbeddingModelArn string `protobuf:"bytes,1,opt,name=embedding_model_arn,json=embeddingModelArn,proto3" json:"embedding_model_arn,omitempty"`
-	// Whether the embedding model is AWS-MANAGED or a CUSTOM model you
-	// brought. Omitted = AWS derives it from the model ARN.
-	EmbeddingModelType string `protobuf:"bytes,2,opt,name=embedding_model_type,json=embeddingModelType,proto3" json:"embedding_model_type,omitempty"`
 	// Tune the embedding model's output.
-	EmbeddingModel *AwsBedrockKnowledgeBaseEmbeddingModelConfig `protobuf:"bytes,3,opt,name=embedding_model,json=embeddingModel,proto3" json:"embedding_model,omitempty"`
+	EmbeddingModel *AwsBedrockKnowledgeBaseEmbeddingModelConfig `protobuf:"bytes,2,opt,name=embedding_model,json=embeddingModel,proto3" json:"embedding_model,omitempty"`
 	// Customer-managed KMS key for encrypting the managed store. Without
 	// it, AWS uses a service-managed key.
-	KmsKeyArn     *v1.StringValueOrRef `protobuf:"bytes,4,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
+	KmsKeyArn     *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -294,13 +295,6 @@ func (*AwsBedrockKnowledgeBaseManagedConfig) Descriptor() ([]byte, []int) {
 func (x *AwsBedrockKnowledgeBaseManagedConfig) GetEmbeddingModelArn() string {
 	if x != nil {
 		return x.EmbeddingModelArn
-	}
-	return ""
-}
-
-func (x *AwsBedrockKnowledgeBaseManagedConfig) GetEmbeddingModelType() string {
-	if x != nil {
-		return x.EmbeddingModelType
 	}
 	return ""
 }
@@ -3539,12 +3533,11 @@ const file_catalog_aws_awsbedrockknowledgebase_v1alpha1_spec_proto_rawDesc = "" 
 	"#AwsBedrockKnowledgeBaseVectorConfig\x127\n" +
 	"\x13embedding_model_arn\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x11embeddingModelArn\x12\x86\x01\n" +
 	"\x0fembedding_model\x18\x02 \x01(\v2].dev.planton.aws.awsbedrockknowledgebase.v1alpha1.AwsBedrockKnowledgeBaseEmbeddingModelConfigR\x0eembeddingModel\x12[\n" +
-	"\x18supplemental_data_s3_uri\x18\x03 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a2\x18^s3://[a-z0-9.-]+(/.*)?$R\x15supplementalDataS3Uri\"\xa1\x03\n" +
+	"\x18supplemental_data_s3_uri\x18\x03 \x01(\tB\"\xbaH\x1f\xd8\x01\x01r\x1a2\x18^s3://[a-z0-9.-]+(/.*)?$R\x15supplementalDataS3Uri\"\xd4\x02\n" +
 	"$AwsBedrockKnowledgeBaseManagedConfig\x12.\n" +
-	"\x13embedding_model_arn\x18\x01 \x01(\tR\x11embeddingModelArn\x12K\n" +
-	"\x14embedding_model_type\x18\x02 \x01(\tB\x19\xbaH\x16\xd8\x01\x01r\x11R\aMANAGEDR\x06CUSTOMR\x12embeddingModelType\x12\x86\x01\n" +
-	"\x0fembedding_model\x18\x03 \x01(\v2].dev.planton.aws.awsbedrockknowledgebase.v1alpha1.AwsBedrockKnowledgeBaseEmbeddingModelConfigR\x0eembeddingModel\x12s\n" +
-	"\vkms_key_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\"\xb8\x02\n" +
+	"\x13embedding_model_arn\x18\x01 \x01(\tR\x11embeddingModelArn\x12\x86\x01\n" +
+	"\x0fembedding_model\x18\x02 \x01(\v2].dev.planton.aws.awsbedrockknowledgebase.v1alpha1.AwsBedrockKnowledgeBaseEmbeddingModelConfigR\x0eembeddingModel\x12s\n" +
+	"\vkms_key_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\"\xb8\x02\n" +
 	"+AwsBedrockKnowledgeBaseEmbeddingModelConfig\x12*\n" +
 	"\n" +
 	"dimensions\x18\x01 \x01(\x05B\n" +

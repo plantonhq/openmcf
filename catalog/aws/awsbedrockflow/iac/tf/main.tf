@@ -131,6 +131,12 @@ resource "aws_bedrockagent_flow" "this" {
                     }
                   }
 
+                  # Bedrock stores temperature/top_p as float32 --
+                  # non-float32-exact values (0.2) read back widened
+                  # (0.20000000298023224). Applies are unaffected (state
+                  # keeps the config value); blind imports plan a one-time
+                  # reconcile on exactly those leaves (declared
+                  # write-normalized in the provider import catalog).
                   dynamic "inference_configuration" {
                     for_each = try(knowledge_base.value.inference_configuration, null) != null ? [knowledge_base.value.inference_configuration] : []
                     content {
@@ -201,6 +207,8 @@ resource "aws_bedrockagent_flow" "this" {
 
                         additional_model_request_fields = try(inline.value.additional_model_request_fields, null) != null ? jsonencode(inline.value.additional_model_request_fields) : null
 
+                        # Same float32 class as the knowledge-base node
+                        # inference block above (and as AwsBedrockPrompt).
                         dynamic "inference_configuration" {
                           for_each = try(inline.value.inference_configuration, null) != null ? [inline.value.inference_configuration] : []
                           content {

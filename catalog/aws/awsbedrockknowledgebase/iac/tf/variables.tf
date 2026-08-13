@@ -28,8 +28,7 @@ variable "spec" {
       supplemental_data_s3_uri = optional(string, "")
     }))
     managed = optional(object({
-      embedding_model_arn  = optional(string, "")
-      embedding_model_type = optional(string, "")
+      embedding_model_arn = optional(string, "")
       embedding_model = optional(object({
         dimensions                 = optional(number, 0)
         embedding_data_type        = optional(string, "")

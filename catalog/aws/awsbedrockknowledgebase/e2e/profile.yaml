@@ -28,9 +28,16 @@ spec:
   # the web crawler's live crawl (billing and third-party-load concerns;
   # the render is offline-proven).
   #
-  # pending_proof: forged this session to the full offline bar -- Q34
-  # proves it live.
+  # Live dual-engine run 2026-08-14 (session 056): Pulumi VECTOR
+  # full-surface 2m02s / MANAGED minimal 4m52s (deploy 1m29s, destroy
+  # 2m38s); Terraform VECTOR 2m10s with IMPORT-RT / MANAGED 5m21s
+  # (deploy 1m56s, destroy 2m30s, IMPORT-RT). Mid-lane ingestion probe
+  # on the VECTOR data source reached COMPLETE (1 doc indexed) and
+  # DELETE policy still destroyed cleanly. MANAGED echo is type-only
+  # (no storageConfiguration -- AWS owns the store); no extra
+  # account resources appeared; create/delete is the at-rest datapoint
+  # (same-day Cost Explorer will not show a charge).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

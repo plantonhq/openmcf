@@ -38,6 +38,16 @@ in production.
 
 ## Running agents in production
 
+- **CreateAgent is allowlisted after 2026-07-30.** AWS put Bedrock
+  Agents Classic into maintenance mode: accounts that did not call
+  `CreateAgent` or `InvokeInlineAgent` in the 12 months before that
+  date get `AccessDeniedException` (HTTP 403, "Bedrock Agents is in
+  Maintenance Mode") on new creates. There is no exception process.
+  Existing agents and every other API (Get/Update/Delete/Prepare,
+  satellites, InvokeAgent) stay available to all accounts. New agent
+  work on a non-allowlisted account belongs on AgentCore (Q35), not
+  this kind. Live-caught 2026-08-14 on the Planton E2E account
+  (`859666865785`) — both engines, both scenarios, same 403.
 - **Version through aliases.** Treat `aliases` entries like release
   channels: `live` for production, a second entry for canary. Each new
   alias snapshots the current draft; repointing consumers between aliases

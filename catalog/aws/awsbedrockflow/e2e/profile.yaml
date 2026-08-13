@@ -23,9 +23,13 @@ spec:
   # (the pinned provider cannot express Loop configurations -- an
   # upstream gap, recorded in the parity manifest).
   #
-  # pending_proof: forged this session to the full offline bar -- Q34
-  # proves it live.
+  # Live dual-engine run 2026-08-14 (session 056): Pulumi full-surface
+  # 5m17s / minimal 1m20s; Terraform full-surface 5m55s (IMPORT-RT
+  # tolerated the float32 inference-leaf widen on temperature 0.2) /
+  # minimal 1m15s with a clean IMPORT-RT. Consumer-scoped IAM fixture
+  # (one role, ~15s) plus the always-send managed embeddingModelType
+  # discriminator unblocked the MANAGED-KB prerequisite on Pulumi.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

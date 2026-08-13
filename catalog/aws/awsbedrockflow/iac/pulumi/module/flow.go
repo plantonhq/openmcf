@@ -397,6 +397,11 @@ func flowPromptNodeArgs(p *awsbedrockflowv1alpha1.AwsBedrockFlowPromptNode) (*be
 	return prompt, nil
 }
 
+// Bedrock stores temperature/top_p as float32 -- non-float32-exact
+// values (0.2) read back widened (0.20000000298023224). Applies are
+// unaffected (state keeps the config value); blind imports plan a
+// one-time reconcile on exactly those leaves (declared write-normalized
+// in the provider import catalog). Same class as AwsBedrockPrompt.
 func knowledgeBaseInferenceTextArgs(c *awsbedrockflowv1alpha1.AwsBedrockFlowInferenceConfiguration) *bedrock.AgentFlowDefinitionNodeConfigurationKnowledgeBaseInferenceConfigurationTextArgs {
 	text := &bedrock.AgentFlowDefinitionNodeConfigurationKnowledgeBaseInferenceConfigurationTextArgs{}
 	if c.MaxTokens != nil {
@@ -414,6 +419,7 @@ func knowledgeBaseInferenceTextArgs(c *awsbedrockflowv1alpha1.AwsBedrockFlowInfe
 	return text
 }
 
+// Same float32 class as knowledgeBaseInferenceTextArgs (and AwsBedrockPrompt).
 func inlineInferenceTextArgs(c *awsbedrockflowv1alpha1.AwsBedrockFlowInferenceConfiguration) *bedrock.AgentFlowDefinitionNodeConfigurationPromptSourceConfigurationInlineInferenceConfigurationTextArgs {
 	text := &bedrock.AgentFlowDefinitionNodeConfigurationPromptSourceConfigurationInlineInferenceConfigurationTextArgs{}
 	if c.MaxTokens != nil {

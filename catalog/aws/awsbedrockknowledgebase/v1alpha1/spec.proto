@@ -129,23 +129,20 @@ message AwsBedrockKnowledgeBaseVectorConfig {
 // AwsBedrockKnowledgeBaseManagedConfig configures embeddings-based
 // retrieval with the vector store fully managed by AWS.
 message AwsBedrockKnowledgeBaseManagedConfig {
-  // ARN of the embedding foundation model. Omitted = AWS picks its
-  // default embedding model.
+  // ARN of the embedding foundation model. Omitted = AWS uses its
+  // service-managed embedding model. Setting an ARN switches the
+  // embedding-model type to CUSTOM; the modules derive and always send
+  // that discriminator (AWS's embeddingModelType is CUSTOM exactly when
+  // an ARN is brought, MANAGED otherwise - a leaf that must agree with
+  // structure is drift surface, not configuration).
   string embedding_model_arn = 1;
 
-  // Whether the embedding model is AWS-MANAGED or a CUSTOM model you
-  // brought. Omitted = AWS derives it from the model ARN.
-  string embedding_model_type = 2 [
-    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string = {in: ["MANAGED", "CUSTOM"]}
-  ];
-
   // Tune the embedding model's output.
-  AwsBedrockKnowledgeBaseEmbeddingModelConfig embedding_model = 3;
+  AwsBedrockKnowledgeBaseEmbeddingModelConfig embedding_model = 2;
 
   // Customer-managed KMS key for encrypting the managed store. Without
   // it, AWS uses a service-managed key.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 3 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
   ];

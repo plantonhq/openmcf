@@ -95,8 +95,17 @@ func knowledgeBase(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) 
 		if spec.Managed.EmbeddingModelArn != "" {
 			managed.EmbeddingModelArn = pulumi.String(spec.Managed.EmbeddingModelArn)
 		}
-		if spec.Managed.EmbeddingModelType != "" {
-			managed.EmbeddingModelType = pulumi.String(spec.Managed.EmbeddingModelType)
+		// Derived discriminator, ALWAYS sent: AWS's embeddingModelType is
+		// CUSTOM exactly when an embedding-model ARN is brought, MANAGED
+		// otherwise. The provider marks the attribute Optional+Computed
+		// (UseStateForUnknown); leaving it unset makes the bridge fail the
+		// apply with "unexpected unknown property value" AFTER AWS created
+		// the knowledge base -- stranding it outside state (live-caught
+		// 2026-08-13). Sending the derived value keeps it known at plan.
+		if spec.Managed.EmbeddingModelArn != "" {
+			managed.EmbeddingModelType = pulumi.String("CUSTOM")
+		} else {
+			managed.EmbeddingModelType = pulumi.String("MANAGED")
 		}
 		if spec.Managed.EmbeddingModel != nil {
 			m := spec.Managed.EmbeddingModel

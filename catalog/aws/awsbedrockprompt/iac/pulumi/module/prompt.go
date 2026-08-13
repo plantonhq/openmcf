@@ -90,6 +90,11 @@ func variantArgs(v *awsbedrockpromptv1alpha1.AwsBedrockPromptVariant) (*bedrock.
 		variant.AdditionalModelRequestFields = pulumi.String(string(fieldsJson))
 	}
 
+	// Bedrock stores temperature/top_p as float32 -- non-float32-exact
+	// values (0.9) read back widened (0.8999999761581421). Applies are
+	// unaffected (state keeps the config value); blind imports plan a
+	// one-time reconcile on exactly those leaves (declared
+	// write-normalized in the provider import catalog).
 	if v.InferenceConfiguration != nil {
 		text := &bedrock.AgentPromptVariantInferenceConfigurationTextArgs{}
 		if v.InferenceConfiguration.MaxTokens != nil {

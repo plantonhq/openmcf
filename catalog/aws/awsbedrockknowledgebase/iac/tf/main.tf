@@ -78,8 +78,14 @@ resource "aws_bedrockagent_knowledge_base" "this" {
     dynamic "managed_knowledge_base_configuration" {
       for_each = var.spec.managed != null ? [var.spec.managed] : []
       content {
-        embedding_model_arn  = managed_knowledge_base_configuration.value.embedding_model_arn != "" ? managed_knowledge_base_configuration.value.embedding_model_arn : null
-        embedding_model_type = managed_knowledge_base_configuration.value.embedding_model_type != "" ? managed_knowledge_base_configuration.value.embedding_model_type : null
+        embedding_model_arn = managed_knowledge_base_configuration.value.embedding_model_arn != "" ? managed_knowledge_base_configuration.value.embedding_model_arn : null
+        # Derived discriminator, ALWAYS sent: AWS's embeddingModelType is
+        # CUSTOM exactly when an embedding-model ARN is brought, MANAGED
+        # otherwise. Sending it keeps the value known at plan time -- the
+        # provider marks it Optional+Computed, and leaving it unknown
+        # strands the created KB outside Pulumi state on the twin module
+        # (bridge apply error), so both engines own the derivation.
+        embedding_model_type = managed_knowledge_base_configuration.value.embedding_model_arn != "" ? "CUSTOM" : "MANAGED"
 
         dynamic "embedding_model_configuration" {
           for_each = managed_knowledge_base_configuration.value.embedding_model != null ? [managed_knowledge_base_configuration.value.embedding_model] : []

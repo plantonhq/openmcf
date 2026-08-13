@@ -93,6 +93,8 @@ resources:
         reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
       - arg: knowledge_base_configuration.type
         reason: wired by the module -- derived from which type arm (vector/managed/kendra/sql) the spec sets; a leaf that must agree with structure is drift surface, not configuration
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.embedding_model_type
+        reason: wired by the module -- CUSTOM exactly when embedding_model_arn is brought, MANAGED otherwise (AWS's own contract); always sent because the provider's Optional+Computed unknown strands the created KB outside Pulumi state at apply
       - arg: storage_configuration.type
         reason: wired by the module -- derived from which backend arm the spec sets
       - arg: knowledge_base_configuration.sql_knowledge_base_configuration.type
