@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoClusterUser
+metadata:
+  name: orders-app-access
+spec:
+  mongoClusterId:
+    valueFrom:
+      name: <your-mongo-cluster>
+  # The managed identity's PRINCIPAL (object) id -- reference the
+  # identity's principal output rather than copying UUIDs by hand.
+  objectId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: <your-app-identity>
+      fieldPath: status.outputs.principal_id
+  # Managed identities bind through their service principal.
+  principalType: servicePrincipal
+  roles:
+    - database: admin
+      role: root

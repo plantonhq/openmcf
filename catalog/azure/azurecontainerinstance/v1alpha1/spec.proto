@@ -1,0 +1,761 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecontainerinstance.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureContainerInstanceSpec** defines an Azure Container Instance
+// container group -- serverless containers: hand Azure an image plus
+// CPU and memory, and it runs, billed per second while it runs. One
+// group holds one or more containers that share a lifecycle, network,
+// and volumes (the sidecar pattern), plus optional one-shot init
+// containers that run to completion before the main containers start.
+//
+// Almost the entire group is CREATE-ONLY: after create, Azure applies
+// only identity and tag changes in place -- any other change replaces
+// the group. Design the group's shape before shipping workloads.
+//
+// Networking is one of three postures: "Public" (an internet-facing IP,
+// optionally with a DNS name label), "Private" (an IP inside a subnet
+// delegated to Microsoft.ContainerInstance/containerGroups), or "None"
+// (no group IP at all -- and the only posture Spot priority accepts).
+message AzureContainerInstanceSpec {
+  // The Azure Resource Group the container group lives in. Can be a
+  // literal string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The container group's name. The provider validates only that it is
+  // non-empty; Azure itself enforces the final form at create
+  // (lowercase letters, numbers, and dashes travel safely).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure region the group is created in, e.g. "eastus".
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The operating system of every container in the group: "Linux" or
+  // "Windows". Windows groups pull much larger images and support
+  // fewer features (no init containers reach general availability
+  // there).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string os_type = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Linux",
+        "Windows"
+      ]
+    }
+  ];
+
+  // What happens when a container exits: "Always" restart (the
+  // provider default when unset -- long-running services), "Never"
+  // (run-once jobs; the group shows Terminated when done), or
+  // "OnFailure" (retry only non-zero exits).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string restart_policy = 5 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Always",
+      "Never",
+      "OnFailure"
+    ]
+  }];
+
+  // The group's SKU: unset means the provider default, "Standard".
+  // "Confidential" runs the group on AMD SEV-SNP hardware (confidential
+  // computing); "Dedicated" places it on dedicated hosts;
+  // "NotSpecified" is Azure's legacy null token.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string sku = 6 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Standard",
+      "Dedicated",
+      "Confidential",
+      "NotSpecified"
+    ]
+  }];
+
+  // Scheduling priority: unset or "Regular" is normal capacity; "Spot"
+  // runs on spare capacity at steep discount and can be evicted at any
+  // time. Spot groups cannot have a group IP -- Azure requires
+  // ip_address_type "None" (the provider enforces this before apply,
+  // mirrored here as a validation rule).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string priority = 7 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Regular",
+      "Spot"
+    ]
+  }];
+
+  // The group's IP posture: unset means the provider default,
+  // "Public" (an internet-facing IP). "Private" gives the group an IP
+  // inside subnet_id's subnet; "None" gives the group no IP at all
+  // (required for Spot priority).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string ip_address_type = 8 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Public",
+      "Private",
+      "None"
+    ]
+  }];
+
+  // A DNS name label for the public IP: the group becomes
+  // {label}.{region}.azurecontainer.io. Only meaningful with the
+  // "Public" posture -- rejected here (as are
+  // dns_name_label_reuse_policy and exposed_ports) when
+  // ip_address_type is "None", because Azure would silently discard
+  // them (the provider sends no IP object at all in that posture).
+  // Conflicts with subnet_id.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string dns_name_label = 9;
+
+  // Who may reuse the DNS name label after this group releases it:
+  // unset means the provider default, "Unsecure" (anyone). The
+  // stricter scopes ("Noreuse", "ResourceGroupReuse",
+  // "SubscriptionReuse", "TenantReuse") protect against dangling-DNS
+  // takeover of a label your systems still point at. Only meaningful
+  // alongside dns_name_label -- rejected when ip_address_type is
+  // "None" for the same silent-discard reason as the label itself.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string dns_name_label_reuse_policy = 10 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Noreuse",
+      "ResourceGroupReuse",
+      "SubscriptionReuse",
+      "TenantReuse",
+      "Unsecure"
+    ]
+  }];
+
+  // The subnet the group joins for the "Private" posture. The subnet
+  // must be delegated to Microsoft.ContainerInstance/containerGroups.
+  // Can be a literal ARM ID or a reference to an AzureSubnet output.
+  // Conflicts with dns_name_label (a private group has no public DNS).
+  // Azure serializes container-group operations per subnet, so groups
+  // sharing a subnet deploy one at a time.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_id = 11 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Availability zones to pin the group into, e.g. ["1"]. Unset lets
+  // Azure place the group.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated string zones = 12 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Ports exposed on the GROUP's IP. Omit to expose every port every
+  // container declares (the provider derives the group ports). When
+  // set, each entry must match a port+protocol some container
+  // declares -- the provider rejects the apply otherwise, mirrored
+  // here as a validation rule.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated AzureContainerInstancePort exposed_ports = 13;
+
+  // The containers that run in the group -- at least one. All
+  // containers share the group's lifecycle, network namespace, and
+  // volumes; they address each other on localhost.
+  //
+  // **ForceNew**: changing this list destroys and recreates the group.
+  repeated AzureContainerInstanceContainer containers = 14 [(buf.validate.field).repeated.min_items = 1];
+
+  // One-shot containers that run TO COMPLETION, in order, before the
+  // main containers start -- schema migrations, config fetchers,
+  // volume seeders. Init containers carry no CPU/memory of their own,
+  // no ports, and no probes.
+  //
+  // **ForceNew**: changing this list destroys and recreates the group.
+  repeated AzureContainerInstanceInitContainer init_containers = 15;
+
+  // Credentials for pulling the containers' images from private
+  // registries -- one entry per registry server. Prefer the
+  // user-assigned-identity form over username/password: no secret to
+  // rotate, and Azure grants the identity AcrPull on the registry.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated AzureContainerInstanceImageRegistryCredential image_registry_credentials = 16;
+
+  // The group's managed identity -- how its containers authenticate to
+  // other Azure services (Key Vault, storage, ACR) without embedded
+  // secrets. The ONLY group setting besides tags that Azure updates in
+  // place.
+  AzureContainerInstanceIdentity identity = 17;
+
+  // Ship the containers' stdout/stderr and events to a Log Analytics
+  // workspace. Azure never returns the workspace key on reads, so
+  // both engines re-send it from configuration when the group is
+  // updated. (This models the provider's diagnostics block, whose only
+  // member is this Log Analytics form.)
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  AzureContainerInstanceLogAnalytics diagnostics_log_analytics = 18;
+
+  // Custom DNS for the group's containers -- the resolvers to use
+  // instead of Azure's, plus optional search domains and resolver
+  // options.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  AzureContainerInstanceDnsConfig dns_config = 19;
+
+  // Customer-managed-key encryption for the group's ephemeral state: a
+  // VERSIONED Key Vault key identifier
+  // (https://{vault}.vault.azure.net/keys/{name}/{version}). Azure
+  // Container Instances pins this exact key VERSION -- rotation does
+  // not follow automatically (unlike consumers that accept versionless
+  // identifiers). Reference an AzureKeyVaultKey's key_id output or
+  // pass a literal versioned identifier.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 20 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_id"
+  ];
+
+  // The user-assigned identity Azure authenticates as when unwrapping
+  // key_vault_key_id. It must be attached to the group (identity block)
+  // and hold get/unwrap/wrap on the vault before create. BEHAVIOR: the
+  // provider applies this at CREATE only -- changing it alone later is
+  // silently never applied (the provider's update path skips it), so
+  // treat it as create-only in practice.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_user_assigned_identity_id = 21 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // Tags to apply to the group, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts). Updatable in
+  // place.
+  map<string, string> tags = 22;
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_spot_requires_ip_none"
+    message: "priority \"Spot\" requires ip_address_type \"None\" -- Azure gives Spot groups no group IP (the provider enforces this before apply)"
+    expression: "this.priority != 'Spot' || this.ip_address_type == 'None'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_subnet_conflicts_dns_label"
+    message: "subnet_id and dns_name_label cannot be set together -- a subnet-joined group is private and has no public DNS name"
+    expression: "!has(this.subnet_id) || this.dns_name_label == ''"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_dns_label_requires_group_ip"
+    message: "dns_name_label, dns_name_label_reuse_policy, and exposed_ports require an ip_address_type other than \"None\" -- without a group IP Azure silently discards them"
+    expression: "this.ip_address_type != 'None' || (this.dns_name_label == '' && this.dns_name_label_reuse_policy == '' && this.exposed_ports.size() == 0)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_exposed_ports_declared_on_containers"
+    message: "every exposed_ports entry must match a port and protocol declared by some container's ports -- Azure only exposes ports a container listens on (the provider enforces this before apply)"
+    expression: "this.exposed_ports.all(e, this.containers.exists(c, c.ports.exists(p, p.port == e.port && (p.protocol == '' ? 'TCP' : p.protocol) == (e.protocol == '' ? 'TCP' : e.protocol))))"
+  };
+}
+
+// One port a container listens on, or one port exposed on the group's
+// IP.
+message AzureContainerInstancePort {
+  // The port number (1-65535).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  int32 port = 1 [(buf.validate.field).cel = {
+    id: "container_instance_port_range"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // The protocol: unset means the provider default, "TCP". "UDP" is
+  // the other choice.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string protocol = 2 [(buf.validate.field).string = {
+    in: [
+      "",
+      "TCP",
+      "UDP"
+    ]
+  }];
+}
+
+// One container in the group. Containers share the group's network
+// namespace and lifecycle; each carries its own image, resources,
+// environment, mounts, and probes.
+message AzureContainerInstanceContainer {
+  // The container's name -- unique within the group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The image to run, e.g.
+  // "mcr.microsoft.com/azuredocs/aci-helloworld:latest". Private
+  // registries need a matching image_registry_credentials entry on the
+  // spec.
+  string image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The vCPU cores REQUESTED for this container, e.g. 0.5 or 1. The
+  // group's total is what Azure bills.
+  double cpu = 3 [(buf.validate.field).required = true];
+
+  // The memory REQUESTED for this container, in GB, e.g. 0.5 or 1.5.
+  double memory = 4 [(buf.validate.field).required = true];
+
+  // An upper vCPU LIMIT the container may burst to. BEHAVIOR: the
+  // provider applies this at CREATE only -- changing it alone later is
+  // silently never applied (the provider's update path covers only
+  // identity and tags), so treat it as create-only in practice.
+  optional double cpu_limit = 5 [(buf.validate.field).double.gte = 0];
+
+  // An upper memory LIMIT in GB the container may burst to. The same
+  // create-only-in-practice behavior as cpu_limit.
+  optional double memory_limit = 6 [(buf.validate.field).double.gte = 0];
+
+  // Ports this container listens on. The group exposes the union of
+  // all containers' ports unless the spec's exposed_ports narrows it.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated AzureContainerInstancePort ports = 7;
+
+  // Plain environment variables, name to value.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  map<string, string> environment_variables = 8;
+
+  // SECRET environment variables, name to value -- hidden from the
+  // portal, the CLI, and API reads (Azure never returns the values;
+  // both engines re-send them from configuration on updates).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  map<string, string> secure_environment_variables = 9 [(dev.planton.shared.options.sensitive) = true];
+
+  // Override the image's entrypoint/command. Reads echo the image's
+  // own entrypoint back when this is unset -- expected, not drift.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated string commands = 10;
+
+  // Volumes mounted into this container. Each entry is exactly one of
+  // the four volume forms (Azure File share, empty scratch dir, git
+  // checkout, or inline secret files). An empty_dir volume with the
+  // SAME name in several containers is one shared scratch volume --
+  // that is the sharing mechanism; other forms must use unique names
+  // across the group.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated AzureContainerInstanceVolume volumes = 11;
+
+  // The container's security context (Linux only).
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  AzureContainerInstanceSecurity security = 12;
+
+  // Restart the container when this probe fails.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  AzureContainerInstanceProbe liveness_probe = 13;
+
+  // Hold traffic until this probe succeeds.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  AzureContainerInstanceProbe readiness_probe = 14;
+}
+
+// One init container: runs to completion, in list order, before the
+// main containers start. No CPU/memory of its own, no ports, no
+// probes.
+message AzureContainerInstanceInitContainer {
+  // The init container's name -- unique within the group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The image to run.
+  string image = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Plain environment variables, name to value.
+  map<string, string> environment_variables = 3;
+
+  // SECRET environment variables -- the same never-read-back handling
+  // as the main containers' secure variables.
+  map<string, string> secure_environment_variables = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // Override the image's entrypoint/command.
+  repeated string commands = 5;
+
+  // Volumes mounted into this init container -- typically the same
+  // named empty_dir a main container mounts, so the init step can seed
+  // files the workload reads.
+  repeated AzureContainerInstanceVolume volumes = 6;
+
+  // The init container's security context (Linux only).
+  AzureContainerInstanceSecurity security = 7;
+}
+
+// One volume mounted into a container. Exactly ONE of the four forms:
+// an Azure File share (azure_file), an empty scratch directory
+// (empty_dir), a git repository checkout (git_repo), or inline secret
+// files (secret). The provider enforces this exclusivity at apply
+// time; it is a validation rule here so a wrong mix never reaches
+// Azure.
+message AzureContainerInstanceVolume {
+  // The volume's name. An empty_dir with the SAME name in several
+  // containers is ONE shared scratch volume (how containers share
+  // files); the other forms need names unique across the group.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Where the volume mounts inside the container, e.g. "/data".
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string mount_path = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Mount read-only. Unset means the provider default, writable.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  bool read_only = 3;
+
+  // An Azure File share mounted into the container -- the persistent
+  // form. Set exactly one volume form.
+  AzureContainerInstanceVolumeAzureFile azure_file = 4;
+
+  // An empty scratch directory living as long as the group. Set
+  // exactly one volume form.
+  bool empty_dir = 5;
+
+  // A git repository cloned into the volume at group start. Set
+  // exactly one volume form.
+  AzureContainerInstanceVolumeGitRepo git_repo = 6;
+
+  // Inline secret files: file name to content. Values must be
+  // BASE64-ENCODED (Azure decodes them into the mounted files) and are
+  // never returned on reads.
+  map<string, string> secret = 7 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_volume_exactly_one_form"
+    message: "set exactly one volume form: azure_file, empty_dir, git_repo, or secret"
+    expression: "(has(this.azure_file) ? 1 : 0) + (this.empty_dir ? 1 : 0) + (has(this.git_repo) ? 1 : 0) + (this.secret.size() > 0 ? 1 : 0) == 1"
+  };
+}
+
+// An Azure File share mounted as a volume. All three fields travel
+// together (the provider rejects a partial triple at apply time; here
+// they are simply all required).
+message AzureContainerInstanceVolumeAzureFile {
+  // The file share's name. Can be a literal or a reference to an
+  // AzureStorageShare output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef share_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageShare,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.share_name"
+  ];
+
+  // The storage account holding the share. Can be a literal or a
+  // reference to an AzureStorageAccount output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_name"
+  ];
+
+  // The storage account's access key. SECRET -- Azure never returns it
+  // on reads; both engines re-send it from configuration on updates.
+  // Reference an AzureStorageAccount's primary_access_key output or
+  // pass a literal.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_key = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_access_key"
+  ];
+}
+
+// A git repository cloned into the volume when the group starts.
+message AzureContainerInstanceVolumeGitRepo {
+  // The repository URL, e.g. "https://github.com/acme/config".
+  string url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The directory inside the volume to clone into. Unset clones into
+  // the volume root.
+  string directory = 2;
+
+  // The commit hash or branch to check out. Unset checks out the
+  // default branch's head.
+  string revision = 3;
+}
+
+// A container's security context. Linux groups only.
+message AzureContainerInstanceSecurity {
+  // Run the container PRIVILEGED (full host device access). Leave
+  // false for anything internet-facing.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  bool privilege_enabled = 1;
+}
+
+// A liveness or readiness probe -- how Azure decides a container is
+// healthy (liveness failure restarts it; readiness failure holds
+// traffic).
+message AzureContainerInstanceProbe {
+  // Run this command inside the container; exit 0 is healthy. Set
+  // exec and/or http_get -- Azure runs whichever is present.
+  repeated string exec = 1 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Probe an HTTP(S) endpoint the container serves. (ENGINE SHAPE: the
+  // provider's schema accepts a LIST here but its own code keeps only
+  // the last entry, so this models the single probe Azure actually
+  // receives.)
+  AzureContainerInstanceProbeHttpGet http_get = 2;
+
+  // Seconds to wait after container start before the first probe.
+  // Unset rides Azure's default.
+  int32 initial_delay_seconds = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Seconds between probes. Unset rides Azure's default.
+  int32 period_seconds = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Consecutive failures before the probe is considered failed. Unset
+  // rides Azure's default.
+  int32 failure_threshold = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Consecutive successes before the probe is considered passing.
+  // Unset rides Azure's default.
+  int32 success_threshold = 6 [(buf.validate.field).int32.gte = 0];
+
+  // Seconds a single probe may run before counting as a failure.
+  // Unset rides Azure's default.
+  int32 timeout_seconds = 7 [(buf.validate.field).int32.gte = 0];
+}
+
+// The HTTP(S) endpoint a probe calls.
+message AzureContainerInstanceProbeHttpGet {
+  // The request path, e.g. "/healthz".
+  string path = 1;
+
+  // The port to probe (1-65535).
+  int32 port = 2 [(buf.validate.field).cel = {
+    id: "container_instance_probe_port_range"
+    message: "port must be between 1 and 65535"
+    expression: "this == 0 || (this >= 1 && this <= 65535)"
+  }];
+
+  // The scheme: unset rides Azure's default, "http"; "https" is the
+  // other choice (the provider's own lowercase vocabulary).
+  string scheme = 3 [(buf.validate.field).string = {
+    in: [
+      "",
+      "http",
+      "https"
+    ]
+  }];
+
+  // Extra HTTP headers sent with each probe request, name to value.
+  map<string, string> http_headers = 4;
+}
+
+// One private-registry credential. Prefer the user-assigned-identity
+// form (no secret to rotate); username/password is the classic form.
+// The provider accepts any combination and Azure validates what the
+// registry actually needs.
+message AzureContainerInstanceImageRegistryCredential {
+  // The registry server, e.g. "myregistry.azurecr.io". Can be a
+  // literal or a reference to an AzureContainerRegistry output.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef server = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureContainerRegistry,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.login_server"
+  ];
+
+  // The registry username, for the username/password form.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string username = 2;
+
+  // The registry password. SECRET -- Azure never returns it on reads.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string password = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The user-assigned identity to pull as (grant it AcrPull on the
+  // registry). Can be a literal ARM ID or a reference to an
+  // AzureUserAssignedIdentity output.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// The group's managed identity. A group supports carrying BOTH
+// flavors at once -- and identity is the only group setting besides
+// tags that Azure updates in place.
+message AzureContainerInstanceIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the group; USER_ASSIGNED brings identities you manage
+  // (grantable on other resources BEFORE the group exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureContainerInstanceIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the group, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so grants can be composed
+  // before the group is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The group's managed-identity flavor.
+enum AzureContainerInstanceIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_container_instance_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the group. Wire value:
+  // "SystemAssigned".
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  // Wire value: "UserAssigned".
+  USER_ASSIGNED = 2;
+
+  // Both at once. Wire value: "SystemAssigned, UserAssigned".
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// Ship container logs and events to a Log Analytics workspace. This
+// models the provider's diagnostics block, whose only member is this
+// Log Analytics form.
+message AzureContainerInstanceLogAnalytics {
+  // The workspace's CUSTOMER ID -- the GUID agents authenticate
+  // against (the portal's "Workspace ID"), NOT the ARM resource ID.
+  // Reference an AzureLogAnalyticsWorkspace's workspace_customer_id
+  // output or pass the GUID literally.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_customer_id"
+  ];
+
+  // The workspace's shared key. SECRET -- Azure never returns it on
+  // reads; both engines re-send it from configuration on updates.
+  // Reference the workspace's primary_shared_key output or pass a
+  // literal.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_shared_key"
+  ];
+
+  // The log schema: "ContainerInsights" (the richer, dashboard-ready
+  // schema) or "ContainerInstanceLogs" (plain per-container logs).
+  // Unset rides Azure's default.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  string log_type = 3 [(buf.validate.field).string = {
+    in: [
+      "",
+      "ContainerInsights",
+      "ContainerInstanceLogs"
+    ]
+  }];
+
+  // Extra metadata attached to every log record. Requires log_type --
+  // the provider only sends metadata alongside a log type and silently
+  // discards it otherwise, so the pairing is enforced here.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  map<string, string> metadata = 4;
+
+  option (buf.validate.message).cel = {
+    id: "container_instance_log_metadata_requires_log_type"
+    message: "metadata requires log_type -- the provider only sends metadata alongside a log type and silently discards it otherwise"
+    expression: "this.metadata.size() == 0 || this.log_type != ''"
+  };
+}
+
+// Custom DNS for the group's containers.
+message AzureContainerInstanceDnsConfig {
+  // The DNS servers to use, in order -- at least one.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated string nameservers = 1 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // Search domains appended to unqualified lookups.
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated string search_domains = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Resolver options, e.g. "ndots:2".
+  //
+  // **ForceNew**: changing this destroys and recreates the group.
+  repeated string options = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+}

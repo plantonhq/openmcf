@@ -1,0 +1,55 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_monitor_data_collection_rule:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # The spec names say what the lists ARE (plural collections),
+      # where the provider uses singular block names. Specific subtree
+      # mappings precede their parents -- the derive order matters.
+      - spec: spec.data_sources.syslogs
+        arg: data_sources.syslog
+      - spec: spec.data_sources.performance_counters
+        arg: data_sources.performance_counter
+      - spec: spec.data_sources.windows_event_logs
+        arg: data_sources.windows_event_log
+      - spec: spec.data_sources.extensions
+        arg: data_sources.extension
+      - spec: spec.data_sources.iis_logs
+        arg: data_sources.iis_log
+      - spec: spec.data_sources.log_files
+        arg: data_sources.log_file
+      - spec: spec.data_sources.prometheus_forwarders.label_include_filters
+        arg: data_sources.prometheus_forwarder.label_include_filter
+      - spec: spec.data_sources.prometheus_forwarders
+        arg: data_sources.prometheus_forwarder
+      - spec: spec.data_sources.windows_firewall_logs
+        arg: data_sources.windows_firewall_log
+      - spec: spec.data_sources.platform_telemetries
+        arg: data_sources.platform_telemetry
+      - spec: spec.destinations.monitor_accounts
+        arg: destinations.monitor_account
+      - spec: spec.destinations.storage_blobs
+        arg: destinations.storage_blob
+      - spec: spec.destinations.storage_blob_directs
+        arg: destinations.storage_blob_direct
+      - spec: spec.destinations.storage_table_directs
+        arg: destinations.storage_table_direct
+      - spec: spec.data_flows
+        arg: data_flow
+      - spec: spec.stream_declarations.columns
+        arg: stream_declaration.column
+      - spec: spec.stream_declarations
+        arg: stream_declaration

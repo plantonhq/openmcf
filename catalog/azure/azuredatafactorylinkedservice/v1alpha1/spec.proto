@@ -1,0 +1,1097 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorylinkedservice.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDataFactoryLinkedServiceSpec** defines an Azure Data Factory
+// linked service -- a saved connection in the factory's address book:
+// where an external system lives and how pipelines, datasets, and
+// data flows authenticate to it.
+//
+// The connection type is declared by which variant block is present:
+// set exactly ONE of the 23 blocks below. All types share one
+// factory-scoped name namespace ({factory_id}/linkedservices/{name}).
+// Storage connections (blob, file share, table, Data Lake Gen2),
+// databases (Azure SQL, SQL Server, SQL Managed Instance, Synapse,
+// PostgreSQL, MySQL, Cosmos DB x2, Snowflake, Kusto, ODBC), services
+// (Key Vault, Azure Search, Azure Function, Databricks), protocol
+// endpoints (web, OData, SFTP), and the raw-JSON `custom` form for
+// every connector type azurerm has no first-class resource for.
+//
+// Because these are login recipes, most variants carry secrets. The
+// safest patterns, preferred wherever a variant offers them: managed
+// identity (no secret at all), or a Key-Vault-sourced secret -- a
+// reference to a KEY VAULT linked service in this same factory plus a
+// secret name, resolved by Data Factory at run time so no secret ever
+// sits in this spec.
+message AzureDataFactoryLinkedServiceSpec {
+  // The Data Factory the linked service lives in, by ARM ID. Can be a
+  // literal string or a reference to an AzureDataFactory output.
+  //
+  // **ForceNew**: changing this destroys and recreates the linked
+  // service.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_factory_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_factory_id"
+  ];
+
+  // The linked service's name -- unique within the factory across all
+  // connection types. Azure's own rule is deliberately loose: a name
+  // is rejected only when it consists ENTIRELY of the characters
+  // - . + ? / < > * % & : \ (mirrored exactly; not tightened).
+  //
+  // **ForceNew**: changing this destroys and recreates the linked
+  // service.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_linked_service_name_format"
+      message: "Linked service names must not consist entirely of the characters - . + ? / < > * % & : \\"
+      expression: "!this.matches('^[-.+?/<>*%&:\\\\\\\\]+$')"
+    }
+  ];
+
+  // A human-readable description of what the connection is for.
+  string description = 3;
+
+  // Free-form annotation strings stored on the linked service.
+  repeated string annotations = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Linked-service parameters, keyed by parameter name (string values
+  // only -- the wire grammar Data Factory accepts through this
+  // surface). Datasets and activities can override them per use.
+  map<string, string> parameters = 5;
+
+  // Additional properties passed through to Azure as-is -- Data
+  // Factory's escape hatch for connection properties the schema does
+  // not model. Applies to every variant EXCEPT sql_managed_instance
+  // (the one linked service the provider models without this
+  // argument).
+  map<string, string> additional_properties = 6;
+
+  // The integration runtime the connection runs through, by name --
+  // omit for the factory's default Azure runtime. Set this to a
+  // self-hosted runtime's name to reach private networks. A literal
+  // string or a reference to an AzureDataFactoryIntegrationRuntime's
+  // name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef integration_runtime_name = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryIntegrationRuntime,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.integration_runtime_name"
+  ];
+
+  // Azure Blob Storage. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceAzureBlobStorage azure_blob_storage = 8;
+
+  // Azure Databricks workspace. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceAzureDatabricks azure_databricks = 9;
+
+  // Azure Files share. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceAzureFileStorage azure_file_storage = 10;
+
+  // Azure Function app. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceAzureFunction azure_function = 11;
+
+  // Azure AI Search service. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceAzureSearch azure_search = 12;
+
+  // Azure SQL Database. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceAzureSqlDatabase azure_sql_database = 13;
+
+  // Azure Table Storage. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceAzureTableStorage azure_table_storage = 14;
+
+  // Azure Cosmos DB (SQL API). Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceCosmosdb cosmosdb = 15;
+
+  // Azure Cosmos DB for MongoDB. Set exactly one variant block on
+  // this spec.
+  AzureDataFactoryLinkedServiceCosmosdbMongoapi cosmosdb_mongoapi = 16;
+
+  // Any other connector type, as raw type-properties JSON -- the
+  // escape hatch for the many Data Factory connectors azurerm has no
+  // first-class resource for. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceCustom custom = 17;
+
+  // Azure Data Lake Storage Gen2. Set exactly one variant block on
+  // this spec.
+  AzureDataFactoryLinkedServiceDataLakeStorageGen2 data_lake_storage_gen2 = 18;
+
+  // Azure Key Vault -- the connection OTHER linked services'
+  // Key-Vault-sourced secrets resolve through. Set exactly one
+  // variant block on this spec.
+  AzureDataFactoryLinkedServiceKeyVault key_vault = 19;
+
+  // Azure Data Explorer (Kusto). Set exactly one variant block on
+  // this spec.
+  AzureDataFactoryLinkedServiceKusto kusto = 20;
+
+  // MySQL server. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceMysql mysql = 21;
+
+  // OData endpoint. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceOdata odata = 22;
+
+  // ODBC data source. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceOdbc odbc = 23;
+
+  // PostgreSQL server. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServicePostgresql postgresql = 24;
+
+  // SFTP server. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceSftp sftp = 25;
+
+  // Snowflake warehouse. Set exactly one variant block on this spec.
+  AzureDataFactoryLinkedServiceSnowflake snowflake = 26;
+
+  // Azure SQL Managed Instance. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceSqlManagedInstance sql_managed_instance = 27;
+
+  // SQL Server (on-premises or IaaS). Set exactly one variant block
+  // on this spec.
+  AzureDataFactoryLinkedServiceSqlServer sql_server = 28;
+
+  // Azure Synapse Analytics (dedicated SQL pool). Set exactly one
+  // variant block on this spec.
+  AzureDataFactoryLinkedServiceSynapse synapse = 29;
+
+  // Plain HTTP(S) web endpoint. Set exactly one variant block on this
+  // spec.
+  AzureDataFactoryLinkedServiceWeb web = 30;
+
+  // The connection type is whichever variant block is present --
+  // requiring exactly one keeps a linked service from being declared
+  // with two types or with none.
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_linked_service_exactly_one_variant"
+    message: "Set exactly one connection variant block -- the variant determines the linked service type"
+    expression: "(has(this.azure_blob_storage) ? 1 : 0) + (has(this.azure_databricks) ? 1 : 0) + (has(this.azure_file_storage) ? 1 : 0) + (has(this.azure_function) ? 1 : 0) + (has(this.azure_search) ? 1 : 0) + (has(this.azure_sql_database) ? 1 : 0) + (has(this.azure_table_storage) ? 1 : 0) + (has(this.cosmosdb) ? 1 : 0) + (has(this.cosmosdb_mongoapi) ? 1 : 0) + (has(this.custom) ? 1 : 0) + (has(this.data_lake_storage_gen2) ? 1 : 0) + (has(this.key_vault) ? 1 : 0) + (has(this.kusto) ? 1 : 0) + (has(this.mysql) ? 1 : 0) + (has(this.odata) ? 1 : 0) + (has(this.odbc) ? 1 : 0) + (has(this.postgresql) ? 1 : 0) + (has(this.sftp) ? 1 : 0) + (has(this.snowflake) ? 1 : 0) + (has(this.sql_managed_instance) ? 1 : 0) + (has(this.sql_server) ? 1 : 0) + (has(this.synapse) ? 1 : 0) + (has(this.web) ? 1 : 0) == 1"
+  };
+}
+
+// A Key-Vault-sourced secret: the name of a KEY VAULT linked service
+// in this same factory (the `key_vault` variant of this kind) plus
+// the name of a secret in that vault. Data Factory resolves the
+// secret at run time -- no secret material ever sits in this spec,
+// which makes this the preferred way to carry passwords, keys, and
+// connection strings.
+message AzureDataFactoryLinkedServiceKeyVaultSecretRef {
+  // The Key Vault linked service's name inside this factory --
+  // defaults to referencing an AzureDataFactoryLinkedService's
+  // linked_service_name output (a linked service of the `key_vault`
+  // variant).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef linked_service_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_name"
+  ];
+
+  // The secret's name inside the vault.
+  string secret_name = 2 [(buf.validate.field).required = true];
+}
+
+// Username/password credentials for endpoints that support Basic
+// authentication (the OData and ODBC variants). Omit the whole block
+// for anonymous access.
+message AzureDataFactoryLinkedServiceBasicAuth {
+  // The username.
+  string username = 1 [(buf.validate.field).required = true];
+
+  // The password. SECRET -- prefer a pipeline secret reference over a
+  // literal. Azure never returns it on reads.
+  string password = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Azure Blob Storage. Choose exactly ONE of the four connection
+// forms: `connection_string` (account key inside, hidden from ARM
+// reads), `connection_string_insecure` (visible in ARM reads -- only
+// for strings that carry no key), `sas_uri` (optionally with the SAS
+// token held in Key Vault), or `service_endpoint` (the blob endpoint
+// URL -- the no-secret form, paired with managed identity or a
+// service principal).
+message AzureDataFactoryLinkedServiceAzureBlobStorage {
+  // The full connection string, account key included. Stored by Azure
+  // as a hidden secure string. SECRET.
+  string connection_string = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // A connection string stored as PLAIN TEXT in Azure -- readable by
+  // anyone who can read the factory. Only for connection strings that
+  // carry no secret material. The provider strips any AccountKey when
+  // comparing reads, mirrored in the modules.
+  string connection_string_insecure = 2 [(dev.planton.shared.options.sensitive_exempt_reason) = "The deliberately-PLAIN-TEXT connection form (the provider's own contrast to connection_string): its contract is carrying NO secret material, and Azure stores and returns it readable"];
+
+  // A SAS (shared access signature) URI to the storage account.
+  // SECRET. Pair with sas_token_linked_key_vault_key to keep the
+  // token itself in Key Vault.
+  string sas_uri = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The blob service endpoint URL (e.g.
+  // https://account.blob.core.windows.net) -- defaults to referencing
+  // an AzureStorageAccount's primary_blob_endpoint output. The
+  // no-secret form: authentication comes from managed identity
+  // (use_managed_identity) or a service principal. Azure stores it as
+  // a secure string (mirrored: marked sensitive).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_endpoint = 4 [
+    (dev.planton.shared.options.sensitive) = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_blob_endpoint"
+  ];
+
+  // Holds the SAS token in Key Vault (used with sas_uri: the URI
+  // carries the address, the vault carries the token).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef sas_token_linked_key_vault_key = 5;
+
+  // Holds the service principal's key in Key Vault (used with
+  // service_endpoint + service_principal_id instead of
+  // service_principal_key).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef service_principal_linked_key_vault_key = 6;
+
+  // The storage account kind, when Data Factory needs it spelled out.
+  string storage_kind = 7 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Storage",
+      "StorageV2",
+      "BlobStorage",
+      "BlockBlobStorage"
+    ]
+  }];
+
+  // Authenticate as the factory's managed identity (with
+  // service_endpoint). Unspecified applies false. Mutually exclusive
+  // with service_principal_id.
+  optional bool use_managed_identity = 8 [(dev.planton.shared.options.default) = "false"];
+
+  // The service principal's application (client) ID, as a UUID (with
+  // service_endpoint). Mutually exclusive with use_managed_identity.
+  string service_principal_id = 9 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_blob_sp_id_uuid"
+    message: "service_principal_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The service principal's client secret. SECRET. Prefer
+  // service_principal_linked_key_vault_key.
+  string service_principal_key = 10 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's Entra tenant ID.
+  string tenant_id = 11;
+
+  // Exactly one connection form -- Azure stores only one and the
+  // provider enforces the choice.
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_blob_exactly_one_connection"
+    message: "Set exactly one of connection_string, connection_string_insecure, sas_uri, or service_endpoint"
+    expression: "(this.connection_string != '' ? 1 : 0) + (this.connection_string_insecure != '' ? 1 : 0) + (this.sas_uri != '' ? 1 : 0) + (has(this.service_endpoint) ? 1 : 0) == 1"
+  };
+
+  // Managed identity and a service principal are alternative
+  // identities -- the provider forbids declaring both.
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_blob_msi_xor_sp"
+    message: "use_managed_identity and service_principal_id are mutually exclusive"
+    expression: "!((has(this.use_managed_identity) && this.use_managed_identity) && this.service_principal_id != '')"
+  };
+}
+
+// Azure Databricks. Requires the workspace domain, exactly ONE
+// authentication method, and exactly ONE cluster choice (an existing
+// interactive cluster, a job cluster created per run, or an instance
+// pool).
+message AzureDataFactoryLinkedServiceAzureDatabricks {
+  // The Databricks workspace domain, e.g.
+  // https://adb-1234567890123456.7.azuredatabricks.net.
+  string adb_domain = 1 [(buf.validate.field).required = true];
+
+  // Authenticate as the factory's managed identity, by the
+  // workspace's ARM resource ID
+  // (/subscriptions/.../Microsoft.Databricks/workspaces/...). One of
+  // the three authentication methods.
+  string msi_workspace_id = 2;
+
+  // A Databricks personal access token. SECRET -- and Azure masks it
+  // on every read (asterisks), so it can never be read back or
+  // imported; prefer key_vault_password or msi_workspace_id. One of
+  // the three authentication methods.
+  string access_token = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the access token in Key Vault. One of the three
+  // authentication methods.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 4;
+
+  // Run against an existing interactive cluster, by cluster ID. One
+  // of the three cluster choices.
+  string existing_cluster_id = 5;
+
+  // Create a new job cluster for each run. One of the three cluster
+  // choices.
+  AzureDataFactoryLinkedServiceDatabricksNewCluster new_cluster_config = 6;
+
+  // Draw cluster nodes from an instance pool. One of the three
+  // cluster choices.
+  AzureDataFactoryLinkedServiceDatabricksInstancePool instance_pool = 7;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_databricks_exactly_one_auth"
+    message: "Set exactly one of msi_workspace_id, access_token, or key_vault_password"
+    expression: "(this.msi_workspace_id != '' ? 1 : 0) + (this.access_token != '' ? 1 : 0) + (has(this.key_vault_password) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_databricks_exactly_one_cluster"
+    message: "Set exactly one of existing_cluster_id, new_cluster_config, or instance_pool"
+    expression: "(this.existing_cluster_id != '' ? 1 : 0) + (has(this.new_cluster_config) ? 1 : 0) + (has(this.instance_pool) ? 1 : 0) == 1"
+  };
+}
+
+// A job cluster Data Factory creates per run inside the Databricks
+// workspace. min/max worker counts encode autoscaling: equal (or max
+// omitted) means a fixed-size cluster.
+message AzureDataFactoryLinkedServiceDatabricksNewCluster {
+  // The worker node type, e.g. Standard_DS3_v2.
+  string node_type = 1 [(buf.validate.field).required = true];
+
+  // The Databricks runtime version, e.g. "16.4.x-scala2.12".
+  string cluster_version = 2 [(buf.validate.field).required = true];
+
+  // The minimum (or fixed) number of workers, 1-25000. Unspecified
+  // applies 1 -- the modules always send the effective value
+  // explicitly.
+  optional int32 min_number_of_workers = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 25000
+    }
+  ];
+
+  // The maximum number of workers, 1-25000 -- set it above the
+  // minimum to enable autoscaling; omit for a fixed-size cluster. May
+  // not be below the minimum (the provider's own rule).
+  int32 max_number_of_workers = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 25000
+  }];
+
+  // The driver node type -- omit to use node_type.
+  string driver_node_type = 5;
+
+  // dbfs:/ or abfss:/ location for cluster logs.
+  string log_destination = 6;
+
+  // Spark configuration properties, keyed by property name.
+  map<string, string> spark_config = 7;
+
+  // Environment variables set on the cluster, keyed by name.
+  map<string, string> spark_environment_variables = 8;
+
+  // Custom tags applied to the cluster's nodes, keyed by tag name.
+  map<string, string> custom_tags = 9;
+
+  // Init script locations run on each node at startup.
+  repeated string init_scripts = 10;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_databricks_new_cluster_workers"
+    message: "max_number_of_workers cannot be less than min_number_of_workers"
+    expression: "this.max_number_of_workers == 0 || this.max_number_of_workers >= (has(this.min_number_of_workers) ? this.min_number_of_workers : 1)"
+  };
+}
+
+// An instance pool Data Factory draws job cluster nodes from. min/max
+// worker counts encode autoscaling exactly as in new_cluster_config.
+message AzureDataFactoryLinkedServiceDatabricksInstancePool {
+  // The Databricks instance pool ID.
+  string instance_pool_id = 1 [(buf.validate.field).required = true];
+
+  // The Databricks runtime version the pooled cluster runs.
+  string cluster_version = 2 [(buf.validate.field).required = true];
+
+  // The minimum (or fixed) number of workers, 1-25000. Unspecified
+  // applies 1 -- the modules always send the effective value
+  // explicitly.
+  optional int32 min_number_of_workers = 3 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 25000
+    }
+  ];
+
+  // The maximum number of workers, 1-25000 -- set it above the
+  // minimum for autoscaling; omit for fixed size. May not be below
+  // the minimum (the provider's own rule).
+  int32 max_number_of_workers = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 25000
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_databricks_pool_workers"
+    message: "max_number_of_workers cannot be less than min_number_of_workers"
+    expression: "this.max_number_of_workers == 0 || this.max_number_of_workers >= (has(this.min_number_of_workers) ? this.min_number_of_workers : 1)"
+  };
+}
+
+// Azure Files. The connection string is the only authentication form
+// azurerm models for this type; host, user_id, and password cover the
+// legacy file-server addressing some connectors need.
+message AzureDataFactoryLinkedServiceAzureFileStorage {
+  // The storage account connection string. SECRET (hidden from ARM
+  // reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The file share's name. Sent to Azure even when empty (the
+  // provider's own behavior, mirrored).
+  string file_share = 2;
+
+  // The file server host, for host-addressed access. Azure never
+  // returns it on reads.
+  string host = 3;
+
+  // The user ID, for host-addressed access.
+  string user_id = 4;
+
+  // The password for host-addressed access. SECRET. Prefer
+  // key_vault_password; if both are set the Key Vault reference wins
+  // (the provider's own behavior, mirrored).
+  string password = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the password in Key Vault instead of password.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 6;
+}
+
+// Azure Function app. The function key authenticates calls: inline
+// (key) or held in Key Vault (key_vault_key) -- exactly one.
+message AzureDataFactoryLinkedServiceAzureFunction {
+  // The function app's URL, e.g. https://app.azurewebsites.net (the
+  // AzureFunctionApp kind's default_hostname output carries the bare
+  // hostname -- prepend https:// when wiring it here).
+  string url = 1 [(buf.validate.field).required = true];
+
+  // The function's host key. SECRET (hidden from ARM reads). One of
+  // the two key forms.
+  string key = 2 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the function key in Key Vault. One of the two key forms.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_key = 3;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_function_exactly_one_key"
+    message: "Set exactly one of key or key_vault_key"
+    expression: "(this.key != '' ? 1 : 0) + (has(this.key_vault_key) ? 1 : 0) == 1"
+  };
+}
+
+// Azure AI Search. Admin-key authentication is the only form azurerm
+// models for this type.
+message AzureDataFactoryLinkedServiceAzureSearch {
+  // The search service's endpoint URL -- defaults to referencing an
+  // AzureSearchService's endpoint output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef url = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureSearchService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.endpoint"
+  ];
+
+  // The search service's admin key. SECRET (hidden from ARM reads;
+  // the provider leaves it unmarked -- this spec does not repeat that
+  // oversight).
+  string search_service_key = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Azure SQL Database. The connection form is exactly one of
+// connection_string or key_vault_connection_string; the identity is
+// managed identity, a service principal, a user-assigned credential
+// (credential_name), or SQL authentication carried inside the
+// connection string (optionally with the password split out to Key
+// Vault via key_vault_password).
+message AzureDataFactoryLinkedServiceAzureSqlDatabase {
+  // The connection string. SECRET by content (it typically carries
+  // credentials; Azure hides it from reads when it does). One of the
+  // two connection forms.
+  string connection_string = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the whole connection string in Key Vault. One of the two
+  // connection forms.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_connection_string = 2;
+
+  // Holds the SQL password in Key Vault (used with a connection
+  // string that omits it).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 3;
+
+  // Authenticate as the factory's managed identity. Unspecified
+  // applies false. Mutually exclusive with service_principal_id.
+  optional bool use_managed_identity = 4 [(dev.planton.shared.options.default) = "false"];
+
+  // The service principal's application (client) ID, as a UUID.
+  // Requires service_principal_key; mutually exclusive with
+  // use_managed_identity.
+  string service_principal_id = 5 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_sqldb_sp_id_uuid"
+    message: "service_principal_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The service principal's client secret. SECRET (hidden from ARM
+  // reads; the provider leaves it unmarked -- this spec does not
+  // repeat that oversight). Requires service_principal_id.
+  string service_principal_key = 6 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's Entra tenant ID.
+  string tenant_id = 7;
+
+  // The name of a Data Factory credential (a user-assigned managed
+  // identity registered on the factory) to authenticate with.
+  string credential_name = 8;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqldb_exactly_one_connection"
+    message: "Set exactly one of connection_string or key_vault_connection_string"
+    expression: "(this.connection_string != '' ? 1 : 0) + (has(this.key_vault_connection_string) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqldb_msi_xor_sp"
+    message: "use_managed_identity and service_principal_id are mutually exclusive"
+    expression: "!((has(this.use_managed_identity) && this.use_managed_identity) && this.service_principal_id != '')"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqldb_sp_pair"
+    message: "service_principal_id and service_principal_key must be set together"
+    expression: "(this.service_principal_id != '') == (this.service_principal_key != '')"
+  };
+}
+
+// Azure Table Storage. The connection string is the only
+// authentication form azurerm models for this type.
+message AzureDataFactoryLinkedServiceAzureTableStorage {
+  // The storage account connection string. SECRET (hidden from ARM
+  // reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// Azure Cosmos DB (SQL API). Connect by connection string OR by
+// account detail (endpoint + key + database, all three) -- exactly
+// one form.
+message AzureDataFactoryLinkedServiceCosmosdb {
+  // The Cosmos DB connection string. SECRET (hidden from ARM reads).
+  // One of the two connection forms.
+  string connection_string = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // The account endpoint URL (https://account.documents.azure.com).
+  // With account_key and database, the other connection form.
+  string account_endpoint = 2;
+
+  // The account access key. SECRET (hidden from ARM reads).
+  string account_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The database name. REQUIRED with account_endpoint/account_key;
+  // optional alongside connection_string (the string may carry its
+  // own Database= segment).
+  string database = 4;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_cosmosdb_exactly_one_connection"
+    message: "Set exactly one connection form -- connection_string, or account_endpoint + account_key (+ database)"
+    expression: "(this.connection_string != '' ? 1 : 0) + ((this.account_endpoint != '' || this.account_key != '') ? 1 : 0) == 1"
+  };
+
+  // The provider switches to account-detail mode only when all three
+  // parts are present -- an incomplete triple silently falls back to
+  // an empty connection string (mirrored as a hard rule instead).
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_cosmosdb_account_detail_complete"
+    message: "account_endpoint, account_key, and database must all be set for account-detail authentication"
+    expression: "(this.account_endpoint == '' && this.account_key == '') || (this.account_endpoint != '' && this.account_key != '' && this.database != '')"
+  };
+}
+
+// Azure Cosmos DB for MongoDB. The connection string is the only
+// authentication form azurerm models for this type.
+message AzureDataFactoryLinkedServiceCosmosdbMongoapi {
+  // The MongoDB connection string
+  // (mongodb://account:key@account.documents.azure.com:...). SECRET
+  // (hidden from ARM reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The database name.
+  string database = 2;
+
+  // Whether the Cosmos DB account's MongoDB server version is 3.2 or
+  // higher. Unspecified applies false -- the modules always send the
+  // effective value explicitly.
+  optional bool server_version_is_32_or_higher = 3 [(dev.planton.shared.options.default) = "false"];
+}
+
+// Any other Data Factory connector, declared as its raw ARM type name
+// plus type-properties JSON -- the escape hatch for the dozens of
+// connector types (Salesforce, SAP, Oracle, REST, ...) azurerm has no
+// first-class resource for. The JSON travels to Azure as-is; secrets
+// inside it should be Key Vault references
+// (AzureKeyVaultSecretReference JSON), never literals.
+message AzureDataFactoryLinkedServiceCustom {
+  // The connector's ARM type discriminator, e.g. "RestService",
+  // "Salesforce", "SapTableResource" (Data Factory's REST API
+  // vocabulary).
+  //
+  // **ForceNew**: changing this destroys and recreates the linked
+  // service.
+  string type = 1 [(buf.validate.field).required = true];
+
+  // The connector's typeProperties object, as a JSON string -- the
+  // shape Data Factory's REST API documents for the chosen type.
+  string type_properties_json = 2 [(buf.validate.field).required = true];
+
+  // Parameter values passed to the integration runtime named at the
+  // spec root, keyed by parameter name -- only the custom form
+  // carries these (the provider's integration_runtime block; its name
+  // comes from the root integration_runtime_name).
+  map<string, string> integration_runtime_parameters = 3;
+}
+
+// Azure Data Lake Storage Gen2. Exactly ONE authentication mode:
+// managed identity, storage account key, or a service principal
+// (id + key + tenant).
+message AzureDataFactoryLinkedServiceDataLakeStorageGen2 {
+  // The Data Lake endpoint URL (https://account.dfs.core.windows.net)
+  // -- defaults to referencing an AzureStorageAccount's
+  // primary_dfs_endpoint output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef url = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.primary_dfs_endpoint"
+  ];
+
+  // Authenticate as the factory's managed identity -- the no-secret
+  // mode. Unspecified applies false. One of the three authentication
+  // modes.
+  optional bool use_managed_identity = 2 [(dev.planton.shared.options.default) = "false"];
+
+  // The storage account access key. SECRET (hidden from ARM reads).
+  // One of the three authentication modes.
+  string storage_account_key = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's application (client) ID, as a UUID. With
+  // service_principal_key and tenant, one of the three authentication
+  // modes.
+  string service_principal_id = 4 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_gen2_sp_id_uuid"
+    message: "service_principal_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The service principal's client secret. SECRET (hidden from ARM
+  // reads).
+  string service_principal_key = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's Entra tenant ID.
+  string tenant = 6;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_gen2_exactly_one_auth"
+    message: "Set exactly one authentication mode -- use_managed_identity, storage_account_key, or a service principal (service_principal_id + service_principal_key + tenant)"
+    expression: "((has(this.use_managed_identity) && this.use_managed_identity) ? 1 : 0) + (this.storage_account_key != '' ? 1 : 0) + (this.service_principal_id != '' ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_gen2_sp_complete"
+    message: "A service principal needs service_principal_id, service_principal_key, and tenant together"
+    expression: "this.service_principal_id == '' || (this.service_principal_key != '' && this.tenant != '')"
+  };
+}
+
+// Azure Key Vault -- the vault connection that OTHER linked services'
+// Key-Vault-sourced secret references resolve through. Data Factory
+// authenticates to the vault as its managed identity (grant it a
+// read-secrets role on the vault); no secret sits in this variant at
+// all.
+message AzureDataFactoryLinkedServiceKeyVault {
+  // The Key Vault, by ARM ID -- defaults to referencing an
+  // AzureKeyVault's key_vault_id output. The modules derive the
+  // vault's base URI from it, exactly as the provider does.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+}
+
+// Azure Data Explorer (Kusto). Exactly ONE authentication mode:
+// managed identity or a service principal.
+message AzureDataFactoryLinkedServiceKusto {
+  // The cluster endpoint URI
+  // (https://cluster.region.kusto.windows.net).
+  string kusto_endpoint = 1 [(buf.validate.field).required = true];
+
+  // The database inside the cluster.
+  string kusto_database_name = 2 [(buf.validate.field).required = true];
+
+  // Authenticate as the factory's managed identity -- the no-secret
+  // mode. Unspecified applies false. One of the two authentication
+  // modes.
+  optional bool use_managed_identity = 3 [(dev.planton.shared.options.default) = "false"];
+
+  // The service principal's application (client) ID, as a UUID. With
+  // service_principal_key, the other authentication mode.
+  string service_principal_id = 4 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_kusto_sp_id_uuid"
+    message: "service_principal_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The service principal's client secret. SECRET (hidden from ARM
+  // reads). Requires service_principal_id.
+  string service_principal_key = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's Entra tenant ID. Requires
+  // service_principal_id.
+  string tenant = 6;
+
+  // The provider rejects a Kusto connection with neither mode
+  // declared (its own coded check, mirrored).
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_kusto_exactly_one_auth"
+    message: "Set exactly one authentication mode -- use_managed_identity or a service principal (service_principal_id + service_principal_key)"
+    expression: "((has(this.use_managed_identity) && this.use_managed_identity) ? 1 : 0) + (this.service_principal_id != '' ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_kusto_sp_complete"
+    message: "service_principal_key is required with service_principal_id, and tenant belongs to the service principal mode"
+    expression: "(this.service_principal_id == '' || this.service_principal_key != '') && (this.tenant == '' || this.service_principal_id != '')"
+  };
+}
+
+// MySQL. The connection string is the only authentication form
+// azurerm models for this type.
+message AzureDataFactoryLinkedServiceMysql {
+  // The MySQL connection string. SECRET by content (Azure strips the
+  // password from reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The MySQL driver line: "V2" (the current driver) or "V1" (the
+  // legacy driver -- Azure accepts it only on connections that
+  // already use it; the provider rejects V1 on NEW connections).
+  // Unspecified applies V2 -- the modules always send the effective
+  // value explicitly.
+  optional string driver_version = 2 [
+    (dev.planton.shared.options.default) = "V2",
+    (buf.validate.field).string = {
+      in: [
+        "V1",
+        "V2"
+      ]
+    }
+  ];
+}
+
+// An OData endpoint. Anonymous by default; set basic_authentication
+// for username/password access.
+message AzureDataFactoryLinkedServiceOdata {
+  // The OData service's URL.
+  string url = 1 [(buf.validate.field).required = true];
+
+  // Username/password access -- omit for anonymous.
+  AzureDataFactoryLinkedServiceBasicAuth basic_authentication = 2;
+}
+
+// An ODBC data source, reached through a self-hosted integration
+// runtime that has the DSN's driver installed. Anonymous by default;
+// set basic_authentication for username/password access.
+message AzureDataFactoryLinkedServiceOdbc {
+  // The ODBC connection string (DSN or driver form). SECRET by
+  // content -- credentials frequently ride inside it.
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Username/password access -- omit for anonymous.
+  AzureDataFactoryLinkedServiceBasicAuth basic_authentication = 2;
+}
+
+// PostgreSQL. The connection string is the only authentication form
+// azurerm models for this type.
+message AzureDataFactoryLinkedServicePostgresql {
+  // The PostgreSQL connection string
+  // (Host=...;Port=...;Database=...;UID=...;Password=...). SECRET
+  // (hidden from ARM reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// An SFTP server. The authentication type declares the credential
+// class: Basic (password), SshPublicKey (private key), or MultiFactor
+// (both classes allowed).
+message AzureDataFactoryLinkedServiceSftp {
+  // How Data Factory authenticates: "Basic" (password),
+  // "SshPublicKey" (private key), or "MultiFactor".
+  string authentication_type = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Basic",
+        "MultiFactor",
+        "SshPublicKey"
+      ]
+    }
+  ];
+
+  // The SFTP server's hostname or IP.
+  string host = 2 [(buf.validate.field).required = true];
+
+  // The SFTP server's port (usually 22). The provider accepts any
+  // integer here (mirrored; not tightened).
+  int32 port = 3 [(buf.validate.field).required = true];
+
+  // The username.
+  string username = 4 [(buf.validate.field).required = true];
+
+  // The password (Basic/MultiFactor). SECRET. Prefer
+  // key_vault_password.
+  string password = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the password in Key Vault instead of password.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 6;
+
+  // The SSH private key, base64-encoded
+  // (SshPublicKey/MultiFactor). SECRET. Prefer
+  // key_vault_private_key_content_base64.
+  string private_key_content_base64 = 7 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_linked_service_sftp_key_base64"
+      message: "private_key_content_base64 must be base64-encoded"
+      expression: "this == '' || (this.size() % 4 == 0 && this.matches('^[A-Za-z0-9+/]*={0,2}$'))"
+    }
+  ];
+
+  // Holds the base64 private key in Key Vault instead of
+  // private_key_content_base64.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_private_key_content_base64 = 8;
+
+  // A file path to the private key on the integration runtime's own
+  // disk -- only meaningful on a self-hosted runtime.
+  string private_key_path = 9;
+
+  // The private key's passphrase, if it has one. SECRET. Prefer
+  // key_vault_private_key_passphrase.
+  string private_key_passphrase = 10 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the passphrase in Key Vault instead of
+  // private_key_passphrase.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_private_key_passphrase = 11;
+
+  // Whether to skip verifying the server's host key. Unspecified
+  // applies false (Azure's default). When false, set
+  // host_key_fingerprint so the runtime can verify the server.
+  optional bool skip_host_key_validation = 12;
+
+  // The server's host key fingerprint, verified when
+  // skip_host_key_validation is false.
+  string host_key_fingerprint = 13;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sftp_password_one_home"
+    message: "Set at most one of password or key_vault_password"
+    expression: "!(this.password != '' && has(this.key_vault_password))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sftp_private_key_one_home"
+    message: "Set at most one of private_key_content_base64, key_vault_private_key_content_base64, or private_key_path"
+    expression: "(this.private_key_content_base64 != '' ? 1 : 0) + (has(this.key_vault_private_key_content_base64) ? 1 : 0) + (this.private_key_path != '' ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sftp_passphrase_one_home"
+    message: "Set at most one of private_key_passphrase or key_vault_private_key_passphrase"
+    expression: "!(this.private_key_passphrase != '' && has(this.key_vault_private_key_passphrase))"
+  };
+
+  // The provider's own pairing rule: password credentials belong to
+  // Basic (or MultiFactor); private-key credentials belong to
+  // SshPublicKey (or MultiFactor).
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sftp_password_auth_type"
+    message: "password / key_vault_password require authentication_type Basic or MultiFactor"
+    expression: "(this.password == '' && !has(this.key_vault_password)) || this.authentication_type == 'Basic' || this.authentication_type == 'MultiFactor'"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sftp_key_auth_type"
+    message: "private key fields require authentication_type SshPublicKey or MultiFactor"
+    expression: "(this.private_key_content_base64 == '' && !has(this.key_vault_private_key_content_base64) && this.private_key_path == '' && this.private_key_passphrase == '' && !has(this.key_vault_private_key_passphrase)) || this.authentication_type == 'SshPublicKey' || this.authentication_type == 'MultiFactor'"
+  };
+}
+
+// Snowflake. The connection string carries the account/user/database;
+// the password can ride inside it or sit in Key Vault.
+message AzureDataFactoryLinkedServiceSnowflake {
+  // The Snowflake connection string
+  // (jdbc:snowflake://account.snowflakecomputing.com/?user=...&db=...
+  // &warehouse=...). SECRET by content -- credentials frequently ride
+  // inside it.
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Holds the Snowflake password in Key Vault (used with a connection
+  // string that omits it).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 2;
+}
+
+// Azure SQL Managed Instance. The connection form is exactly one of
+// connection_string or key_vault_connection_string; a service
+// principal (all three of id + key + tenant) or a Key-Vault-held
+// password can carry the identity.
+message AzureDataFactoryLinkedServiceSqlManagedInstance {
+  // The connection string. SECRET by content (Azure strips the
+  // password from reads). One of the two connection forms.
+  string connection_string = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the whole connection string in Key Vault. One of the two
+  // connection forms.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_connection_string = 2;
+
+  // Holds the SQL password in Key Vault (used with a connection
+  // string that omits it).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 3;
+
+  // The service principal's application (client) ID, as a UUID. All
+  // three service principal fields travel together.
+  string service_principal_id = 4 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_sqlmi_sp_id_uuid"
+    message: "service_principal_id must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  // The service principal's client secret. SECRET (hidden from ARM
+  // reads).
+  string service_principal_key = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The service principal's Entra tenant ID, as a UUID.
+  string tenant = 6 [(buf.validate.field).cel = {
+    id: "data_factory_linked_service_sqlmi_tenant_uuid"
+    message: "tenant must be a UUID"
+    expression: "this == '' || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqlmi_exactly_one_connection"
+    message: "Set exactly one of connection_string or key_vault_connection_string"
+    expression: "(this.connection_string != '' ? 1 : 0) + (has(this.key_vault_connection_string) ? 1 : 0) == 1"
+  };
+
+  // The provider requires the service principal declared whole
+  // (id + key + tenant each RequiredWith the other two, mirrored).
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqlmi_sp_all_or_none"
+    message: "service_principal_id, service_principal_key, and tenant must be set together"
+    expression: "((this.service_principal_id != '' ? 1 : 0) + (this.service_principal_key != '' ? 1 : 0) + (this.tenant != '' ? 1 : 0)) == 0 || ((this.service_principal_id != '' ? 1 : 0) + (this.service_principal_key != '' ? 1 : 0) + (this.tenant != '' ? 1 : 0)) == 3"
+  };
+}
+
+// SQL Server (on-premises or IaaS), typically reached through a
+// self-hosted integration runtime. The connection form is exactly one
+// of connection_string or key_vault_connection_string.
+message AzureDataFactoryLinkedServiceSqlServer {
+  // The connection string. SECRET by content (Azure strips the
+  // password from reads). One of the two connection forms.
+  string connection_string = 1 [(dev.planton.shared.options.sensitive) = true];
+
+  // Holds the whole connection string in Key Vault. One of the two
+  // connection forms.
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_connection_string = 2;
+
+  // Holds the SQL password in Key Vault (used with a connection
+  // string that omits it).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 3;
+
+  // The SQL username, when carried outside the connection string.
+  string user_name = 4;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_sqlserver_exactly_one_connection"
+    message: "Set exactly one of connection_string or key_vault_connection_string"
+    expression: "(this.connection_string != '' ? 1 : 0) + (has(this.key_vault_connection_string) ? 1 : 0) == 1"
+  };
+}
+
+// Azure Synapse Analytics (dedicated SQL pool). The connection string
+// is required; the password can ride inside it or sit in Key Vault.
+message AzureDataFactoryLinkedServiceSynapse {
+  // The Synapse SQL connection string. SECRET by content (Azure
+  // strips the password from reads).
+  string connection_string = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // Holds the SQL password in Key Vault (used with a connection
+  // string that omits it).
+  AzureDataFactoryLinkedServiceKeyVaultSecretRef key_vault_password = 2;
+}
+
+// A plain HTTP(S) web endpoint. Anonymous or Basic -- the two forms
+// the provider wires (its schema nominally accepts other values but
+// silently sends a broken request for them; this spec allows only
+// what works).
+message AzureDataFactoryLinkedServiceWeb {
+  // The endpoint URL.
+  string url = 1 [(buf.validate.field).required = true];
+
+  // How Data Factory authenticates: "Anonymous" or "Basic".
+  string authentication_type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Anonymous",
+        "Basic"
+      ]
+    }
+  ];
+
+  // The username (Basic).
+  string username = 3;
+
+  // The password (Basic). SECRET. Azure never returns it on reads.
+  string password = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_linked_service_web_basic_credentials"
+    message: "authentication_type Basic requires username and password"
+    expression: "this.authentication_type != 'Basic' || (this.username != '' && this.password != '')"
+  };
+}

@@ -1,0 +1,26 @@
+# Deep-shape example for docs and offline validation: a CloudEvents
+# topic with an IP allowlist and a system-assigned identity. References
+# are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridTopic
+metadata:
+  name: test-eventgrid-topic
+  id: test-eventgrid-topic
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  # The name becomes a PUBLIC DNS hostname, unique across the region.
+  name: test-org-app-events
+  region: eastus
+  inputSchema: CloudEventSchemaV1_0
+  publicNetworkAccessEnabled: true
+  localAuthEnabled: false
+  inboundIpRules:
+    - 203.0.113.0/24
+    - 198.51.100.7
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    costCenter: platform

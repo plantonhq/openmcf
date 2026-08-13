@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgriddomain.v1alpha1;
+
+import "shared/options/options.proto";
+
+// **AzureEventgridDomainStackOutputs** captures the outputs from
+// provisioning an Azure Event Grid domain.
+message AzureEventgridDomainStackOutputs {
+  // The domain's Azure Resource Manager ID.
+  string domain_id = 1;
+
+  // The domain's name (also the first label of its endpoint hostname).
+  string domain_name = 2;
+
+  // The HTTPS endpoint publishers POST events to
+  // (https://{name}.{region}.eventgrid.azure.net/api/events) -- one
+  // endpoint for every topic in the domain; the event's topic field
+  // names the stream.
+  string endpoint = 3;
+
+  // The primary access key publishers authenticate with (the
+  // aeg-sas-key header). Inert while local_auth_enabled is false.
+  string primary_access_key = 4 [(dev.planton.shared.options.sensitive) = true];
+
+  // The secondary access key -- the rotation partner: move publishers
+  // here, regenerate the primary, move back.
+  string secondary_access_key = 5 [(dev.planton.shared.options.sensitive) = true];
+
+  // The principal ID of the domain's system-assigned identity (empty
+  // when no identity is configured) -- grant this on delivery targets
+  // that use identity-based access.
+  string identity_principal_id = 6;
+}

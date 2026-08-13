@@ -1,0 +1,18 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventgridtopic
+spec:
+  # PROVEN live on both engines (2026-08-13): `minimal` (a CloudEvents
+  # topic with an IP rule in the fixture resource group; run-id cloud
+  # name) -- all phases green, 5/6 outputs on both engines (the empty
+  # field is identity_principal_id: the smoke deploys no identity;
+  # both sensitive access keys populated real values through the
+  # harness's --show-secrets reader -- identical counts on the
+  # natively-unmasked Terraform lane are the cross-engine check).
+  # Blind import round-trip: zero-change. Measured: Pulumi lane 2m52s,
+  # Terraform lane 2m50s incl. 13s import round-trip.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 30

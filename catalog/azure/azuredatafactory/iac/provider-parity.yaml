@@ -1,0 +1,95 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_factory:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # Plural list name over the provider's singular block name.
+      - spec: spec.global_parameters.name
+        arg: global_parameter.name
+      - spec: spec.global_parameters.type
+        arg: global_parameter.type
+      - spec: spec.global_parameters.value
+        arg: global_parameter.value
+      # The factory's inline CMK pair lives under the spec's
+      # customer_managed_key block. The provider's STANDALONE
+      # azurerm_data_factory_customer_managed_key resource writes the
+      # same encryption object (it demands a VERSIONED key where these
+      # inline fields accept versionless too) -- it is composed into
+      # this kind through these inline fields and deliberately not
+      # consumed by the modules.
+      - spec: spec.customer_managed_key.key_vault_key_id
+        arg: customer_managed_key_id
+      - spec: spec.customer_managed_key.user_assigned_identity_id
+        arg: customer_managed_key_identity_id
+  azurerm_data_factory_credential_user_managed_identity:
+    mappings:
+      # The composed child's entries live under the factory spec's
+      # user_managed_identity_credentials list.
+      - spec: spec.user_managed_identity_credentials.name
+        arg: name
+      - spec: spec.user_managed_identity_credentials.identity_id
+        arg: identity_id
+      - spec: spec.user_managed_identity_credentials.description
+        arg: description
+      - spec: spec.user_managed_identity_credentials.annotations
+        arg: annotations
+    exclusions:
+      # Module-wired: the composed child binds to the factory the module
+      # just created; the manifest never carries it.
+      - arg: data_factory_id
+        reason: module-wired
+  azurerm_data_factory_credential_service_principal:
+    mappings:
+      # The composed child's entries live under the factory spec's
+      # service_principal_credentials list.
+      - spec: spec.service_principal_credentials.name
+        arg: name
+      - spec: spec.service_principal_credentials.tenant_id
+        arg: tenant_id
+      - spec: spec.service_principal_credentials.service_principal_id
+        arg: service_principal_id
+      - spec: spec.service_principal_credentials.service_principal_key.linked_service_name
+        arg: service_principal_key.linked_service_name
+      - spec: spec.service_principal_credentials.service_principal_key.secret_name
+        arg: service_principal_key.secret_name
+      - spec: spec.service_principal_credentials.service_principal_key.secret_version
+        arg: service_principal_key.secret_version
+      - spec: spec.service_principal_credentials.description
+        arg: description
+      - spec: spec.service_principal_credentials.annotations
+        arg: annotations
+    exclusions:
+      # Module-wired: the composed child binds to the factory the module
+      # just created; the manifest never carries it.
+      - arg: data_factory_id
+        reason: module-wired
+  azurerm_data_factory_managed_private_endpoint:
+    mappings:
+      # The composed child's entries live under the factory spec's
+      # managed_private_endpoints list.
+      - spec: spec.managed_private_endpoints.name
+        arg: name
+      - spec: spec.managed_private_endpoints.target_resource_id
+        arg: target_resource_id
+      - spec: spec.managed_private_endpoints.subresource_name
+        arg: subresource_name
+      - spec: spec.managed_private_endpoints.fqdns
+        arg: fqdns
+    exclusions:
+      # Module-wired: the composed child binds to the factory the module
+      # just created; the manifest never carries it.
+      - arg: data_factory_id
+        reason: module-wired

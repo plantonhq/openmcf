@@ -314,6 +314,7 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.networkProfile.loadBalancerProfile.outboundIpAddressIds` | `status.outputs.public_ip_id` |
 | AzureApplicationGateway | `spec.frontendIpConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
 | AzureBastionHost | `spec.ipConfiguration.publicIpAddressId` | `status.outputs.public_ip_id` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.vnetIntegration.publicIps` | `status.outputs.public_ip_id` |
 | AzureFirewall | `spec.ipConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |
 | AzureFirewall | `spec.managementIpConfiguration.publicIpAddressId` | `status.outputs.public_ip_id` |
 | AzureLoadBalancer | `spec.frontendIpConfigurations[].publicIpAddressId` | `status.outputs.public_ip_id` |

@@ -1,0 +1,48 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_mongo_cluster:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # The family bool shape over the provider's Enabled/Disabled token
+      # pair (the module maps true/false onto the tokens).
+      - spec: spec.public_network_access_enabled
+        arg: public_network_access
+      # The spec names the list for what it carries; the identity block's
+      # flavor is implied by the list's presence (see the type exclusion).
+      - spec: spec.user_assigned_identity_ids
+        arg: identity.identity_ids
+    exclusions:
+      # Single legal value at v5 ("UserAssigned" -- the service supports
+      # no other flavor on this resource; the provider's own comment
+      # records it). The module sends the token whenever identities are
+      # attached.
+      - arg: identity.type
+        reason: single-legal-value
+  azurerm_mongo_cluster_firewall_rule:
+    mappings:
+      # The composed child's entries live under the cluster spec's
+      # firewall_rules list.
+      - spec: spec.firewall_rules.name
+        arg: name
+      - spec: spec.firewall_rules.start_ip_address
+        arg: start_ip_address
+      - spec: spec.firewall_rules.end_ip_address
+        arg: end_ip_address
+    exclusions:
+      # Module-wired: the composed child binds to the cluster the module
+      # just created; the manifest never carries it.
+      - arg: mongo_cluster_id
+        reason: module-wired

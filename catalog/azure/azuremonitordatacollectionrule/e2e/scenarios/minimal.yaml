@@ -1,0 +1,80 @@
+# Minimal AzureMonitorDataCollectionRule scenario: a Linux rule with
+# filtered syslog and two performance-counter sources, landing logs in
+# the fixture Log Analytics workspace and metrics in Azure Monitor
+# metrics -- proving the two most-used destination arms, the multi-flow
+# wiring, and the workspace reference live. The rule is pure
+# configuration: free at rest, seconds to create, and it collects
+# nothing until a machine associates with it (the association kind's
+# own lane proves that edge).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRule
+metadata:
+  name: planton-oss-e2e-azuremonitordatacollectionrule-smoke
+  id: planton-oss-e2e-azuremonitordatacollectionrule-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitordatacollectionrule
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azdcr-smoke
+  # Co-located with the fixture workspace (the destination).
+  region: eastus
+  kind: Linux
+  description: e2e smoke - Linux syslog and perf to the fixture workspace
+  dataSources:
+    syslogs:
+      - name: linux-syslog
+        facilityNames:
+          - auth
+          - daemon
+        logLevels:
+          - Warning
+          - Error
+          - Critical
+          - Alert
+          - Emergency
+        streams:
+          - Microsoft-Syslog
+    performanceCounters:
+      - name: linux-perf
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - Processor(*)\% Processor Time
+        streams:
+          - Microsoft-Perf
+      # Streams targeting Microsoft-InsightsMetrics require EXACTLY
+      # 60-second sampling (Azure enforces at deploy time).
+      - name: linux-insights-metrics
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - Processor(*)\% Processor Time
+        streams:
+          - Microsoft-InsightsMetrics
+  destinations:
+    logAnalytics:
+      - name: ops-workspace
+        workspaceResourceId:
+          valueFrom:
+            name: planton-oss-e2e-azure-fixture-law
+    azureMonitorMetrics:
+      name: azure-metrics
+  dataFlows:
+    - streams:
+        - Microsoft-Syslog
+        - Microsoft-Perf
+      destinations:
+        - ops-workspace
+    - streams:
+        - Microsoft-InsightsMetrics
+      destinations:
+        - azure-metrics
+  tags:
+    purpose: e2e-smoke

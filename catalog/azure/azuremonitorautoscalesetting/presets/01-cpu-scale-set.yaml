@@ -1,0 +1,51 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorAutoscaleSetting
+metadata:
+  name: my-scale-set-autoscale
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-scale-set-autoscale
+  region: <your-region> # must match the scale set's region
+  targetResourceId:
+    value: "<your-vmss-arm-id>"
+  profiles:
+    - name: default
+      capacity:
+        minimum: 2
+        maximum: 10
+        default: 3 # applied when metrics are unavailable (and only upward)
+      rules:
+        # Scale out eagerly: sustained CPU above 75% adds an instance.
+        - metricTrigger:
+            metricName: Percentage CPU
+            metricResourceId:
+              value: "<your-vmss-arm-id>"
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT10M
+            timeAggregation: Average
+            operator: GreaterThan
+            threshold: 75
+          scaleAction:
+            direction: Increase
+            type: ChangeCount
+            value: 1
+            cooldown: PT5M
+        # Scale in lazily: a lower threshold, a longer window, and a
+        # longer cooldown prevent flapping.
+        - metricTrigger:
+            metricName: Percentage CPU
+            metricResourceId:
+              value: "<your-vmss-arm-id>"
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT20M
+            timeAggregation: Average
+            operator: LessThan
+            threshold: 25
+          scaleAction:
+            direction: Decrease
+            type: ChangeCount
+            value: 1
+            cooldown: PT15M

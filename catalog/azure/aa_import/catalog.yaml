@@ -191,6 +191,15 @@ spec:
     - terraform_type: azurerm_cognitive_deployment
       pulumi_type: azure:cognitive/deployment:Deployment
       id_format: "{deployment_id}"
+      # model.version is READ-AUGMENTED (live-proven): a version-unset
+      # config -- the track-the-service-default posture -- deploys
+      # whatever version ARM resolves, and the provider's read always
+      # writes that resolved version into state. A plan after import
+      # therefore proposes nulling model.version, a server-side no-op
+      # (the provider omits empty versions on write). Version-PINNED
+      # configs read back their pin and never consume this tolerance;
+      # drift on model.format/model.name still fails the oracle.
+      write_normalized_attributes: [model.version]
     - terraform_type: azurerm_cognitive_account_project
       pulumi_type: azure:cognitive/accountProject:AccountProject
       id_format: "{project_id}"
@@ -391,3 +400,339 @@ spec:
     - terraform_type: azurerm_private_dns_resolver_virtual_network_link
       pulumi_type: azure:privatedns/resolverVirtualNetworkLink:ResolverVirtualNetworkLink
       id_format: "{virtual_network_link_id}"
+
+    # --- Private DNS records ---------------------------------------------------
+    # One kind (AzurePrivateDnsRecord) covers seven variant resources;
+    # the record set's ARM ID carries the TYPE segment
+    # (.../privateDnsZones/{zone}/{TYPE}/{name}), so the same single-id
+    # shape serves every variant -- the importer validates the segment
+    # matches the resource's type.
+    - terraform_type: azurerm_private_dns_a_record
+      pulumi_type: azure:privatedns/aRecord:ARecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_aaaa_record
+      pulumi_type: azure:privatedns/aAAARecord:AAAARecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_cname_record
+      pulumi_type: azure:privatedns/cnameRecord:CnameRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_mx_record
+      pulumi_type: azure:privatedns/mxRecord:MxRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_ptr_record
+      pulumi_type: azure:privatedns/pTRRecord:PTRRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_srv_record
+      pulumi_type: azure:privatedns/sRVRecord:SRVRecord
+      id_format: "{record_id}"
+    - terraform_type: azurerm_private_dns_txt_record
+      pulumi_type: azure:privatedns/txtRecord:TxtRecord
+      id_format: "{record_id}"
+
+    # --- Traffic Manager -------------------------------------------------------
+    # Endpoints are profile children; one kind
+    # (AzureTrafficManagerEndpoint) covers the three variant resources,
+    # whose ARM IDs carry the TYPE segment
+    # ({profile_id}/{TYPE}/{name}) -- the same single-id shape serves
+    # every variant, and the importer validates the segment matches.
+    - terraform_type: azurerm_traffic_manager_profile
+      pulumi_type: azure:network/trafficManagerProfile:TrafficManagerProfile
+      id_format: "{traffic_manager_profile_id}"
+    - terraform_type: azurerm_traffic_manager_azure_endpoint
+      pulumi_type: azure:network/trafficManagerAzureEndpoint:TrafficManagerAzureEndpoint
+      id_format: "{endpoint_id}"
+    - terraform_type: azurerm_traffic_manager_external_endpoint
+      pulumi_type: azure:network/trafficManagerExternalEndpoint:TrafficManagerExternalEndpoint
+      id_format: "{endpoint_id}"
+    - terraform_type: azurerm_traffic_manager_nested_endpoint
+      pulumi_type: azure:network/trafficManagerNestedEndpoint:TrafficManagerNestedEndpoint
+      id_format: "{endpoint_id}"
+
+    # --- Monitor ---------------------------------------------------------------
+    - terraform_type: azurerm_monitor_autoscale_setting
+      pulumi_type: azure:monitoring/autoscaleSetting:AutoscaleSetting
+      id_format: "{autoscale_setting_id}"
+    - terraform_type: azurerm_monitor_data_collection_rule
+      pulumi_type: azure:monitoring/dataCollectionRule:DataCollectionRule
+      id_format: "{data_collection_rule_id}"
+    # The association's ARM id is scoped under the TARGET machine
+    # ({target_id}/providers/Microsoft.Insights/dataCollectionRuleAssociations/{name});
+    # the component's id output carries the full scoped id, so one value
+    # serves the import.
+    - terraform_type: azurerm_monitor_data_collection_rule_association
+      pulumi_type: azure:monitoring/dataCollectionRuleAssociation:DataCollectionRuleAssociation
+      id_format: "{data_collection_rule_association_id}"
+
+    # --- Event Grid ------------------------------------------------------------
+    - terraform_type: azurerm_eventgrid_topic
+      pulumi_type: azure:eventgrid/topic:Topic
+      id_format: "{topic_id}"
+    - terraform_type: azurerm_eventgrid_domain
+      pulumi_type: azure:eventgrid/domain:Domain
+      id_format: "{domain_id}"
+    # The domain topic's ARM id is scoped under its parent domain
+    # ({domain_id}/topics/{name}); the component's id output carries the
+    # full scoped id, so one value serves the import.
+    - terraform_type: azurerm_eventgrid_domain_topic
+      pulumi_type: azure:eventgrid/domainTopic:DomainTopic
+      id_format: "{domain_topic_id}"
+    - terraform_type: azurerm_eventgrid_system_topic
+      pulumi_type: azure:eventgrid/systemTopic:SystemTopic
+      id_format: "{system_topic_id}"
+    # ONE kind (AzureEventgridEventSubscription) covers both
+    # subscription resources as addressing variants; each id output
+    # carries the full scoped id, so one value serves either import.
+    - terraform_type: azurerm_eventgrid_event_subscription
+      pulumi_type: azure:eventgrid/eventSubscription:EventSubscription
+      id_format: "{event_subscription_id}"
+    - terraform_type: azurerm_eventgrid_system_topic_event_subscription
+      pulumi_type: azure:eventgrid/systemTopicEventSubscription:SystemTopicEventSubscription
+      id_format: "{event_subscription_id}"
+    - terraform_type: azurerm_eventgrid_namespace
+      pulumi_type: azure:eventgrid/namespace:Namespace
+      id_format: "{namespace_id}"
+    # The namespace topic's ARM id is scoped under its parent namespace
+    # ({namespace_id}/topics/{name}); the component's id output carries
+    # the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_eventgrid_namespace_topic
+      pulumi_type: azure:eventgrid/namespaceTopic:NamespaceTopic
+      id_format: "{namespace_topic_id}"
+
+    # --- Mongo vCore (Cosmos DB for MongoDB) -------------------------------------
+    # The bridge also carries a legacy alias token
+    # (azure:cosmosdb/mongoCluster:MongoCluster) for the cluster; the
+    # canonical module token below is the one imports use.
+    - terraform_type: azurerm_mongo_cluster
+      pulumi_type: azure:mongocluster/mongoCluster:MongoCluster
+      id_format: "{mongo_cluster_id}"
+    # Composed into AzureMongoCluster: one rule per firewall_rules
+    # entry, addressed under the cluster
+    # ({cluster_id}/firewallRules/{name}).
+    - terraform_type: azurerm_mongo_cluster_firewall_rule
+      pulumi_type: azure:mongocluster/firewallRule:FirewallRule
+      id_format: "{mongo_cluster_id}/firewallRules/{firewall_rule_name}"
+    # The grant's ARM name IS the principal's object id
+    # ({cluster_id}/users/{object_id}); the component's id output
+    # carries the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_mongo_cluster_user
+      pulumi_type: azure:mongocluster/user:User
+      id_format: "{mongo_cluster_user_id}"
+
+    # --- Data Factory ------------------------------------------------------------
+    - terraform_type: azurerm_data_factory
+      pulumi_type: azure:datafactory/factory:Factory
+      id_format: "{data_factory_id}"
+    # Composed into AzureDataFactory: one credential per named entry
+    # (both flavors share one name namespace under the factory,
+    # {factory_id}/credentials/{name}).
+    - terraform_type: azurerm_data_factory_credential_user_managed_identity
+      pulumi_type: azure:datafactory/credentialUserManagedIdentity:CredentialUserManagedIdentity
+      id_format: "{data_factory_id}/credentials/{credential_name}"
+    - terraform_type: azurerm_data_factory_credential_service_principal
+      pulumi_type: azure:datafactory/credentialServicePrincipal:CredentialServicePrincipal
+      id_format: "{data_factory_id}/credentials/{credential_name}"
+    # Composed into AzureDataFactory: one managed private endpoint per
+    # named entry, addressed under the factory's managed virtual
+    # network (ARM names it "default").
+    - terraform_type: azurerm_data_factory_managed_private_endpoint
+      pulumi_type: azure:datafactory/managedPrivateEndpoint:ManagedPrivateEndpoint
+      id_format: "{data_factory_id}/managedVirtualNetworks/default/managedPrivateEndpoints/{managed_private_endpoint_name}"
+    # The pipeline's ARM id is scoped under its parent factory
+    # ({factory_id}/pipelines/{name}); the component's id output carries
+    # the full scoped id, so one value serves the import.
+    - terraform_type: azurerm_data_factory_pipeline
+      pulumi_type: azure:datafactory/pipeline:Pipeline
+      id_format: "{pipeline_id}"
+    # AzureDataFactoryDataFlow covers both dataflow forms -- they share
+    # one factory-scoped namespace ({factory_id}/dataflows/{name}) and
+    # one id shape; the spec's flowlet flag decides which resource the
+    # module created, so the import addresses the matching type.
+    - terraform_type: azurerm_data_factory_data_flow
+      pulumi_type: azure:datafactory/dataFlow:DataFlow
+      id_format: "{data_flow_id}"
+    - terraform_type: azurerm_data_factory_flowlet_data_flow
+      pulumi_type: azure:datafactory/flowletDataFlow:FlowletDataFlow
+      id_format: "{data_flow_id}"
+    # AzureDataFactoryTrigger covers all four trigger types -- they
+    # share one factory-scoped namespace ({factory_id}/triggers/{name})
+    # and one id shape; the spec's variant block decides which resource
+    # the module created, so the import addresses the matching type.
+    - terraform_type: azurerm_data_factory_trigger_schedule
+      pulumi_type: azure:datafactory/triggerSchedule:TriggerSchedule
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_tumbling_window
+      pulumi_type: azure:datafactory/triggerTumblingWindow:TriggerTumblingWindow
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_blob_event
+      pulumi_type: azure:datafactory/triggerBlobEvent:TriggerBlobEvent
+      id_format: "{trigger_id}"
+    - terraform_type: azurerm_data_factory_trigger_custom_event
+      pulumi_type: azure:datafactory/triggerCustomEvent:TriggerCustomEvent
+      id_format: "{trigger_id}"
+    # AzureDataFactoryLinkedService covers all 23 connection types --
+    # they share one factory-scoped namespace
+    # ({factory_id}/linkedservices/{name}) and one id shape; the spec's
+    # variant block decides which resource the module created, so the
+    # import addresses the matching type (each importer verifies the
+    # stored connection's type discriminator).
+    - terraform_type: azurerm_data_factory_linked_service_azure_blob_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureBlobStorage:LinkedServiceAzureBlobStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_databricks
+      pulumi_type: azure:datafactory/linkedServiceAzureDatabricks:LinkedServiceAzureDatabricks
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_file_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureFileStorage:LinkedServiceAzureFileStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_function
+      pulumi_type: azure:datafactory/linkedServiceAzureFunction:LinkedServiceAzureFunction
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_search
+      pulumi_type: azure:datafactory/linkedServiceAzureSearch:LinkedServiceAzureSearch
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_sql_database
+      pulumi_type: azure:datafactory/linkedServiceAzureSqlDatabase:LinkedServiceAzureSqlDatabase
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_azure_table_storage
+      pulumi_type: azure:datafactory/linkedServiceAzureTableStorage:LinkedServiceAzureTableStorage
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_cosmosdb
+      pulumi_type: azure:datafactory/linkedServiceCosmosDb:LinkedServiceCosmosDb
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_cosmosdb_mongoapi
+      pulumi_type: azure:datafactory/linkedServiceCosmosDbMongoApi:LinkedServiceCosmosDbMongoApi
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_custom_service
+      pulumi_type: azure:datafactory/linkedCustomService:LinkedCustomService
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_data_lake_storage_gen2
+      pulumi_type: azure:datafactory/linkedServiceDataLakeStorageGen2:LinkedServiceDataLakeStorageGen2
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_key_vault
+      pulumi_type: azure:datafactory/linkedServiceKeyVault:LinkedServiceKeyVault
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_kusto
+      pulumi_type: azure:datafactory/linkedServiceKusto:LinkedServiceKusto
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_mysql
+      pulumi_type: azure:datafactory/linkedServiceMysql:LinkedServiceMysql
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_odata
+      pulumi_type: azure:datafactory/linkedServiceOdata:LinkedServiceOdata
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_odbc
+      pulumi_type: azure:datafactory/linkedServiceOdbc:LinkedServiceOdbc
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_postgresql
+      pulumi_type: azure:datafactory/linkedServicePostgresql:LinkedServicePostgresql
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sftp
+      pulumi_type: azure:datafactory/linkedServiceSftp:LinkedServiceSftp
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_snowflake
+      pulumi_type: azure:datafactory/linkedServiceSnowflake:LinkedServiceSnowflake
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sql_managed_instance
+      pulumi_type: azure:datafactory/linkedServiceSqlManagedInstance:LinkedServiceSqlManagedInstance
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_sql_server
+      pulumi_type: azure:datafactory/linkedServiceSqlServer:LinkedServiceSqlServer
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_synapse
+      pulumi_type: azure:datafactory/linkedServiceSynapse:LinkedServiceSynapse
+      id_format: "{linked_service_id}"
+    - terraform_type: azurerm_data_factory_linked_service_web
+      pulumi_type: azure:datafactory/linkedServiceWeb:LinkedServiceWeb
+      id_format: "{linked_service_id}"
+    # AzureDataFactoryDataset covers all thirteen dataset resources --
+    # they share one factory-scoped namespace
+    # ({factory_id}/datasets/{name}) and one id shape; the spec's
+    # variant block decides which resource the module created, so the
+    # import addresses the matching type (each importer verifies the
+    # stored dataset's type discriminator).
+    - terraform_type: azurerm_data_factory_dataset_azure_blob
+      pulumi_type: azure:datafactory/datasetAzureBlob:DatasetAzureBlob
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_azure_sql_table
+      pulumi_type: azure:datafactory/datasetAzureSqlTable:DatasetAzureSqlTable
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_binary
+      pulumi_type: azure:datafactory/datasetBinary:DatasetBinary
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_cosmosdb_sqlapi
+      pulumi_type: azure:datafactory/datasetCosmosDBApi:DatasetCosmosDBApi
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_custom_dataset
+      pulumi_type: azure:datafactory/customDataset:CustomDataset
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_delimited_text
+      pulumi_type: azure:datafactory/datasetDelimitedText:DatasetDelimitedText
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_http
+      pulumi_type: azure:datafactory/datasetHttp:DatasetHttp
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_json
+      pulumi_type: azure:datafactory/datasetJson:DatasetJson
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_mysql
+      pulumi_type: azure:datafactory/datasetMysql:DatasetMysql
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_parquet
+      pulumi_type: azure:datafactory/datasetParquet:DatasetParquet
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_postgresql
+      pulumi_type: azure:datafactory/datasetPostgresql:DatasetPostgresql
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_snowflake
+      pulumi_type: azure:datafactory/datasetSnowflake:DatasetSnowflake
+      id_format: "{dataset_id}"
+    - terraform_type: azurerm_data_factory_dataset_sql_server_table
+      pulumi_type: azure:datafactory/datasetSqlServerTable:DatasetSqlServerTable
+      id_format: "{dataset_id}"
+    # AzureDataFactoryIntegrationRuntime covers all three engine
+    # flavors -- they share one factory-scoped namespace
+    # ({factory_id}/integrationRuntimes/{name}) and one id shape; the
+    # spec's variant block decides which resource the module created,
+    # so the import addresses the matching type (each resource's Read
+    # asserts the stored runtime's ARM type).
+    - terraform_type: azurerm_data_factory_integration_runtime_azure
+      pulumi_type: azure:datafactory/integrationRuntimeRule:IntegrationRuntimeRule
+      id_format: "{integration_runtime_id}"
+    - terraform_type: azurerm_data_factory_integration_runtime_azure_ssis
+      pulumi_type: azure:datafactory/integrationRuntimeSsis:IntegrationRuntimeSsis
+      id_format: "{integration_runtime_id}"
+    - terraform_type: azurerm_data_factory_integration_runtime_self_hosted
+      pulumi_type: azure:datafactory/integrationRuntimeSelfHosted:IntegrationRuntimeSelfHosted
+      id_format: "{integration_runtime_id}"
+
+    # --- Microsoft Fabric ---------------------------------------------------------
+    - terraform_type: azurerm_fabric_capacity
+      pulumi_type: azure:fabric/capacity:Capacity
+      id_format: "{fabric_capacity_id}"
+
+    # --- Compute: galleries, placement, snapshots ----------------------------------
+    - terraform_type: azurerm_shared_image_gallery
+      pulumi_type: azure:compute/sharedImageGallery:SharedImageGallery
+      id_format: "{gallery_id}"
+    - terraform_type: azurerm_shared_image
+      pulumi_type: azure:compute/sharedImage:SharedImage
+      id_format: "{image_id}"
+    - terraform_type: azurerm_shared_image_version
+      pulumi_type: azure:compute/sharedImageVersion:SharedImageVersion
+      id_format: "{image_id}/versions/{version_name}"
+      # The module publishes one version per spec entry, keyed by version
+      # name -- the address's instance key supplies {version_name}.
+    - terraform_type: azurerm_availability_set
+      pulumi_type: azure:compute/availabilitySet:AvailabilitySet
+      id_format: "{availability_set_id}"
+    - terraform_type: azurerm_snapshot
+      pulumi_type: azure:compute/snapshot:Snapshot
+      id_format: "{snapshot_id}"
+
+    # --- Container Instances --------------------------------------------------------
+    - terraform_type: azurerm_container_group
+      pulumi_type: azure:containerservice/group:Group
+      id_format: "{container_group_id}"
+      # Import cannot recover the group's secrets (secure environment
+      # variables, volume storage keys/secret files, registry passwords,
+      # the Log Analytics workspace key) -- Azure never returns them.

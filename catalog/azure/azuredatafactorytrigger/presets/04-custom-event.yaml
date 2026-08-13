@@ -1,0 +1,28 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: custom-event
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: on-upstream-ready
+  description: Fires the load pipeline when the upstream system publishes readiness.
+  # Deploy stopped, verify the pipeline's Debug run, then flip to true.
+  activated: false
+  customEvent:
+    eventgridTopicId:
+      valueFrom:
+        name: <your-eventgrid-topic>
+    # Matched against the published events' eventType field -- your
+    # topic defines the vocabulary.
+    events:
+      - orders.batch.ready
+    subjectBeginsWith: /orders/
+    pipelines:
+      - name:
+          valueFrom:
+            name: <your-pipeline>
+        parameters:
+          # The event's payload, passed per firing.
+          batchId: "@triggerBody().event.data.batchId"

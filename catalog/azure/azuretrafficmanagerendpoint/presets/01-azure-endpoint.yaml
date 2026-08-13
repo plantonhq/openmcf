@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerEndpoint
+metadata:
+  name: my-eastus-endpoint
+spec:
+  profileId:
+    valueFrom:
+      name: <your-azure-traffic-manager-profile-resource-name> # references the AzureTrafficManagerProfile component's traffic_manager_profile_id output
+  name: eastus-app
+  azure:
+    targetResourceId:
+      valueFrom:
+        kind: AzurePublicIp
+        name: <your-azure-public-ip-resource-name>
+        fieldPath: status.outputs.public_ip_id
+  priority: 10
+  weight: 100

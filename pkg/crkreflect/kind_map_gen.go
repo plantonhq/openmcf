@@ -168,6 +168,7 @@ import (
 	azureapplicationinsightsv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsights/v1alpha1"
 	azureapplicationinsightsstandardwebtestv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationinsightsstandardwebtest/v1alpha1"
 	azureapplicationsecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureapplicationsecuritygroup/v1alpha1"
+	azureavailabilitysetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureavailabilityset/v1alpha1"
 	azurebackupcontainerstorageaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackupcontainerstorageaccount/v1alpha1"
 	azurebackuppolicyfilesharev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyfileshare/v1alpha1"
 	azurebackuppolicyvmv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurebackuppolicyvm/v1alpha1"
@@ -177,6 +178,8 @@ import (
 	azurecognitiveaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccount/v1alpha1"
 	azurecognitiveaccountprojectv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitiveaccountproject/v1alpha1"
 	azurecognitivedeploymentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecognitivedeployment/v1alpha1"
+	azurecomputegalleryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecomputegallery/v1alpha1"
+	azurecomputegalleryimagev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecomputegalleryimage/v1alpha1"
 	azurecontainerappv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerapp/v1alpha1"
 	azurecontainerappcustomdomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappcustomdomain/v1alpha1"
 	azurecontainerappenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironment/v1alpha1"
@@ -185,6 +188,7 @@ import (
 	azurecontainerappenvironmentmanagedcertificatev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironmentmanagedcertificate/v1alpha1"
 	azurecontainerappenvironmentstoragev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappenvironmentstorage/v1alpha1"
 	azurecontainerappjobv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerappjob/v1alpha1"
+	azurecontainerinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerinstance/v1alpha1"
 	azurecontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecontainerregistry/v1alpha1"
 	azurecosmosdbaccountv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbaccount/v1alpha1"
 	azurecosmosdbmongocollectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbmongocollection/v1alpha1"
@@ -193,13 +197,28 @@ import (
 	azurecosmosdbsqldatabasev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqldatabase/v1alpha1"
 	azurecosmosdbsqlroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroleassignment/v1alpha1"
 	azurecosmosdbsqlroledefinitionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurecosmosdbsqlroledefinition/v1alpha1"
+	azuredatafactoryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactory/v1alpha1"
+	azuredatafactorydataflowv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorydataflow/v1alpha1"
+	azuredatafactorydatasetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorydataset/v1alpha1"
+	azuredatafactoryintegrationruntimev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactoryintegrationruntime/v1alpha1"
+	azuredatafactorylinkedservicev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorylinkedservice/v1alpha1"
+	azuredatafactorypipelinev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorypipeline/v1alpha1"
+	azuredatafactorytriggerv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredatafactorytrigger/v1alpha1"
 	azuredataprotectionbackupinstancev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupinstance/v1alpha1"
 	azuredataprotectionbackuppolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackuppolicy/v1alpha1"
 	azuredataprotectionbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionbackupvault/v1alpha1"
 	azuredataprotectionresourceguardv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredataprotectionresourceguard/v1alpha1"
 	azurediskencryptionsetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurediskencryptionset/v1alpha1"
+	azuredisksnapshotv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuredisksnapshot/v1alpha1"
 	azurednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednsrecord/v1alpha1"
 	azurednszonev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurednszone/v1alpha1"
+	azureeventgriddomainv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomain/v1alpha1"
+	azureeventgriddomaintopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgriddomaintopic/v1alpha1"
+	azureeventgrideventsubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgrideventsubscription/v1alpha1"
+	azureeventgridnamespacev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridnamespace/v1alpha1"
+	azureeventgridnamespacetopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridnamespacetopic/v1alpha1"
+	azureeventgridsystemtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridsystemtopic/v1alpha1"
+	azureeventgridtopicv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventgridtopic/v1alpha1"
 	azureeventhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhub/v1alpha1"
 	azureeventhubauthorizationrulev1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubauthorizationrule/v1alpha1"
 	azureeventhubclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureeventhubcluster/v1alpha1"
@@ -212,6 +231,7 @@ import (
 	azureexpressroutecircuitpeeringv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutecircuitpeering/v1alpha1"
 	azureexpressroutegatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressroutegateway/v1alpha1"
 	azureexpressrouteportv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureexpressrouteport/v1alpha1"
+	azurefabriccapacityv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefabriccapacity/v1alpha1"
 	azurefederatedidentitycredentialv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefederatedidentitycredential/v1alpha1"
 	azurefirewallv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewall/v1alpha1"
 	azurefirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefirewallpolicy/v1alpha1"
@@ -248,8 +268,13 @@ import (
 	azuremanagedredisv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredis/v1alpha1"
 	azuremanagedredisaccesspolicyassignmentv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredisaccesspolicyassignment/v1alpha1"
 	azuremanagedredisgeoreplicationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremanagedredisgeoreplication/v1alpha1"
+	azuremongoclusterv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremongocluster/v1alpha1"
+	azuremongoclusteruserv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremongoclusteruser/v1alpha1"
 	azuremonitoractiongroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractiongroup/v1alpha1"
 	azuremonitoractivitylogalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitoractivitylogalert/v1alpha1"
+	azuremonitorautoscalesettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorautoscalesetting/v1alpha1"
+	azuremonitordatacollectionrulev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordatacollectionrule/v1alpha1"
+	azuremonitordatacollectionruleassociationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordatacollectionruleassociation/v1alpha1"
 	azuremonitordiagnosticsettingv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitordiagnosticsetting/v1alpha1"
 	azuremonitormetricalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitormetricalert/v1alpha1"
 	azuremonitorscheduledqueryalertv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuremonitorscheduledqueryalert/v1alpha1"
@@ -264,6 +289,7 @@ import (
 	azurenetworkwatcherflowlogv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurenetworkwatcherflowlog/v1alpha1"
 	azurepointtositevpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepointtositevpngateway/v1alpha1"
 	azurepostgresqlflexibleserverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurepostgresqlflexibleserver/v1alpha1"
+	azureprivatednsrecordv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsrecord/v1alpha1"
 	azureprivatednsresolverv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolver/v1alpha1"
 	azureprivatednsresolverforwardingrulesetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolverforwardingruleset/v1alpha1"
 	azureprivatednsresolvervirtualnetworklinkv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureprivatednsresolvervirtualnetworklink/v1alpha1"
@@ -300,6 +326,8 @@ import (
 	azurestoragesharev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurestorageshare/v1alpha1"
 	azurestoragetablev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurestoragetable/v1alpha1"
 	azuresubnetv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuresubnet/v1alpha1"
+	azuretrafficmanagerendpointv1alpha1 "github.com/plantonhq/planton/catalog/azure/azuretrafficmanagerendpoint/v1alpha1"
+	azuretrafficmanagerprofilev1alpha1 "github.com/plantonhq/planton/catalog/azure/azuretrafficmanagerprofile/v1alpha1"
 	azureuserassignedidentityv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureuserassignedidentity/v1alpha1"
 	azurevirtualhubv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhub/v1alpha1"
 	azurevirtualhubconnectionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevirtualhubconnection/v1alpha1"
@@ -876,6 +904,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsights:                       &azureapplicationinsightsv1alpha1.AzureApplicationInsights{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationInsightsStandardWebTest:        &azureapplicationinsightsstandardwebtestv1alpha1.AzureApplicationInsightsStandardWebTest{},
 	cloudresourcekind.CloudResourceKind_AzureApplicationSecurityGroup:                  &azureapplicationsecuritygroupv1alpha1.AzureApplicationSecurityGroup{},
+	cloudresourcekind.CloudResourceKind_AzureAvailabilitySet:                           &azureavailabilitysetv1alpha1.AzureAvailabilitySet{},
 	cloudresourcekind.CloudResourceKind_AzureBackupContainerStorageAccount:             &azurebackupcontainerstorageaccountv1alpha1.AzureBackupContainerStorageAccount{},
 	cloudresourcekind.CloudResourceKind_AzureBackupPolicyFileShare:                     &azurebackuppolicyfilesharev1alpha1.AzureBackupPolicyFileShare{},
 	cloudresourcekind.CloudResourceKind_AzureBackupPolicyVm:                            &azurebackuppolicyvmv1alpha1.AzureBackupPolicyVm{},
@@ -885,6 +914,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccount:                          &azurecognitiveaccountv1alpha1.AzureCognitiveAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveAccountProject:                   &azurecognitiveaccountprojectv1alpha1.AzureCognitiveAccountProject{},
 	cloudresourcekind.CloudResourceKind_AzureCognitiveDeployment:                       &azurecognitivedeploymentv1alpha1.AzureCognitiveDeployment{},
+	cloudresourcekind.CloudResourceKind_AzureComputeGallery:                            &azurecomputegalleryv1alpha1.AzureComputeGallery{},
+	cloudresourcekind.CloudResourceKind_AzureComputeGalleryImage:                       &azurecomputegalleryimagev1alpha1.AzureComputeGalleryImage{},
 	cloudresourcekind.CloudResourceKind_AzureContainerApp:                              &azurecontainerappv1alpha1.AzureContainerApp{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppCustomDomain:                  &azurecontainerappcustomdomainv1alpha1.AzureContainerAppCustomDomain{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironment:                   &azurecontainerappenvironmentv1alpha1.AzureContainerAppEnvironment{},
@@ -893,6 +924,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentManagedCertificate: &azurecontainerappenvironmentmanagedcertificatev1alpha1.AzureContainerAppEnvironmentManagedCertificate{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppEnvironmentStorage:            &azurecontainerappenvironmentstoragev1alpha1.AzureContainerAppEnvironmentStorage{},
 	cloudresourcekind.CloudResourceKind_AzureContainerAppJob:                           &azurecontainerappjobv1alpha1.AzureContainerAppJob{},
+	cloudresourcekind.CloudResourceKind_AzureContainerInstance:                         &azurecontainerinstancev1alpha1.AzureContainerInstance{},
 	cloudresourcekind.CloudResourceKind_AzureContainerRegistry:                         &azurecontainerregistryv1alpha1.AzureContainerRegistry{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbAccount:                           &azurecosmosdbaccountv1alpha1.AzureCosmosdbAccount{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbMongoCollection:                   &azurecosmosdbmongocollectionv1alpha1.AzureCosmosdbMongoCollection{},
@@ -901,11 +933,19 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlDatabase:                       &azurecosmosdbsqldatabasev1alpha1.AzureCosmosdbSqlDatabase{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleAssignment:                 &azurecosmosdbsqlroleassignmentv1alpha1.AzureCosmosdbSqlRoleAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureCosmosdbSqlRoleDefinition:                 &azurecosmosdbsqlroledefinitionv1alpha1.AzureCosmosdbSqlRoleDefinition{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactory:                               &azuredatafactoryv1alpha1.AzureDataFactory{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryDataFlow:                       &azuredatafactorydataflowv1alpha1.AzureDataFactoryDataFlow{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryDataset:                        &azuredatafactorydatasetv1alpha1.AzureDataFactoryDataset{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryIntegrationRuntime:             &azuredatafactoryintegrationruntimev1alpha1.AzureDataFactoryIntegrationRuntime{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryLinkedService:                  &azuredatafactorylinkedservicev1alpha1.AzureDataFactoryLinkedService{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryPipeline:                       &azuredatafactorypipelinev1alpha1.AzureDataFactoryPipeline{},
+	cloudresourcekind.CloudResourceKind_AzureDataFactoryTrigger:                        &azuredatafactorytriggerv1alpha1.AzureDataFactoryTrigger{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupInstance:              &azuredataprotectionbackupinstancev1alpha1.AzureDataProtectionBackupInstance{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupPolicy:                &azuredataprotectionbackuppolicyv1alpha1.AzureDataProtectionBackupPolicy{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionBackupVault:                 &azuredataprotectionbackupvaultv1alpha1.AzureDataProtectionBackupVault{},
 	cloudresourcekind.CloudResourceKind_AzureDataProtectionResourceGuard:               &azuredataprotectionresourceguardv1alpha1.AzureDataProtectionResourceGuard{},
 	cloudresourcekind.CloudResourceKind_AzureDiskEncryptionSet:                         &azurediskencryptionsetv1alpha1.AzureDiskEncryptionSet{},
+	cloudresourcekind.CloudResourceKind_AzureDiskSnapshot:                              &azuredisksnapshotv1alpha1.AzureDiskSnapshot{},
 	cloudresourcekind.CloudResourceKind_AzureDnsRecord:                                 &azurednsrecordv1alpha1.AzureDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzureDnsZone:                                   &azurednszonev1alpha1.AzureDnsZone{},
 	cloudresourcekind.CloudResourceKind_AzureEventHub:                                  &azureeventhubv1alpha1.AzureEventHub{},
@@ -916,10 +956,18 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespace:                         &azureeventhubnamespacev1alpha1.AzureEventHubNamespace{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubNamespaceCustomerManagedKey:       &azureeventhubnamespacecustomermanagedkeyv1alpha1.AzureEventHubNamespaceCustomerManagedKey{},
 	cloudresourcekind.CloudResourceKind_AzureEventHubSchemaGroup:                       &azureeventhubschemagroupv1alpha1.AzureEventHubSchemaGroup{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridDomain:                           &azureeventgriddomainv1alpha1.AzureEventgridDomain{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridDomainTopic:                      &azureeventgriddomaintopicv1alpha1.AzureEventgridDomainTopic{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridEventSubscription:                &azureeventgrideventsubscriptionv1alpha1.AzureEventgridEventSubscription{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridNamespace:                        &azureeventgridnamespacev1alpha1.AzureEventgridNamespace{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridNamespaceTopic:                   &azureeventgridnamespacetopicv1alpha1.AzureEventgridNamespaceTopic{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridSystemTopic:                      &azureeventgridsystemtopicv1alpha1.AzureEventgridSystemTopic{},
+	cloudresourcekind.CloudResourceKind_AzureEventgridTopic:                            &azureeventgridtopicv1alpha1.AzureEventgridTopic{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuit:                       &azureexpressroutecircuitv1alpha1.AzureExpressRouteCircuit{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteCircuitPeering:                &azureexpressroutecircuitpeeringv1alpha1.AzureExpressRouteCircuitPeering{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRouteGateway:                       &azureexpressroutegatewayv1alpha1.AzureExpressRouteGateway{},
 	cloudresourcekind.CloudResourceKind_AzureExpressRoutePort:                          &azureexpressrouteportv1alpha1.AzureExpressRoutePort{},
+	cloudresourcekind.CloudResourceKind_AzureFabricCapacity:                            &azurefabriccapacityv1alpha1.AzureFabricCapacity{},
 	cloudresourcekind.CloudResourceKind_AzureFederatedIdentityCredential:               &azurefederatedidentitycredentialv1alpha1.AzureFederatedIdentityCredential{},
 	cloudresourcekind.CloudResourceKind_AzureFirewall:                                  &azurefirewallv1alpha1.AzureFirewall{},
 	cloudresourcekind.CloudResourceKind_AzureFirewallPolicy:                            &azurefirewallpolicyv1alpha1.AzureFirewallPolicy{},
@@ -956,8 +1004,13 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureManagedRedis:                              &azuremanagedredisv1alpha1.AzureManagedRedis{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisAccessPolicyAssignment:        &azuremanagedredisaccesspolicyassignmentv1alpha1.AzureManagedRedisAccessPolicyAssignment{},
 	cloudresourcekind.CloudResourceKind_AzureManagedRedisGeoReplication:                &azuremanagedredisgeoreplicationv1alpha1.AzureManagedRedisGeoReplication{},
+	cloudresourcekind.CloudResourceKind_AzureMongoCluster:                              &azuremongoclusterv1alpha1.AzureMongoCluster{},
+	cloudresourcekind.CloudResourceKind_AzureMongoClusterUser:                          &azuremongoclusteruserv1alpha1.AzureMongoClusterUser{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActionGroup:                        &azuremonitoractiongroupv1alpha1.AzureMonitorActionGroup{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorActivityLogAlert:                   &azuremonitoractivitylogalertv1alpha1.AzureMonitorActivityLogAlert{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorAutoscaleSetting:                   &azuremonitorautoscalesettingv1alpha1.AzureMonitorAutoscaleSetting{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorDataCollectionRule:                 &azuremonitordatacollectionrulev1alpha1.AzureMonitorDataCollectionRule{},
+	cloudresourcekind.CloudResourceKind_AzureMonitorDataCollectionRuleAssociation:      &azuremonitordatacollectionruleassociationv1alpha1.AzureMonitorDataCollectionRuleAssociation{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorDiagnosticSetting:                  &azuremonitordiagnosticsettingv1alpha1.AzureMonitorDiagnosticSetting{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorMetricAlert:                        &azuremonitormetricalertv1alpha1.AzureMonitorMetricAlert{},
 	cloudresourcekind.CloudResourceKind_AzureMonitorScheduledQueryAlert:                &azuremonitorscheduledqueryalertv1alpha1.AzureMonitorScheduledQueryAlert{},
@@ -972,6 +1025,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureNetworkWatcherFlowLog:                     &azurenetworkwatcherflowlogv1alpha1.AzureNetworkWatcherFlowLog{},
 	cloudresourcekind.CloudResourceKind_AzurePointToSiteVpnGateway:                     &azurepointtositevpngatewayv1alpha1.AzurePointToSiteVpnGateway{},
 	cloudresourcekind.CloudResourceKind_AzurePostgresqlFlexibleServer:                  &azurepostgresqlflexibleserverv1alpha1.AzurePostgresqlFlexibleServer{},
+	cloudresourcekind.CloudResourceKind_AzurePrivateDnsRecord:                          &azureprivatednsrecordv1alpha1.AzurePrivateDnsRecord{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolver:                        &azureprivatednsresolverv1alpha1.AzurePrivateDnsResolver{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset:       &azureprivatednsresolverforwardingrulesetv1alpha1.AzurePrivateDnsResolverForwardingRuleset{},
 	cloudresourcekind.CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink:      &azureprivatednsresolvervirtualnetworklinkv1alpha1.AzurePrivateDnsResolverVirtualNetworkLink{},
@@ -1008,6 +1062,8 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureStorageShare:                              &azurestoragesharev1alpha1.AzureStorageShare{},
 	cloudresourcekind.CloudResourceKind_AzureStorageTable:                              &azurestoragetablev1alpha1.AzureStorageTable{},
 	cloudresourcekind.CloudResourceKind_AzureSubnet:                                    &azuresubnetv1alpha1.AzureSubnet{},
+	cloudresourcekind.CloudResourceKind_AzureTrafficManagerEndpoint:                    &azuretrafficmanagerendpointv1alpha1.AzureTrafficManagerEndpoint{},
+	cloudresourcekind.CloudResourceKind_AzureTrafficManagerProfile:                     &azuretrafficmanagerprofilev1alpha1.AzureTrafficManagerProfile{},
 	cloudresourcekind.CloudResourceKind_AzureUserAssignedIdentity:                      &azureuserassignedidentityv1alpha1.AzureUserAssignedIdentity{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualHub:                                &azurevirtualhubv1alpha1.AzureVirtualHub{},
 	cloudresourcekind.CloudResourceKind_AzureVirtualHubConnection:                      &azurevirtualhubconnectionv1alpha1.AzureVirtualHubConnection{},

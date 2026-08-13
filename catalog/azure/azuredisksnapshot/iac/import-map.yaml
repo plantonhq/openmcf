@@ -1,0 +1,13 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredisksnapshot
+spec:
+  # The snapshot's identity is its full ARM resource ID.
+  values:
+    - name: snapshot_id
+      derivations:
+        - from_stack_output: snapshot_id
+      where_to_find: >-
+        Portal -> Snapshots -> the snapshot -> Properties -> Resource ID,
+        or `az snapshot show --name <name> -g <rg> --query id`.

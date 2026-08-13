@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactory
+metadata:
+  name: private-etl
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # Factory names are GLOBALLY unique across Azure -- prefix with your
+  # org.
+  name: my-org-private-etl
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  managedVirtualNetworkEnabled: true
+  # No traffic from the public internet -- the managed private
+  # endpoints below are the factory's only path to data.
+  publicNetworkEnabled: false
+  managedPrivateEndpoints:
+    # Private egress to the data lake's blob service. The TARGET
+    # storage account must approve the connection before traffic
+    # flows (Networking -> Private endpoint connections).
+    - name: datalake-blob
+      targetResourceId:
+        value: <your-storage-account-arm-id>
+      subresourceName: blob

@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomain
+metadata:
+  name: my-governed-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name becomes a PUBLIC DNS hostname, unique across the region --
+  # prefix it with your org, like a storage account name.
+  name: my-org-governed-events
+  region: eastus
+  inputSchema: CloudEventSchemaV1_0
+  # The pinned-topics governance posture: topics exist ONLY as declared
+  # AzureEventgridDomainTopic resources -- a subscription against an
+  # undeclared topic fails instead of materializing one, and topics
+  # never vanish because subscriptions churned.
+  autoCreateTopicWithFirstSubscription: false
+  autoDeleteTopicWithLastSubscription: false
+  # Entra-only publishing: the access keys stop working. Grant the
+  # publishing service tier the EventGrid Data Sender role first.
+  localAuthEnabled: false

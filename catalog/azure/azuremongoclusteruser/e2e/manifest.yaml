@@ -1,0 +1,20 @@
+# Example for docs and offline validation: a managed identity's
+# service principal granted root on the admin database (cluster-wide
+# access). References are literal values so the manifest validates
+# standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoClusterUser
+metadata:
+  name: test-mongo-cluster-user
+  id: test-mongo-cluster-user
+  org: test-org
+  env: test
+spec:
+  mongoClusterId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/mongoClusters/acme-orders-db
+  objectId:
+    value: 11111111-2222-3333-4444-555555555555
+  principalType: servicePrincipal
+  roles:
+    - database: admin
+      role: root

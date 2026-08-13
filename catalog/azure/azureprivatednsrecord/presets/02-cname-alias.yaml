@@ -1,0 +1,12 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsRecord
+metadata:
+  name: my-service-alias
+spec:
+  privateDnsZoneId:
+    valueFrom:
+      name: <your-azure-private-dns-zone-resource-name> # references the AzurePrivateDnsZone component's zone_id output; use `value: <zone-arm-id>` instead for a zone managed outside Planton
+  name: service
+  cname:
+    value: <target-hostname> # e.g. db-primary.internal.contoso.com; or reference another component's hostname output with valueFrom
+  ttlSeconds: 60

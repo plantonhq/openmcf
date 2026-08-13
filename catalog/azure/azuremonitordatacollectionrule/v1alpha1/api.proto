@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitordatacollectionrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremonitordatacollectionrule/v1alpha1/outputs.proto";
+import "catalog/azure/azuremonitordatacollectionrule/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMonitorDataCollectionRule represents an Azure Monitor data
+// collection rule (DCR) -- the routing table declaring what telemetry
+// the Azure Monitor Agent collects (syslog, Windows events,
+// performance counters, Prometheus metrics, custom log files, ...) and
+// where it is delivered (Log Analytics workspaces, Azure Monitor
+// metrics, Event Hubs, storage). Machines attach to a rule with
+// AzureMonitorDataCollectionRuleAssociation resources.
+message AzureMonitorDataCollectionRule {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMonitorDataCollectionRule'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureMonitorDataCollectionRuleSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureMonitorDataCollectionRuleStatus status = 5;
+}
+
+// AzureMonitorDataCollectionRuleStatus represents the status of an
+// Azure Monitor data collection rule deployment.
+message AzureMonitorDataCollectionRuleStatus {
+  //stack-outputs
+  //  azure-monitor-data-collection-rule stack-outputs
+  AzureMonitorDataCollectionRuleStackOutputs outputs = 1;
+}

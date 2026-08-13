@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorypipeline.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDataFactoryPipelineSpec** defines an Azure Data Factory
+// pipeline -- one unit of work inside a factory
+// (AzureDataFactory): an ordered set of activities (copy data, run a
+// data flow, call a stored procedure, wait, branch) that executes as
+// a whole when triggered.
+//
+// The pipeline's activities travel as raw JSON (activities_json) --
+// the same "activities" array the Data Factory Studio's Code view
+// shows. Azure owns that schema (dozens of activity types, each with
+// its own shape); the catalog deliberately does not re-model it.
+message AzureDataFactoryPipelineSpec {
+  // The Data Factory the pipeline lives in, by ARM ID. Can be a
+  // literal string or a reference to an AzureDataFactory output.
+  //
+  // **ForceNew**: changing this destroys and recreates the pipeline.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_factory_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_factory_id"
+  ];
+
+  // The pipeline's name -- unique within the factory. Must start with
+  // a letter, number, or underscore, and must not contain any of
+  // < > * # . % & : \ + ? / (Azure's pipeline naming rules).
+  //
+  // **ForceNew**: changing this destroys and recreates the pipeline.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_pipeline_name_format"
+      message: "Pipeline names must start with a letter, number, or underscore and must not contain < > * # . % & : \\ + ? /"
+      expression: "this.matches('^[A-Za-z0-9_][^<>*#.%&:\\\\\\\\+?/]*$')"
+    }
+  ];
+
+  // A human-readable description of what the pipeline does.
+  string description = 3;
+
+  // The pipeline's run-time parameters and their DEFAULT values --
+  // callers override them per run. Azure types every parameter
+  // declared here as String (declare other-typed parameters inside
+  // activities_json if you need them; the provider round-trips only
+  // string-typed entries).
+  map<string, string> parameters = 4;
+
+  // The pipeline's variables and their default values -- mutable
+  // state activities read and set during a run. The same
+  // String-typing note as parameters applies.
+  map<string, string> variables = 5;
+
+  // The pipeline's activities as a raw JSON ARRAY -- exactly the
+  // "activities" array from the Data Factory Studio's Code view, e.g.
+  // [{"name": "wait", "type": "Wait", "typeProperties":
+  // {"waitTimeInSeconds": 10}}]. Azure owns the activity schema;
+  // invalid JSON or unknown activity shapes fail at deploy time.
+  // Key ordering inside the JSON is not meaningful (both engines
+  // normalize it when diffing).
+  string activities_json = 6;
+
+  // Free-form annotation strings stored on the pipeline.
+  repeated string annotations = 7;
+
+  // The maximum number of concurrent runs of this pipeline, 1-50.
+  // Omit for Azure's unlimited default.
+  optional int32 concurrency = 8 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 50
+  }];
+
+  // The folder the pipeline appears under in the Data Factory
+  // Studio, e.g. "ingest/daily". Omit for the root.
+  string folder = 9;
+
+  // How long the pipeline may run before its elapsed-time metric
+  // fires, as a Data Factory TimeSpan string (e.g. "0.00:30:00" for
+  // 30 minutes). Omit to skip the metric.
+  string monitor_metrics_after_duration = 10;
+}

@@ -1,0 +1,507 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactory.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDataFactorySpec** defines an Azure Data Factory -- the
+// factory is the workspace every other Data Factory resource lives
+// inside: pipelines (AzureDataFactoryPipeline), data flows, linked
+// services, datasets, triggers, and integration runtimes are all
+// created against a factory's ARM ID.
+//
+// The factory itself carries the workspace-level posture: its managed
+// identity, an optional git repository binding (GitHub or Azure
+// DevOps -- at most one), workspace-wide global parameters,
+// customer-managed-key encryption, named credentials its linked
+// services authenticate with, a managed virtual network, and managed
+// private endpoints for private egress from that network.
+message AzureDataFactorySpec {
+  // The Azure Resource Group the factory lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the factory
+  // (and everything inside it).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The factory's name -- 3-63 characters; letters, numbers, and
+  // hyphens; must start and end with a letter or number (no
+  // consecutive-hyphen segments beyond single separators). Data
+  // Factory names are GLOBALLY unique across Azure (the name becomes
+  // part of the factory's URL), so prefix it with your org -- a taken
+  // name fails at deploy time.
+  //
+  // **ForceNew**: changing this destroys and recreates the factory.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_name_format"
+      message: "Factory names must be 3-63 characters of letters, numbers, and hyphens, starting and ending with a letter or number"
+      expression: "this.matches('^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$') && this.size() >= 3 && this.size() <= 63"
+    }
+  ];
+
+  // The Azure region the factory is created in, e.g. "eastus".
+  //
+  // **ForceNew**: changing this destroys and recreates the factory.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The factory's managed identity -- required for customer-managed-key
+  // encryption (user-assigned) and for linked services that
+  // authenticate with the factory's own identity. Omit when nothing
+  // requires one.
+  AzureDataFactoryIdentity identity = 4;
+
+  // Bind the factory to a GitHub repository for git-integrated
+  // authoring. At most one of github_configuration and
+  // vsts_configuration may be set. The binding is applied through a
+  // separate configure-repo call after the factory exists, and
+  // REMOVING the block does not detach the repository -- detach it in
+  // the Data Factory Studio or leave the block in place.
+  AzureDataFactoryGithubConfiguration github_configuration = 5;
+
+  // Bind the factory to an Azure DevOps (VSTS) repository for
+  // git-integrated authoring. At most one of github_configuration and
+  // vsts_configuration may be set. The same detach caveat as
+  // github_configuration applies.
+  AzureDataFactoryVstsConfiguration vsts_configuration = 6;
+
+  // Workspace-wide parameters every pipeline in the factory can
+  // reference. Names are the parameters' identity, so they must be
+  // unique.
+  repeated AzureDataFactoryGlobalParameter global_parameters = 7;
+
+  // Whether the factory gets a managed virtual network -- Azure-managed
+  // private networking its integration runtimes execute inside, and
+  // the prerequisite for managed_private_endpoints. Enabling it on an
+  // existing factory is an in-place update.
+  //
+  // **ForceNew (one direction)**: DISABLING it after it is enabled
+  // replaces the factory -- decide the posture before shipping
+  // workloads.
+  optional bool managed_virtual_network_enabled = 8;
+
+  // Whether the factory's endpoints accept traffic from the public
+  // internet. Set false to restrict access to private endpoints only.
+  // Default: true (Azure's default) -- the platform sends the value
+  // explicitly.
+  optional bool public_network_enabled = 9 [(dev.planton.shared.options.default) = "true"];
+
+  // Connect the factory to a Microsoft Purview account for lineage
+  // and catalog integration, by the Purview account's ARM ID. Omit
+  // when Purview is not in use. (The catalog has no Purview kind yet,
+  // so pass the ID as a literal or wire an explicit reference.)
+  dev.planton.shared.foreignkey.v1.StringValueOrRef purview_id = 10;
+
+  // Customer-managed-key encryption at rest: a Key Vault key plus the
+  // user-assigned identity Azure uses to unwrap it. Requires the
+  // identity block to carry a user-assigned flavor, and the unwrap
+  // identity needs get/unwrap/wrap permissions on the vault BEFORE
+  // create -- Azure validates both at deploy time. Once enabled, the
+  // key cannot be removed without recreating the factory (Azure has
+  // no decrypt path).
+  AzureDataFactoryCustomerManagedKey customer_managed_key = 11;
+
+  // Named credentials backed by user-assigned managed identities --
+  // the factory's linked services reference these BY NAME to
+  // authenticate as the identity. Credential names share one
+  // namespace with service_principal_credentials, so they must be
+  // unique across both lists.
+  repeated AzureDataFactoryUserManagedIdentityCredential user_managed_identity_credentials = 12;
+
+  // Named credentials backed by a service principal whose key lives
+  // in Key Vault (referenced through a Key Vault linked service --
+  // the secret itself never enters this spec). Credential names share
+  // one namespace with user_managed_identity_credentials, so they
+  // must be unique across both lists.
+  repeated AzureDataFactoryServicePrincipalCredential service_principal_credentials = 13;
+
+  // Managed private endpoints -- private egress from the factory's
+  // managed virtual network to data stores (a storage account, a SQL
+  // server, a Private Link Service). Requires
+  // managed_virtual_network_enabled. The TARGET side must approve
+  // each endpoint's connection before traffic flows; approval happens
+  // outside this resource.
+  //
+  // **ForceNew (each entry)**: an endpoint cannot be changed after
+  // create -- changing any field replaces that endpoint (siblings are
+  // untouched; entries are keyed by name).
+  repeated AzureDataFactoryManagedPrivateEndpoint managed_private_endpoints = 14;
+
+  // Tags to apply to the factory, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 15;
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_repo_configuration_exclusive"
+    message: "At most one of github_configuration and vsts_configuration may be set -- a factory binds to one repository"
+    expression: "!(has(this.github_configuration) && has(this.vsts_configuration))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_cmk_requires_user_assigned_identity"
+    message: "customer_managed_key requires the identity block with a user-assigned flavor (USER_ASSIGNED or SYSTEM_AND_USER_ASSIGNED)"
+    expression: "!has(this.customer_managed_key) || (has(this.identity) && (this.identity.type == 2 || this.identity.type == 3))"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_global_parameter_names_unique"
+    message: "global_parameters names must be unique -- the name is the parameter's identity"
+    expression: "this.global_parameters.map(p, p.name).unique()"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_credential_names_unique"
+    message: "credential names must be unique across user_managed_identity_credentials and service_principal_credentials -- credentials share one namespace under the factory"
+    expression: "(this.user_managed_identity_credentials.map(c, c.name) + this.service_principal_credentials.map(c, c.name)).unique()"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_managed_private_endpoint_names_unique"
+    message: "managed_private_endpoints names must be unique -- the name is the endpoint's identity"
+    expression: "this.managed_private_endpoints.map(e, e.name).unique()"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_managed_private_endpoints_require_managed_vnet"
+    message: "managed_private_endpoints require managed_virtual_network_enabled to be true -- the endpoints live inside the managed virtual network"
+    expression: "this.managed_private_endpoints.size() == 0 || (has(this.managed_virtual_network_enabled) && this.managed_virtual_network_enabled)"
+  };
+}
+
+// The factory's managed identity. Like the Event Grid namespace, a
+// factory supports carrying BOTH flavors at once.
+message AzureDataFactoryIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the factory; USER_ASSIGNED brings identities you manage
+  // (grantable on data stores BEFORE the factory exists);
+  // SYSTEM_AND_USER_ASSIGNED carries both.
+  AzureDataFactoryIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED: the user-assigned
+  // identities attached to the factory, by ARM ID. Reference
+  // AzureUserAssignedIdentity resources so data-store grants can be
+  // composed before the factory is created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2 || this.type == 3) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The factory's managed-identity flavor.
+enum AzureDataFactoryIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_data_factory_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the factory. Wire value:
+  // "SystemAssigned".
+  SYSTEM_ASSIGNED = 1;
+
+  // Identities you create and manage (AzureUserAssignedIdentity).
+  // Wire value: "UserAssigned".
+  USER_ASSIGNED = 2;
+
+  // Both at once. Wire value: "SystemAssigned, UserAssigned".
+  SYSTEM_AND_USER_ASSIGNED = 3;
+}
+
+// GitHub repository binding for git-integrated authoring.
+message AzureDataFactoryGithubConfiguration {
+  // The GitHub account or organization that owns the repository, e.g.
+  // "acme-corp".
+  string account_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The collaboration branch the factory authors against, e.g.
+  // "main".
+  string branch_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The GitHub service URL -- only for GitHub Enterprise Server, e.g.
+  // "https://github.mycompany.com". Omit for github.com.
+  string git_url = 3;
+
+  // The repository's name (without the account prefix), e.g.
+  // "data-pipelines".
+  string repository_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The folder inside the repository the factory's resources are
+  // stored under, e.g. "/" for the root.
+  string root_folder = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Whether "Publish" from the factory's collaboration branch is
+  // enabled. Default: true (the provider's default) -- the platform
+  // sends the value explicitly (Azure stores the inverse
+  // "disablePublish" flag; both engines translate).
+  optional bool publishing_enabled = 6 [(dev.planton.shared.options.default) = "true"];
+}
+
+// Azure DevOps (VSTS) repository binding for git-integrated
+// authoring.
+message AzureDataFactoryVstsConfiguration {
+  // The Azure DevOps organization name, e.g. "acme-corp".
+  string account_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The collaboration branch the factory authors against, e.g.
+  // "main".
+  string branch_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure DevOps project the repository lives in.
+  string project_name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The repository's name.
+  string repository_name = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The folder inside the repository the factory's resources are
+  // stored under, e.g. "/" for the root.
+  string root_folder = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Microsoft Entra tenant the Azure DevOps organization belongs
+  // to, as a UUID.
+  string tenant_id = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Whether "Publish" from the factory's collaboration branch is
+  // enabled. Default: true (the provider's default) -- the platform
+  // sends the value explicitly.
+  optional bool publishing_enabled = 7 [(dev.planton.shared.options.default) = "true"];
+}
+
+// One workspace-wide parameter every pipeline in the factory can
+// reference.
+message AzureDataFactoryGlobalParameter {
+  // The parameter's name -- its identity across the factory, so names
+  // must be unique.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The parameter's type: "Array", "Bool", "Float", "Int", "Object",
+  // or "String" (Azure's own vocabulary).
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Array",
+        "Bool",
+        "Float",
+        "Int",
+        "Object",
+        "String"
+      ]
+    }
+  ];
+
+  // The parameter's value, as a string. For "Array" and "Object"
+  // parameters pass the JSON text (e.g. "[1,2]" or "{\"a\":1}") --
+  // Azure stores the typed value; the string is how it travels.
+  string value = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Customer-managed-key encryption at rest.
+message AzureDataFactoryCustomerManagedKey {
+  // The Key Vault key that encrypts the factory's data. Both
+  // versionless and versioned key identifiers are accepted
+  // (https://{vault}.vault.azure.net/keys/{name}[/{version}]) --
+  // prefer versionless so rotation propagates automatically.
+  // Reference an AzureKeyVaultKey output or pass a literal
+  // identifier.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef key_vault_key_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVaultKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.versionless_id"
+  ];
+
+  // The user-assigned identity Azure authenticates as when unwrapping
+  // the key. It must be attached to the factory (the identity block's
+  // identity_ids) and hold get/unwrap/wrap permissions on the vault
+  // before the factory is created.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+}
+
+// One named credential backed by a user-assigned managed identity.
+// Linked services reference the credential BY NAME to authenticate
+// as the identity.
+message AzureDataFactoryUserManagedIdentityCredential {
+  // The credential's name -- its identity under the factory (shared
+  // namespace with service-principal credentials), so names must be
+  // unique. Renaming replaces the credential.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The user-assigned identity the credential wraps, by ARM ID.
+  // Reference an AzureUserAssignedIdentity output or pass a literal
+  // ID.
+  //
+  // **ForceNew**: changing the identity replaces the credential.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef identity_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  // A human-readable description of what the credential is for.
+  string description = 3;
+
+  // Free-form annotation strings stored on the credential.
+  repeated string annotations = 4;
+}
+
+// One named credential backed by a service principal. The principal's
+// key is read from Key Vault through a Key Vault LINKED SERVICE (by
+// the linked service's name) -- the secret itself never enters this
+// spec.
+message AzureDataFactoryServicePrincipalCredential {
+  // The credential's name -- its identity under the factory (shared
+  // namespace with user-managed-identity credentials), so names must
+  // be unique. Renaming replaces the credential.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Microsoft Entra tenant the service principal belongs to, as a
+  // UUID.
+  string tenant_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // The service principal's application (client) ID, as a UUID.
+  string service_principal_id = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  // Where the service principal's key lives: a secret read through a
+  // Key Vault linked service defined in the factory. Omit for
+  // credentials that only carry the principal's identity.
+  AzureDataFactoryServicePrincipalKey service_principal_key = 4;
+
+  // A human-readable description of what the credential is for.
+  string description = 5;
+
+  // Free-form annotation strings stored on the credential.
+  repeated string annotations = 6;
+}
+
+// A Key Vault secret reference resolved through a Key Vault linked
+// service defined in the factory.
+message AzureDataFactoryServicePrincipalKey {
+  // The name of the factory's Key Vault LINKED SERVICE the secret is
+  // read through (not the vault's own name).
+  string linked_service_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The secret's name inside the vault.
+  string secret_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The secret's version. Omit to follow the latest version.
+  string secret_version = 3;
+}
+
+// One managed private endpoint -- private egress from the factory's
+// managed virtual network to a data store.
+message AzureDataFactoryManagedPrivateEndpoint {
+  // The endpoint's name -- its identity under the factory, so names
+  // must be unique; 2-80 characters of letters, numbers, dots,
+  // hyphens, and underscores, starting with a letter or number and
+  // ending with a letter, number, or underscore.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_managed_private_endpoint_name_format"
+      message: "Endpoint names must be 2-80 characters of letters, numbers, dots, hyphens, and underscores, starting with a letter or number and ending with a letter, number, or underscore"
+      expression: "this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{0,78}[_a-zA-Z0-9]$')"
+    }
+  ];
+
+  // The resource the endpoint connects to, by ARM ID -- a storage
+  // account, a SQL server, or a Private Link Service. Pass a literal
+  // ID or wire a reference to the target kind's own ID output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 2 [(buf.validate.field).required = true];
+
+  // For regular ARM targets: which sub-resource the endpoint binds,
+  // e.g. "blob" for a storage account or "sqlServer" for a SQL
+  // server. Required for regular targets and FORBIDDEN when the
+  // target is a Private Link Service (set fqdns instead) -- exactly
+  // one of the two arms is set.
+  string subresource_name = 3 [(buf.validate.field).cel = {
+    id: "data_factory_managed_private_endpoint_subresource_format"
+    message: "subresource_name must be 3-63 characters of letters, numbers, dots, hyphens, and underscores, starting and ending with a letter or number"
+    expression: "this == '' || this.matches('^[a-zA-Z0-9][-._a-zA-Z0-9]{1,61}[a-zA-Z0-9]$')"
+  }];
+
+  // For Private Link Service targets: the fully-qualified domain
+  // names the endpoint serves. Required for Private Link Service
+  // targets and FORBIDDEN for regular ARM targets (set
+  // subresource_name instead) -- exactly one of the two arms is set.
+  repeated string fqdns = 4 [(buf.validate.field).repeated = {
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  option (buf.validate.message).cel = {
+    id: "data_factory_managed_private_endpoint_arm_choice"
+    message: "Exactly one of subresource_name (regular ARM targets) and fqdns (Private Link Service targets) must be set"
+    expression: "(this.subresource_name != '') != (this.fqdns.size() > 0)"
+  };
+}

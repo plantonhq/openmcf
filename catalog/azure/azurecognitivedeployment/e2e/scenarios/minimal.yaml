@@ -33,7 +33,14 @@ spec:
   name: planton-oss-e2e-chat
   model:
     format: OpenAI
-    name: gpt-4o-mini
+    # Chosen from the live catalog by LIFECYCLE, not just availability:
+    # ARM rejects models whose lifecycleStatus is "Deprecating" for NEW
+    # deployments (ServiceModelDeprecating) long before their final
+    # retirement date. When this scenario starts failing with that
+    # error, re-probe and re-pin:
+    #   az cognitiveservices model list -l eastus --query \
+    #     "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"
+    name: gpt-5.4-mini
   sku:
     name: GlobalStandard
     capacity: 10

@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurefabriccapacity
+spec:
+  # The capacity's identity is its full ARM resource ID.
+  values:
+    - name: fabric_capacity_id
+      derivations:
+        - from_stack_output: fabric_capacity_id
+      where_to_find: >-
+        Portal -> Microsoft Fabric -> Capacities -> the capacity ->
+        Properties -> Resource ID, or `az resource show --resource-type
+        Microsoft.Fabric/capacities --name <name> -g <rg> --query id`.

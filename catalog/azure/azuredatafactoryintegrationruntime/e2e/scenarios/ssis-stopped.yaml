@@ -1,0 +1,32 @@
+# The SSIS lane: the smallest SSIS cluster definition, created
+# STOPPED -- the provider only creates the definition, and node-hours
+# bill exclusively while a runtime is STARTED (an operational action
+# no lane performs), so this lane is expected free. Proves the third
+# flavor's create/read/import/destroy contract and the shared
+# namespace. The deep SSIS arms (catalog, custom setup, vnet
+# injection, proxy) are offline-proven per the profile.
+# WATCH: whether ARM validates node-size availability for the region
+# eagerly at save time.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: planton-oss-e2e-azuredatafactoryintegrationruntime-ssis
+  id: planton-oss-e2e-azuredatafactoryintegrationruntime-ssis
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactoryintegrationruntime
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-ssis-stopped
+  description: E2E smoke SSIS runtime definition -- created stopped, never started, unbilled.
+  azureSsis:
+    region: eastus
+    nodeSize: Standard_D2_v3

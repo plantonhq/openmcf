@@ -1,0 +1,19 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  # The endpoint's identity is its full ARM resource ID
+  # ({profile_id}/{TYPE}/{name}) -- the TYPE segment names the endpoint
+  # type (AzureEndpoints, ExternalEndpoints, NestedEndpoints), so the
+  # same id shape serves all three variant resources; the spec's
+  # variant block decides which one the module created.
+  values:
+    - name: endpoint_id
+      derivations:
+        - from_stack_output: endpoint_id
+      where_to_find: >-
+        Compose {profile-id}/{TYPE}/{endpoint-name} (TYPE is
+        AzureEndpoints, ExternalEndpoints, or NestedEndpoints), or `az
+        network traffic-manager endpoint list -g <rg> --profile-name
+        <profile> --query [].id`.

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitorautoscalesetting.v1alpha1;
+
+// **AzureMonitorAutoscaleSettingStackOutputs** captures the outputs from
+// provisioning an Azure Monitor autoscale setting.
+message AzureMonitorAutoscaleSettingStackOutputs {
+  // The autoscale setting's ARM resource ID
+  // (.../providers/Microsoft.Insights/autoScaleSettings/{name}).
+  string autoscale_setting_id = 1;
+
+  // The autoscale setting's resource name within its resource group.
+  string autoscale_setting_name = 2;
+}

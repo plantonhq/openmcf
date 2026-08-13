@@ -3,16 +3,16 @@ kind: ComponentE2EProfile
 metadata:
   name: azureexpressroutegateway
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. A slow lane twice over: ARM takes roughly 30 minutes to
-  # provision the gateway (billing ~$0.42/hr per scale unit from
-  # creation), and the prerequisite chain pays a full fixture-hub cycle
-  # (15-30 minute create) before it. The connections arm cannot run
-  # live -- ARM accepts a connection only against a provider-PROVISIONED
-  # circuit, and no carrier exists behind the test subscription -- so
-  # the lane proves the gateway object in its hub.
+  # Proven live on both engines (full lifecycle + blind single-id import
+  # round-trip, zero-change plan). Measured: gateway create ~27m on both
+  # engines (billing ~$0.42/hr per scale unit from creation), destroy
+  # ~13m, and the prerequisite chain pays a full fixture-hub cycle
+  # (~17-20m create, ~13m teardown) before it -- lane total ~72m per
+  # engine. The connections arm stays offline-proven (recorded
+  # boundary): ARM accepts a connection only against a
+  # provider-PROVISIONED circuit, and no carrier exists behind the test
+  # subscription -- the lane proves the gateway object in its hub.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 150

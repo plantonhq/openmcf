@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremonitordatacollectionruleassociation
+spec:
+  # The association imports by its full ARM resource ID -- scoped under
+  # the TARGET machine
+  # ({target_resource_id}/providers/Microsoft.Insights/dataCollectionRuleAssociations/{name}).
+  values:
+    - name: data_collection_rule_association_id
+      derivations:
+        - from_stack_output: data_collection_rule_association_id
+      where_to_find: >-
+        `az monitor data-collection rule association list --resource
+        <target-arm-id> --query [].id`, or the component's own
+        data_collection_rule_association_id stack output.

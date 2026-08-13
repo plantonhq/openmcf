@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataFlow
+metadata:
+  name: mapping-transformation
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: transform-orders
+  description: Cleans and conforms raw orders into the curated zone.
+  folder: transformations
+  # The named endpoints below must match the stream names the script
+  # references. Author the flow in the Data Factory Studio and paste
+  # its "Script" view here.
+  sources:
+    - name: rawOrders
+      linkedService:
+        name:
+          value: <your-source-linked-service>
+  sinks:
+    - name: curatedOrders
+      linkedService:
+        name:
+          value: <your-sink-linked-service>
+  script: |
+    source(
+      allowSchemaDrift: true,
+      validateSchema: false) ~> rawOrders
+    rawOrders sink(
+      allowSchemaDrift: true,
+      validateSchema: false) ~> curatedOrders

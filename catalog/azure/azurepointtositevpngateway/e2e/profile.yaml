@@ -3,15 +3,17 @@ kind: ComponentE2EProfile
 metadata:
   name: azurepointtositevpngateway
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The gateway joins the vWAN gateway slow class: creates
-  # run 30-45 minutes (the provider's timeout class is 90), billing
-  # starts at creation, and the lane also pays the fixture-hub cycle
-  # (15-30 min create) plus the free fixture server configuration inside
-  # the prerequisite chain. No client ever connects (the fixture root's
-  # private key does not exist) -- verifiers assert ARM state.
+  # Proven live on both engines: full lifecycle green through the
+  # four-fixture chain (rg -> WAN -> hub -> server configuration), the
+  # cross-kind references resolving through the chain, plus a blind
+  # Terraform import round-trip (single ARM ID; plan clean). Measured:
+  # create 32-33 min, delete 11-14 min, fixture-hub cycle ~17-23 min up
+  # / ~14 min down -- a single-engine lane totals ~80 minutes (see the
+  # point-to-site section of e2e/README.md); billing (~$0.36/hr per
+  # scale unit) starts at creation. No client ever connects (the
+  # fixture root's private key does not exist) -- verifiers assert ARM
+  # state.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 150

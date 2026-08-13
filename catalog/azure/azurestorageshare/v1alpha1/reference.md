@@ -245,6 +245,8 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AzureBackupProtectedFileShare | `spec.sourceFileShareName` | `status.outputs.share_name` |
 | AzureContainerAppEnvironmentStorage | `spec.shareName` | `status.outputs.share_name` |
+| AzureContainerInstance | `spec.containers[].volumes[].azureFile.shareName` | `status.outputs.share_name` |
+| AzureContainerInstance | `spec.initContainers[].volumes[].azureFile.shareName` | `status.outputs.share_name` |
 | AzureMachineLearningDatastore | `spec.fileShare.storageFileshareId` | `status.outputs.share_id` |
 
 ## See Also

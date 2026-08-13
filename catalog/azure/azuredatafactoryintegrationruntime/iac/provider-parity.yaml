@@ -1,0 +1,78 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers THREE provider resources as variants -- exactly one
+# of the spec's flavor blocks is set, and the module creates the
+# matching integration runtime resource (all 3 share one factory-scoped
+# namespace, {factory_id}/integrationRuntimes/{name}). Fields every
+# flavor shares (name, data_factory_id, description) live at the spec
+# root and match by exact name; variant-scoped arguments map into
+# their flavor block below; the provider's `location` is the spec's
+# `region` (the catalog-wide convention). Nested blocks map at block
+# level -- their leaves carry the provider's own names.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident. This kind has ZERO
+# exclusions -- every argument of all three resources is modeled.
+
+resources:
+  azurerm_data_factory_integration_runtime_azure:
+    mappings:
+      - spec: spec.azure.region
+        arg: location
+      - spec: spec.azure.cleanup_enabled
+        arg: cleanup_enabled
+      - spec: spec.azure.compute_type
+        arg: compute_type
+      - spec: spec.azure.core_count
+        arg: core_count
+      - spec: spec.azure.time_to_live_min
+        arg: time_to_live_min
+      - spec: spec.azure.interactive_authoring_time_to_live_in_minutes
+        arg: interactive_authoring_time_to_live_in_minutes
+      - spec: spec.azure.virtual_network_enabled
+        arg: virtual_network_enabled
+
+  azurerm_data_factory_integration_runtime_azure_ssis:
+    mappings:
+      - spec: spec.azure_ssis.region
+        arg: location
+      - spec: spec.azure_ssis.node_size
+        arg: node_size
+      - spec: spec.azure_ssis.number_of_nodes
+        arg: number_of_nodes
+      - spec: spec.azure_ssis.max_parallel_executions_per_node
+        arg: max_parallel_executions_per_node
+      - spec: spec.azure_ssis.edition
+        arg: edition
+      - spec: spec.azure_ssis.license_type
+        arg: license_type
+      - spec: spec.azure_ssis.credential_name
+        arg: credential_name
+      - spec: spec.azure_ssis.catalog_info
+        arg: catalog_info
+      - spec: spec.azure_ssis.custom_setup_script
+        arg: custom_setup_script
+      - spec: spec.azure_ssis.express_custom_setup
+        arg: express_custom_setup
+      - spec: spec.azure_ssis.express_vnet_integration
+        arg: express_vnet_integration
+      - spec: spec.azure_ssis.vnet_integration
+        arg: vnet_integration
+      - spec: spec.azure_ssis.package_store
+        arg: package_store
+      - spec: spec.azure_ssis.copy_compute_scale
+        arg: copy_compute_scale
+      - spec: spec.azure_ssis.pipeline_external_compute_scale
+        arg: pipeline_external_compute_scale
+      - spec: spec.azure_ssis.proxy
+        arg: proxy
+
+  azurerm_data_factory_integration_runtime_self_hosted:
+    mappings:
+      - spec: spec.self_hosted.rbac_authorization
+        arg: rbac_authorization
+      - spec: spec.self_hosted.self_contained_interactive_authoring_enabled
+        arg: self_contained_interactive_authoring_enabled

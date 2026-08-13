@@ -1,0 +1,62 @@
+# Deep-shape example for docs and offline validation: a filtered
+# webhook subscription on a custom topic, with delivery properties,
+# tuned retry, and dead-lettering. References are literal values so
+# the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridEventSubscription
+metadata:
+  name: test-eventgrid-event-subscription
+  id: test-eventgrid-event-subscription
+  org: test-org
+  env: test
+spec:
+  scope:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventGrid/topics/orders-events
+  name: big-orders-webhook
+  destination:
+    webhook:
+      url: https://handler.example.com/events
+      maxEventsPerBatch: 10
+      preferredBatchSizeInKilobytes: 64
+  deliveryProperties:
+    - headerName: x-api-key
+      type: Static
+      value:
+        value: test-api-key
+      secret: true
+    - headerName: x-event-subject
+      type: Dynamic
+      sourceField: subject
+  deadLetter:
+    storageAccountId:
+      value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/deadletters
+    storageBlobContainerName: eventgrid-dead-letters
+  eventDeliverySchema: CloudEventSchemaV1_0
+  includedEventTypes:
+    - order.placed
+    - order.cancelled
+  subjectFilter:
+    subjectBeginsWith: /orders/
+    caseSensitive: false
+  advancedFilter:
+    numberGreaterThan:
+      - key: data.amount
+        value: 1000
+    stringIn:
+      - key: data.currency
+        values:
+          - USD
+          - EUR
+    numberInRange:
+      - key: data.riskScore
+        ranges:
+          - from: 0
+            to: 70
+  advancedFilteringOnArraysEnabled: true
+  labels:
+    - orders
+    - critical
+  expirationTimeUtc: "2027-01-01T00:00:00Z"
+  retryPolicy:
+    maxDeliveryAttempts: 10
+    eventTimeToLive: 240

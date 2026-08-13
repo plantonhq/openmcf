@@ -1,0 +1,245 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorydataflow.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDataFactoryDataFlowSpec** defines an Azure Data Factory data
+// flow -- a visually-designed data transformation (filter, join,
+// aggregate, reshape) that executes on Data Factory's managed Spark
+// runtime when a pipeline runs it.
+//
+// One kind covers BOTH provider forms -- they share one schema and one
+// name namespace inside the factory:
+//   - a **mapping data flow** (the default): a complete
+//     transformation with at least one source and one sink;
+//   - a **flowlet** (`flowlet: true`): a reusable snippet other data
+//     flows embed by reference; its sources and sinks are optional
+//     because the embedding flow supplies them.
+//
+// The transformation logic itself travels in `script` (or
+// `script_lines`) -- the data flow script the Data Factory Studio's
+// "Script" view shows. Azure owns that language; the catalog does not
+// re-model it. The `sources`/`sinks`/`transformations` blocks declare
+// the named endpoints the script references, each optionally bound to
+// a dataset, a linked service, or another flowlet.
+message AzureDataFactoryDataFlowSpec {
+  // The Data Factory the data flow lives in, by ARM ID. Can be a
+  // literal string or a reference to an AzureDataFactory output.
+  //
+  // **ForceNew**: changing this destroys and recreates the data flow.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_factory_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_factory_id"
+  ];
+
+  // The data flow's name -- unique within the factory across BOTH
+  // forms (mapping data flows and flowlets share one namespace).
+  // Azure's Data Factory naming rules apply at deploy time (must
+  // start with a letter, number, or underscore; no
+  // < > * # . % & : \ + ? / characters) -- the provider itself does
+  // not pre-validate data flow names, so neither does the spec.
+  //
+  // **ForceNew**: changing this destroys and recreates the data flow.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Set true to create this data flow as a FLOWLET -- a reusable
+  // snippet other data flows embed via their source/sink/
+  // transformation `flowlet` references -- instead of a runnable
+  // mapping data flow. Flowlets may omit sources and sinks (the
+  // embedding flow supplies them). The form is the object's identity:
+  // changing it replaces the data flow.
+  bool flowlet = 3;
+
+  // The data flow script as one string -- the transformation logic
+  // from the Studio's "Script" view. Provide this or `script_lines`
+  // (or both; Azure stores whichever is sent).
+  string script = 4;
+
+  // The data flow script as individual lines -- an alternative to
+  // `script` that diffs better under version control. Provide this or
+  // `script` (or both).
+  repeated string script_lines = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // The named input endpoints the script reads from. REQUIRED (at
+  // least one) for a mapping data flow; optional for a flowlet. Each
+  // source's `name` must match a stream name the script references.
+  repeated AzureDataFactoryDataFlowSource sources = 6;
+
+  // The named output endpoints the script writes to. REQUIRED (at
+  // least one) for a mapping data flow; optional for a flowlet. Each
+  // sink's `name` must match a stream name the script references.
+  repeated AzureDataFactoryDataFlowSink sinks = 7;
+
+  // Named intermediate transformations the script references (in
+  // addition to what the script itself defines inline).
+  repeated AzureDataFactoryDataFlowTransformation transformations = 8;
+
+  // A human-readable description of what the data flow does.
+  string description = 9;
+
+  // Free-form annotation strings stored on the data flow.
+  repeated string annotations = 10;
+
+  // The folder the data flow appears under in the Data Factory
+  // Studio, e.g. "transformations/daily". Omit for the root.
+  string folder = 11;
+
+  // The script is the transformation -- a data flow without one is an
+  // empty shell Azure rejects at deploy time.
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_data_flow_script_required"
+    message: "Provide the data flow script -- script, script_lines, or both"
+    expression: "this.script != '' || this.script_lines.size() > 0"
+  };
+
+  // The provider requires sources and sinks on a mapping data flow
+  // (only flowlets may omit them -- the embedding flow supplies
+  // theirs).
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_data_flow_mapping_source_sink"
+    message: "A mapping data flow requires at least one source and one sink -- only flowlets (flowlet: true) may omit them"
+    expression: "this.flowlet || (this.sources.size() > 0 && this.sinks.size() > 0)"
+  };
+}
+
+// One named input endpoint of the data flow. Bind it to a dataset, a
+// linked service, or an embedded flowlet -- or leave it unbound when
+// the script defines the source inline.
+message AzureDataFactoryDataFlowSource {
+  // The source's stream name -- what the script references.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // A human-readable description of this source.
+  string description = 2;
+
+  // The dataset this source reads, by name.
+  AzureDataFactoryDataFlowDatasetReference dataset = 3;
+
+  // A flowlet embedded at this source, by name.
+  AzureDataFactoryDataFlowFlowletReference flowlet = 4;
+
+  // The linked service this source reads through, by name (for
+  // dataset-less, inline sources).
+  AzureDataFactoryDataFlowLinkedServiceReference linked_service = 5;
+
+  // The linked service the source's schema is read from, by name
+  // (schema drift scenarios where data and schema live apart).
+  AzureDataFactoryDataFlowLinkedServiceReference schema_linked_service = 6;
+}
+
+// One named output endpoint of the data flow. Bind it to a dataset, a
+// linked service, or an embedded flowlet -- or leave it unbound when
+// the script defines the sink inline.
+message AzureDataFactoryDataFlowSink {
+  // The sink's stream name -- what the script references.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // A human-readable description of this sink.
+  string description = 2;
+
+  // The dataset this sink writes, by name.
+  AzureDataFactoryDataFlowDatasetReference dataset = 3;
+
+  // A flowlet embedded at this sink, by name.
+  AzureDataFactoryDataFlowFlowletReference flowlet = 4;
+
+  // The linked service this sink writes through, by name (for
+  // dataset-less, inline sinks).
+  AzureDataFactoryDataFlowLinkedServiceReference linked_service = 5;
+
+  // The linked service the sink's schema is read from, by name
+  // (schema drift scenarios where data and schema live apart).
+  AzureDataFactoryDataFlowLinkedServiceReference schema_linked_service = 6;
+
+  // The linked service rejected rows are written through, by name.
+  // SINKS ONLY: Azure's data flow model carries rejected-data routing
+  // on sinks alone (the provider silently drops it on sources, so the
+  // spec does not offer it there).
+  AzureDataFactoryDataFlowLinkedServiceReference rejected_linked_service = 7;
+}
+
+// One named intermediate transformation the script references.
+message AzureDataFactoryDataFlowTransformation {
+  // The transformation's stream name -- what the script references.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // A human-readable description of this transformation.
+  string description = 2;
+
+  // The dataset this transformation uses, by name.
+  AzureDataFactoryDataFlowDatasetReference dataset = 3;
+
+  // A flowlet embedded at this transformation, by name.
+  AzureDataFactoryDataFlowFlowletReference flowlet = 4;
+
+  // The linked service this transformation uses, by name.
+  AzureDataFactoryDataFlowLinkedServiceReference linked_service = 5;
+}
+
+// A reference to a Data Factory dataset, by name. Datasets are
+// factory-scoped: the name resolves inside this data flow's own
+// factory.
+message AzureDataFactoryDataFlowDatasetReference {
+  // The dataset's name inside the factory. A literal string or a
+  // reference to an AzureDataFactoryDataset's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryDataset,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.dataset_name"
+  ];
+
+  // Values for the dataset's parameters, if it declares any.
+  map<string, string> parameters = 2;
+}
+
+// A reference to a Data Factory linked service, by name. Linked
+// services are factory-scoped: the name resolves inside this data
+// flow's own factory.
+message AzureDataFactoryDataFlowLinkedServiceReference {
+  // The linked service's name inside the factory. A literal string or
+  // a reference to an AzureDataFactoryLinkedService's name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryLinkedService,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.linked_service_name"
+  ];
+
+  // Values for the linked service's parameters, if it declares any.
+  map<string, string> parameters = 2;
+}
+
+// A reference to another data flow of the FLOWLET form, embedded at
+// this point. Flowlets are factory-scoped: the name resolves inside
+// this data flow's own factory.
+message AzureDataFactoryDataFlowFlowletReference {
+  // The flowlet's name inside the factory -- defaults to referencing
+  // an AzureDataFactoryDataFlow's data_flow_name output (a data flow
+  // created with `flowlet: true`).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryDataFlow,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_flow_name"
+  ];
+
+  // Values for the flowlet's parameters, if it declares any.
+  map<string, string> parameters = 2;
+
+  // Parameter values passed through to the flowlet's datasets, as the
+  // raw expression string Azure expects.
+  string dataset_parameters = 3;
+}

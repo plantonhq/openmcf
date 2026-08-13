@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorydataflow.v1alpha1;
+
+// **AzureDataFactoryDataFlowStackOutputs** captures the outputs from
+// provisioning an Azure Data Factory data flow.
+message AzureDataFactoryDataFlowStackOutputs {
+  // The data flow's Azure Resource Manager ID
+  // ({factory_id}/dataflows/{name}) -- the same ID shape for both the
+  // mapping and flowlet forms.
+  string data_flow_id = 1;
+
+  // The data flow's name -- what other data flows' flowlet references
+  // resolve against.
+  string data_flow_name = 2;
+}

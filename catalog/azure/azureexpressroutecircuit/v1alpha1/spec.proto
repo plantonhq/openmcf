@@ -91,8 +91,14 @@ message AzureExpressRouteCircuitSpec {
   int32 bandwidth_in_mbps = 8 [(buf.validate.field).int32.gte = 0];
 
   // EXPRESSROUTE DIRECT MODE: the ExpressRoute Port the circuit rides
-  // on, by ARM id. Requires bandwidth_in_gbps. Fixed at creation.
-  string express_route_port_id = 9;
+  // on -- defaults to referencing an AzureExpressRoutePort's
+  // express_route_port_id output; pass the ARM id as a literal for a
+  // port managed outside Planton. Requires bandwidth_in_gbps. Fixed at
+  // creation.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef express_route_port_id = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureExpressRoutePort,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.express_route_port_id"
+  ];
 
   // EXPRESSROUTE DIRECT MODE: the circuit bandwidth in Gbps carved from
   // the port (fractional steps like 1, 2, 5, 10 up to the port size).
@@ -142,7 +148,7 @@ message AzureExpressRouteCircuitSpec {
   option (buf.validate.message).cel = {
     id: "exactly_one_provisioning_mode"
     message: "Provision the circuit exactly one way: through a service provider (service_provider_name + peering_location + bandwidth_in_mbps) or on an ExpressRoute Direct port (express_route_port_id + bandwidth_in_gbps)"
-    expression: "(this.service_provider_name != '') != (this.express_route_port_id != '')"
+    expression: "(this.service_provider_name != '') != has(this.express_route_port_id)"
   };
   option (buf.validate.message).cel = {
     id: "service_provider_trio_travels_together"
@@ -157,12 +163,12 @@ message AzureExpressRouteCircuitSpec {
   option (buf.validate.message).cel = {
     id: "direct_pair_travels_together"
     message: "ExpressRoute Direct mode needs both express_route_port_id and bandwidth_in_gbps"
-    expression: "this.express_route_port_id == '' || this.bandwidth_in_gbps > 0.0"
+    expression: "!has(this.express_route_port_id) || this.bandwidth_in_gbps > 0.0"
   };
   option (buf.validate.message).cel = {
     id: "gbps_only_in_direct_mode"
     message: "bandwidth_in_gbps belongs to ExpressRoute Direct mode -- service-provider circuits size bandwidth_in_mbps instead"
-    expression: "this.express_route_port_id != '' || this.bandwidth_in_gbps == 0.0"
+    expression: "has(this.express_route_port_id) || this.bandwidth_in_gbps == 0.0"
   };
   option (buf.validate.message).cel = {
     id: "authorization_names_unique"

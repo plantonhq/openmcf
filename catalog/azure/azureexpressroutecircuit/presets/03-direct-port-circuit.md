@@ -11,6 +11,7 @@ This preset carves a circuit from your own ExpressRoute Direct port pair -- no t
 ## Key Configuration Choices
 
 - **The pair travels together** -- `expressRoutePortId` + `bandwidthInGbps`, mutually exclusive with the provider trio (spec-enforced)
+- **The port is a reference** -- `expressRoutePortId` points at an `AzureExpressRoutePort` component by name (its `express_route_port_id` output resolves at deploy time, so the circuit deploys after its port automatically); pass `value: <arm-id>` for a port managed outside Planton
 - **Rate limiting is Direct-only and recommended** -- without it, a circuit can burst beyond its configured bandwidth and starve the port's other circuits
 - **Name authorizations for their consumers** -- "spoke-subscription", "partner-x": the name keys the generated key in the output, and deleting the entry revokes access
 - **No provider handoff** -- Direct circuits skip the NotProvisioned wait; peerings can follow immediately
@@ -21,4 +22,4 @@ This preset carves a circuit from your own ExpressRoute Direct port pair -- no t
 | --- | --- | --- |
 | `<azure-region>` | The ARM metadata region | Your regional deployment strategy |
 | `<your-resource-group-name>` | Name of the resource group | Azure portal or `AzureResourceGroup` status outputs |
-| `<your-express-route-port-arm-id>` | The Direct port's ARM ID | Azure portal → ExpressRoute Direct → the port → Properties |
+| `<your-azure-express-route-port-resource-name>` | The AzureExpressRoutePort component's resource name | Your Planton catalog (or use `value:` with the port's ARM ID from Azure portal → ExpressRoute Direct → the port → Properties) |

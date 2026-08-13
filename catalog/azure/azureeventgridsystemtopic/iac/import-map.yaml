@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureeventgridsystemtopic
+spec:
+  # The system topic imports by its ARM resource ID.
+  values:
+    - name: system_topic_id
+      derivations:
+        - from_stack_output: system_topic_id
+      where_to_find: >-
+        `az eventgrid system-topic show --name <topic-name>
+        --resource-group <rg> --query id`, or the component's own
+        system_topic_id stack output.

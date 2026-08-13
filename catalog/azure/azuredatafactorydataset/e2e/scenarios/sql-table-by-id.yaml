@@ -1,0 +1,43 @@
+# The ARM-ID reference form: the Azure SQL table dataset is the one
+# shape that references its linked service by ID instead of name --
+# this lane proves that second wire form live, through a
+# scenario-local SQL linked service (whose connection string lives in
+# the fixture Key Vault; nothing dials the database -- no database
+# exists). Free at rest; creates in seconds.
+# WATCH: the same-factory rule -- Azure rejects a linked_service_id
+# from another factory; the chain builds both in one factory, so a
+# pass proves the reference derivation end to end.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataset-sqltable
+  id: planton-oss-e2e-azuredatafactorydataset-sqltable
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataset
+  annotations:
+    planton.dev/e2e: "true"
+    # The SQL connection's whole chain, declared explicitly in
+    # deploy-first order: the fixture Key Vault, the Key Vault
+    # linked service instance, then the scenario-local SQL linked
+    # service that references both. The harness reads this annotation
+    # only on the scenario under test -- an annotation on a
+    # path-declared fixture manifest is never resolved -- so every
+    # hop must be listed HERE, not on the fixtures themselves.
+    planton.dev/e2e-prerequisites: "AzureKeyVault,catalog/azure/azuredatafactorylinkedservice/e2e/scenarios/key-vault.yaml,catalog/azure/azuredatafactorydataset/e2e/sql-linked-service.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-orders-sql
+  description: E2E smoke SQL table dataset -- the linked-service-by-ARM-ID wire form.
+  azureSqlTable:
+    linkedServiceId:
+      valueFrom:
+        name: planton-oss-e2e-azuredatafactorydataset-sqlls
+    schema: dbo
+    table: orders

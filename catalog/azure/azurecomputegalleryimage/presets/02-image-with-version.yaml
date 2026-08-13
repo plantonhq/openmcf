@@ -1,0 +1,36 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGalleryImage
+metadata:
+  name: ubuntu-base-image
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  galleryName:
+    valueFrom:
+      name: <your-compute-gallery>
+  name: ubuntu-base
+  region: eastus
+  identifier:
+    publisher: myorg
+    offer: ubuntu
+    sku: 22-04-lts-gen2
+  osType: Linux
+  hyperVGeneration: V2
+  trustedLaunchSupported: true
+  versions:
+    # One entry per release: semver name, exactly one source, the
+    # regions it replicates to. Treat versions as immutable -- publish
+    # a NEW version per build, never rebuild one in place.
+    - name: 1.0.0
+      # The source: an OS disk snapshot published by the image build
+      # pipeline (reference an AzureDiskSnapshot, or use blob_uri +
+      # storage_account_id / managed_image_id instead).
+      osDiskSnapshotId:
+        valueFrom:
+          name: <your-disk-snapshot>
+      targetRegions:
+        - name: eastus
+          # One replica serves ~20 concurrent VM creations; raise it
+          # where scale sets fan out.
+          regionalReplicaCount: 1

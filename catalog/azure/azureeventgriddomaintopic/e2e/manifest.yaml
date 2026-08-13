@@ -1,0 +1,15 @@
+# Deep-shape example for docs and offline validation: one tenant's
+# stream inside a domain. References are literal ARM ids so the
+# manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomainTopic
+metadata:
+  name: test-eventgrid-domain-topic
+  id: test-eventgrid-domain-topic
+  org: test-org
+  env: test
+spec:
+  domainId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventGrid/domains/test-org-tenant-events
+  # The name publishers stamp into every event's topic field.
+  name: customer-fabrikam

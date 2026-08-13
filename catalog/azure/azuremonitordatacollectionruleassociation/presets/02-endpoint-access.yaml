@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRuleAssociation
+metadata:
+  name: my-vm-dce-access
+spec:
+  targetResourceId:
+    valueFrom:
+      kind: AzureVirtualMachine
+      name: <your-vm>
+      fieldPath: status.outputs.vm_id
+  # NO name: Azure mandates the fixed name "configurationAccessEndpoint"
+  # for endpoint associations, and the engines apply it automatically.
+  dataCollectionEndpointId:
+    value: "<your-data-collection-endpoint-arm-id>"

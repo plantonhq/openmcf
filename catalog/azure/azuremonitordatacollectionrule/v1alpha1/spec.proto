@@ -1,0 +1,863 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitordatacollectionrule.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureMonitorDataCollectionRuleSpec** defines an Azure Monitor data
+// collection rule (DCR) -- the routing table of Azure Monitor. A rule
+// declares WHAT telemetry to collect (data sources: Linux syslog,
+// Windows event logs, performance counters, Prometheus metrics, IIS
+// logs, custom log files, ...), WHERE it goes (destinations: Log
+// Analytics workspaces, Azure Monitor metrics, Event Hubs, storage),
+// and HOW the two wire together (data flows, optionally with a KQL
+// transformation applied in the ingestion pipeline).
+//
+// A rule does nothing on its own: machines are attached to it with
+// AzureMonitorDataCollectionRuleAssociation resources (one association
+// per machine), and the Azure Monitor Agent on each associated machine
+// downloads the rule and starts collecting. One rule serves any number
+// of machines; one machine can carry many associations.
+//
+// **Names wire the rule together**: every data source and every
+// destination carries a `name` that is local to this rule; data flows
+// reference destinations by exactly those names, and Azure rejects a
+// deploy whose flow references a name that no destination carries.
+// Destination names must be unique across ALL destination arms (they
+// share one namespace -- Azure enforces this at deploy time).
+message AzureMonitorDataCollectionRuleSpec {
+  // The Azure Resource Group the data collection rule lives in. Can be
+  // a literal string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the rule.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the data collection rule, unique within the resource
+  // group.
+  //
+  // **ForceNew**: changing this destroys and recreates the rule.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure region the rule is created in, e.g. "eastus". Machines in
+  // any region can associate with the rule; the region only places the
+  // rule object (and its ingestion processing) itself.
+  //
+  // **ForceNew**: changing this destroys and recreates the rule.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The rule's platform kind. OMIT for the default rule kind, which
+  // accepts data sources of every platform. "Linux" and "Windows"
+  // restrict the rule to that platform's sources (Azure rejects a
+  // Linux rule carrying windows_event_log sources, and a Windows rule
+  // carrying syslog sources, at deploy time -- the provider performs no
+  // early check). "AgentDirectToStore" is required for the *_direct
+  // destinations (agent writes straight to storage/Event Hubs), and
+  // "WorkspaceTransforms" is for workspace-scoped transformation rules
+  // that carry no agent data sources.
+  //
+  // **Replace-on-change once set**: a rule created WITHOUT a kind can
+  // adopt one in place, but changing (or clearing) a kind that has been
+  // set destroys and recreates the rule -- the provider enforces this
+  // lifecycle.
+  optional string kind = 4 [(buf.validate.field).string = {
+    in: [
+      "Linux",
+      "Windows",
+      "AgentDirectToStore",
+      "WorkspaceTransforms"
+    ]
+  }];
+
+  // A free-text description of the rule, shown in the portal.
+  string description = 5;
+
+  // The ARM ID of the Azure Monitor Data Collection Endpoint (DCE) the
+  // rule ingests through. Required by Azure when the rule declares
+  // custom streams (stream_declarations / the log_file and
+  // prometheus_forwarder sources); optional otherwise. Format:
+  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionEndpoints/{name}
+  // Provide the literal ARM ID of an endpoint managed outside this
+  // catalog; leave unset to use Azure's default ingestion endpoints.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_collection_endpoint_id = 6;
+
+  // The rule's managed identity -- required when a destination needs
+  // the rule to authenticate as itself (for example storage
+  // destinations on AgentDirectToStore rules, or transformations that
+  // query other resources). Omit when no destination requires one.
+  AzureMonitorDataCollectionRuleIdentity identity = 7;
+
+  // The data sources to collect. Omit entirely for rules that carry no
+  // agent sources (for example WorkspaceTransforms rules, or rules used
+  // purely for direct ingestion through a DCE).
+  AzureMonitorDataCollectionRuleDataSources data_sources = 8;
+
+  // The destinations telemetry can be routed to. At least one
+  // destination is required; each carries a rule-local `name` that
+  // data flows reference. Destination names share ONE namespace across
+  // all arms -- Azure rejects duplicates at deploy time.
+  AzureMonitorDataCollectionRuleDestinations destinations = 9 [(buf.validate.field).required = true];
+
+  // The flows wiring streams to destinations (at least one). Each flow
+  // takes the records of the listed streams and delivers them to the
+  // listed destinations, optionally transforming them with KQL on the
+  // way in.
+  repeated AzureMonitorDataCollectionRuleDataFlow data_flows = 10 [(buf.validate.field).repeated.min_items = 1];
+
+  // Declarations of CUSTOM streams (names starting "Custom-") used for
+  // text/JSON log files and direct ingestion: each declares the schema
+  // (column names and types) of one custom stream. Platform streams
+  // (Microsoft-*) are never declared here. Custom streams require the
+  // rule to ingest through a Data Collection Endpoint
+  // (data_collection_endpoint_id).
+  repeated AzureMonitorDataCollectionRuleStreamDeclaration stream_declarations = 11;
+
+  // Tags to apply to the data collection rule, merged over the
+  // Planton-derived metadata tags (user values win on key conflicts).
+  map<string, string> tags = 12;
+
+  // Azure addresses stream declarations by stream name (they form a
+  // map on the wire); duplicate names would silently collapse into one
+  // declaration -- front-loaded here so the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "dcr_stream_declaration_names_unique"
+    message: "stream_declarations must carry unique stream_name values"
+    expression: "this.stream_declarations.map(s, s.stream_name).unique()"
+  };
+}
+
+// The rule's managed identity.
+message AzureMonitorDataCollectionRuleIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the rule; USER_ASSIGNED brings an identity you manage
+  // (grantable on destinations BEFORE the rule exists). The provider
+  // supports exactly one flavor at a time on this resource -- there is
+  // no combined mode.
+  AzureMonitorDataCollectionRuleIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED: the user-assigned identity attached to the
+  // rule, by ARM ID. Reference an AzureUserAssignedIdentity resource so
+  // destination grants can be composed before the rule is created.
+  // Azure currently supports at most ONE user-assigned identity on a
+  // data collection rule (enforced at deploy time).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "dcr_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The rule's managed-identity flavor.
+enum AzureMonitorDataCollectionRuleIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_monitor_data_collection_rule_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the rule.
+  SYSTEM_ASSIGNED = 1;
+
+  // An identity you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+}
+
+// The data sources one rule collects. Every source carries a
+// rule-local `name` (1-32 characters) and the `streams` its records
+// are tagged with -- flows pick records up by stream name.
+message AzureMonitorDataCollectionRuleDataSources {
+  // Linux syslog sources (requires rule kind "Linux" or no kind).
+  repeated AzureMonitorDataCollectionRuleSyslog syslogs = 1;
+
+  // Performance counter sources (both platforms).
+  repeated AzureMonitorDataCollectionRulePerformanceCounter performance_counters = 2;
+
+  // Windows event log sources (requires rule kind "Windows" or no
+  // kind).
+  repeated AzureMonitorDataCollectionRuleWindowsEventLog windows_event_logs = 3;
+
+  // Azure Monitor Agent extension sources -- telemetry produced by an
+  // agent extension (for example the workload insights extensions).
+  repeated AzureMonitorDataCollectionRuleExtension extensions = 4;
+
+  // IIS access-log sources (Windows).
+  repeated AzureMonitorDataCollectionRuleIisLog iis_logs = 5;
+
+  // Custom text/JSON log-file sources. Each references a CUSTOM stream
+  // that must be declared in stream_declarations, and custom streams
+  // require the rule to ingest through a Data Collection Endpoint.
+  repeated AzureMonitorDataCollectionRuleLogFile log_files = 6;
+
+  // Prometheus metrics forwarder sources (Kubernetes / Managed
+  // Prometheus).
+  repeated AzureMonitorDataCollectionRulePrometheusForwarder prometheus_forwarders = 7;
+
+  // Windows Firewall log sources (Windows).
+  repeated AzureMonitorDataCollectionRuleWindowsFirewallLog windows_firewall_logs = 8;
+
+  // Platform telemetry (resource-level telemetry collected without an
+  // agent).
+  repeated AzureMonitorDataCollectionRulePlatformTelemetry platform_telemetries = 9;
+
+  // Event Hub data import -- the rule pulls events FROM an Event Hub
+  // as a source.
+  AzureMonitorDataCollectionRuleDataImport data_import = 10;
+}
+
+// A Linux syslog data source.
+message AzureMonitorDataCollectionRuleSyslog {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // The syslog facilities to collect ("*" for all). Values are the
+  // provider's exact lowercase tokens.
+  repeated string facility_names = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "*",
+          "alert",
+          "audit",
+          "auth",
+          "authpriv",
+          "clock",
+          "cron",
+          "daemon",
+          "ftp",
+          "kern",
+          "local0",
+          "local1",
+          "local2",
+          "local3",
+          "local4",
+          "local5",
+          "local6",
+          "local7",
+          "lpr",
+          "mail",
+          "mark",
+          "news",
+          "nopri",
+          "ntp",
+          "syslog",
+          "user",
+          "uucp"
+        ]
+      }
+    }
+  }];
+
+  // The minimum severities to collect ("*" for all).
+  repeated string log_levels = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "*",
+          "Alert",
+          "Critical",
+          "Debug",
+          "Emergency",
+          "Error",
+          "Info",
+          "Notice",
+          "Warning"
+        ]
+      }
+    }
+  }];
+
+  // The streams the collected records are tagged with -- syslog
+  // records flow on "Microsoft-Syslog".
+  repeated string streams = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// A performance counter data source (both platforms).
+message AzureMonitorDataCollectionRulePerformanceCounter {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // How often the counters are sampled, in seconds (1-1800). Streams
+  // targeting "Microsoft-InsightsMetrics" require exactly 60 (Azure
+  // enforces this at deploy time).
+  optional int32 sampling_frequency_in_seconds = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1800
+    }
+  ];
+
+  // The counter specifiers to sample, e.g.
+  // "\\Processor(_Total)\\% Processor Time" on Windows or
+  // "Processor(*)\\% Processor Time" on Linux ("\\*" collects all
+  // counters).
+  repeated string counter_specifiers = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The streams the samples are tagged with -- "Microsoft-Perf" for
+  // Log Analytics, "Microsoft-InsightsMetrics" for Azure Monitor
+  // metrics (the latter requires 60-second sampling).
+  repeated string streams = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// A Windows event log data source.
+message AzureMonitorDataCollectionRuleWindowsEventLog {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // XPath queries selecting the events to collect, e.g.
+  // "System!*[System[(Level=1 or Level=2 or Level=3)]]". The part
+  // before "!" is the channel; the part after filters its events.
+  repeated string x_path_queries = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The streams the events are tagged with -- Windows events flow on
+  // "Microsoft-Event".
+  repeated string streams = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// An Azure Monitor Agent extension data source.
+message AzureMonitorDataCollectionRuleExtension {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // The agent extension that produces the telemetry (for example
+  // "DependencyAgent").
+  string extension_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // Extension-specific settings as a JSON object string. Both engines
+  // validate the JSON syntax at plan time; the KEYS inside are defined
+  // by each extension.
+  string extension_json = 3;
+
+  // The names of other data sources in this rule the extension
+  // consumes as its inputs.
+  repeated string input_data_sources = 4 [(buf.validate.field).repeated.items = {
+    string: {min_len: 1}
+  }];
+
+  // The streams the extension's records are tagged with.
+  repeated string streams = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// An IIS access-log data source (Windows).
+message AzureMonitorDataCollectionRuleIisLog {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // Absolute paths of the IIS log directories to collect from. Omit to
+  // collect from the server's configured IIS log location.
+  repeated string log_directories = 2 [(buf.validate.field).repeated.items = {
+    string: {min_len: 1}
+  }];
+
+  // The streams the log records are tagged with -- IIS logs flow on
+  // "Microsoft-W3CIISLog".
+  repeated string streams = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// A custom text/JSON log-file data source. The stream it targets must
+// be declared in stream_declarations (custom streams carry the file's
+// schema), and custom streams require the rule to ingest through a
+// Data Collection Endpoint.
+message AzureMonitorDataCollectionRuleLogFile {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // Glob patterns of the files to collect, e.g. "/var/log/myapp/*.log"
+  // (Linux) or "C:\\logs\\*.log" (Windows).
+  repeated string file_patterns = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The file format: "text" or "json".
+  string format = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "json",
+        "text"
+      ]
+    }
+  ];
+
+  // Text-format settings; omit for JSON files.
+  AzureMonitorDataCollectionRuleLogFileSettings settings = 4;
+
+  // The CUSTOM stream (declared in stream_declarations) the file's
+  // records are tagged with, e.g. "Custom-MyAppLogs".
+  repeated string streams = 5 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// Settings for a text-format log file.
+message AzureMonitorDataCollectionRuleLogFileSettings {
+  // How a new record is recognized in the text file.
+  AzureMonitorDataCollectionRuleLogFileSettingsText text = 1 [(buf.validate.field).required = true];
+}
+
+// Text-file record settings.
+message AzureMonitorDataCollectionRuleLogFileSettingsText {
+  // The timestamp format that marks the start of a record, from
+  // Azure's fixed vocabulary.
+  string record_start_timestamp_format = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ISO 8601",
+        "YYYY-MM-DD HH:MM:SS",
+        "M/D/YYYY HH:MM:SS AM/PM",
+        "Mon DD, YYYY HH:MM:SS",
+        "yyMMdd HH:mm:ss",
+        "ddMMyy HH:mm:ss",
+        "MMM d hh:mm:ss",
+        "dd/MMM/yyyy:HH:mm:ss zzz",
+        "yyyy-MM-ddTHH:mm:ssK"
+      ]
+    }
+  ];
+}
+
+// A Prometheus metrics forwarder data source (Kubernetes / Managed
+// Prometheus).
+message AzureMonitorDataCollectionRulePrometheusForwarder {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // Label filters: only time series carrying one of these label/value
+  // pairs are forwarded. Omit to forward everything.
+  repeated AzureMonitorDataCollectionRuleLabelIncludeFilter label_include_filters = 2;
+
+  // The stream the metrics are tagged with -- Prometheus metrics flow
+  // only on "Microsoft-PrometheusMetrics".
+  repeated string streams = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: ["Microsoft-PrometheusMetrics"]
+      }
+    }
+  }];
+}
+
+// One Prometheus label filter.
+message AzureMonitorDataCollectionRuleLabelIncludeFilter {
+  // The filter label -- Azure currently supports exactly
+  // "microsoft_metrics_include_label".
+  string label = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: ["microsoft_metrics_include_label"]
+    }
+  ];
+
+  // The label value that must be present for a time series to be
+  // forwarded.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// A Windows Firewall log data source.
+message AzureMonitorDataCollectionRuleWindowsFirewallLog {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // The streams the log records are tagged with.
+  repeated string streams = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// A platform telemetry data source (resource telemetry collected
+// without an agent).
+message AzureMonitorDataCollectionRulePlatformTelemetry {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // The streams the telemetry is tagged with.
+  repeated string streams = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// An Event Hub data-import source: the rule pulls events FROM an
+// Event Hub.
+message AzureMonitorDataCollectionRuleDataImport {
+  // The Event Hub source. Azure's rule model carries exactly ONE
+  // event-hub import per rule -- this is a single block by design (the
+  // provider accepts a list but silently uses only the first entry).
+  AzureMonitorDataCollectionRuleDataImportEventHub event_hub_data_source = 1 [(buf.validate.field).required = true];
+}
+
+// The Event Hub import source's settings. The Event Hub itself is not
+// referenced here by ID -- Azure binds it through an association on
+// the Event Hub resource.
+message AzureMonitorDataCollectionRuleDataImportEventHub {
+  // The source's rule-local name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 32
+    }
+  ];
+
+  // The stream the imported events are tagged with.
+  string stream = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Event Hub consumer group to read from. Omit for the default
+  // consumer group.
+  string consumer_group = 3;
+}
+
+// The destinations one rule can route to. Every destination carries a
+// rule-local `name` referenced by data flows; names share ONE
+// namespace across all arms (Azure rejects duplicates at deploy time).
+// At least one destination is required.
+message AzureMonitorDataCollectionRuleDestinations {
+  // Log Analytics workspace destinations.
+  repeated AzureMonitorDataCollectionRuleLogAnalytics log_analytics = 1;
+
+  // The Azure Monitor metrics destination (at most one per rule) --
+  // where "Microsoft-InsightsMetrics" performance counters land.
+  AzureMonitorDataCollectionRuleAzureMonitorMetrics azure_monitor_metrics = 2;
+
+  // An Event Hub destination (at most one per rule).
+  AzureMonitorDataCollectionRuleEventHubDestination event_hub = 3;
+
+  // An Event Hub DIRECT destination (at most one per rule; requires
+  // rule kind "AgentDirectToStore" -- the agent writes straight to the
+  // hub).
+  AzureMonitorDataCollectionRuleEventHubDestination event_hub_direct = 4;
+
+  // Azure Monitor workspace (managed Prometheus) destinations -- where
+  // "Microsoft-PrometheusMetrics" streams land.
+  repeated AzureMonitorDataCollectionRuleMonitorAccount monitor_accounts = 5;
+
+  // Storage blob destinations.
+  repeated AzureMonitorDataCollectionRuleStorageBlobDestination storage_blobs = 6;
+
+  // Storage blob DIRECT destinations (require rule kind
+  // "AgentDirectToStore").
+  repeated AzureMonitorDataCollectionRuleStorageBlobDestination storage_blob_directs = 7;
+
+  // Storage table DIRECT destinations (require rule kind
+  // "AgentDirectToStore").
+  repeated AzureMonitorDataCollectionRuleStorageTableDirect storage_table_directs = 8;
+
+  // The provider requires at least one destination arm on the block --
+  // an empty destinations block routes nothing and is rejected at plan
+  // time.
+  option (buf.validate.message).cel = {
+    id: "dcr_destinations_at_least_one"
+    message: "configure at least one destination (log_analytics, azure_monitor_metrics, event_hub, event_hub_direct, monitor_accounts, storage_blobs, storage_blob_directs or storage_table_directs)"
+    expression: "this.log_analytics.size() > 0 || has(this.azure_monitor_metrics) || has(this.event_hub) || has(this.event_hub_direct) || this.monitor_accounts.size() > 0 || this.storage_blobs.size() > 0 || this.storage_blob_directs.size() > 0 || this.storage_table_directs.size() > 0"
+  };
+}
+
+// A Log Analytics workspace destination.
+message AzureMonitorDataCollectionRuleLogAnalytics {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The destination workspace, by ARM resource ID. Can be a literal
+  // ARM ID or a reference to an AzureLogAnalyticsWorkspace output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workspace_resource_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureLogAnalyticsWorkspace,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.workspace_id"
+  ];
+}
+
+// The Azure Monitor metrics destination.
+message AzureMonitorDataCollectionRuleAzureMonitorMetrics {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// An Event Hub destination (shared shape for the standard and DIRECT
+// arms -- the provider's schemas are identical).
+message AzureMonitorDataCollectionRuleEventHubDestination {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The destination Event Hub, by ARM resource ID. Can be a literal
+  // ARM ID or a reference to an AzureEventHub output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef event_hub_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_id"
+  ];
+}
+
+// An Azure Monitor workspace (managed Prometheus) destination.
+message AzureMonitorDataCollectionRuleMonitorAccount {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The ARM ID of the Azure Monitor workspace (managed Prometheus
+  // account). Format:
+  // /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Monitor/accounts/{name}
+  // Provide the literal ARM ID of a workspace managed outside this
+  // catalog.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef monitor_account_id = 2 [(buf.validate.field).required = true];
+}
+
+// A storage blob destination (shared shape for the standard and DIRECT
+// arms -- the provider's schemas are identical).
+message AzureMonitorDataCollectionRuleStorageBlobDestination {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The blob container the telemetry is written to.
+  string container_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The destination storage account, by ARM resource ID. Can be a
+  // literal ARM ID or a reference to an AzureStorageAccount output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+}
+
+// A storage table DIRECT destination.
+message AzureMonitorDataCollectionRuleStorageTableDirect {
+  // The destination's rule-local name (referenced by data flows).
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The storage table the telemetry is written to.
+  string table_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The destination storage account, by ARM resource ID. Can be a
+  // literal ARM ID or a reference to an AzureStorageAccount output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+}
+
+// One flow: which streams deliver to which destinations, optionally
+// transformed on the way.
+message AzureMonitorDataCollectionRuleDataFlow {
+  // The streams this flow picks up: platform streams
+  // ("Microsoft-Syslog", "Microsoft-Perf", "Microsoft-InsightsMetrics",
+  // "Microsoft-Event", ...) or custom streams declared in
+  // stream_declarations ("Custom-...").
+  repeated string streams = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The destination NAMES (from the destinations block) this flow
+  // delivers to. Azure rejects a flow referencing a name no
+  // destination carries.
+  repeated string destinations = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // A built-in transformation applied in the ingestion pipeline.
+  // Mutually relevant with transform_kql -- most flows set neither.
+  string built_in_transform = 3;
+
+  // The stream the transformed records continue on when the
+  // transformation changes the schema (e.g. "Microsoft-Syslog" records
+  // transformed into a custom table's shape). Requires transform_kql.
+  string output_stream = 4;
+
+  // A KQL query applied to every record in the ingestion pipeline --
+  // filter, project, or reshape records before they land (for example
+  // "source | where SeverityLevel != 'verbose'").
+  string transform_kql = 5;
+}
+
+// Declares the schema of one CUSTOM stream ("Custom-...").
+message AzureMonitorDataCollectionRuleStreamDeclaration {
+  // The custom stream's name. Azure requires custom stream names to
+  // start with "Custom-" (enforced at deploy time), e.g.
+  // "Custom-MyAppLogs".
+  string stream_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The stream's columns, in order.
+  repeated AzureMonitorDataCollectionRuleStreamDeclarationColumn columns = 2 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One column of a custom stream's schema.
+message AzureMonitorDataCollectionRuleStreamDeclarationColumn {
+  // The column name (e.g. "TimeGenerated", "RawData").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The column type, from Azure's fixed vocabulary.
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "boolean",
+        "datetime",
+        "dynamic",
+        "int",
+        "long",
+        "real",
+        "string"
+      ]
+    }
+  ];
+}

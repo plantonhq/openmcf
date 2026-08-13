@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGallery
+metadata:
+  name: platform-gallery
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # Gallery names forbid dashes; dots separate logical segments by
+  # convention.
+  name: platform.images
+  region: eastus
+  description: The platform team's approved golden images
+  # No sharing block: the gallery is Private (RBAC-only) -- the right
+  # posture for almost every gallery, and the sharing choice is
+  # PERMANENT (create-only).

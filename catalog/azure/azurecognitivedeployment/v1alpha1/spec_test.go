@@ -25,7 +25,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 
 const testAccountId = "/subscriptions/s/resourceGroups/rg/providers/Microsoft.CognitiveServices/accounts/openai-prod"
 
-// validResource returns a minimal valid gpt-4o-mini deployment that
+// validResource returns a minimal valid mini-model deployment that
 // individual cases mutate into the shape under test.
 func validResource() *AzureCognitiveDeployment {
 	return &AzureCognitiveDeployment{
@@ -39,7 +39,7 @@ func validResource() *AzureCognitiveDeployment {
 			Name:               "chat",
 			Model: &AzureCognitiveDeploymentModel{
 				Format: "OpenAI",
-				Name:   "gpt-4o-mini",
+				Name:   "gpt-5.4-mini",
 			},
 			Sku: &AzureCognitiveDeploymentSku{
 				Name: "GlobalStandard",

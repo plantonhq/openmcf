@@ -1,0 +1,27 @@
+# Minimal AzureEventgridNamespaceTopic scenario: one CloudEvents
+# stream declared inside the namespace kind's own smoke instance --
+# the registry prerequisite chains the namespace first, and the lane
+# proves the typed namespace reference resolving through the chain
+# plus the retention dial. The topic's own name is namespace-scoped
+# (no run-id needed -- the parent namespace's name carries it). The
+# topic adds no cost; the lane pays the namespace chain's TU-hour.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespaceTopic
+metadata:
+  name: planton-oss-e2e-azureeventgridnamespacetopic-smoke
+  id: planton-oss-e2e-azureeventgridnamespacetopic-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgridnamespacetopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceId:
+    valueFrom:
+      name: planton-oss-e2e-azureeventgridnamespace-smoke
+  name: orders-smoke
+  eventRetentionInDays: 3

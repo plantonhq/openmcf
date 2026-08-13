@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespace
+metadata:
+  name: events-hub
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name appears in the namespace's regional hostnames -- prefix
+  # it with your org.
+  name: my-org-events-hub
+  region: eastus
+  capacity: 1

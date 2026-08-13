@@ -72,7 +72,7 @@ These are the most important decisions when configuring the account. Explore the
 
 **Auth posture** -- `localAuthEnabled: false` disables the access keys and forces Entra ID tokens (the hardened posture; the key outputs are then empty).
 
-**Responsible AI** -- define `raiPolicies` on the account and point each model deployment's `raiPolicyName` at one; custom word/pattern lists ride `raiBlocklists`.
+**Responsible AI** -- define `raiPolicies` on the account and point each model deployment's `raiPolicyName` at one; custom word/pattern lists ride `raiBlocklists`. Severity-less binary filters (Jailbreak, Indirect Attack, Protected Material Text/Code) deploy through the Terraform provisioner only -- the classic Pulumi SDK requires a severity on every filter while Azure rejects one on the binary names.
 
 ## Outputs and Dependencies
 

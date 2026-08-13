@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridtopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureEventgridTopicSpec** defines an Azure Event Grid custom topic --
+// the endpoint an application publishes its own events to. Publishers
+// POST events to the topic's HTTPS endpoint (authenticated with an
+// access key or Microsoft Entra ID), and any number of event
+// subscriptions fan those events out to handlers (Functions, webhooks,
+// queues, Event Hubs). A topic is free at rest; billing is per
+// operation.
+//
+// A topic is a SINGLE stream of events under one endpoint and one pair
+// of access keys. When many logical streams should share one endpoint
+// and one set of keys -- the multi-tenant pattern, one stream per
+// customer -- use AzureEventgridDomain instead: a domain holds many
+// domain topics behind a single endpoint.
+message AzureEventgridTopicSpec {
+  // The Azure Resource Group the topic lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the topic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The topic's name -- 3-50 characters; letters, numbers, and hyphens.
+  // The name becomes the topic's PUBLIC DNS hostname
+  // ({name}.{region}.eventgrid.azure.net), so it must be unique across
+  // ALL Azure customers in the region, not just within the resource
+  // group or subscription -- a taken name fails at deploy time with a
+  // conflict.
+  //
+  // **ForceNew**: changing this destroys and recreates the topic (and
+  // its endpoint hostname -- publishers must be repointed).
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "topic_name_format"
+      message: "Topic names must be 3-50 characters of letters, numbers, and hyphens"
+      expression: "this.matches('^[-a-zA-Z0-9]{3,50}$')"
+    }
+  ];
+
+  // The Azure region the topic is created in, e.g. "eastus". The
+  // region is part of the endpoint hostname; subscribers can deliver
+  // anywhere.
+  //
+  // **ForceNew**: changing this destroys and recreates the topic.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The schema incoming events must arrive in. "EventGridSchema"
+  // (Azure's native envelope) is the default; "CloudEventSchemaV1_0"
+  // is the CNCF standard (pick it for new integrations that span
+  // clouds or vendors); "CustomEventSchema" accepts your application's
+  // own JSON shape, mapped onto the envelope with input_mapping_fields
+  // / input_mapping_default_values. Defaults to "EventGridSchema" --
+  // the platform sends the default explicitly.
+  //
+  // **ForceNew**: changing the schema destroys and recreates the topic.
+  optional string input_schema = 4 [
+    (dev.planton.shared.options.default) = "EventGridSchema",
+    (buf.validate.field).string = {
+      in: [
+        "EventGridSchema",
+        "CloudEventSchemaV1_0",
+        "CustomEventSchema"
+      ]
+    }
+  ];
+
+  // For "CustomEventSchema" topics: which fields of YOUR event JSON
+  // map onto the Event Grid envelope's fields. Leave unset for the
+  // built-in schemas (they need no mapping).
+  //
+  // **ForceNew**: changing the mapping destroys and recreates the
+  // topic.
+  AzureEventgridTopicInputMappingFields input_mapping_fields = 5;
+
+  // For "CustomEventSchema" topics: default values stamped onto the
+  // envelope when the incoming event does not carry the mapped field.
+  // Leave unset for the built-in schemas.
+  //
+  // **ForceNew**: changing the defaults destroys and recreates the
+  // topic.
+  AzureEventgridTopicInputMappingDefaultValues input_mapping_default_values = 6;
+
+  // Whether the topic's endpoint accepts publishes from the public
+  // internet. Set false to restrict publishing to private endpoints
+  // only (inbound_ip_rules are also ignored when disabled).
+  // Default: true (Azure's default) -- the platform sends the value
+  // explicitly.
+  optional bool public_network_access_enabled = 7 [(dev.planton.shared.options.default) = "true"];
+
+  // Whether access-key (SAS) authentication is enabled alongside
+  // Microsoft Entra ID. Set false to force every publisher through
+  // Entra ID -- the keys still exist but stop working.
+  // Default: true (Azure's default) -- the platform sends the value
+  // explicitly.
+  optional bool local_auth_enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // Inbound IP firewall rules -- IPv4 CIDR ranges allowed to publish,
+  // e.g. "203.0.113.0/24" (a single address works too), up to 128. An
+  // empty list means no IP restriction. Rules only take effect while
+  // public_network_access_enabled is true. Azure's rule action is
+  // "Allow"-only on this resource (the provider rejects anything
+  // else), so each entry is just the range -- both engines send the
+  // action token explicitly; deny rules would widen this shape if
+  // Azure ever ships them.
+  repeated string inbound_ip_rules = 9 [(buf.validate.field).repeated = {
+    max_items: 128
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // The topic's managed identity -- needed when event DELIVERY should
+  // authenticate as the topic (for example delivering to an Event Hub
+  // or storage queue with identity-based access, or dead-lettering to
+  // a storage account). Omit when no delivery target requires one.
+  AzureEventgridTopicIdentity identity = 10;
+
+  // Tags to apply to the topic, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 11;
+}
+
+// Maps the fields of a custom event JSON onto the Event Grid
+// envelope. Every field is optional: name only the fields your schema
+// carries, by their JSON path in your payload.
+message AzureEventgridTopicInputMappingFields {
+  // Your payload's field carrying the event's unique identifier.
+  string id = 1;
+
+  // Your payload's field carrying the topic identifier.
+  string topic = 2;
+
+  // Your payload's field carrying the event timestamp.
+  string event_time = 3;
+
+  // Your payload's field carrying the event type (what happened).
+  string event_type = 4;
+
+  // Your payload's field carrying the subject (what the event is
+  // about).
+  string subject = 5;
+
+  // Your payload's field carrying the data schema version.
+  string data_version = 6;
+}
+
+// Default envelope values for custom-schema events that do not carry
+// the mapped field. Every field is optional.
+message AzureEventgridTopicInputMappingDefaultValues {
+  // Default event type stamped when the payload carries none.
+  string event_type = 1;
+
+  // Default subject stamped when the payload carries none.
+  string subject = 2;
+
+  // Default data schema version stamped when the payload carries none.
+  string data_version = 3;
+}
+
+// The topic's managed identity.
+message AzureEventgridTopicIdentity {
+  // Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
+  // with the topic; USER_ASSIGNED brings an identity you manage
+  // (grantable on delivery targets BEFORE the topic exists). The
+  // provider supports exactly one flavor at a time on this resource --
+  // there is no combined mode.
+  AzureEventgridTopicIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED: the user-assigned identities attached to the
+  // topic, by ARM ID. Reference AzureUserAssignedIdentity resources so
+  // delivery-target grants can be composed before the topic is
+  // created.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef identity_ids = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "eventgrid_topic_identity_ids_match_type"
+    message: "identity_ids is required for USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2) ? this.identity_ids.size() > 0 : this.identity_ids.size() == 0"
+  };
+}
+
+// The topic's managed-identity flavor.
+enum AzureEventgridTopicIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_eventgrid_topic_identity_type_unspecified = 0;
+
+  // Azure-managed identity created with the topic.
+  SYSTEM_ASSIGNED = 1;
+
+  // An identity you create and manage (AzureUserAssignedIdentity).
+  USER_ASSIGNED = 2;
+}

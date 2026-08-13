@@ -1,0 +1,24 @@
+# Offline-plan test manifest. Exercises a structured payload at depth:
+# an apex MX record set (name "@") with two entries at different
+# preferences, an explicit non-default TTL, and user tags merged over
+# the derived ones. The six other payload types are pure ARM property
+# writes on the same create path -- the offline plans and the live lane
+# cover them per the profile's record.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsRecord
+metadata:
+  name: test-private-dns-record
+  org: test-org
+  env: dev
+spec:
+  privateDnsZoneId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/platform-rg/providers/Microsoft.Network/privateDnsZones/internal.contoso.com
+  name: "@"
+  ttlSeconds: 3600
+  mx:
+    - preference: 10
+      exchange: mail1.internal.contoso.com
+    - preference: 20
+      exchange: mail2.internal.contoso.com
+  tags:
+    cost-center: platform

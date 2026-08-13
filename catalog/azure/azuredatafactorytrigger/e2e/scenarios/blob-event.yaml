@@ -1,0 +1,45 @@
+# Blob-event-variant scenario: watches the fixture storage account
+# with a path filter that never matches -- deployed STARTED
+# (exercising the Start lifecycle AND the behind-the-scenes Event Grid
+# wiring live) but never firing. The storage-account chain is
+# scenario-declared (a trigger does not universally need one).
+# WATCH: destroy must leave NO Event Grid residue on the TARGET
+# storage account (the auto-created system topic / subscription) --
+# the zero-orphan sweep checks the target side.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-blobevent
+  id: planton-oss-e2e-azuredatafactorytrigger-blobevent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+    # The watched storage account is the fixture -- a scenario-level
+    # chain, not a kind-level requirement.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-blobevent
+  description: E2E smoke blob event trigger -- started, path filter never matches.
+  activated: true
+  blobEvent:
+    storageAccountId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-sa
+    events:
+      - Microsoft.Storage.BlobCreated
+    blobPathBeginsWith: /planton-e2e-never/blobs/
+    blobPathEndsWith: .neverblob
+    ignoreEmptyBlobs: true
+    pipelines:
+      - name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorypipeline-smoke

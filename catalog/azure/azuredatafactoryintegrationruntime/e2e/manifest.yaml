@@ -1,0 +1,24 @@
+# The canonical deep-shape fixture for offline validation: the
+# managed data-flow compute at full depth (every azure-variant field
+# set), with a literal factory ID so the manifest validates
+# standalone. The live lanes use the scenarios/ files instead.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: dataflow-compute
+  id: dataflow-compute
+  org: planton-oss
+  env: e2e
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.DataFactory/factories/app-df
+  name: dataflow-compute
+  description: The managed Spark compute mapping data flows run on, warm-pooled inside the managed virtual network.
+  azure:
+    region: eastus
+    cleanupEnabled: false
+    computeType: MemoryOptimized
+    coreCount: 16
+    timeToLiveMin: 15
+    virtualNetworkEnabled: true
+    interactiveAuthoringTimeToLiveInMinutes: 30

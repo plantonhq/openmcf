@@ -1,0 +1,298 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers TWENTY-THREE provider resources as variants --
+# exactly one of the spec's connection blocks is set, and the module
+# creates the matching linked service resource (all 23 share one
+# factory-scoped linked-service namespace,
+# {factory_id}/linkedservices/{name}). Fields every type shares (name,
+# data_factory_id, description, annotations, parameters,
+# additional_properties, integration_runtime_name) live at the spec
+# root and match by exact name; variant-scoped arguments map into
+# their variant block below. Key-Vault-sourced secret blocks map at
+# block level -- their linked_service_name/secret_name leaves carry
+# the provider's own names.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_factory_linked_service_azure_blob_storage:
+    mappings:
+      - spec: spec.azure_blob_storage.connection_string
+        arg: connection_string
+      - spec: spec.azure_blob_storage.connection_string_insecure
+        arg: connection_string_insecure
+      - spec: spec.azure_blob_storage.sas_uri
+        arg: sas_uri
+      - spec: spec.azure_blob_storage.service_endpoint
+        arg: service_endpoint
+      - spec: spec.azure_blob_storage.sas_token_linked_key_vault_key
+        arg: sas_token_linked_key_vault_key
+      - spec: spec.azure_blob_storage.service_principal_linked_key_vault_key
+        arg: service_principal_linked_key_vault_key
+      - spec: spec.azure_blob_storage.storage_kind
+        arg: storage_kind
+      - spec: spec.azure_blob_storage.use_managed_identity
+        arg: use_managed_identity
+      - spec: spec.azure_blob_storage.service_principal_id
+        arg: service_principal_id
+      - spec: spec.azure_blob_storage.service_principal_key
+        arg: service_principal_key
+      - spec: spec.azure_blob_storage.tenant_id
+        arg: tenant_id
+
+  azurerm_data_factory_linked_service_azure_databricks:
+    mappings:
+      - spec: spec.azure_databricks.adb_domain
+        arg: adb_domain
+      - spec: spec.azure_databricks.msi_workspace_id
+        arg: msi_workspace_id
+      - spec: spec.azure_databricks.access_token
+        arg: access_token
+      - spec: spec.azure_databricks.key_vault_password
+        arg: key_vault_password
+      - spec: spec.azure_databricks.existing_cluster_id
+        arg: existing_cluster_id
+      - spec: spec.azure_databricks.new_cluster_config
+        arg: new_cluster_config
+      - spec: spec.azure_databricks.instance_pool
+        arg: instance_pool
+
+  azurerm_data_factory_linked_service_azure_file_storage:
+    mappings:
+      - spec: spec.azure_file_storage.connection_string
+        arg: connection_string
+      - spec: spec.azure_file_storage.file_share
+        arg: file_share
+      - spec: spec.azure_file_storage.host
+        arg: host
+      - spec: spec.azure_file_storage.user_id
+        arg: user_id
+      - spec: spec.azure_file_storage.password
+        arg: password
+      - spec: spec.azure_file_storage.key_vault_password
+        arg: key_vault_password
+
+  azurerm_data_factory_linked_service_azure_function:
+    mappings:
+      - spec: spec.azure_function.url
+        arg: url
+      - spec: spec.azure_function.key
+        arg: key
+      - spec: spec.azure_function.key_vault_key
+        arg: key_vault_key
+
+  azurerm_data_factory_linked_service_azure_search:
+    mappings:
+      - spec: spec.azure_search.url
+        arg: url
+      - spec: spec.azure_search.search_service_key
+        arg: search_service_key
+
+  azurerm_data_factory_linked_service_azure_sql_database:
+    mappings:
+      - spec: spec.azure_sql_database.connection_string
+        arg: connection_string
+      - spec: spec.azure_sql_database.key_vault_connection_string
+        arg: key_vault_connection_string
+      - spec: spec.azure_sql_database.key_vault_password
+        arg: key_vault_password
+      - spec: spec.azure_sql_database.use_managed_identity
+        arg: use_managed_identity
+      - spec: spec.azure_sql_database.service_principal_id
+        arg: service_principal_id
+      - spec: spec.azure_sql_database.service_principal_key
+        arg: service_principal_key
+      - spec: spec.azure_sql_database.tenant_id
+        arg: tenant_id
+      - spec: spec.azure_sql_database.credential_name
+        arg: credential_name
+
+  azurerm_data_factory_linked_service_azure_table_storage:
+    mappings:
+      - spec: spec.azure_table_storage.connection_string
+        arg: connection_string
+
+  azurerm_data_factory_linked_service_cosmosdb:
+    mappings:
+      - spec: spec.cosmosdb.connection_string
+        arg: connection_string
+      - spec: spec.cosmosdb.account_endpoint
+        arg: account_endpoint
+      - spec: spec.cosmosdb.account_key
+        arg: account_key
+      - spec: spec.cosmosdb.database
+        arg: database
+
+  azurerm_data_factory_linked_service_cosmosdb_mongoapi:
+    mappings:
+      - spec: spec.cosmosdb_mongoapi.connection_string
+        arg: connection_string
+      - spec: spec.cosmosdb_mongoapi.database
+        arg: database
+      - spec: spec.cosmosdb_mongoapi.server_version_is_32_or_higher
+        arg: server_version_is_32_or_higher
+
+  azurerm_data_factory_linked_custom_service:
+    mappings:
+      - spec: spec.custom.type
+        arg: type
+      - spec: spec.custom.type_properties_json
+        arg: type_properties_json
+      # The custom resource is the one whose integration runtime
+      # travels as a block: its name comes from the SAME root spec
+      # field every other variant sends as integration_runtime_name,
+      # and only the per-use parameters are variant-scoped.
+      - spec: spec.integration_runtime_name
+        arg: integration_runtime.name
+      - spec: spec.custom.integration_runtime_parameters
+        arg: integration_runtime.parameters
+
+  azurerm_data_factory_linked_service_data_lake_storage_gen2:
+    mappings:
+      - spec: spec.data_lake_storage_gen2.url
+        arg: url
+      - spec: spec.data_lake_storage_gen2.use_managed_identity
+        arg: use_managed_identity
+      - spec: spec.data_lake_storage_gen2.storage_account_key
+        arg: storage_account_key
+      - spec: spec.data_lake_storage_gen2.service_principal_id
+        arg: service_principal_id
+      - spec: spec.data_lake_storage_gen2.service_principal_key
+        arg: service_principal_key
+      - spec: spec.data_lake_storage_gen2.tenant
+        arg: tenant
+
+  azurerm_data_factory_linked_service_key_vault:
+    mappings:
+      - spec: spec.key_vault.key_vault_id
+        arg: key_vault_id
+
+  azurerm_data_factory_linked_service_kusto:
+    mappings:
+      - spec: spec.kusto.kusto_endpoint
+        arg: kusto_endpoint
+      - spec: spec.kusto.kusto_database_name
+        arg: kusto_database_name
+      - spec: spec.kusto.use_managed_identity
+        arg: use_managed_identity
+      - spec: spec.kusto.service_principal_id
+        arg: service_principal_id
+      - spec: spec.kusto.service_principal_key
+        arg: service_principal_key
+      - spec: spec.kusto.tenant
+        arg: tenant
+
+  azurerm_data_factory_linked_service_mysql:
+    mappings:
+      - spec: spec.mysql.connection_string
+        arg: connection_string
+      # ENGINE NOTE: the classic Pulumi SDK (v6.38.0) does not carry
+      # driver_version -- the Terraform module sends the effective
+      # value (default V2); the Pulumi module cannot (PARITY-EXCEPTION
+      # comment in the module; Azure applies its own driver default
+      # there).
+      - spec: spec.mysql.driver_version
+        arg: driver_version
+
+  azurerm_data_factory_linked_service_odata:
+    mappings:
+      - spec: spec.odata.url
+        arg: url
+      - spec: spec.odata.basic_authentication
+        arg: basic_authentication
+
+  azurerm_data_factory_linked_service_odbc:
+    mappings:
+      - spec: spec.odbc.connection_string
+        arg: connection_string
+      - spec: spec.odbc.basic_authentication
+        arg: basic_authentication
+
+  azurerm_data_factory_linked_service_postgresql:
+    mappings:
+      - spec: spec.postgresql.connection_string
+        arg: connection_string
+
+  azurerm_data_factory_linked_service_sftp:
+    mappings:
+      - spec: spec.sftp.authentication_type
+        arg: authentication_type
+      - spec: spec.sftp.host
+        arg: host
+      - spec: spec.sftp.port
+        arg: port
+      - spec: spec.sftp.username
+        arg: username
+      - spec: spec.sftp.password
+        arg: password
+      - spec: spec.sftp.key_vault_password
+        arg: key_vault_password
+      - spec: spec.sftp.private_key_content_base64
+        arg: private_key_content_base64
+      - spec: spec.sftp.key_vault_private_key_content_base64
+        arg: key_vault_private_key_content_base64
+      - spec: spec.sftp.private_key_path
+        arg: private_key_path
+      - spec: spec.sftp.private_key_passphrase
+        arg: private_key_passphrase
+      - spec: spec.sftp.key_vault_private_key_passphrase
+        arg: key_vault_private_key_passphrase
+      - spec: spec.sftp.skip_host_key_validation
+        arg: skip_host_key_validation
+      - spec: spec.sftp.host_key_fingerprint
+        arg: host_key_fingerprint
+
+  azurerm_data_factory_linked_service_snowflake:
+    mappings:
+      - spec: spec.snowflake.connection_string
+        arg: connection_string
+      - spec: spec.snowflake.key_vault_password
+        arg: key_vault_password
+
+  azurerm_data_factory_linked_service_sql_managed_instance:
+    mappings:
+      - spec: spec.sql_managed_instance.connection_string
+        arg: connection_string
+      - spec: spec.sql_managed_instance.key_vault_connection_string
+        arg: key_vault_connection_string
+      - spec: spec.sql_managed_instance.key_vault_password
+        arg: key_vault_password
+      - spec: spec.sql_managed_instance.service_principal_id
+        arg: service_principal_id
+      - spec: spec.sql_managed_instance.service_principal_key
+        arg: service_principal_key
+      - spec: spec.sql_managed_instance.tenant
+        arg: tenant
+
+  azurerm_data_factory_linked_service_sql_server:
+    mappings:
+      - spec: spec.sql_server.connection_string
+        arg: connection_string
+      - spec: spec.sql_server.key_vault_connection_string
+        arg: key_vault_connection_string
+      - spec: spec.sql_server.key_vault_password
+        arg: key_vault_password
+      - spec: spec.sql_server.user_name
+        arg: user_name
+
+  azurerm_data_factory_linked_service_synapse:
+    mappings:
+      - spec: spec.synapse.connection_string
+        arg: connection_string
+      - spec: spec.synapse.key_vault_password
+        arg: key_vault_password
+
+  azurerm_data_factory_linked_service_web:
+    mappings:
+      - spec: spec.web.url
+        arg: url
+      - spec: spec.web.authentication_type
+        arg: authentication_type
+      - spec: spec.web.username
+        arg: username
+      - spec: spec.web.password
+        arg: password

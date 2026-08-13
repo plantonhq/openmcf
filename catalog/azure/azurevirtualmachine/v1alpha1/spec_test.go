@@ -304,7 +304,7 @@ var _ = ginkgo.Describe("AzureVirtualMachineSpec Custom Validation Tests", func(
 			spec := validLinuxSpec()
 			spec.Availability = &AzureVirtualMachineAvailability{
 				Zone:              "1",
-				AvailabilitySetId: "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Compute/availabilitySets/legacy",
+				AvailabilitySetId: stringRef("/subscriptions/s/resourceGroups/rg/providers/Microsoft.Compute/availabilitySets/legacy"),
 			}
 			err := protovalidate.Validate(validInput(spec))
 			gomega.Expect(err).ToNot(gomega.BeNil())

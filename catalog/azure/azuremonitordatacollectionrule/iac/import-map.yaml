@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremonitordatacollectionrule
+spec:
+  # The data collection rule imports by its full ARM resource ID.
+  values:
+    - name: data_collection_rule_id
+      derivations:
+        - from_stack_output: data_collection_rule_id
+      where_to_find: >-
+        `az monitor data-collection rule show -g <resource-group> -n
+        <name> --query id`, or the component's own
+        data_collection_rule_id stack output.

@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredisksnapshot.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureDiskSnapshotSpec** defines a managed disk snapshot -- a
+// point-in-time copy of a disk used for backup, cloning, and as the
+// source of gallery image versions
+// (AzureComputeGalleryImage.versions[].os_disk_snapshot_id).
+//
+// A snapshot bills only for the storage it holds: INCREMENTAL
+// snapshots (incremental_enabled) store just the delta since the
+// previous snapshot of the same disk on standard storage -- the right
+// default for backup chains; full snapshots store the whole disk.
+//
+// The provider's own schema does not tie create_option to its source
+// fields; Azure validates the pairing at create time. The working
+// pairs: "Copy" reads source_resource_id (a disk or another
+// snapshot); "Import" reads source_uri (a VHD blob) with
+// storage_account_id carrying the read grant.
+message AzureDiskSnapshotSpec {
+  // The Azure Resource Group the snapshot lives in. Can be a literal
+  // string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The snapshot's name -- up to 80 characters of letters, numbers,
+  // dashes, and underscores.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "disk_snapshot_name_format"
+      message: "Snapshot names allow up to 80 letters, numbers, dashes, and underscores"
+      expression: "this.matches('^[A-Za-z0-9_-]{1,80}$')"
+    }
+  ];
+
+  // The Azure region the snapshot is created in, e.g. "eastus".
+  // Snapshots are regional -- create the snapshot where its source
+  // lives.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How the snapshot is created: "Copy" (from a managed disk or
+  // another snapshot via source_resource_id) or "Import" (from a VHD
+  // blob via source_uri + storage_account_id).
+  string create_option = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Copy",
+        "Import"
+      ]
+    }
+  ];
+
+  // The source managed disk (or snapshot) for create_option "Copy".
+  // Can be a literal ARM ID or a reference to an AzureManagedDisk
+  // output.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_resource_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureManagedDisk,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_id"
+  ];
+
+  // The source VHD blob URI for create_option "Import".
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  string source_uri = 6;
+
+  // The storage account holding source_uri (the read grant for
+  // "Import"). Can be a literal ARM ID or a reference to an
+  // AzureStorageAccount output.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // Whether the snapshot is INCREMENTAL: stores only the delta since
+  // the previous snapshot of the same disk, on standard storage --
+  // dramatically cheaper for backup chains, and the required form for
+  // some consumers (e.g. cross-region copy). Gallery image versions
+  // accept both forms.
+  //
+  // **ForceNew**: changing this destroys and recreates the snapshot.
+  bool incremental_enabled = 8;
+
+  // The snapshot's size in GB. Unset inherits the source's size
+  // (Azure computes it); set it only to create a LARGER snapshot from
+  // a smaller source. Updatable in place (grow only).
+  optional int32 disk_size_gb = 9 [(buf.validate.field).int32.gte = 1];
+
+  // Network access policy for the snapshot's data plane: "AllowAll"
+  // (the provider default when unset), "AllowPrivate" (only through
+  // the disk_access_id private endpoint), or "DenyAll" (no
+  // export/read access at all). Updatable in place.
+  string network_access_policy = 10 [(buf.validate.field).string = {
+    in: [
+      "",
+      "AllowAll",
+      "AllowPrivate",
+      "DenyAll"
+    ]
+  }];
+
+  // The disk-access resource whose private endpoint serves the
+  // snapshot when network_access_policy is "AllowPrivate". Plain ARM
+  // ID: disk-access resources are not modeled as a Planton kind.
+  // Updatable in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_access_id = 11;
+
+  // Whether the snapshot's data plane accepts public network access.
+  // Unset means the provider default, true. Set false alongside
+  // AllowPrivate/DenyAll for a fully private posture. Updatable in
+  // place.
+  optional bool public_network_access_enabled = 12;
+
+  // Legacy Azure Disk Encryption settings carried over from an
+  // ADE-encrypted source (the Key Vault secret holding the disk
+  // encryption key, and optionally the key-encryption key wrapping
+  // it). Only for sources using in-guest ADE -- platform/CMK
+  // encryption needs no settings here. ONE-WAY: once set, removing
+  // the block destroys and recreates the snapshot (Azure cannot
+  // disable encryption in place).
+  AzureDiskSnapshotEncryptionSettings encryption_settings = 13;
+
+  // Tags to apply to the snapshot, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 14;
+}
+
+// Legacy Azure Disk Encryption (ADE) settings: where the encryption
+// secrets for an ADE-encrypted source live.
+message AzureDiskSnapshotEncryptionSettings {
+  // The Key Vault SECRET holding the disk encryption key.
+  AzureDiskSnapshotDiskEncryptionKey disk_encryption_key = 1 [(buf.validate.field).required = true];
+
+  // The Key Vault KEY wrapping the disk encryption key (KEK), when
+  // the source used one.
+  AzureDiskSnapshotKeyEncryptionKey key_encryption_key = 2;
+}
+
+// The Key Vault secret holding the disk encryption key.
+message AzureDiskSnapshotDiskEncryptionKey {
+  // The secret's URL (the Key Vault secret identifier).
+  string secret_url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Key Vault holding the secret. Can be a literal ARM ID or a
+  // reference to an AzureKeyVault output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+}
+
+// The Key Vault key wrapping the disk encryption key.
+message AzureDiskSnapshotKeyEncryptionKey {
+  // The key's URL (the Key Vault key identifier).
+  string key_url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Key Vault holding the key. Can be a literal ARM ID or a
+  // reference to an AzureKeyVault output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef source_vault_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureKeyVault,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_vault_id"
+  ];
+}

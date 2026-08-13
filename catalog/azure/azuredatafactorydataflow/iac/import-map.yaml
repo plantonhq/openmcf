@@ -1,0 +1,18 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredatafactorydataflow
+spec:
+  # The data flow's identity is its full factory-scoped ARM ID
+  # ({factory_id}/dataflows/{name}) -- the same shape for both the
+  # mapping and flowlet forms; the spec's flowlet flag decides which
+  # provider resource the import addresses.
+  values:
+    - name: data_flow_id
+      derivations:
+        - from_stack_output: data_flow_id
+      where_to_find: >-
+        Compose it from the factory's resource ID plus
+        /dataflows/<data-flow-name>, or `az datafactory data-flow show
+        --factory-name <factory> -g <rg> -n <name> --query id`; also
+        the component's own data_flow_id stack output.

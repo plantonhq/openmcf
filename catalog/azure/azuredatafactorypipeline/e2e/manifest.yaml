@@ -1,0 +1,29 @@
+# Deep-shape example for docs and offline validation: a pipeline with
+# the full optional surface -- a Wait activity in the raw activities
+# JSON, run parameters, variables, annotations, concurrency, a Studio
+# folder, and the elapsed-time metric. References are literal values
+# so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryPipeline
+metadata:
+  name: test-data-factory-pipeline
+  id: test-data-factory-pipeline
+  org: test-org
+  env: test
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataFactory/factories/test-org-data-factory
+  name: ingest-daily
+  description: Copies one day's data into the lakehouse, parameterized by window start.
+  parameters:
+    windowStart: ""
+  variables:
+    cursor: ""
+  activitiesJson: |
+    [{"name": "placeholder-wait", "type": "Wait", "typeProperties": {"waitTimeInSeconds": 10}}]
+  annotations:
+    - team:data
+    - tier:bronze
+  concurrency: 1
+  folder: ingest
+  monitorMetricsAfterDuration: 0.00:30:00

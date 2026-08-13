@@ -1,0 +1,41 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredatafactory
+spec:
+  # The factory's identity is its full ARM resource ID; credentials
+  # (both flavors -- one name namespace) and managed private endpoints
+  # are ARM children composed under it, each keyed by the spec entry's
+  # name (the module deploys one child per entry, addressed by that
+  # name). The inline customer-managed-key encryption is a property of
+  # the factory itself -- it imports with the factory, never
+  # separately.
+  values:
+    - name: data_factory_id
+      derivations:
+        - from_stack_output: data_factory_id
+      where_to_find: >-
+        Portal -> Data factories -> the factory -> Properties ->
+        Resource ID, or `az datafactory show -g <rg> -n <name> --query
+        id`.
+    - name: credential_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The credential's name in the spec's
+        user_managed_identity_credentials or
+        service_principal_credentials list (one shared namespace; the
+        module keys one ARM child per name,
+        {factory_id}/credentials/{name}); `az datafactory list` plus
+        the factory's Manage -> Credentials view shows what exists
+        cloud-side.
+    - name: managed_private_endpoint_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The endpoint's name in the spec's managed_private_endpoints
+        list (the module keys one ARM child per name,
+        {factory_id}/managedVirtualNetworks/default/managedPrivateEndpoints/{name});
+        `az datafactory managed-private-endpoint list --factory-name
+        <name> -g <rg> --managed-virtual-network-name default` shows
+        what exists cloud-side.

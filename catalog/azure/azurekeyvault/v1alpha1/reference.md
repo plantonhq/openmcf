@@ -508,6 +508,9 @@ Fields on other kinds that can point at this resource:
 | AzureAiFoundry | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureAiFoundry | `spec.encryption.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureAksCluster | `spec.serviceMeshProfile.certificateAuthority.keyVaultId` | `status.outputs.key_vault_id` |
+| AzureDataFactoryLinkedService | `spec.keyVault.keyVaultId` | `status.outputs.key_vault_id` |
+| AzureDiskSnapshot | `spec.encryptionSettings.diskEncryptionKey.sourceVaultId` | `status.outputs.key_vault_id` |
+| AzureDiskSnapshot | `spec.encryptionSettings.keyEncryptionKey.sourceVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultCertificate | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultKey | `spec.keyVaultId` | `status.outputs.key_vault_id` |
 | AzureKeyVaultSecret | `spec.keyVaultId` | `status.outputs.key_vault_id` |

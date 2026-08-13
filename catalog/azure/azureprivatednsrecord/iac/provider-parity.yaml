@@ -1,0 +1,68 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers seven provider resources as variants -- exactly one of
+# the spec's a / aaaa / cname / mx / ptr / srv / txt payloads is set,
+# and the module creates the matching record resource. Shared fields
+# (name, private_dns_zone_id, ttl, tags) live at the spec root; each
+# resource's value argument maps onto its payload field below.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_private_dns_a_record:
+    mappings:
+      # The payload field IS the record type -- the provider's generic
+      # records/record argument maps onto the typed payload.
+      - spec: spec.a
+        arg: records
+      # The spec name says what the integer MEANS (seconds).
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_aaaa_record:
+    mappings:
+      - spec: spec.aaaa
+        arg: records
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_cname_record:
+    mappings:
+      - spec: spec.cname
+        arg: record
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_mx_record:
+    mappings:
+      - spec: spec.mx
+        arg: record
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_ptr_record:
+    mappings:
+      - spec: spec.ptr
+        arg: records
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_srv_record:
+    mappings:
+      - spec: spec.srv
+        arg: record
+      - spec: spec.ttl_seconds
+        arg: ttl
+
+  azurerm_private_dns_txt_record:
+    mappings:
+      # The spec's txt list carries the values directly (one string per
+      # TXT value); the provider wraps each in a single-field block.
+      - spec: spec.txt
+        arg: record.value
+      - spec: spec.ttl_seconds
+        arg: ttl

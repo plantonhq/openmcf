@@ -64,11 +64,11 @@ func Resources(ctx *pulumi.Context, stackInput *azureloganalyticsworkspacev1alph
 	workspaceArgs.CmkForQueryForced = pulumi.Bool(spec.CmkForQueryForced)
 	workspaceArgs.ImmediateDataPurgeOn30DaysEnabled = pulumi.Bool(spec.ImmediateDataPurgeOn_30DaysEnabled)
 
-	// The default DCR is a literal ARM id (no Data Collection Rule kind
-	// exists in the catalog); the provider applies it via a follow-up update
-	// call because ARM rejects a default DCR at workspace creation.
-	if spec.DataCollectionRuleId != "" {
-		workspaceArgs.DataCollectionRuleId = pulumi.String(spec.DataCollectionRuleId)
+	// The default DCR arrives as a resolved ARM id (references resolve
+	// before the module runs); the provider applies it via a follow-up
+	// update call because ARM rejects a default DCR at workspace creation.
+	if spec.DataCollectionRuleId.GetValue() != "" {
+		workspaceArgs.DataCollectionRuleId = pulumi.String(spec.DataCollectionRuleId.GetValue())
 	}
 
 	// Managed identity -- used when the workspace itself reads other

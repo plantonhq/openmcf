@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuremongocluster
+spec:
+  # The cluster imports by its ARM resource ID; composed firewall rules
+  # derive their ids from it plus each rule's name (the address key in
+  # the spec's firewall_rules list).
+  values:
+    - name: mongo_cluster_id
+      derivations:
+        - from_stack_output: mongo_cluster_id
+      where_to_find: >-
+        `az resource show --resource-type
+        Microsoft.DocumentDB/mongoClusters --name <cluster-name>
+        --resource-group <rg> --query id`, or the component's own
+        mongo_cluster_id stack output.
+    - name: firewall_rule_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The rule's name in the spec's firewallRules list (the module
+        keys one ARM child per rule name -- the name is its address
+        segment, {cluster_id}/firewallRules/{name}).

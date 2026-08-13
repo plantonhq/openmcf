@@ -320,6 +320,19 @@ teardown runs in reverse across the merged chain. Every kind that appears in
 the annotation needs a verifier and an install profile, exactly like a
 registry prerequisite.
 
+**A path-declared fixture manifest's own annotation is NEVER read.** "Its
+own transitive prerequisites" above means the path entry's KIND-level
+registry edges only -- the resolver does not open a path-declared manifest
+to read a further `e2e-prerequisites` annotation from it (that reading
+happens only for the scenario under test and for install manifests). A
+fixture chain that hops through extra instances (an extra instance A whose
+`value_from` references another extra instance B, which references fixture
+C) must therefore be declared IN FULL on the scenario under test, in
+deploy-first order: `"C-kind, path/to/B.yaml, path/to/A.yaml"`. An
+annotation left on the intermediate manifest is silently ignored -- the
+lane fails at reference resolution with the hop's instance missing, which
+reads like a naming defect and is actually a never-resolved fixture.
+
 A dependency whose `pulumi up` FAILS is still tracked for teardown: a failed
 update may have created any number of resources before erroring, and skipping
 its destroy would orphan them -- and, because Azure-style parents refuse to
@@ -490,6 +503,23 @@ must be non-empty (the harness prints its authentication line first). If the
 process is gone with an empty log, relaunch under a supervised/managed shell
 rather than retrying `nohup` from another transient shell.
 
+### `AzureCLICredential: signal: killed` is host starvation, not Azure
+
+The Azure verifiers authenticate through the ambient `az` login, which
+shells out to `az account get-access-token` on every credential refresh.
+On a machine under extreme CPU load (observed live: 1-minute load average
+in the hundreds while a concurrent whole-tree build ran on the same host),
+that child process can be killed by the OS or its watchdog before it
+answers, and the lane fails with
+`verify-exists failed ...: AzureCLICredential: signal: killed` -- typically
+on a fixture that deploys fine, minutes into a slow dependency chain. This
+is a MACHINE class, not a credential or module defect: `az account show`
+still works once load recedes. The tell to check is `uptime` -- if the
+1-minute load average is far above the core count, wait for the spike to
+pass (do not relaunch into it; the retry burns the whole chain again), then
+re-run only the failed scenario. Memory can read healthy throughout; CPU
+scheduler starvation alone is enough to trigger it.
+
 ### Long-running Azure components (AKS)
 
 AKS clusters take roughly 5–10 minutes to create and a similar time to delete.
@@ -529,6 +559,80 @@ the fixture circuit (the circuit-peering lane pays it inside
 DEPENDENCIES-UP), and note the peering's own DELETE runs ~7-8 minutes.
 The circuit-family component profiles carry `timeout_minutes: 45` for
 exactly this class.
+
+### Long-running Azure components (Virtual WAN hubs)
+
+A Virtual WAN hub create is dominated by its managed router reaching a
+Provisioned routing state: measured live (Standard hub, eastus/eastus2),
+the create ran **17-35 minutes** (plain fixture hub 17-20m; a hub whose
+scenario composes a route map ran ~35m -- the route-map child ALONE ran
+**~17 minutes**, because the provider polls the router state before and
+after the child create) and the delete **11-15 minutes**. A full
+single-engine hub lane totals **~50 minutes**; budget `-timeout=120m`
+per engine. Budget the SAME hub cycle inside any lane whose prerequisite
+chain deploys the fixture hub -- the hub-connection, ExpressRoute-gateway,
+and vWAN VPN-gateway families all pay ~17-20m up and ~13m down for the
+fixture before their own resource starts. One hub per region per WAN:
+scenario hubs must live in a different region than the fixture hub
+(eastus2 vs eastus in this repo) so overlapping lanes can never collide.
+
+### Long-running Azure components (ExpressRoute gateways in vWAN hubs)
+
+An ExpressRoute gateway in a Virtual WAN hub is the vWAN family's second
+slow class: measured live (one scale unit, eastus), the create ran
+**~27 minutes** and the delete **~13 minutes**, and the gateway bills
+(~$0.42/hr per scale unit) from creation. Its lane also pays the full
+fixture-hub cycle first (see above) -- a single-engine lane totals
+**~70-75 minutes**; budget `-timeout=180m` per engine.
+
+### Long-running Azure components (vWAN VPN gateways)
+
+A site-to-site VPN gateway in a Virtual WAN hub is the vWAN family's
+third slow class: measured live (one scale unit, eastus, consistent
+across four consecutive creates on both engines), the create ran
+**32-36 minutes** and the delete **11-13 minutes**, and the gateway
+bills (~$0.36/hr per scale unit) from creation. Its lane also pays the
+full fixture-hub cycle first (see the Virtual WAN hubs section) -- a
+single-engine gateway lane totals **~80 minutes**; budget
+`-timeout=180m` per engine (more with the import round-trip enabled).
+The VPN-gateway-connection lane pays the ENTIRE family inside
+DEPENDENCIES-UP (hub ~18m + gateway ~36m deploy-and-verify) before its
+own minutes-fast tunnel -- its lane totals ~90 minutes per engine;
+budget `-timeout=210m`. ARM allows ONE VPN gateway per hub: the
+fixture gateway occupies the fixture hub's slot, so the gateway and
+connection lanes must run SEQUENTIALLY, and a wedged gateway teardown
+blocks every subsequent lane needing that slot until swept.
+
+### Long-running Azure components (point-to-site VPN gateways)
+
+A point-to-site VPN gateway in a Virtual WAN hub is the vWAN family's
+fourth slow class, timing-identical to its site-to-site sibling:
+measured live (one scale unit, eastus, consistent across both
+engines), the create ran **32-33 minutes** and the delete **11-14
+minutes**, and the gateway bills (~$0.36/hr per scale unit) from
+creation. Its lane pays the fixture-hub cycle first (hub ~17-23m up,
+~14m down) plus a seconds-fast fixture VPN server configuration -- a
+single-engine lane totals **~80 minutes**; budget `-timeout=180m` per
+engine (240m with the import round-trip enabled). ARM allows ONE P2S
+gateway per hub -- a slot SEPARATE from the hub's site-to-site VPN
+gateway slot, so a P2S lane and an S2S lane never collide on the slot,
+but two P2S lanes sharing a fixture hub must run SEQUENTIALLY, and a
+wedged gateway teardown blocks the hub's P2S slot AND the hub's own
+deletion until swept.
+
+### A dirty `e2e/profile.yaml` on a shared checkout is a LIVE proof lane's state
+
+The proof workflow flips a component's profile `pending_proof` -> `green`
+immediately before its lanes and keeps the flip UNCOMMITTED until the
+session's wrap-up commit -- so on a checkout shared by concurrent agent
+sessions, an uncommitted `status: green` on a pending-proof component is
+the signature of a proof lane running RIGHT NOW, not stray drift. A
+concurrent session that discards it (observed live: an authoring session's
+wrap-up reset the flip mid-lane) makes the proof session's next lane
+silently skip with "profile status is pending_proof". Before discarding
+any dirty profile you did not edit, check for a live proof session; the
+proof session guards itself by re-checking the profile status right before
+each lane launch.
 
 ### Offer-restricted services on free/PAYG subscriptions (probe, don't roulette)
 

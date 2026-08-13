@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDiskSnapshot
+metadata:
+  name: app-disk-snap
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: app-disk-snap
+  region: eastus
+  # Copy reads sourceResourceId (a managed disk or another snapshot).
+  createOption: Copy
+  sourceResourceId:
+    valueFrom:
+      name: <your-managed-disk>
+  # Incremental stores only the delta since the previous snapshot of
+  # the same disk, on standard storage -- the backup-chain default.
+  # Fixed at creation (the first incremental of a disk stores the
+  # full disk; savings start at the second).
+  incrementalEnabled: true

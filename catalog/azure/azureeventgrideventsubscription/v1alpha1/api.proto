@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgrideventsubscription.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventgrideventsubscription/v1alpha1/outputs.proto";
+import "catalog/azure/azureeventgrideventsubscription/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureEventgridEventSubscription represents an Azure Event Grid event
+// subscription -- the delivery instruction that routes events from a
+// source (a custom topic, domain, domain topic, system topic, resource
+// group, or subscription) to a handler (a Function, Event Hub, Service
+// Bus queue/topic, storage queue, hybrid connection, or webhook), with
+// optional filtering, retry, and dead-letter behavior.
+message AzureEventgridEventSubscription {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventgridEventSubscription'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureEventgridEventSubscriptionSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureEventgridEventSubscriptionStatus status = 5;
+}
+
+// AzureEventgridEventSubscriptionStatus represents the status of an
+// Azure Event Grid event subscription deployment.
+message AzureEventgridEventSubscriptionStatus {
+  //stack-outputs
+  //  azure-eventgrid-event-subscription stack-outputs
+  AzureEventgridEventSubscriptionStackOutputs outputs = 1;
+}

@@ -83,9 +83,15 @@ message AzureCognitiveDeploymentModel {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The model's catalog name, e.g. "gpt-4o", "gpt-4o-mini",
+  // The model's catalog name, e.g. "gpt-5.4-mini",
   // "text-embedding-3-large". Regional availability differs -- the
-  // account's region decides which models can deploy.
+  // account's region decides which models can deploy. Models AGE:
+  // ARM rejects a model whose catalog lifecycle is "Deprecating" for
+  // NEW deployments (error ServiceModelDeprecating) well before its
+  // final retirement date -- existing deployments keep running. Pick
+  // from the currently GenerallyAvailable catalog:
+  // `az cognitiveservices model list -l <region>
+  //  --query "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"`.
   string name = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 1

@@ -158,6 +158,11 @@ resource "azurerm_cognitive_account_rai_policy" "rai_policies" {
       source = content_filter.value.source
       # Enum name -> wire value; unspecified ("") omits the property
       # (the binary filters carry no severity -- spec CEL enforces it).
+      # PARITY-EXCEPTION: omitting the severity is legal on THIS
+      # engine only -- the classic Pulumi SDK bridges the pre-v5
+      # provider where the property is required on every filter, so
+      # severity-less filters (all binary filters included) deploy
+      # through Terraform only until a v5-bridged pulumi-azure major.
       severity_threshold = lookup(local.rai_content_level_wire, content_filter.value.severity_threshold, null)
     }
   }

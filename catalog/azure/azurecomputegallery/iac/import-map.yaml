@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecomputegallery
+spec:
+  # The gallery's identity is its full ARM resource ID.
+  values:
+    - name: gallery_id
+      derivations:
+        - from_stack_output: gallery_id
+      where_to_find: >-
+        Portal -> Azure Compute Galleries -> the gallery -> Properties ->
+        Resource ID, or `az sig show --gallery-name <name> -g <rg>
+        --query id`.

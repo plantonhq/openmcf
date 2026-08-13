@@ -3,18 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: azurecognitivedeployment
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The deployment itself provisions in seconds to minutes
-  # and bills per token (no idle cost at GlobalStandard); the chain pays
-  # the fixture account's one-to-three-minute cycle. The lane's proof
-  # point is the QUOTA BOUNDARY: gpt-4o-mini availability and
-  # tokens-per-minute quota on the shared test subscription -- an
-  # insufficient-quota rejection is a recorded deferral (unblock: quota
-  # request), never a module defect. The ProvisionedManaged arm is
-  # offline-proven only (reserved PTU capacity bills continuously --
-  # deliberately never deployed by a lane).
+  # LIVE-PROVEN 2026-08-12 on BOTH engines: full six-phase lifecycle
+  # (~5 min/engine; the chain pays the fixture account's cycle) plus the
+  # blind import round-trip. A real gpt-5.4-mini model provisioned on
+  # GlobalStandard at capacity 10 -- the quota boundary never bit (2,000
+  # units available, probed read-only before the lanes). What DID bite:
+  # the catalog LIFECYCLE boundary -- ARM rejected the originally-pinned
+  # gpt-4o-mini with ServiceModelDeprecating (Deprecating-lifecycle
+  # models are closed to NEW deployments long before final retirement);
+  # the scenario model was re-pinned from the live catalog and the
+  # lesson lives on the spec's model.name field and in GUIDE.md. The
+  # round-trip consumed ONE declared tolerance: model.version is
+  # READ-AUGMENTED for version-unset configs (declared in the provider
+  # import catalog; drift on model format/name still fails). The
+  # ProvisionedManaged arm is offline-proven only (reserved PTU capacity
+  # bills continuously -- deliberately never deployed by a lane).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

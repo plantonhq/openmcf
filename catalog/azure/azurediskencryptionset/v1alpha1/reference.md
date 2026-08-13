@@ -232,6 +232,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureAksCluster | `spec.diskEncryptionSetId` | `status.outputs.disk_encryption_set_id` |
+| AzureComputeGalleryImage | `spec.versions[].targetRegions[].diskEncryptionSetId` | `status.outputs.disk_encryption_set_id` |
 | AzureManagedDisk | `spec.diskEncryptionSetId` | `status.outputs.disk_encryption_set_id` |
 | AzureManagedDisk | `spec.secureVmDiskEncryptionSetId` | `status.outputs.disk_encryption_set_id` |
 | AzureVirtualMachine | `spec.osDisk.diskEncryptionSetId` | `status.outputs.disk_encryption_set_id` |

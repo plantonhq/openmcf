@@ -1,0 +1,19 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azurecontainerinstance
+spec:
+  # The container group's identity is its full ARM resource ID. NOTE for
+  # import round-trips: Azure returns none of the group's secrets
+  # (secure environment variables, volume storage keys and secret files,
+  # registry passwords, the Log Analytics workspace key) -- re-supply
+  # them in the manifest; their absence after import is expected, not
+  # drift.
+  values:
+    - name: container_group_id
+      derivations:
+        - from_stack_output: container_group_id
+      where_to_find: >-
+        Portal -> Container instances -> the group -> Properties ->
+        Resource ID, or `az container show --name <name> -g <rg> --query
+        id`.

@@ -296,9 +296,16 @@ type AzureCognitiveDeploymentModel struct {
 	// model under. "OpenAI" for every Azure OpenAI model; partner
 	// models carry their publisher's format string.
 	Format string `protobuf:"bytes,1,opt,name=format,proto3" json:"format,omitempty"`
-	// The model's catalog name, e.g. "gpt-4o", "gpt-4o-mini",
+	// The model's catalog name, e.g. "gpt-5.4-mini",
 	// "text-embedding-3-large". Regional availability differs -- the
-	// account's region decides which models can deploy.
+	// account's region decides which models can deploy. Models AGE:
+	// ARM rejects a model whose catalog lifecycle is "Deprecating" for
+	// NEW deployments (error ServiceModelDeprecating) well before its
+	// final retirement date -- existing deployments keep running. Pick
+	// from the currently GenerallyAvailable catalog:
+	// `az cognitiveservices model list -l <region>
+	//
+	//	--query "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"`.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	// The model version, e.g. "2024-08-06". Leave unset to deploy the
 	// model's current default version (the value is read back from

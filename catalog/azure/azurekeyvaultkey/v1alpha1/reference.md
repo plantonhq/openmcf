@@ -304,13 +304,16 @@ Fields on other kinds that can point at this resource:
 | AzureAiFoundry | `spec.encryption.keyId` | `status.outputs.key_id` |
 | AzureAksCluster | `spec.keyManagementService.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureCognitiveAccount | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureContainerInstance | `spec.keyVaultKeyId` | `status.outputs.key_id` |
 | AzureContainerRegistry | `spec.encryption.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureCosmosdbAccount | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
+| AzureDataFactory | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureDataProtectionBackupVault | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureDiskEncryptionSet | `spec.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureEventHubNamespaceCustomerManagedKey | `spec.keyVaultKeyIds` | `status.outputs.versionless_id` |
 | AzureMachineLearningWorkspace | `spec.encryption.keyId` | `status.outputs.versionless_id` |
 | AzureManagedRedis | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.key_id` |
+| AzureMongoCluster | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureMssqlDatabase | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMssqlServer | `spec.transparentDataEncryptionKeyVaultKeyId` | `status.outputs.key_id` |
 | AzureMysqlFlexibleServer | `spec.customerManagedKey.keyVaultKeyId` | `status.outputs.versionless_id` |

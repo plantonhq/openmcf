@@ -6,7 +6,8 @@ Judgment that does not fit in field references.
 
 The site and the connection are free, second-class citizens of the
 lifecycle; the GATEWAY bills from creation (~$0.36/hr per scale unit
-class) and takes 30-45 minutes to create and 10-20 to delete. Design
+class) and takes 32-36 minutes to create and 11-13 to delete
+(measured live, one scale unit, eastus). Design
 everything else around not recreating it: its ForceNew set (hub,
 region, routing preference, BGP asn/peer_weight) deserves a decision
 BEFORE the first deploy, because changing any of them later replaces

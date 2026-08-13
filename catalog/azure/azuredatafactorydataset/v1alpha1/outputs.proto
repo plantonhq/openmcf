@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorydataset.v1alpha1;
+
+// **AzureDataFactoryDatasetStackOutputs** captures the outputs from
+// provisioning an Azure Data Factory dataset.
+message AzureDataFactoryDatasetStackOutputs {
+  // The dataset's Azure Resource Manager ID
+  // ({factory_id}/datasets/{name}) -- the same ID shape for all
+  // dataset types.
+  string dataset_id = 1;
+
+  // The dataset's name -- what pipelines and data flows resolve
+  // against.
+  string dataset_name = 2;
+}

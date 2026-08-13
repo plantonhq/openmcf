@@ -1,0 +1,34 @@
+# Key-vault-variant scenario: the factory's secrets backbone, wired
+# to the FIXTURE Key Vault by reference -- proving the cross-kind
+# chart edge (key_vault_id -> AzureKeyVault) and the provider's
+# ID-to-base-URI derivation live. The vault chain is
+# scenario-declared (a linked service does not universally need one).
+# No secret material: Data Factory reaches the vault as its managed
+# identity. Free at rest; creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: planton-oss-e2e-azuredatafactorylinkedservice-kv
+  id: planton-oss-e2e-azuredatafactorylinkedservice-kv
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorylinkedservice
+  annotations:
+    planton.dev/e2e: "true"
+    # The referenced vault is the fixture -- a scenario-level chain,
+    # not a kind-level requirement.
+    planton.dev/e2e-prerequisites: "AzureKeyVault"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-secrets-vault
+  description: E2E smoke Key Vault connection -- managed identity, no secret material.
+  keyVault:
+    keyVaultId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-kv

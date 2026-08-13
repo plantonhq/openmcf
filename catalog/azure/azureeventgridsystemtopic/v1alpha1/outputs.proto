@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridsystemtopic.v1alpha1;
+
+// **AzureEventgridSystemTopicStackOutputs** captures the outputs from
+// provisioning an Azure Event Grid system topic.
+message AzureEventgridSystemTopicStackOutputs {
+  // The system topic's Azure Resource Manager ID -- the target an
+  // AzureEventgridEventSubscription's system_topic_id references.
+  string system_topic_id = 1;
+
+  // The system topic's name.
+  string system_topic_name = 2;
+
+  // The GUID-style identifier Azure Monitor uses for the topic's
+  // metrics (not an ARM ID) -- useful when wiring metric alerts to the
+  // topic's delivery/drop counters.
+  string metric_resource_id = 3;
+
+  // The principal ID of the topic's system-assigned identity (empty
+  // when no system-assigned identity is configured) -- grant this on
+  // delivery targets that use identity-based access.
+  string identity_principal_id = 4;
+}

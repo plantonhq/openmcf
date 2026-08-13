@@ -189,7 +189,11 @@ message AzureVpnGatewayConnectionLink {
 
   // The IPsec pre-shared key both tunnel ends must agree on.
   // Reference a secret rather than embedding the literal in
-  // manifests. Omit to let Azure generate one.
+  // manifests. Omit to let Azure generate one -- with a caveat
+  // proven live: the generated key is NOT readable back through
+  // this resource (reads return it empty), so when the branch
+  // device must be configured with the key, set it explicitly via
+  // a secret reference instead of relying on retrieval.
   dev.planton.shared.foreignkey.v1.StringValueOrRef shared_key = 8 [(dev.planton.shared.options.sensitive) = true];
 
   // Exchange routes over BGP instead of the site's static

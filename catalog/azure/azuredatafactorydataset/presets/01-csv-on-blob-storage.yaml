@@ -1,0 +1,28 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: csv-on-blob-storage
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: orders-csv
+  description: Daily order exports -- CSV files landing in blob storage.
+  # The blob storage connection the dataset reads through, by name.
+  linkedServiceName:
+    valueFrom:
+      name: <your-blob-linked-service>
+  # One dataset serves every day's file: the pipeline supplies runDate.
+  parameters:
+    runDate: ""
+  delimitedText:
+    azureBlobStorageLocation:
+      container: landing
+      # A Data Factory expression, evaluated per run.
+      path: raw/orders/@{dataset().runDate}
+      dynamicPathEnabled: true
+      filename: orders.csv
+    firstRowAsHeader: true
+    # Omitted delimiter/quote/escape settings use Azure's defaults
+    # ("," delimiter, '"' quote, "\" escape).
+    encoding: UTF-8

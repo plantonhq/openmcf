@@ -116,6 +116,21 @@ kind mixing schema-served and external resources keeps the reverse walk;
 its external-fed spec fields carry `specExclusions` naming the external
 resource.
 
+**Externally specified resources.** `external` is `internal`'s mirror: where
+internal says "module plumbing below the spec", external says "the kind's
+primary surface, whose contract is pinned OUTSIDE every loaded provider
+schema" — a raw-API resource (e.g. azapi's `azapi_resource`) admitted per
+kind by a recorded decision naming an exact `type@api-version`. No argument
+walk is possible (there is no schema to walk), and a kind consuming only
+external/internal resources runs no reverse spec walk either: its spec's
+depth is accounted against the external contract, where the admission
+records it. The judgment ratchets toward native support: the moment a
+loaded schema serves the resource at the pin, the external entry becomes a
+staleness finding — the exit-to-native migration's mechanical reminder. A
+kind mixing schema-served and external resources keeps the reverse walk;
+its external-fed spec fields carry `specExclusions` naming the external
+resource.
+
 **Breadth (per GA resource).** Every GA resource carries exactly one
 disposition. Two classes are computed — `modeled` (the module census proves
 consumption) and `iam-covered` (the `*_iam_member/binding/policy` pattern,

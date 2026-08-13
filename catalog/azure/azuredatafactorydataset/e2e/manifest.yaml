@@ -1,0 +1,47 @@
+# Deep-shape example for docs and offline validation: a delimited
+# text (CSV) dataset exercising the variant's full surface -- a
+# dynamic-path blob location, every parse setting, compression, and
+# declared columns. References are literal values so the manifest
+# validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: test-dataset
+  id: test-dataset
+  org: test-org
+  env: test
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataFactory/factories/test-df
+  name: orders-csv
+  description: Daily order exports -- CSV files landing in blob storage.
+  linkedServiceName:
+    value: lakehouse-blob
+  annotations:
+    - team:data
+  parameters:
+    runDate: ""
+  folder: ingest/orders
+  delimitedText:
+    azureBlobStorageLocation:
+      container: landing
+      path: raw/orders/@{dataset().runDate}
+      dynamicPathEnabled: true
+      filename: orders.csv
+    columnDelimiter: ";"
+    rowDelimiter: "\n"
+    quoteCharacter: "'"
+    escapeCharacter: "/"
+    encoding: UTF-8
+    firstRowAsHeader: true
+    nullValue: "NULL"
+    compressionCodec: gzip
+    compressionLevel: Fastest
+    schemaColumn:
+      - name: order_id
+        type: Int64
+      - name: placed_at
+        type: DateTime
+        description: Order timestamp
+      - name: total
+        type: Decimal

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridnamespacetopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventgridnamespacetopic/v1alpha1/outputs.proto";
+import "catalog/azure/azureeventgridnamespacetopic/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureEventgridNamespaceTopic represents one named CloudEvents
+// stream inside an Azure Event Grid namespace
+// (AzureEventgridNamespace). Many topics share one namespace with
+// independent lifecycles -- publishers and teams create and delete
+// their own against the shared namespace, like consumer groups on an
+// Event Hub. For streams inside a classic Event Grid domain, see
+// AzureEventgridDomainTopic.
+message AzureEventgridNamespaceTopic {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventgridNamespaceTopic'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureEventgridNamespaceTopicSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureEventgridNamespaceTopicStatus status = 5;
+}
+
+// AzureEventgridNamespaceTopicStatus represents the status of an
+// Azure Event Grid namespace topic deployment.
+message AzureEventgridNamespaceTopicStatus {
+  //stack-outputs
+  //  azure-eventgrid-namespace-topic stack-outputs
+  AzureEventgridNamespaceTopicStackOutputs outputs = 1;
+}

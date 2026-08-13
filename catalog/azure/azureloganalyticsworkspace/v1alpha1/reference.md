@@ -51,7 +51,8 @@ spec:
   allowResourceOnlyPermissions: false
   cmkForQueryForced: true
   immediateDataPurgeOn30DaysEnabled: true
-  dataCollectionRuleId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/dataCollectionRules/test-dcr
+  dataCollectionRuleId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/dataCollectionRules/test-dcr
   tags:
     cost-center: platform
 ```
@@ -76,7 +77,7 @@ spec:
 | `spec.allowResourceOnlyPermissions` | `bool` |  | `true` |  |
 | `spec.cmkForQueryForced` | `bool` |  |  |  |
 | `spec.immediateDataPurgeOn30DaysEnabled` | `bool` |  |  |  |
-| `spec.dataCollectionRuleId` | `string` |  |  |  |
+| `spec.dataCollectionRuleId` | `string \| valueFrom` |  |  | AzureMonitorDataCollectionRule (`status.outputs.data_collection_rule_id`) |
 | `spec.tags` | `map<string, string>` |  |  |  |
 
 ## Field Details
@@ -295,14 +296,16 @@ the retention window; this switch removes that grace period.
 
 ### spec.dataCollectionRuleId
 
-`string`
+`string | valueFrom`
 
-The ARM ID of an Azure Monitor Data Collection Rule to set as the
-workspace's default DCR (applied to data flowing in without an explicit
-rule). Format:
-/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionRules/{name}
-Provide the literal ARM ID of a rule managed outside this catalog; leave
-empty for Azure's default handling.
+The Azure Monitor Data Collection Rule to set as the workspace's
+default DCR (applied to data flowing in without an explicit rule), by
+ARM resource ID. Can be a literal ARM ID or a reference to an
+AzureMonitorDataCollectionRule output. Leave unset for Azure's default
+handling.
+
+- references: AzureMonitorDataCollectionRule (`status.outputs.data_collection_rule_id`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: AzureMonitorDataCollectionRule, name: <that resource's name>, fieldPath: status.outputs.data_collection_rule_id}} -- a bare string does not parse
 
 ### spec.tags
 
@@ -340,6 +343,7 @@ Fields that can point at another resource's outputs:
 |---|---|---|
 | `spec.resourceGroup` | AzureResourceGroup | `status.outputs.resource_group_name` |
 | `spec.identity.userAssignedIdentityIds` | AzureUserAssignedIdentity | `status.outputs.identity_id` |
+| `spec.dataCollectionRuleId` | AzureMonitorDataCollectionRule | `status.outputs.data_collection_rule_id` |
 
 ## Referenced By
 
@@ -351,8 +355,11 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.microsoftDefender.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureApplicationInsights | `spec.workspaceId` | `status.outputs.workspace_id` |
 | AzureContainerAppEnvironment | `spec.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
+| AzureContainerInstance | `spec.diagnosticsLogAnalytics.workspaceId` | `status.outputs.workspace_customer_id` |
+| AzureContainerInstance | `spec.diagnosticsLogAnalytics.workspaceKey` | `status.outputs.primary_shared_key` |
 | AzureFirewallPolicy | `spec.insights.defaultLogAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureFirewallPolicy | `spec.insights.logAnalyticsWorkspaces[].workspaceId` | `status.outputs.workspace_id` |
+| AzureMonitorDataCollectionRule | `spec.destinations.logAnalytics[].workspaceResourceId` | `status.outputs.workspace_id` |
 | AzureMonitorDiagnosticSetting | `spec.logAnalyticsWorkspaceId` | `status.outputs.workspace_id` |
 | AzureMonitorScheduledQueryAlert | `spec.scope` | `status.outputs.workspace_id` |
 | AzureNetworkWatcherFlowLog | `spec.trafficAnalytics.workspaceId` | `status.outputs.workspace_customer_id` |

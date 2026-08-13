@@ -27,6 +27,7 @@ spec:
   allowResourceOnlyPermissions: false
   cmkForQueryForced: true
   immediateDataPurgeOn30DaysEnabled: true
-  dataCollectionRuleId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/dataCollectionRules/test-dcr
+  dataCollectionRuleId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Insights/dataCollectionRules/test-dcr
   tags:
     cost-center: platform

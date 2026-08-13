@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridTopic
+metadata:
+  name: my-app-events
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  # The name becomes a PUBLIC DNS hostname, unique across the region --
+  # prefix it with your org, like a storage account name.
+  name: my-org-app-events
+  region: eastus
+  # CloudEvents 1.0 -- the vendor-neutral standard; the right default
+  # for anything new. Create-only.
+  inputSchema: CloudEventSchemaV1_0

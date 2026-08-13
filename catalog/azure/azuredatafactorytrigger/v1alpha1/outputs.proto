@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorytrigger.v1alpha1;
+
+// **AzureDataFactoryTriggerStackOutputs** captures the outputs from
+// provisioning an Azure Data Factory trigger.
+message AzureDataFactoryTriggerStackOutputs {
+  // The trigger's Azure Resource Manager ID
+  // ({factory_id}/triggers/{name}) -- the same ID shape for all four
+  // trigger types.
+  string trigger_id = 1;
+
+  // The trigger's name -- what other tumbling window triggers'
+  // dependency entries resolve against.
+  string trigger_name = 2;
+}

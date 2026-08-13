@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactorytrigger
+spec:
+  # PROVEN live on both engines (proof session, 2026-08-13). FOUR
+  # scenarios ran, one per variant, all deployed STARTED (the Start
+  # LRO live) with conditions that never fire inside a lane's
+  # lifetime: schedule (Pulumi 11m41s / Terraform 11m04s incl. 20s
+  # import round-trip), tumbling-window (12m36s / 11m48s incl. 19s),
+  # blob-event (14m29s / 12m30s incl. 21s), custom-event (13m48s /
+  # 13m41s incl. 12s) -- all four blind round-trips re-planned with no
+  # differences (one id shape, four provider resources). TWO
+  # live-forced scenario redesigns, both ARM Start-path contracts now
+  # recorded on the spec fields and the GUIDE: (1) a STARTED schedule
+  # trigger's next execution must be within 18 months
+  # (InvalidWorkflowTriggerRecurrenceSchedule) -- the smoke uses a
+  # PAST start, always startable; tumbling-window carries no such
+  # bound (its 2035 start started fine); (2) custom-event triggers
+  # require an EventGridSchema topic -- Data Factory's webhook
+  # subscriber cannot answer the CloudEvents OPTIONS handshake
+  # (MethodNotAllowed), so the scenario declares its own
+  # scenario-local topic doc instead of chaining the topic kind's
+  # CloudEvents-shaped smoke instance. The blob-event trigger's
+  # target-side Event Grid wiring cleaned up with the lane (the
+  # fixture account teardown carried it; subscription sweep read zero
+  # resources). Triggers are authoring metadata -- free at rest; the
+  # lanes pay the factory+pipeline chain.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 60

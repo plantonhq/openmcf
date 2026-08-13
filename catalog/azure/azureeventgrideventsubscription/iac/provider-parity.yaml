@@ -1,0 +1,105 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers two provider resources as addressing variants --
+# exactly one of the spec's scope / system_topic_id fields is set, and
+# the module creates the matching subscription resource. The two
+# resources share one configuration grammar in the provider's own
+# source (event_subscription_schema.go), so every non-addressing
+# mapping below appears twice, once per resource.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_eventgrid_event_subscription:
+    mappings:
+      # The destination union lives inside the spec's destination block
+      # (the block IS the delivery-arm choice); the provider spells the
+      # endpoint arms at the top level.
+      - spec: spec.destination.azure_function
+        arg: azure_function_endpoint
+      - spec: spec.destination.eventhub_id
+        arg: eventhub_id
+      - spec: spec.destination.hybrid_connection_id
+        arg: hybrid_connection_id
+      - spec: spec.destination.service_bus_queue_id
+        arg: service_bus_queue_id
+      - spec: spec.destination.service_bus_topic_id
+        arg: service_bus_topic_id
+      - spec: spec.destination.storage_queue
+        arg: storage_queue_endpoint
+      - spec: spec.destination.webhook
+        arg: webhook_endpoint
+      # The spec name says what the list IS (a plural collection), where
+      # the provider uses the singular block name.
+      - spec: spec.delivery_properties
+        arg: delivery_property
+      # The spec names the intent (dead-lettering); the provider names
+      # the mechanism (the storage-blob destination).
+      - spec: spec.dead_letter
+        arg: storage_blob_dead_letter_destination
+      # The provider's range shape is a single list-of-[from,to]-pairs
+      # argument named "values"; the spec models each pair as a named
+      # message under "ranges". Both leaves render into that one
+      # argument; the manifest records one judgment per argument, so
+      # the mapping names .from and the .to leaf carries the
+      # specExclusion below.
+      - spec: spec.advanced_filter.number_in_range.ranges.from
+        arg: advanced_filter.number_in_range.values
+      - spec: spec.advanced_filter.number_not_in_range.ranges.from
+        arg: advanced_filter.number_not_in_range.values
+
+  azurerm_eventgrid_system_topic_event_subscription:
+    mappings:
+      # The provider addresses system-topic subscriptions by (resource
+      # group, system topic name); the spec takes the topic's ARM ID --
+      # the composable reference shape -- and both modules derive the
+      # two addressing arguments from its segments.
+      - spec: spec.system_topic_id
+        arg: system_topic
+      - spec: spec.system_topic_id
+        arg: resource_group_name
+      # The shared subscription grammar, mapped identically to the
+      # scope-addressed resource above.
+      - spec: spec.destination.azure_function
+        arg: azure_function_endpoint
+      - spec: spec.destination.eventhub_id
+        arg: eventhub_id
+      - spec: spec.destination.hybrid_connection_id
+        arg: hybrid_connection_id
+      - spec: spec.destination.service_bus_queue_id
+        arg: service_bus_queue_id
+      - spec: spec.destination.service_bus_topic_id
+        arg: service_bus_topic_id
+      - spec: spec.destination.storage_queue
+        arg: storage_queue_endpoint
+      - spec: spec.destination.webhook
+        arg: webhook_endpoint
+      - spec: spec.delivery_properties
+        arg: delivery_property
+      - spec: spec.dead_letter
+        arg: storage_blob_dead_letter_destination
+      - spec: spec.advanced_filter.number_in_range.ranges.from
+        arg: advanced_filter.number_in_range.values
+      - spec: spec.advanced_filter.number_not_in_range.ranges.from
+        arg: advanced_filter.number_not_in_range.values
+
+# Spec leaves whose provider surface is already judged through a sibling
+# leaf: each [from, to] range pair renders into the ONE list-of-pairs
+# "values" argument its condition owns -- the mapping above names the
+# .from leaf, and the .to leaf is recorded here because the manifest
+# grammar carries one judgment per argument.
+specExclusions:
+  - field: spec.advanced_filter.number_in_range.ranges.to
+    reason: >-
+      Renders into advanced_filter.number_in_range.values alongside its
+      .from sibling -- the pair IS the provider's [from, to] list entry;
+      the argument is judged once, on the .from mapping.
+  - field: spec.advanced_filter.number_not_in_range.ranges.to
+    reason: >-
+      Renders into advanced_filter.number_not_in_range.values alongside
+      its .from sibling -- the pair IS the provider's [from, to] list
+      entry; the argument is judged once, on the .from mapping.

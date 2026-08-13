@@ -232,6 +232,33 @@ func TestAzurePrivateDnsResolverVirtualNetworkLink_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureprivatednsresolvervirtualnetworklink", "terraform")
 }
 
+// --- Azure Private DNS Record (one A record in the fixture private zone -- the seven-payload union's live lane; the other six types are pure property writes on the same create path) ---
+
+func TestAzurePrivateDnsRecord_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsrecord", "pulumi")
+}
+func TestAzurePrivateDnsRecord_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureprivatednsrecord", "terraform")
+}
+
+// --- Azure Traffic Manager Profile (global DNS traffic director; only a resource group beneath it -- fast, free at rest) ---
+
+func TestAzureTrafficManagerProfile_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerprofile", "pulumi")
+}
+func TestAzureTrafficManagerProfile_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerprofile", "terraform")
+}
+
+// --- Azure Traffic Manager Endpoint (composed: one external endpoint on the fixture profile -- the reference edge is the lane's proof point; endpoints are free at rest) ---
+
+func TestAzureTrafficManagerEndpoint_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerendpoint", "pulumi")
+}
+func TestAzureTrafficManagerEndpoint_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuretrafficmanagerendpoint", "terraform")
+}
+
 // --- Azure Application Security Group (empty micro-segmentation anchor in the fixture RG) ---
 
 func TestAzureApplicationSecurityGroup_Pulumi(t *testing.T) {
@@ -808,6 +835,24 @@ func TestAzureMysqlFlexibleServer_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremysqlflexibleserver", "terraform")
 }
 
+// --- Azure Mongo Cluster (fixture RG -> Free-tier Mongo vCore sandbox with Entra + native auth and one composed firewall rule; the cloud-side name carries the run-id token -- cluster names are global hostname labels) ---
+
+func TestAzureMongoCluster_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongocluster", "pulumi")
+}
+func TestAzureMongoCluster_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongocluster", "terraform")
+}
+
+// --- Azure Mongo Cluster User (composed: cluster smoke chain + fixture identity -> the Entra access grant, the three-kind reference chain) ---
+
+func TestAzureMongoClusterUser_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongoclusteruser", "pulumi")
+}
+func TestAzureMongoClusterUser_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremongoclusteruser", "terraform")
+}
+
 // --- Azure SQL logical server (fixture RG -> SQL-auth server with firewall rule and Defender alert policy) ---
 
 func TestAzureMssqlServer_Pulumi(t *testing.T) {
@@ -1290,6 +1335,33 @@ func TestAzureMonitorMetricAlert_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremonitormetricalert", "terraform")
 }
 
+// --- Azure Monitor Autoscale Setting (composed: fixture RG -> scenario-local Standard S1 plan -> CPU rule + weekend recurrence; the shared fixture plan is Basic, which autoscale rejects) ---
+
+func TestAzureMonitorAutoscaleSetting_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitorautoscalesetting", "pulumi")
+}
+func TestAzureMonitorAutoscaleSetting_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitorautoscalesetting", "terraform")
+}
+
+// --- Azure Monitor Data Collection Rule (composed: fixture RG -> fixture workspace -> Linux syslog + perf sources, workspace + metrics destinations) ---
+
+func TestAzureMonitorDataCollectionRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionrule", "pulumi")
+}
+func TestAzureMonitorDataCollectionRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionrule", "terraform")
+}
+
+// --- Azure Monitor Data Collection Rule Association (composed: fixture VM chain + smoke rule chain -> the target-scoped attachment) ---
+
+func TestAzureMonitorDataCollectionRuleAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionruleassociation", "pulumi")
+}
+func TestAzureMonitorDataCollectionRuleAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuremonitordatacollectionruleassociation", "terraform")
+}
+
 // --- Azure Monitor Scheduled Query Alert (composed: fixture RG -> fixture workspace + fixture action group -> row-count KQL rule) ---
 
 func TestAzureMonitorScheduledQueryAlert_Pulumi(t *testing.T) {
@@ -1341,6 +1413,57 @@ func TestAzureServiceBusDisasterRecoveryConfig_Pulumi(t *testing.T) {
 }
 func TestAzureServiceBusDisasterRecoveryConfig_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azureservicebusdisasterrecoveryconfig", "terraform")
+}
+
+// --- Azure Event Grid family (custom topic; domain + its declared domain topics -- the multi-tenant publishers) ---
+
+func TestAzureEventgridTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridtopic", "pulumi")
+}
+func TestAzureEventgridTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridtopic", "terraform")
+}
+
+func TestAzureEventgridDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomain", "pulumi")
+}
+func TestAzureEventgridDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomain", "terraform")
+}
+
+func TestAzureEventgridDomainTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomaintopic", "pulumi")
+}
+func TestAzureEventgridDomainTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgriddomaintopic", "terraform")
+}
+
+func TestAzureEventgridSystemTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridsystemtopic", "pulumi")
+}
+func TestAzureEventgridSystemTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridsystemtopic", "terraform")
+}
+
+func TestAzureEventgridEventSubscription_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgrideventsubscription", "pulumi")
+}
+func TestAzureEventgridEventSubscription_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgrideventsubscription", "terraform")
+}
+
+func TestAzureEventgridNamespace_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespace", "pulumi")
+}
+func TestAzureEventgridNamespace_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespace", "terraform")
+}
+
+func TestAzureEventgridNamespaceTopic_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespacetopic", "pulumi")
+}
+func TestAzureEventgridNamespaceTopic_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureeventgridnamespacetopic", "terraform")
 }
 
 // --- Azure Event Hubs family (namespace container + hubs + consumer groups + SAS credentials + schema registry + geo-DR + dedicated cluster + CMK) ---
@@ -1470,6 +1593,115 @@ func TestAzureFirewall_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurefirewall", "terraform")
 }
 
+// --- Azure Data Factory (fixture RG + scenario-declared fixture storage account -> system-identity factory with the managed VNet and one managed private endpoint; the cloud-side name carries the run-id token -- factory names are globally unique; the endpoint's target-side connection stays Pending by design and the sweep checks the TARGET side) ---
+
+func TestAzureDataFactory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactory", "pulumi")
+}
+func TestAzureDataFactory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactory", "terraform")
+}
+
+// --- Azure Data Factory Pipeline (composed: factory smoke chain -> a Wait-activity pipeline, the opaque activities_json path proven end to end; free, seconds) ---
+
+func TestAzureDataFactoryPipeline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorypipeline", "pulumi")
+}
+func TestAzureDataFactoryPipeline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorypipeline", "terraform")
+}
+
+// --- Data Factory data flow (chained to the factory smoke instance; the minimal scenario creates the flowlet form as a prerequisite doc, then a mapping flow embedding it -- both provider forms in one lane; authoring metadata, free at rest) ---
+
+func TestAzureDataFactoryDataFlow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataflow", "pulumi")
+}
+func TestAzureDataFactoryDataFlow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataflow", "terraform")
+}
+
+// --- Data Factory linked service (three scenarios -- web anonymous, key vault via the fixture vault, blob storage via the fixture account's endpoint + managed identity -- all chained to the factory smoke instance and ALL secret-free by design; the other 20 variants are offline-proven per the profile; authoring metadata, free at rest) ---
+
+func TestAzureDataFactoryLinkedService_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorylinkedservice", "pulumi")
+}
+func TestAzureDataFactoryLinkedService_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorylinkedservice", "terraform")
+}
+
+// --- Data Factory dataset (four scenarios, one per wire form -- delimited text and the flat blob form over the blob linked service instance, the SQL table's linked-service-by-ARM-ID form over a scenario-local connection, and the custom form's raw-JSON seam -- all chained to the factory smoke instance and ALL secret-free by design; the other nine variants are offline-proven per the profile; authoring metadata, free at rest) ---
+
+func TestAzureDataFactoryDataset_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataset", "pulumi")
+}
+func TestAzureDataFactoryDataset_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorydataset", "terraform")
+}
+
+// --- Data Factory trigger (four scenarios, one per variant, all chained to the factory+pipeline smoke instances and deployed STARTED with never-firing conditions -- the Start/Stop lifecycle runs live at zero pipeline-run cost; blob event watches the fixture storage account, custom event subscribes to the Event Grid topic smoke instance) ---
+
+func TestAzureDataFactoryTrigger_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorytrigger", "pulumi")
+}
+func TestAzureDataFactoryTrigger_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactorytrigger", "terraform")
+}
+
+// --- Data Factory integration runtime (three scenarios, one per engine flavor, all chained to the factory smoke instance and ALL secret-free by design -- the managed compute joins the smoke factory's managed virtual network, the self-hosted registration proves the sensitive authorization-key outputs, and the SSIS definition is created STOPPED so it never bills; the deep SSIS arms and the billed interactive-authoring TTL are offline-proven per the profile) ---
+
+func TestAzureDataFactoryIntegrationRuntime_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactoryintegrationruntime", "pulumi")
+}
+func TestAzureDataFactoryIntegrationRuntime_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactoryintegrationruntime", "terraform")
+}
+
+// --- Microsoft Fabric Capacity (fixture RG -> the smallest F2 capacity, created-verified-destroyed tightly; bills per hour from create, and the lowercase-alnum-only name class admits NO run-id token -- a crashed run's leftover holds the name and the sweep is the remedy) ---
+
+func TestAzureFabricCapacity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefabriccapacity", "pulumi")
+}
+func TestAzureFabricCapacity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefabriccapacity", "terraform")
+}
+
+// --- Compute galleries, placement, snapshots (fixture RG -> gallery -> image definition; the image's version scenario chains an OS-typed disk -> snapshot -> version; the availability set and snapshot lanes stand alone -- everything free or pennies at rest) ---
+
+func TestAzureComputeGallery_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegallery", "pulumi")
+}
+func TestAzureComputeGallery_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegallery", "terraform")
+}
+
+func TestAzureComputeGalleryImage_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegalleryimage", "pulumi")
+}
+func TestAzureComputeGalleryImage_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecomputegalleryimage", "terraform")
+}
+
+func TestAzureAvailabilitySet_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azureavailabilityset", "pulumi")
+}
+func TestAzureAvailabilitySet_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azureavailabilityset", "terraform")
+}
+
+func TestAzureDiskSnapshot_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredisksnapshot", "pulumi")
+}
+func TestAzureDiskSnapshot_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredisksnapshot", "terraform")
+}
+
+func TestAzureContainerInstance_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerinstance", "pulumi")
+}
+func TestAzureContainerInstance_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurecontainerinstance", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -1478,7 +1710,12 @@ func runAllScenariosForComponent(t *testing.T, component, engine string) {
 		switch cp.Spec.Status {
 		case componentv1.ComponentE2EProfileSpec_deferred,
 			componentv1.ComponentE2EProfileSpec_skip,
-			componentv1.ComponentE2EProfileSpec_stub:
+			componentv1.ComponentE2EProfileSpec_stub,
+			// pending_proof: fully authored, offline-validated, awaiting its
+			// first live proof. The proving session flips the profile to green
+			// immediately before executing the lanes; until then a sweep must
+			// never run it.
+			componentv1.ComponentE2EProfileSpec_pending_proof:
 			reason := cp.Spec.DeferredReason
 			if reason == "" {
 				reason = cp.Spec.Status.String()

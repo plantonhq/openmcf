@@ -1,0 +1,36 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridEventSubscription
+metadata:
+  name: big-orders-webhook
+spec:
+  scope:
+    valueFrom:
+      name: <your-eventgrid-topic>
+  name: big-orders-webhook
+  destination:
+    webhook:
+      # Must be LIVE at create time -- Event Grid performs a
+      # validation handshake against it.
+      url: https://handler.example.com/events
+  # Deliver as CloudEvents 1.0 regardless of the topic's input shape.
+  eventDeliverySchema: CloudEventSchemaV1_0
+  # Only order events...
+  subjectFilter:
+    subjectBeginsWith: /orders/
+  # ...above a threshold (filters AND together; a condition's values
+  # OR together; max 25 values across the whole filter).
+  advancedFilter:
+    numberGreaterThan:
+      - key: data.amount
+        value: 1000
+  # Webhooks couple delivery to someone else's uptime -- tune retry
+  # down from the defaults (30 attempts / 1440 minutes) and park
+  # failures.
+  retryPolicy:
+    maxDeliveryAttempts: 10
+    eventTimeToLive: 240
+  deadLetter:
+    storageAccountId:
+      valueFrom:
+        name: <your-storage-account>
+    storageBlobContainerName: eventgrid-dead-letters

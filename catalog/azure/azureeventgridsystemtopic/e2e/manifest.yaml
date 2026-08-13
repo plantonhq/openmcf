@@ -1,0 +1,25 @@
+# Deep-shape example for docs and offline validation: a storage
+# account's blob-event stream with a system-assigned identity for
+# secured delivery. References are literal values so the manifest
+# validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridSystemTopic
+metadata:
+  name: test-eventgrid-system-topic
+  id: test-eventgrid-system-topic
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: appdata-storage-events
+  # Must match the SOURCE's region ("Global" for subscription/
+  # resource-group sources).
+  region: eastus
+  sourceResourceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/appdata
+  topicType: Microsoft.Storage.StorageAccounts
+  identity:
+    type: SYSTEM_ASSIGNED
+  tags:
+    costCenter: platform

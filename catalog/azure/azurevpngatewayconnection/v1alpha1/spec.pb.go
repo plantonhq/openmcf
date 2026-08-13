@@ -447,7 +447,11 @@ type AzureVpnGatewayConnectionLink struct {
 	DpdTimeoutSeconds *int32 `protobuf:"varint,7,opt,name=dpd_timeout_seconds,json=dpdTimeoutSeconds,proto3,oneof" json:"dpd_timeout_seconds,omitempty"`
 	// The IPsec pre-shared key both tunnel ends must agree on.
 	// Reference a secret rather than embedding the literal in
-	// manifests. Omit to let Azure generate one.
+	// manifests. Omit to let Azure generate one -- with a caveat
+	// proven live: the generated key is NOT readable back through
+	// this resource (reads return it empty), so when the branch
+	// device must be configured with the key, set it explicitly via
+	// a secret reference instead of relying on retrieval.
 	SharedKey *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=shared_key,json=sharedKey,proto3" json:"shared_key,omitempty"`
 	// Exchange routes over BGP instead of the site's static
 	// address_cidrs. The site link must carry its bgp block. Fixed at

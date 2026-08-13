@@ -1,0 +1,495 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorytrigger.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureDataFactoryTriggerSpec** defines an Azure Data Factory
+// trigger -- the instruction that starts pipelines automatically
+// inside a factory (AzureDataFactory).
+//
+// The trigger type is declared by which variant block is present: set
+// exactly one of `schedule`, `tumbling_window`, `blob_event`, or
+// `custom_event` -- mirroring Azure's four trigger types.
+//   - `schedule`: fire on a wall-clock recurrence (every N minutes/
+//     hours/days/weeks/months, optionally narrowed to specific days
+//     and times).
+//   - `tumbling_window`: fire once per contiguous, non-overlapping
+//     time window from a fixed start time -- the backfill-friendly
+//     type that retries, rate-limits, and can depend on other
+//     tumbling triggers (or itself).
+//   - `blob_event`: fire when blobs are created or deleted in a
+//     storage account, filtered by path.
+//   - `custom_event`: fire on events published to an Event Grid
+//     custom topic, filtered by subject and event type.
+//
+// All four types share one name namespace, and one LIFECYCLE: a
+// trigger is either started (evaluating its condition) or stopped.
+// `activated` drives that state -- and because Azure forbids editing
+// a started trigger, both engines stop the trigger before every
+// update and delete, then start it again when `activated` is true.
+message AzureDataFactoryTriggerSpec {
+  // The Data Factory the trigger lives in, by ARM ID. Can be a
+  // literal string or a reference to an AzureDataFactory output.
+  //
+  // **ForceNew**: changing this destroys and recreates the trigger.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_factory_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.data_factory_id"
+  ];
+
+  // The trigger's name -- unique within the factory across all four
+  // types. Must start with a letter, number, or underscore, and must
+  // not contain any of < > * # . % & : \ + ? / (Azure's trigger
+  // naming rules, the same class as pipeline names).
+  //
+  // **ForceNew**: changing this destroys and recreates the trigger.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_trigger_name_format"
+      message: "Trigger names must start with a letter, number, or underscore and must not contain < > * # . % & : \\ + ? /"
+      expression: "this.matches('^[A-Za-z0-9_][^<>*#.%&:\\\\\\\\+?/]*$')"
+    }
+  ];
+
+  // A human-readable description of what the trigger does.
+  string description = 3;
+
+  // Free-form annotation strings stored on the trigger.
+  repeated string annotations = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Whether the trigger is STARTED (evaluating its condition and
+  // firing pipeline runs). Unspecified applies true, the provider's
+  // default -- set false to deploy the trigger stopped. Updatable in
+  // place: flipping it starts or stops the trigger via Azure's
+  // Start/Stop API (the engines stop a started trigger before any
+  // update, then re-start it).
+  optional bool activated = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Fire on a wall-clock recurrence. Set exactly one variant block on
+  // this spec.
+  AzureDataFactoryTriggerSchedule schedule = 6;
+
+  // Fire once per contiguous time window from a fixed start. Set
+  // exactly one variant block on this spec.
+  AzureDataFactoryTriggerTumblingWindow tumbling_window = 7;
+
+  // Fire on blob creation/deletion in a storage account. Set exactly
+  // one variant block on this spec.
+  AzureDataFactoryTriggerBlobEvent blob_event = 8;
+
+  // Fire on events published to an Event Grid custom topic. Set
+  // exactly one variant block on this spec.
+  AzureDataFactoryTriggerCustomEvent custom_event = 9;
+
+  // The trigger type is whichever variant block is present --
+  // requiring exactly one keeps a trigger from being declared with
+  // two types or with none.
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_trigger_exactly_one_variant"
+    message: "Set exactly one trigger variant -- schedule, tumbling_window, blob_event, or custom_event -- the variant determines the trigger type"
+    expression: "(has(this.schedule) ? 1 : 0) + (has(this.tumbling_window) ? 1 : 0) + (has(this.blob_event) ? 1 : 0) + (has(this.custom_event) ? 1 : 0) == 1"
+  };
+}
+
+// Fire on a wall-clock recurrence: every `interval` × `frequency`
+// from `start_time`, optionally narrowed by `recurrence_schedule` to
+// specific minutes, hours, days, or monthly occurrences.
+message AzureDataFactoryTriggerSchedule {
+  // The recurrence unit. Unspecified applies "Minute", the provider's
+  // default -- the modules always send the effective value
+  // explicitly.
+  optional string frequency = 1 [
+    (dev.planton.shared.options.default) = "Minute",
+    (buf.validate.field).string = {
+      in: [
+        "Minute",
+        "Hour",
+        "Day",
+        "Week",
+        "Month"
+      ]
+    }
+  ];
+
+  // How many `frequency` units between firings (e.g. frequency
+  // "Hour" + interval 6 fires every six hours). Unspecified applies
+  // 1 -- the modules always send the effective value explicitly.
+  optional int32 interval = 2 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // When the recurrence begins, as an RFC 3339 timestamp in UTC
+  // (e.g. "2026-09-01T00:00:00Z"). Omit to start from the moment of
+  // deployment (Azure fills in the current time). A time in the past
+  // starts the recurrence immediately.
+  //
+  // LIVE CONTRACT (enforced by ARM when the trigger STARTS, not at
+  // save): the recurrence's NEXT execution must fall within 18
+  // months of the current time, or Start fails with
+  // InvalidWorkflowTriggerRecurrenceSchedule. A far-future
+  // start_time therefore cannot be combined with `activated: true`;
+  // a past start_time is always startable (the next execution is
+  // computed forward from the recurrence).
+  string start_time = 3 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_schedule_start_rfc3339"
+    message: "start_time must be an RFC 3339 timestamp, e.g. 2026-09-01T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // When the recurrence ends, as an RFC 3339 timestamp in UTC. Omit
+  // for no end.
+  string end_time = 4 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_schedule_end_rfc3339"
+    message: "end_time must be an RFC 3339 timestamp, e.g. 2026-12-31T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // The time zone the recurrence is evaluated in (e.g. "UTC",
+  // "Eastern Standard Time" -- Windows time-zone IDs). Omit for UTC.
+  string time_zone = 5;
+
+  // Narrows the recurrence to specific minutes, hours, days of the
+  // week/month, or monthly weekday occurrences -- meaningful for
+  // Week and Month frequencies (Azure evaluates it there). The
+  // provider's `schedule` block.
+  AzureDataFactoryTriggerRecurrenceSchedule recurrence_schedule = 6;
+
+  // The pipelines this trigger starts on every firing, each with its
+  // parameter values. At least one -- a trigger with nothing to start
+  // is rejected by the provider.
+  repeated AzureDataFactoryTriggerPipelineReference pipelines = 7 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// Narrowing rules for a schedule trigger's recurrence -- which
+// minutes, hours, days, or monthly occurrences the trigger actually
+// fires on.
+message AzureDataFactoryTriggerRecurrenceSchedule {
+  // Days of the month to fire on: 1-31 counted from the month's
+  // start, or -1..-31 counted from its end (-1 is the last day).
+  repeated int32 days_of_month = 1 [(buf.validate.field).repeated.items.cel = {
+    id: "data_factory_trigger_days_of_month_range"
+    message: "days_of_month entries must be 1-31 (from the start) or -1..-31 (from the end)"
+    expression: "this != 0 && this >= -31 && this <= 31"
+  }];
+
+  // Days of the week to fire on, e.g. "Monday" (at most all seven).
+  repeated string days_of_week = 2 [
+    (buf.validate.field).repeated.max_items = 7,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  ];
+
+  // Hours of the day to fire at (0-24 -- the provider's own accepted
+  // range, mirrored exactly).
+  repeated int32 hours = 3 [(buf.validate.field).repeated.items.int32 = {
+    gte: 0
+    lte: 24
+  }];
+
+  // Minutes of the hour to fire at (0-60 -- the provider's own
+  // accepted range, mirrored exactly).
+  repeated int32 minutes = 4 [(buf.validate.field).repeated.items.int32 = {
+    gte: 0
+    lte: 60
+  }];
+
+  // Monthly weekday occurrences to fire on (e.g. the second Friday:
+  // weekday "Friday", week 2) -- for Month frequency.
+  repeated AzureDataFactoryTriggerMonthlyOccurrence monthly = 5;
+}
+
+// One monthly weekday occurrence -- "the Nth <weekday> of the month",
+// counted from the start (positive) or the end (negative).
+message AzureDataFactoryTriggerMonthlyOccurrence {
+  // The weekday, e.g. "Friday".
+  string weekday = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ]
+    }
+  ];
+
+  // Which occurrence in the month: 1-5 counted from the month's
+  // start, or -1..-5 counted from its end (-1 is the last). Omit for
+  // every occurrence of the weekday.
+  optional int32 week = 2 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_monthly_week_range"
+    message: "week must be 1-5 (from the start) or -1..-5 (from the end)"
+    expression: "this != 0 && this >= -5 && this <= 5"
+  }];
+}
+
+// Fire once per contiguous, non-overlapping time window of
+// `interval` × `frequency`, starting at `start_time` -- each firing
+// carries its window's start and end, which makes this the type for
+// backfills and windowed processing. Windows in the past are run
+// immediately (backfill); windows retry, rate-limit, and can wait on
+// other tumbling triggers.
+message AzureDataFactoryTriggerTumblingWindow {
+  // The window unit. FIXED AT CREATION -- changing it replaces the
+  // trigger.
+  string frequency = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Minute",
+        "Hour",
+        "Month"
+      ]
+    }
+  ];
+
+  // The window length in `frequency` units. FIXED AT CREATION --
+  // changing it replaces the trigger.
+  int32 interval = 2 [(buf.validate.field).int32.gte = 1];
+
+  // The first window's start, as an RFC 3339 timestamp in UTC --
+  // REQUIRED (windows are counted from here; a past start backfills).
+  // FIXED AT CREATION -- changing it replaces the trigger.
+  string start_time = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "data_factory_trigger_tumbling_start_rfc3339"
+      message: "start_time must be an RFC 3339 timestamp, e.g. 2026-09-01T00:00:00Z"
+      expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+    }
+  ];
+
+  // The last window's end, as an RFC 3339 timestamp in UTC. Omit for
+  // no end.
+  string end_time = 4 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_tumbling_end_rfc3339"
+    message: "end_time must be an RFC 3339 timestamp, e.g. 2026-12-31T00:00:00Z"
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // How long past each window's end the firing waits (for late data),
+  // as a Data Factory TimeSpan: "hh:mm:ss", optionally with a day
+  // prefix ("1.06:00:00") or a leading minus. Omit for no delay.
+  string delay = 5 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_tumbling_delay_timespan"
+    message: "delay must be a TimeSpan like 00:10:00 or 1.06:00:00"
+    expression: "this == '' || this.matches('^-?((\\\\d+)\\\\.)?(\\\\d\\\\d):(60|([0-5][0-9])):(60|([0-5][0-9]))$')"
+  }];
+
+  // How many windows may run at once, 1-50 (backfills fan out up to
+  // this). Unspecified applies 50, the provider's default -- the
+  // modules always send the effective value explicitly.
+  optional int32 max_concurrency = 6 [
+    (dev.planton.shared.options.default) = "50",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 50
+    }
+  ];
+
+  // Retry policy for failed window runs. Omit for no retries.
+  AzureDataFactoryTriggerRetryPolicy retry = 7;
+
+  // Windows this trigger waits on before firing: other tumbling
+  // triggers' windows, or this trigger's own earlier windows (a
+  // SELF-dependency -- omit trigger_name for that).
+  repeated AzureDataFactoryTriggerDependency dependencies = 8;
+
+  // Additional type properties passed through to Azure as-is --
+  // Data Factory's escape hatch for window properties the schema does
+  // not model.
+  map<string, string> additional_properties = 9;
+
+  // The ONE pipeline this trigger runs per window (tumbling window
+  // triggers drive exactly one pipeline -- Azure's own model), with
+  // its parameter values. Window-scoped system variables
+  // (trigger().outputs.windowStartTime / windowEndTime) are passed
+  // through parameters.
+  AzureDataFactoryTriggerPipelineReference pipeline = 10 [(buf.validate.field).required = true];
+}
+
+// Retry policy for a tumbling window trigger's failed window runs.
+message AzureDataFactoryTriggerRetryPolicy {
+  // The maximum number of retry attempts per window (at least 1).
+  int32 count = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Seconds between attempts. Unspecified applies 30, the provider's
+  // default -- the modules always send the effective value
+  // explicitly.
+  optional int32 interval = 2 [
+    (dev.planton.shared.options.default) = "30",
+    (buf.validate.field).int32.gte = 0
+  ];
+}
+
+// One dependency of a tumbling window trigger: a window of another
+// tumbling trigger (trigger_name set) or of this trigger itself
+// (trigger_name omitted -- each window then waits on the previous
+// one).
+message AzureDataFactoryTriggerDependency {
+  // The tumbling window trigger depended on, by name -- defaults to
+  // referencing an AzureDataFactoryTrigger's trigger_name output.
+  // OMIT for a self-dependency (this trigger's own earlier windows).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef trigger_name = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryTrigger,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.trigger_name"
+  ];
+
+  // Shifts which of the dependency's windows is waited on, as a
+  // TimeSpan (e.g. "-24:00:00" waits on yesterday's window). REQUIRED
+  // by Azure for self-dependencies (it must be negative there). Omit
+  // for the aligned window.
+  string offset = 2 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_dependency_offset_timespan"
+    message: "offset must be a TimeSpan like 24:00:00 or -24:00:00"
+    expression: "this == '' || this.matches('^-?((\\\\d+)\\\\.)?(\\\\d\\\\d):(60|([0-5][0-9])):(60|([0-5][0-9]))$')"
+  }];
+
+  // The size of the dependency window waited on, as a TimeSpan. Omit
+  // to match the depended-on trigger's own window size.
+  string size = 3 [(buf.validate.field).cel = {
+    id: "data_factory_trigger_dependency_size_timespan"
+    message: "size must be a TimeSpan like 06:00:00"
+    expression: "this == '' || this.matches('^-?((\\\\d+)\\\\.)?(\\\\d\\\\d):(60|([0-5][0-9])):(60|([0-5][0-9]))$')"
+  }];
+}
+
+// Fire when blobs are created or deleted in a storage account,
+// filtered by path. Azure wires this through Event Grid on the
+// storage account behind the scenes (the subscription requires the
+// Microsoft.EventGrid provider registered).
+message AzureDataFactoryTriggerBlobEvent {
+  // The storage account whose blob events fire this trigger, by ARM
+  // ID -- defaults to referencing an AzureStorageAccount's
+  // storage_account_id output. FIXED AT CREATION -- changing it
+  // replaces the trigger.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // Which blob events fire the trigger (at least one).
+  repeated string events = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string = {
+      in: [
+        "Microsoft.Storage.BlobCreated",
+        "Microsoft.Storage.BlobDeleted"
+      ]
+    }
+  ];
+
+  // Fire only for blob paths starting with this prefix (e.g.
+  // "/container/blobs/raw/"). Set this, blob_path_ends_with, or both.
+  string blob_path_begins_with = 3;
+
+  // Fire only for blob paths ending with this suffix (e.g. ".csv").
+  // Set this, blob_path_begins_with, or both.
+  string blob_path_ends_with = 4;
+
+  // Whether zero-byte blobs are ignored (skips the placeholder blobs
+  // some tools write). Unspecified applies false -- the modules
+  // always send the effective value explicitly.
+  optional bool ignore_empty_blobs = 5 [(dev.planton.shared.options.default) = "false"];
+
+  // Additional type properties passed through to Azure as-is.
+  map<string, string> additional_properties = 6;
+
+  // The pipelines this trigger starts on every firing, each with its
+  // parameter values. At least one. Event metadata
+  // (@triggerBody().folderPath / fileName) is passed through
+  // parameters.
+  repeated AzureDataFactoryTriggerPipelineReference pipelines = 7 [(buf.validate.field).repeated.min_items = 1];
+
+  // The provider requires at least one path filter -- an unfiltered
+  // blob event trigger would fire on every blob in the account.
+  option (buf.validate.message).cel = {
+    id: "azure_data_factory_trigger_blob_event_path_filter"
+    message: "Set blob_path_begins_with, blob_path_ends_with, or both"
+    expression: "this.blob_path_begins_with != '' || this.blob_path_ends_with != ''"
+  };
+}
+
+// Fire on events published to an Event Grid custom topic, filtered by
+// subject prefix/suffix and event type.
+message AzureDataFactoryTriggerCustomEvent {
+  // The Event Grid custom topic whose events fire this trigger, by
+  // ARM ID -- defaults to referencing an AzureEventgridTopic's
+  // topic_id output. FIXED AT CREATION -- changing it replaces the
+  // trigger.
+  //
+  // LIVE CONTRACT: the topic must use the "EventGridSchema" input
+  // schema. Data Factory subscribes to the topic with a webhook when
+  // the trigger STARTS, and a CloudEvents-schema topic validates
+  // webhook subscribers with an HTTP OPTIONS handshake Data
+  // Factory's endpoint does not answer -- Start fails with "Webhook
+  // endpoint validation failed ... MethodNotAllowed".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventgrid_topic_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventgridTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Which event types fire the trigger (at least one) -- free-form
+  // strings matched against the published events' eventType field
+  // (custom topics define their own vocabulary).
+  repeated string events = 2 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.items.string.min_len = 1
+  ];
+
+  // Fire only for events whose subject starts with this prefix. Omit
+  // for no prefix filter.
+  string subject_begins_with = 3;
+
+  // Fire only for events whose subject ends with this suffix. Omit
+  // for no suffix filter.
+  string subject_ends_with = 4;
+
+  // Additional type properties passed through to Azure as-is.
+  map<string, string> additional_properties = 5;
+
+  // The pipelines this trigger starts on every firing, each with its
+  // parameter values. At least one. Event payload
+  // (@triggerBody().event.data) is passed through parameters.
+  repeated AzureDataFactoryTriggerPipelineReference pipelines = 6 [(buf.validate.field).repeated.min_items = 1];
+}
+
+// One pipeline a trigger starts, with the parameter values passed to
+// that run. Pipelines are factory-scoped: the name resolves inside
+// this trigger's own factory.
+message AzureDataFactoryTriggerPipelineReference {
+  // The pipeline's name inside the factory -- defaults to referencing
+  // an AzureDataFactoryPipeline's pipeline_name output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDataFactoryPipeline,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.pipeline_name"
+  ];
+
+  // Values for the pipeline's parameters, keyed by parameter name.
+  // Trigger system variables (e.g. @trigger().outputs.windowStartTime
+  // for tumbling windows, @triggerBody().fileName for blob events)
+  // are valid values.
+  map<string, string> parameters = 2;
+}

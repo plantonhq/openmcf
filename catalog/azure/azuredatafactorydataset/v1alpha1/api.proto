@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorydataset.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredatafactorydataset/v1alpha1/outputs.proto";
+import "catalog/azure/azuredatafactorydataset/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataFactoryDataset represents an Azure Data Factory dataset --
+// a named view of data inside a factory (AzureDataFactory) that tells
+// pipelines and data flows what the data looks like and where it sits
+// within a system a linked service already connects to. One kind
+// covers every data shape Azure models as a first-class dataset
+// resource, plus the raw-JSON custom form for the rest.
+message AzureDataFactoryDataset {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataFactoryDataset'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDataFactoryDatasetSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDataFactoryDatasetStatus status = 5;
+}
+
+// AzureDataFactoryDatasetStatus represents the status of an Azure
+// Data Factory dataset deployment.
+message AzureDataFactoryDatasetStatus {
+  //stack-outputs
+  //  azure-data-factory-dataset stack-outputs
+  AzureDataFactoryDatasetStackOutputs outputs = 1;
+}

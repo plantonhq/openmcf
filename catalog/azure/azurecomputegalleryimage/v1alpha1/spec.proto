@@ -1,0 +1,504 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecomputegalleryimage.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureComputeGalleryImageSpec** defines a gallery image: one image
+// definition inside an Azure Compute Gallery (its marketplace-style
+// identity, OS type, security posture, and recommended sizing) plus
+// the published versions of that image, each replicated to its own
+// target regions. VMs and scale sets deploy from a version's ARM ID
+// ({image_id}/versions/{version}) or from the definition's ID to get
+// the latest version.
+//
+// The definition itself is free; each version bills for the storage
+// its regional replicas consume. Versions are the image owner's own
+// release artifacts and live in the definition's manifest -- remove a
+// version entry to unpublish it.
+message AzureComputeGalleryImageSpec {
+  // The Azure Resource Group the image's gallery lives in. Can be a
+  // literal string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The Compute Gallery the image definition lives in. Can be a
+  // literal gallery name or a reference to an AzureComputeGallery
+  // output.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gallery_name = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureComputeGallery,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gallery_name"
+  ];
+
+  // The image definition's name -- up to 80 characters of letters,
+  // numbers, dots, dashes, and underscores.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "gallery_image_name_format"
+      message: "Image names allow up to 80 letters, numbers, dots, dashes, and underscores"
+      expression: "this.matches('^[A-Za-z0-9._-]{1,80}$')"
+    }
+  ];
+
+  // The Azure region the image definition is created in, e.g.
+  // "eastus". Each version replicates to its own target regions; the
+  // definition's region is where the metadata lives.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string region = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The image's marketplace-style identity. The publisher/offer/SKU
+  // triple must be unique within the gallery; VMs match images by it.
+  //
+  // **ForceNew**: changing any part destroys and recreates the image.
+  AzureComputeGalleryImageIdentifier identifier = 5 [(buf.validate.field).required = true];
+
+  // The operating system of every version of this image: "Linux" or
+  // "Windows".
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string os_type = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Linux",
+        "Windows"
+      ]
+    }
+  ];
+
+  // Whether versions of this image are SPECIALIZED (carry machine
+  // identity and user accounts from their source, deploy as clones)
+  // rather than generalized (sysprepped/deprovisioned, deploy as
+  // fresh machines). Most golden images are generalized -- leave this
+  // false unless the workflow clones prepared machines.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool specialized = 7;
+
+  // The CPU architecture of the image: "x64" or "Arm64". Unset means
+  // the provider default, "x64".
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string architecture = 8 [(buf.validate.field).string = {
+    in: [
+      "",
+      "x64",
+      "Arm64"
+    ]
+  }];
+
+  // The Hyper-V generation VMs deploying this image use: "V1" (BIOS
+  // boot) or "V2" (UEFI -- required for trusted launch and
+  // confidential VMs). Unset means the provider default, "V1"; prefer
+  // "V2" for new images.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string hyper_v_generation = 9 [(buf.validate.field).string = {
+    in: [
+      "",
+      "V1",
+      "V2"
+    ]
+  }];
+
+  // Marks the image as SUPPORTING trusted launch: consumers may
+  // deploy it with or without trusted launch. At most one of the four
+  // security flags can be set -- they are mutually exclusive security
+  // postures.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool trusted_launch_supported = 10;
+
+  // Marks the image as REQUIRING trusted launch (secure boot + vTPM)
+  // on every VM deployed from it. Requires Hyper-V generation V2. At
+  // most one of the four security flags can be set.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool trusted_launch_enabled = 11;
+
+  // Marks the image as SUPPORTING confidential VMs: consumers may
+  // deploy it as a confidential VM. At most one of the four security
+  // flags can be set.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool confidential_vm_supported = 12;
+
+  // Marks the image as REQUIRING confidential-VM deployment. At most
+  // one of the four security flags can be set.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool confidential_vm_enabled = 13;
+
+  // Marks the image as supporting accelerated networking; consumers
+  // see it reflected on the image definition.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool accelerated_network_support_enabled = 14;
+
+  // Marks the image as supporting hibernation on VMs deployed from
+  // it.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool hibernation_enabled = 15;
+
+  // Marks the image as supporting the NVMe disk controller (in
+  // addition to SCSI) on VMs deployed from it.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  bool disk_controller_type_nvme_enabled = 16;
+
+  // Disk storage types VMs deploying this image may NOT use:
+  // "Standard_LRS" and/or "Premium_LRS". Updatable in place.
+  repeated string disk_types_not_allowed = 17 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "Standard_LRS",
+          "Premium_LRS"
+        ]
+      }
+    }
+  }];
+
+  // When the image definition reaches end of life (RFC3339, e.g.
+  // "2030-01-01T00:00:00Z") -- an advisory signal to consumers, not
+  // an enforcement. Updatable in place; CLEARING a previously set
+  // date destroys and recreates the image (the provider forces
+  // replacement on removal).
+  string end_of_life_date = 18 [(buf.validate.field).cel = {
+    id: "gallery_image_end_of_life_rfc3339"
+    message: "end_of_life_date must be an RFC3339 timestamp, e.g. \"2030-01-01T00:00:00Z\""
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // The end-user license agreement text or URL for the image.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string eula = 19;
+
+  // A privacy statement URI shown to image consumers.
+  //
+  // **ForceNew**: changing this destroys and recreates the image.
+  string privacy_statement_uri = 20;
+
+  // A release-notes URI for the image. Updatable in place.
+  string release_note_uri = 21;
+
+  // A description of the image shown in the portal and returned by
+  // the API. Updatable in place.
+  string description = 22;
+
+  // The marketplace purchase plan the image's source carries, if any
+  // (bring-your-own-subscription images built from plan-bearing
+  // marketplace sources must declare it).
+  //
+  // **ForceNew**: changing any part destroys and recreates the image.
+  AzureComputeGalleryImagePurchasePlan purchase_plan = 23;
+
+  // The minimum vCPU count recommended for VMs deploying this image
+  // (1-80). Advisory sizing guidance shown to consumers. Updatable in
+  // place.
+  optional int32 min_recommended_vcpu_count = 24 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 80
+  }];
+
+  // The maximum vCPU count recommended for VMs deploying this image
+  // (1-80); must be >= the minimum when both are set. Updatable in
+  // place.
+  optional int32 max_recommended_vcpu_count = 25 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 80
+  }];
+
+  // The minimum memory in GB recommended for VMs deploying this image
+  // (1-640). Updatable in place.
+  optional int32 min_recommended_memory_in_gb = 26 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 640
+  }];
+
+  // The maximum memory in GB recommended for VMs deploying this image
+  // (1-640); must be >= the minimum when both are set. Updatable in
+  // place.
+  optional int32 max_recommended_memory_in_gb = 27 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 640
+  }];
+
+  // The image's published versions -- the release artifacts VMs
+  // actually deploy. Each version names its source (exactly one of a
+  // blob, a disk snapshot, or a managed image/VM) and the regions it
+  // replicates to. Versions share the definition's namespace: names
+  // must be unique. Add an entry to publish a version; remove it to
+  // unpublish.
+  repeated AzureComputeGalleryImageVersion versions = 28;
+
+  // Tags to apply to the image definition, merged over the
+  // Planton-derived metadata tags (user values win on key conflicts).
+  map<string, string> tags = 29;
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_security_flags_exclusive"
+    message: "at most one of trusted_launch_supported, trusted_launch_enabled, confidential_vm_supported, and confidential_vm_enabled can be set -- they are mutually exclusive security postures"
+    expression: "(this.trusted_launch_supported ? 1 : 0) + (this.trusted_launch_enabled ? 1 : 0) + (this.confidential_vm_supported ? 1 : 0) + (this.confidential_vm_enabled ? 1 : 0) <= 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_vcpu_range_ordered"
+    message: "max_recommended_vcpu_count must be greater than or equal to min_recommended_vcpu_count"
+    expression: "!has(this.min_recommended_vcpu_count) || !has(this.max_recommended_vcpu_count) || this.max_recommended_vcpu_count >= this.min_recommended_vcpu_count"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_memory_range_ordered"
+    message: "max_recommended_memory_in_gb must be greater than or equal to min_recommended_memory_in_gb"
+    expression: "!has(this.min_recommended_memory_in_gb) || !has(this.max_recommended_memory_in_gb) || this.max_recommended_memory_in_gb >= this.min_recommended_memory_in_gb"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_version_names_unique"
+    message: "versions names must be unique -- the name is the version's identity under the image"
+    expression: "this.versions.map(v, v.name).unique()"
+  };
+}
+
+// The image's marketplace-style identity triple. Must be unique
+// within the gallery.
+message AzureComputeGalleryImageIdentifier {
+  // The image publisher (up to 128 characters of letters, numbers,
+  // dots, dashes, and underscores; must not end with a dot).
+  string publisher = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "gallery_image_identifier_publisher_format"
+      message: "publisher allows up to 128 letters, numbers, dots, dashes, and underscores, and must not end with a dot"
+      expression: "this.matches('^[A-Za-z0-9._-]{1,128}$') && !this.endsWith('.')"
+    }
+  ];
+
+  // The image offer (up to 64 characters, same character rules as
+  // publisher).
+  string offer = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "gallery_image_identifier_offer_format"
+      message: "offer allows up to 64 letters, numbers, dots, dashes, and underscores, and must not end with a dot"
+      expression: "this.matches('^[A-Za-z0-9._-]{1,64}$') && !this.endsWith('.')"
+    }
+  ];
+
+  // The image SKU (up to 64 characters, same character rules as
+  // publisher).
+  string sku = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "gallery_image_identifier_sku_format"
+      message: "sku allows up to 64 letters, numbers, dots, dashes, and underscores, and must not end with a dot"
+      expression: "this.matches('^[A-Za-z0-9._-]{1,64}$') && !this.endsWith('.')"
+    }
+  ];
+}
+
+// The marketplace purchase plan the image's source carries.
+message AzureComputeGalleryImagePurchasePlan {
+  // The purchase plan's name.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The purchase plan's publisher.
+  string publisher = 2;
+
+  // The purchase plan's product.
+  string product = 3;
+}
+
+// One published version of the image: a release artifact built from
+// exactly one source, replicated to its target regions.
+message AzureComputeGalleryImageVersion {
+  // The version's name: three dot-separated numeric segments (e.g.
+  // "1.2.0", each segment up to 10 digits), or the literal "latest"
+  // or "recent" (the provider's own validator admits all three
+  // forms).
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "gallery_image_version_name_format"
+      message: "Version names are three dot-separated numeric segments (e.g. \"1.2.0\"), or the literal \"latest\" or \"recent\""
+      expression: "this.matches('^([0-9]{1,10}\\\\.[0-9]{1,10}\\\\.[0-9]{1,10})$') || this == 'latest' || this == 'recent'"
+    }
+  ];
+
+  // The regions this version replicates to, each with its own replica
+  // count and storage type. At least one region is required; the
+  // version is deployable in exactly these regions. Regions can be
+  // added and removed in place.
+  repeated AzureComputeGalleryImageVersionTargetRegion target_regions = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Source: a page blob (VHD) URI. Exactly one of blob_uri,
+  // os_disk_snapshot_id, and managed_image_id must be set; blob_uri
+  // requires storage_account_id.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  string blob_uri = 3 [(buf.validate.field).cel = {
+    id: "gallery_image_version_blob_uri_scheme"
+    message: "blob_uri must be an http or https URL"
+    expression: "this == '' || this.startsWith('http://') || this.startsWith('https://')"
+  }];
+
+  // The storage account holding blob_uri. Required with blob_uri,
+  // forbidden otherwise. Can be a literal ARM ID or a reference to an
+  // AzureStorageAccount output.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // Source: an OS disk snapshot. Exactly one of blob_uri,
+  // os_disk_snapshot_id, and managed_image_id must be set. Can be a
+  // literal ARM ID or a reference to an AzureDiskSnapshot output.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef os_disk_snapshot_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskSnapshot,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.snapshot_id"
+  ];
+
+  // Source: a legacy managed image's ARM ID, or a VM's ARM ID to
+  // capture directly. Exactly one of blob_uri, os_disk_snapshot_id,
+  // and managed_image_id must be set. Plain ARM ID: legacy managed
+  // images are superseded by the gallery itself and are not modeled
+  // as a Planton kind.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef managed_image_id = 6;
+
+  // The replication mode: "Full" (durable copies per region -- the
+  // provider default when unset) or "Shallow" (references the source
+  // directly: instant publish, source must live on; used for dev/test
+  // and very large images). Shallow versions cannot use per-region
+  // disk encryption sets.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  string replication_mode = 7 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Full",
+      "Shallow"
+    ]
+  }];
+
+  // Excludes this version from "latest" resolution: consumers pinned
+  // to the definition's latest version skip it (e.g. while it bakes
+  // or after a regression). Updatable in place.
+  bool exclude_from_latest = 8;
+
+  // Whether deleting this version is allowed to also delete its
+  // replicated copies in all target regions.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  bool deletion_of_replicated_locations_enabled = 9;
+
+  // When this version reaches end of life (RFC3339) -- advisory to
+  // consumers. Updatable in place; CLEARING a previously set date
+  // destroys and recreates the version (the provider forces
+  // replacement on removal).
+  string end_of_life_date = 10 [(buf.validate.field).cel = {
+    id: "gallery_image_version_end_of_life_rfc3339"
+    message: "end_of_life_date must be an RFC3339 timestamp, e.g. \"2030-01-01T00:00:00Z\""
+    expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+  }];
+
+  // Tags to apply to the version, merged over the Planton-derived
+  // metadata tags (user values win on key conflicts).
+  map<string, string> tags = 11;
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_version_exactly_one_source"
+    message: "exactly one of blob_uri, os_disk_snapshot_id, and managed_image_id must be set -- the version has one source"
+    expression: "(this.blob_uri != '' ? 1 : 0) + (has(this.os_disk_snapshot_id) ? 1 : 0) + (has(this.managed_image_id) ? 1 : 0) == 1"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_version_blob_requires_storage_account"
+    message: "blob_uri and storage_account_id are set together -- the blob's storage account carries the read grant"
+    expression: "(this.blob_uri != '') == has(this.storage_account_id)"
+  };
+
+  option (buf.validate.message).cel = {
+    id: "gallery_image_version_shallow_forbids_encryption"
+    message: "disk_encryption_set_id cannot be used in target_regions when replication_mode is Shallow"
+    expression: "this.replication_mode != 'Shallow' || this.target_regions.all(r, !has(r.disk_encryption_set_id))"
+  };
+}
+
+// One region a version replicates to.
+message AzureComputeGalleryImageVersionTargetRegion {
+  // The region's name, e.g. "eastus". Updatable: adding and removing
+  // regions replicates and unreplicates in place.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How many replicas of the version this region keeps (throughput
+  // scaling for concurrent VM deployments). Updatable in place.
+  int32 regional_replica_count = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Encrypts this region's replicas with a customer-managed key
+  // through a disk encryption set. Can be a literal ARM ID or a
+  // reference to an AzureDiskEncryptionSet output. Not allowed with
+  // Shallow replication.
+  //
+  // **ForceNew**: changing this destroys and recreates the version.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef disk_encryption_set_id = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureDiskEncryptionSet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.disk_encryption_set_id"
+  ];
+
+  // Excludes this REGION from "latest" resolution (region-scoped
+  // sibling of the version-level exclude_from_latest). Updatable in
+  // place.
+  bool exclude_from_latest_enabled = 4;
+
+  // The storage account type for this region's replicas:
+  // "Standard_LRS" (the provider default when unset), "Premium_LRS",
+  // or "Standard_ZRS". Azure cannot UPDATE this in place and the
+  // provider cannot force replacement for it (region-list membership
+  // changes in place) -- changing it on an existing region surfaces
+  // Azure's own error; remove and re-add the region instead.
+  string storage_account_type = 5 [(buf.validate.field).string = {
+    in: [
+      "",
+      "Premium_LRS",
+      "Standard_LRS",
+      "Standard_ZRS"
+    ]
+  }];
+}

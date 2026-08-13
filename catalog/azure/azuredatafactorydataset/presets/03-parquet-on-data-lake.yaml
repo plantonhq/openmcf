@@ -1,0 +1,21 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: parquet-on-data-lake
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: orders-curated
+  description: Curated orders as snappy-compressed Parquet in the lake.
+  # A Data Lake Storage Gen2 connection, by name.
+  linkedServiceName:
+    valueFrom:
+      name: <your-gen2-linked-service>
+  folder: curated
+  parquet:
+    azureBlobFsLocation:
+      fileSystem: lake
+      path: curated/orders
+    # Parquet's native pairing; omit for uncompressed files.
+    compressionCodec: snappy

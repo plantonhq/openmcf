@@ -9,7 +9,9 @@ spec:
   name: my-direct-circuit
   skuTier: STANDARD
   skuFamily: METERED_DATA
-  expressRoutePortId: "<your-express-route-port-arm-id>"
+  expressRoutePortId:
+    valueFrom:
+      name: <your-azure-express-route-port-resource-name> # references the AzureExpressRoutePort component's express_route_port_id output; use `value: <arm-id>` instead for a port managed outside Planton
   bandwidthInGbps: 5
   rateLimitingEnabled: true # cap the circuit at its configured bandwidth on the shared port
   authorizations:

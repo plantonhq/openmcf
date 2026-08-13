@@ -1,0 +1,46 @@
+# Minimal AzureDataFactoryDataFlow scenario: a mapping data flow
+# whose source embeds the smoke flowlet (created first as a
+# prerequisite doc -- proving BOTH provider forms and the self-kind
+# flowlet reference live in one lane) and whose sink is name-only.
+# The registry prerequisite chains the factory; data flow names are
+# factory-scoped (no run-id needed -- the parent factory's name
+# carries it). Free at rest; creates in seconds.
+# LIVE-PROVEN: ARM accepts a mapping flow whose sink names no linked
+# service -- save-time validation checks the script's stream names
+# against sources/sinks, not their bindings. A linked-service binding
+# (AzureDataFactoryLinkedService) is available when a scenario needs
+# one; this smoke deliberately stays unbound.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataFlow
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataflow-smoke
+  id: planton-oss-e2e-azuredatafactorydataflow-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataflow
+  annotations:
+    planton.dev/e2e: "true"
+    # The embedded flowlet is a prerequisite doc of this kind's own
+    # flowlet form -- created before this mapping flow references it.
+    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorydataflow/e2e/flowlet-smoke.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-mapping
+  description: E2E smoke mapping flow -- embeds the smoke flowlet at its source.
+  sources:
+    - name: smokeSource
+      flowlet:
+        name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorydataflow-flowlet
+  sinks:
+    - name: smokeSink
+  script: |
+    source(allowSchemaDrift: true, validateSchema: false) ~> smokeSource
+    smokeSource sink(allowSchemaDrift: true, validateSchema: false) ~> smokeSink
