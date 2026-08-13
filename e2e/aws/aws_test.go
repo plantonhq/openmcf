@@ -1247,6 +1247,48 @@ func TestAwsSagemakerMlflowApp_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssagemakermlflowapp", "terraform")
 }
 
+// --- AWS API Gateway REST (v1) family + AgentCore Evaluations ---
+
+func TestAwsRestApiGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapigateway", "pulumi")
+}
+
+func TestAwsRestApiGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapigateway", "terraform")
+}
+
+func TestAwsRestApiDomain_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapidomain", "pulumi")
+}
+
+func TestAwsRestApiDomain_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapidomain", "terraform")
+}
+
+func TestAwsRestApiUsagePlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapiusageplan", "pulumi")
+}
+
+func TestAwsRestApiUsagePlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapiusageplan", "terraform")
+}
+
+func TestAwsRestApiVpcLink_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapivpclink", "pulumi")
+}
+
+func TestAwsRestApiVpcLink_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsrestapivpclink", "terraform")
+}
+
+func TestAwsBedrockAgentCoreEvaluation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreevaluation", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreEvaluation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreevaluation", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

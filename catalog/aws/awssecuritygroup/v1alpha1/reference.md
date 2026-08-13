@@ -401,6 +401,9 @@ Fields on other kinds that can point at this resource:
 | AwsAlb | `spec.securityGroups` | `status.outputs.security_group_id` |
 | AwsAppRunnerVpcConnector | `spec.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.network.vpcConfig.securityGroups` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |
 | AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.securityGroupIds` | `status.outputs.security_group_id` |

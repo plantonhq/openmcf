@@ -15,6 +15,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
 	github.com/aws/aws-sdk-go-v2/service/acm v1.30.6
+	github.com/aws/aws-sdk-go-v2/service/apigateway v1.42.5
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.36.0
 	github.com/aws/aws-sdk-go-v2/service/apprunner v1.41.0
 	github.com/aws/aws-sdk-go-v2/service/athena v1.59.0

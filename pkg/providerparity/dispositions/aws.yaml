@@ -97,82 +97,10 @@ resources:
     reason: "judged as a planned AwsAmplifyApp kind (app with branches, domain associations, webhooks, backend environments)"
   - resource: aws_api_gateway_account
     disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_api_key
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_authorizer
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_base_path_mapping
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_client_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_deployment
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_documentation_part
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_documentation_version
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_domain_name
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_domain_name_access_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_gateway_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_integration
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_integration_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_model
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_request_validator
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_resource
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_rest_api
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_rest_api_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
+    reason: "judged as a planned AwsApiGatewayAccountSettings kind (region settings singleton: sets the account's CloudWatch-logging role and delete merely resets the field -- re-judged 2026-08-14 out of the founding AwsRestApiGateway fold, citing the AwsBedrockInvocationLogging / SES account-settings / AgentCore token-vault precedent: multiple gateway instances would fight over the ONE account object)"
   - resource: aws_api_gateway_rest_api_put
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_stage
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_usage_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_usage_plan_key
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_vpc_link
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
+    disposition: composed
+    reason: "the aws_api_gateway_rest_api resource already owns this capability through its body argument (Create -> PutRestApi -> reconcile choreography in the provider source); AwsRestApiGateway's OpenAPI arm is the surface -- re-judged 2026-08-14 from model-planned: a second one-shot put resource would be duplicate machinery over the same API call"
   - resource: aws_apigatewayv2_deployment
     disposition: model-planned
     reason: "judged into the planned AwsWebSocketApiGateway kind (WebSocket APIs are their own protocol surface -- AwsHttpApiGateway records that boundary in its spec); explicit deployments are the WebSocket publish mechanism, while HTTP APIs deploy via the stage's auto_deploy, already modeled on AwsHttpApiGateway"
@@ -434,15 +362,6 @@ resources:
   - resource: aws_bedrock_model_invocation_logging_configuration
     disposition: model-planned
     reason: "judged as a planned AwsBedrockInvocationLogging kind (region singleton: PutModelInvocationLoggingConfiguration, identity = the region) -- folding a region-wide observability singleton into the per-model AwsBedrockModelAccess would make multiple access instances fight over one logging object"
-  - resource: aws_bedrockagentcore_evaluator
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
-  - resource: aws_bedrockagentcore_harness
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
-  - resource: aws_bedrockagentcore_online_evaluation_config
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
   - resource: aws_bedrockagentcore_token_vault_cmk
     disposition: model-planned
     reason: "judged as a planned AwsBedrockAgentCoreTokenVault kind (account/region settings singleton: sets the CMK on the ONE default token vault, delete is a no-op -- re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreIdentity fold, citing the AwsBedrockInvocationLogging precedent: multiple Identity instances would fight over one vault object)"

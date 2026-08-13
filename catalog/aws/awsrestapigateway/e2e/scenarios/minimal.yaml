@@ -1,0 +1,32 @@
+# AwsRestApiGateway minimal scenario: one MOCK health route -- the
+# smallest, safest arm ($0, no backend, no fixture).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiGateway
+metadata:
+  name: planton-oss-e2e-awsrestgw-min
+  id: planton-oss-e2e-awsrestgw-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapigateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E REST API (MOCK health)
+  stage:
+    name: prod
+  routes:
+    - path: /health
+      method: GET
+      integration:
+        type: MOCK
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+      responses:
+        - statusCode: "200"
+          integrationResponseTemplates:
+            application/json: '{"ok": true}'

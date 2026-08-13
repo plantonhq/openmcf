@@ -143,6 +143,12 @@ var verifiers = map[string]Verifier{
 	"awsbedrockagentcorememory":       &agentCoreMemoryVerifier{},
 	"awsbedrockagentcoreidentity":     &agentCoreIdentityVerifier{},
 	"awsbedrockagentcoretools":        &agentCoreToolsVerifier{},
+	"awsbedrockagentcoreevaluation":   &agentCoreEvaluationVerifier{},
+
+	"awsrestapigateway":   &restApiGatewayVerifier{},
+	"awsrestapidomain":    &restApiDomainVerifier{},
+	"awsrestapiusageplan": &restApiUsagePlanVerifier{},
+	"awsrestapivpclink":   &restApiVpcLinkVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},

@@ -621,6 +621,14 @@ spec:
           Action:
             - bedrock:InvokeModel
           Resource: "*"
+        # Code-based evaluators (AwsBedrockAgentCoreEvaluation) invoke a
+        # Lambda at evaluation-run time. Create of the evaluator does
+        # not invoke it; the grant is here so a later live run against
+        # this role succeeds without a second IAM change.
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+          Resource: "*"
   trustPolicy:
     Version: "2012-10-17"
     Statement:

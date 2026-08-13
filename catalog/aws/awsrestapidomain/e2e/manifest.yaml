@@ -1,0 +1,35 @@
+# Canonical AwsRestApiDomain example (hack/dev manifest and refgen
+# Example source): a REGIONAL custom domain with ACM certificate, one
+# root mapping, and (commented in spirit) the PRIVATE access-association
+# arm shown as a second mapping. Literal ARNs stand in for composed
+# references so the offline `tofu plan` renders every coexisting arm.
+# Mutual TLS and uploaded certificates are XOR with ACM and live in
+# spec tests; PRIVATE access associations require endpoint type PRIVATE.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiDomain
+metadata:
+  name: api-example-com
+  id: api-example-com
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  domainName: api.example.com
+  certificateArn:
+    value: arn:aws:acm:us-west-2:123456789012:certificate/abcd-1234
+  endpointConfiguration:
+    type: REGIONAL
+    ipAddressType: ipv4
+  endpointAccessMode: BASIC
+  securityPolicy: TLS_1_2
+  routingMode: BASE_PATH_MAPPING_ONLY
+  basePathMappings:
+    - basePath: orders
+      restApiId:
+        value: abcdef1234
+      stageName:
+        value: prod
+    - restApiId:
+        value: abcdef1234
+      stageName:
+        value: prod

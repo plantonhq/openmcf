@@ -1,0 +1,1201 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsBedrockAgentCoreEvaluationSpec defines the desired configuration for
+// a bundle of Amazon Bedrock AgentCore Evaluations resources - the
+// capability that scores agent behavior:
+//
+//   - `evaluators`: scoring definitions - an LLM judge with a rating
+//     scale, or your own Lambda function;
+//   - `harnesses`: repeatable agent test benches (model, tools, prompts)
+//     that evaluation runs execute against;
+//   - `online_evaluation_configs`: continuous evaluation of PRODUCTION
+//     traffic - sampling agent sessions from CloudWatch logs and scoring
+//     them with evaluators.
+//
+// Every arm is optional; author the ones this bundle owns (at least
+// one). None of the three requires an agent runtime to exist - the
+// Evaluations capability deploys standalone, and a harness references a
+// runtime only through its optional runtime_environment arm.
+//
+// Creating evaluation objects is free; AWS bills per evaluation run
+// (model tokens for LLM judges, Lambda invocations for code evaluators,
+// sampled-session scoring for online configs).
+message AwsBedrockAgentCoreEvaluationSpec {
+  // The AWS region where the evaluation resources will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Scoring definitions: LLM-as-a-judge or Lambda-backed evaluators.
+  repeated AwsBedrockAgentCoreEvaluator evaluators = 2;
+
+  // Agent test benches evaluation runs execute against.
+  repeated AwsBedrockAgentCoreHarness harnesses = 3;
+
+  // Continuous scoring of sampled production sessions.
+  repeated AwsBedrockAgentCoreOnlineEvaluationConfig online_evaluation_configs = 4;
+
+  // An empty bundle configures nothing.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_evaluation_resource"
+    message: "set at least one of evaluators, harnesses, or online_evaluation_configs"
+    expression: "this.evaluators.size() > 0 || this.harnesses.size() > 0 || this.online_evaluation_configs.size() > 0"
+  };
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "evaluator_names_unique"
+    message: "evaluators entries must have unique names"
+    expression: "this.evaluators.map(e, e.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "harness_names_unique"
+    message: "harnesses entries must have unique names"
+    expression: "this.harnesses.map(h, h.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "online_evaluation_config_names_unique"
+    message: "online_evaluation_configs entries must have unique names"
+    expression: "this.online_evaluation_configs.map(c, c.name).unique()"
+  };
+
+  // An online config's evaluator list accepts AWS builtins
+  // ("Builtin.Helpfulness"), full custom evaluator IDs
+  // ("my_evaluator-Ab12Cd34Ef"), or the NAME of an evaluator defined in
+  // THIS bundle (the modules resolve the name to the created ID and order
+  // the create behind it).
+  option (buf.validate.message).cel = {
+    id: "online_config_evaluators_resolvable"
+    message: "each online_evaluation_configs evaluator entry must be an AWS builtin (Builtin.*), a full custom evaluator ID (name-XXXXXXXXXX), or the name of an evaluator defined in this spec"
+    expression: "this.online_evaluation_configs.all(c, c.evaluator_ids.all(e, e.matches('^Builtin\\\\.[a-zA-Z0-9_-]+$') || e.matches('^[a-zA-Z][a-zA-Z0-9-_]{0,99}-[a-zA-Z0-9]{10}$') || this.evaluators.exists(v, v.name == e)))"
+  };
+}
+
+// AwsBedrockAgentCoreEvaluator is one scoring definition. Exactly one
+// scoring arm: an LLM judge (a Bedrock model scores against your
+// instructions and rating scale) or a code evaluator (your Lambda
+// returns the score).
+message AwsBedrockAgentCoreEvaluator {
+  // Evaluator name in AWS (a letter, then up to 47 letters/digits/
+  // underscores). The for_each key on both engines and the key in the
+  // `evaluator_ids` output map. AWS derives the evaluator ID from it
+  // ("<name>-<10 chars>") and exposes NO rename - changing it replaces
+  // the evaluator.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // What this evaluator scores (1-200 characters).
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // The granularity the evaluator scores at: a single TOOL_CALL, one
+  // TRACE (a full request/response cycle), or a whole SESSION.
+  string level = 3 [(buf.validate.field).string = {
+    in: [
+      "TOOL_CALL",
+      "TRACE",
+      "SESSION"
+    ]
+  }];
+
+  // Customer-managed KMS key encrypting the evaluator's data at rest.
+  // Omitted = the AWS-owned key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // A Bedrock model judges against instructions and a rating scale.
+  AwsBedrockAgentCoreLlmJudge llm_as_a_judge = 5;
+
+  // Your Lambda function computes the score.
+  AwsBedrockAgentCoreCodeEvaluator code_based = 6;
+
+  // AWS takes exactly one scoring arm.
+  option (buf.validate.message).cel = {
+    id: "evaluator_exactly_one_arm"
+    message: "evaluator must set exactly one of llm_as_a_judge or code_based"
+    expression: "has(this.llm_as_a_judge) != has(this.code_based)"
+  };
+}
+
+// AwsBedrockAgentCoreLlmJudge scores with a Bedrock model: the
+// instructions tell the judge what to assess, the rating scale defines
+// the allowed scores.
+message AwsBedrockAgentCoreLlmJudge {
+  // The judge prompt - what to assess and how to decide the score.
+  // Treated as sensitive: prompts routinely embed proprietary evaluation
+  // criteria.
+  string instructions = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // The Bedrock model that judges.
+  AwsBedrockAgentCoreJudgeModel model = 2 [(buf.validate.field).required = true];
+
+  // The allowed scores - exactly one scale shape.
+  AwsBedrockAgentCoreRatingScale rating_scale = 3 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreJudgeModel selects and tunes the judging model.
+message AwsBedrockAgentCoreJudgeModel {
+  // Bedrock model identifier the judge runs on. Accepts a foundation
+  // model ID ("anthropic.claude-3-5-sonnet-20241022-v2:0"), an inference
+  // profile ID, or a model ARN. The account must have access to the
+  // model in this region.
+  string model_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Model-specific request fields passed through verbatim (the shape the
+  // model's own InvokeModel API documents), for parameters the typed
+  // inference config does not cover.
+  google.protobuf.Struct additional_model_request_fields = 2;
+
+  // Sampling controls for the judge.
+  AwsBedrockAgentCoreJudgeInference inference = 3;
+}
+
+// AwsBedrockAgentCoreJudgeInference tunes the judge's sampling.
+message AwsBedrockAgentCoreJudgeInference {
+  // Maximum tokens the judge may generate. Omitted = the model default.
+  int32 max_tokens = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Sequences that stop generation (max 2500).
+  repeated string stop_sequences = 2 [(buf.validate.field).repeated = {
+    max_items: 2500
+    items: {string: {min_len: 1}}
+  }];
+
+  // Sampling temperature (0-1). Omitted = the model default. Judges
+  // usually run at 0 for deterministic scoring.
+  optional double temperature = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Nucleus-sampling cap (0-1). Omitted = the model default.
+  optional double top_p = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// AwsBedrockAgentCoreRatingScale defines the judge's allowed scores -
+// exactly one shape.
+message AwsBedrockAgentCoreRatingScale {
+  // Named categories ("helpful", "unhelpful") - the judge picks one.
+  repeated AwsBedrockAgentCoreCategoricalRating categorical = 1;
+
+  // Numbered scores (1 = poor ... 5 = excellent) - the judge picks one
+  // value.
+  repeated AwsBedrockAgentCoreNumericalRating numerical = 2;
+
+  // AWS takes exactly one scale shape.
+  option (buf.validate.message).cel = {
+    id: "rating_scale_exactly_one_shape"
+    message: "rating scale must define exactly one of categorical or numerical entries"
+    expression: "(this.categorical.size() > 0) != (this.numerical.size() > 0)"
+  };
+}
+
+// AwsBedrockAgentCoreCategoricalRating is one named category the judge
+// may assign.
+message AwsBedrockAgentCoreCategoricalRating {
+  // The category label (1-100 characters).
+  string label = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // When the judge should assign this category.
+  string definition = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreNumericalRating is one numeric score the judge may
+// assign.
+message AwsBedrockAgentCoreNumericalRating {
+  // The score label (1-100 characters), e.g. "excellent".
+  string label = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // When the judge should assign this score.
+  string definition = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The numeric value (>= 0) reported for this score.
+  double value = 3 [(buf.validate.field).double.gte = 0];
+}
+
+// AwsBedrockAgentCoreCodeEvaluator scores with your Lambda function.
+message AwsBedrockAgentCoreCodeEvaluator {
+  // The Lambda function that computes the score. The function receives
+  // the evaluation payload and returns the result; the evaluator's IAM
+  // integration invokes it, so the function's resource policy must allow
+  // bedrock-agentcore.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Seconds the evaluator waits for the Lambda (1-300). Omitted = 60.
+  int32 timeout_seconds = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 300
+    }
+  ];
+}
+
+// AwsBedrockAgentCoreHarness is one repeatable agent test bench: the
+// model under test, its tools, prompts, and execution environment.
+// Evaluation runs execute the harness and score the results.
+message AwsBedrockAgentCoreHarness {
+  // Harness name in AWS (1-40 characters). The for_each key on both
+  // engines and the key in the `harness_ids` output map. AWS exposes no
+  // rename - changing it replaces the harness.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 40
+  }];
+
+  // IAM role the harness assumes to run the agent under test (invoking
+  // models, calling tools, reading memory). Must trust
+  // bedrock-agentcore.amazonaws.com. Updatable in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The model the harness drives - exactly one vendor arm.
+  AwsBedrockAgentCoreHarnessModel model = 3 [(buf.validate.field).required = true];
+
+  // System prompts prepended to every harness run, in order.
+  repeated AwsBedrockAgentCoreHarnessSystemPrompt system_prompts = 4;
+
+  // Tools the agent under test may call.
+  repeated AwsBedrockAgentCoreHarnessTool tools = 5;
+
+  // Skill bundle paths loaded into the harness.
+  repeated string skill_paths = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // AgentCore memory the harness reads/writes during runs.
+  AwsBedrockAgentCoreHarnessMemory memory = 7;
+
+  // Environment variables injected into the harness runtime. Treated as
+  // sensitive: env maps routinely carry tokens and connection strings.
+  map<string, string> environment_variables = 8 [(dev.planton.shared.options.sensitive) = true];
+
+  // Explicit AgentCore runtime environment the harness executes in.
+  // Omitted = AWS provisions and manages a default runtime environment
+  // (the common case); set it to pin the harness to an existing runtime
+  // or to control networking/filesystems/lifecycle.
+  AwsBedrockAgentCoreHarnessRuntimeEnvironment runtime_environment = 9;
+
+  // Container image for the harness's environment artifact - run the
+  // agent under test from your own image instead of the managed
+  // environment's default.
+  string container_image_uri = 10;
+
+  // Inbound JWT authorization for invoking the harness. Omitted = AWS
+  // IAM (SigV4) only.
+  AwsBedrockAgentCoreJwtAuthorizer custom_jwt_authorizer = 11;
+
+  // Restrict runs to these tool names (a subset of `tools`). Omitted =
+  // all configured tools are allowed.
+  repeated string allowed_tools = 12 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Maximum agent iterations (tool-call loops) per run. Omitted = the
+  // AWS default.
+  int32 max_iterations = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Maximum tokens per run. Omitted = the AWS default.
+  int32 max_tokens = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Seconds before a run times out. Omitted = the AWS default.
+  int32 timeout_seconds = 15 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // How conversation history is truncated when it outgrows the context
+  // window.
+  AwsBedrockAgentCoreHarnessTruncation truncation = 16;
+
+  // `allowed_tools` names must exist among the configured tools -
+  // AWS would accept the create and the runs would silently have no
+  // tools.
+  option (buf.validate.message).cel = {
+    id: "allowed_tools_must_be_configured"
+    message: "each allowed_tools entry must match the name of a tool configured in tools"
+    expression: "this.allowed_tools.all(a, this.tools.exists(t, t.name == a))"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessModel selects the model under test - exactly
+// one vendor arm. Non-Bedrock vendors authenticate with an API key held
+// in Secrets Manager.
+message AwsBedrockAgentCoreHarnessModel {
+  // A Bedrock-hosted model.
+  AwsBedrockAgentCoreHarnessBedrockModel bedrock = 1;
+
+  // A Google Gemini model (API key from Secrets Manager).
+  AwsBedrockAgentCoreHarnessGeminiModel gemini = 2;
+
+  // An OpenAI model (API key from Secrets Manager).
+  AwsBedrockAgentCoreHarnessOpenAiModel openai = 3;
+
+  // AWS takes exactly one vendor arm; configuring two would silently
+  // drop one.
+  option (buf.validate.message).cel = {
+    id: "harness_model_exactly_one_vendor"
+    message: "harness model must set exactly one of bedrock, gemini, or openai"
+    expression: "[has(this.bedrock), has(this.gemini), has(this.openai)].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessBedrockModel runs a Bedrock-hosted model.
+message AwsBedrockAgentCoreHarnessBedrockModel {
+  // Bedrock model identifier (foundation model ID, inference profile ID,
+  // or model ARN). The harness's execution role must be able to invoke
+  // it.
+  string model_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Maximum tokens per response. Omitted = the model default.
+  int32 max_tokens = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Sampling temperature (0-2). Omitted = the model default.
+  optional double temperature = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 2
+  }];
+
+  // Nucleus-sampling cap (0-1). Omitted = the model default.
+  optional double top_p = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// AwsBedrockAgentCoreHarnessGeminiModel runs a Google Gemini model.
+message AwsBedrockAgentCoreHarnessGeminiModel {
+  // Secrets Manager secret holding the Gemini API key. The ARN is a
+  // reference, not the key itself - the harness reads the secret at run
+  // time with its execution role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef api_key_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Gemini model identifier (e.g. "gemini-2.0-flash").
+  string model_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Maximum tokens per response. Omitted = the model default.
+  int32 max_tokens = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Sampling temperature (0-2). Omitted = the model default.
+  optional double temperature = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 2
+  }];
+
+  // Nucleus-sampling cap (0-1). Omitted = the model default.
+  optional double top_p = 5 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Top-K sampling cutoff (0-500). Omitted = the model default.
+  optional int32 top_k = 6 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 500
+  }];
+}
+
+// AwsBedrockAgentCoreHarnessOpenAiModel runs an OpenAI model.
+message AwsBedrockAgentCoreHarnessOpenAiModel {
+  // Secrets Manager secret holding the OpenAI API key. The ARN is a
+  // reference, not the key itself - the harness reads the secret at run
+  // time with its execution role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef api_key_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // OpenAI model identifier (e.g. "gpt-4o").
+  string model_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Maximum tokens per response. Omitted = the model default.
+  int32 max_tokens = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Sampling temperature (0-2). Omitted = the model default.
+  optional double temperature = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 2
+  }];
+
+  // Nucleus-sampling cap (0-1). Omitted = the model default.
+  optional double top_p = 5 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// AwsBedrockAgentCoreHarnessSystemPrompt is one system prompt segment.
+message AwsBedrockAgentCoreHarnessSystemPrompt {
+  // The prompt text. Treated as sensitive: system prompts routinely
+  // embed proprietary agent behavior.
+  string text = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsBedrockAgentCoreHarnessTool is one tool the agent under test may
+// call. The `type` selects the arm; exactly the matching config arm must
+// be set (AWS's own API would silently take the first configured arm).
+message AwsBedrockAgentCoreHarnessTool {
+  // Tool name (1-64 characters) the agent addresses it by, and the name
+  // `allowed_tools` filters against.
+  string name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 64
+  ];
+
+  // The tool kind.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "remote_mcp",
+      "agentcore_browser",
+      "agentcore_gateway",
+      "inline_function",
+      "agentcore_code_interpreter"
+    ]
+  }];
+
+  // A remote MCP server the agent calls over HTTP.
+  AwsBedrockAgentCoreHarnessRemoteMcpTool remote_mcp = 3;
+
+  // An AgentCore managed browser.
+  AwsBedrockAgentCoreHarnessBrowserTool agentcore_browser = 4;
+
+  // An AgentCore gateway (MCP tool front door).
+  AwsBedrockAgentCoreHarnessGatewayTool agentcore_gateway = 5;
+
+  // A function the harness defines inline.
+  AwsBedrockAgentCoreHarnessInlineFunctionTool inline_function = 6;
+
+  // An AgentCore managed code interpreter.
+  AwsBedrockAgentCoreHarnessCodeInterpreterTool agentcore_code_interpreter = 7;
+
+  // The configured arm must match the declared type - the provider
+  // would silently take the first configured arm otherwise. Browser and
+  // code-interpreter tools may omit their arm entirely (AWS then uses
+  // the account's default tool).
+  option (buf.validate.message).cel = {
+    id: "tool_config_matches_type"
+    message: "set exactly the config arm matching type (remote_mcp, agentcore_gateway, and inline_function require theirs; agentcore_browser and agentcore_code_interpreter may omit theirs to use the AWS default tool)"
+    expression: "(this.type == 'remote_mcp' ? (has(this.remote_mcp) && !has(this.agentcore_browser) && !has(this.agentcore_gateway) && !has(this.inline_function) && !has(this.agentcore_code_interpreter)) : this.type == 'agentcore_gateway' ? (has(this.agentcore_gateway) && !has(this.remote_mcp) && !has(this.agentcore_browser) && !has(this.inline_function) && !has(this.agentcore_code_interpreter)) : this.type == 'inline_function' ? (has(this.inline_function) && !has(this.remote_mcp) && !has(this.agentcore_browser) && !has(this.agentcore_gateway) && !has(this.agentcore_code_interpreter)) : this.type == 'agentcore_browser' ? (!has(this.remote_mcp) && !has(this.agentcore_gateway) && !has(this.inline_function) && !has(this.agentcore_code_interpreter)) : (!has(this.remote_mcp) && !has(this.agentcore_browser) && !has(this.agentcore_gateway) && !has(this.inline_function)))"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessRemoteMcpTool calls a remote MCP server.
+message AwsBedrockAgentCoreHarnessRemoteMcpTool {
+  // The MCP server URL. Treated as sensitive: MCP URLs routinely embed
+  // tokens or tenant identifiers.
+  string url = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // HTTP headers sent on every MCP call. Treated as sensitive: the
+  // common use is an Authorization header.
+  map<string, string> headers = 2 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// AwsBedrockAgentCoreHarnessBrowserTool drives an AgentCore managed
+// browser.
+message AwsBedrockAgentCoreHarnessBrowserTool {
+  // The browser to use. Accepts a browser ARN or a reference to an
+  // AwsBedrockAgentCoreTools resource's `browser_arns` output entry
+  // (reference the map key explicitly). Omitted = the AWS default
+  // browser (aws.browser.v1).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef browser_arn = 1;
+}
+
+// AwsBedrockAgentCoreHarnessCodeInterpreterTool runs model-written code
+// in an AgentCore sandbox.
+message AwsBedrockAgentCoreHarnessCodeInterpreterTool {
+  // The code interpreter to use. Accepts an interpreter ARN or a
+  // reference to an AwsBedrockAgentCoreTools resource's
+  // `code_interpreter_arns` output entry (reference the map key
+  // explicitly). Omitted = the AWS default interpreter
+  // (aws.codeinterpreter.v1).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef code_interpreter_arn = 1;
+}
+
+// AwsBedrockAgentCoreHarnessGatewayTool calls tools through an AgentCore
+// gateway.
+message AwsBedrockAgentCoreHarnessGatewayTool {
+  // The gateway fronting the tools.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef gateway_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockAgentCoreGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_arn"
+  ];
+
+  // How the harness authenticates to the gateway. Omitted = the
+  // gateway's default (AWS IAM).
+  AwsBedrockAgentCoreHarnessGatewayOutboundAuth outbound_auth = 2;
+}
+
+// AwsBedrockAgentCoreHarnessGatewayOutboundAuth selects how the harness
+// authenticates outbound to a gateway - at most one arm.
+message AwsBedrockAgentCoreHarnessGatewayOutboundAuth {
+  // Sign gateway calls with AWS IAM (SigV4).
+  bool aws_iam = 1;
+
+  // Call the gateway unauthenticated.
+  bool no_auth = 2;
+
+  // Authenticate with OAuth through an AgentCore credential provider.
+  AwsBedrockAgentCoreHarnessGatewayOAuth oauth = 3;
+
+  // AWS takes at most one auth arm.
+  option (buf.validate.message).cel = {
+    id: "outbound_auth_at_most_one_arm"
+    message: "set at most one of aws_iam, no_auth, or oauth"
+    expression: "[this.aws_iam, this.no_auth, has(this.oauth)].filter(x, x).size() <= 1"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessGatewayOAuth authenticates gateway calls
+// through an AgentCore OAuth2 credential provider.
+message AwsBedrockAgentCoreHarnessGatewayOAuth {
+  // The AgentCore OAuth2 credential provider. Accepts a provider ARN or
+  // a reference to an AwsBedrockAgentCoreIdentity resource's
+  // `oauth2_provider_arns` output entry (reference the map key
+  // explicitly).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provider_arn = 1 [(buf.validate.field).required = true];
+
+  // OAuth scopes requested for the token.
+  repeated string scopes = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {string: {min_len: 1}}
+  }];
+
+  // Extra token-request parameters the provider requires.
+  map<string, string> custom_parameters = 3;
+
+  // Return URL for the AUTHORIZATION_CODE flow.
+  string default_return_url = 4;
+
+  // The OAuth grant used to obtain tokens. Omitted = the provider
+  // default.
+  string grant_type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CLIENT_CREDENTIALS",
+        "AUTHORIZATION_CODE",
+        "TOKEN_EXCHANGE"
+      ]
+    }
+  ];
+}
+
+// AwsBedrockAgentCoreHarnessInlineFunctionTool defines a function tool
+// inline - the agent sees its schema; the evaluation run supplies the
+// behavior.
+message AwsBedrockAgentCoreHarnessInlineFunctionTool {
+  // What the function does (the agent reads this to decide when to call
+  // it).
+  string description = 1 [(buf.validate.field).string.min_len = 1];
+
+  // JSON Schema of the function's input, as a JSON document. Treated as
+  // sensitive: schemas routinely describe proprietary internal APIs.
+  string input_schema = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsBedrockAgentCoreHarnessMemory wires an AgentCore memory into the
+// harness.
+message AwsBedrockAgentCoreHarnessMemory {
+  // The AgentCore memory the harness reads/writes.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef memory_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockAgentCoreMemory,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.memory_arn"
+  ];
+
+  // The memory actor the harness runs as. Omitted = AWS assigns one per
+  // run.
+  string actor_id = 2;
+
+  // Short-term conversation turns loaded into context. Omitted = the
+  // AWS default.
+  int32 messages_count = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Long-term retrieval against one memory namespace.
+  AwsBedrockAgentCoreHarnessMemoryRetrieval retrieval = 4;
+}
+
+// AwsBedrockAgentCoreHarnessMemoryRetrieval configures long-term memory
+// retrieval for harness runs.
+message AwsBedrockAgentCoreHarnessMemoryRetrieval {
+  // The memory namespace to retrieve from (e.g.
+  // "/strategies/{memoryStrategyId}/actors/{actorId}").
+  string namespace = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Minimum relevance score (0-1) a record needs to be retrieved.
+  // Omitted = the AWS default.
+  optional double relevance_score = 2 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Restrict retrieval to one memory strategy. Omitted = all strategies
+  // in the namespace.
+  string strategy_id = 3;
+
+  // Maximum records retrieved per query. Omitted = the AWS default.
+  int32 top_k = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsBedrockAgentCoreHarnessRuntimeEnvironment pins the harness to an
+// explicit AgentCore runtime environment instead of the AWS-managed
+// default.
+message AwsBedrockAgentCoreHarnessRuntimeEnvironment {
+  // The agent runtime hosting the harness's environment. Omitted = AWS
+  // provisions a managed environment with the settings below. (AWS also
+  // accepts the runtime's ID or name; the ARN is the canonical form and
+  // the only one the modules send.)
+  dev.planton.shared.foreignkey.v1.StringValueOrRef agent_runtime_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockAgentCoreRuntime,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.agent_runtime_arn"
+  ];
+
+  // Filesystems mounted into the environment.
+  repeated AwsBedrockAgentCoreHarnessFilesystem filesystems = 2;
+
+  // Session lifecycle tuning.
+  AwsBedrockAgentCoreHarnessLifecycle lifecycle = 3;
+
+  // Environment networking.
+  AwsBedrockAgentCoreHarnessNetwork network = 4;
+}
+
+// AwsBedrockAgentCoreHarnessFilesystem is one filesystem mount - exactly
+// one source arm.
+message AwsBedrockAgentCoreHarnessFilesystem {
+  // Where the filesystem mounts inside the environment.
+  string mount_path = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Mount an EFS access point.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef efs_access_point_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsEfsAccessPoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.access_point_arn"
+  ];
+
+  // Mount an S3 access point.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef s3_access_point_arn = 3;
+
+  // Mount ephemeral per-session storage.
+  bool session_storage = 4;
+
+  // AWS takes exactly one source per mount.
+  option (buf.validate.message).cel = {
+    id: "filesystem_exactly_one_source"
+    message: "each filesystem must set exactly one of efs_access_point_arn, s3_access_point_arn, or session_storage"
+    expression: "[has(this.efs_access_point_arn), has(this.s3_access_point_arn), this.session_storage].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessLifecycle tunes environment session
+// lifetimes.
+message AwsBedrockAgentCoreHarnessLifecycle {
+  // Seconds an idle session survives before reclamation. Omitted = the
+  // AWS default.
+  int32 idle_runtime_session_timeout_seconds = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Maximum seconds any session lives. Omitted = the AWS default.
+  int32 max_lifetime_seconds = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsBedrockAgentCoreHarnessNetwork configures environment networking.
+message AwsBedrockAgentCoreHarnessNetwork {
+  // PUBLIC gives the environment AWS-managed outbound internet; VPC
+  // attaches it to your subnets.
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "PUBLIC",
+      "VPC"
+    ]
+  }];
+
+  // VPC placement - required when mode is VPC.
+  AwsBedrockAgentCoreHarnessVpcConfig vpc_config = 2;
+
+  // AWS requires the placement exactly when mode is VPC.
+  option (buf.validate.message).cel = {
+    id: "vpc_mode_requires_config"
+    message: "vpc_config is required when mode is VPC and forbidden otherwise"
+    expression: "(this.mode == 'VPC') == has(this.vpc_config)"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessVpcConfig places the environment in your
+// VPC.
+message AwsBedrockAgentCoreHarnessVpcConfig {
+  // Subnets the environment's network interfaces attach to (at least
+  // one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnets = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on those interfaces (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_groups = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Require S3 traffic to ride a VPC endpoint instead of the internet
+  // path.
+  bool require_service_s3_endpoint = 3;
+}
+
+// AwsBedrockAgentCoreHarnessTruncation controls how conversation history
+// is cut when it outgrows the context window.
+message AwsBedrockAgentCoreHarnessTruncation {
+  // The truncation strategy.
+  string strategy = 1 [(buf.validate.field).string = {
+    in: [
+      "sliding_window",
+      "summarization",
+      "none"
+    ]
+  }];
+
+  // Keep only the most recent messages - pairs with strategy
+  // "sliding_window".
+  AwsBedrockAgentCoreHarnessSlidingWindow sliding_window = 2;
+
+  // Summarize older history - pairs with strategy "summarization".
+  AwsBedrockAgentCoreHarnessSummarization summarization = 3;
+
+  // The config arm must match the declared strategy ("none" takes no
+  // config).
+  option (buf.validate.message).cel = {
+    id: "truncation_config_matches_strategy"
+    message: "set exactly the config matching strategy: sliding_window with 'sliding_window', summarization with 'summarization', neither with 'none'"
+    expression: "(this.strategy == 'sliding_window' && has(this.sliding_window) && !has(this.summarization)) || (this.strategy == 'summarization' && has(this.summarization) && !has(this.sliding_window)) || (this.strategy == 'none' && !has(this.sliding_window) && !has(this.summarization))"
+  };
+}
+
+// AwsBedrockAgentCoreHarnessSlidingWindow keeps the most recent
+// messages.
+message AwsBedrockAgentCoreHarnessSlidingWindow {
+  // Messages kept in the window.
+  int32 messages_count = 1 [(buf.validate.field).int32.gte = 1];
+}
+
+// AwsBedrockAgentCoreHarnessSummarization summarizes older history.
+message AwsBedrockAgentCoreHarnessSummarization {
+  // Fraction of the context (0-1) the summary may occupy.
+  optional double summary_ratio = 1 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Recent messages preserved verbatim (never summarized).
+  int32 preserve_recent_messages = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Prompt driving the summarizer. Treated as sensitive like the other
+  // prompt surfaces.
+  string summarization_system_prompt = 3 [(dev.planton.shared.options.sensitive) = true];
+}
+
+// AwsBedrockAgentCoreJwtAuthorizer validates inbound JWTs (the same
+// shape the AgentCore runtime and gateway kinds use).
+message AwsBedrockAgentCoreJwtAuthorizer {
+  // The provider's OIDC discovery URL (must serve
+  // /.well-known/openid-configuration).
+  string discovery_url = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Accepted "aud" claim values. A token must match at least one entry
+  // of at least one configured allow-list.
+  repeated string allowed_audience = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth client IDs (the "client_id"/"azp" claim).
+  repeated string allowed_clients = 3 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Accepted OAuth scopes.
+  repeated string allowed_scopes = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Restrict which AgentCore workload identities may present tokens.
+  AwsBedrockAgentCoreAllowedWorkloads allowed_workloads = 5;
+
+  // Additional claim-matching rules a token must satisfy beyond the
+  // standard audience/client/scope checks.
+  repeated AwsBedrockAgentCoreCustomClaim custom_claims = 6;
+
+  // Reach a PRIVATE OIDC provider through your VPC instead of the
+  // public internet.
+  AwsBedrockAgentCorePrivateEndpoint private_endpoint = 7;
+
+  // Per-domain overrides of the private endpoint (max 5) - route
+  // specific issuer domains through different private paths.
+  repeated AwsBedrockAgentCorePrivateEndpointOverride private_endpoint_overrides = 8 [(buf.validate.field).repeated.max_items = 5];
+}
+
+// AwsBedrockAgentCoreAllowedWorkloads restricts callers to named
+// AgentCore workload identities and/or hosting environments.
+message AwsBedrockAgentCoreAllowedWorkloads {
+  // Workload identity names allowed to call (1-10).
+  repeated string workload_identities = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {string: {min_len: 1}}
+  }];
+
+  // Hosting environment ARNs allowed to call (1-10).
+  repeated string hosting_environment_arns = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {string: {min_len: 1}}
+  }];
+}
+
+// AwsBedrockAgentCoreCustomClaim is one extra JWT claim check.
+message AwsBedrockAgentCoreCustomClaim {
+  // The inbound token claim to inspect (1-255 characters; letters,
+  // digits, and _ . - :).
+  string claim_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // Whether the claim's value is a single STRING or a STRING_ARRAY.
+  string value_type = 2 [(buf.validate.field).string = {
+    in: [
+      "STRING",
+      "STRING_ARRAY"
+    ]
+  }];
+
+  // How the claim value is compared: EQUALS (exact), CONTAINS (the
+  // value appears), or CONTAINS_ANY (any of the expected values
+  // appears).
+  string match_operator = 3 [(buf.validate.field).string = {
+    in: [
+      "EQUALS",
+      "CONTAINS",
+      "CONTAINS_ANY"
+    ]
+  }];
+
+  // Expected value when matching a single string.
+  string match_value = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 255
+      pattern: "^[A-Za-z0-9_.:-]+$"
+    }
+  ];
+
+  // Expected values when matching against a list.
+  repeated string match_values = 5 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.:-]+$"
+  }];
+
+  // AWS takes exactly one match-value shape.
+  option (buf.validate.message).cel = {
+    id: "claim_match_value_exactly_one"
+    message: "custom claim must set exactly one of match_value or match_values"
+    expression: "(this.match_value != '') != (this.match_values.size() > 0)"
+  };
+}
+
+// AwsBedrockAgentCorePrivateEndpoint reaches a private resource -
+// exactly one arm.
+message AwsBedrockAgentCorePrivateEndpoint {
+  // AWS manages VPC endpoints in your subnets.
+  AwsBedrockAgentCoreManagedVpcEndpoint managed_vpc = 1;
+
+  // You bring a VPC Lattice resource configuration.
+  AwsBedrockAgentCoreLatticeEndpoint self_managed_lattice = 2;
+
+  // Exactly one endpoint arm.
+  option (buf.validate.message).cel = {
+    id: "private_endpoint_exactly_one"
+    message: "private endpoint must set exactly one of managed_vpc or self_managed_lattice"
+    expression: "has(this.managed_vpc) != has(this.self_managed_lattice)"
+  };
+}
+
+// AwsBedrockAgentCoreManagedVpcEndpoint is an AWS-managed private path
+// through your VPC. (On the harness, AWS requires the address type
+// explicitly - unlike the agent runtime's otherwise-identical shape.)
+message AwsBedrockAgentCoreManagedVpcEndpoint {
+  // The VPC to route through.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpc,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_id"
+  ];
+
+  // Subnets for the managed endpoint's network interfaces (at least
+  // one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups on the endpoint interfaces (max 5).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 3 [
+    (buf.validate.field).repeated.max_items = 5,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+
+  // Whether the endpoint answers IPV4 or IPV6. AWS requires the choice
+  // on the harness's managed endpoint.
+  string endpoint_ip_address_type = 4 [(buf.validate.field).string = {
+    in: [
+      "IPV4",
+      "IPV6"
+    ]
+  }];
+
+  // Domain the endpoint routes (3-255 characters). Omitted = derived
+  // from the target.
+  string routing_domain = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 255
+  ];
+
+  // Tags applied to the AWS-managed endpoint resources (the module
+  // always adds the Planton identity tags).
+  map<string, string> tags = 6;
+}
+
+// AwsBedrockAgentCoreLatticeEndpoint routes through a VPC Lattice
+// resource configuration you manage.
+message AwsBedrockAgentCoreLatticeEndpoint {
+  // The Lattice resource-configuration identifier.
+  string resource_configuration_id = 1 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCorePrivateEndpointOverride routes one issuer domain
+// through a specific private endpoint.
+message AwsBedrockAgentCorePrivateEndpointOverride {
+  // The domain this override captures (1-253 characters).
+  string domain = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // The private path for that domain.
+  AwsBedrockAgentCorePrivateEndpoint private_endpoint = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreOnlineEvaluationConfig continuously scores sampled
+// PRODUCTION agent sessions: it reads session traces from CloudWatch
+// logs, samples a percentage, and runs the listed evaluators over them.
+message AwsBedrockAgentCoreOnlineEvaluationConfig {
+  // Config name in AWS (a letter, then up to 47 letters/digits/
+  // underscores). The for_each key on both engines and the key in the
+  // `online_evaluation_config_ids` output map. AWS exposes no rename -
+  // changing it replaces the config.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // What this config evaluates (1-200 characters).
+  string description = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 200
+  ];
+
+  // IAM role the evaluation service assumes to read the source logs and
+  // invoke evaluators. Must trust bedrock-agentcore.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Whether continuous evaluation runs. Omitted = enabled. The modules
+  // map this onto AWS's create-time intent AND the post-create
+  // execution status, so the field stays declarative across the
+  // lifecycle.
+  optional bool enabled = 4;
+
+  // Where the agent session traces come from.
+  AwsBedrockAgentCoreOnlineEvaluationDataSource data_source = 5 [(buf.validate.field).required = true];
+
+  // Evaluators to run over sampled sessions (1-10). Entries are AWS
+  // builtins ("Builtin.Helpfulness"), full custom evaluator IDs, or
+  // names of evaluators defined in this bundle.
+  repeated string evaluator_ids = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 10
+    items: {string: {min_len: 1}}
+  }];
+
+  // What to sample and score.
+  AwsBedrockAgentCoreOnlineEvaluationRule rule = 7 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockAgentCoreOnlineEvaluationDataSource reads agent session
+// traces from CloudWatch logs.
+message AwsBedrockAgentCoreOnlineEvaluationDataSource {
+  // CloudWatch log groups holding the session traces (1-5) - the log
+  // groups AgentCore observability writes to.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_names = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 5
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
+  ];
+
+  // Service names (the OTel service.name resource attribute) whose
+  // traces are evaluated (at least one).
+  repeated string service_names = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {string: {min_len: 1}}
+  }];
+}
+
+// AwsBedrockAgentCoreOnlineEvaluationRule decides which sampled sessions
+// get scored.
+message AwsBedrockAgentCoreOnlineEvaluationRule {
+  // Percentage of sessions sampled for evaluation (0.01-100). Every
+  // sampled session incurs evaluator cost - production configs usually
+  // sample low single digits.
+  double sampling_percentage = 1 [(buf.validate.field).double = {
+    gte: 0.01
+    lte: 100
+  }];
+
+  // Only sessions matching ALL filters are evaluated (max 5).
+  repeated AwsBedrockAgentCoreOnlineEvaluationFilter filters = 2 [(buf.validate.field).repeated.max_items = 5];
+
+  // Minutes of inactivity after which a session is considered complete
+  // and eligible for evaluation (1-60). Omitted = the AWS default.
+  int32 session_timeout_minutes = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 60
+    }
+  ];
+}
+
+// AwsBedrockAgentCoreOnlineEvaluationFilter matches one session
+// attribute - exactly one typed value.
+message AwsBedrockAgentCoreOnlineEvaluationFilter {
+  // The session attribute to match (1-256 characters).
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The comparison operator.
+  string operator = 2 [(buf.validate.field).string = {
+    in: [
+      "Equals",
+      "NotEquals",
+      "GreaterThan",
+      "LessThan",
+      "GreaterThanOrEqual",
+      "LessThanOrEqual",
+      "Contains",
+      "NotContains"
+    ]
+  }];
+
+  // Match against a string (1-1024 characters).
+  string string_value = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.max_len = 1024
+  ];
+
+  // Match against a boolean.
+  optional bool boolean_value = 4;
+
+  // Match against a number.
+  optional double double_value = 5;
+
+  // AWS takes exactly one typed value.
+  option (buf.validate.message).cel = {
+    id: "filter_exactly_one_value"
+    message: "each filter must set exactly one of string_value, boolean_value, or double_value"
+    expression: "[this.string_value != '', has(this.boolean_value), has(this.double_value)].filter(x, x).size() == 1"
+  };
+}

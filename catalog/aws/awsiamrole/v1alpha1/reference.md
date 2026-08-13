@@ -323,6 +323,8 @@ Fields on other kinds that can point at this resource:
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.executionRole` | `status.outputs.role_arn` |
 | AwsBedrockAgent | `spec.agentResourceRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.onlineEvaluationConfigs[].executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockAgentCoreGateway | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockAgentCoreMemory | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockAgentCoreRuntime | `spec.roleArn` | `status.outputs.role_arn` |
@@ -417,6 +419,8 @@ Fields on other kinds that can point at this resource:
 | AwsRedshiftCluster | `spec.scheduledActions[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.iamRoles` | `status.outputs.role_arn` |
 | AwsRedshiftServerlessNamespace | `spec.defaultIamRoleArn` | `status.outputs.role_arn` |
+| AwsRestApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
+| AwsRestApiGateway | `spec.authorizers[].credentialsArn` | `status.outputs.role_arn` |
 | AwsS3Bucket | `spec.replication.roleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.executionRoleArn` | `status.outputs.role_arn` |
 | AwsSagemakerDomain | `spec.defaultUserSettings.jupyterLabAppSettings.emrSettings.assumableRoleArns` | `status.outputs.role_arn` |

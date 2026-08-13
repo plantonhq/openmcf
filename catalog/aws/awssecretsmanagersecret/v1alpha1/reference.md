@@ -425,6 +425,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].model.gemini.apiKeyArn` | `status.outputs.secret_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].model.openai.apiKeyArn` | `status.outputs.secret_arn` |
 | AwsBedrockAgentCoreTools | `spec.browsers[].certificates[].secretArn` | `status.outputs.secret_arn` |
 | AwsBedrockAgentCoreTools | `spec.codeInterpreters[].certificates[].secretArn` | `status.outputs.secret_arn` |
 | AwsBedrockKnowledgeBase | `spec.sql.provisioned.auth.usernamePasswordSecretArn` | `status.outputs.secret_arn` |

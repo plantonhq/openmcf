@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiUsagePlan
+metadata:
+  name: my-free-tier
+spec:
+  region: <aws-region>
+  description: Free tier -- 1000 requests/day
+  apiStages:
+    - restApiId:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: <rest-api>
+          fieldPath: status.outputs.rest_api_id
+      stageName:
+        value: prod
+  quota:
+    limit: 1000
+    period: DAY
+  apiKeys:
+    - name: default-consumer
+      enabled: true

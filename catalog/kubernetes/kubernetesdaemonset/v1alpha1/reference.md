@@ -1295,6 +1295,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -1304,6 +1305,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -2164,6 +2169,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -2173,6 +2179,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4181,6 +4191,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -4190,6 +4201,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -5050,6 +5065,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -5059,6 +5075,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7110,6 +7130,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -7119,6 +7140,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7979,6 +8004,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
+- `AwsBedrockAgentCoreEvaluation`
 - `AwsSagemakerModel`
 - `AwsSagemakerEndpoint`
 - `AwsSagemakerNotebookInstance`
@@ -7988,6 +8014,10 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerImage`
 - `AwsSagemakerMlflowServer`
 - `AwsSagemakerMlflowApp`
+- `AwsRestApiGateway`
+- `AwsRestApiDomain`
+- `AwsRestApiUsagePlan`
+- `AwsRestApiVpcLink`
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.

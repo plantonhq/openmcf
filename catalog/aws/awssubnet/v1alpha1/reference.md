@@ -379,6 +379,9 @@ Fields on other kinds that can point at this resource:
 | AwsAppRunnerVpcConnector | `spec.subnetIds` | `status.outputs.subnet_id` |
 | AwsAutoScalingGroup | `spec.subnets` | `status.outputs.subnet_id` |
 | AwsBatchComputeEnvironment | `spec.computeResources.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.network.vpcConfig.subnets` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |
 | AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.subnetIds` | `status.outputs.subnet_id` |

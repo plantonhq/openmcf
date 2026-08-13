@@ -1,0 +1,284 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapidomain.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsRestApiDomainSpec defines the desired configuration for an AWS
+// API Gateway custom domain name (the API Gateway v1 domain surface).
+//
+// A custom domain fronts deployed REST APIs at your own hostname:
+// callers hit https://api.example.com/orders instead of the
+// execute-api endpoint, TLS terminates on your certificate, and
+// base-path mappings fan the domain's paths out across APIs and
+// stages. A domain outlives any one API and maps many - which is why
+// it is its own component rather than part of AwsRestApiGateway.
+//
+// The component bundles the domain, its base-path mappings, and - for
+// PRIVATE domains - the VPC-endpoint access associations. DNS is not
+// modeled here: point an AwsRoute53DnsRecord alias at the domain's
+// regional or CloudFront target (both are stack outputs).
+//
+// Rule-based routing (an API Gateway v2 surface that also attaches to
+// v1 domains) stays on the AwsHttpApiDomain component; this component
+// models the v1 routing_mode knob that arbitrates between the two
+// mechanisms.
+message AwsRestApiDomainSpec {
+  // The AWS region where the domain will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The fully-qualified domain name (e.g. "api.example.com").
+  // Immutable in AWS - changing it replaces the domain.
+  string domain_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 253
+  }];
+
+  // ---------------------------------------------------------------------------
+  // TLS certificate - exactly one source
+  // ---------------------------------------------------------------------------
+
+  // ACM certificate covering the domain name. For REGIONAL and PRIVATE
+  // domains the certificate must live in this region; for EDGE domains
+  // it must live in us-east-1 (the CloudFront region). The modules wire
+  // it to the endpoint type automatically.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef certificate_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // Upload certificate material directly instead of using ACM (legacy
+  // path for certificates that cannot be imported into ACM).
+  AwsRestApiDomainUploadedCertificate uploaded_certificate = 4;
+
+  // ---------------------------------------------------------------------------
+  // Endpoint
+  // ---------------------------------------------------------------------------
+
+  // Endpoint type and addressing. Omitted = a REGIONAL endpoint (the
+  // right default; EDGE routes through CloudFront, PRIVATE is
+  // reachable only through VPC endpoints).
+  AwsRestApiDomainEndpointConfiguration endpoint_configuration = 5;
+
+  // Restrict how the domain resolves callers: BASIC (default) or
+  // STRICT (rejects requests whose Host header does not match -
+  // hardens against host-header confusion).
+  string endpoint_access_mode = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BASIC",
+        "STRICT"
+      ]
+    }
+  ];
+
+  // Minimum TLS version and cipher policy. Omitted = the AWS default
+  // for the endpoint type. The SecurityPolicy_TLS13_* values are the
+  // 2025-09 policy family (FIPS/PFS/PQ variants); TLS_1_0 and TLS_1_2
+  // are the legacy names.
+  string security_policy = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TLS_1_0",
+        "TLS_1_2",
+        "SecurityPolicy_TLS13_1_3_2025_09",
+        "SecurityPolicy_TLS13_1_3_FIPS_2025_09",
+        "SecurityPolicy_TLS13_1_2_PFS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_FIPS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_FIPS_PFS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_2021_06",
+        "SecurityPolicy_TLS13_2025_EDGE",
+        "SecurityPolicy_TLS12_PFS_2025_EDGE",
+        "SecurityPolicy_TLS12_2018_EDGE"
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Mutual TLS and access control
+  // ---------------------------------------------------------------------------
+
+  // Require clients to present certificates from your truststore
+  // (mutual TLS).
+  AwsRestApiDomainMutualTls mutual_tls = 8;
+
+  // ACM certificate proving you own the domain - required by AWS when
+  // mutual TLS is enabled on a domain whose primary certificate cannot
+  // serve as the ownership proof.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef ownership_verification_certificate_arn = 9 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCertManagerCert,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cert_arn"
+  ];
+
+  // Resource policy on the domain (IAM policy document as structured
+  // YAML/JSON) - controls which principals/VPC endpoints may use a
+  // PRIVATE domain.
+  google.protobuf.Struct policy = 10;
+
+  // How the domain routes requests when both mechanisms exist:
+  // BASE_PATH_MAPPING_ONLY (default), ROUTING_RULE_ONLY, or
+  // ROUTING_RULE_THEN_BASE_PATH_MAPPING. Routing rules themselves are
+  // the AwsHttpApiDomain component's surface; set a ROUTING_RULE mode
+  // here only when that component manages rules on this same domain.
+  string routing_mode = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BASE_PATH_MAPPING_ONLY",
+        "ROUTING_RULE_ONLY",
+        "ROUTING_RULE_THEN_BASE_PATH_MAPPING"
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Mappings and private access
+  // ---------------------------------------------------------------------------
+
+  // Base-path mappings fanning the domain's paths out across REST APIs
+  // and stages ("/orders" -> the orders API's prod stage).
+  repeated AwsRestApiDomainBasePathMapping base_path_mappings = 12;
+
+  // VPC endpoints granted access to a PRIVATE domain.
+  repeated AwsRestApiDomainAccessAssociation access_associations = 13;
+
+  // A domain needs a TLS certificate - exactly one source.
+  option (buf.validate.message).cel = {
+    id: "certificate_exactly_one_source"
+    message: "set exactly one of certificate_arn (ACM) or uploaded_certificate"
+    expression: "has(this.certificate_arn) != has(this.uploaded_certificate)"
+  };
+
+  // One mapping per base path - AWS keys mappings by path.
+  option (buf.validate.message).cel = {
+    id: "base_paths_unique"
+    message: "base_path_mappings entries must have unique base_path values"
+    expression: "this.base_path_mappings.map(m, m.base_path).unique()"
+  };
+
+  // Access associations are the PRIVATE domain's access mechanism.
+  option (buf.validate.message).cel = {
+    id: "access_associations_private_only"
+    message: "access_associations apply only to PRIVATE endpoint types"
+    expression: "this.access_associations.size() == 0 || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')"
+  };
+}
+
+// AwsRestApiDomainUploadedCertificate uploads certificate material
+// directly (the pre-ACM path).
+message AwsRestApiDomainUploadedCertificate {
+  // Display name for the uploaded certificate.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // PEM-encoded certificate body.
+  string body = 2 [(buf.validate.field).string.min_len = 1];
+
+  // PEM-encoded certificate chain.
+  string chain = 3;
+
+  // PEM-encoded private key.
+  string private_key = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsRestApiDomainEndpointConfiguration selects the domain's endpoint
+// type and addressing.
+message AwsRestApiDomainEndpointConfiguration {
+  // The endpoint type. REGIONAL serves from this region; EDGE
+  // provisions a managed CloudFront distribution; PRIVATE is reachable
+  // only through VPC endpoints (pair with access_associations).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "REGIONAL",
+      "EDGE",
+      "PRIVATE"
+    ]
+  }];
+
+  // Endpoint addressing: "ipv4" or "dualstack". Omitted = the AWS
+  // default. PRIVATE endpoints require dualstack.
+  string ip_address_type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ipv4",
+        "dualstack"
+      ]
+    }
+  ];
+
+  // AWS rejects PRIVATE endpoints resolving IPv4-only.
+  option (buf.validate.message).cel = {
+    id: "private_requires_dualstack"
+    message: "PRIVATE endpoints require ip_address_type 'dualstack' (or omit it for the AWS default)"
+    expression: "!(this.type == 'PRIVATE' && this.ip_address_type == 'ipv4')"
+  };
+}
+
+// AwsRestApiDomainMutualTls requires client certificates from your
+// truststore.
+message AwsRestApiDomainMutualTls {
+  // S3 URI of the truststore bundle of CA certificates clients must
+  // chain to (e.g. "s3://my-bucket/truststore.pem"). Version the
+  // object - truststore mistakes lock every caller out.
+  string truststore_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^s3://"
+  }];
+
+  // S3 object version of the truststore to pin (recommended - an
+  // unpinned truststore changes under the domain).
+  string truststore_version = 2;
+}
+
+// AwsRestApiDomainBasePathMapping maps one path under the domain to a
+// REST API stage.
+message AwsRestApiDomainBasePathMapping {
+  // The path segment under the domain ("orders" maps
+  // https://{domain}/orders). Empty = the domain root. No slashes -
+  // base paths are single segments.
+  string base_path = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 128
+      pattern: "^[^/]+$"
+    }
+  ];
+
+  // The REST API requests on this path route to.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef rest_api_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRestApiGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.rest_api_id"
+  ];
+
+  // The stage requests route to. Omitted = the API's stage is selected
+  // by the request path's next segment (AWS's stage-in-path behavior);
+  // set it to pin the mapping to one stage - the usual choice.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef stage_name = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRestApiGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stage_name"
+  ];
+}
+
+// AwsRestApiDomainAccessAssociation grants one VPC endpoint access to a
+// PRIVATE domain.
+message AwsRestApiDomainAccessAssociation {
+  // The interface VPC endpoint (com.amazonaws.{region}.execute-api)
+  // callers reach the private domain through. Every field change
+  // replaces the association.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_endpoint_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpcEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_endpoint_id"
+  ];
+}

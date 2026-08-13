@@ -60,6 +60,7 @@ import (
 	awsbatchjobqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobqueue/v1alpha1"
 	awsbatchschedulingpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchschedulingpolicy/v1alpha1"
 	awsbedrockagentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagent/v1alpha1"
+	awsbedrockagentcoreevaluationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreevaluation/v1alpha1"
 	awsbedrockagentcoregatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoregateway/v1alpha1"
 	awsbedrockagentcoreidentityv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreidentity/v1alpha1"
 	awsbedrockagentcorememoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcorememory/v1alpha1"
@@ -152,6 +153,10 @@ import (
 	awsredshiftclusterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftcluster/v1alpha1"
 	awsredshiftserverlessnamespacev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftserverlessnamespace/v1alpha1"
 	awsredshiftserverlessworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsredshiftserverlessworkgroup/v1alpha1"
+	awsrestapidomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapidomain/v1alpha1"
+	awsrestapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapigateway/v1alpha1"
+	awsrestapiusageplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapiusageplan/v1alpha1"
+	awsrestapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsrestapivpclink/v1alpha1"
 	awsroute53dnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53dnsrecord/v1alpha1"
 	awsroute53healthcheckv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53healthcheck/v1alpha1"
 	awsroute53zonev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsroute53zone/v1alpha1"
@@ -790,6 +795,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1alpha1.AwsBatchJobQueue{},
 	cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy:               &awsbatchschedulingpolicyv1alpha1.AwsBatchSchedulingPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgent:                        &awsbedrockagentv1alpha1.AwsBedrockAgent{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreEvaluation:          &awsbedrockagentcoreevaluationv1alpha1.AwsBedrockAgentCoreEvaluation{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreGateway:             &awsbedrockagentcoregatewayv1alpha1.AwsBedrockAgentCoreGateway{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreIdentity:            &awsbedrockagentcoreidentityv1alpha1.AwsBedrockAgentCoreIdentity{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreMemory:              &awsbedrockagentcorememoryv1alpha1.AwsBedrockAgentCoreMemory{},
@@ -882,6 +888,10 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsRedshiftCluster:                     &awsredshiftclusterv1alpha1.AwsRedshiftCluster{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessNamespace:         &awsredshiftserverlessnamespacev1alpha1.AwsRedshiftServerlessNamespace{},
 	cloudresourcekind.CloudResourceKind_AwsRedshiftServerlessWorkgroup:         &awsredshiftserverlessworkgroupv1alpha1.AwsRedshiftServerlessWorkgroup{},
+	cloudresourcekind.CloudResourceKind_AwsRestApiDomain:                       &awsrestapidomainv1alpha1.AwsRestApiDomain{},
+	cloudresourcekind.CloudResourceKind_AwsRestApiGateway:                      &awsrestapigatewayv1alpha1.AwsRestApiGateway{},
+	cloudresourcekind.CloudResourceKind_AwsRestApiUsagePlan:                    &awsrestapiusageplanv1alpha1.AwsRestApiUsagePlan{},
+	cloudresourcekind.CloudResourceKind_AwsRestApiVpcLink:                      &awsrestapivpclinkv1alpha1.AwsRestApiVpcLink{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53DnsRecord:                    &awsroute53dnsrecordv1alpha1.AwsRoute53DnsRecord{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53HealthCheck:                  &awsroute53healthcheckv1alpha1.AwsRoute53HealthCheck{},
 	cloudresourcekind.CloudResourceKind_AwsRoute53Zone:                         &awsroute53zonev1alpha1.AwsRoute53Zone{},

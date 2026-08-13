@@ -1207,6 +1207,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsBedrockAgent | `spec.promptOverride.overrideLambda` | `status.outputs.function_arn` |
 | AwsBedrockAgent | `spec.actionGroups[].executor.lambda` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreEvaluation | `spec.evaluators[].codeBased.lambdaArn` | `status.outputs.function_arn` |
 | AwsBedrockAgentCoreGateway | `spec.interceptors[].lambdaArn` | `status.outputs.function_arn` |
 | AwsBedrockAgentCoreGateway | `spec.targets[].backend.lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsBedrockFlow | `spec.definition.nodes[].lambdaFunction.lambdaArn` | `status.outputs.function_arn` |
@@ -1236,6 +1237,8 @@ Fields on other kinds that can point at this resource:
 | AwsKinesisFirehose | `spec.snowflake.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsKinesisFirehose | `spec.iceberg.processing.processors[].lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsLambdaEventSourceMapping | `spec.functionArn` | `status.outputs.function_arn` |
+| AwsRestApiGateway | `spec.routes[].integration.uri` | `status.outputs.invoke_arn` |
+| AwsRestApiGateway | `spec.authorizers[].lambdaInvokeUri` | `status.outputs.invoke_arn` |
 | AwsS3Bucket | `spec.notification.lambdaFunctions[].lambdaFunctionArn` | `status.outputs.function_arn` |
 | AwsSecretsManagerSecret | `spec.rotation.rotationLambdaArn` | `status.outputs.function_arn` |
 

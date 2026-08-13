@@ -1,0 +1,25 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiUsagePlan
+metadata:
+  name: my-throttled-plan
+spec:
+  region: <aws-region>
+  description: Steady-state 50 rps, burst 100, tighter search cap
+  apiStages:
+    - restApiId:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: <rest-api>
+          fieldPath: status.outputs.rest_api_id
+      stageName:
+        value: prod
+      methodThrottles:
+        - path: /search/GET
+          burstLimit: 10
+          rateLimit: 5
+  throttle:
+    burstLimit: 100
+    rateLimit: 50
+  apiKeys:
+    - name: partner-app
+      enabled: true

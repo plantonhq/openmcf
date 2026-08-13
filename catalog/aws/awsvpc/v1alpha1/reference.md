@@ -438,6 +438,8 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsAppRunnerService | `spec.vpcIngressConnections[].vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |

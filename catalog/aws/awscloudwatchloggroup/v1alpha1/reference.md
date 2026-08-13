@@ -1354,6 +1354,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBedrockAgentCoreEvaluation | `spec.onlineEvaluationConfigs[].dataSource.logGroupNames` | `status.outputs.log_group_name` |
 | AwsClientVpn | `spec.connectionLog.cloudwatchLogGroup` | `status.outputs.log_group_name` |
 | AwsCodeBuildProject | `spec.logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
 | AwsCognitoUserPool | `spec.logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
@@ -1364,6 +1365,7 @@ Fields on other kinds that can point at this resource:
 | AwsLambda | `spec.loggingConfig.logGroup` | `status.outputs.log_group_name` |
 | AwsMskCluster | `spec.logging.cloudwatchLogs.logGroup` | `status.outputs.log_group_name` |
 | AwsOpenSearchDomain | `spec.logPublishingOptions[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
+| AwsRestApiGateway | `spec.stage.accessLog.destinationArn` | `status.outputs.log_group_arn` |
 | AwsRoute53Zone | `spec.queryLogging.cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsStepFunction | `spec.logging.logDestination` | `status.outputs.log_group_arn` |
 

@@ -404,6 +404,14 @@ const (
 	// bundle; AWS exposes no update - every field change recreates the
 	// tool.
 	CloudResourceKind_AwsBedrockAgentCoreTools CloudResourceKind = 1214
+	// The AgentCore Evaluations bundle - evaluators (LLM-judge or
+	// Lambda scorers), harnesses (repeatable agent test benches), and
+	// online evaluation configs (continuous scoring of sampled
+	// production sessions). Deploys standalone - no arm requires an
+	// agent runtime to exist. No registry prerequisite: every arm is
+	// optional, so no dependency is required for the kind to function
+	// (scenarios compose IAM roles via annotations).
+	CloudResourceKind_AwsBedrockAgentCoreEvaluation CloudResourceKind = 1215
 	// The immutable serving definition (container image + artifacts +
 	// execution role) that endpoints deploy - one container or an
 	// inference pipeline.
@@ -437,6 +445,27 @@ const (
 	// associating with SageMaker domains; NOT a tracking-server
 	// satellite.
 	CloudResourceKind_AwsSagemakerMlflowApp CloudResourceKind = 1228
+	// A full REST API (API Gateway v1): the resource/method tree with
+	// inline integrations (or an imported OpenAPI document), one stage
+	// with an explicit hash-triggered deployment, and the API-scoped
+	// satellites (authorizers, models, validators, gateway responses,
+	// policy, documentation, client certificate). Self-contained: a
+	// MOCK-integration API needs no other resource.
+	CloudResourceKind_AwsRestApiGateway CloudResourceKind = 1230
+	// A custom domain for REST APIs with base-path mappings and - for
+	// PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert
+	// is a prerequisite because the domain cannot be created without a
+	// TLS certificate covering it.
+	CloudResourceKind_AwsRestApiDomain CloudResourceKind = 1231
+	// A usage plan metering REST API consumers - stage coverage, quota,
+	// throttles, and the API keys it admits. No registry prerequisite: a
+	// plan is valid with no stage coverage (scenarios compose the REST
+	// API via annotations).
+	CloudResourceKind_AwsRestApiUsagePlan CloudResourceKind = 1232
+	// A REST API VPC link fronting an internal Network Load Balancer so
+	// REST integrations reach private services. AwsNlb is a prerequisite
+	// because AWS rejects link creation without the target balancer.
+	CloudResourceKind_AwsRestApiVpcLink CloudResourceKind = 1233
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1771,6 +1800,7 @@ var (
 		1212:  "AwsBedrockAgentCoreMemory",
 		1213:  "AwsBedrockAgentCoreIdentity",
 		1214:  "AwsBedrockAgentCoreTools",
+		1215:  "AwsBedrockAgentCoreEvaluation",
 		1220:  "AwsSagemakerModel",
 		1221:  "AwsSagemakerEndpoint",
 		1222:  "AwsSagemakerNotebookInstance",
@@ -1780,6 +1810,10 @@ var (
 		1226:  "AwsSagemakerImage",
 		1227:  "AwsSagemakerMlflowServer",
 		1228:  "AwsSagemakerMlflowApp",
+		1230:  "AwsRestApiGateway",
+		1231:  "AwsRestApiDomain",
+		1232:  "AwsRestApiUsagePlan",
+		1233:  "AwsRestApiVpcLink",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2477,6 +2511,7 @@ var (
 		"AwsBedrockAgentCoreMemory":                      1212,
 		"AwsBedrockAgentCoreIdentity":                    1213,
 		"AwsBedrockAgentCoreTools":                       1214,
+		"AwsBedrockAgentCoreEvaluation":                  1215,
 		"AwsSagemakerModel":                              1220,
 		"AwsSagemakerEndpoint":                           1221,
 		"AwsSagemakerNotebookInstance":                   1222,
@@ -2486,6 +2521,10 @@ var (
 		"AwsSagemakerImage":                              1226,
 		"AwsSagemakerMlflowServer":                       1227,
 		"AwsSagemakerMlflowApp":                          1228,
+		"AwsRestApiGateway":                              1230,
+		"AwsRestApiDomain":                               1231,
+		"AwsRestApiUsagePlan":                            1232,
+		"AwsRestApiVpcLink":                              1233,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3427,7 +3466,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ɻ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe5\xbd\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3568,7 +3607,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1aAwsBedrockAgentCoreGateway\x10\xbb\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacgw:\x02\xf0\a\x12:\n" +
 	"\x19AwsBedrockAgentCoreMemory\x10\xbc\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacmem\x12;\n" +
 	"\x1bAwsBedrockAgentCoreIdentity\x10\xbd\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacid\x128\n" +
-	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x126\n" +
+	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x12=\n" +
+	"\x1dAwsBedrockAgentCoreEvaluation\x10\xbf\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacev\x126\n" +
 	"\x11AwsSagemakerModel\x10\xc4\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmd:\x02\xf0\a\x129\n" +
 	"\x14AwsSagemakerEndpoint\x10\xc5\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmep:\x02\xc4\t\x12A\n" +
 	"\x1cAwsSagemakerNotebookInstance\x10\xc6\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmnb:\x02\xf0\a\x12=\n" +
@@ -3577,7 +3617,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x14AwsSagemakerPipeline\x10\xc9\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmpl:\x02\xf0\a\x126\n" +
 	"\x11AwsSagemakerImage\x10\xca\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmim:\x02\xf0\a\x12=\n" +
 	"\x18AwsSagemakerMlflowServer\x10\xcb\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmf:\x02\xf0\a\x12:\n" +
-	"\x15AwsSagemakerMlflowApp\x10\xcc\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmma:\x02\xf0\a\x121\n" +
+	"\x15AwsSagemakerMlflowApp\x10\xcc\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmma:\x02\xf0\a\x123\n" +
+	"\x11AwsRestApiGateway\x10\xce\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestgw\x126\n" +
+	"\x10AwsRestApiDomain\x10\xcf\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestdm:\x02\xe9\a\x125\n" +
+	"\x13AwsRestApiUsagePlan\x10\xd0\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestup\x127\n" +
+	"\x11AwsRestApiVpcLink\x10\xd1\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestvl:\x02\xb8\b\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

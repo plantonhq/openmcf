@@ -1,0 +1,35 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreEvaluation
+metadata:
+  name: my-judge-eval
+spec:
+  region: <aws-region>
+  evaluators:
+    - name: helpfulness
+      description: Scores whether the agent was helpful
+      level: SESSION
+      llmAsAJudge:
+        instructions: Score how helpful the agent's response was.
+        model:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          inference:
+            temperature: 0
+        ratingScale:
+          categorical:
+            - label: pass
+              definition: The agent was helpful
+            - label: fail
+              definition: The agent was not helpful
+  harnesses:
+    - name: support-bench
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <agentcore-role>
+          fieldPath: status.outputs.role_arn
+      model:
+        bedrock:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          temperature: 0
+      systemPrompts:
+        - text: You are an agent under evaluation.
