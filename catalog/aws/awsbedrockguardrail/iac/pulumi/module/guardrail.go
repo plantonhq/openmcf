@@ -1,7 +1,9 @@
 package module
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v7/go/aws"
@@ -246,11 +248,31 @@ func guardrail(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 	}
 
 	// -------------------------------------------------------------------
-	// Cross-region inference profile
+	// Cross-region inference profile. The spec accepts the portable
+	// geography-qualified profile id ("us.guardrail.v1:0") or the full
+	// profile ARN; the provider's schema demands an ARN (stricter than
+	// the AWS API, which resolves the plain id -- live-verified
+	// 2026-08-13), so the id shape is composed into the caller's
+	// account-scoped ARN at deploy time. Required by AWS whenever any
+	// policy family uses the STANDARD tier (CEL-enforced at manifest
+	// time).
 	// -------------------------------------------------------------------
-	if spec.CrossRegionProfileArn != "" {
+	if spec.CrossRegionProfile != "" {
+		identifier := spec.CrossRegionProfile
+		if !strings.HasPrefix(identifier, "arn:") {
+			caller, err := aws.GetCallerIdentity(ctx, &aws.GetCallerIdentityArgs{}, pulumi.Provider(provider))
+			if err != nil {
+				return errors.Wrap(err, "resolve caller identity for guardrail-profile arn")
+			}
+			partition, err := aws.GetPartition(ctx, &aws.GetPartitionArgs{}, pulumi.Provider(provider))
+			if err != nil {
+				return errors.Wrap(err, "resolve partition for guardrail-profile arn")
+			}
+			identifier = fmt.Sprintf("arn:%s:bedrock:%s:%s:guardrail-profile/%s",
+				partition.Partition, spec.Region, caller.AccountId, spec.CrossRegionProfile)
+		}
 		args.CrossRegionConfig = &bedrock.GuardrailCrossRegionConfigArgs{
-			GuardrailProfileIdentifier: pulumi.String(spec.CrossRegionProfileArn),
+			GuardrailProfileIdentifier: pulumi.String(identifier),
 		}
 	}
 

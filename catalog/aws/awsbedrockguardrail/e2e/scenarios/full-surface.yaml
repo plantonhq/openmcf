@@ -1,12 +1,15 @@
 # AwsBedrockGuardrail full-surface scenario: every policy family plus the
-# versions fold. First-live arms to watch: the STANDARD content tier, the
-# detect-only (NONE) output action on PROMPT_ATTACK, image modalities on
-# VIOLENCE, PII ANONYMIZE vs BLOCK, the managed profanity list, both
-# contextual grounding checks, and the published version's AWS-assigned
-# number landing in version_numbers["prod"].
+# versions fold. First-live arms to watch: the STANDARD content tier
+# PAIRED with cross-region inference (AWS rejects STANDARD without it --
+# live-caught 2026-08-13; the geography-qualified profile id is the
+# committed shape, no account id needed), the detect-only (NONE) output
+# action on PROMPT_ATTACK, image modalities on VIOLENCE, PII ANONYMIZE vs
+# BLOCK, the managed profanity list, both contextual grounding checks,
+# and the published version's AWS-assigned number landing in
+# version_numbers["prod"].
 #
-# Deliberately not exercised here: cross_region_profile_arn and kms_key_arn
-# (offline-proven only -- see the profile).
+# Deliberately not exercised here: kms_key_arn (offline-proven only --
+# see the profile).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBedrockGuardrail
 metadata:
@@ -26,6 +29,7 @@ spec:
   description: Planton E2E full-surface guardrail
   blockedInputMessaging: Sorry, I can't help with that request.
   blockedOutputsMessaging: Sorry, I can't provide that response.
+  crossRegionProfile: us.guardrail.v1:0
   contentPolicy:
     tier: STANDARD
     filters:

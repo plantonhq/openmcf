@@ -20,7 +20,11 @@ supported by the retrieved sources (GROUNDING 0.75) or off-question
   toward 0.99 for strict factuality, lower it if too many valid answers
   are rejected.
 - **STANDARD tier** extends topic evaluation across languages — the right
-  default for user-facing products in 2026.
+  default for user-facing products in 2026. It requires cross-region
+  inference: the preset pairs it with `crossRegionProfile`
+  (`us.guardrail.v1:0` — the geography-qualified id; AWS resolves it to
+  your account's profile). AWS rejects a Standard-tier guardrail without
+  it, and manifest validation enforces the pairing up front.
 
 ## After Deployment
 

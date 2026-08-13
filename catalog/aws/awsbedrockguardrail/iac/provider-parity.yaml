@@ -45,9 +45,9 @@ resources:
       # The provider nests the cross-region profile ARN under a
       # one-element block; the spec carries the ARN leaf directly.
       - arg: cross_region_config
-        spec: spec.cross_region_profile_arn
+        spec: spec.cross_region_profile
       - arg: cross_region_config.guardrail_profile_identifier
-        spec: spec.cross_region_profile_arn
+        spec: spec.cross_region_profile
     exclusions:
       - arg: name
         reason: wired by the module from metadata.name -- the guardrail name is platform naming, never free-form spec surface

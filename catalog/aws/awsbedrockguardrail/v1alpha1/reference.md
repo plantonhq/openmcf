@@ -48,6 +48,9 @@ spec:
   blockedOutputsMessaging: Sorry, I can't provide that response.
   kmsKeyArn:
     value: arn:aws:kms:us-west-2:123456789012:key/abc-123
+  # The STANDARD tier requires cross-region inference (AWS rejects it
+  # otherwise); the geography-qualified profile id is the portable shape.
+  crossRegionProfile: us.guardrail.v1:0
   contentPolicy:
     tier: STANDARD
     filters:
@@ -154,7 +157,7 @@ spec:
 | `spec.contextualGroundingPolicy.filters` | `[]AwsBedrockGuardrailContextualGroundingFilter` | yes |  |  |
 | `spec.contextualGroundingPolicy.filters[].type` | `string` |  |  |  |
 | `spec.contextualGroundingPolicy.filters[].threshold` | `double` |  |  |  |
-| `spec.crossRegionProfileArn` | `string` |  |  |  |
+| `spec.crossRegionProfile` | `string` |  |  |  |
 | `spec.versions` | `[]AwsBedrockGuardrailVersion` |  |  |  |
 | `spec.versions[].name` | `string` | yes |  |  |
 | `spec.versions[].description` | `string` |  |  |  |
@@ -650,17 +653,11 @@ are blocked. 0 blocks nothing; values near 1 block aggressively
 
 - rule: {"double":{"lte":1,"gte":0}}
 
-### spec.crossRegionProfileArn
+### spec.crossRegionProfile
 
 `string`
 
-ARN of the AWS system-defined guardrail profile that lets this
-guardrail evaluate traffic routed through cross-region inference
-(format: arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>).
-AWS defines the available profiles per geography (e.g. "us.guardrail.v1:0"
-profiles); this cannot reference a customer resource.
-
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+$"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([a-z]{2,4}\\.guardrail\\.v[0-9]+:[0-9]+|arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+)$"}}
 
 ### spec.versions
 
@@ -710,6 +707,8 @@ outside this manifest's management.
 ## Validation Rules
 
 - `version_names_unique`: versions entries must have unique names
+- `content_standard_tier_requires_cross_region`: content_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)
+- `topic_standard_tier_requires_cross_region`: topic_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)
 
 ## Outputs
 

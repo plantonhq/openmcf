@@ -19,9 +19,21 @@ spec:
   # ARN embeds the caller's account id, which a committed manifest cannot
   # carry honestly.
   #
-  # pending_proof: forged this session to the full offline bar -- Q33
-  # proves it live.
+  # Proven live 2026-08-13, both engines, with the IDEMPOTENCY phase and
+  # the blind import round-trip green (imported by the AWS-generated
+  # profile id; model_source tolerated as the provider's own importIgnore
+  # fact). Per-engine watcher evidence (distinct profile ids attribute
+  # the windows): status ACTIVE, type APPLICATION, the resolved models
+  # list naming titan-embed-text-v2, and ListTagsForResource echoing the
+  # canonical six-key identity map INCLUDING Name.
+  # ONE live catch fixed at the full bar this session: the scenario's
+  # original source (nova-micro) supports only INFERENCE_PROFILE
+  # invocation and CreateInferenceProfile rejects it on the
+  # foundation-model ARN shape -- the scenario now rides ON_DEMAND-capable
+  # titan-embed-text-v2, and the truth (profile-only models must use the
+  # system-profile ARN form) is taught on the spec field, GUIDE, presets,
+  # and the harness manual.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

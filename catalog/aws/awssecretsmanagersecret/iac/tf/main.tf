@@ -32,6 +32,14 @@ resource "aws_secretsmanager_secret" "this" {
 
   # Cross-region replicas -- each encrypts under its own region's key (the
   # referenced customer key, or that region's AWS-managed key).
+  # Two delete-time truths both engines inherit from the provider
+  # (live-verified 2026-08-13): AWS deletes replica secrets ASYNCHRONOUSLY
+  # after RemoveRegionsFromReplication and the provider does not wait for
+  # it, so destroying with recovery_window 0 can strand a replica as a
+  # live standalone secret (a recovery window lets the async deletion
+  # complete); and replication is never waited on at create either, so a
+  # Failed replication (e.g. against a stranded same-name ex-replica,
+  # which force_overwrite does NOT clear) is silent at apply.
   dynamic "replica" {
     for_each = var.spec.replica_regions
     content {

@@ -447,6 +447,19 @@ must be non-empty (the harness prints its authentication line first). If the
 process is gone with an empty log, relaunch under a supervised/managed shell
 rather than retrying `nohup` from another transient shell.
 
+A harder grain of the same class under agent tooling (live-caught
+2026-08-13, twice in one hour): detachment does NOT guarantee survival.
+Both a plain `&` child AND a double-forked `(nohup ... &)` process were
+killed when the agent tool-shell that launched them was cleaned up -- one
+died mid-scenario minutes after launch (orphaning a half-deployed
+resource outside any engine state), the other silently stopped an
+evidence watcher between lanes. The reliable shape is the agent harness's
+own MANAGED background terminal (the launch stays the foreground command
+of a persistent session the harness supervises), where both survived the
+full session. Signature of the class: a lane log that simply stops
+mid-phase with no `ok`/`FAIL` trailer and no error, while an identical
+managed relaunch runs clean.
+
 ### Long-running Azure components (AKS)
 
 AKS clusters take roughly 5–10 minutes to create and a similar time to delete.
@@ -893,7 +906,21 @@ proves the defined-but-disabled profile plane must NOT also set an idle
 timeout on a space that profile owns; cross-RESOURCE contracts like this
 live in no provider schema, so scenario design must resolve the inheritance
 chain by hand — the kind's spec now CEL-rejects the in-manifest
-contradiction). When a lane fails with a 4xx the offline
+contradiction); on Bedrock guardrails, CreateGuardrail rejects a
+STANDARD policy tier without cross-region inference ("Can't configure
+guardrail policy tier. Enable cross-Region inference..." — 2026-08-13;
+the pairing probe also settled that the API accepts the
+geography-qualified profile id "us.guardrail.v1:0" directly while the
+PROVIDER's schema demands an ARN — provider-stricter-than-API, the
+inverse of the usual gap — so the modules compose the account-scoped
+ARN from a caller-identity lookup and committed manifests never embed
+an account id); on
+Bedrock inference profiles, CreateInferenceProfile rejects a
+foundation-model source whose model supports only INFERENCE_PROFILE
+invocation ("The provided foundation model does not support On Demand
+inference" — the Nova family and most 2025+ models; probe a model's arms
+with `list-foundation-models --by-inference-type ON_DEMAND` before
+fixing a scenario source). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -956,6 +983,34 @@ history-dependent; (2) a provider whose attribute-satellite delete writes
 a zero value plants that value permanently on the name — expect
 "unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
 manager, not the service default.
+
+**Cross-region satellites deleted ASYNCHRONOUSLY by the service are an
+orphan class the primary-region check never sees.** Secrets Manager is the
+canonical case (live-caught 2026-08-13): RemoveRegionsFromReplication only
+REQUESTS replica deletion — AWS performs it asynchronously (~40-90s,
+probed) — and the provider deletes the primary immediately after, without
+waiting. Usually the deletion completes anyway, but a force-deleted
+primary (recovery window 0) can outrun it and strand the replica as a
+live standalone secret in ITS region. Three grains: (1) verify-absent for
+such kinds must check the SATELLITE regions, recorded at exists-time (the
+AWS secret verifier keeps an ARN→replica-regions map across the
+lifecycle — the stateless per-region probe cannot know them after the
+primary is gone); (2) the strand REJECTS a direct delete ("Operation not
+permitted on a replica secret") even with its primary deleted — recover
+with stop-replication-to-replica in the replica's region, then delete;
+(3) a stranded ex-replica BLOCKS the same name's next replication with a
+status-only failure ("currently replicated to <region> with a different
+arn") that force_overwrite does not clear and NO engine surfaces at apply
+(the provider has no replication waiter in either direction) — so
+verify-exists must poll every declared replica to InSync, or a green
+deploy carries a dead replica claim; (4) a SWEPT replica can be
+RE-MATERIALIZED by the deleted primary's replication machinery tens of
+minutes later (observed live: fresh CreatedDate 40+ min after the
+promote-and-delete sweep, PrimaryRegion pointing at the long-deleted
+primary) — the end-of-session sweep must RE-CHECK replica regions after
+a settle, not just once. Scenario design: a replicated fixed-name
+scenario sits in all these traps across the dual-engine recreate —
+run-scope the name and destroy with a recovery window.
 
 **A 4xx from a create call does not mean nothing was created — sweep before
 re-running.** Some AWS creates are not atomic: the service materializes the
@@ -1120,7 +1175,14 @@ so each lane's instance is sampled independently. The poller doubles as
 per-engine attribution: two capture blocks with different resource IDs
 prove BOTH engines' instances carried the arm.
 
-Three watcher-authoring traps, all live-caught 2026-08-13: (1) **watch
+Four watcher-authoring traps, all live-caught 2026-08-13: (0) **zsh
+RESERVED parameters carry setter semantics** — assigning `GID` (also
+`UID`, `EUID`, `USERNAME`) in a zsh watcher script attempts to change
+the process's group id and kills the script with "failed to change
+group ID: operation not permitted"; a watcher log that contains only
+its header line with the process gone is this class — name loop
+variables defensively (`G_ID`), same family as the `:s`/`:l` modifier
+trap below. (1) **watch
 the name the MODULE derives, not metadata.name** — some kinds name their
 cloud resource from a spec field (ECR's `spec.repository_name`), and a
 watcher armed on metadata.name polls a resource that never exists,

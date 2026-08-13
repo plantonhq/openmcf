@@ -104,7 +104,7 @@ var _ = ginkgo.Describe("AwsBedrockGuardrailSpec validations", func() {
 						{Type: "RELEVANCE", Threshold: 0.5},
 					},
 				}
-				spec.CrossRegionProfileArn = "arn:aws:bedrock:us-west-2:123456789012:guardrail-profile/us.guardrail.v1:0"
+				spec.CrossRegionProfile = "arn:aws:bedrock:us-west-2:123456789012:guardrail-profile/us.guardrail.v1:0"
 				spec.KmsKeyArn = nil
 				spec.Versions = []*AwsBedrockGuardrailVersion{
 					{Name: "prod", Description: "initial production pin"},
@@ -442,9 +442,65 @@ var _ = ginkgo.Describe("AwsBedrockGuardrailSpec validations", func() {
 
 		ginkgo.It("should reject a non-guardrail-profile ARN", func() {
 			spec := minimalGuardrail()
-			spec.CrossRegionProfileArn = "arn:aws:bedrock:us-west-2:123456789012:guardrail/gr-123"
+			spec.CrossRegionProfile = "arn:aws:bedrock:us-west-2:123456789012:guardrail/gr-123"
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept the geography-qualified profile identifier", func() {
+			spec := minimalGuardrail()
+			spec.CrossRegionProfile = "us.guardrail.v1:0"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should reject a malformed profile identifier", func() {
+			spec := minimalGuardrail()
+			spec.CrossRegionProfile = "guardrail.v1"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+	})
+
+	// -----------------------------------------------------------------
+	// STANDARD tier <-> cross-region pairing (AWS server contract)
+	// -----------------------------------------------------------------
+	ginkgo.Describe("Standard tier cross-region pairing", func() {
+
+		ginkgo.It("should reject content_policy STANDARD without cross_region_profile", func() {
+			spec := minimalGuardrail()
+			spec.ContentPolicy.Tier = "STANDARD"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("cross_region_profile"))
+		})
+
+		ginkgo.It("should reject topic_policy STANDARD without cross_region_profile", func() {
+			spec := minimalGuardrail()
+			spec.TopicPolicy = &AwsBedrockGuardrailTopicPolicy{
+				Tier: "STANDARD",
+				Topics: []*AwsBedrockGuardrailTopic{
+					{Name: "t", Definition: "a topic definition"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("cross_region_profile"))
+		})
+
+		ginkgo.It("should accept content_policy STANDARD with the profile identifier", func() {
+			spec := minimalGuardrail()
+			spec.ContentPolicy.Tier = "STANDARD"
+			spec.CrossRegionProfile = "us.guardrail.v1:0"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept CLASSIC tier without a profile", func() {
+			spec := minimalGuardrail()
+			spec.ContentPolicy.Tier = "CLASSIC"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 	})
 

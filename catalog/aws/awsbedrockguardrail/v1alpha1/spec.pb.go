@@ -81,12 +81,19 @@ type AwsBedrockGuardrailSpec struct {
 	// relevant to the user's query (RELEVANCE). Applies to RAG and
 	// summarization flows that supply grounding sources at invocation.
 	ContextualGroundingPolicy *AwsBedrockGuardrailContextualGroundingPolicy `protobuf:"bytes,10,opt,name=contextual_grounding_policy,json=contextualGroundingPolicy,proto3" json:"contextual_grounding_policy,omitempty"`
-	// ARN of the AWS system-defined guardrail profile that lets this
-	// guardrail evaluate traffic routed through cross-region inference
-	// (format: arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>).
-	// AWS defines the available profiles per geography (e.g. "us.guardrail.v1:0"
-	// profiles); this cannot reference a customer resource.
-	CrossRegionProfileArn string `protobuf:"bytes,11,opt,name=cross_region_profile_arn,json=crossRegionProfileArn,proto3" json:"cross_region_profile_arn,omitempty"`
+	// The AWS system-defined guardrail profile that lets this guardrail
+	// evaluate traffic routed through cross-region inference. Accepts the
+	// geography-qualified profile identifier (e.g. "us.guardrail.v1:0" -
+	// the portable shape; both modules compose it into the deploying
+	// account's profile ARN at deploy time, live-verified 2026-08-13) or
+	// the full profile ARN
+	// (arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>). AWS
+	// defines the available profiles per geography; this cannot reference
+	// a customer resource. REQUIRED whenever any policy family sets the
+	// STANDARD tier - AWS rejects STANDARD without cross-region inference
+	// ("Can't configure guardrail policy tier. Enable cross-Region
+	// inference for your guardrail to use Standard tier.").
+	CrossRegionProfile string `protobuf:"bytes,11,opt,name=cross_region_profile,json=crossRegionProfile,proto3" json:"cross_region_profile,omitempty"`
 	// Immutable numbered versions published from the guardrail's current
 	// draft definition. Each entry publishes ONE version; AWS assigns the
 	// version number sequentially (1, 2, ...) - the entry's `name` is a
@@ -202,9 +209,9 @@ func (x *AwsBedrockGuardrailSpec) GetContextualGroundingPolicy() *AwsBedrockGuar
 	return nil
 }
 
-func (x *AwsBedrockGuardrailSpec) GetCrossRegionProfileArn() string {
+func (x *AwsBedrockGuardrailSpec) GetCrossRegionProfile() string {
 	if x != nil {
-		return x.CrossRegionProfileArn
+		return x.CrossRegionProfile
 	}
 	return ""
 }
@@ -1202,8 +1209,7 @@ var File_catalog_aws_awsbedrockguardrail_v1alpha1_spec_proto protoreflect.FileDe
 
 const file_catalog_aws_awsbedrockguardrail_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"3catalog/aws/awsbedrockguardrail/v1alpha1/spec.proto\x12,dev.planton.aws.awsbedrockguardrail.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xd5\n" +
-	"\n" +
+	"3catalog/aws/awsbedrockguardrail/v1alpha1/spec.proto\x12,dev.planton.aws.awsbedrockguardrail.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x96\x0f\n" +
 	"\x17AwsBedrockGuardrailSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\xc8\x01R\vdescription\x12B\n" +
@@ -1218,10 +1224,12 @@ const file_catalog_aws_awsbedrockguardrail_v1alpha1_spec_proto_rawDesc = "" +
 	"wordPolicy\x12\x9d\x01\n" +
 	"\x1csensitive_information_policy\x18\t \x01(\v2[.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailSensitiveInformationPolicyR\x1asensitiveInformationPolicy\x12\x9a\x01\n" +
 	"\x1bcontextual_grounding_policy\x18\n" +
-	" \x01(\v2Z.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailContextualGroundingPolicyR\x19contextualGroundingPolicy\x12\x85\x01\n" +
-	"\x18cross_region_profile_arn\x18\v \x01(\tBL\xbaHI\xd8\x01\x01rD2B^arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+$R\x15crossRegionProfileArn\x12d\n" +
-	"\bversions\x18\f \x03(\v2H.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailVersionR\bversions:k\xbaHh\x1af\n" +
-	"\x14version_names_unique\x12'versions entries must have unique names\x1a%this.versions.map(v, v.name).unique()\"\xc3\x02\n" +
+	" \x01(\v2Z.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailContextualGroundingPolicyR\x19contextualGroundingPolicy\x12\xa6\x01\n" +
+	"\x14cross_region_profile\x18\v \x01(\tBt\xbaHq\xd8\x01\x01rl2j^([a-z]{2,4}\\.guardrail\\.v[0-9]+:[0-9]+|arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+)$R\x12crossRegionProfile\x12d\n" +
+	"\bversions\x18\f \x03(\v2H.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailVersionR\bversions:\x8a\x05\xbaH\x86\x05\x1af\n" +
+	"\x14version_names_unique\x12'versions entries must have unique names\x1a%this.versions.map(v, v.name).unique()\x1a\x90\x02\n" +
+	"+content_standard_tier_requires_cross_region\x12ycontent_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)\x1af!has(this.content_policy) || this.content_policy.tier != 'STANDARD' || this.cross_region_profile != ''\x1a\x88\x02\n" +
+	")topic_standard_tier_requires_cross_region\x12wtopic_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)\x1ab!has(this.topic_policy) || this.topic_policy.tier != 'STANDARD' || this.cross_region_profile != ''\"\xc3\x02\n" +
 	" AwsBedrockGuardrailContentPolicy\x12/\n" +
 	"\x04tier\x18\x01 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13R\aCLASSICR\bSTANDARDR\x04tier\x12r\n" +
 	"\afilters\x18\x02 \x03(\v2N.dev.planton.aws.awsbedrockguardrail.v1alpha1.AwsBedrockGuardrailContentFilterB\b\xbaH\x05\x92\x01\x02\b\x01R\afilters:z\xbaHw\x1au\n" +

@@ -50,6 +50,30 @@ schema alone cannot.
 - **Replica regions and KMS**: a replica encrypts under a key IN ITS OWN
   region. Referencing the primary region's key ARN in a replica fails at
   replication time, not at plan.
+- **Destroying a replicated secret: keep a recovery window** (live-verified
+  2026-08-13). AWS deletes replica secrets ASYNCHRONOUSLY after replication
+  is removed (~40-90s), and neither engine waits for it — with
+  `recoveryWindowInDays: 0` the primary's immediate force-delete can outrun
+  that deletion and strand the replica as a live, billing, standalone
+  secret in its region. A non-zero window keeps the primary's tombstone
+  alive long enough for the async deletion to complete.
+- **Recovering a stranded replica**: it rejects a direct delete
+  ("Operation not permitted on a replica secret") even when its primary no
+  longer exists. Run `aws secretsmanager stop-replication-to-replica` in
+  the REPLICA's region (promotes it to standalone), then `delete-secret`.
+- **A swept replica can COME BACK** (live-observed 2026-08-13): the
+  replication machinery of a force-deleted primary can re-materialize the
+  replica-region secret tens of minutes later (a fresh CreatedDate, same
+  inherited ARN suffix, PrimaryRegion pointing at the deleted primary).
+  After cleaning up a stranded replica, re-check the region ~an hour
+  later; repeat the promote-then-delete if it resurfaced. A recovery
+  window on the primary avoids the whole class.
+- **A stranded ex-replica blocks the name for future replication** — new
+  replication into that region fails with "currently replicated to
+  <region> with a different arn", `forceOverwriteReplicaSecret: true` does
+  NOT clear it, and the failure is SILENT at apply (neither engine waits
+  on replication status). Check `DescribeSecret.ReplicationStatus` reaches
+  `InSync` after enabling replication into a region with name history.
 - **Rotation Lambda permission**: RotateSecret fails with
   AccessDeniedException until the function grants
   `secretsmanager.amazonaws.com` invoke permission. The provider retries

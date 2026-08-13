@@ -15,16 +15,37 @@ spec:
   # on guardrail_id (status READY, policy families echoed as authored) plus
   # a version-numbered GetGuardrail for the published entry.
   #
-  # Deliberately not exercised live: cross_region_profile_arn (needs an
-  # AWS-provided guardrail profile enabled for the account geography --
-  # offline plans/previews prove the render arm-for-arm; unblock: verify
-  # the account's us.guardrail.v1:0 profile visibility live) and kms_key_arn
-  # (optional composition -- the e2e-prerequisites KMS fixture chain; the
-  # arm is a single string faithfully forwarded).
+  # The cross-region arm runs LIVE (2026-08-13): AWS rejects the STANDARD
+  # tier without cross-region inference, and the geography-qualified
+  # profile identifier ("us.guardrail.v1:0") is accepted directly -- no
+  # account-embedding ARN needed in the committed scenario. Deliberately
+  # not exercised live: kms_key_arn (optional composition -- the
+  # e2e-prerequisites KMS fixture chain; the arm is a single string
+  # faithfully forwarded).
   #
-  # pending_proof: forged this session to the full offline bar -- Q33
-  # proves it live.
+  # Proven live 2026-08-13, both engines, both scenarios, with the
+  # IDEMPOTENCY phase (re-plan after apply empty x4 lanes) and the blind
+  # import round-trip green (full-surface: guardrail {id},DRAFT + the
+  # published version {arn},{number} derived BLIND via the
+  # keyed-by-address arm over version_numbers -- its second-ever live
+  # exercise; only the declared skip_destroy tolerated). Per-engine
+  # watcher evidence (distinct AWS-generated guardrail ids attribute the
+  # windows): every policy family echoed as authored -- STANDARD tier,
+  # detect-only PROMPT_ATTACK (outputStrength+outputAction NONE), VIOLENCE
+  # image modalities, the investment-advice topic, PROFANITY managed list
+  # + codename-atlas custom word, EMAIL ANONYMIZE / SSN BLOCK, the
+  # employee-id regex, grounding 0.75/0.5, and the account-resolved
+  # guardrailProfileArn. The versions fold's update semantics proven by a
+  # $0 two-apply probe per engine: one apply carrying a draft edit + a
+  # second entry published the EDITED definition (publish-after-update),
+  # and removing the entry deleted only that version.
+  # TWO live catches fixed at the full bar this session: (1) AWS rejects
+  # the STANDARD tier without cross-region inference -- spec CELs now
+  # front-load the pairing; (2) the provider's schema demands a profile
+  # ARN while the AWS API accepts the geography id, so both modules
+  # compose the account-scoped ARN from a caller-identity lookup and the
+  # spec field (renamed cross_region_profile) stays portable.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

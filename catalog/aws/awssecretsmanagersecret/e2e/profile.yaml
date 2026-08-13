@@ -21,9 +21,25 @@ spec:
   # string_value). Unblock: a rotation-function fixture (a minimal Python
   # rotation handler packaged as an AwsLambda prerequisite shape).
   #
-  # pending_proof: forged this session to the full offline bar -- Q32
-  # proves it live.
+  # Proven live 2026-08-13, both engines, both scenarios, with the
+  # IDEMPOTENCY phase (re-plan after apply empty ×4 lanes) and the blind
+  # import round-trip green (full-surface: secret/policy/version re-imported
+  # via ARN + the {secret_arn}|{version_id} composite, only the declared
+  # config-only attributes tolerated; minimal: zero tolerated). Per-engine
+  # watcher evidence: bluegreen-active riding AWSCURRENT on the managed
+  # version; the us-east-1 replica InSync in-window and cleanly deleted
+  # after destroy; distinct run-scoped names attribute the windows.
+  # ONE live catch, fixed at the full bar: destroying a replicated secret
+  # with recovery window 0 can outrun AWS's ASYNC replica deletion and
+  # strand the replica as a live standalone secret (observed once;
+  # $0-probed: the async deletion needs the primary's tombstone), and a
+  # stranded ex-replica blocks the same name's next replication SILENTLY
+  # (force_overwrite does not clear it). Verifier now polls declared
+  # replicas to InSync at exists and replica-regions-gone at absent; the
+  # full-surface scenario rides a run-scoped name + recovery window 7
+  # (which also live-proves the DeletedDate-absent contract); truths on
+  # the spec fields, both modules, GUIDE, and the harness manual.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

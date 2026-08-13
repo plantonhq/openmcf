@@ -72,8 +72,16 @@ guardrails in production.
   `aws_bedrock_guardrail_version` at the pinned provider is modeled,
   mapped, or excluded with a reason in `iac/provider-parity.yaml` (zero
   findings at forge time).
-- `cross_region_profile_arn` is modeled but not exercised live yet: the
-  live lane needs the account's geography-scoped AWS guardrail profile
-  verified first (see e2e/profile.yaml).
+- `cross_region_profile` accepts the geography-qualified profile
+  identifier ("us.guardrail.v1:0") or the full profile ARN. The AWS API
+  resolves either (live-verified 2026-08-13; GetGuardrail echoes both the
+  id and the account-resolved ARN), but the upstream provider's schema
+  demands an ARN — so both modules compose the id shape into the
+  deploying account's profile ARN at deploy time (a caller-identity
+  lookup). The identifier is the portable shape for committed manifests:
+  it never embeds an account id. The STANDARD policy tier REQUIRES the
+  field: AWS rejects CreateGuardrail with a Standard tier and no
+  cross-region config, and the spec CEL front-loads that contract at
+  manifest time.
 - The version entry's `name` never reaches AWS — it is for_each identity
   and the `version_numbers` output key (recorded as a specExclusion).

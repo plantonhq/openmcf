@@ -97,14 +97,21 @@ message AwsBedrockGuardrailSpec {
   // Cross-Region Inference
   // ---------------------------------------------------------------------------
 
-  // ARN of the AWS system-defined guardrail profile that lets this
-  // guardrail evaluate traffic routed through cross-region inference
-  // (format: arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>).
-  // AWS defines the available profiles per geography (e.g. "us.guardrail.v1:0"
-  // profiles); this cannot reference a customer resource.
-  string cross_region_profile_arn = 11 [
+  // The AWS system-defined guardrail profile that lets this guardrail
+  // evaluate traffic routed through cross-region inference. Accepts the
+  // geography-qualified profile identifier (e.g. "us.guardrail.v1:0" -
+  // the portable shape; both modules compose it into the deploying
+  // account's profile ARN at deploy time, live-verified 2026-08-13) or
+  // the full profile ARN
+  // (arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>). AWS
+  // defines the available profiles per geography; this cannot reference
+  // a customer resource. REQUIRED whenever any policy family sets the
+  // STANDARD tier - AWS rejects STANDARD without cross-region inference
+  // ("Can't configure guardrail policy tier. Enable cross-Region
+  // inference for your guardrail to use Standard tier.").
+  string cross_region_profile = 11 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.pattern = "^arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+$"
+    (buf.validate.field).string.pattern = "^([a-z]{2,4}\\.guardrail\\.v[0-9]+:[0-9]+|arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+)$"
   ];
 
   // ---------------------------------------------------------------------------
@@ -129,6 +136,23 @@ message AwsBedrockGuardrailSpec {
     id: "version_names_unique"
     message: "versions entries must have unique names"
     expression: "this.versions.map(v, v.name).unique()"
+  };
+
+  // The STANDARD tier requires cross-region inference - AWS rejects
+  // CreateGuardrail otherwise (live-caught 2026-08-13: ValidationException
+  // "Can't configure guardrail policy tier. Enable cross-Region inference
+  // for your guardrail to use Standard tier."). One rule per tier-bearing
+  // policy family; both are true-positive-only (CLASSIC/omitted tiers
+  // never require the profile).
+  option (buf.validate.message).cel = {
+    id: "content_standard_tier_requires_cross_region"
+    message: "content_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)"
+    expression: "!has(this.content_policy) || this.content_policy.tier != 'STANDARD' || this.cross_region_profile != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "topic_standard_tier_requires_cross_region"
+    message: "topic_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)"
+    expression: "!has(this.topic_policy) || this.topic_policy.tier != 'STANDARD' || this.cross_region_profile != ''"
   };
 }
 

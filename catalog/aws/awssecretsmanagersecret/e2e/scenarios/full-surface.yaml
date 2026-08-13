@@ -3,9 +3,24 @@
 # through the standalone policy resource (block_public_policy true -- the
 # secure default), and a us-east-1 replica (replicas are free; the
 # zero-orphan sweep must verify the replica region too).
-# force_overwrite_replica_secret keeps re-runs clean if a prior lane's
-# replica lingers; recovery_window_in_days 0 frees the name immediately on
-# destroy.
+#
+# Run-scoped name (live lesson, 2026-08-13): this scenario destroys with a
+# recovery window, so a fixed name would be soft-delete-held for 7 days and
+# the dual-engine back-to-back recreate would collide. The run-scoped name
+# also isolates engines from the stranded-replica class: a replica AWS
+# fails to delete asynchronously blocks the SAME name's next replication
+# ("currently replicated to us-east-1 with a different arn" -- silent at
+# apply; force_overwrite_replica_secret does NOT clear it).
+#
+# recovery_window_in_days 7, not 0 (live lesson, 2026-08-13): the provider
+# deletes the primary immediately after RemoveRegionsFromReplication
+# without waiting for AWS's ASYNC replica deletion, and with the primary
+# force-deleted that deletion can abort, stranding the replica as a live
+# standalone secret. With a recovery window the primary tombstone outlives
+# the async deletion (probed live: replica gone in ~40-90s). This also
+# live-proves the verifier's soft-delete absent contract (DeletedDate set
+# counts as absent). The minimal scenario keeps window 0 to prove the
+# immediate name-freeing path (it carries no replica).
 #
 # Deliberately not exercised here: a customer-managed KMS key (pass-through
 # reference -- the AWS-managed key path is the live arm), binary_value
@@ -14,8 +29,8 @@
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecretsManagerSecret
 metadata:
-  name: planton-oss-e2e-awssm-full
-  id: planton-oss-e2e-awssm-full
+  name: planton-oss-e2e-awssm-full-${E2E_RUN_ID}
+  id: planton-oss-e2e-awssm-full-${E2E_RUN_ID}
   org: planton-oss
   env: e2e
   labels:
@@ -44,4 +59,4 @@ spec:
   replicaRegions:
     - region: us-east-1
   forceOverwriteReplicaSecret: true
-  recoveryWindowInDays: 0
+  recoveryWindowInDays: 7

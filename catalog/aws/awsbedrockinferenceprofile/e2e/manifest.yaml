@@ -8,4 +8,4 @@ metadata:
 spec:
   region: us-west-2
   description: Cost tracking for the checkout service
-  sourceArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.nova-micro-v1:0
+  sourceArn: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.amazon.nova-micro-v1:0

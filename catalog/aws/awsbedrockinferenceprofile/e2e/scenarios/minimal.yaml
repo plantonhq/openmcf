@@ -1,6 +1,14 @@
 # AwsBedrockInferenceProfile minimal scenario: an application profile
 # routing straight to a foundation model. Free -- the profile is metadata;
 # nothing is invoked.
+#
+# The source must be an ON_DEMAND-capable model (live lesson, 2026-08-13):
+# CreateInferenceProfile rejects a foundation-model ARN whose model only
+# supports INFERENCE_PROFILE invocation ("The provided foundation model
+# does not support On Demand inference" -- the Nova family is
+# profile-only). Titan Embed Text v2 is first-party (no agreement),
+# ON_DEMAND, and long-lived; the system-profile ARN form cannot be
+# committed here because it embeds the caller's account id.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBedrockInferenceProfile
 metadata:
@@ -18,4 +26,4 @@ metadata:
 spec:
   region: us-west-2
   description: Planton E2E minimal inference profile
-  sourceArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.nova-micro-v1:0
+  sourceArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.titan-embed-text-v2:0

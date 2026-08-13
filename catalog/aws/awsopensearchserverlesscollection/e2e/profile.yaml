@@ -24,9 +24,23 @@ spec:
   # future kind), and vector acceleration (VECTORSEARCH GPU capacity --
   # cost).
   #
-  # pending_proof: forged this session to the full offline bar -- Q32
-  # proves it live.
+  # Proven live 2026-08-13, both engines, full-surface (composed IAM-role
+  # fixture), with the IDEMPOTENCY phase and the blind import round-trip
+  # green (all 5 resources: the collection by service-generated id, the
+  # four policies by {name}/{type} composites; zero tolerated updates).
+  # Per-engine watcher evidence (distinct collection ids attribute the
+  # windows): AWSOwnedKey=true encryption document, AllowFromPublic=true
+  # network document with the dashboard rule, the data-access document
+  # naming the composed role fixture ARN, MinIndexRetention=24h; status
+  # ACTIVE ~3 min after create. Ordering from the engines' own logs:
+  # encryption policy created BEFORE the collection, collection destroyed
+  # BEFORE the encryption policy -- AWS accepted the policy deletion
+  # immediately (no Q25-class settle needed). Lane timing: ~13 min per
+  # engine end-to-end incl. the fixture chain (~3.5 min up/down each).
+  # Record-only probe: CreateCollection with inline encryptionConfig and
+  # NO policy reached ACTIVE (the inline arm stands alone) -- judgment in
+  # GUIDE.md; the policy-path module design stands.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

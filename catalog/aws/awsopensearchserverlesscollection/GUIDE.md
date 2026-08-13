@@ -24,8 +24,15 @@ schema alone cannot.
   not sent.** It is the same key choice's collection-group-era twin at the
   CreateCollection API; the security-policy path is the universally
   supported arm at the pin. Recorded as a one-arg-two-homes exclusion in
-  the parity manifest; if live proof shows the inline argument standing
-  alone (no policy needed), simplifying is a recorded follow-up.
+  the parity manifest. Live probe (2026-08-13): CreateCollection WITH
+  inline `encryptionConfig` (AWS-owned key) and NO encryption policy in
+  the account was accepted and reached ACTIVE, and AWS materialized no
+  policy behind it — the inline argument genuinely stands alone.
+  Simplifying the module to the inline arm is a recorded follow-up, kept
+  deliberate rather than automatic: the policy path remains the one that
+  also covers pre-collection-group accounts and keeps the key choice
+  visible/auditable as a policy object, and switching arms is a breaking
+  re-create for existing collections.
 - **An omitted `network` block renders the PUBLIC posture** (the AWS
   console's easy-create default). This is reachability only — every
   request must be SigV4-signed and authorized by a data-access rule, so

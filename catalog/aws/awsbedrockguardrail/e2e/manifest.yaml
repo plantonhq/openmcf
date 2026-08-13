@@ -12,6 +12,9 @@ spec:
   blockedOutputsMessaging: Sorry, I can't provide that response.
   kmsKeyArn:
     value: arn:aws:kms:us-west-2:123456789012:key/abc-123
+  # The STANDARD tier requires cross-region inference (AWS rejects it
+  # otherwise); the geography-qualified profile id is the portable shape.
+  crossRegionProfile: us.guardrail.v1:0
   contentPolicy:
     tier: STANDARD
     filters:

@@ -6,6 +6,21 @@
 # The module owns the guardrail's mutable DRAFT definition and one
 # aws_bedrock_guardrail_version per spec.versions entry.
 
+# Deploy-time identity, consumed only when the spec carries the portable
+# geography-qualified guardrail-profile id ("us.guardrail.v1:0"): the AWS
+# API accepts that id directly, but the provider's schema types
+# guardrail_profile_identifier as an ARN (fwtypes.ARNType -- stricter
+# than the API, live-caught 2026-08-13), so the module composes the
+# account-scoped profile ARN here rather than forcing every manifest to
+# embed its account id.
+data "aws_caller_identity" "current" {
+  count = local.compose_cross_region_arn ? 1 : 0
+}
+
+data "aws_partition" "current" {
+  count = local.compose_cross_region_arn ? 1 : 0
+}
+
 resource "aws_bedrock_guardrail" "this" {
   # Create-time naming basis; doubles as the Name tag. metadata.name on
   # both engines.
@@ -163,10 +178,16 @@ resource "aws_bedrock_guardrail" "this" {
   }
 
   # -------------------------------------------------------------------
-  # Cross-region inference profile
+  # Cross-region inference profile. The spec accepts the portable
+  # geography-qualified profile id ("us.guardrail.v1:0") or the full
+  # profile ARN; the provider's schema demands an ARN (stricter than the
+  # AWS API, which resolves the plain id -- live-verified 2026-08-13), so
+  # the id shape is composed into the caller's account-scoped ARN
+  # (local.cross_region_identifier). Required by AWS whenever any policy
+  # family uses the STANDARD tier (CEL-enforced at manifest time).
   # -------------------------------------------------------------------
   dynamic "cross_region_config" {
-    for_each = local.has_cross_region ? [var.spec.cross_region_profile_arn] : []
+    for_each = local.has_cross_region ? [local.cross_region_identifier] : []
     content {
       guardrail_profile_identifier = cross_region_config.value
     }

@@ -53,6 +53,14 @@ type AwsBedrockInferenceProfileSpec struct {
 	// "us.amazon.nova-micro-v1:0") to inherit cross-region routing. AWS
 	// never echoes the source back, so the modules pin it in state - it
 	// shows as unchanged as long as the spec value stays the same.
+	// The foundation-model form works ONLY for models that support
+	// ON_DEMAND inference (live-verified 2026-08-13: CreateInferenceProfile
+	// rejects others with "The provided foundation model does not support
+	// On Demand inference"). Models whose inferenceTypesSupported is
+	// INFERENCE_PROFILE only - the Nova family and most 2025+ releases -
+	// must be referenced through their system-defined inference-profile ARN
+	// form instead. Check with:
+	// `aws bedrock list-foundation-models --by-inference-type ON_DEMAND`.
 	SourceArn     string `protobuf:"bytes,3,opt,name=source_arn,json=sourceArn,proto3" json:"source_arn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

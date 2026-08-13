@@ -28,9 +28,21 @@ spec:
   # is a jsonencode passthrough on both engines. Unblock: an owner call
   # accepting a permanent, dedicated use-case form for the test account.
   #
-  # pending_proof: forged this session to the full offline bar -- Q33
-  # proves it live.
   tier: 1
-  status: pending_proof
+  # ENVIRONMENT-BLOCKED (live lane attempted 2026-08-13, session record):
+  # the module resolved the Cohere offer token and created the agreement,
+  # but AWS Marketplace resolved it to state ERROR --
+  # "INVALID_PAYMENT_INSTRUMENT: A valid payment instrument must be
+  # provided." The test account has no valid marketplace payment method;
+  # this is account billing configuration, not a module or spec defect
+  # (the provider waiter surfaced the ERROR state correctly after ~15 min
+  # of polling, and the failed agreement left nothing to cancel --
+  # DeleteFoundationModelAgreement answers "No agreement exists").
+  # GetFoundationModelAvailability retains the last attempt's ERROR
+  # message until a successful acceptance. Unblock: the owner adds a
+  # valid payment instrument to the test account (AWS console -> Billing
+  # -> Payment preferences), then re-probe the offer and run both lanes.
+  status: deferred
+  deferred_reason: "AWS Marketplace agreement fails with INVALID_PAYMENT_INSTRUMENT on the test account (no valid payment method); owner unblock: add a payment instrument, then run both engines' lanes"
   validated_provisioners: []
   timeout_minutes: 45

@@ -105,18 +105,37 @@ type AwsSecretsManagerSecretSpec struct {
 	// Regions to replicate the secret to. Each replica is a read-only copy
 	// (same name, regional ARN) kept in sync by Secrets Manager - consumers
 	// in that region read locally with no cross-region call. Add or remove
-	// entries in place; removed regions have their replica deleted.
+	// entries in place; removed regions have their replica deleted - but
+	// note that AWS performs that deletion ASYNCHRONOUSLY (seconds to
+	// minutes, live-verified 2026-08-13): destroying a replicated secret
+	// with recovery_window_in_days 0 can outrun it and strand a replica as
+	// a live standalone secret in its region. Prefer a recovery window
+	// (the primary's tombstone lets the async deletion complete), and if a
+	// replica ever strands, recover with StopReplicationToReplica in the
+	// replica's region followed by DeleteSecret - a stranded replica
+	// rejects a direct delete ("Operation not permitted on a replica
+	// secret") even after its primary is gone.
 	ReplicaRegions []*AwsSecretsManagerSecretReplica `protobuf:"bytes,9,rep,name=replica_regions,json=replicaRegions,proto3" json:"replica_regions,omitempty"`
 	// Overwrite an existing secret of the same name in a replica region
 	// instead of failing replication. Default false - failing loudly on a
 	// name collision is the safe posture; enable it deliberately when
-	// re-pointing replication at regions that hold stale copies.
+	// re-pointing replication at regions that hold stale copies. It does
+	// NOT clear a same-name secret that is itself a stranded ex-replica of
+	// a deleted secret: replication then fails with "currently replicated
+	// to <region> with a different arn" (live-verified 2026-08-13), and the
+	// failure is SILENT at apply on both engines - neither waits on
+	// replication status. Check ReplicationStatus (or the console) after
+	// enabling replication into a region with name history.
 	ForceOverwriteReplicaSecret bool `protobuf:"varint,10,opt,name=force_overwrite_replica_secret,json=forceOverwriteReplicaSecret,proto3" json:"force_overwrite_replica_secret,omitempty"`
 	// Days AWS retains the secret in a recoverable soft-deleted state after
 	// destroy: 7-30, or 0 to delete immediately and permanently. Default 30.
 	// Consumed only at delete time - it never affects the running secret.
 	// During the window the secret's NAME stays reserved; 0 is the right
 	// choice for ephemeral/test secrets that must be recreatable immediately.
+	// For secrets with replica_regions, prefer a non-zero window: 0
+	// force-deletes the primary immediately after replica removal is
+	// requested, which can outrun AWS's asynchronous replica deletion and
+	// strand live replica secrets (see replica_regions).
 	RecoveryWindowInDays *int32 `protobuf:"varint,11,opt,name=recovery_window_in_days,json=recoveryWindowInDays,proto3,oneof" json:"recovery_window_in_days,omitempty"`
 	// Partner identifier for an AWS "managed external secret" - a secret whose
 	// authoritative value lives with a SaaS partner and is rotated through the
