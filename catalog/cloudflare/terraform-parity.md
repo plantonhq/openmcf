@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**14 of 30 kinds are at total accounting; 0 proven live.**
+**23 of 30 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -56,7 +56,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | — |
 | CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | — |
-| CloudflareDnsRecord | 12 | 10 | 0 | 0 | 62 | ❌ | — |
+| CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | CloudflareDnsZone | 32 | 4 | 0 | 0 | 57 | ❌ | — |
 | CloudflareEmailRoutingAddress | 3 | 2 | 0 | 0 | 1 | ❌ | — |
 | CloudflareEmailRoutingRule | 8 | 4 | 0 | 0 | 10 | ❌ | — |
@@ -67,19 +67,19 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareListItem | 7 | 5 | 2 | 0 | 0 | ✅ | — |
 | CloudflareLoadBalancer | 20 | 10 | 0 | 0 | 28 | ❌ | — |
 | CloudflareLoadBalancerMonitor | 17 | 16 | 1 | 0 | 0 | ✅ | — |
-| CloudflareLoadBalancerPool | 15 | 9 | 0 | 0 | 23 | ❌ | — |
+| CloudflareLoadBalancerPool | 15 | 9 | 4 | 2 | 0 | ✅ | — |
 | CloudflareOriginCaCertificate | 4 | 4 | 0 | 0 | 0 | ✅ | — |
-| CloudflarePagesProject | 9 | 5 | 0 | 0 | 97 | ❌ | — |
-| CloudflareQueue | 9 | 3 | 0 | 0 | 18 | ❌ | — |
-| CloudflareR2Bucket | 34 | 22 | 0 | 0 | 45 | ❌ | — |
+| CloudflarePagesProject | 9 | 4 | 5 | 0 | 0 | ✅ | — |
+| CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
+| CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
 | CloudflareRuleset | 7 | 5 | 0 | 0 | 169 | ❌ | — |
 | CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
 | CloudflareWorker | 40 | 10 | 0 | 0 | 83 | ❌ | — |
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| CloudflareZeroTrustAccessApplication | 39 | 29 | 0 | 0 | 99 | ❌ | — |
-| CloudflareZeroTrustAccessGroup | 7 | 4 | 0 | 0 | 108 | ❌ | — |
-| CloudflareZeroTrustAccessPolicy | 14 | 8 | 0 | 0 | 119 | ❌ | — |
-| CloudflareZeroTrustTunnel | 8 | 5 | 0 | 0 | 40 | ❌ | — |
+| CloudflareZeroTrustAccessApplication | 39 | 29 | 10 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustAccessGroup | 7 | 4 | 3 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustAccessPolicy | 14 | 8 | 6 | 0 | 0 | ✅ | — |
+| CloudflareZeroTrustTunnel | 8 | 5 | 2 | 1 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelRoute | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelVirtualNetwork | 4 | 4 | 0 | 0 | 0 | ✅ | — |
 

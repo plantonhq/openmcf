@@ -1,0 +1,111 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# Seven provider resources compose into this one kind; the satellites'
+# repeated account_id/bucket_name arguments match the kind's top-level
+# fields directly, so only renames and nested-object fan-ins appear here.
+
+resources:
+  cloudflare_r2_bucket:
+    mappings:
+      # Rename: the spec says what the field IS (a bucket name) where the
+      # provider uses the generic "name".
+      - spec: spec.bucket_name
+        arg: name
+  cloudflare_r2_bucket_cors:
+    mappings:
+      # rules is one nested list attribute (a single configurable argument);
+      # fan-in mappings record every spec leaf it realizes.
+      - spec: spec.cors.rules.allowed.headers
+        arg: rules
+      - spec: spec.cors.rules.allowed.methods
+        arg: rules
+      - spec: spec.cors.rules.allowed.origins
+        arg: rules
+      - spec: spec.cors.rules.expose_headers
+        arg: rules
+      - spec: spec.cors.rules.id
+        arg: rules
+      - spec: spec.cors.rules.max_age_seconds
+        arg: rules
+  cloudflare_r2_bucket_event_notification:
+    mappings:
+      # Rename: the spec's queue is a reference to the CloudflareQueue kind
+      # (resolved to its ID), where the provider takes the raw queue_id.
+      - spec: spec.event_notifications.queue
+        arg: queue_id
+      - spec: spec.event_notifications.rules.actions
+        arg: rules
+      - spec: spec.event_notifications.rules.description
+        arg: rules
+      - spec: spec.event_notifications.rules.prefix
+        arg: rules
+      - spec: spec.event_notifications.rules.suffix
+        arg: rules
+  cloudflare_r2_bucket_lifecycle:
+    mappings:
+      # Two implied-only-valid-value restructures inside this tree: the
+      # spec's abort_multipart_uploads_transition drops the condition type
+      # (the API accepts only "Age" there) and storage_class_transitions
+      # drops the target storage class (R2 transitions only to Infrequent
+      # Access) -- the module supplies both constants.
+      - spec: spec.lifecycle.rules.abort_multipart_uploads_transition.max_age_seconds
+        arg: rules
+      - spec: spec.lifecycle.rules.conditions.prefix
+        arg: rules
+      - spec: spec.lifecycle.rules.delete_objects_transition.condition.date
+        arg: rules
+      - spec: spec.lifecycle.rules.delete_objects_transition.condition.max_age_seconds
+        arg: rules
+      - spec: spec.lifecycle.rules.delete_objects_transition.condition.type
+        arg: rules
+      - spec: spec.lifecycle.rules.enabled
+        arg: rules
+      - spec: spec.lifecycle.rules.id
+        arg: rules
+      - spec: spec.lifecycle.rules.storage_class_transitions.condition.date
+        arg: rules
+      - spec: spec.lifecycle.rules.storage_class_transitions.condition.max_age_seconds
+        arg: rules
+      - spec: spec.lifecycle.rules.storage_class_transitions.condition.type
+        arg: rules
+  cloudflare_r2_bucket_lock:
+    mappings:
+      - spec: spec.lock.rules.condition.date
+        arg: rules
+      - spec: spec.lock.rules.condition.max_age_seconds
+        arg: rules
+      - spec: spec.lock.rules.condition.type
+        arg: rules
+      - spec: spec.lock.rules.enabled
+        arg: rules
+      - spec: spec.lock.rules.id
+        arg: rules
+      - spec: spec.lock.rules.prefix
+        arg: rules
+  cloudflare_r2_custom_domain:
+    mappings:
+      # The kind's custom_domains list fans out to one custom-domain
+      # resource per entry; each argument is the same-named field under a
+      # list the provider does not have.
+      - spec: spec.custom_domains.ciphers
+        arg: ciphers
+      - spec: spec.custom_domains.domain
+        arg: domain
+      - spec: spec.custom_domains.enabled
+        arg: enabled
+      - spec: spec.custom_domains.min_tls
+        arg: min_tls
+      - spec: spec.custom_domains.zone_id
+        arg: zone_id
+  cloudflare_r2_managed_domain:
+    mappings:
+      # The spec's public_access bool IS the managed r2.dev domain's
+      # enabled flag -- named for the capability it grants.
+      - spec: spec.public_access
+        arg: enabled
