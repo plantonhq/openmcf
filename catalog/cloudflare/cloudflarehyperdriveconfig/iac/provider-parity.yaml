@@ -1,0 +1,46 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The provider's origin, caching, and mtls are nested object attributes (one
+# configurable argument each); the spec models their contents as typed
+# messages under the same nested names. Fan-in mappings record every spec
+# leaf each argument realizes.
+
+resources:
+  cloudflare_hyperdrive_config:
+    mappings:
+      - spec: spec.origin.database
+        arg: origin
+      - spec: spec.origin.host
+        arg: origin
+      - spec: spec.origin.password
+        arg: origin
+      - spec: spec.origin.port
+        arg: origin
+      - spec: spec.origin.scheme
+        arg: origin
+      - spec: spec.origin.user
+        arg: origin
+      - spec: spec.origin.access_client_id
+        arg: origin
+      - spec: spec.origin.access_client_secret
+        arg: origin
+      - spec: spec.origin.service_id
+        arg: origin
+      - spec: spec.caching.disabled
+        arg: caching
+      - spec: spec.caching.max_age
+        arg: caching
+      - spec: spec.caching.stale_while_revalidate
+        arg: caching
+      - spec: spec.mtls.ca_certificate_id
+        arg: mtls
+      - spec: spec.mtls.mtls_certificate_id
+        arg: mtls
+      - spec: spec.mtls.sslmode
+        arg: mtls

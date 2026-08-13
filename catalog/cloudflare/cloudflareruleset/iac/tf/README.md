@@ -66,5 +66,5 @@ fields are absent, so only the parameters relevant to each rule's action are sen
 
 ## Provider Version
 
-Uses `cloudflare/cloudflare ~> 5.0`. In provider v5 the `cloudflare_ruleset` rules and action
+Uses `cloudflare/cloudflare ~> 5.23`. In provider v5 the `cloudflare_ruleset` rules and action
 parameters are nested attributes (assigned with object syntax), not nested blocks.

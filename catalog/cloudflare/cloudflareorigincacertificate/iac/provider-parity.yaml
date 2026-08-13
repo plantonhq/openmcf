@@ -1,0 +1,17 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  # When spec.csr is omitted the module generates the private key and CSR
+  # itself (hashicorp/tls, keyed to spec.request_type) and exports both the
+  # certificate and the sensitive private key as outputs -- module plumbing
+  # below the spec, with no cloudflare arguments to account.
+  tls_private_key:
+    internal: module-generated origin private key backing the optional CSR convenience -- arguments are module decisions keyed to spec.request_type
+  tls_cert_request:
+    internal: module-generated CSR used only when spec.csr is omitted -- arguments are module decisions derived from spec.hostnames and the generated key

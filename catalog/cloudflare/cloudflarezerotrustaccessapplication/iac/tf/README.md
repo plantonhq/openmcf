@@ -7,7 +7,7 @@ standalone Access policies by reference, and exports its outputs (including `aud
 
 ```
 iac/tf/
-├── provider.tf    # cloudflare provider ~> 5.0
+├── provider.tf    # cloudflare provider ~> 5.23
 ├── variables.tf   # metadata + spec
 ├── locals.tf      # labels + type default + policy/target-criteria shaping
 ├── main.tf        # the cloudflare_zero_trust_access_application resource
