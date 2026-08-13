@@ -2863,6 +2863,22 @@ enum CloudResourceKind {
     id_prefix: "azaci"
     prerequisites: [AzureResourceGroup]
   }];
+  // The Azure Function App on the Flex Consumption plan -- Azure's
+  // newest serverless Functions hosting model: per-instance memory
+  // selection, a configurable scale-out ceiling, always-ready instance
+  // pools, and explicit blob-container deployment storage. Requires an
+  // FC1-SKU service plan, which is deliberately NOT a registry
+  // prerequisite: the shared plan fixture serves the classic app tiers,
+  // and an FC1 plan is cheap to create per scenario (no idle compute
+  // cost), so scenarios bring their own plan fixture -- the same
+  // reasoning that keeps the globally-unique storage account
+  // scenario-local for AzureFunctionApp.
+  AzureFunctionAppFlexConsumption = 2210 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfnflex"
+    prerequisites: [AzureResourceGroup]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.

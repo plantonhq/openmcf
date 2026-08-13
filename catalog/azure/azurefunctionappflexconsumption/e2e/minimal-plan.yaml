@@ -1,0 +1,30 @@
+# Dedicated FC1-SKU AzureServicePlan for the minimal scenario. Flex
+# Consumption apps are REJECTED on any other plan tier, and the shared
+# plan fixture serves the classic app tiers (Basic B1), so each flex
+# scenario carries its own FC1 plan -- free at rest (billing follows
+# executions and always-ready instances), and per-scenario names keep
+# parallel lanes from colliding on one plan resource.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureServicePlan
+metadata:
+  name: planton-oss-e2e-flex-plan-min
+  id: planton-oss-e2e-flex-plan-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureserviceplan
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  # centralus: co-located with the fixture resource group; the app must
+  # live in its plan's region.
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  servicePlanName: planton-oss-e2e-flex-plan-min
+  osType: LINUX
+  skuName: FLEX_CONSUMPTION_FC1

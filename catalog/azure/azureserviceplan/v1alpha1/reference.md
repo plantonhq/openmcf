@@ -382,6 +382,7 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AzureFunctionApp | `spec.servicePlanId` | `status.outputs.service_plan_id` |
+| AzureFunctionAppFlexConsumption | `spec.servicePlanId` | `status.outputs.service_plan_id` |
 | AzureLinuxWebApp | `spec.servicePlanId` | `status.outputs.service_plan_id` |
 
 ## See Also

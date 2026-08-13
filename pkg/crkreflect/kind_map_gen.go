@@ -247,6 +247,7 @@ import (
 	azurefrontdoorsecretv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefrontdoorsecret/v1alpha1"
 	azurefrontdoorsecuritypolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefrontdoorsecuritypolicy/v1alpha1"
 	azurefunctionappv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefunctionapp/v1alpha1"
+	azurefunctionappflexconsumptionv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurefunctionappflexconsumption/v1alpha1"
 	azureipgroupv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureipgroup/v1alpha1"
 	azurekeyvaultv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurekeyvault/v1alpha1"
 	azurekeyvaultcertificatev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurekeyvaultcertificate/v1alpha1"
@@ -983,6 +984,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorSecret:                           &azurefrontdoorsecretv1alpha1.AzureFrontDoorSecret{},
 	cloudresourcekind.CloudResourceKind_AzureFrontDoorSecurityPolicy:                   &azurefrontdoorsecuritypolicyv1alpha1.AzureFrontDoorSecurityPolicy{},
 	cloudresourcekind.CloudResourceKind_AzureFunctionApp:                               &azurefunctionappv1alpha1.AzureFunctionApp{},
+	cloudresourcekind.CloudResourceKind_AzureFunctionAppFlexConsumption:                &azurefunctionappflexconsumptionv1alpha1.AzureFunctionAppFlexConsumption{},
 	cloudresourcekind.CloudResourceKind_AzureIpGroup:                                   &azureipgroupv1alpha1.AzureIpGroup{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVault:                                  &azurekeyvaultv1alpha1.AzureKeyVault{},
 	cloudresourcekind.CloudResourceKind_AzureKeyVaultCertificate:                       &azurekeyvaultcertificatev1alpha1.AzureKeyVaultCertificate{},

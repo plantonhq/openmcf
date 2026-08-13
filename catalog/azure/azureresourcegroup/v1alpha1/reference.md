@@ -127,6 +127,7 @@ Fields on other kinds that can point at this resource:
 | AzureFrontDoorFirewallPolicy | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFrontDoorProfile | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureFunctionApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |
+| AzureFunctionAppFlexConsumption | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureIpGroup | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureKeyVault | `spec.resourceGroup` | `status.outputs.resource_group_name` |
 | AzureLinuxWebApp | `spec.resourceGroup` | `status.outputs.resource_group_name` |

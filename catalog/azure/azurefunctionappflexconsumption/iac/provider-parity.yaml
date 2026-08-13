@@ -1,0 +1,93 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_function_app_flex_consumption:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region, the app's name), where the provider inherits
+      # ARM's property names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      - spec: spec.function_app_name
+        arg: name
+      # Plural list names over the provider's singular block names.
+      - spec: spec.site_config.ip_restrictions
+        arg: site_config.ip_restriction
+      - spec: spec.site_config.scm_ip_restrictions
+        arg: site_config.scm_ip_restriction
+      # headers is an ATTRIBUTE-mode argument in the provider: one schema
+      # argument carrying the four x_* filter lists. The spec's
+      # x_forwarded_for leaf maps onto it; the three sibling leaves are
+      # recorded under specExclusions (one judgment per argument -- the
+      # exposed_port fan-in precedent, pending the upstream fan-in
+      # grammar).
+      - spec: spec.site_config.ip_restrictions.headers.x_forwarded_for
+        arg: site_config.ip_restriction.headers
+      - spec: spec.site_config.scm_ip_restrictions.headers.x_forwarded_for
+        arg: site_config.scm_ip_restriction.headers
+      - spec: spec.connection_strings
+        arg: connection_string
+      # The App Insights connection string is a top-level typed reference
+      # to AzureApplicationInsights (the composition seam every app kind
+      # shares); the provider carries it inside site_config. Both values
+      # travel as app settings on the wire.
+      - spec: spec.application_insights_connection_string
+        arg: site_config.application_insights_connection_string
+    exclusions:
+      # Single legal value ("blobContainer" is the vocabulary's only
+      # token) -- the spec omits the choice that isn't one; both engines
+      # send the constant.
+      - arg: storage_container_type
+        reason: single legal value (blobContainer); both engines send the constant
+      # Legacy Easy Auth v1: superseded by auth_settings_v2, which this
+      # kind models fully -- the same posture AzureFunctionApp recorded.
+      # One generation of the same platform feature; modeling both would
+      # ship two overlapping auth grammars for one ARM surface.
+      - arg: auth_settings
+        reason: legacy Easy Auth v1 superseded by auth_settings_v2 (modeled fully); the AzureFunctionApp family precedent
+      # Schema-visible but DEAD in the flex code paths: the flex
+      # site_config expand/flatten never touches it (the classic function
+      # app kinds carry the live version of this argument).
+      - arg: site_config.use_32_bit_worker
+        reason: dead argument on this resource -- the flex site_config expand/flatten never reads or writes it
+      # Schema-visible but a dead WRITE: the flex expand never sends it
+      # (only the flatten could read a value some other client set).
+      - arg: site_config.container_registry_managed_identity_client_id
+        reason: dead write on this resource -- the flex expand never sends it; the ACR managed-identity toggle is modeled
+
+# Spec leaves that render into an attribute-mode provider argument
+# alongside a mapped sibling (the exposed_port fan-in precedent: one
+# judgment per argument until the manifest grammar grows a fan-in form).
+specExclusions:
+  - field: spec.site_config.ip_restrictions.headers.x_forwarded_host
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.
+  - field: spec.site_config.ip_restrictions.headers.x_azure_fdid
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.
+  - field: spec.site_config.ip_restrictions.headers.x_fd_health_probe
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.
+  - field: spec.site_config.scm_ip_restrictions.headers.x_forwarded_host
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.
+  - field: spec.site_config.scm_ip_restrictions.headers.x_azure_fdid
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.
+  - field: spec.site_config.scm_ip_restrictions.headers.x_fd_health_probe
+    reason: >-
+      Renders into the attribute-mode headers argument alongside its
+      mapped x_forwarded_for sibling.

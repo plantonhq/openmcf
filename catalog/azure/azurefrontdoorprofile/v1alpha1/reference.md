@@ -246,6 +246,8 @@ Fields on other kinds that can point at this resource:
 | AzureFrontDoorSecurityPolicy | `spec.profileId` | `status.outputs.profile_id` |
 | AzureFunctionApp | `spec.siteConfig.ipRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
 | AzureFunctionApp | `spec.siteConfig.scmIpRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
+| AzureFunctionAppFlexConsumption | `spec.siteConfig.ipRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
+| AzureFunctionAppFlexConsumption | `spec.siteConfig.scmIpRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
 | AzureLinuxWebApp | `spec.siteConfig.ipRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
 | AzureLinuxWebApp | `spec.siteConfig.scmIpRestrictions[].headers.xAzureFdid` | `status.outputs.resource_guid` |
 

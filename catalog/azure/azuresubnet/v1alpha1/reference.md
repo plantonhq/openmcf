@@ -399,6 +399,9 @@ Fields on other kinds that can point at this resource:
 | AzureFunctionApp | `spec.siteConfig.ipRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureFunctionApp | `spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureFunctionApp | `spec.virtualNetworkSubnetId` | `status.outputs.subnet_id` |
+| AzureFunctionAppFlexConsumption | `spec.siteConfig.ipRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
+| AzureFunctionAppFlexConsumption | `spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
+| AzureFunctionAppFlexConsumption | `spec.virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureKeyVault | `spec.networkAcls.virtualNetworkSubnetIds` | `status.outputs.subnet_id` |
 | AzureLinuxWebApp | `spec.siteConfig.ipRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |
 | AzureLinuxWebApp | `spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId` | `status.outputs.subnet_id` |

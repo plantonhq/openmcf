@@ -1,0 +1,25 @@
+# Dedicated AzureStorageAccount for the identity-auth scenario. A
+# distinct globally-unique hyphen-free name (see minimal-account.yaml
+# for the reservation rationale); a separate account also keeps the two
+# lanes' storage lifecycles independent when they run in parallel.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageAccount
+metadata:
+  name: planton-oss-e2e-flex-idauth-account
+  id: planton-oss-e2e-flex-idauth-account
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestorageaccount
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: centralus
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  accountName: pltnosse2eflexsb
+  replicationType: LRS

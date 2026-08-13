@@ -186,6 +186,8 @@ Fields on other kinds that can point at this resource:
 | AzureFrontDoorProfile | `spec.identity.userAssignedIdentityIds` | `status.outputs.identity_id` |
 | AzureFunctionApp | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureFunctionApp | `spec.keyVaultReferenceIdentityId` | `status.outputs.identity_id` |
+| AzureFunctionAppFlexConsumption | `spec.storageUserAssignedIdentityId` | `status.outputs.identity_id` |
+| AzureFunctionAppFlexConsumption | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureKeyVault | `spec.accessPolicies[].objectId` | `status.outputs.principal_id` |
 | AzureLinuxWebApp | `spec.identity.identityIds` | `status.outputs.identity_id` |
 | AzureLinuxWebApp | `spec.keyVaultReferenceIdentityId` | `status.outputs.identity_id` |
