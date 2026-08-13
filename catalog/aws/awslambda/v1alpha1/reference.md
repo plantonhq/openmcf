@@ -1207,6 +1207,8 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsBedrockAgent | `spec.promptOverride.overrideLambda` | `status.outputs.function_arn` |
 | AwsBedrockAgent | `spec.actionGroups[].executor.lambda` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreGateway | `spec.interceptors[].lambdaArn` | `status.outputs.function_arn` |
+| AwsBedrockAgentCoreGateway | `spec.targets[].backend.lambda.lambdaArn` | `status.outputs.function_arn` |
 | AwsBedrockFlow | `spec.definition.nodes[].lambdaFunction.lambdaArn` | `status.outputs.function_arn` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].vectorIngestion.customTransformation.lambdaArn` | `status.outputs.function_arn` |
 | AwsClientVpn | `spec.clientConnectOptions.lambdaFunctionArn` | `status.outputs.function_arn` |

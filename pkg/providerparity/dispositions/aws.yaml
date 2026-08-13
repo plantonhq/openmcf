@@ -434,63 +434,18 @@ resources:
   - resource: aws_bedrock_model_invocation_logging_configuration
     disposition: model-planned
     reason: "judged as a planned AwsBedrockInvocationLogging kind (region singleton: PutModelInvocationLoggingConfiguration, identity = the region) -- folding a region-wide observability singleton into the per-model AwsBedrockModelAccess would make multiple access instances fight over one logging object"
-  - resource: aws_bedrockagentcore_agent_runtime
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_agent_runtime_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_api_key_credential_provider
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_browser
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
-  - resource: aws_bedrockagentcore_browser_profile
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
-  - resource: aws_bedrockagentcore_code_interpreter
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
   - resource: aws_bedrockagentcore_evaluator
     disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_gateway
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreGateway kind (gateways with targets)"
-  - resource: aws_bedrockagentcore_gateway_target
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreGateway kind (gateways with targets)"
+    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
   - resource: aws_bedrockagentcore_harness
     disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_memory
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreMemory kind (memories with strategies)"
-  - resource: aws_bedrockagentcore_memory_strategy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreMemory kind (memories with strategies)"
-  - resource: aws_bedrockagentcore_oauth2_credential_provider
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
+    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
   - resource: aws_bedrockagentcore_online_evaluation_config
     disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_policy_engine
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
+    reason: "judged as a planned AwsBedrockAgentCoreEvaluation kind (evaluators, harnesses, online evaluation configs -- the AgentCore Evaluations capability; re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreRuntime fold on schema evidence: none of the three carries a structural runtime edge, the harness's runtime reference is an optional environment arm, and evaluation surfaces deploy with zero runtimes present)"
   - resource: aws_bedrockagentcore_token_vault_cmk
     disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_workload_identity
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
+    reason: "judged as a planned AwsBedrockAgentCoreTokenVault kind (account/region settings singleton: sets the CMK on the ONE default token vault, delete is a no-op -- re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreIdentity fold, citing the AwsBedrockInvocationLogging precedent: multiple Identity instances would fight over one vault object)"
   - resource: aws_billing_view
     disposition: deferred
     reason: "billing views are console/reporting configuration; deferred pending demand"

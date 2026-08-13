@@ -1,0 +1,63 @@
+# Canonical AwsBedrockAgentCoreMemory example (hack/dev manifest and
+# refgen Example source): a memory exercising every arm -- encryption,
+# the execution role, indexed keys, Kinesis stream delivery, built-in
+# strategies of every type, and a CUSTOM strategy overriding extraction
+# and consolidation. Literal ARNs stand in for composed references so the
+# offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreMemory
+metadata:
+  name: support-agent-memory
+  id: support-agent-memory
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  memoryName: support_memory
+  description: Long-term memory for the support agent
+  eventExpiryDays: 30
+  encryptionKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  executionRoleArn:
+    value: arn:aws:iam::123456789012:role/agentcore-memory-role
+  indexedKeys:
+    - key: customer_id
+      type: STRING
+    - key: priority
+      type: NUMBER
+  kinesisDelivery:
+    dataStreamArn:
+      value: arn:aws:kinesis:us-west-2:123456789012:stream/memory-records
+    contentLevel: FULL_CONTENT
+  strategies:
+    - name: facts
+      type: SEMANTIC
+      description: Extract standalone facts from conversations
+      namespaceTemplates:
+        - /facts/{actorId}
+    - name: summaries
+      type: SUMMARIZATION
+      namespaceTemplates:
+        - /summaries/{actorId}/{sessionId}
+    - name: preferences
+      type: USER_PREFERENCE
+      namespaceTemplates:
+        - /preferences/{actorId}
+    - name: episodes
+      type: EPISODIC
+      namespaceTemplates:
+        - /episodes/{actorId}
+      reflectionNamespaceTemplates:
+        - /reflections/{actorId}
+    - name: tuned_prefs
+      type: CUSTOM
+      namespaceTemplates:
+        - /preferences/{actorId}
+      custom:
+        type: USER_PREFERENCE_OVERRIDE
+        extraction:
+          appendToPrompt: Focus on stated product preferences.
+          modelId: anthropic.claude-3-5-sonnet-20241022-v2:0
+        consolidation:
+          appendToPrompt: Merge overlapping preferences into one record.
+          modelId: anthropic.claude-3-5-sonnet-20241022-v2:0

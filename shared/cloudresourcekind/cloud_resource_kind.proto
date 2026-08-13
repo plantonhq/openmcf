@@ -1247,6 +1247,67 @@ enum CloudResourceKind {
     id_prefix: "awsbrpmt"
   }];
 
+  // AwsIamRole is a prerequisite because the AgentCore service assumes
+  // the runtime role to pull the container image or read the S3 code
+  // bundle and to run the hosted agent; the code-bundle S3 bucket and
+  // VPC placement edges are optional composition (e2e-prerequisites
+  // annotation). Endpoints and the runtime's resource policy are folded
+  // satellites of the runtime.
+  AwsBedrockAgentCoreRuntime = 1210 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacrt"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // AwsIamRole is a prerequisite because the gateway assumes its role to
+  // reach targets (invoke Lambdas, sign SigV4 requests); the target and
+  // credential-provider reference edges (runtime, Lambda, Identity
+  // providers, policy engine) are optional composition
+  // (e2e-prerequisites annotation). Targets are folded satellites of the
+  // gateway - AWS deletes them before the gateway at destroy.
+  AwsBedrockAgentCoreGateway = 1211 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacgw"
+    prerequisites: [AwsIamRole]
+  }];
+
+  // A dependency-free leaf for built-in strategies: the execution role
+  // (custom strategies, Kinesis delivery), KMS key, and Kinesis stream
+  // edges are optional composition (e2e-prerequisites annotation).
+  // Strategies are folded satellites of the memory - AWS serializes
+  // their changes through the parent.
+  AwsBedrockAgentCoreMemory = 1212 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacmem"
+  }];
+
+  // A dependency-free leaf: workload identities, credential providers,
+  // and the Cedar policy engine with its policies are all name-keyed
+  // arms of one identity-and-access bundle; the KMS key edge is optional
+  // composition (e2e-prerequisites annotation). The account/region
+  // token-vault CMK is deliberately NOT modeled here (settings
+  // singleton).
+  AwsBedrockAgentCoreIdentity = 1213 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsacid"
+  }];
+
+  // A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution
+  // role (recordings, certificates), S3, Secrets Manager, and VPC edges
+  // are optional composition (e2e-prerequisites annotation). Browsers,
+  // profiles, and code interpreters are name-keyed arms of one tools
+  // bundle; AWS exposes no update - every field change recreates the
+  // tool.
+  AwsBedrockAgentCoreTools = 1214 [(kind_meta) = {
+    provider: aws
+    version: "v1alpha1"
+    id_prefix: "awsactl"
+  }];
+
   // 2000–2999: Azure resources
   AzureResourceGroup = 2000 [(kind_meta) = {
     provider: azure

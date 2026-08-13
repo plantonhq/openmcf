@@ -1,0 +1,45 @@
+# AwsBedrockAgentCoreIdentity full-surface scenario: every arm of the
+# bundle -- a workload identity with return URLs, a vaulted API key, a
+# CUSTOM-vendor OAuth2 provider (discovery by URL against a real public
+# OIDC document), and a Cedar policy engine with one policy. The
+# credential values are throwaway test literals: the lanes prove the
+# vaulting mechanics (AWS stores them in Secrets Manager under the token
+# vault), never real credentials.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreIdentity
+metadata:
+  name: planton-oss-e2e-awsacid-full
+  id: planton-oss-e2e-awsacid-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoreidentity
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  workloadIdentities:
+    - name: planton-e2e-workload-full
+      allowedResourceOauth2ReturnUrls:
+        - https://e2e.planton.test/oauth/callback
+  apiKeyCredentialProviders:
+    - name: planton-e2e-api-key
+      apiKey: planton-e2e-throwaway-key-value
+  oauth2CredentialProviders:
+    - name: planton-e2e-custom-idp
+      vendor: CUSTOM
+      clientId: planton-e2e-client
+      clientSecret: planton-e2e-throwaway-secret
+      oauthDiscovery:
+        discoveryUrl: https://accounts.google.com/.well-known/openid-configuration
+  policyEngine:
+    engineName: planton_e2e_authz
+    description: Planton E2E policy engine
+    policies:
+      - name: allow_reads
+        description: Permit the read action for every principal
+        cedarStatement: 'permit(principal, action, resource);'
+        validationMode: IGNORE_ALL_FINDINGS

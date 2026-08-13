@@ -1,0 +1,162 @@
+# Canonical AwsBedrockAgentCoreGateway example (hack/dev manifest and
+# refgen Example source): a JWT-authorized MCP gateway exercising every
+# target arm -- an agent runtime, an API Gateway stage, a Lambda with an
+# inline three-level tool schema (raw-JSON leaves at the bottom), a remote
+# MCP server, and inline OpenAPI/Smithy schemas -- plus interceptors, a
+# policy engine, and per-target credentials. Literal ARNs/ids stand in for
+# composed references so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreGateway
+metadata:
+  name: support-tools-gateway
+  id: support-tools-gateway
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: MCP front door for the support agent's tools
+  roleArn:
+    value: arn:aws:iam::123456789012:role/agentcore-gateway-role
+  authorizerType: CUSTOM_JWT
+  customJwtAuthorizer:
+    discoveryUrl: https://accounts.google.com/.well-known/openid-configuration
+    allowedAudience:
+      - support-agents
+    allowedClients:
+      - support-client
+    customClaims:
+      - claimName: team
+        valueType: STRING_ARRAY
+        matchOperator: CONTAINS_ANY
+        matchValues:
+          - support
+          - platform
+  kmsKeyArn:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  exposeDebugExceptions: false
+  mcp:
+    instructions: Tools for querying and managing customer orders.
+    enableSemanticSearch: true
+    supportedVersions:
+      - "2025-03-26"
+    sessionTimeoutSeconds: 900
+    enableResponseStreaming: true
+  interceptors:
+    - interceptionPoints:
+        - REQUEST
+      lambdaArn:
+        value: arn:aws:lambda:us-west-2:123456789012:function:rewrite-requests
+      passRequestHeaders: true
+  policyEngine:
+    policyEngineArn:
+      value: arn:aws:bedrock-agentcore:us-west-2:123456789012:policy-engine/pe-0123456789
+    mode: LOG_ONLY
+  targets:
+    - name: support-runtime
+      description: The support agent runtime behind this gateway
+      backend:
+        agentcoreRuntime:
+          agentRuntimeArn:
+            value: arn:aws:bedrock-agentcore:us-west-2:123456789012:runtime/support_agent-Ab1Cd2Ef3G
+          qualifier: DEFAULT
+      credentials:
+        gatewayIamRole:
+          service: bedrock-agentcore
+    - name: orders-rest-api
+      backend:
+        apiGateway:
+          restApiId: a1b2c3d4e5
+          stage: prod
+          toolFilters:
+            - filterPath: /orders/*
+              methods:
+                - GET
+                - POST
+          toolOverrides:
+            - path: /orders/{id}
+              method: GET
+              name: get_order
+              description: Fetch one order by its ID.
+      credentials:
+        callerIamCredentials:
+          service: execute-api
+    - name: order-tools
+      backend:
+        lambda:
+          lambdaArn:
+            value: arn:aws:lambda:us-west-2:123456789012:function:order-tools
+          tools:
+            - name: list_orders
+              description: List a customer's orders with optional filters.
+              inputSchema:
+                type: object
+                description: Order listing filters
+                properties:
+                  - name: customer_id
+                    type: string
+                    required: true
+                  - name: filters
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        - name: field
+                          type: string
+                          required: true
+                        - name: values
+                          type: array
+                          itemsJson:
+                            type: string
+              outputSchema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    - name: order_id
+                      type: string
+                    - name: line_items
+                      type: array
+                      itemsJson:
+                        type: object
+                        properties:
+                          sku:
+                            type: string
+                          quantity:
+                            type: integer
+      credentials:
+        gatewayIamRole:
+          service: lambda
+      metadata:
+        allowedRequestHeaders:
+          - X-Trace-Id
+        allowedResponseHeaders:
+          - X-Request-Id
+    - name: docs-mcp
+      backend:
+        mcpServer:
+          endpoint: https://mcp.example.com/mcp
+          listingMode: DYNAMIC
+      credentials:
+        oauth:
+          providerArn:
+            value: arn:aws:bedrock-agentcore:us-west-2:123456789012:token-vault/default/oauth2credentialprovider/docs
+          scopes:
+            - read:docs
+          grantType: CLIENT_CREDENTIALS
+    - name: billing-openapi
+      backend:
+        openApiSchema:
+          inlinePayload: '{"openapi":"3.0.0","info":{"title":"billing","version":"1"},"paths":{}}'
+      credentials:
+        apiKey:
+          providerArn:
+            value: arn:aws:bedrock-agentcore:us-west-2:123456789012:token-vault/default/apikeycredentialprovider/billing
+          credentialLocation: HEADER
+          credentialParameterName: X-Api-Key
+    - name: inventory-smithy
+      backend:
+        smithyModel:
+          s3:
+            uri: s3://my-schema-bucket/models/inventory.smithy
+      credentials:
+        jwtPassthrough: true

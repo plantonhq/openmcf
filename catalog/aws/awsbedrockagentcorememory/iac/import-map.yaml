@@ -1,0 +1,22 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockagentcorememory
+spec:
+  # The memory imports by its bare id. Strategies compose the memory id
+  # with their own ids, derived blind from the strategy_ids output map
+  # keyed exactly like the module's for_each entries.
+  values:
+    - name: memory_id
+      derivations:
+        - from_stack_output: memory_id
+      where_to_find: >-
+        Bedrock AgentCore console -> Memories -> <memory> (the ID), or
+        `aws bedrock-agentcore-control list-memories` (id).
+    - name: memory_strategy_id
+      derivations:
+        - from_stack_output_keyed_by_address: strategy_ids
+      where_to_find: >-
+        `aws bedrock-agentcore-control get-memory --memory-id <id>` lists
+        strategies with strategyId; match each to its spec.strategies
+        entry by name.

@@ -29,6 +29,10 @@ var (
 	repoRoot         string
 	runID            string
 	pulumiBackendURL string
+	// assertApplyIdempotency mirrors the provider profile's
+	// assert_apply_idempotency field: when armed, every scenario lifecycle
+	// gains the IDEMPOTENCY phase (re-plan after apply must be empty).
+	assertApplyIdempotency bool
 )
 
 func TestMain(m *testing.M) {
@@ -53,6 +57,13 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)
 		os.Exit(1)
 	}
+
+	providerProfile, err := profilepkg.LoadProviderProfile(repoRoot, "aws")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to load AWS provider E2E profile: %v\n", err)
+		os.Exit(1)
+	}
+	assertApplyIdempotency = providerProfile.GetSpec().GetAssertApplyIdempotency()
 
 	testHarness = awse2e.NewHarness()
 	ctx := context.Background()
@@ -1110,6 +1121,58 @@ func TestAwsBedrockPrompt_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbedrockprompt", "terraform")
 }
 
+// --- AWS Bedrock AgentCore (the runtime lanes execute the code bundle the
+// harness seeds below; see aa_e2e.EnsureAgentCoreCodeBundleFixture) ---
+
+func ensureAgentCoreCodeFixture(t *testing.T) {
+	t.Helper()
+	if err := awse2e.EnsureAgentCoreCodeBundleFixture(context.Background()); err != nil {
+		t.Fatalf("AgentCore code-bundle fixture: %v", err)
+	}
+}
+
+func TestAwsBedrockAgentCoreRuntime_Pulumi(t *testing.T) {
+	ensureAgentCoreCodeFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockagentcoreruntime", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreRuntime_Terraform(t *testing.T) {
+	ensureAgentCoreCodeFixture(t)
+	runAllScenariosForComponent(t, "awsbedrockagentcoreruntime", "terraform")
+}
+
+func TestAwsBedrockAgentCoreGateway_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoregateway", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreGateway_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoregateway", "terraform")
+}
+
+func TestAwsBedrockAgentCoreMemory_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcorememory", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreMemory_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcorememory", "terraform")
+}
+
+func TestAwsBedrockAgentCoreIdentity_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreidentity", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreIdentity_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoreidentity", "terraform")
+}
+
+func TestAwsBedrockAgentCoreTools_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretools", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreTools_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretools", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()
@@ -1177,7 +1240,8 @@ func runSingleScenario(t *testing.T, component, moduleDir, engine string, scenar
 		// Leaving it empty makes the dependency stacks fall back to the
 		// machine's ambient `pulumi login` backend, coupling the run to
 		// stale developer state.
-		BackendURL: pulumiBackendURL,
+		BackendURL:             pulumiBackendURL,
+		AssertApplyIdempotency: assertApplyIdempotency,
 	}
 
 	if engine == "pulumi" {

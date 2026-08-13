@@ -1,0 +1,73 @@
+# AwsBedrockAgentCoreRuntime full-surface scenario: the code-bundle
+# runtime plus every live-provable arm -- environment variables, session
+# lifecycle tuning, an explicit protocol, a request-header allowlist, JWT
+# authorization against a real public OIDC discovery document (Google's,
+# the upstream provider's own test fixture), session-storage and
+# filesystem mounts, a floating endpoint, and the resource policy on the
+# runtime's own ARN.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreRuntime
+metadata:
+  name: planton-oss-e2e-awsacrt-full
+  id: planton-oss-e2e-awsacrt-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoreruntime
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  runtimeName: planton_e2e_acrt_full
+  description: Planton E2E full-surface agent runtime
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-agentcore-role
+      fieldPath: status.outputs.role_arn
+  artifact:
+    code:
+      runtime: PYTHON_3_13
+      entryPoint:
+        - main.py
+      s3:
+        bucket:
+          value: ${E2E_ENV:PLANTON_E2E_AGENTCORE_CODE_BUCKET}
+        prefix: bundles/e2e-agent.zip
+  network:
+    mode: PUBLIC
+  serverProtocol: HTTP
+  environmentVariables:
+    LOG_LEVEL: info
+    E2E_MARKER: planton
+  lifecycle:
+    idleRuntimeSessionTimeoutSeconds: 900
+    maxLifetimeSeconds: 3600
+  customJwtAuthorizer:
+    discoveryUrl: https://accounts.google.com/.well-known/openid-configuration
+    allowedAudience:
+      - planton-e2e-agents
+    customClaims:
+      - claimName: org
+        valueType: STRING
+        matchOperator: EQUALS
+        matchValue: planton
+  requestHeaderAllowlist:
+    - X-Trace-Id
+  filesystems:
+    - mountPath: /mnt/scratch
+      sessionStorage: true
+  endpoints:
+    - name: live
+      description: Tracks the latest runtime version
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock-agentcore.amazonaws.com
+        Action: bedrock-agentcore:InvokeAgentRuntime
+        Resource: "*"

@@ -1,0 +1,72 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagentcore_memory:
+    mappings:
+      # AWS's memory-name charset is stricter than metadata.name
+      # conventions, so the name is an explicit spec field.
+      - arg: name
+        spec: spec.memory_name
+      # The provider counts days in a "duration" argument; the spec names
+      # the unit.
+      - arg: event_expiry_duration
+        spec: spec.event_expiry_days
+      - arg: memory_execution_role_arn
+        spec: spec.execution_role_arn
+      - arg: indexed_key
+        spec: spec.indexed_keys
+      # The three-level single-member wrapper (stream_delivery_resources.
+      # resource.kinesis) flattens to one kinesis_delivery message.
+      - arg: stream_delivery_resources
+        spec: spec.kinesis_delivery
+      - arg: stream_delivery_resources.resource
+        spec: spec.kinesis_delivery
+      - arg: stream_delivery_resources.resource.kinesis
+        spec: spec.kinesis_delivery
+      - arg: stream_delivery_resources.resource.kinesis.data_stream_arn
+        spec: spec.kinesis_delivery.data_stream_arn
+      - arg: stream_delivery_resources.resource.kinesis.content_configuration
+        spec: spec.kinesis_delivery.content_level
+      - arg: stream_delivery_resources.resource.kinesis.content_configuration.level
+        spec: spec.kinesis_delivery.content_level
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: stream_delivery_resources.resource.kinesis.content_configuration.type
+        reason: MEMORY_RECORDS is the only content type AWS defines -- the module owns the one-value constant; a field with one legal value is drift surface, not configuration
+
+  aws_bedrockagentcore_memory_strategy:
+    specRoot: spec.strategies
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The strategy attaches to the memory this kind deploys -- the
+      # module wires the parent ID.
+      - arg: memory_id
+        spec: spec.memory_name
+      # The provider's CUSTOM override configuration; the spec calls it
+      # what it is.
+      - arg: configuration
+        spec: spec.strategies.custom
+      - arg: configuration.type
+        spec: spec.strategies.custom.type
+      - arg: configuration.extraction
+        spec: spec.strategies.custom.extraction
+      - arg: configuration.consolidation
+        spec: spec.strategies.custom.consolidation
+      - arg: configuration.reflection
+        spec: spec.strategies.custom.reflection
+      # The EPISODIC reflection namespaces ride a one-field wrapper; the
+      # spec carries the list directly.
+      - arg: reflection_configuration
+        spec: spec.strategies.reflection_namespace_templates
+      - arg: reflection_configuration.namespace_templates
+        spec: spec.strategies.reflection_namespace_templates

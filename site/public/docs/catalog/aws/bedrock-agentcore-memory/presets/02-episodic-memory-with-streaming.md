@@ -1,0 +1,38 @@
+---
+title: "Episodic Memory with Streaming"
+description: "This preset captures experience episodes with EPISODIC reflection — \"what happened and what worked\" — indexed by customer and streamed to Kinesis as records are written, for agents that should learn..."
+type: "preset"
+rank: "02"
+presetSlug: "02-episodic-memory-with-streaming"
+componentSlug: "bedrock-agentcore-memory"
+componentTitle: "Bedrock AgentCore Memory"
+provider: "aws"
+icon: "package"
+order: 2
+---
+
+# Episodic Memory with Streaming
+
+This preset captures experience episodes with EPISODIC reflection —
+"what happened and what worked" — indexed by customer and streamed to
+Kinesis as records are written, for agents that should learn from past
+runs.
+
+## When to Use
+
+- Task agents whose past attempts should inform future ones
+- Teams building analytics or replication on memory records
+
+## What You Get
+
+- Episodes under `/episodes/{actorId}` plus reflection records under
+  `/reflections/{actorId}`
+- A `customer_id` index for filtered retrieval
+- Every record's metadata on your Kinesis stream in near-real-time
+
+## Customize
+
+- Set `contentLevel: FULL_CONTENT` to stream record bodies, not just
+  metadata — mind the payload sizes
+- The execution role must be able to write the stream — the reference
+  wires the role; the grant is yours

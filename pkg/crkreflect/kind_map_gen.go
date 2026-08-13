@@ -60,6 +60,11 @@ import (
 	awsbatchjobqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobqueue/v1alpha1"
 	awsbatchschedulingpolicyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchschedulingpolicy/v1alpha1"
 	awsbedrockagentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagent/v1alpha1"
+	awsbedrockagentcoregatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoregateway/v1alpha1"
+	awsbedrockagentcoreidentityv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreidentity/v1alpha1"
+	awsbedrockagentcorememoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcorememory/v1alpha1"
+	awsbedrockagentcoreruntimev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreruntime/v1alpha1"
+	awsbedrockagentcoretoolsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoretools/v1alpha1"
 	awsbedrockcustommodelv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockcustommodel/v1alpha1"
 	awsbedrockflowv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockflow/v1alpha1"
 	awsbedrockguardrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockguardrail/v1alpha1"
@@ -776,6 +781,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1alpha1.AwsBatchJobQueue{},
 	cloudresourcekind.CloudResourceKind_AwsBatchSchedulingPolicy:               &awsbatchschedulingpolicyv1alpha1.AwsBatchSchedulingPolicy{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgent:                        &awsbedrockagentv1alpha1.AwsBedrockAgent{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreGateway:             &awsbedrockagentcoregatewayv1alpha1.AwsBedrockAgentCoreGateway{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreIdentity:            &awsbedrockagentcoreidentityv1alpha1.AwsBedrockAgentCoreIdentity{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreMemory:              &awsbedrockagentcorememoryv1alpha1.AwsBedrockAgentCoreMemory{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreRuntime:             &awsbedrockagentcoreruntimev1alpha1.AwsBedrockAgentCoreRuntime{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreTools:               &awsbedrockagentcoretoolsv1alpha1.AwsBedrockAgentCoreTools{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockCustomModel:                  &awsbedrockcustommodelv1alpha1.AwsBedrockCustomModel{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockFlow:                         &awsbedrockflowv1alpha1.AwsBedrockFlow{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockGuardrail:                    &awsbedrockguardrailv1alpha1.AwsBedrockGuardrail{},

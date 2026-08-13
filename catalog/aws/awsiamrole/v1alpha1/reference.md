@@ -323,6 +323,11 @@ Fields on other kinds that can point at this resource:
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.executionRole` | `status.outputs.role_arn` |
 | AwsBedrockAgent | `spec.agentResourceRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreGateway | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreMemory | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreRuntime | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreTools | `spec.browsers[].executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockAgentCoreTools | `spec.codeInterpreters[].executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockCustomModel | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |

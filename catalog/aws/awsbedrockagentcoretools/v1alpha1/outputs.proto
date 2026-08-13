@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoretools.v1alpha1;
+
+// AwsBedrockAgentCoreToolsStackOutputs captures observable identifiers
+// from a provisioned AgentCore tools bundle. Downstream resources
+// (evaluation harnesses' browser/code-interpreter tools, agent code
+// starting tool sessions) wire dependencies via StringValueOrRef.
+message AwsBedrockAgentCoreToolsStackOutputs {
+  // Browser IDs keyed by each `browsers` entry's name.
+  map<string, string> browser_ids = 1;
+
+  // Browser ARNs keyed by each `browsers` entry's name.
+  map<string, string> browser_arns = 2;
+
+  // Browser profile IDs keyed by each `browser_profiles` entry's name.
+  map<string, string> browser_profile_ids = 3;
+
+  // Browser profile ARNs keyed by each `browser_profiles` entry's name.
+  map<string, string> browser_profile_arns = 4;
+
+  // Code interpreter IDs keyed by each `code_interpreters` entry's name.
+  map<string, string> code_interpreter_ids = 5;
+
+  // Code interpreter ARNs keyed by each `code_interpreters` entry's
+  // name.
+  map<string, string> code_interpreter_arns = 6;
+}

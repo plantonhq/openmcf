@@ -1,0 +1,36 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcoreruntime
+spec:
+  # An AgentCore agent runtime under live E2E: two lanes on the
+  # harness-seeded code bundle (creating a runtime is free; AWS bills
+  # per-second only while sessions execute, and the lanes never invoke).
+  # The minimal lane proves the create -> READY lifecycle on the managed
+  # Python runtime. The full-surface lane adds JWT authorization against
+  # Google's public OIDC discovery document (the upstream provider's own
+  # test fixture), session-storage mounts, lifecycle tuning, a floating
+  # endpoint (create after the runtime, destroy before it), and the
+  # resource policy attached to the runtime's own ARN. Verification is
+  # GetAgentRuntime keyed on agent_runtime_id (status READY) plus the
+  # endpoint echo.
+  #
+  # Deliberately not exercised live: the container artifact arm (needs an
+  # ECR image fixture no kind seeds yet; the code arm proves the artifact
+  # union -- unblock: an ECR-seeded image fixture or the AwsEcrRepo
+  # install profile gaining a pushed image), VPC networking and the EFS /
+  # S3-access-point mounts (need VPC/EFS fixture chains; the PUBLIC +
+  # session-storage arms prove the unions -- unblock: compose the VPC and
+  # EFS install profiles via the e2e-prerequisites annotation when a lane
+  # budget allows), the JWT private-endpoint arms (need VPC Lattice /
+  # managed-VPC plumbing; offline-proven arm-for-arm via e2e/manifest.yaml),
+  # and a version-pinned endpoint (needs a second runtime version
+  # mid-lane; the floating endpoint proves the satellite -- unblock: a
+  # two-apply choreography in the proof lane).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q35
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

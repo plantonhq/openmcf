@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreruntime.v1alpha1;
+
+// AwsBedrockAgentCoreRuntimeStackOutputs captures observable identifiers
+// from a provisioned AgentCore agent runtime. Downstream resources
+// (gateway targets pointing at this runtime, evaluation harnesses,
+// callers building invoke ARNs) wire dependencies via StringValueOrRef.
+message AwsBedrockAgentCoreRuntimeStackOutputs {
+  // The unique runtime identifier (e.g. "my_agent-AbC1dEf2Gh").
+  string agent_runtime_id = 1;
+
+  // The Amazon Resource Name of the runtime - the canonical key for IAM
+  // policies and gateway HTTP targets.
+  string agent_runtime_arn = 2;
+
+  // The runtime's current version number ("1", "2", ...). Every spec
+  // change that touches the artifact or configuration advances it.
+  string agent_runtime_version = 3;
+
+  // ARN of the workload identity AWS created for this runtime (the
+  // identity the hosted agent presents when calling AgentCore services).
+  string workload_identity_arn = 4;
+
+  // Endpoint ARNs keyed by each `endpoints` entry's name. An endpoint's
+  // AWS identity IS its name (there is no separate endpoint ID).
+  map<string, string> endpoint_arns = 5;
+}

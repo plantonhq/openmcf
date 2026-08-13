@@ -1,0 +1,37 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcoregateway
+spec:
+  # An AgentCore gateway under live E2E: two free lanes (gateways bill
+  # per tool call -- create/delete is $0). The minimal lane proves the
+  # create -> READY lifecycle under IAM auth. The full-surface lane adds
+  # JWT auth against Google's public OIDC discovery document, the MCP
+  # tuning block, and one self-contained inline-OpenAPI target -- proving
+  # the target satellite's ordering (created after the gateway; AWS
+  # deletes targets before the gateway at destroy, provider-managed).
+  # Verification is GetGateway keyed on gateway_id (status READY, the
+  # gateway URL populated) plus the target echo.
+  #
+  # Deliberately not exercised live: the Lambda target arm and its
+  # three-level inline tool schema (no Lambda install profile exists yet;
+  # offline-proven arm-for-arm via e2e/manifest.yaml -- unblock: an
+  # AwsLambda e2e/prerequisite.yaml, then extend the full-surface
+  # scenario), the agentcore_runtime target (self-family composition; the
+  # proof lane can compose it against the runtime kind's lane once both
+  # are PROVEN), the api_gateway target (needs a REST API fixture -- the
+  # AwsRestApiGateway kind is a future forge), the mcp_server target (the
+  # DEFAULT listing mode snapshots tools at create, so the endpoint must
+  # be a real reachable MCP server -- no such fixture exists), the
+  # interceptor arm (needs a Lambda fixture), the policy-engine
+  # attachment (composes the Identity kind -- unblock: after both kinds
+  # are PROVEN, wire policy_engine_arn via valueFrom), the KMS key arm,
+  # and the JWT private-endpoint arms (VPC Lattice / managed-VPC
+  # plumbing; offline-proven).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q35
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

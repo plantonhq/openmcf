@@ -516,3 +516,125 @@ spec:
       id_format: "{prompt_id}"
       notes: >-
         The bare prompt id (`aws bedrock-agent list-prompts` shows id).
+    # --- Bedrock AgentCore -----------------------------------------------------
+    # The AgentCore composites join parts with a comma (formats read from the
+    # provider's ImportState parsers). None of the bedrockagentcore
+    # control-plane types are Cloud Control-listable at the pin, so no scan
+    # correspondences.
+    - terraform_type: aws_bedrockagentcore_agent_runtime
+      pulumi_type: aws:bedrock/agentcoreAgentRuntime:AgentcoreAgentRuntime
+      id_format: "{agent_runtime_id}"
+      notes: >-
+        The bare runtime id (`aws bedrock-agentcore-control
+        list-agent-runtimes` shows agentRuntimeId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_agent_runtime_endpoint
+      pulumi_type: aws:bedrock/agentcoreAgentRuntimeEndpoint:AgentcoreAgentRuntimeEndpoint
+      id_format: "{agent_runtime_id},{endpoint_name}"
+      notes: >-
+        Runtime id and the endpoint NAME (its AWS identity -- there is no
+        separate endpoint id) separated by a comma
+        (`aws bedrock-agentcore-control list-agent-runtime-endpoints
+        --agent-runtime-id <id>` shows name).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_resource_policy
+      pulumi_type: aws:bedrock/agentcoreResourcePolicy:AgentcoreResourcePolicy
+      id_format: "{resource_arn}"
+      notes: >-
+        The ARN of the AgentCore resource the policy is attached to.
+    - terraform_type: aws_bedrockagentcore_gateway
+      pulumi_type: aws:bedrock/agentcoreGateway:AgentcoreGateway
+      id_format: "{gateway_id}"
+      notes: >-
+        The bare gateway id (`aws bedrock-agentcore-control list-gateways`
+        shows gatewayId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_gateway_target
+      pulumi_type: aws:bedrock/agentcoreGatewayTarget:AgentcoreGatewayTarget
+      id_format: "{gateway_id},{target_id}"
+      notes: >-
+        Gateway id and target id separated by a comma
+        (`aws bedrock-agentcore-control list-gateway-targets
+        --gateway-identifier <id>` shows targetId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_memory
+      pulumi_type: aws:bedrock/agentcoreMemory:AgentcoreMemory
+      id_format: "{memory_id}"
+      notes: >-
+        The bare memory id (`aws bedrock-agentcore-control list-memories`
+        shows id).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_memory_strategy
+      pulumi_type: aws:bedrock/agentcoreMemoryStrategy:AgentcoreMemoryStrategy
+      id_format: "{memory_id},{memory_strategy_id}"
+      notes: >-
+        Memory id and strategy id separated by a comma
+        (`aws bedrock-agentcore-control get-memory --memory-id <id>` lists
+        strategies with strategyId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_workload_identity
+      pulumi_type: aws:bedrock/agentcoreWorkloadIdentity:AgentcoreWorkloadIdentity
+      id_format: "{name}"
+      notes: >-
+        The identity NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-workload-identities` shows
+        name).
+    - terraform_type: aws_bedrockagentcore_api_key_credential_provider
+      pulumi_type: aws:bedrock/agentcoreApiKeyCredentialProvider:AgentcoreApiKeyCredentialProvider
+      id_format: "{name}"
+      notes: >-
+        The provider NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-api-key-credential-providers`
+        shows name).
+      # The vaulted key value is never read back -- GetApiKeyCredentialProvider
+      # returns only the secret's location, so a post-import plan showing only
+      # api_key is clean.
+      config_only_attributes: [api_key]
+    - terraform_type: aws_bedrockagentcore_oauth2_credential_provider
+      pulumi_type: aws:bedrock/agentcoreOauth2CredentialProvider:AgentcoreOauth2CredentialProvider
+      id_format: "{name}"
+      notes: >-
+        The provider NAME (its AWS identity --
+        `aws bedrock-agentcore-control list-oauth2-credential-providers`
+        shows name).
+      # The vaulted client credentials are never read back -- a post-import
+      # plan showing only the client_id/client_secret pair is clean.
+      config_only_attributes: [oauth2_provider_config]
+    - terraform_type: aws_bedrockagentcore_policy_engine
+      pulumi_type: aws:bedrock/agentcorePolicyEngine:AgentcorePolicyEngine
+      id_format: "{policy_engine_id}"
+      notes: >-
+        The bare engine id (`aws bedrock-agentcore-control
+        list-policy-engines` shows policyEngineId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_policy
+      pulumi_type: aws:bedrock/agentcorePolicy:AgentcorePolicy
+      id_format: "{policy_engine_id},{policy_id}"
+      notes: >-
+        Engine id and policy id separated by a comma
+        (`aws bedrock-agentcore-control list-policies --policy-engine-id
+        <id>` shows policyId).
+      # validation_mode is a create/update-time behavior input; GetPolicy
+      # never reports it.
+      config_only_attributes: [validation_mode, timeouts]
+    - terraform_type: aws_bedrockagentcore_browser
+      pulumi_type: aws:bedrock/agentcoreBrowser:AgentcoreBrowser
+      id_format: "{browser_id}"
+      notes: >-
+        The bare browser id (`aws bedrock-agentcore-control list-browsers`
+        shows browserId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_browser_profile
+      pulumi_type: aws:bedrock/agentcoreBrowserProfile:AgentcoreBrowserProfile
+      id_format: "{profile_id}"
+      notes: >-
+        The bare profile id (`aws bedrock-agentcore-control
+        list-browser-profiles` shows profileId).
+      config_only_attributes: [timeouts]
+    - terraform_type: aws_bedrockagentcore_code_interpreter
+      pulumi_type: aws:bedrock/agentcoreCodeInterpreter:AgentcoreCodeInterpreter
+      id_format: "{code_interpreter_id}"
+      notes: >-
+        The bare interpreter id (`aws bedrock-agentcore-control
+        list-code-interpreters` shows codeInterpreterId).
+      config_only_attributes: [timeouts]

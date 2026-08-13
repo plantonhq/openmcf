@@ -235,6 +235,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBedrockAgentCoreMemory | `spec.kinesisDelivery.dataStreamArn` | `status.outputs.stream_arn` |
 | AwsDynamodb | `spec.kinesisStreamingDestination.streamArn` | `status.outputs.stream_arn` |
 | AwsKinesisFirehose | `spec.kinesisStreamSource.streamArn` | `status.outputs.stream_arn` |
 | AwsKinesisStreamConsumer | `spec.streamArn` | `status.outputs.stream_arn` |

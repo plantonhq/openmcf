@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreGateway
+metadata:
+  name: my-tools-gateway
+spec:
+  region: us-west-2
+  description: MCP front door for the billing API
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: my-gateway-role
+      fieldPath: status.outputs.role_arn
+  authorizerType: AWS_IAM
+  mcp:
+    instructions: Tools for querying invoices and payment status.
+    enableSemanticSearch: true
+  targets:
+    - name: billing-api
+      description: The billing REST API as MCP tools
+      backend:
+        openApiSchema:
+          s3:
+            uri: s3://my-schema-bucket/apis/billing-openapi.json
+      credentials:
+        gatewayIamRole:
+          service: execute-api

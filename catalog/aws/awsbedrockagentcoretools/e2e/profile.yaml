@@ -1,0 +1,35 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcoretools
+spec:
+  # An AgentCore tools bundle under live E2E: two free lanes (tools are
+  # configuration shells; AWS bills per session at runtime and the lanes
+  # never start sessions). The minimal lane proves one SANDBOX code
+  # interpreter. The full-surface lane proves a signed PUBLIC browser, a
+  # saved browser profile, and SANDBOX + PUBLIC interpreters with the
+  # shared AgentCore role fixture. AWS exposes NO update for any of these
+  # resources -- every field change recreates the tool -- so the lanes'
+  # create/destroy cycles ARE the lifecycle proof. Verification is the
+  # per-arm Get echoes (browser/interpreter READY) keyed on the output
+  # maps.
+  #
+  # Deliberately not exercised live: browser session recording (needs an
+  # S3 destination the execution role can write plus recording playback
+  # to verify -- unblock: compose the AwsS3Bucket install profile via the
+  # e2e-prerequisites annotation and assert the recording configuration
+  # echo), enterprise policies (need a Chrome policy JSON object seeded
+  # in S3 -- the create validates the object exists), mTLS certificates
+  # (need a certificate in Secrets Manager; the AwsSecretsManagerSecret
+  # kind is QUEUED for live proof, so its fixture cannot land yet --
+  # unblock: after it is PROVEN, seed a cert secret and extend the
+  # browser entry), and the VPC arms for both tools (need the VPC fixture
+  # chain; the PUBLIC/SANDBOX arms prove the mode unions -- all
+  # offline-proven arm-for-arm via e2e/manifest.yaml).
+  #
+  # pending_proof: forged this session to the full offline bar -- Q35
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

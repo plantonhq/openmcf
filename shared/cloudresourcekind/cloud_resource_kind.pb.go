@@ -370,6 +370,40 @@ const (
 	// by ID; targeting another agent's alias is optional composition
 	// (e2e-prerequisites annotation).
 	CloudResourceKind_AwsBedrockPrompt CloudResourceKind = 1203
+	// AwsIamRole is a prerequisite because the AgentCore service assumes
+	// the runtime role to pull the container image or read the S3 code
+	// bundle and to run the hosted agent; the code-bundle S3 bucket and
+	// VPC placement edges are optional composition (e2e-prerequisites
+	// annotation). Endpoints and the runtime's resource policy are folded
+	// satellites of the runtime.
+	CloudResourceKind_AwsBedrockAgentCoreRuntime CloudResourceKind = 1210
+	// AwsIamRole is a prerequisite because the gateway assumes its role to
+	// reach targets (invoke Lambdas, sign SigV4 requests); the target and
+	// credential-provider reference edges (runtime, Lambda, Identity
+	// providers, policy engine) are optional composition
+	// (e2e-prerequisites annotation). Targets are folded satellites of the
+	// gateway - AWS deletes them before the gateway at destroy.
+	CloudResourceKind_AwsBedrockAgentCoreGateway CloudResourceKind = 1211
+	// A dependency-free leaf for built-in strategies: the execution role
+	// (custom strategies, Kinesis delivery), KMS key, and Kinesis stream
+	// edges are optional composition (e2e-prerequisites annotation).
+	// Strategies are folded satellites of the memory - AWS serializes
+	// their changes through the parent.
+	CloudResourceKind_AwsBedrockAgentCoreMemory CloudResourceKind = 1212
+	// A dependency-free leaf: workload identities, credential providers,
+	// and the Cedar policy engine with its policies are all name-keyed
+	// arms of one identity-and-access bundle; the KMS key edge is optional
+	// composition (e2e-prerequisites annotation). The account/region
+	// token-vault CMK is deliberately NOT modeled here (settings
+	// singleton).
+	CloudResourceKind_AwsBedrockAgentCoreIdentity CloudResourceKind = 1213
+	// A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution
+	// role (recordings, certificates), S3, Secrets Manager, and VPC edges
+	// are optional composition (e2e-prerequisites annotation). Browsers,
+	// profiles, and code interpreters are name-keyed arms of one tools
+	// bundle; AWS exposes no update - every field change recreates the
+	// tool.
+	CloudResourceKind_AwsBedrockAgentCoreTools CloudResourceKind = 1214
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1699,6 +1733,11 @@ var (
 		1201:  "AwsBedrockKnowledgeBase",
 		1202:  "AwsBedrockFlow",
 		1203:  "AwsBedrockPrompt",
+		1210:  "AwsBedrockAgentCoreRuntime",
+		1211:  "AwsBedrockAgentCoreGateway",
+		1212:  "AwsBedrockAgentCoreMemory",
+		1213:  "AwsBedrockAgentCoreIdentity",
+		1214:  "AwsBedrockAgentCoreTools",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2391,6 +2430,11 @@ var (
 		"AwsBedrockKnowledgeBase":                        1201,
 		"AwsBedrockFlow":                                 1202,
 		"AwsBedrockPrompt":                               1203,
+		"AwsBedrockAgentCoreRuntime":                     1210,
+		"AwsBedrockAgentCoreGateway":                     1211,
+		"AwsBedrockAgentCoreMemory":                      1212,
+		"AwsBedrockAgentCoreIdentity":                    1213,
+		"AwsBedrockAgentCoreTools":                       1214,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3332,7 +3376,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xf7\xb4\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xaa\xb7\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3468,7 +3512,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0fAwsBedrockAgent\x10\xb0\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbragt:\x02\xf0\a\x12;\n" +
 	"\x17AwsBedrockKnowledgeBase\x10\xb1\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrkb:\x02\xf0\a\x123\n" +
 	"\x0eAwsBedrockFlow\x10\xb2\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbrflw:\x02\xf0\a\x121\n" +
-	"\x10AwsBedrockPrompt\x10\xb3\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbrpmt\x121\n" +
+	"\x10AwsBedrockPrompt\x10\xb3\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbrpmt\x12>\n" +
+	"\x1aAwsBedrockAgentCoreRuntime\x10\xba\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacrt:\x02\xf0\a\x12>\n" +
+	"\x1aAwsBedrockAgentCoreGateway\x10\xbb\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacgw:\x02\xf0\a\x12:\n" +
+	"\x19AwsBedrockAgentCoreMemory\x10\xbc\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacmem\x12;\n" +
+	"\x1bAwsBedrockAgentCoreIdentity\x10\xbd\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacid\x128\n" +
+	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +
