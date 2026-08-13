@@ -689,6 +689,21 @@ spec:
     - terraform_type: azurerm_data_factory_dataset_sql_server_table
       pulumi_type: azure:datafactory/datasetSqlServerTable:DatasetSqlServerTable
       id_format: "{dataset_id}"
+    # AzureDataFactoryIntegrationRuntime covers all three engine
+    # flavors -- they share one factory-scoped namespace
+    # ({factory_id}/integrationRuntimes/{name}) and one id shape; the
+    # spec's variant block decides which resource the module created,
+    # so the import addresses the matching type (each resource's Read
+    # asserts the stored runtime's ARM type).
+    - terraform_type: azurerm_data_factory_integration_runtime_azure
+      pulumi_type: azure:datafactory/integrationRuntimeRule:IntegrationRuntimeRule
+      id_format: "{integration_runtime_id}"
+    - terraform_type: azurerm_data_factory_integration_runtime_azure_ssis
+      pulumi_type: azure:datafactory/integrationRuntimeSsis:IntegrationRuntimeSsis
+      id_format: "{integration_runtime_id}"
+    - terraform_type: azurerm_data_factory_integration_runtime_self_hosted
+      pulumi_type: azure:datafactory/integrationRuntimeSelfHosted:IntegrationRuntimeSelfHosted
+      id_format: "{integration_runtime_id}"
 
     # --- Microsoft Fabric ---------------------------------------------------------
     - terraform_type: azurerm_fabric_capacity

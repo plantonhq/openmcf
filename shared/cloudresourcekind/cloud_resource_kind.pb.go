@@ -1027,6 +1027,15 @@ const (
 	// trigger resources as variants (one ARM namespace, one
 	// started/stopped lifecycle).
 	CloudResourceKind_AzureDataFactoryTrigger CloudResourceKind = 2203
+	// A Data Factory integration runtime
+	// ({factory_id}/integrationRuntimes/{name}) -- the compute engine a
+	// factory's pipelines, data flows, and copy activities run on. One
+	// kind covers all three engine flavors as variants in one
+	// factory-scoped name namespace: the managed data-flow compute, the
+	// managed SSIS package runtime, and the self-hosted agent
+	// registration (which issues the authorization keys agents join
+	// with).
+	CloudResourceKind_AzureDataFactoryIntegrationRuntime CloudResourceKind = 2204
 	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
 	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
 	// with sharding, zone-redundant HA, and point-in-time restore.
@@ -1895,6 +1904,7 @@ var (
 		2201:  "AzureDataFactoryLinkedService",
 		2202:  "AzureDataFactoryDataset",
 		2203:  "AzureDataFactoryTrigger",
+		2204:  "AzureDataFactoryIntegrationRuntime",
 		2211:  "AzureMongoCluster",
 		2212:  "AzureFabricCapacity",
 		2213:  "AzureBackupContainerStorageAccount",
@@ -2579,6 +2589,7 @@ var (
 		"AzureDataFactoryLinkedService":                  2201,
 		"AzureDataFactoryDataset":                        2202,
 		"AzureDataFactoryTrigger":                        2203,
+		"AzureDataFactoryIntegrationRuntime":             2204,
 		"AzureMongoCluster":                              2211,
 		"AzureFabricCapacity":                            2212,
 		"AzureBackupContainerStorageAccount":             2213,
@@ -3253,7 +3264,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa7\xb2\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xee\xb2\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x124\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1a\x16\xa2\xf7\x04\x12\b\x01\x12\bv1alpha2\"\x04tcrg\x127\n" +
@@ -3552,7 +3563,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x18AzureDataFactoryDataFlow\x10\x98\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfflow:\x02\x96\x11\x12@\n" +
 	"\x1dAzureDataFactoryLinkedService\x10\x99\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfls:\x02\x96\x11\x12:\n" +
 	"\x17AzureDataFactoryDataset\x10\x9a\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfds:\x02\x99\x11\x12>\n" +
-	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x125\n" +
+	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x12E\n" +
+	"\"AzureDataFactoryIntegrationRuntime\x10\x9c\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfir:\x02\x96\x11\x125\n" +
 	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
 	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +

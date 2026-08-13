@@ -1855,6 +1855,10 @@ Fields on other kinds that can point at this resource:
 | AzureDataFactoryDataset | `spec.linkedServiceName` | `status.outputs.linked_service_name` |
 | AzureDataFactoryDataset | `spec.azureSqlTable.linkedServiceId` | `status.outputs.linked_service_id` |
 | AzureDataFactoryDataset | `spec.custom.linkedService.name` | `status.outputs.linked_service_name` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.expressCustomSetup.commandKey[].keyVaultPassword.linkedServiceName` | `status.outputs.linked_service_name` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.expressCustomSetup.component[].keyVaultLicense.linkedServiceName` | `status.outputs.linked_service_name` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.packageStore[].linkedServiceName` | `status.outputs.linked_service_name` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.proxy.stagingStorageLinkedServiceName` | `status.outputs.linked_service_name` |
 | AzureDataFactoryLinkedService | `spec.azureBlobStorage.sasTokenLinkedKeyVaultKey.linkedServiceName` | `status.outputs.linked_service_name` |
 | AzureDataFactoryLinkedService | `spec.azureBlobStorage.servicePrincipalLinkedKeyVaultKey.linkedServiceName` | `status.outputs.linked_service_name` |
 | AzureDataFactoryLinkedService | `spec.azureDatabricks.keyVaultPassword.linkedServiceName` | `status.outputs.linked_service_name` |

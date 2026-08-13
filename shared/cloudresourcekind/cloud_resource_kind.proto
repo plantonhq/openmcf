@@ -2741,6 +2741,20 @@ enum CloudResourceKind {
       AzureDataFactoryPipeline
     ]
   }];
+  // A Data Factory integration runtime
+  // ({factory_id}/integrationRuntimes/{name}) -- the compute engine a
+  // factory's pipelines, data flows, and copy activities run on. One
+  // kind covers all three engine flavors as variants in one
+  // factory-scoped name namespace: the managed data-flow compute, the
+  // managed SSIS package runtime, and the self-hosted agent
+  // registration (which issues the authorization keys agents join
+  // with).
+  AzureDataFactoryIntegrationRuntime = 2204 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfir"
+    prerequisites: [AzureDataFactory]
+  }];
   // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
   // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
   // with sharding, zone-redundant HA, and point-in-time restore.

@@ -390,6 +390,8 @@ Fields on other kinds that can point at this resource:
 | AzureCognitiveAccount | `spec.networkInjection.subnetId` | `status.outputs.subnet_id` |
 | AzureContainerAppEnvironment | `spec.infrastructureSubnetId` | `status.outputs.subnet_id` |
 | AzureCosmosdbAccount | `spec.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.expressVnetIntegration.subnetId` | `status.outputs.subnet_id` |
+| AzureDataFactoryIntegrationRuntime | `spec.azureSsis.vnetIntegration.subnetId` | `status.outputs.subnet_id` |
 | AzureEventHubNamespace | `spec.networkRuleSets.virtualNetworkRules[].subnetId` | `status.outputs.subnet_id` |
 | AzureFirewall | `spec.ipConfigurations[].subnetId` | `status.outputs.subnet_id` |
 | AzureFirewall | `spec.managementIpConfiguration.subnetId` | `status.outputs.subnet_id` |

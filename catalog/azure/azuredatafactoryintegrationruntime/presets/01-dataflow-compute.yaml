@@ -1,0 +1,18 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: dataflow-compute
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: dataflow-compute
+  description: The managed Spark compute mapping data flows run on, inside the factory's managed virtual network.
+  azure:
+    region: <your-region>
+    # Requires the factory's managed virtual network -- Azure rejects
+    # the runtime when the factory does not have it enabled.
+    virtualNetworkEnabled: true
+    # Keep a warm pool for 10 minutes between runs (warm minutes bill
+    # like run minutes); cleanupEnabled stays on its default (true).
+    timeToLiveMin: 10

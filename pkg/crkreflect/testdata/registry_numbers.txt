@@ -297,6 +297,7 @@ AzureDataFactoryDataFlow=2200
 AzureDataFactoryLinkedService=2201
 AzureDataFactoryDataset=2202
 AzureDataFactoryTrigger=2203
+AzureDataFactoryIntegrationRuntime=2204
 AzureMongoCluster=2211
 AzureFabricCapacity=2212
 AzureBackupContainerStorageAccount=2213

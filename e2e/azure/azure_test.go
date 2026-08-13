@@ -1647,6 +1647,15 @@ func TestAzureDataFactoryTrigger_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azuredatafactorytrigger", "terraform")
 }
 
+// --- Data Factory integration runtime (three scenarios, one per engine flavor, all chained to the factory smoke instance and ALL secret-free by design -- the managed compute joins the smoke factory's managed virtual network, the self-hosted registration proves the sensitive authorization-key outputs, and the SSIS definition is created STOPPED so it never bills; the deep SSIS arms and the billed interactive-authoring TTL are offline-proven per the profile) ---
+
+func TestAzureDataFactoryIntegrationRuntime_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactoryintegrationruntime", "pulumi")
+}
+func TestAzureDataFactoryIntegrationRuntime_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azuredatafactoryintegrationruntime", "terraform")
+}
+
 // --- Microsoft Fabric Capacity (fixture RG -> the smallest F2 capacity, created-verified-destroyed tightly; bills per hour from create, and the lowercase-alnum-only name class admits NO run-id token -- a crashed run's leftover holds the name and the sweep is the remedy) ---
 
 func TestAzureFabricCapacity_Pulumi(t *testing.T) {
