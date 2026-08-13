@@ -25,3 +25,7 @@ The **AzureContainerInstance** component deploys an Azure Container Instance con
 ## Future Enhancements
 
 - GPU containers were retired from the provider's surface at v5 (Azure retired the underlying SKUs) -- if azurerm regains a GPU surface, it lands here.
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).
