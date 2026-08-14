@@ -793,8 +793,12 @@ The port to probe (1-65535).
 
 `string`
 
-The scheme: unset rides Azure's default, "http"; "https" is the
-other choice (the provider's own lowercase vocabulary).
+The scheme: unset means "http" (Azure's default); "https" is the
+other choice (the provider's own lowercase vocabulary). The
+modules SEND "http" explicitly when unset -- ARM materializes the
+scheme on reads and the provider treats it as replace-forcing, so
+omitting it on the wire would make every re-apply propose a
+destroy+create (live-proven).
 
 - rule: {"string":{"in":["","http","https"]}}
 
@@ -892,8 +896,12 @@ The port to probe (1-65535).
 
 `string`
 
-The scheme: unset rides Azure's default, "http"; "https" is the
-other choice (the provider's own lowercase vocabulary).
+The scheme: unset means "http" (Azure's default); "https" is the
+other choice (the provider's own lowercase vocabulary). The
+modules SEND "http" explicitly when unset -- ARM materializes the
+scheme on reads and the provider treats it as replace-forcing, so
+omitting it on the wire would make every re-apply propose a
+destroy+create (live-proven).
 
 - rule: {"string":{"in":["","http","https"]}}
 
@@ -1282,6 +1290,16 @@ The log schema: "ContainerInsights" (the richer, dashboard-ready
 schema) or "ContainerInstanceLogs" (plain per-container logs).
 Unset rides Azure's default.
 
+"ContainerInstanceLogs" cannot currently be DEPLOYED: whenever a
+log type is set the provider unconditionally attaches a metadata
+object (even empty), and ARM rejects metadata for this log type
+with LogAnalyticsMetadataNotAllowed (live-proven). A CEL rejects
+the value with the same teaching so the failure surfaces at
+validation, not mid-deploy; leave log_type unset for plain log
+shipping (Azure's server-side default) or use "ContainerInsights".
+Lift the CEL when the pinned provider stops sending empty
+metadata.
+
 **ForceNew**: changing this destroys and recreates the group.
 
 - rule: {"string":{"in":["","ContainerInsights","ContainerInstanceLogs"]}}
@@ -1293,6 +1311,13 @@ Unset rides Azure's default.
 Extra metadata attached to every log record. Requires log_type --
 the provider only sends metadata alongside a log type and silently
 discards it otherwise, so the pairing is enforced here.
+
+The keys are a CLOSED vocabulary ARM validates server-side
+(live-proven, InvalidLogAnalyticsMetadataKeys): only "pod-uuid",
+"cluster-resource-id", and "node-name" are accepted -- the
+Kubernetes-shaped tags Container Insights understands. Values are
+free strings. A CEL enforces the key set so the failure surfaces
+at validation, not mid-deploy.
 
 **ForceNew**: changing this destroys and recreates the group.
 

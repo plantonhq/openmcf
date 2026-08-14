@@ -513,7 +513,7 @@ func TestAzureCognitiveAccountProject_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecognitiveaccountproject", "terraform")
 }
 
-// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic workspace with the managed VNet provisioned at approved-outbound isolation and one outbound rule of each type; the workspace is minutes, the managed network several more -- soft-delete ghosts hold the name, the orphan sweep checks `az ml workspace list --archived`) ---
+// --- Azure Machine Learning Workspace (composed: fixture storage account + key vault + application insights -> a Basic system-identity workspace on the DEFAULT network; create ~1 min, destroy ~2 min; deletes purge the soft-delete ghost via the modules' machine_learning features flag; ghosts have no list API, portal "Recently deleted" only. The managed-VNet + outbound-rule flagship stayed offline-proven after two live failures.) ---
 
 func TestAzureMachineLearningWorkspace_Pulumi(t *testing.T) {
 	runAllScenariosForComponent(t, "azuremachinelearningworkspace", "pulumi")

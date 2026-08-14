@@ -132,6 +132,12 @@ var _ = ginkgo.Describe("AzureStorageContainerSpec Validation Tests", func() {
 			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 		})
 
+		ginkgo.It("should reject container metadata keys that are not lowercase C# identifiers", func() {
+			input := minimalSpec()
+			input.Spec.Metadata = map[string]string{"e2e-suite": "azure"}
+			gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+		})
+
 		ginkgo.It("should reject an override posture without an encryption scope", func() {
 			override := false
 			input := minimalSpec()

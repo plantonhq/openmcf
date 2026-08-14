@@ -1991,6 +1991,43 @@ owns two responsibilities beyond wiring verifiers:
   scenarios should keep purge protection OFF so teardown can actually purge.
   Expect destroys to be slow (a vault purge runs ~10 minutes) and size test
   timeouts accordingly.
+- **ML workspaces are the same soft-delete class, with two extra twists.**
+  Destroy is a soft delete (the name stays reserved) unless the provider
+  features flag `machine_learning.purge_soft_deleted_workspace_on_destroy`
+  is on -- the provider default is OFF (unlike Key Vault, which defaults
+  ON). Both Planton workspace modules enable the flag (Terraform in the
+  kind's `provider.tf`; Pulumi via `pulumiazureprovider.GetWithFeatures`).
+  There is no CLI or REST listing of ML ghosts (`az ml workspace list`
+  has no `--archived` / soft-delete flag; Resource Graph indexes active
+  resources only). The portal's Azure Machine Learning "Recently deleted"
+  view is the one listing surface. Dual-engine lanes with a fixed name
+  prove the purge: the second engine recreates the same name after the
+  first engine's destroy. An interrupted run can still strand a ghost;
+  purge it with `az ml workspace delete --name … --resource-group … --yes --permanently-delete`.
+  First `az ml` on a machine without the `ml` extension hangs forever on
+  a dynamic-install prompt no non-interactive shell can answer -- install
+  it explicitly (`az extension add --name ml`) before any sweep.
+- **A workspace managed VNet (approved-outbound + provision-on-creation)
+  is a new medium-slow AND fragile class.** Create of the workspace object
+  is ~1 min; adding the managed VNet plus a private-endpoint outbound
+  rule stretches create to ~20 min and then destroy 409-loops
+  (`privateEndpointConnectionProxies/validate` failing, workspace delete
+  returning `InternalServerError` / 409) for 40+ minutes without the
+  workspace ever leaving `Succeeded`. Even without the PE rule, ARM can
+  roll the workspace back mid-create (`Bad request to get identity
+  secret: The workspace identity has been deleted`). The smoke lane
+  therefore proves the workspace OBJECT on the default network; the
+  managed-network arm stays offline-proven. Size timeouts at 90 min if
+  you re-open that arm, and do not debug a 409-loop as a module defect.
+- **Application Insights leaves an "Application Insights Smart Detection"
+  action group in the resource group after the Insights component is
+  deleted.** The Azure provider's default
+  `prevent_deletion_if_contains_resources = true` then refuses to delete
+  the group. Planton's Azure resource-group modules flip that flag off
+  so destroy means ARM-delete the group (the same contract as
+  `az group delete`). Do not "fix" this by deleting the action group
+  from a sweep script and leaving the flag on -- the next Insights
+  fixture will plant it again.
 - **Some ARM resources have no true delete — destroy flips a state field and the
   object stays GETtable, so verify-absent must be STATE-AWARE, not 404-based.**
   An Azure Storage encryption scope is the canonical case: "delete" PATCHes
