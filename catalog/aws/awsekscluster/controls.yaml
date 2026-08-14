@@ -1,0 +1,96 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsekscluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EKS encrypts control-plane storage at rest for every cluster; the etcd volumes backing the cluster are AWS-managed and encrypted. This cannot be disabled.
+      notes: Workload data at rest belongs to the data components workloads use (EBS volumes, databases), each with its own posture.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset leaves Kubernetes secrets protected by EKS's own storage encryption only; setting kms_key_arn adds envelope encryption of secrets with the referenced customer-managed key (the module hardcodes resources=["secrets"]). A one-way door -- it cannot be removed once enabled.
+      notes: The 02-private-endpoint preset enables it.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The Kubernetes API endpoint serves TLS only, and control-plane-to-kubelet communication is TLS -- EKS exposes no plaintext management transport.
+    - control_id: no-public-access
+      status: configurable
+      field_path: endpoint_public_access
+      evidence:
+        type: spec_default
+        reference: AWS defaults the API endpoint to publicly reachable; endpoint_public_access=false with endpoint_private_access=true confines the API server to the VPC.
+      notes: The 02-private-endpoint preset makes the flip. The field is proto-optional so an explicit false is distinguishable from unset.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: public_access_cidrs
+      evidence:
+        type: spec_default
+        reference: Empty means the public endpoint answers 0.0.0.0/0; listing CIDRs restricts it to declared sources -- the spec doc calls narrowing this "the single cheapest hardening step".
+      notes: Applies while the public endpoint is enabled; a private-only cluster restricts by network instead.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The API server sits behind EKS's managed endpoint, which offers no WAF attachment point; workload ingress and its filtering belong to load balancer components.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Kubernetes RBAC is always active on EKS; access_config.authentication_mode governs how AWS IAM principals map into it (access entries in API mode), and bootstrap_cluster_creator_admin_permissions controls the creator's default admin grant.
+      notes: All presets pin authentication_mode=API, the access-entries model.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Keyless workload identity on EKS (IRSA or EKS Pod Identity) attaches through its own resources -- the cluster's OIDC provider and per-workload associations -- not through this spec.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: access_config.authentication_mode
+      evidence:
+        type: spec_default
+        reference: The AWS default API_AND_CONFIG_MAP keeps the legacy aws-auth ConfigMap path alive alongside access entries; API mode retires the legacy path entirely.
+      notes: All four presets pin API mode.
+    - control_id: audit-logging
+      status: configurable
+      field_path: enabled_cluster_log_types
+      evidence:
+        type: spec_default
+        reference: Empty disables control-plane logging; listing log types streams them to CloudWatch Logs -- audit and authenticator are the security-relevant pair.
+      notes: All four presets enable audit and authenticator while deliberately skipping the three noisier types to bound CloudWatch cost.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Cluster metrics export is owned by add-ons (Container Insights, managed Prometheus agents) deployed as their own components (AwsEksAddon), not by a field of this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: AWS operates control-plane state redundantly; the cluster's own configuration is declarative and re-creatable from the manifest. Application data backup belongs to the data components workloads use.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No customer-facing backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EKS runs the managed control plane across multiple Availability Zones automatically, backed by its uptime SLA; a single-zone control plane is unrepresentable.
+      notes: Worker HA is the node groups' concern, on their own component.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, EKS refuses to delete the cluster until protection is lifted. The module always sends the flag explicitly so protection can also be deliberately switched off.
+      notes: The 02-private-endpoint preset enables it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS applies control-plane platform patches automatically within the running Kubernetes minor version; minor-version upgrades are customer-initiated, with upgrade_support_type bounding how long an old version may live.

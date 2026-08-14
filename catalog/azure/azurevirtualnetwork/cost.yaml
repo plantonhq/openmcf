@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: azurevirtualnetwork
+spec:
+  billing_model: free
+  free_tier: The virtual network itself -- its address spaces, subnets defined elsewhere, DNS settings, and flow timeout -- never bills. Azure charges for traffic (peering, egress) and for the billable primitives placed into or referenced by the network, never for the network resource.
+  notes: "No field of this spec buys anything directly: ddos_protection_plan attaches a plan that bills as its own resource (a referenced component with a fixed monthly fee), and encryption is free. The network's real spend lives in the components deployed into it -- peerings, NAT gateways, public IPs, and gateways are separate catalog kinds with their own cost profiles."

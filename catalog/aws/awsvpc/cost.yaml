@@ -1,0 +1,35 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsvpc
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: instance_tenancy
+      sku_meter: dedicated tenancy fees
+      impact: Choosing dedicated puts every instance later launched in the VPC on single-tenant hardware -- a per-region hourly Dedicated Instance fee plus higher instance rates. The default shared tenancy adds nothing.
+    - field_path: enable_network_address_usage_metrics
+      sku_meter: network address usage metrics
+      impact: Enabling NAU metrics publishes per-address utilization to CloudWatch, billed at CloudWatch's metric rates.
+    - field_path: ipv4_ipam_pool_id
+      sku_meter: IPAM managed addresses
+      pricing_unit: IP-hours
+      impact: Sourcing the primary CIDR from an IPAM pool means the block's addresses are managed -- and billed -- under the account's IPAM tier.
+    - field_path: secondary_ipv4_cidrs
+      sku_meter: IPAM managed addresses
+      pricing_unit: IP-hours
+      impact: Each IPAM-sourced secondary block grows the IPAM-managed (billable) address space; a hand-pinned cidr_block is free.
+    - field_path: secondary_ipv6_cidrs
+      sku_meter: IPAM managed addresses
+      pricing_unit: IP-hours
+      impact: IPAM-sourced IPv6 blocks are billed like their IPv4 siblings; Amazon-provided IPv6 blocks are free.
+  free_tier: The VPC itself -- the network container, its CIDR associations, DNS attributes, and encryption control -- never bills. Amazon-provided IPv6 blocks are free.
+  estimate_exclusions:
+    - dedicated-tenancy instance surcharges depend on what is later launched into the VPC
+    - IPAM per-address charges depend on the account's IPAM tier and managed-address footprint
+    - CloudWatch charges for network address usage metrics depend on address count
+    - the billable network primitives -- NAT gateways, VPC endpoints, public IPv4 addresses, flow logs -- are separate catalog components with their own cost profiles
+  notes: "A VPC has zero idle cost: the container itself bills nothing at any scale, so the model is usage_based with every charge behind an optional lever -- tenancy raises future instance prices, IPAM sourcing moves address management onto a billed service, and NAU metrics buy CloudWatch visibility. The network's real spend lives in the components deployed into it."

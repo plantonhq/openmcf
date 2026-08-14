@@ -1,0 +1,74 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseksfargateprofile
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fargate pod ephemeral storage is encrypted at rest with AWS-managed keys structurally; the profile itself stores only scheduling configuration.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No customer-key surface exists on a Fargate profile; persistent volume keys belong to the storage components pods mount, and secrets encryption to the cluster's own configuration.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A profile is a scheduling rule with no transport of its own -- pod traffic security is the cluster's network policy and the applications'.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: EKS rejects Fargate profiles that reference public subnets, and Fargate pods receive no public IP -- matched pods are structurally private, reaching the internet only through the VPC's NAT path.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound reachability to matched pods is governed by the cluster security group and Kubernetes network policy, not by the profile.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web endpoint, no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Profile management is IAM-authorized against the cluster, and what matched pods may pull and write is exactly the referenced pod execution role's grant -- the module never widens a role it merely references.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Matched pods' infrastructure actions (image pulls, log shipping) authenticate through the referenced pod_execution_role_arn's short-lived credentials; application-level AWS access uses the cluster's IAM-roles-for-service-accounts, never static keys.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A profile has no authentication path of its own; cluster API authentication is governed on the AwsEksCluster component.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Profile creation and deletion are recorded in CloudTrail by default; pod-level audit flows through the cluster's control-plane audit logs, governed on the cluster component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The profile emits no signals of its own -- matched pods' metrics and logs flow through the cluster's observability stack, governed there.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A scheduling rule holds no data; it is recreated from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: Matched pods launch across the declared private subnets -- referencing subnets in multiple availability zones lets Kubernetes spread replicas across zones; a single-zone subnet list pins them to one.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists; deleting a profile does not evict running pods until they restart, and the profile is recreated from the manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fargate infrastructure under matched pods is patched by AWS, with pod-level patch rollout on pod restart -- no nodes exist for the operator to patch.

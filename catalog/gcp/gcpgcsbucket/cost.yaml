@@ -1,0 +1,46 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpgcsbucket
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: storage_class
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: The class sets the per-GB rate and the retrieval economics -- STANDARD has no retrieval fee, NEARLINE/COLDLINE/ARCHIVE trade cheaper storage for per-GB retrieval charges and minimum storage durations.
+    - field_path: location
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Regional, dual-region, and multi-region locations carry different per-GB rates; dual and multi-region add replication value at a premium.
+    - field_path: autoclass.enabled
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Autoclass moves objects between classes automatically based on access -- storage cost follows actual access patterns, and per-object transition fees are waived in exchange for a small management fee.
+    - field_path: versioning_enabled
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Every overwritten or deleted object keeps its noncurrent versions, which bill as ordinary storage until lifecycle rules purge them.
+    - field_path: lifecycle_rules
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: The cost brake -- age-based deletion and class transitions are what keep versioned and growing buckets from billing forever.
+    - field_path: soft_delete_policy.retention_duration_seconds
+      sku_meter: object storage
+      pricing_unit: GB-months
+      impact: Soft-deleted objects bill as storage for the retention window (default 7 days); a longer window is a bigger safety net billed by the GB.
+    - field_path: rpo
+      sku_meter: turbo replication
+      pricing_unit: GB
+      impact: ASYNC_TURBO on a dual-region bucket bills every replicated GB at the turbo-replication rate for a 15-minute replication objective.
+    - field_path: requester_pays
+      sku_meter: object storage
+      impact: Shifts request and egress charges to the requester's project; storage keeps billing here.
+  estimate_exclusions:
+    - stored bytes are the bill, and an empty bucket stores nothing -- storage cost follows what workloads write
+    - operations (per-1000 requests), network egress, and retrieval fees on colder classes follow access patterns
+    - Cloud Pub/Sub charges for configured notifications bill on the topic's project
+  notes: "A bucket is a container with a rate card: creation is free, and every charge follows bytes stored, moved, or requested. The class-and-location pair sets the rates; versioning, soft delete, and lifecycle rules decide how long bytes keep billing."

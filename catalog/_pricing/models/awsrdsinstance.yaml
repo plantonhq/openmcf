@@ -1,0 +1,101 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsrdsinstance
+spec:
+  presets:
+    - preset: 01-postgresql-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance hours
+          price: rds-db-m6g-large-postgres-multi-az-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one db.m6g.large PostgreSQL instance with multi_az true -- the Multi-AZ rate carries the synchronous standby -- billed every hour of the month
+        - sku_meter: provisioned storage
+          price: rds-gp3-storage-multi-az-us-west-2
+          pricing_quantity: "50"
+          quantity_basis: allocated_storage_gb 50 on gp3 at the Multi-AZ storage rate (the standby doubles storage inside the rate)
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb 200, roughly quadrupling the storage line
+        - backup storage beyond the 50 GB free allowance grows with churn across the 7-day retention
+        - CloudWatch ingestion for the exported postgresql and upgrade logs is load-dependent
+      notes: Estimated at the allocated floor; Performance Insights stays in its free 7-day tier.
+    - preset: 02-mysql-production
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance hours
+          price: rds-db-m6g-large-mysql-multi-az-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one db.m6g.large MySQL instance with multi_az true, billed every hour of the month at the Multi-AZ rate
+        - sku_meter: provisioned storage
+          price: rds-gp3-storage-multi-az-us-west-2
+          pricing_quantity: "50"
+          quantity_basis: allocated_storage_gb 50 on gp3 at the Multi-AZ storage rate
+      exclusions:
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb 200
+        - backup storage beyond the free allowance grows with churn across the 7-day retention
+        - blue_green_update_enabled runs a temporary synchronized duplicate environment for the length of each update window
+        - CloudWatch ingestion for the exported error and slowquery logs is load-dependent
+      notes: Estimated at the allocated floor; Performance Insights stays in its free 7-day tier.
+    - preset: 03-read-replica
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance hours
+          price: rds-db-m6g-large-postgres-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one db.m6g.large PostgreSQL read replica (single-AZ), billed every hour of the month on top of its source instance's own bill
+        - sku_meter: provisioned storage
+          price: rds-gp3-storage-us-west-2
+          pricing_quantity: "50"
+          quantity_basis: the replica provisions its own gp3 volume matching the source's 50 GB allocation, at the single-AZ storage rate
+      exclusions:
+        - the source instance bills separately -- this estimate covers only the replica
+        - replication lag monitoring and log exports follow the source's configuration
+      notes: A read replica is a full additional billed instance; upgrade_storage_config work during creation is transient.
+    - preset: 04-oracle-enterprise
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance hours
+          price: rds-db-r6i-large-oracle-ee-byol-multi-az-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one db.r6i.large Oracle EE instance under bring-your-own-license with multi_az true, billed every hour at the BYOL Multi-AZ rate
+        - sku_meter: provisioned storage
+          price: rds-gp3-storage-multi-az-us-west-2
+          pricing_quantity: "200"
+          quantity_basis: allocated_storage_gb 200 on gp3 at the Multi-AZ storage rate
+      exclusions:
+        - the Oracle Enterprise Edition license is NOT in this price -- bring-your-own-license moves it onto your Oracle agreement
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb 500
+        - backup storage beyond the free allowance across the 14-day retention grows with churn
+      notes: Estimated at the allocated floor.
+    - preset: 05-mysql-s3-migration
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: instance hours
+          price: rds-db-m6g-large-mysql-multi-az-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one db.m6g.large MySQL instance restored from the S3 backup, with multi_az true, billed every hour at the Multi-AZ rate
+        - sku_meter: provisioned storage
+          price: rds-gp3-storage-multi-az-us-west-2
+          pricing_quantity: "200"
+          quantity_basis: allocated_storage_gb 200 on gp3 at the Multi-AZ storage rate
+      exclusions:
+        - the one-time S3 restore transfer and the source backup bucket's storage bill outside this component
+        - storage autoscaling can grow the volume toward max_allocated_storage_gb 500
+        - backup storage beyond the free allowance grows with churn across the 7-day retention
+      notes: Estimated at the allocated floor; the migration itself is a create-time event, not a recurring charge.

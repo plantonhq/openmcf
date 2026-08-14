@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssqsqueue
+spec:
+  aws:
+    statements:
+      - sid: ManageQueue
+        actions:
+          - sqs:CreateQueue
+          - sqs:DeleteQueue
+          - sqs:GetQueueAttributes
+          - sqs:SetQueueAttributes
+          - sqs:GetQueueUrl
+          - sqs:TagQueue
+          - sqs:UntagQueue
+          - sqs:ListQueueTags
+        resources:
+          - arn:aws:sqs:*:*:*
+        provenance: derived
+        notes: The module is a single aws_sqs_queue resource -- the queue policy, redrive policy, and redrive-allow policy are inline attributes written through SetQueueAttributes, so no further actions exist to grant. The queue-name wildcard is the ARN's variable part.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id references a customer-managed key -- the provider validates the key on queue configuration. Message-path KMS calls are made by producers and consumers with their own identities, never by the runner. Scope to the actual key ARN in a hardened deployment.

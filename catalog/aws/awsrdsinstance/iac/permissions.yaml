@@ -1,0 +1,93 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsrdsinstance
+spec:
+  aws:
+    statements:
+      - sid: ManageDbInstance
+        actions:
+          - rds:CreateDBInstance
+          - rds:DeleteDBInstance
+          - rds:ModifyDBInstance
+          - rds:DescribeDBInstances
+          - rds:CreateDBInstanceReadReplica
+          - rds:RestoreDBInstanceFromDBSnapshot
+          - rds:RestoreDBInstanceToPointInTime
+          - rds:StartDBInstanceAutomatedBackupsReplication
+          - rds:AddTagsToResource
+          - rds:RemoveTagsFromResource
+          - rds:ListTagsForResource
+        resources:
+          - arn:aws:rds:*:*:db:*
+        provenance: derived
+        notes: Covers aws_db_instance across its create shapes -- fresh instance, read replica (replicate_source_db), snapshot restore, and point-in-time restore -- plus modify, tagging, and teardown.
+      - sid: ManageSnapshotsOnLifecycle
+        actions:
+          - rds:CreateDBSnapshot
+          - rds:DeleteDBSnapshot
+          - rds:DescribeDBSnapshots
+        resources:
+          - arn:aws:rds:*:*:snapshot:*
+        provenance: derived
+        notes: Final snapshots on teardown (skip_final_snapshot=false) and reads of the source snapshot for restore-based creates.
+      - sid: ManageSubnetAndParameterGroups
+        actions:
+          - rds:CreateDBSubnetGroup
+          - rds:DeleteDBSubnetGroup
+          - rds:ModifyDBSubnetGroup
+          - rds:DescribeDBSubnetGroups
+          - rds:CreateDBParameterGroup
+          - rds:DeleteDBParameterGroup
+          - rds:ModifyDBParameterGroup
+          - rds:DescribeDBParameterGroups
+          - rds:DescribeDBParameters
+          - rds:CreateOptionGroup
+          - rds:DeleteOptionGroup
+          - rds:ModifyOptionGroup
+          - rds:DescribeOptionGroups
+        resources:
+          - arn:aws:rds:*:*:subgrp:*
+          - arn:aws:rds:*:*:pg:*
+          - arn:aws:rds:*:*:og:*
+        provenance: derived
+        notes: Covers the conditional aws_db_subnet_group, aws_db_parameter_group, and aws_db_option_group satellites -- each created only when the spec provides subnets, parameters, or options inline.
+      - sid: DescribeVpcContext
+        actions:
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Subnet-group creation and security-group attachment validate their references. EC2 Describe APIs support no resource-level scoping, so the wildcard is the narrowest possible scope.
+      - sid: ManageIamRoleAssociations
+        actions:
+          - rds:AddRoleToDBInstance
+          - rds:RemoveRoleFromDBInstance
+          - iam:PassRole
+        resources:
+          - arn:aws:rds:*:*:db:*
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Covers aws_db_instance_role_association (spec.iam_roles, and s3_import's ingestion role) plus monitoring_role_arn for Enhanced Monitoring -- RDS assumes the referenced roles, and associating them passes them. Narrow the role ARN in a hardened deployment.
+      - sid: UseCustomerManagedKeys
+        actions:
+          - kms:DescribeKey
+          - kms:CreateGrant
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id, master_user_secret_kms_key_id, or performance_insights_kms_key_id selects a customer-managed key -- RDS creates grants against the key during instance create/modify.
+      - sid: ManageMasterUserSecret
+        actions:
+          - secretsmanager:DescribeSecret
+        resources:
+          - arn:aws:secretsmanager:*:*:secret:rds!*
+        provenance: derived
+        notes: With manage_master_user_password=true, RDS owns the Secrets Manager secret; the provider reads it back into state after create. Scoped to the rds!-prefixed secrets RDS manages.

@@ -1,0 +1,93 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsrdsinstance
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Relational Database Service
+      sku_meter: instance hours
+      pricing_unit: hours
+      description: The database instance bills hourly from creation whether or not a single query runs; the rate follows instance_class, engine, and deployment layout.
+    - service_name: Amazon Relational Database Service
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      description: The allocated volume bills per GB-month at the storage_type's rate from creation, full or empty.
+  cost_drivers:
+    - field_path: instance_class
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: The instance class sets the hourly rate -- the dominant term of the bill.
+    - field_path: multi_az
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: A synchronous standby in a second AZ effectively doubles both instance-hours and storage cost -- the price of automatic failover.
+    - field_path: engine
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: The engine changes the rate for the same hardware; license-included engines embed the database license in the hourly price.
+    - field_path: license_model
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: bring-your-own-license removes the embedded license from the rate -- the Oracle or SQL Server license cost moves onto your own agreement.
+    - field_path: allocated_storage_gb
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Every allocated gigabyte bills monthly regardless of what the database actually stores.
+    - field_path: max_allocated_storage_gb
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Storage autoscaling grows the volume automatically up to this ceiling -- the estimate's storage line can rise toward it as data arrives, and volumes never shrink.
+    - field_path: storage_type
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Picks the per-GB rate class; gp3 includes a 3000-IOPS/125-MiB-s baseline before the paid performance dials apply.
+    - field_path: iops
+      sku_meter: provisioned IOPS
+      pricing_unit: IOPS-months
+      impact: Provisioned IOPS bill monthly on io1/io2 (required) and on gp3 above its included baseline.
+    - field_path: storage_throughput
+      sku_meter: provisioned throughput
+      pricing_unit: MiBps-months
+      impact: gp3 throughput above the included 125 MiB/s bills monthly.
+    - field_path: dedicated_log_volume
+      sku_meter: provisioned storage
+      pricing_unit: GB-months
+      impact: Adds a second dedicated volume for logs on top of the data volume.
+    - field_path: replicate_source_db
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: A read replica is a full additional billed instance with its own storage -- this manifest shape doubles the fleet, not the source's bill.
+    - field_path: backup_retention_period
+      sku_meter: backup storage
+      pricing_unit: GB-months
+      impact: Automated backup storage is free up to the allocated storage size; longer retention on a churning database accumulates billable backup beyond it.
+    - field_path: performance_insights_retention_period
+      sku_meter: Performance Insights retention
+      impact: The 7-day default is free; extended retention (731 days or any 31-day multiple) is paid per vCPU.
+    - field_path: monitoring_interval
+      sku_meter: Enhanced Monitoring ingestion
+      pricing_unit: GB
+      impact: Enhanced Monitoring streams OS metrics to CloudWatch Logs at the chosen granularity, billed as ingestion -- 1-second granularity on a busy fleet is real money.
+    - field_path: enabled_cloudwatch_logs_exports
+      sku_meter: log export ingestion
+      pricing_unit: GB
+      impact: Each exported log type bills CloudWatch Logs ingestion and storage.
+    - field_path: engine_lifecycle_support
+      sku_meter: extended support instance hours
+      pricing_unit: hours
+      impact: The AWS default auto-enrolls paid RDS Extended Support when the engine version leaves standard support; the -disabled value opts out and forces timely upgrades instead.
+    - field_path: blue_green_update_enabled
+      sku_meter: instance hours
+      pricing_unit: hours
+      impact: Blue/Green updates run a temporary synchronized duplicate environment for the length of each update window.
+  free_tier: ""
+  estimate_exclusions:
+    - backup storage beyond the free allowance grows with churn and retention
+    - Enhanced Monitoring, Performance Insights extended retention, and log exports depend on configuration and load
+    - data transfer between AZs and out of the region is traffic-dependent
+    - extended support surcharges begin only when the pinned engine version ages out of standard support
+  notes: "Instance hours and provisioned storage are the certainties at manifest time -- and multi_az doubles both. Everything else follows operations: churn drives backup storage, load drives monitoring ingestion, and version age drives extended support."

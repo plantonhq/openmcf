@@ -1,0 +1,68 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpdnszone
+spec:
+  presets:
+    - preset: 01-public-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud DNS
+          sku_meter: managed zone
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one managed zone billed per month at the first-25-zones list rate (the rate steps down from the 26th zone in the project)
+          list_unit_price: "0.2"
+          price_source: https://cloudbilling.googleapis.com/v1/services/FA26-5236-B8B5/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "0.2000"
+      total_list_cost: "0.2000"
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+      notes: Public and private zones pay the same flat zone fee; queries are the variable the manifest cannot know.
+    - preset: 02-private-vpc
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud DNS
+          sku_meter: managed zone
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one managed zone billed per month at the first-25-zones list rate; private visibility does not change the fee
+          list_unit_price: "0.2"
+          price_source: https://cloudbilling.googleapis.com/v1/services/FA26-5236-B8B5/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "0.2000"
+      total_list_cost: "0.2000"
+      exclusions:
+        - query volume from the bound VPC bills per million queries answered
+      notes: The private zone resolves only inside the declared VPC; its fee is identical to a public zone's.
+    - preset: 03-public-dnssec
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Cloud DNS
+          sku_meter: managed zone
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one managed zone billed per month at the first-25-zones list rate; DNSSEC signing adds no charge
+          list_unit_price: "0.2"
+          price_source: https://cloudbilling.googleapis.com/v1/services/FA26-5236-B8B5/skus
+          retrieved_on: "2026-08-14"
+          list_cost: "0.2000"
+      total_list_cost: "0.2000"
+      exclusions:
+        - query volume bills per million queries answered and follows traffic
+        - Cloud Logging ingestion for the enabled per-query logging follows query rate, billed at Logging's per-GiB rates
+      notes: DNSSEC is free on Cloud DNS; the enabled query logging is the preset's real variable cost on a busy zone.

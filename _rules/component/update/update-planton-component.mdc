@@ -882,6 +882,16 @@ After all updates, **execute validation commands in sequence**:
 3. **If Pulumi/Go code changed**: Run `go build ./catalog/<provider>/<component>/...` to validate build (rule 016)
 4. **Always run component tests**: Run `go test -v ./catalog/<provider>/<component>/...` to validate tests (rule 017)
 5. **If proto files changed and presets exist**: Verify all preset YAML field names exist in current spec.proto, all StringValueOrRef fields use `value:` wrapper, and apiVersion/kind still match api.proto
+5b. **If the spec surface or the module's resource set changed and the component
+   ships catalog data sidecars** (`cost.yaml`, `controls.yaml`,
+   `iac/permissions.yaml`): refresh them in the same change -- renamed or removed
+   spec fields orphan the field paths in `cost.yaml`/`controls.yaml` (the
+   `lint.catalog-data` gate fails on any path that no longer resolves), new
+   billing-relevant fields need cost-driver entries, new security-relevant fields
+   may move a control from not_applicable to configurable, and added/removed
+   module resources change the derived permission statements (update the notes
+   citing the terraform resource types). Validate with
+   `go test ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/...`.
 6. **If the Terraform module's resource set changed and the component ships import
    recipes** (`iac/import-map.yaml`): update the provider catalog
    (`aa_import/catalog.yaml`) and the component map for the added/removed resource

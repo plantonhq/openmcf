@@ -232,6 +232,8 @@ catalog/gcp/gcpcertmanagercert/
 ├── catalog.md                   # THE catalog page
 ├── logo.svg                     # Component logo
 ├── GUIDE.md                     # Authored operational judgment (optional)
+├── cost.yaml                    # Cost profile: billing model + the spec fields that drive the bill
+├── controls.yaml                # Control profile: posture per central-catalog control, with evidence
 ├── v1alpha1/                    # The versioned contract ONLY
 │   ├── api.proto
 │   ├── spec.proto
@@ -256,6 +258,7 @@ catalog/gcp/gcpcertmanagercert/
 │   └── scenarios/               # (optional) manifest variants
 ├── conversions/                 # (optional) cross-version conversion specs
 └── iac/
+    ├── permissions.yaml         # Least-privilege runner permissions (derived or proven)
     ├── import-map.yaml          # (optional)
     ├── pulumi/                  # No Makefile, no .gitignore
     │   ├── main.go
@@ -274,6 +277,8 @@ catalog/gcp/gcpcertmanagercert/
         ├── outputs.tf
         └── README.md
 ```
+
+Two central homes at the catalog root complement the per-component files: `catalog/_compliance/` holds the control catalog and framework crosswalks that every `controls.yaml` references, and `catalog/_pricing/` holds the cost-estimate pipeline — prices are volatile, so they live in one refreshable tree instead of beside 676 components. The pipeline has three parts: `models/` carries each estimated component's authored quantity assumptions per preset (schema `finops/componentcostestimatemodel/v1` — how much of which declared meter, defended in prose), `pricebook/` carries one pinned price book per provider (schema `finops/pricebook/v1` — every unit price with its source URL and retrieval date; entries with a machine selector are refreshed from the provider's public price API by `make generate-price-book`), and `estimates/` is GENERATED from the two by `make generate-cost-estimates` — every line cost and total computed exactly, never authored. The `lint.catalog-data` gate re-computes every figure, holds the committed estimates byte-identical to their inputs, and rejects any disagreement between a model, its price book, and the component's `cost.yaml`.
 
 ---
 

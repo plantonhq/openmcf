@@ -1,0 +1,88 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awseksnodegroup
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: launch_template
+      evidence:
+        type: spec_default
+        reference: The default managed-node-group root volume is unencrypted unless the AMI or account default says otherwise; encrypting node volumes is done by referencing a launch template that pins EBS encryption -- the spec and README direct volume encryption there.
+      notes: The 03-launch-template preset is the shape that carries it. Workload data at rest belongs to the data components pods use.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: launch_template
+      evidence:
+        type: spec_default
+        reference: Customer-managed keys for node volumes ride the same launch-template path as encryption itself.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Node-to-control-plane traffic is TLS as a property of the cluster (AwsEksCluster); pod-to-pod encryption is a service-mesh or CNI concern, not a node-group field.
+    - control_id: no-public-access
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: The referenced subnets decide exposure -- nodes in private subnets get no public IPs; every preset places nodes in private subnet references.
+      notes: The node group itself opens no listener; inbound exposure would come from SSH remote_access (below) or workload services.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: remote_access.source_security_group_ids
+      evidence:
+        type: spec_default
+        reference: With remote_access unset there is no SSH surface at all; setting ec2_ssh_key WITHOUT source security groups makes AWS open port 22 to 0.0.0.0/0 -- the spec documents the trap, and declaring source groups restricts it.
+      notes: No preset enables SSH access; node access on AL2023 is better served by SSM through the node role.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Worker nodes sit behind the cluster's service and ingress layers; request filtering belongs to the load balancer components in front.
+    - control_id: rbac
+      status: not_applicable
+      notes: Node authorization to the cluster rides the referenced node role's worker policies (aws-auth or access entries on the cluster side); the node group never modifies a role it references, and Kubernetes RBAC is the cluster's control.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Pod-level keyless identity (IRSA or EKS Pod Identity) is configured on the cluster and per workload, not on the node group; node-level credentials are the instance profile of the referenced role.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: remote_access
+      evidence:
+        type: spec_default
+        reference: Unset means no SSH key path onto the nodes at all -- the legacy access route stays closed; setting ec2_ssh_key deliberately reopens it.
+      notes: IMDSv2 enforcement (retiring the legacy instance metadata service) rides the launch template.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Node and workload logs are shipped by cluster-level agents (add-ons); API-level audit lives on the cluster's control-plane logging. The node group exposes no logging field.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The nodes are EC2 instances publishing standard instance metrics to CloudWatch automatically, and the managed group's autoscaling activity is visible through its Auto Scaling group.
+      notes: Kubernetes-level metrics ride cluster add-ons (Container Insights), on their own components.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Nodes are disposable capacity -- recovery is replacement, which node_repair_config and the managed update machinery perform; stateful data belongs to the volumes and data services pods use.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: subnet_ids
+      evidence:
+        type: spec_default
+        reference: The managed group spreads nodes across the referenced subnets' Availability Zones; every preset references two subnets in different zones, and single-subnet placement is the deliberate exception for zone-pinned workloads.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither AWS nor this spec offers a deletion-protection flag for a managed node group; the cluster's own deletion protection (AwsEksCluster) is the guard above it.
+    - control_id: managed-patching
+      status: configurable
+      field_path: node_repair_config.enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to off; enabled, EKS replaces or reboots nodes the cluster reports unhealthy. AMI version rollouts ride the managed update machinery with update_config bounding disruption (all presets pin MINIMAL strategy at 25% max unavailable).
+      notes: Presets 01 and 04 enable node repair; the spot preset's doc recommends adding it.

@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpvpcnetwork
+spec:
+  billing_model: free
+  free_tier: The VPC network itself -- the container, its routing mode, MTU, and firewall policy enforcement order -- never bills. Google charges for traffic (egress, inter-region paths) and for the billable primitives placed into the network (Cloud NAT, static addresses, load balancers), never for the network resource.
+  notes: "No field of this spec buys anything: routing_mode and bgp_best_path_selection steer where traffic flows (and therefore which data-transfer rates apply to workloads), but the rates bill on the traffic and the resources, not here. The network's real spend lives in the components deployed into it -- subnetworks' flow logs, Cloud NAT, addresses, and forwarding rules are separate catalog kinds with their own cost profiles."

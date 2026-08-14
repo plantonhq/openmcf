@@ -1,0 +1,32 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azuremanagedredis
+spec:
+  azure:
+    groups:
+      - purpose: ManageRedisEnterpriseCluster
+        actions:
+          - Microsoft.Cache/redisEnterprise/read
+          - Microsoft.Cache/redisEnterprise/write
+          - Microsoft.Cache/redisEnterprise/delete
+          - Microsoft.Cache/redisEnterprise/databases/read
+          - Microsoft.Cache/redisEnterprise/databases/write
+          - Microsoft.Cache/redisEnterprise/databases/delete
+        provenance: derived
+        notes: Covers azurerm_managed_redis -- Azure Managed Redis is the Redis Enterprise resource family, so the cluster and its default database are created, refreshed, updated, and destroyed through Microsoft.Cache/redisEnterprise operations.
+      - purpose: ListAccessKeys
+        actions:
+          - Microsoft.Cache/redisEnterprise/databases/listKeys/action
+        provenance: derived
+        notes: Required only when access_keys_authentication_enabled is true and outputs export the keys -- keyless (Entra) instances never need it.
+      - purpose: ReadResourceGroup
+        actions:
+          - Microsoft.Resources/subscriptions/resourceGroups/read
+        provenance: derived
+        notes: The provider resolves the target resource group before creating the cluster in it.

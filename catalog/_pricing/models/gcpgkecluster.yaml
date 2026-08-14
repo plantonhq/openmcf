@@ -1,0 +1,51 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpgkecluster
+spec:
+  presets:
+    - preset: 01-private-standard
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate (identical for zonal and regional clusters)
+      exclusions:
+        - node compute -- this Standard-mode cluster runs its workloads on separate GcpGkeNodePool resources with their own estimates
+        - Cloud Logging ingestion for the enabled system and workload log components
+        - network egress and Cloud NAT for the private nodes
+      notes: A REGIONAL cluster never receives the GKE free-tier credit, so the management fee always bills in full.
+    - preset: 02-autopilot
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+      exclusions:
+        - Autopilot pod charges -- running pods bill per second for the vCPU, memory, and ephemeral storage they request, entirely workload-dependent
+        - Cloud Logging ingestion and network egress
+      notes: The GKE free tier credits $74.40 per month per billing account and applies to Autopilot clusters -- the account's first Autopilot or zonal cluster effectively pays no management fee. List total shown without the credit.
+    - preset: 03-dev-zonal
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: cluster management fee
+          price: gke-cluster-management-fee
+          pricing_quantity: "730"
+          quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
+      exclusions:
+        - node compute -- separate GcpGkeNodePool resources
+        - Cloud Logging ingestion and network egress
+      notes: The GKE free tier credits $74.40 per month per billing account and applies to zonal clusters -- the account's first zonal or Autopilot cluster effectively pays no management fee. List total shown without the credit.

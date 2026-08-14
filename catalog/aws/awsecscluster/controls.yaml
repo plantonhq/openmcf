@@ -1,0 +1,82 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsecscluster
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fargate task ephemeral storage is encrypted at rest with AWS-managed keys structurally; the cluster itself stores only configuration, which the managed service encrypts.
+      notes: EC2 capacity instances' volumes follow the referenced Auto Scaling Group's declarations, governed on that component.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: managed_storage_configuration
+      evidence:
+        type: spec_default
+        reference: Unset means AWS-managed keys; the managed storage configuration re-keys Fargate ephemeral storage and ECS-managed storage under referenced customer-managed KMS keys.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: All ECS control-plane and agent communication rides TLS; the cluster exposes no plaintext channel.
+      notes: Application traffic between tasks is governed on the AwsEcsService components (Service Connect TLS).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A cluster is a logical grouping with no network endpoint of its own -- task exposure is declared on each service's network block and load balancers.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists on the cluster; security groups attach to task ENIs and instances through the services and capacity components.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web endpoint, no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cluster management, capacity-provider changes, and task placement are IAM-authorized against the cluster ARN; ECS Exec sessions additionally require per-task IAM grants.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Workload identity attaches to task definitions (task_role) and capacity instances (instance profiles), governed on those components -- the cluster holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: ECS has a single authentication path -- SigV4 IAM; no legacy protocol exists to disable.
+    - control_id: audit-logging
+      status: configurable
+      field_path: execute_command_configuration
+      evidence:
+        type: spec_default
+        reference: Management calls are in CloudTrail by default; the execute-command configuration additionally records interactive ECS Exec sessions to the referenced CloudWatch log group or S3 bucket -- unset means shell sessions leave no transcript.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: container_insights
+      evidence:
+        type: spec_default
+        reference: Unset leaves the account default; `enabled` exports cluster- and service-level Container Insights metrics, and `enhanced` deepens to per-container observability.
+      notes: Presets 01, 03, and 04 pin enhanced -- the demo posture is full visibility, priced honestly in cost.yaml.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A cluster stores no data of record -- tasks are recreated by their services, and durable state lives in referenced data components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cluster is a regional construct on multi-AZ managed infrastructure; capacity and tasks spread across the availability zones their subnets declare, with ECS's default placement spreading across zones.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists; ECS itself refuses to delete a cluster that still runs services or capacity -- a provider safeguard, not a configurable control.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fargate capacity and managed instances are AWS-patched (managed instances are launched, cycled, and retired by ECS itself); the control plane has no customer patch surface.
+      notes: EC2 capacity providers' instances follow the referenced Auto Scaling Group's AMI lifecycle, governed on that component.

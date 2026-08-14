@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awseksfargateprofile
+spec:
+  aws:
+    statements:
+      - sid: ManageFargateProfile
+        actions:
+          - eks:CreateFargateProfile
+          - eks:DescribeFargateProfile
+          - eks:DeleteFargateProfile
+          - eks:TagResource
+          - eks:UntagResource
+        resources:
+          - arn:aws:eks:*:*:cluster/*
+          - arn:aws:eks:*:*:fargateprofile/*
+        provenance: derived
+        notes: The module is a single aws_eks_fargate_profile resource. CreateFargateProfile authorizes against the cluster ARN (the profile does not exist yet); describe/delete/tag act on the fargateprofile ARN -- both scopes are required.
+      - sid: PassPodExecutionRole
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: CreateFargateProfile passes the referenced pod_execution_role_arn to EKS; the module never modifies the role it references. Scope to the actual role ARN in a hardened deployment.

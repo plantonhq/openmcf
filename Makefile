@@ -327,6 +327,29 @@ generate-provider-parity-report:
 generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
+# Regenerates the committed per-component cost estimates
+# (catalog/_pricing/estimates/) by joining each component's estimate model
+# (catalog/_pricing/models/) with its provider's price book
+# (catalog/_pricing/pricebook/). Always whole-tree: the dead-price sweep
+# needs every model's references. Offline and deterministic: unchanged
+# inputs regenerate byte-identical files (enforced by the drift test in
+# pkg/finops/estimategen).
+.PHONY: generate-cost-estimates
+generate-cost-estimates:
+	go run ./pkg/finops/estimategen
+
+# Refreshes the price-book entries that carry a machine selector from the
+# providers' public price APIs -- the AWS Price List bulk API, the Azure
+# Retail Prices API, and the GCP Cloud Billing Catalog API (which needs
+# GCP_BILLING_API_KEY or gcloud application-default credentials) --
+# rewriting each refreshed entry's price, refetchable source URL, and
+# retrieval date. Requires network access; CI never fetches -- it validates
+# the committed snapshot. After a refresh, run generate-cost-estimates to
+# roll the new prices into the estimates.
+.PHONY: generate-price-book
+generate-price-book:
+	go run ./pkg/finops/pricebook/fetcher
+
 .PHONY: build-go
 build-go: fmt deps vet
 	GOOS=darwin GOARCH=amd64 ${build_cmd} -o ${build_dir}/${name}-darwin-amd64 .

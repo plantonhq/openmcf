@@ -1,0 +1,89 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslambda
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Lambda encrypts function code, deployment packages, and environment variables at rest with AWS-managed keys by default; an unencrypted function is not representable.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means AWS-managed keys; setting kms_key_arn encrypts environment variables under the referenced customer-managed key, and source_kms_key_arn separately covers the deployment package.
+      notes: SnapStart snapshots and ephemeral storage inherit the same key when configured.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management and invocation path -- the Lambda API, function URLs, and service integrations -- is HTTPS-only; Lambda exposes no plaintext listener.
+    - control_id: no-public-access
+      status: configurable
+      field_path: function_url
+      evidence:
+        type: spec_default
+        reference: Unset means no direct endpoint exists -- the function is invocable only through IAM-authorized callers. Creating a function URL with authorization_type NONE deliberately publishes an unauthenticated public endpoint; AWS_IAM keeps the URL SigV4-gated.
+      notes: The 01 and 02 presets create no function URL; public exposure is always an explicit manifest choice.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: invoke_permissions
+      evidence:
+        type: spec_default
+        reference: With no invoke permissions, only principals granted lambda:InvokeFunction through IAM can call the function; each invoke_permissions entry narrows a grant to a declared principal, source ARN, source account, or organization.
+      notes: Lambda has no network listener -- ingress restriction is identity- and resource-policy-based rather than CIDR-based.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A function has no WAF attachment point; request filtering belongs to the CloudFront distribution, API gateway, or load balancer placed in front of it.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Both planes are IAM-governed -- management calls require lambda:* permissions on the function ARN, and invocation requires lambda:InvokeFunction; there is no non-IAM access path unless a NONE-auth function URL is explicitly created.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: The function code receives short-lived credentials from its execution role (role_arn, a required reference) via the runtime's credential provider -- no static access keys are baked into the environment.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Lambda has a single authentication path -- SigV4-signed IAM requests; no legacy or weaker protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every management API call is recorded in CloudTrail by default; invocation-level data events can additionally be enabled account-side.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Lambda publishes invocation, error, throttle, and duration metrics to CloudWatch automatically for every function; tracing_mode Active adds X-Ray traces per invocation.
+      notes: logging_config tunes structured log format and levels; log output requires the execution role's CloudWatch permissions.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A function holds no data to back up -- code artifacts live in the referenced S3 bucket or ECR repository, and published versions are immutable snapshots recreated from IaC.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention policy surface; log retention is governed on the referenced CloudWatch log group.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Lambda runs invocations across multiple availability zones in the region automatically; zone spread is structural, not configured.
+      notes: A VPC-attached function inherits the zone spread of the subnets referenced in subnet_ids -- spanning multiple zones there preserves the default.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Lambda offers no deletion-protection flag; a deleted function is recreated from the manifest and its versioned code artifact.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: AWS patches managed runtimes and the execution environment automatically; runtime_management defaults to Auto, and the field exists only to pin or roll back a runtime version deliberately.

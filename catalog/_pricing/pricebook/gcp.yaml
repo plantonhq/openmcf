@@ -1,0 +1,224 @@
+# The GCP price book: every Google Cloud unit price the catalog's cost
+# estimates cite, pinned with source URL and retrieval date. Entries are
+# referenced by slug from the estimate models under ../models/; the
+# estimate generator joins the two. Entries with a gcp_selector are
+# machine-refreshed from the Cloud Billing Catalog API by the price-book
+# fetcher (make generate-price-book; needs GCP_BILLING_API_KEY or gcloud
+# application-default credentials). Entries without a selector are
+# refreshed by hand. Schema: finops/pricebook/v1.
+apiVersion: finops.planton.dev/v1
+kind: PriceBook
+metadata:
+  name: gcp
+spec:
+  entries:
+    - name: gke-cluster-management-fee
+      service_name: Google Kubernetes Engine
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://cloudbilling.googleapis.com/v1/services/CCD8-9BF1-090E/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: CCD8-9BF1-090E
+        sku_id: B561-BFBD-1264
+    - name: dns-managed-zone
+      service_name: Cloud DNS
+      pricing_unit: zone-months
+      region: global
+      currency: USD
+      list_unit_price: "0.2"
+      price_source: https://cloudbilling.googleapis.com/v1/services/FA26-5236-B8B5/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: FA26-5236-B8B5
+        sku_id: 8C22-6FC3-D478
+        start_usage_amount: "0"
+    - name: n2-instance-core-us-central1
+      service_name: Compute Engine
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.031611"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: BB77-5FDA-69D9
+    - name: n2-instance-ram-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.004237"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 5B01-D157-A097
+    - name: balanced-pd-capacity-us-central1
+      service_name: Compute Engine
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.1"
+      price_source: https://cloudbilling.googleapis.com/v1/services/6F81-5844-456A/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 6F81-5844-456A
+        sku_id: 6AE1-525F-8B80
+    - name: cloudsql-postgres-regional-vcpu-us-central1
+      service_name: Cloud SQL
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0826"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: 1912-86A6-9950
+    - name: cloudsql-postgres-regional-ram-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.014"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: 9BE2-CB5B-66F8
+    - name: cloudsql-postgres-zonal-vcpu-us-central1
+      service_name: Cloud SQL
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0413"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: 965E-7C36-08E6
+    - name: cloudsql-postgres-zonal-ram-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.007"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: 93DA-3F55-CB04
+    - name: cloudsql-mysql-regional-vcpu-us-central1
+      service_name: Cloud SQL
+      pricing_unit: vCPU-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.0826"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: 2C7C-7705-6CE7
+    - name: cloudsql-mysql-regional-ram-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.014"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: E33C-229F-2DA2
+    - name: cloudsql-postgres-regional-ssd-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.34"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: F5EC-5814-93C3
+    - name: cloudsql-postgres-zonal-ssd-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.17"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: C18F-7FE0-0717
+    - name: cloudsql-mysql-regional-ssd-us-central1
+      service_name: Cloud SQL
+      pricing_unit: GiB-months
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.34"
+      price_source: https://cloudbilling.googleapis.com/v1/services/9662-B51E-5089/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 9662-B51E-5089
+        sku_id: D65A-D0C3-34F4
+    - name: redis-basic-m1-us-central1
+      service_name: Cloud Memorystore for Redis
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.049"
+      price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 5AF5-2C11-D467
+        sku_id: 38BC-F861-2EB5
+    - name: redis-standard-m2-us-central1
+      service_name: Cloud Memorystore for Redis
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.054"
+      price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 5AF5-2C11-D467
+        sku_id: A4A4-53B9-26CD
+    - name: redis-standard-node-m2-us-central1
+      service_name: Cloud Memorystore for Redis
+      pricing_unit: GiB-hours
+      region: us-central1
+      currency: USD
+      list_unit_price: "0.027"
+      price_source: https://cloudbilling.googleapis.com/v1/services/5AF5-2C11-D467/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: 5AF5-2C11-D467
+        sku_id: 2742-07C4-B8DD
+    - name: nat-external-ip-usage
+      service_name: Networking
+      pricing_unit: IP-hours
+      region: global
+      currency: USD
+      list_unit_price: "0.005"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: 8515-9425-D2CE
+    - name: private-nat-gateway-uptime
+      service_name: Networking
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.045"
+      price_source: https://cloudbilling.googleapis.com/v1/services/E505-1604-58F8/skus
+      retrieved_on: "2026-08-14"
+      gcp_selector:
+        service_id: E505-1604-58F8
+        sku_id: AAF7-1D17-BFC4

@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awslambdaeventsourcemapping
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The mapping's own stored state -- filter criteria and checkpoint metadata -- is encrypted at rest by Lambda with AWS-managed keys by default; message payloads at rest live on the source, governed by its component.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_arn
+      evidence:
+        type: spec_default
+        reference: Unset means AWS-managed keys; setting kms_key_arn encrypts the mapping's filter criteria under the referenced customer-managed key.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pollers read AWS sources (SQS, Kinesis, DynamoDB, MSK) over TLS, and management calls are HTTPS-only; self-managed Kafka endpoints declare their TLS posture through source_access_configurations.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A mapping is control-plane wiring with no endpoint of its own -- there is nothing to reach from the internet; exposure questions belong to the source and the function.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound surface exists; the mapping only polls outward from Lambda's managed infrastructure to the declared source.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No web endpoint, no WAF attachment point.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Creating, updating, and deleting mappings is IAM-authorized, and the poller reads the source with exactly the function's execution-role permissions -- access to the data plane is the role's grant, nothing more.
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pollers authenticate to AWS sources with the function execution role's short-lived credentials -- no static keys. Self-managed Kafka authentication references Secrets Manager secrets through source_access_configurations rather than embedding credentials in the manifest.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The mapping has a single authentication path -- SigV4 IAM for management, the execution role for polling; no legacy protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every mapping management call (create, update, delete, enable, disable) is recorded in CloudTrail by default.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: metrics
+      evidence:
+        type: spec_default
+        reference: Unset means only the wired function's standard metrics exist; enabling EventCount/ErrorCount (and Kafka metrics for MSK sources) exports the mapping's own processing signals to CloudWatch.
+      notes: The 03 preset enables all three -- provisioned-mode fleets are exactly where per-mapping visibility earns its metric cost.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: on_failure_destination_arn
+      evidence:
+        type: spec_default
+        reference: Unset means records that exhaust retries are dropped (streams) or returned to the queue's own redrive path (SQS); a failure destination preserves failed batches' metadata for inspection and replay.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: Record retention lives on the source (stream retention period, queue message retention) -- maximum_record_age_seconds here only bounds how old a record may be when processed, it retains nothing.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Pollers run on Lambda's regional multi-AZ infrastructure; no single-zone failure mode is configurable or exists to harden.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists; a deleted mapping is recreated from the manifest and resumes from the declared starting position.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The polling fleet is fully managed -- AWS operates and patches it; no customer-visible patch surface exists.

@@ -1,0 +1,64 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awsroute53zone
+spec:
+  aws:
+    statements:
+      - sid: ManageHostedZone
+        actions:
+          - route53:CreateHostedZone
+          - route53:DeleteHostedZone
+          - route53:GetHostedZone
+          - route53:UpdateHostedZoneComment
+          - route53:ListTagsForResource
+          - route53:ChangeTagsForResource
+          - route53:GetChange
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_route53_zone -- creation (with the first VPC association baked into CreateHostedZone for private zones), tagging, and teardown; GetChange polls propagation. CreateHostedZone acts on a not-yet-existing resource and GetChange acts on change ids, so the wildcard is the narrowest workable scope.
+      - sid: ManageVpcAssociations
+        actions:
+          - route53:AssociateVPCWithHostedZone
+          - route53:DisassociateVPCFromHostedZone
+          - ec2:DescribeVpcs
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers the additional private-zone VPC associations beyond the first; Route 53 validates the VPC via EC2 describe calls, which support no resource-level scoping.
+      - sid: ManageZoneRecordsOnDestroy
+        actions:
+          - route53:ListResourceRecordSets
+          - route53:ChangeResourceRecordSets
+        resources:
+          - arn:aws:route53:::hostedzone/*
+        provenance: derived
+        notes: force_destroy teardown lists and deletes every remaining record before the zone itself; without force_destroy the provider still lists records to verify the zone is empty.
+      - sid: ManageDnssec
+        actions:
+          - route53:CreateKeySigningKey
+          - route53:DeleteKeySigningKey
+          - route53:ActivateKeySigningKey
+          - route53:DeactivateKeySigningKey
+          - route53:GetDNSSEC
+          - route53:EnableHostedZoneDNSSEC
+          - route53:DisableHostedZoneDNSSEC
+        resources:
+          - arn:aws:route53:::hostedzone/*
+        provenance: derived
+        notes: Covers aws_route53_key_signing_key and aws_route53_hosted_zone_dnssec -- created only when spec.dnssec is set. The KMS side is a key-policy grant to dnssec-route53.amazonaws.com (kms:DescribeKey, kms:GetPublicKey, kms:Sign, kms:CreateGrant) on the referenced key, owned by the AwsKmsKey component -- not a runner permission here.
+      - sid: ManageQueryLogging
+        actions:
+          - route53:CreateQueryLoggingConfig
+          - route53:DeleteQueryLoggingConfig
+          - route53:GetQueryLoggingConfig
+        resources:
+          - "*"
+        provenance: derived
+        notes: Covers aws_route53_query_log -- created only when spec.query_logging is set. The destination log group's account-level CloudWatch Logs resource policy for route53.amazonaws.com is a documented prerequisite, deliberately not created per zone.

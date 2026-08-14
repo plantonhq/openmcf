@@ -1,10 +1,10 @@
 # =============================================================================
 # Proto Contract Gate
 # =============================================================================
-# The protos under catalog/, shared/, qa/, and iac/ ARE the product's API
-# contract: stored documents, IaC modules, and every client surface are
-# projections of them. This gate runs the two buf checks on every PR that
-# touches them:
+# The protos under catalog/, shared/, qa/, iac/, finops/, and compliance/
+# ARE the product's API contract: stored documents, IaC modules, catalog
+# data sidecars, and every client surface are projections of them. This
+# gate runs the two buf checks on every PR that touches them:
 #
 #   buf-lint     (BLOCKING)  -- style/structure rules from buf.yaml.
 #   buf-breaking (CHANNEL-AWARE) -- wire/API compatibility against main,
@@ -27,6 +27,8 @@ on:
       - 'shared/**/*.proto'
       - 'qa/**/*.proto'
       - 'iac/**/*.proto'
+      - 'finops/**/*.proto'
+      - 'compliance/**/*.proto'
       - 'buf.yaml'
       - '.github/workflows/lint.protos.yaml'
   workflow_dispatch: {}

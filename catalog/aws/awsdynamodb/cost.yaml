@@ -1,0 +1,59 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsdynamodb
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: billing_mode
+      sku_meter: capacity mode selection
+      impact: The central cost switch. PAY_PER_REQUEST bills per read/write request with zero idle cost; PROVISIONED bills the reserved capacity every hour whether used or not.
+    - field_path: provisioned_throughput.read_capacity_units
+      sku_meter: provisioned read capacity
+      pricing_unit: RCU-hours
+      impact: Each provisioned read capacity unit bills hourly while the table exists (PROVISIONED mode only).
+    - field_path: provisioned_throughput.write_capacity_units
+      sku_meter: provisioned write capacity
+      pricing_unit: WCU-hours
+      impact: Each provisioned write capacity unit bills hourly while the table exists (PROVISIONED mode only). Write capacity is several times the price of read capacity.
+    - field_path: autoscaling
+      sku_meter: provisioned capacity range
+      pricing_unit: RCU/WCU-hours
+      impact: Autoscaling moves provisioned capacity between min_capacity and max_capacity with utilization; max_capacity bounds the worst-case hourly spend, min_capacity sets the floor that always bills.
+    - field_path: replicas
+      sku_meter: global table replication
+      pricing_unit: replicated WCU-hours and GB-month
+      impact: Each replica region is a full billed copy of the table -- its storage, its writes (as replicated write units), and its own capacity settings.
+    - field_path: global_secondary_indexes
+      sku_meter: index storage and capacity
+      pricing_unit: GB-month and RCU/WCU-hours
+      impact: Each GSI stores its projected attributes and bills its own read/write capacity on top of the table's.
+    - field_path: table_class
+      sku_meter: storage class selection
+      pricing_unit: GB-month
+      impact: STANDARD_INFREQUENT_ACCESS cuts storage price (roughly 60% cheaper) while raising per-request cost (roughly 25%) -- for large, rarely-read tables like audit logs.
+    - field_path: point_in_time_recovery
+      sku_meter: continuous backup storage
+      pricing_unit: GB-month
+      impact: Point-in-time recovery bills per GB-month of table data for the continuous backup window.
+    - field_path: stream_enabled
+      sku_meter: DynamoDB Streams read requests
+      pricing_unit: stream read request units
+      impact: Enabling the stream is free; consumers reading it bill stream read request units.
+    - field_path: contributor_insights
+      sku_meter: CloudWatch Contributor Insights rules
+      pricing_unit: rules and matched events
+      impact: Each insights rule (table and per-GSI) bills CloudWatch per rule per month plus matched events.
+    - field_path: on_demand_throughput
+      sku_meter: on-demand consumption ceiling
+      impact: A spend guardrail, not a charge -- requests beyond the ceiling are throttled rather than billed (PAY_PER_REQUEST mode only).
+  estimate_exclusions:
+    - per-request read/write charges are traffic-dependent
+    - storage consumed (GB-month) grows with the data the application writes
+    - cross-region replication traffic for global tables
+    - on-demand backup storage and restore operations
+    - data transfer out of the region
+  notes: "The cost shape pivots on billing_mode: PAY_PER_REQUEST has zero idle cost, PROVISIONED bills its capacity every hour -- the modules pin provisioned capacity through an autoscaling target so capacity changes always land. Kinesis streaming delivery bills on the destination Kinesis stream, not this table. TTL deletions are free of write cost."

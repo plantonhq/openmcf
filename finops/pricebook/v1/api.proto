@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dev.planton.finops.pricebook.v1;
+
+import "finops/pricebook/v1/spec.proto";
+import "shared/metadata.proto";
+
+// PriceBook is a provider's pinned list-price snapshot -- the single home of
+// every unit price the catalog's cost estimates cite. One book per provider,
+// at catalog/_pricing/pricebook/<provider>.yaml (filename = metadata.name =
+// the provider directory name under catalog/). Component estimate models
+// reference entries by their slug name and never restate a price; the
+// estimate generator joins the two, so a price exists in exactly one place
+// and every estimate that cites it moves together when it is refreshed.
+// Follows the KRM pattern (apiVersion + kind + metadata + spec).
+//
+// Entries are identified by their own slug, never by a component's meter
+// label: a price's true identity is the provider's SKU (a P10 disk in
+// eastus, a Standard_D4s_v5 hour), and multiple components with the same
+// meter label may need different SKUs' prices.
+//
+// Refresh discipline: prices enter the book pinned -- each entry carries the
+// source URL and retrieval date of its price, and entries with a machine
+// selector are rewritten by the price-book fetcher (a network-using make
+// target; CI only ever validates the committed snapshot). An unchanged
+// upstream price regenerates a byte-identical entry.
+//
+// Example:
+//   apiVersion: finops.planton.dev/v1
+//   kind: PriceBook
+//   metadata:
+//     name: aws
+//   spec:
+//     entries:
+//       - name: alb-hours-us-east-1
+//         service_name: Elastic Load Balancing
+//         pricing_unit: hours
+//         region: us-east-1
+//         currency: USD
+//         list_unit_price: "0.0225"
+//         price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260720184950/us-east-1/index.json
+//         retrieved_on: "2026-08-14"
+message PriceBook {
+  string api_version = 1;
+  string kind = 2;
+  dev.planton.shared.CloudResourceMetadata metadata = 3;
+  PriceBookSpec spec = 4;
+}

@@ -20,6 +20,8 @@ catalog/aws/awss3bucket/
 |-- README.md              # Component overview
 |-- catalog.md             # Public catalog page rendered on the docs site
 |-- logo.svg               # Component icon
+|-- cost.yaml              # Cost profile: billing model + spec fields that drive the bill
+|-- controls.yaml          # Control profile: security posture per catalog control, with evidence
 |-- v1alpha1/
 |   |-- api.proto          # KRM resource model (apiVersion, kind, metadata, spec, status)
 |   |-- spec.proto         # Configuration fields for the resource
@@ -28,6 +30,7 @@ catalog/aws/awss3bucket/
 |   |-- spec_test.go       # Validation tests for the spec
 |   \-- reference.md       # Field reference for the spec
 |-- iac/
+|   |-- permissions.yaml   # Least-privilege runner permissions (derived or proven)
 |   |-- pulumi/
 |   |   |-- main.go        # Pulumi entrypoint (loads stack input, calls module)
 |   |   |-- Pulumi.yaml    # Pulumi project configuration
@@ -49,6 +52,10 @@ catalog/aws/awss3bucket/
 ```
 
 Generated Go stubs (`*.pb.go`) and Bazel `BUILD.bazel` files sit alongside the protos in `v1alpha1/`. This file set is machine-enforced: the `pkg/anatomy` conformance gate runs in CI (`lint.component-anatomy.yaml`) and fails any component that drifts from it.
+
+The three data files carry their own contracts, enforced by a second CI gate (`lint.catalog-data.yaml`): `cost.yaml` and `controls.yaml` may only reference spec fields that exist on the served contract, `controls.yaml` must examine every control in the central control catalog (`catalog/_compliance/controls-catalog.yaml`), and every permission entry in `iac/permissions.yaml` states whether it was derived from module sources or proven by live runs. The schemas live at `finops/componentcostprofile/v1`, `compliance/componentcontrolprofile/v1`, and `iac/componentpermissions/v1`; `catalog/aws/awsalb` and `catalog/aws/awsdynamodb` are reference examples.
+
+A component's presets can additionally carry monthly cost estimates at published list prices, which are GENERATED — never hand-written. You author the component's estimate model at `catalog/_pricing/models/<component>.yaml` (schema `finops/componentcostestimatemodel/v1`): per preset, how much of each declared meter the preset consumes and why, in plain prose, with every quantity referencing a pinned price by name in the provider's price book (`catalog/_pricing/pricebook/<provider>.yaml`, schema `finops/pricebook/v1` — every unit price cites its source URL and retrieval date, and machine-refetchable entries are refreshed by `make generate-price-book`). Running `make generate-cost-estimates` joins the two into `catalog/_pricing/estimates/<component>.yaml` (schema `finops/componentcostestimate/v1`), computing every line cost and total exactly. The pricing tree is central because prices churn on their own cadence — one refreshable tree instead of edits across every component. Estimates are held to the strictest contract in the catalog: every line's meter must be declared by the component's `cost.yaml`, every price must resolve in the price book with agreeing units, currency, and region, the CI gate re-computes every multiplication and total exactly, and a committed estimate that drifts from its model or price book cannot merge. Components that consume cluster capacity instead of cloud SKUs (Kubernetes workloads) state a capacity footprint instead of dollars.
 
 ## Naming Conventions
 

@@ -1,0 +1,81 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awseksnodegroup
+spec:
+  presets:
+    - preset: 01-on-demand-general
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Compute Cloud
+          sku_meter: node instance hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: the scaling floor (min_size 2) of m6i.large On-Demand nodes x 730 hours -- the committed always-on capacity
+          list_unit_price: "0.096"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "140.1600"
+        - service_name: Amazon Elastic Block Store
+          sku_meter: node root volumes
+          pricing_unit: GB-months
+          pricing_quantity: "200"
+          quantity_basis: 2 floor nodes x 100 GiB root volumes (disk_size_gb 100)
+          list_unit_price: "0.08"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "16.0000"
+      total_list_cost: "156.1600"
+      exclusions:
+        - autoscaled nodes above the floor are workload-dependent (max_size 5 raises the instance ceiling to about $350 per month)
+        - data transfer between AZs and out of the region follows pod traffic
+        - the cluster management fee bills on the AwsEksCluster component
+      notes: Estimated at the autoscaling floor -- the committed always-on spend.
+    - preset: 02-spot-cost-optimized
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - min_size 0 makes this pool scale-to-zero -- no capacity is committed, so the committed estimate is genuinely zero
+        - running nodes bill the fluctuating Spot market rate, typically 60-90% below On-Demand and never above it; at the desired start of 3 nodes the On-Demand ceiling is about $210 per month for instances plus $24 for root volumes
+        - Spot interruptions can reclaim nodes with two minutes' notice -- the discount's price
+      notes: Spot has no committed list price -- the market sets the hourly rate under the published On-Demand ceiling, which is why this estimate carries no priced lines.
+    - preset: 04-warm-pool
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Elastic Compute Cloud
+          sku_meter: node instance hours
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: the scaling floor (min_size 2) of m6i.xlarge On-Demand nodes x 730 hours
+          list_unit_price: "0.192"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "280.3200"
+        - service_name: Amazon Elastic Block Store
+          sku_meter: node root volumes
+          pricing_unit: GB-months
+          pricing_quantity: "400"
+          quantity_basis: 2 floor nodes plus 2 STOPPED warm-pool instances (warm_pool_config min_size 2), each holding a 100 GiB root volume -- stopped instances bill only their EBS
+          list_unit_price: "0.08"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-east-1/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "32.0000"
+      total_list_cost: "312.3200"
+      exclusions:
+        - autoscaled nodes above the floor are workload-dependent (max_size 10; desired starts at 3, one node above this floor estimate)
+        - a RUNNING pool_state would bill the pooled instances at full price for instant scale-out
+        - data transfer and the cluster management fee bill elsewhere
+      notes: Estimated at the autoscaling floor; the warm pool's stopped instances add storage cost only, buying pre-initialized scale-out.

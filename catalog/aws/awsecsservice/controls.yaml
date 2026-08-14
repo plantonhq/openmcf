@@ -1,0 +1,87 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsecsservice
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: volume_configuration.managed_ebs_volume.encrypted
+      evidence:
+        type: spec_default
+        reference: Fargate task ephemeral storage is always encrypted with AWS-managed keys (provider structural); a managed EBS volume encrypts per this declaration, falling back to the account's EBS-encryption default when unset.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: volume_configuration.managed_ebs_volume.kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means AWS-managed keys; the referenced customer-managed key encrypts each task's EBS volume. Fargate ephemeral storage keys are governed cluster-side (managed_storage_configuration).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: service_connect
+      evidence:
+        type: spec_default
+        reference: Service Connect's tls block terminates and originates TLS between services through the proxy with a referenced certificate authority; without it, transport security is the application's own responsibility.
+      notes: Control-plane and agent channels are TLS structurally; this control is about task-to-task traffic.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: spec_default
+        reference: assign_public_ip defaults to false -- task ENIs get no public address, and reachability flows only through the referenced load balancer or private network paths.
+      notes: Setting assign_public_ip true is an explicit manifest choice, flagged for public subnets that must skip a NAT gateway.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: network.security_groups
+      evidence:
+        type: spec_default
+        reference: The declared security groups gate every task ENI; unset falls back to the VPC's default group, and referencing purpose-built groups narrows inbound to declared sources (typically the load balancer's group).
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A service has no WAF attachment point; request filtering belongs to the ALB or CloudFront distribution in front, on those components.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Service management and task placement are IAM-authorized; ECS Exec into containers (enable_execute_command) additionally demands per-caller IAM grants and is off by default.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The credentials containers receive are declared on the referenced AwsEcsTaskDefinition (task_role, execution_role) -- the service runs the definition without adding an identity surface of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: ECS has a single authentication path -- SigV4 IAM; no legacy protocol exists to disable.
+    - control_id: audit-logging
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every service management call and task state change is recorded in CloudTrail by default; ECS Exec session transcripts are governed by the cluster's execute-command configuration.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: ECS publishes service CPU and memory utilization to CloudWatch automatically; deployment alarms and the circuit breaker consume those signals for automatic rollback, and Container Insights (cluster-side) deepens them.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A service orchestrates stateless task copies -- durable state belongs in referenced data components, and each task's managed EBS volume lives and dies with its task by design.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No durable data means no retention surface.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: network.subnets
+      evidence:
+        type: spec_default
+        reference: Task copies spread across the declared subnets' availability zones by ECS's default placement; declaring multi-AZ subnets makes desired_count copies zone-redundant, and availability_zone_rebalancing re-levels the spread after zone recovery.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: No deletion-protection flag exists on services; teardown scales to zero and deletes, and the service is recreated from the manifest.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fargate platform versions are patched by AWS (platform_version LATEST tracks them automatically); no customer patch surface exists on the Fargate path.
+      notes: EC2 launch type inherits the cluster capacity's AMI lifecycle, governed on the cluster's capacity components.

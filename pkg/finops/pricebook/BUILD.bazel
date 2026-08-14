@@ -1,0 +1,19 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "pricebook",
+    srcs = ["pricebook.go"],
+    importpath = "github.com/plantonhq/planton/pkg/finops/pricebook",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//finops/pricebook/v1:pricebook",
+        "//pkg/protobufyaml",
+        "@com_github_pkg_errors//:errors",
+    ],
+)
+
+go_test(
+    name = "pricebook_test",
+    srcs = ["conformance_test.go"],
+    embed = [":pricebook"],
+)
