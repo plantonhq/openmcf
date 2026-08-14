@@ -1321,6 +1321,38 @@ func TestAwsSesAccountSettings_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awssesaccountsettings", "terraform")
 }
 
+func TestAwsCloudTrail_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtrail", "pulumi")
+}
+
+func TestAwsCloudTrail_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtrail", "terraform")
+}
+
+func TestAwsConfigRecorder_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrecorder", "pulumi")
+}
+
+func TestAwsConfigRecorder_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrecorder", "terraform")
+}
+
+func TestAwsConfigRule_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrule", "pulumi")
+}
+
+func TestAwsConfigRule_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigrule", "terraform")
+}
+
+func TestAwsGuardDuty_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguardduty", "pulumi")
+}
+
+func TestAwsGuardDuty_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguardduty", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

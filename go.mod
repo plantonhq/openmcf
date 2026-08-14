@@ -26,11 +26,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/bedrockagentcorecontrol v1.53.0
 	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0
 	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4
+	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.58.5
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.79.0
 	github.com/aws/aws-sdk-go-v2/service/codebuild v1.71.0
 	github.com/aws/aws-sdk-go-v2/service/codepipeline v1.48.0
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.64.0
+	github.com/aws/aws-sdk-go-v2/service/configservice v1.68.5
 	github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.59.2
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.307.1
@@ -45,6 +47,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/fsx v1.67.0
 	github.com/aws/aws-sdk-go-v2/service/globalaccelerator v1.37.0
 	github.com/aws/aws-sdk-go-v2/service/glue v1.148.0
+	github.com/aws/aws-sdk-go-v2/service/guardduty v1.85.5
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.7
 	github.com/aws/aws-sdk-go-v2/service/kafka v1.54.2
 	github.com/aws/aws-sdk-go-v2/service/kinesis v1.44.4

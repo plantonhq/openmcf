@@ -1,0 +1,20 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awscloudtrail
+spec:
+  values:
+    - name: trail_arn
+      derivations:
+        - from_stack_output: trail_arn
+      where_to_find: >-
+        CloudTrail console -> Trails (the trail's ARN), or
+        `aws cloudtrail describe-trails` (TrailARN).
+    - name: delegated_admin_account_id
+      derivations:
+        - from_spec_field: organization_delegated_admin_account_id
+      where_to_find: >-
+        The delegated administrator's 12-digit account id
+        (spec.organization_delegated_admin_account_id, or `aws
+        organizations list-delegated-administrators
+        --service-principal cloudtrail.amazonaws.com`).

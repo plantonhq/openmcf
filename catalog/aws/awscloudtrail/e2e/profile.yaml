@@ -1,0 +1,37 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awscloudtrail
+spec:
+  # A CloudTrail trail under live E2E: the scenario composes the
+  # delivery bucket (with the cloudtrail.amazonaws.com bucket policy),
+  # a log group + role for CloudWatch mirroring, applies a
+  # multi-region validated trail with advanced selectors and both
+  # Insights engines, verifies GetTrailStatus/GetTrail echo the
+  # posture, then destroys. Destroy is a REAL delete (delivered log
+  # files stay in the bucket). Cost: trail delivery of management
+  # events is free for the first copy; Insights on an idle e2e account
+  # rounds to zero.
+  #
+  # Deliberately not exercised live:
+  #   - classic event_selectors -- mutually exclusive with the
+  #     advanced style the scenario uses (one selector style per
+  #     trail); the render is proven arm-for-arm offline. Unblock: a
+  #     second scenario when a live classic-selector consumer appears.
+  #   - kms_key_id / sns_topic_name -- delivery encryption and
+  #     notification arms proven arm-for-arm offline; the fixtures are
+  #     cheap but widen the lane for arms with no verify-side echo
+  #     beyond configuration. Unblock: fold into the scenario when the
+  #     proof lane wants them.
+  #   - is_organization_trail / organization_delegated_admin_account_id
+  #     -- the single-account wall (needs an AWS Organization
+  #     management account); the provider's own acceptance tests gate
+  #     these behind an Organizations precheck. Unblock: an
+  #     organization-enabled test account pair.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q39
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

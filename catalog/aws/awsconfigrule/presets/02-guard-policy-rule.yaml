@@ -1,0 +1,17 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRule
+metadata:
+  name: buckets-must-be-tagged
+spec:
+  region: <aws-region>
+  description: S3 buckets must carry resource tags
+  customPolicy:
+    policyRuntime: guard-2.x.x
+    policyText: |
+      rule check_bucket_tagged when
+        resourceType == "AWS::S3::Bucket" {
+          configuration.tags exists
+      }
+  scope:
+    complianceResourceTypes:
+      - AWS::S3::Bucket

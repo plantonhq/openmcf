@@ -8,6 +8,18 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerModelRegistrySpec defines the desired configuration for
+an Amazon SageMaker model package group - the model registry's unit
+of organization, holding the versioned model packages a team
+registers, approves, and deploys from. The group's AWS name derives
+from metadata.name.
+
+The group itself is a named shell: model package VERSIONS are
+registered into it by training pipelines and SDK calls, never
+declaratively. Everything here except the resource policy is
+create-time only (even the description replaces the group -
+provider-enforced).
+
 ## Example
 
 ```yaml
@@ -52,11 +64,17 @@ spec:
 
 `string` · required
 
+The AWS region where the model package group will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.description
 
 `string`
+
+Free-form description (1-1024 characters when set). Changing it
+REPLACES the group (provider-enforced) - write it once, well.
 
 - rule: {"string":{"maxLen":"1024"}}
 
@@ -64,14 +82,19 @@ spec:
 
 `object`
 
+IAM resource policy attached to the group (cross-account model
+sharing - grant other accounts DescribeModelPackage /
+CreateModelPackage on the group). The policy document as structured
+JSON; the folded policy resource updates in place.
+
 ## Outputs
 
 Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerModelRegistry, name: <resource-name>, fieldPath: status.outputs.<output>}`.
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.model_package_group_name` | `string` |  |
-| `status.outputs.model_package_group_arn` | `string` |  |
+| `status.outputs.model_package_group_name` | `string` | The model package group name (the AWS identity training pipelines register packages into). |
+| `status.outputs.model_package_group_arn` | `string` | The Amazon Resource Name of the model package group. |
 
 ## See Also
 

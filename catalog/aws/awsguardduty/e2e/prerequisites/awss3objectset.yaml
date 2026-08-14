@@ -1,0 +1,34 @@
+# Consumer-scoped AwsS3ObjectSet install profile: the trusted-IP and
+# threat-intel list FILES the detector's ip_sets / threat_intel_sets
+# arms point at (TEST-NET addresses; the lists never match real
+# traffic).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-awsgd-lists
+  id: planton-oss-e2e-awsgd-lists
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awsgd-bucket
+      fieldPath: status.outputs.bucket_id
+  objects:
+    - key: lists/trusted.txt
+      content: |
+        192.0.2.10
+        192.0.2.11
+    - key: lists/bad.txt
+      content: |
+        198.51.100.20
+        198.51.100.21

@@ -8,6 +8,18 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerNotebookInstanceSpec defines the desired configuration
+for an Amazon SageMaker AI notebook instance - a managed EC2 instance
+running Jupyter - together with its folded lifecycle configuration
+(bootstrap scripts). The instance's AWS name derives from
+metadata.name.
+
+Update semantics worth knowing: SageMaker STOPS the instance to apply
+most changes and restarts it afterwards (the modules ride the
+provider's stop-update-start choreography - budget several minutes
+per change). Growing `volume_size_gb` updates in place; SHRINKING it
+replaces the instance (AWS cannot shrink a volume).
+
 ## Example
 
 ```yaml
@@ -79,17 +91,28 @@ spec:
 
 `string` · required
 
+The AWS region where the notebook instance will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.instanceType
 
 `string`
 
+Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
+cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+set grows with every release - the value passes through to the API,
+which rejects unknown types.
+
 - rule: {"string":{"pattern":"^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"}}
 
 ### spec.roleArn
 
 `string | valueFrom` · required
+
+IAM role the notebook assumes for AWS API calls made from it. The
+role must trust sagemaker.amazonaws.com.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -99,11 +122,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+ML storage volume in GB (5-16384; AWS default 5). Growing updates
+in place; shrinking REPLACES the instance.
+
 - rule: {"int32":{"lte":16384,"gte":5}}
 
 ### spec.subnetId
 
 `string | valueFrom`
+
+Place the notebook in a VPC subnet (private notebooks). Changing it
+replaces the instance.
 
 - references: AwsSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -112,12 +141,17 @@ spec:
 
 `[]string | valueFrom`
 
+Security groups applied to the notebook's ENI (requires
+`subnet_id`).
+
 - references: AwsSecurityGroup (`status.outputs.security_group_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
 
 ### spec.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the ML storage volume at rest.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -126,11 +160,19 @@ spec:
 
 `string`
 
+"Enabled" (AWS default - the notebook gets a direct internet route)
+or "Disabled" (traffic flows only through your VPC - requires
+subnet_id and security_group_ids, plus a NAT or endpoint path for
+training/hosting calls). Changing it replaces the instance.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Enabled","Disabled"]}}
 
 ### spec.rootAccess
 
 `string`
+
+"Enabled" (AWS default) or "Disabled" - whether notebook users get
+root on the instance. Lifecycle scripts always run as root.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Enabled","Disabled"]}}
 
@@ -138,11 +180,22 @@ spec:
 
 `string`
 
+Runtime platform. Omitted = AWS default ("notebook-al2-v3").
+"notebook-al1-v1", "notebook-al2-v1", and "notebook-al2-v2" are
+deprecated platforms AWS still accepts for existing workloads;
+prefer "notebook-al2-v3" (Amazon Linux 2, JupyterLab 4) or
+"notebook-al2023-v1" (Amazon Linux 2023). Changing it replaces the
+instance.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["notebook-al1-v1","notebook-al2-v1","notebook-al2-v2","notebook-al2-v3","notebook-al2023-v1"]}}
 
 ### spec.defaultCodeRepository
 
 `string`
+
+Git repository cloned as the notebook's default working directory -
+an AWS CodeCommit/SageMaker code-repository NAME or any public Git
+HTTPS URL.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -150,11 +203,18 @@ spec:
 
 `[]string`
 
+Up to three additional Git repositories cloned alongside the
+default one.
+
 - rule: {"repeated":{"maxItems":"3","unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.imdsMinimumVersion
 
 `string`
+
+Minimum instance-metadata-service version: "1" (IMDSv1 and v2 both
+allowed) or "2" (IMDSv2 only - the hardened choice). Omitted = AWS
+default ("1").
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["1","2"]}}
 
@@ -162,17 +222,27 @@ spec:
 
 `AwsSagemakerNotebookInstanceLifecycleConfig`
 
+Bootstrap scripts run on the instance (the folded lifecycle
+configuration - its AWS name derives from metadata.name).
+
 - rule: at least one of on_create and on_start must be set
 
 ### spec.lifecycleConfig.onCreate
 
 `string`
 
+Shell script run ONCE, when the instance is first created (max
+16384 characters base64-encoded - keep the plain script well under
+that).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.lifecycleConfig.onStart
 
 `string`
+
+Shell script run EVERY time the instance starts, including at
+creation.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
@@ -187,11 +257,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerNote
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.notebook_instance_name` | `string` |  |
-| `status.outputs.notebook_instance_arn` | `string` |  |
-| `status.outputs.url` | `string` |  |
-| `status.outputs.network_interface_id` | `string` |  |
-| `status.outputs.lifecycle_config_name` | `string` |  |
+| `status.outputs.notebook_instance_name` | `string` | The notebook instance name (the AWS identity). |
+| `status.outputs.notebook_instance_arn` | `string` | The Amazon Resource Name of the notebook instance. |
+| `status.outputs.url` | `string` | URL to open the Jupyter notebook. |
+| `status.outputs.network_interface_id` | `string` | The ENI SageMaker created in your subnet (set only for VPC notebooks). |
+| `status.outputs.lifecycle_config_name` | `string` | The folded lifecycle configuration's name (empty when spec.lifecycle_config is not set). |
 
 ## References
 

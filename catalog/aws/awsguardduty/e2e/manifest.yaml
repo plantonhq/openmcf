@@ -1,0 +1,46 @@
+# Canonical AwsGuardDuty example (hack/dev manifest and refgen Example
+# source): the region's threat-detection posture -- detector, protection
+# plans, a noise filter, trusted/threat lists, and findings export.
+# Literal values stand in for composed references so the offline `tofu
+# plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsGuardDuty
+metadata:
+  name: guardduty-us-west-2
+  id: guardduty-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  findingPublishingFrequency: FIFTEEN_MINUTES
+  features:
+    - name: S3_DATA_EVENTS
+    - name: RUNTIME_MONITORING
+      additionalConfiguration:
+        - name: EC2_AGENT_MANAGEMENT
+          enabled: false
+  filters:
+    - name: archive-sandbox-low-severity
+      description: Archive low-severity findings from the sandbox account
+      action: ARCHIVE
+      rank: 1
+      criteria:
+        - field: severity
+          lessThan: "4"
+        - field: accountId
+          equals: ["123456789012"]
+  ipSets:
+    - name: trusted-office
+      format: TXT
+      location: https://s3.amazonaws.com/my-security-lists/trusted.txt
+      activate: true
+  threatIntelSets:
+    - name: known-bad
+      format: TXT
+      location: https://s3.amazonaws.com/my-security-lists/bad.txt
+      activate: true
+  publishingDestination:
+    bucketArn:
+      value: arn:aws:s3:::my-findings-archive
+    kmsKeyArn:
+      value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab

@@ -1,0 +1,46 @@
+# Canonical AwsCloudTrail example (hack/dev manifest and refgen Example
+# source): a multi-region audit trail with log-file validation, advanced
+# event selectors, Insights, and CloudWatch Logs mirroring. Literal
+# ARNs/names stand in for composed references so the offline `tofu plan`
+# renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrail
+metadata:
+  name: org-audit-trail
+  id: org-audit-trail
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  s3BucketName:
+    value: my-audit-trail-logs
+  s3KeyPrefix: audit
+  isMultiRegionTrail: true
+  enableLogFileValidation: true
+  kmsKeyId:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  snsTopicName:
+    value: audit-trail-delivery
+  cloudwatchLogs:
+    logGroupArn:
+      value: arn:aws:logs:us-west-2:123456789012:log-group:org-audit-trail
+    roleArn:
+      value: arn:aws:iam::123456789012:role/cloudtrail-to-cloudwatch
+  advancedEventSelectors:
+    - name: Management events
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Management"]
+    - name: S3 object writes in the data lake
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Data"]
+        - field: resources.type
+          equals: ["AWS::S3::Object"]
+        - field: resources.ARN
+          startsWith: ["arn:aws:s3:::my-data-lake/"]
+        - field: readOnly
+          equals: ["false"]
+  insightTypes:
+    - ApiCallRateInsight
+    - ApiErrorRateInsight

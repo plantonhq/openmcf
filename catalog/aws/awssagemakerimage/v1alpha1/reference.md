@@ -8,6 +8,18 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerImageSpec defines the desired configuration for an Amazon
+SageMaker AI image - the named registry entry that makes YOUR
+container images (custom kernels, training environments) selectable
+in Studio and notebook surfaces - together with its folded VERSIONS
+(each pointing at a concrete ECR image). The image's AWS name derives
+from metadata.name.
+
+Versions are AWS-numbered sequentially (1, 2, 3, ...) as entries are
+created - entry POSITION in `versions` is each version's stable
+identity here (the modules key satellites by index), so append new
+versions at the END and never reorder existing entries.
+
 ## Example
 
 ```yaml
@@ -67,11 +79,17 @@ spec:
 
 `string` · required
 
+The AWS region where the image will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.roleArn
 
 `string | valueFrom` · required
+
+IAM role SageMaker assumes to pull the version images from ECR.
+Must trust sagemaker.amazonaws.com. Changing it replaces the image.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -81,11 +99,16 @@ spec:
 
 `string`
 
+Display name shown in Studio (1-128 characters; unique within a
+domain when the image is attached to one). Updates in place.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"128"}}
 
 ### spec.description
 
 `string`
+
+Free-form description (max 512 characters). Updates in place.
 
 - rule: {"string":{"maxLen":"512"}}
 
@@ -93,9 +116,17 @@ spec:
 
 `[]AwsSagemakerImageVersion`
 
+The image's versions - each points at a concrete ECR image in the
+SAME account and region. Append-only by position (see the message
+comment above).
+
 ### spec.versions[].baseImage
 
 `string` · required
+
+ECR registry path of the container image (max 255 characters, no
+whitespace; must live in the same account and region). Example:
+"123456789012.dkr.ecr.us-west-2.amazonaws.com/my-kernels:pytorch-2.4"
 
 - rule: {"string":{"minLen":"1","maxLen":"255","pattern":"^\\S+$"}}
 
@@ -103,15 +134,23 @@ spec:
 
 `[]string`
 
+Stable names for this version (e.g. "latest", "stable") - aliases
+move freely between versions and update in place.
+
 - rule: {"repeated":{"unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.versions[].horovod
 
 `bool`
 
+The image bundles Horovod (distributed training).
+
 ### spec.versions[].jobType
 
 `string`
+
+SageMaker job type the version is compatible with: "TRAINING",
+"INFERENCE", or "NOTEBOOK_KERNEL".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["TRAINING","INFERENCE","NOTEBOOK_KERNEL"]}}
 
@@ -119,11 +158,16 @@ spec:
 
 `string`
 
+ML framework vended in the image, as "<name> <major.minor[.patch]>"
+(e.g. "PyTorch 2.4", "TensorFlow 2.16.1").
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-zA-Z]+ ?\\d+\\.\\d+(\\.\\d+)?$"}}
 
 ### spec.versions[].processor
 
 `string`
+
+Compute the image targets: "CPU" or "GPU".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["CPU","GPU"]}}
 
@@ -131,17 +175,25 @@ spec:
 
 `string`
 
+Programming language vended in the image, as
+"<name> <major.minor[.patch]>" (e.g. "python 3.12").
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^[a-zA-Z]+ ?\\d+\\.\\d+(\\.\\d+)?$"}}
 
 ### spec.versions[].releaseNotes
 
 `string`
 
+Maintainer release notes (max 255 characters).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"255"}}
 
 ### spec.versions[].vendorGuidance
 
 `string`
+
+Maintainer stability signal: "NOT_PROVIDED", "STABLE",
+"TO_BE_ARCHIVED", or "ARCHIVED".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["NOT_PROVIDED","STABLE","TO_BE_ARCHIVED","ARCHIVED"]}}
 
@@ -151,9 +203,9 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerImag
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.image_name` | `string` |  |
-| `status.outputs.image_arn` | `string` |  |
-| `status.outputs.version_numbers` | `map<string, string>` |  |
+| `status.outputs.image_name` | `string` | The image name (the AWS identity Studio configurations reference). |
+| `status.outputs.image_arn` | `string` | The Amazon Resource Name of the image. |
+| `status.outputs.version_numbers` | `map<string, string>` | AWS-assigned version numbers keyed by each `versions` entry's POSITION (as a string: "0", "1", ...) - the modules' for_each keys. |
 
 ## References
 

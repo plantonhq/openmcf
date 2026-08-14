@@ -335,6 +335,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockInvocationLogging | `spec.cloudwatch.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |
+| AwsCloudTrail | `spec.cloudwatchLogs.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.buildBatchConfig.serviceRole` | `status.outputs.role_arn` |
@@ -347,6 +348,7 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.userGroups[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.deploymentConfiguration.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |

@@ -8,6 +8,17 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerPipelineSpec defines the desired configuration for an
+Amazon SageMaker AI pipeline - the ML workflow DAG (processing,
+training, evaluation, registration steps) that executions run
+against. The pipeline's AWS name derives from metadata.name.
+
+The definition itself is SageMaker's pipeline-definition JSON schema
+(normally produced by the SageMaker Python SDK's pipeline.definition()).
+Provide it inline (`definition`) or point at an S3 object
+(`definition_s3_location`) - exactly one. Creating a pipeline is
+free; only executions bill.
+
 ## Example
 
 ```yaml
@@ -57,11 +68,17 @@ spec:
 
 `string` · required
 
+The AWS region where the pipeline will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.displayName
 
 `string`
+
+Display name shown in Studio (1-256 characters; letters, digits,
+hyphens). Omitted = the modules reuse the pipeline name.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"256","pattern":"^[0-9A-Za-z]([0-9A-Za-z-])*$"}}
 
@@ -69,11 +86,17 @@ spec:
 
 `string`
 
+Free-form description (max 3072 characters).
+
 - rule: {"string":{"maxLen":"3072"}}
 
 ### spec.roleArn
 
 `string | valueFrom` · required
+
+IAM role pipeline executions assume to run their steps (training
+jobs, processing jobs, model registration). Must trust
+sagemaker.amazonaws.com.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -83,13 +106,24 @@ spec:
 
 `object`
 
+The pipeline-definition JSON inline, as structured data (the
+SageMaker SDK's pipeline.definition() output). Exactly one of
+`definition` and `definition_s3_location`.
+
 ### spec.definitionS3Location
 
 `AwsSagemakerPipelineDefinitionS3Location`
 
+Read the definition JSON from S3 instead of inlining it. Exactly
+one of `definition` and `definition_s3_location`. NOTE: AWS's
+describe API returns only the RESOLVED definition, never this
+location - drift on the S3 object is invisible to refresh.
+
 ### spec.definitionS3Location.bucket
 
 `string | valueFrom` · required
+
+The bucket holding the definition object.
 
 - references: AwsS3Bucket (`status.outputs.bucket_id`)
 - rule: {"required":true}
@@ -99,17 +133,24 @@ spec:
 
 `string` · required
 
+The object key of the definition JSON.
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.definitionS3Location.versionId
 
 `string`
 
+Pin a specific object version. Omitted = latest.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.parallelismMaxSteps
 
 `int32` · optional (explicit presence)
+
+Default cap on steps executed in parallel across this pipeline's
+executions (>= 1). Omitted = no pipeline-level cap.
 
 - rule: {"int32":{"gte":1}}
 
@@ -123,8 +164,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerPipe
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.pipeline_name` | `string` |  |
-| `status.outputs.pipeline_arn` | `string` |  |
+| `status.outputs.pipeline_name` | `string` | The pipeline name (the AWS identity executions start against). |
+| `status.outputs.pipeline_arn` | `string` | The Amazon Resource Name of the pipeline. |
 
 ## References
 

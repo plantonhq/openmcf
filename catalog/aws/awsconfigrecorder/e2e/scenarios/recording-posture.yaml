@@ -1,0 +1,52 @@
+# The region's recording posture, deliberately SCOPED: an inclusion
+# recorder over two cheap types (per-item recording bills per
+# configuration item -- the narrow scope keeps the lane at pennies),
+# delivering to the fixture bucket, retention at the 90-day floor,
+# recording RUNNING (the recording_enabled default).
+#
+# SINGLETON COLLISION CLASS: AWS allows one recorder and one delivery
+# channel per region -- both engines' lanes and any concurrent session
+# target the SAME regional objects; lanes run sequentially within a
+# session, and a pre-existing recorder in the test account fails
+# create (the watch-list flags it).
+#
+# Destroy is a REAL delete with ordering: stop the recorder, then
+# delete channel + recorder + retention (already-recorded items age
+# out on their own).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: planton-oss-e2e-awscfgr-posture
+  id: planton-oss-e2e-awscfgr-posture
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrecorder
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awscfgr-role
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+      - AWS::EC2::SecurityGroup
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awscfgr-history
+        fieldPath: status.outputs.bucket_id
+    s3KeyPrefix: config
+    snapshotDeliveryFrequency: TwentyFour_Hours
+  retentionPeriodInDays: 90

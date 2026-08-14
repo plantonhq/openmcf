@@ -481,6 +481,27 @@ const (
 	// optional reference (unset = the explicit no-logging posture), so
 	// prerequisites stay empty and E2E fixtures ride scenario annotations.
 	CloudResourceKind_AwsApiGatewayAccountSettings CloudResourceKind = 1234
+	// The account's API audit trail. AwsS3Bucket is a prerequisite
+	// because AWS rejects trail creation without a delivery bucket
+	// carrying the CloudTrail service-principal policy. 1240 opens the
+	// governance sub-band (1240-1249).
+	CloudResourceKind_AwsCloudTrail CloudResourceKind = 1240
+	// Region singleton (one AWS Config recorder per region, named
+	// "default" by AWS; identity = the region). AwsIamRole is a
+	// prerequisite because the recorder cannot exist without its
+	// service role.
+	CloudResourceKind_AwsConfigRecorder CloudResourceKind = 1241
+	// One AWS Config compliance rule (managed, custom-lambda, or
+	// custom-policy; account- or organization-scoped) with optional
+	// auto-remediation. Managed rules need no prerequisites; the
+	// custom-lambda arm's function reference is conditional, so E2E
+	// fixtures ride scenario annotations.
+	CloudResourceKind_AwsConfigRule CloudResourceKind = 1242
+	// Region singleton (AWS allows one GuardDuty detector per
+	// account+region; the detector has no name - identity = the
+	// region). Satellite references (S3 export bucket, KMS key) are
+	// conditional, so E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsGuardDuty CloudResourceKind = 1243
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -1836,6 +1857,10 @@ var (
 		1232:  "AwsRestApiUsagePlan",
 		1233:  "AwsRestApiVpcLink",
 		1234:  "AwsApiGatewayAccountSettings",
+		1240:  "AwsCloudTrail",
+		1241:  "AwsConfigRecorder",
+		1242:  "AwsConfigRule",
+		1243:  "AwsGuardDuty",
 		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
@@ -2551,6 +2576,10 @@ var (
 		"AwsRestApiUsagePlan":                            1232,
 		"AwsRestApiVpcLink":                              1233,
 		"AwsApiGatewayAccountSettings":                   1234,
+		"AwsCloudTrail":                                  1240,
+		"AwsConfigRecorder":                              1241,
+		"AwsConfigRule":                                  1242,
+		"AwsGuardDuty":                                   1243,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3493,7 +3522,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ڿ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa1\xc1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3651,7 +3680,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AwsRestApiDomain\x10\xcf\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestdm:\x02\xe9\a\x125\n" +
 	"\x13AwsRestApiUsagePlan\x10\xd0\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestup\x127\n" +
 	"\x11AwsRestApiVpcLink\x10\xd1\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestvl:\x02\xb8\b\x12=\n" +
-	"\x1cAwsApiGatewayAccountSettings\x10\xd2\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsapias\x126\n" +
+	"\x1cAwsApiGatewayAccountSettings\x10\xd2\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsapias\x122\n" +
+	"\rAwsCloudTrail\x10\xd8\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawstrail:\x02\xf5\a\x125\n" +
+	"\x11AwsConfigRecorder\x10\xd9\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscfgr:\x02\xf0\a\x12.\n" +
+	"\rAwsConfigRule\x10\xda\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscfgrl\x12*\n" +
+	"\fAwsGuardDuty\x10\xdb\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsgd\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

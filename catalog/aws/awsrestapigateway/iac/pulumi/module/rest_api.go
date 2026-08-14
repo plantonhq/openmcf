@@ -26,6 +26,7 @@ import (
 //   - the standalone rest_api_policy resource owns the policy (clean
 //     PATCH updates; delete resets to empty instead of touching the
 //     API), so the API's own policy argument stays unset.
+//
 // The second return value carries the created resource policy (when
 // one is declared) so the deployment can order behind it - the policy
 // takes effect only in a deployed snapshot.

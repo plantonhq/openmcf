@@ -8,6 +8,24 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsRestApiVpcLinkSpec defines the desired configuration for an AWS
+API Gateway VPC link (the API Gateway v1 form).
+
+A REST API VPC link lets REST API integrations reach private
+services: the link fronts a Network Load Balancer in your VPC, and
+integrations with connection_type VPC_LINK route through it instead
+of the public internet. One link is shared by many APIs and owns its
+own network attachment - which is why it is its own component rather
+than part of AwsRestApiGateway.
+
+(HTTP APIs use a different link resource that attaches to subnets
+directly - that is the AwsHttpApiVpcLink component. The two are not
+interchangeable.)
+
+Provisioning takes several minutes while AWS builds the network
+attachment; creating the link is free - standard NLB charges apply
+to the balancer it fronts.
+
 ## Example
 
 ```yaml
@@ -43,17 +61,26 @@ spec:
 
 `string` · required
 
+The AWS region where the VPC link will be created.
+Example: "us-west-2", "eu-west-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.description
 
 `string`
 
+What this link reaches (e.g. "orders service NLB").
+
 - rule: {"string":{"maxLen":"1024"}}
 
 ### spec.targetArn
 
 `string | valueFrom` · required
+
+The internal Network Load Balancer the link fronts. AWS accepts
+exactly one balancer per link, and it cannot be changed after
+creation - a different NLB means a new link.
 
 - references: AwsNlb (`status.outputs.load_balancer_arn`)
 - rule: {"required":true}
@@ -65,8 +92,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRestApiVpcLin
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.vpc_link_id` | `string` |  |
-| `status.outputs.vpc_link_arn` | `string` |  |
+| `status.outputs.vpc_link_id` | `string` | The VPC link ID (what integrations set as their connection). |
+| `status.outputs.vpc_link_arn` | `string` | The VPC link ARN. |
 
 ## References
 

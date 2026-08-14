@@ -979,3 +979,125 @@ spec:
         The literal word "ses-account-vdm-attributes" -- the provider's
         documented import id for this singleton; no placeholder to
         resolve.
+
+    # --- CloudTrail ----------------------------------------------------------
+    - terraform_type: aws_cloudtrail
+      pulumi_type: aws:cloudtrail/trail:Trail
+      id_format: "{trail_arn}"
+      cloud_control_type_name: AWS::CloudTrail::Trail
+      notes: >-
+        The trail's ARN (v6 moved trail identity from name to ARN;
+        `aws cloudtrail describe-trails` shows TrailARN).
+    - terraform_type: aws_cloudtrail_organization_delegated_admin_account
+      pulumi_type: aws:cloudtrail/organizationDelegatedAdminAccount:OrganizationDelegatedAdminAccount
+      id_format: "{delegated_admin_account_id}"
+      notes: >-
+        The delegated administrator's 12-digit AWS account id (`aws
+        organizations list-delegated-administrators
+        --service-principal cloudtrail.amazonaws.com`).
+
+    # --- AWS Config (recorder posture) --------------------------------------
+    # The recorder family are region singletons importing by their
+    # conventional name ("default").
+    - terraform_type: aws_config_configuration_recorder
+      pulumi_type: aws:cfg/recorder:Recorder
+      id_format: "{recorder_name}"
+      cloud_control_type_name: AWS::Config::ConfigurationRecorder
+    - terraform_type: aws_config_configuration_recorder_status
+      pulumi_type: aws:cfg/recorderStatus:RecorderStatus
+      id_format: "{recorder_name}"
+    - terraform_type: aws_config_delivery_channel
+      pulumi_type: aws:cfg/deliveryChannel:DeliveryChannel
+      id_format: "{delivery_channel_name}"
+      cloud_control_type_name: AWS::Config::DeliveryChannel
+    - terraform_type: aws_config_retention_configuration
+      pulumi_type: aws:cfg/retentionConfiguration:RetentionConfiguration
+      id_format: "{retention_configuration_name}"
+      notes: >-
+        AWS names the retention singleton "default"; the name is
+        API-computed and never chosen.
+
+    # --- AWS Config (rules) --------------------------------------------------
+    # Every rule shape imports by the rule name; the remediation
+    # configuration attaches by (and imports by) the same name.
+    - terraform_type: aws_config_config_rule
+      pulumi_type: aws:cfg/rule:Rule
+      id_format: "{rule_name}"
+      cloud_control_type_name: AWS::Config::ConfigRule
+    - terraform_type: aws_config_organization_managed_rule
+      pulumi_type: aws:cfg/organizationManagedRule:OrganizationManagedRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_organization_custom_rule
+      pulumi_type: aws:cfg/organizationCustomRule:OrganizationCustomRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_organization_custom_policy_rule
+      pulumi_type: aws:cfg/organizationCustomPolicyRule:OrganizationCustomPolicyRule
+      id_format: "{rule_name}"
+    - terraform_type: aws_config_remediation_configuration
+      pulumi_type: aws:cfg/remediationConfiguration:RemediationConfiguration
+      id_format: "{rule_name}"
+      notes: >-
+        The remediation imports by its rule's name (`aws configservice
+        describe-remediation-configurations --config-rule-names ...`).
+
+    # --- GuardDuty -----------------------------------------------------------
+    # The detector id is the composition key for every satellite; the
+    # feature resources (detector, organization, member) have NO importer
+    # upstream -- they are patches, re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_detector
+      pulumi_type: aws:guardduty/detector:Detector
+      id_format: "{detector_id}"
+      cloud_control_type_name: AWS::GuardDuty::Detector
+    - terraform_type: aws_guardduty_detector_feature
+      pulumi_type: aws:guardduty/detectorFeature:DetectorFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the detector (Create and Update are the same UpdateDetector
+        call; Delete is a no-op), re-assertable by a plain apply after
+        importing the detector.
+    - terraform_type: aws_guardduty_organization_configuration_feature
+      pulumi_type: aws:guardduty/organizationConfigurationFeature:OrganizationConfigurationFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the organization configuration (Delete is a no-op),
+        re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_member_detector_feature
+      pulumi_type: aws:guardduty/memberDetectorFeature:MemberDetectorFeature
+      not_importable_upstream_reason: >-
+        The provider ships no importer -- the resource is a PATCH onto
+        the member's detector (Plugin Framework WithNoOpDelete),
+        re-assertable by a plain apply.
+    - terraform_type: aws_guardduty_filter
+      pulumi_type: aws:guardduty/filter:Filter
+      id_format: "{detector_id}:{filter_name}"
+      cloud_control_type_name: AWS::GuardDuty::Filter
+    - terraform_type: aws_guardduty_ipset
+      pulumi_type: aws:guardduty/iPSet:IPSet
+      id_format: "{detector_id}:{ip_set_id}"
+      cloud_control_type_name: AWS::GuardDuty::IPSet
+    - terraform_type: aws_guardduty_threatintelset
+      pulumi_type: aws:guardduty/threatIntelSet:ThreatIntelSet
+      id_format: "{detector_id}:{threat_intel_set_id}"
+      cloud_control_type_name: AWS::GuardDuty::ThreatIntelSet
+    - terraform_type: aws_guardduty_publishing_destination
+      pulumi_type: aws:guardduty/publishingDestination:PublishingDestination
+      id_format: "{detector_id}:{destination_id}"
+      notes: >-
+        `aws guardduty list-publishing-destinations --detector-id ...`
+        shows DestinationId.
+    - terraform_type: aws_guardduty_member
+      pulumi_type: aws:guardduty/member:Member
+      id_format: "{detector_id}:{member_account_id}"
+      cloud_control_type_name: AWS::GuardDuty::Member
+    - terraform_type: aws_guardduty_invite_accepter
+      pulumi_type: aws:guardduty/inviteAccepter:InviteAccepter
+      id_format: "{detector_id}"
+      notes: >-
+        The MEMBER account's own detector id -- the accepter is
+        member-side state over the invitation relationship.
+    - terraform_type: aws_guardduty_organization_admin_account
+      pulumi_type: aws:guardduty/organizationAdminAccount:OrganizationAdminAccount
+      id_format: "{admin_account_id}"
+    - terraform_type: aws_guardduty_organization_configuration
+      pulumi_type: aws:guardduty/organizationConfiguration:OrganizationConfiguration
+      id_format: "{detector_id}"

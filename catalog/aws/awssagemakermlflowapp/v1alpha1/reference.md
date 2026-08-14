@@ -8,6 +8,18 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerMlflowAppSpec defines the desired configuration for an
+Amazon SageMaker AI MLflow app - the SERVERLESS managed MLflow
+deployment (MLflow 3.x) that succeeds the hourly-billed tracking
+server: no capacity to size, billed per use. The app's AWS name
+derives from metadata.name.
+
+The app is standalone - it does NOT attach to a tracking server. It
+associates with SageMaker domains (`default_domain_ids`) so Studio
+users in those domains get it as their default MLflow, and it can be
+the account-wide default (`account_default_status`). Everything
+updates in place except the role.
+
 ## Example
 
 ```yaml
@@ -53,17 +65,28 @@ spec:
 
 `string` · required
 
+The AWS region where the MLflow app will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.artifactStoreUri
 
 `string` · required
 
+S3 location where MLflow artifacts (model files, run outputs) are
+stored. Example: "s3://my-mlflow/artifacts". Updates in place.
+
 - rule: {"string":{"minLen":"1","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
 ### spec.roleArn
 
 `string | valueFrom` · required
+
+IAM role the app uses to read and write the artifact store. Must
+trust sagemaker.amazonaws.com with S3 access to the artifact
+bucket. The ONE replace-on-change field - everything else updates
+in place.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -73,11 +96,18 @@ spec:
 
 `string`
 
+Make this app the account's default MLflow: "ENABLED" or
+"DISABLED". Omitted = AWS default (not the account default). Only
+one app per account can be the default.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENABLED","DISABLED"]}}
 
 ### spec.defaultDomainIds
 
 `[]string | valueFrom`
+
+SageMaker domains for which this app is the default MLflow (Studio
+users in these domains track to it automatically).
 
 - references: AwsSagemakerDomain (`status.outputs.domain_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSagemakerDomain, name: <that resource's name>, fieldPath: status.outputs.domain_id}} -- a bare string does not parse
@@ -86,11 +116,18 @@ spec:
 
 `string`
 
+Auto-register models logged to MLflow into the SageMaker Model
+Registry: "AutoModelRegistrationEnabled" or
+"AutoModelRegistrationDisabled". Omitted = AWS default (disabled).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["AutoModelRegistrationEnabled","AutoModelRegistrationDisabled"]}}
 
 ### spec.weeklyMaintenanceWindowStart
 
 `string`
+
+Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
+"SUN:03:00"). Omitted = AWS picks.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$"}}
 
@@ -100,8 +137,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerMlfl
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.app_arn` | `string` |  |
-| `status.outputs.app_name` | `string` |  |
+| `status.outputs.app_arn` | `string` | The Amazon Resource Name of the MLflow app (the AWS identity). |
+| `status.outputs.app_name` | `string` | The app name. |
 
 ## References
 

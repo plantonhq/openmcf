@@ -8,6 +8,17 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerFeatureGroupSpec defines the desired configuration for an
+Amazon SageMaker Feature Store feature group - the schema'd store ML
+features are written to and served from. The group's AWS name derives
+from metadata.name.
+
+A feature group has an ONLINE store (low-latency reads for serving),
+an OFFLINE store (an S3/Glue table for training), or both - at least
+one. Everything except the online store's TTL and the throughput
+settings is create-time only: changing it replaces the group (AWS's
+contract).
+
 ## Example
 
 ```yaml
@@ -107,11 +118,17 @@ spec:
 
 `string` · required
 
+The AWS region where the feature group will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.recordIdentifierFeatureName
 
 `string` · required
+
+The feature whose value uniquely identifies a record (must be one
+of `feature_definitions`; 1-64 characters).
 
 - rule: {"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$"}}
 
@@ -119,17 +136,28 @@ spec:
 
 `string` · required
 
+The feature carrying each record's event time (must be one of
+`feature_definitions`; Fractional epoch seconds or String
+ISO-8601). The TTL clock and offline-store partitioning key.
+
 - rule: {"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$"}}
 
 ### spec.description
 
 `string`
 
+Free-form description (max 128 characters). Changing it replaces
+the group (provider-enforced).
+
 - rule: {"string":{"maxLen":"128"}}
 
 ### spec.roleArn
 
 `string | valueFrom` · required
+
+IAM role used to persist data into the offline store's S3 location.
+The role must trust sagemaker.amazonaws.com and be able to write
+the bucket.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}
@@ -139,6 +167,8 @@ spec:
 
 `[]AwsSagemakerFeatureGroupFeature` · required
 
+The group's schema: every feature records may carry (1-2500).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"2500"}}
 - rule: vector_dimension is required when collection_type is Vector and forbidden otherwise
 
@@ -146,11 +176,17 @@ spec:
 
 `string` · required
 
+Feature name (1-64 characters; letters, digits, hyphen,
+underscore). AWS reserves "is_deleted", "write_time", and
+"api_invocation_time".
+
 - rule: {"string":{"minLen":"1","maxLen":"64","pattern":"^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$","notIn":["is_deleted","write_time","api_invocation_time"]}}
 
 ### spec.featureDefinitions[].type
 
 `string`
+
+Value type: "Integral", "Fractional", or "String".
 
 - rule: {"string":{"in":["Integral","Fractional","String"]}}
 
@@ -158,11 +194,18 @@ spec:
 
 `string`
 
+Collection shape for multi-valued features: "List", "Set", or
+"Vector" (embeddings - requires `vector_dimension`). Omitted =
+scalar. Collections require an online store with InMemory storage.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["List","Set","Vector"]}}
 
 ### spec.featureDefinitions[].vectorDimension
 
 `int32` · optional (explicit presence)
+
+Number of dimensions of a Vector feature (1-8192). Required exactly
+when collection_type is Vector.
 
 - rule: {"int32":{"lte":8192,"gte":1}}
 
@@ -170,13 +213,19 @@ spec:
 
 `AwsSagemakerFeatureGroupOnlineStore`
 
+Low-latency store for real-time serving.
+
 ### spec.onlineStore.enabled
 
 `bool`
 
+Turn the online store on. Changing it replaces the group.
+
 ### spec.onlineStore.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the online store at rest.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -185,15 +234,25 @@ spec:
 
 `string`
 
+Storage tier: "Standard" (default) or "InMemory" (lowest latency;
+required for collection-typed features). Changing it replaces the
+group.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Standard","InMemory"]}}
 
 ### spec.onlineStore.ttl
 
 `AwsSagemakerFeatureGroupTtl`
 
+Hard-delete records this long after their event time
+(ExpiresAt = EventTime + ttl). The ONLY online-store setting that
+updates in place.
+
 ### spec.onlineStore.ttl.unit
 
 `string`
+
+"Seconds", "Minutes", "Hours", "Days", or "Weeks".
 
 - rule: {"string":{"in":["Seconds","Minutes","Hours","Days","Weeks"]}}
 
@@ -201,21 +260,29 @@ spec:
 
 `int32`
 
+The duration count (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.offlineStore
 
 `AwsSagemakerFeatureGroupOfflineStore`
 
+S3/Glue store for training datasets and point-in-time queries.
+
 ### spec.offlineStore.s3Uri
 
 `string` · required
+
+S3 URI records are written under. Example: "s3://my-features/"
 
 - rule: {"string":{"minLen":"1","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
 ### spec.offlineStore.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting offline-store objects.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -224,9 +291,15 @@ spec:
 
 `bool`
 
+Skip the automatic Glue Data Catalog table (register your own
+catalog entry instead - pair with `data_catalog`).
+
 ### spec.offlineStore.tableFormat
 
 `string`
+
+Table format: "Glue" (default - a standard Glue table) or
+"Iceberg" (Apache Iceberg - faster queries, compaction).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["Glue","Iceberg"]}}
 
@@ -234,9 +307,15 @@ spec:
 
 `AwsSagemakerFeatureGroupDataCatalog`
 
+Name your own Glue catalog entry (with
+disable_glue_table_creation) or override the generated one's
+location.
+
 ### spec.offlineStore.dataCatalog.catalog
 
 `string` · required
+
+Glue catalog name.
 
 - rule: {"string":{"minLen":"1"}}
 
@@ -244,11 +323,15 @@ spec:
 
 `string` · required
 
+Glue database name.
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.offlineStore.dataCatalog.tableName
 
 `string` · required
+
+Glue table name.
 
 - rule: {"string":{"minLen":"1"}}
 
@@ -256,11 +339,17 @@ spec:
 
 `AwsSagemakerFeatureGroupThroughput`
 
+Read/write billing mode - on-demand (default) or provisioned
+capacity. The one surface besides TTL that updates in place.
+
 - rule: provisioned capacity units require mode Provisioned
 
 ### spec.throughput.mode
 
 `string`
+
+"OnDemand" (default - pay per request) or "Provisioned" (fixed
+capacity - pair with the capacity units).
 
 - rule: {"string":{"in":["OnDemand","Provisioned"]}}
 
@@ -268,11 +357,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Provisioned read capacity units (0-10000000). Only with Provisioned
+mode.
+
 - rule: {"int32":{"lte":10000000,"gte":0}}
 
 ### spec.throughput.provisionedWriteCapacityUnits
 
 `int32` · optional (explicit presence)
+
+Provisioned write capacity units (0-10000000). Only with
+Provisioned mode.
 
 - rule: {"int32":{"lte":10000000,"gte":0}}
 
@@ -289,8 +384,8 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerFeat
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.feature_group_name` | `string` |  |
-| `status.outputs.feature_group_arn` | `string` |  |
+| `status.outputs.feature_group_name` | `string` | The feature group name (the AWS identity ingestion and serving calls use). |
+| `status.outputs.feature_group_arn` | `string` | The Amazon Resource Name of the feature group. |
 
 ## References
 

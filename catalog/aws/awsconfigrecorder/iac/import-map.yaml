@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsconfigrecorder
+spec:
+  # Every resource in this singleton kind imports by the regional
+  # convention name -- AWS keeps exactly one recorder and one channel
+  # per region, both named "default".
+  values:
+    - name: recorder_name
+      derivations:
+        - from_stack_output: recorder_name
+        - literal: default
+      where_to_find: >-
+        Always "default" -- AWS's one-recorder-per-region convention
+        (`aws configservice describe-configuration-recorders` shows
+        name).
+    - name: delivery_channel_name
+      derivations:
+        - from_stack_output: delivery_channel_name
+        - literal: default
+      where_to_find: >-
+        Always "default" -- AWS's one-channel-per-region convention
+        (`aws configservice describe-delivery-channels` shows name).
+    - name: retention_configuration_name
+      derivations:
+        # AWS computes the name; it is always "default" today.
+        - literal: default
+      where_to_find: >-
+        Always "default" -- the retention singleton's API-computed
+        name (`aws configservice describe-retention-configurations`
+        shows Name).

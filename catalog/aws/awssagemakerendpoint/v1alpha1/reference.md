@@ -8,6 +8,19 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+AwsSagemakerEndpointSpec defines the desired configuration for an
+Amazon SageMaker AI real-time inference endpoint TOGETHER WITH its
+endpoint configuration (the immutable capacity/variant definition the
+endpoint points at). The endpoint's AWS name derives from
+metadata.name.
+
+AWS's own update model: an endpoint configuration is immutable, so
+changing any variant/capture/async setting rolls a NEW configuration
+and repoints the endpoint at it (UpdateEndpoint, optionally shaped by
+`deployment`). The modules own that choreography - configurations are
+name-suffixed and created before the old one is destroyed, so the
+endpoint never references a deleted configuration.
+
 ## Example
 
 ```yaml
@@ -188,11 +201,18 @@ spec:
 
 `string` · required
 
+The AWS region where the endpoint will be created.
+Example: "us-west-2", "us-east-1"
+
 - rule: {"string":{"minLen":"1"}}
 
 ### spec.productionVariants
 
 `[]AwsSagemakerEndpointVariant` · required
+
+The models served by this endpoint - each variant hosts one model
+with its own capacity (1-10). One variant is the common case;
+multiple variants split traffic by weight (A/B testing).
 
 - rule: {"repeated":{"minItems":"1","maxItems":"10"}}
 - rule: serverless variants cannot set instance_type, initial_instance_count, managed_instance_scaling, volume_size_gb, accelerator_type, inference_ami_version, core_dump, or ml_capacity_reservation_arn
@@ -202,11 +222,20 @@ spec:
 
 `string`
 
+Variant name (letters, digits, hyphens; max 63). Optional - the
+modules default it deterministically per position ("variant-0",
+"variant-1", ...) so plans stay stable; AWS's console convention
+for a single variant is "AllTraffic".
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[0-9A-Za-z-]+$"}}
 
 ### spec.productionVariants[].model
 
 `string | valueFrom`
+
+The SageMaker model this variant serves. Omit ONLY for
+inference-component endpoints (components attach models later) -
+then the spec-level execution_role_arn is required.
 
 - references: AwsSagemakerModel (`status.outputs.model_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSagemakerModel, name: <that resource's name>, fieldPath: status.outputs.model_name}} -- a bare string does not parse
@@ -215,11 +244,20 @@ spec:
 
 `string`
 
+Instance type for dedicated capacity (an "ml.*" type, e.g.
+"ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
+release - the value passes through to the API, which rejects
+unknown types. Required unless `serverless` is set.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"}}
 
 ### spec.productionVariants[].initialInstanceCount
 
 `int32` · optional (explicit presence)
+
+Number of instances to launch initially (>= 1). With
+`managed_instance_scaling` or application auto-scaling this is the
+starting point, not a fixed size.
 
 - rule: {"int32":{"gte":1}}
 
@@ -227,11 +265,19 @@ spec:
 
 `float` · optional (explicit presence)
 
+Relative traffic share among variants (>= 0; AWS defaults to 1.0).
+Traffic splits proportionally to weight/sum(weights); 0 sends no
+traffic while keeping the variant deployed.
+
 - rule: {"float":{"gte":0}}
 
 ### spec.productionVariants[].serverless
 
 `AwsSagemakerEndpointServerlessConfig`
+
+Serverless compute instead of dedicated instances: SageMaker scales
+capacity with traffic and bills per inference ($0 idle). Excludes
+every instance-based setting on this variant.
 
 - rule: provisioned_concurrency must not exceed max_concurrency
 
@@ -239,11 +285,16 @@ spec:
 
 `int32`
 
+Maximum concurrent invocations the variant processes (1-200).
+
 - rule: {"int32":{"lte":200,"gte":1}}
 
 ### spec.productionVariants[].serverless.memorySizeMb
 
 `int32`
+
+Memory per invocation environment in MB - one of 1024, 2048, 3072,
+4096, 5120, 6144 (CPU scales with memory).
 
 - rule: {"int32":{"in":[1024,2048,3072,4096,5120,6144]}}
 
@@ -251,11 +302,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Pre-warmed concurrency held ready to serve without cold starts
+(1-200; must not exceed max_concurrency). Billed while provisioned.
+
 - rule: {"int32":{"lte":200,"gte":1}}
 
 ### spec.productionVariants[].managedInstanceScaling
 
 `AwsSagemakerEndpointManagedInstanceScaling`
+
+Endpoint-managed instance range (min/max autoscaling handled by
+SageMaker itself, no Application Auto Scaling policy needed).
 
 - rule: min_instance_count must not exceed max_instance_count
 
@@ -263,11 +320,16 @@ spec:
 
 `string`
 
+"ENABLED" or "DISABLED". Omitted = AWS default.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENABLED","DISABLED"]}}
 
 ### spec.productionVariants[].managedInstanceScaling.minInstanceCount
 
 `int32` · optional (explicit presence)
+
+Instances retained when scaling down (>= 0; 0 lets the endpoint
+scale to zero where the instance family supports it).
 
 - rule: {"int32":{"gte":0}}
 
@@ -275,11 +337,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Instances provisioned at peak (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.productionVariants[].routingStrategy
 
 `string`
+
+How invocations route across instances:
+"LEAST_OUTSTANDING_REQUESTS" (favor free capacity) or "RANDOM".
+Omitted = AWS default (RANDOM).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["LEAST_OUTSTANDING_REQUESTS","RANDOM"]}}
 
@@ -287,11 +355,18 @@ spec:
 
 `int32` · optional (explicit presence)
 
+ML storage volume attached to each instance, in GB (1-512). Only
+instance families with EBS volumes accept it (nitro-local-storage
+families reject it).
+
 - rule: {"int32":{"lte":512,"gte":1}}
 
 ### spec.productionVariants[].containerStartupHealthCheckTimeoutSeconds
 
 `int32` · optional (explicit presence)
+
+Seconds the inference container may take to pass its startup health
+check (60-3600). Raise for large models with slow load times.
 
 - rule: {"int32":{"lte":3600,"gte":60}}
 
@@ -299,15 +374,29 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Seconds allowed to download and extract model data from S3 to the
+instance (60-3600). Raise for multi-GB artifacts.
+
 - rule: {"int32":{"lte":3600,"gte":60}}
 
 ### spec.productionVariants[].enableSsmAccess
 
 `bool`
 
+Allow AWS Systems Manager sessions into the variant's instances
+(debugging). Ignored on inference-component endpoints.
+
 ### spec.productionVariants[].inferenceAmiVersion
 
 `string`
+
+Pin the preconfigured inference AMI (GPU/Neuron driver line).
+Omitted = AWS picks. Values at the current provider line:
+"al2-ami-sagemaker-inference-gpu-2",
+"al2-ami-sagemaker-inference-gpu-2-1",
+"al2-ami-sagemaker-inference-gpu-3-1",
+"al2-ami-sagemaker-inference-neuron-2",
+"al2023-ami-sagemaker-inference-gpu-4-1".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["al2-ami-sagemaker-inference-gpu-2","al2-ami-sagemaker-inference-gpu-2-1","al2-ami-sagemaker-inference-gpu-3-1","al2-ami-sagemaker-inference-neuron-2","al2023-ami-sagemaker-inference-gpu-4-1"]}}
 
@@ -315,21 +404,31 @@ spec:
 
 `string`
 
+Elastic Inference accelerator attached to the variant (EI is
+deprecated by AWS - existing workloads only). Values:
+ml.eia1.medium/large/xlarge, ml.eia2.medium/large/xlarge.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ml.eia1.medium","ml.eia1.large","ml.eia1.xlarge","ml.eia2.medium","ml.eia2.large","ml.eia2.xlarge"]}}
 
 ### spec.productionVariants[].coreDump
 
 `AwsSagemakerEndpointCoreDump`
 
+Write core dumps from a crashed model container to S3.
+
 ### spec.productionVariants[].coreDump.destinationS3Uri
 
 `string` · required
+
+S3 destination for core dumps. Example: "s3://my-dumps/endpoint/"
 
 - rule: {"string":{"minLen":"1","maxLen":"512","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
 ### spec.productionVariants[].coreDump.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the dumps at rest in S3.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -338,11 +437,19 @@ spec:
 
 `string`
 
+Launch this variant's instances ONLY into the named ML capacity
+reservation (the modules send AWS's capacity-reservations-only
+preference alongside - its single legal value).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.shadowVariants
 
 `[]AwsSagemakerEndpointVariant`
+
+Shadow variants receive a copy of production traffic without
+returning responses to callers (shadow testing). AWS allows exactly
+one production and one shadow variant when shadow testing.
 
 - rule: {"repeated":{"maxItems":"10"}}
 - rule: serverless variants cannot set instance_type, initial_instance_count, managed_instance_scaling, volume_size_gb, accelerator_type, inference_ami_version, core_dump, or ml_capacity_reservation_arn
@@ -352,11 +459,20 @@ spec:
 
 `string`
 
+Variant name (letters, digits, hyphens; max 63). Optional - the
+modules default it deterministically per position ("variant-0",
+"variant-1", ...) so plans stay stable; AWS's console convention
+for a single variant is "AllTraffic".
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"63","pattern":"^[0-9A-Za-z-]+$"}}
 
 ### spec.shadowVariants[].model
 
 `string | valueFrom`
+
+The SageMaker model this variant serves. Omit ONLY for
+inference-component endpoints (components attach models later) -
+then the spec-level execution_role_arn is required.
 
 - references: AwsSagemakerModel (`status.outputs.model_name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSagemakerModel, name: <that resource's name>, fieldPath: status.outputs.model_name}} -- a bare string does not parse
@@ -365,11 +481,20 @@ spec:
 
 `string`
 
+Instance type for dedicated capacity (an "ml.*" type, e.g.
+"ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
+release - the value passes through to the API, which rejects
+unknown types. Required unless `serverless` is set.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"}}
 
 ### spec.shadowVariants[].initialInstanceCount
 
 `int32` · optional (explicit presence)
+
+Number of instances to launch initially (>= 1). With
+`managed_instance_scaling` or application auto-scaling this is the
+starting point, not a fixed size.
 
 - rule: {"int32":{"gte":1}}
 
@@ -377,11 +502,19 @@ spec:
 
 `float` · optional (explicit presence)
 
+Relative traffic share among variants (>= 0; AWS defaults to 1.0).
+Traffic splits proportionally to weight/sum(weights); 0 sends no
+traffic while keeping the variant deployed.
+
 - rule: {"float":{"gte":0}}
 
 ### spec.shadowVariants[].serverless
 
 `AwsSagemakerEndpointServerlessConfig`
+
+Serverless compute instead of dedicated instances: SageMaker scales
+capacity with traffic and bills per inference ($0 idle). Excludes
+every instance-based setting on this variant.
 
 - rule: provisioned_concurrency must not exceed max_concurrency
 
@@ -389,11 +522,16 @@ spec:
 
 `int32`
 
+Maximum concurrent invocations the variant processes (1-200).
+
 - rule: {"int32":{"lte":200,"gte":1}}
 
 ### spec.shadowVariants[].serverless.memorySizeMb
 
 `int32`
+
+Memory per invocation environment in MB - one of 1024, 2048, 3072,
+4096, 5120, 6144 (CPU scales with memory).
 
 - rule: {"int32":{"in":[1024,2048,3072,4096,5120,6144]}}
 
@@ -401,11 +539,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Pre-warmed concurrency held ready to serve without cold starts
+(1-200; must not exceed max_concurrency). Billed while provisioned.
+
 - rule: {"int32":{"lte":200,"gte":1}}
 
 ### spec.shadowVariants[].managedInstanceScaling
 
 `AwsSagemakerEndpointManagedInstanceScaling`
+
+Endpoint-managed instance range (min/max autoscaling handled by
+SageMaker itself, no Application Auto Scaling policy needed).
 
 - rule: min_instance_count must not exceed max_instance_count
 
@@ -413,11 +557,16 @@ spec:
 
 `string`
 
+"ENABLED" or "DISABLED". Omitted = AWS default.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ENABLED","DISABLED"]}}
 
 ### spec.shadowVariants[].managedInstanceScaling.minInstanceCount
 
 `int32` · optional (explicit presence)
+
+Instances retained when scaling down (>= 0; 0 lets the endpoint
+scale to zero where the instance family supports it).
 
 - rule: {"int32":{"gte":0}}
 
@@ -425,11 +574,17 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Instances provisioned at peak (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.shadowVariants[].routingStrategy
 
 `string`
+
+How invocations route across instances:
+"LEAST_OUTSTANDING_REQUESTS" (favor free capacity) or "RANDOM".
+Omitted = AWS default (RANDOM).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["LEAST_OUTSTANDING_REQUESTS","RANDOM"]}}
 
@@ -437,11 +592,18 @@ spec:
 
 `int32` · optional (explicit presence)
 
+ML storage volume attached to each instance, in GB (1-512). Only
+instance families with EBS volumes accept it (nitro-local-storage
+families reject it).
+
 - rule: {"int32":{"lte":512,"gte":1}}
 
 ### spec.shadowVariants[].containerStartupHealthCheckTimeoutSeconds
 
 `int32` · optional (explicit presence)
+
+Seconds the inference container may take to pass its startup health
+check (60-3600). Raise for large models with slow load times.
 
 - rule: {"int32":{"lte":3600,"gte":60}}
 
@@ -449,15 +611,29 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Seconds allowed to download and extract model data from S3 to the
+instance (60-3600). Raise for multi-GB artifacts.
+
 - rule: {"int32":{"lte":3600,"gte":60}}
 
 ### spec.shadowVariants[].enableSsmAccess
 
 `bool`
 
+Allow AWS Systems Manager sessions into the variant's instances
+(debugging). Ignored on inference-component endpoints.
+
 ### spec.shadowVariants[].inferenceAmiVersion
 
 `string`
+
+Pin the preconfigured inference AMI (GPU/Neuron driver line).
+Omitted = AWS picks. Values at the current provider line:
+"al2-ami-sagemaker-inference-gpu-2",
+"al2-ami-sagemaker-inference-gpu-2-1",
+"al2-ami-sagemaker-inference-gpu-3-1",
+"al2-ami-sagemaker-inference-neuron-2",
+"al2023-ami-sagemaker-inference-gpu-4-1".
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["al2-ami-sagemaker-inference-gpu-2","al2-ami-sagemaker-inference-gpu-2-1","al2-ami-sagemaker-inference-gpu-3-1","al2-ami-sagemaker-inference-neuron-2","al2023-ami-sagemaker-inference-gpu-4-1"]}}
 
@@ -465,21 +641,31 @@ spec:
 
 `string`
 
+Elastic Inference accelerator attached to the variant (EI is
+deprecated by AWS - existing workloads only). Values:
+ml.eia1.medium/large/xlarge, ml.eia2.medium/large/xlarge.
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["ml.eia1.medium","ml.eia1.large","ml.eia1.xlarge","ml.eia2.medium","ml.eia2.large","ml.eia2.xlarge"]}}
 
 ### spec.shadowVariants[].coreDump
 
 `AwsSagemakerEndpointCoreDump`
 
+Write core dumps from a crashed model container to S3.
+
 ### spec.shadowVariants[].coreDump.destinationS3Uri
 
 `string` · required
+
+S3 destination for core dumps. Example: "s3://my-dumps/endpoint/"
 
 - rule: {"string":{"minLen":"1","maxLen":"512","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
 ### spec.shadowVariants[].coreDump.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the dumps at rest in S3.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -488,11 +674,20 @@ spec:
 
 `string`
 
+Launch this variant's instances ONLY into the named ML capacity
+reservation (the modules send AWS's capacity-reservations-only
+preference alongside - its single legal value).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 
 ### spec.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the ML storage volumes attached to the
+endpoint's instances. NOT usable with nitro-local-storage instance
+families (ml.g5/g6/p4d/p5 and similar encrypt locally by default
+and reject a custom key) or serverless-only endpoints.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -501,6 +696,10 @@ spec:
 
 `string | valueFrom`
 
+IAM role for the endpoint configuration - REQUIRED when any variant
+omits `model` (inference-component endpoints, where components bring
+their own models later); otherwise the models' roles apply.
+
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsIamRole, name: <that resource's name>, fieldPath: status.outputs.role_arn}} -- a bare string does not parse
 
@@ -508,9 +707,15 @@ spec:
 
 `AwsSagemakerEndpointAsyncInference`
 
+Queue requests and deliver responses to S3 instead of returning
+them synchronously (large payloads, long-running inference).
+
 ### spec.asyncInference.outputS3Path
 
 `string` · required
+
+S3 location for inference responses. Example:
+"s3://my-bucket/async-out/"
 
 - rule: {"string":{"minLen":"1","maxLen":"512","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
@@ -518,11 +723,16 @@ spec:
 
 `string`
 
+S3 location for FAILED inference responses (kept apart from
+successes).
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"512","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
 ### spec.asyncInference.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting the async output objects.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -531,11 +741,16 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Cap concurrent requests sent to one model container. Omitted = AWS
+picks an optimal value (1-1000).
+
 - rule: {"int32":{"lte":1000,"gte":1}}
 
 ### spec.asyncInference.successTopicArn
 
 `string | valueFrom`
+
+SNS topic notified on successful inference.
 
 - references: AwsSnsTopic (`status.outputs.topic_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSnsTopic, name: <that resource's name>, fieldPath: status.outputs.topic_arn}} -- a bare string does not parse
@@ -544,6 +759,8 @@ spec:
 
 `string | valueFrom`
 
+SNS topic notified on failed inference.
+
 - references: AwsSnsTopic (`status.outputs.topic_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSnsTopic, name: <that resource's name>, fieldPath: status.outputs.topic_arn}} -- a bare string does not parse
 
@@ -551,15 +768,22 @@ spec:
 
 `[]string`
 
+Which notifications carry the full inference response inline:
+any of "SUCCESS_NOTIFICATION_TOPIC", "ERROR_NOTIFICATION_TOPIC".
+
 - rule: {"repeated":{"unique":true,"items":{"string":{"in":["SUCCESS_NOTIFICATION_TOPIC","ERROR_NOTIFICATION_TOPIC"]}}}}
 
 ### spec.dataCapture
 
 `AwsSagemakerEndpointDataCapture`
 
+Capture request/response payloads to S3 (the Model Monitor feed).
+
 ### spec.dataCapture.destinationS3Uri
 
 `string` · required
+
+S3 location for captured data. Example: "s3://my-bucket/capture/"
 
 - rule: {"string":{"minLen":"1","maxLen":"512","pattern":"^(https|s3)://([^/]+)/?(.*)$"}}
 
@@ -567,11 +791,16 @@ spec:
 
 `int32`
 
+Percentage of traffic to capture (0-100).
+
 - rule: {"int32":{"lte":100,"gte":0}}
 
 ### spec.dataCapture.captureModes
 
 `[]string` · required
+
+Capture request payloads ("Input"), responses ("Output"), or both
+in one entry ("InputAndOutput"). 1-2 entries.
 
 - rule: {"repeated":{"minItems":"1","maxItems":"2","unique":true,"items":{"string":{"in":["Input","Output","InputAndOutput"]}}}}
 
@@ -579,9 +808,17 @@ spec:
 
 `bool`
 
+Start with capture ON (flip without replacing the configuration is
+not possible - the configuration is immutable, so the modules roll
+a new one).
+
 ### spec.dataCapture.csvContentTypes
 
 `[]string`
+
+Request content types captured as CSV (e.g. "text/csv"; max 10).
+When either content-type list is set, AWS requires at least one
+entry across the two.
 
 - rule: {"repeated":{"maxItems":"10","items":{"string":{"minLen":"1","maxLen":"256","pattern":"^[0-9A-Za-z](-*[0-9A-Za-z])*\\/[0-9A-Za-z](-*[0-9A-Za-z.])*$"}}}}
 
@@ -589,11 +826,16 @@ spec:
 
 `[]string`
 
+Request content types captured as JSON (e.g. "application/json";
+max 10).
+
 - rule: {"repeated":{"maxItems":"10","items":{"string":{"minLen":"1","maxLen":"256","pattern":"^[0-9A-Za-z](-*[0-9A-Za-z])*\\/[0-9A-Za-z](-*[0-9A-Za-z.])*$"}}}}
 
 ### spec.dataCapture.kmsKeyArn
 
 `string | valueFrom`
+
+KMS key encrypting captured data in S3.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse
@@ -602,11 +844,19 @@ spec:
 
 `AwsSagemakerEndpointDeployment`
 
+How UpdateEndpoint rolls new capacity: blue/green with traffic
+shifting (AWS default when omitted) or rolling batches, plus
+CloudWatch-alarm auto-rollback.
+
 - rule: exactly one of blue_green and rolling must be set
 
 ### spec.deployment.blueGreen
 
 `AwsSagemakerEndpointBlueGreenPolicy`
+
+Blue/green: a full new fleet is provisioned and traffic shifts per
+the routing configuration. Exactly one of `blue_green` and
+`rolling`.
 
 - rule: canary_size requires traffic_routing_type CANARY
 - rule: linear_step_size requires traffic_routing_type LINEAR
@@ -615,11 +865,17 @@ spec:
 
 `string`
 
+"ALL_AT_ONCE" (flip everything after one bake), "CANARY" (a canary
+batch first, then the rest), or "LINEAR" (equal steps).
+
 - rule: {"string":{"in":["ALL_AT_ONCE","CANARY","LINEAR"]}}
 
 ### spec.deployment.blueGreen.waitIntervalSeconds
 
 `int32`
+
+Seconds between traffic-shift steps (0-3600) - the bake time per
+step while rollback alarms are watched.
 
 - rule: {"int32":{"lte":3600,"gte":0}}
 
@@ -627,9 +883,14 @@ spec:
 
 `AwsSagemakerEndpointCapacitySize`
 
+Size of the first (canary) traffic batch - CANARY only; at most 50%
+of the variant's capacity.
+
 ### spec.deployment.blueGreen.canarySize.type
 
 `string`
+
+"INSTANCE_COUNT" or "CAPACITY_PERCENT".
 
 - rule: {"string":{"in":["INSTANCE_COUNT","CAPACITY_PERCENT"]}}
 
@@ -637,15 +898,21 @@ spec:
 
 `int32`
 
+The count or percentage (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.deployment.blueGreen.linearStepSize
 
 `AwsSagemakerEndpointCapacitySize`
 
+Size of each LINEAR step - LINEAR only; 10-50% of capacity.
+
 ### spec.deployment.blueGreen.linearStepSize.type
 
 `string`
+
+"INSTANCE_COUNT" or "CAPACITY_PERCENT".
 
 - rule: {"string":{"in":["INSTANCE_COUNT","CAPACITY_PERCENT"]}}
 
@@ -653,11 +920,16 @@ spec:
 
 `int32`
 
+The count or percentage (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.deployment.blueGreen.terminationWaitSeconds
 
 `int32` · optional (explicit presence)
+
+Extra seconds the OLD fleet is kept after traffic fully shifts
+(0-3600; AWS default 0) - the rollback safety window.
 
 - rule: {"int32":{"lte":3600,"gte":0}}
 
@@ -665,15 +937,24 @@ spec:
 
 `int32` · optional (explicit presence)
 
+Hard ceiling for the whole deployment (600-14400 seconds; must
+exceed wait interval + termination wait).
+
 - rule: {"int32":{"lte":14400,"gte":600}}
 
 ### spec.deployment.rolling
 
 `AwsSagemakerEndpointRollingPolicy`
 
+Rolling: instances are replaced in batches in place (no parallel
+fleet cost). Exactly one of `blue_green` and `rolling`.
+
 ### spec.deployment.rolling.maximumBatchSize
 
 `AwsSagemakerEndpointCapacitySize` · required
+
+Batch size per rolling step (5-50% of the fleet when expressed as
+CAPACITY_PERCENT).
 
 - rule: {"required":true}
 
@@ -681,11 +962,15 @@ spec:
 
 `string`
 
+"INSTANCE_COUNT" or "CAPACITY_PERCENT".
+
 - rule: {"string":{"in":["INSTANCE_COUNT","CAPACITY_PERCENT"]}}
 
 ### spec.deployment.rolling.maximumBatchSize.value
 
 `int32`
+
+The count or percentage (>= 1).
 
 - rule: {"int32":{"gte":1}}
 
@@ -693,15 +978,23 @@ spec:
 
 `int32`
 
+Seconds between batches (0-3600) - the bake time while rollback
+alarms are watched.
+
 - rule: {"int32":{"lte":3600,"gte":0}}
 
 ### spec.deployment.rolling.rollbackMaximumBatchSize
 
 `AwsSagemakerEndpointCapacitySize`
 
+Batch size used when rolling BACK to the old fleet (AWS defaults to
+100% - one-shot rollback).
+
 ### spec.deployment.rolling.rollbackMaximumBatchSize.type
 
 `string`
+
+"INSTANCE_COUNT" or "CAPACITY_PERCENT".
 
 - rule: {"string":{"in":["INSTANCE_COUNT","CAPACITY_PERCENT"]}}
 
@@ -709,17 +1002,24 @@ spec:
 
 `int32`
 
+The count or percentage (>= 1).
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.deployment.rolling.maximumExecutionTimeoutSeconds
 
 `int32` · optional (explicit presence)
 
+Hard ceiling for the whole deployment (600-14400 seconds).
+
 - rule: {"int32":{"lte":14400,"gte":600}}
 
 ### spec.deployment.autoRollbackAlarmNames
 
 `[]string`
+
+CloudWatch alarms watched during deployment - any alarm firing
+rolls the endpoint back (1-10 alarm names).
 
 - rule: {"repeated":{"maxItems":"10","unique":true,"items":{"string":{"minLen":"1"}}}}
 
@@ -735,10 +1035,10 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSagemakerEndp
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.endpoint_name` | `string` |  |
-| `status.outputs.endpoint_arn` | `string` |  |
-| `status.outputs.endpoint_config_name` | `string` |  |
-| `status.outputs.endpoint_config_arn` | `string` |  |
+| `status.outputs.endpoint_name` | `string` | The endpoint name (the AWS identity clients invoke). |
+| `status.outputs.endpoint_arn` | `string` | The Amazon Resource Name of the endpoint. |
+| `status.outputs.endpoint_config_name` | `string` | The name of the endpoint configuration currently in service (the modules roll a new suffixed configuration on capacity changes). |
+| `status.outputs.endpoint_config_arn` | `string` | The Amazon Resource Name of that endpoint configuration. |
 
 ## References
 

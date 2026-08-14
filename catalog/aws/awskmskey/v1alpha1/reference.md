@@ -412,10 +412,12 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockKnowledgeBase | `spec.managed.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockPrompt | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
+| AwsCloudTrail | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCloudwatchLogGroup | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCodeBuildProject | `spec.encryptionKey` | `status.outputs.key_arn` |
 | AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |
 | AwsCognitoUserPool | `spec.lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
+| AwsConfigRecorder | `spec.deliveryChannel.s3KmsKeyArn` | `status.outputs.key_arn` |
 | AwsDocumentDb | `spec.instances[].performanceInsightsKmsKeyId` | `status.outputs.key_arn` |
 | AwsDocumentDb | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsDynamodb | `spec.serverSideEncryption.kmsKeyArn` | `status.outputs.key_arn` |
@@ -437,6 +439,7 @@ Fields on other kinds that can point at this resource:
 | AwsFsxOntapFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxOpenzfsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsFsxWindowsFileSystem | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsGuardDuty | `spec.publishingDestination.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsKinesisFirehose | `spec.sseKmsKeyArn` | `status.outputs.key_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.s3Backup.kmsKeyArn` | `status.outputs.key_arn` |

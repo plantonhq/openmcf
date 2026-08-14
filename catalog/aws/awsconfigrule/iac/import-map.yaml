@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsconfigrule
+spec:
+  # Every rule shape (account, organization x3) and the remediation
+  # import by the rule name, which is metadata.name on both engines.
+  values:
+    - name: rule_name
+      derivations:
+        - from_metadata_name: true
+      where_to_find: >-
+        The rule's name -- metadata.name (`aws configservice
+        describe-config-rules` / `describe-organization-config-rules`
+        show the names).

@@ -105,6 +105,8 @@ github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0 h1:Z1RAWbDAd9u5U0c6/t9
 github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0/go.mod h1:EE4FBuNXJZ66BO3viCqhE9htgR2SpGc8WqSPg0ax2cI=
 github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4 h1:4O0/LZvqivJec25Mv6SYo0jxFn7sz6ohl/2E4j2wpGk=
 github.com/aws/aws-sdk-go-v2/service/cloudfront v1.65.4/go.mod h1:RM8kKDMKT2tymx6ZazxukmFTvuhjcYIuAS3MgdKfEdc=
+github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.58.5 h1:IW3YOylp+V+c6xt8Lu+wEZu4TDL9yVNFgpwWrlON+yc=
+github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.58.5/go.mod h1:sIZpF3UTDuqWuVaav9CkiGN7XBv8N+bse0twkorKaqs=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0 h1:wvV1Dd0OGEMYsLkDrFVxk0c/hOhdiXCuBLTaeHsW/Vc=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.62.0/go.mod h1:lipiF9DI3EmTTkEn2sgLug3iEO1dXM50FDFooey6vYU=
 github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.79.0 h1:5W/KOwsnZrdi7RD97G5Vto3XEuM70FAavWScfsli7gA=
@@ -115,6 +117,8 @@ github.com/aws/aws-sdk-go-v2/service/codepipeline v1.48.0 h1:pRwraefKZSh1FgVK278
 github.com/aws/aws-sdk-go-v2/service/codepipeline v1.48.0/go.mod h1:TauWDdo/zCElLORUQcUb8JkIxoNrctD03ECepck6/oc=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.64.0 h1:JCOv8Kq70lKneUGmA3C0suhpZ2wdvEfWhEV65EJ0B2g=
 github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.64.0/go.mod h1:a5X5qds6BTk0qIdRdN7iQVk6NdcMMF60OSyQzO/bjao=
+github.com/aws/aws-sdk-go-v2/service/configservice v1.68.5 h1:wqV8zBPsEmcQ5pw7v8UT1N7YovTB18IhfIB612KkDoA=
+github.com/aws/aws-sdk-go-v2/service/configservice v1.68.5/go.mod h1:LnJ4xBvJBnJ8sgtltwVISvE6Lcj7KrSkrpu+Ql0n/Yg=
 github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7 h1:8gF9Gw5voOAMRCbuMglXFyTJ66Pjt7uuYYJ5JXaQ0ks=
 github.com/aws/aws-sdk-go-v2/service/docdb v1.49.7/go.mod h1:ssjm99OPoiqhDFKOLDHqI9KYH41FFuYbWUSJIuaZzdc=
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.59.2 h1:Rk2vMAylCpfUapcjnDLApIyzBBqANEyTiN54VktI07Y=
@@ -143,6 +147,8 @@ github.com/aws/aws-sdk-go-v2/service/globalaccelerator v1.37.0 h1:Hot9NnV04nJX4c
 github.com/aws/aws-sdk-go-v2/service/globalaccelerator v1.37.0/go.mod h1:nGC8HlrYzlwtKmhCqtcfa3X4e0zQWvCF0NIIeX4Doa8=
 github.com/aws/aws-sdk-go-v2/service/glue v1.148.0 h1:Hvbn809LAadDCCp2GF43nxdnFyDLpkCnkwrObglLMl4=
 github.com/aws/aws-sdk-go-v2/service/glue v1.148.0/go.mod h1:WN3fnq0YuV4TEG5y30MN5ejq3PQILOo+9MM3G504jH8=
+github.com/aws/aws-sdk-go-v2/service/guardduty v1.85.5 h1:hbauy1yAG9RB2Foqwh77Nks8zMdMLn/oL8CZ8expui0=
+github.com/aws/aws-sdk-go-v2/service/guardduty v1.85.5/go.mod h1:DV9NKLKmHBWT8RXQQIR4v36MNwVuDP2WGhWPd4nlulA=
 github.com/aws/aws-sdk-go-v2/service/iam v1.54.7 h1:undHpuVUg25wS2CpeXNqVjIcJComV2RE5AZ7mJGth2U=
 github.com/aws/aws-sdk-go-v2/service/iam v1.54.7/go.mod h1:5H/UUroHvcKm6l2qaqh3CMM6R9K91ls8Y8rVX6cG3ts=
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 h1:mbRIur/BiHK6SKPjoBIXSE/hJ6g6JGRLuxQy1jGjlN4=

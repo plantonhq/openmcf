@@ -1,0 +1,61 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_config_configuration_recorder:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider's one-field wrapper blocks flatten (they carry no
+      # identity): the exclusion list and the strategy string.
+      - arg: recording_group.exclusion_by_resource_types.resource_types
+        spec: spec.recording_group.exclusion_by_resource_types
+      - arg: recording_group.recording_strategy.use_only
+        spec: spec.recording_group.recording_strategy
+      - arg: recording_mode.recording_mode_override.description
+        spec: spec.recording_mode.override.description
+      - arg: recording_mode.recording_mode_override.recording_frequency
+        spec: spec.recording_mode.override.recording_frequency
+      - arg: recording_mode.recording_mode_override.resource_types
+        spec: spec.recording_mode.override.resource_types
+    exclusions:
+      - arg: name
+        reason: AWS keeps one recorder per region named "default" -- the singleton's name is an AWS-side constant, never an identity you choose (metadata.name never reaches AWS)
+
+  aws_config_configuration_recorder_status:
+    mappings:
+      # The folded start/stop toggle -- the resource's entire surface is
+      # one boolean over the recorder.
+      - arg: is_enabled
+        spec: spec.recording_enabled
+    exclusions:
+      - arg: name
+        reason: module-wired pointer at the "default" recorder created in the same plan
+      - arg: region
+        reason: the toggle acts on the regional recorder -- the module wires the provider to spec.region
+
+  aws_config_delivery_channel:
+    specRoot: spec.delivery_channel
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The provider's one-field wrapper block flattens.
+      - arg: snapshot_delivery_properties.delivery_frequency
+        spec: spec.delivery_channel.snapshot_delivery_frequency
+    exclusions:
+      - arg: name
+        reason: AWS keeps one delivery channel per region named "default" -- the singleton's name is an AWS-side constant, never an identity you choose
+
+  aws_config_retention_configuration:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: retention_period_in_days
+        spec: spec.retention_period_in_days

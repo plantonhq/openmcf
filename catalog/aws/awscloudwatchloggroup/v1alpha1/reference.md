@@ -1357,6 +1357,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreEvaluation | `spec.onlineEvaluationConfigs[].dataSource.logGroupNames` | `status.outputs.log_group_name` |
 | AwsBedrockInvocationLogging | `spec.cloudwatch.logGroupName` | `status.outputs.log_group_name` |
 | AwsClientVpn | `spec.connectionLog.cloudwatchLogGroup` | `status.outputs.log_group_name` |
+| AwsCloudTrail | `spec.cloudwatchLogs.logGroupArn` | `status.outputs.log_group_arn` |
 | AwsCodeBuildProject | `spec.logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
 | AwsCognitoUserPool | `spec.logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | AwsEcsTaskDefinition | `spec.logging.logGroup` | `status.outputs.log_group_name` |

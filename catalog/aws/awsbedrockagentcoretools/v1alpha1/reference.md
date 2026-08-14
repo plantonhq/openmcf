@@ -42,7 +42,7 @@ metadata:
 spec:
   region: us-west-2
   browsers:
-    - name: research-browser
+    - name: research_browser
       description: Web research sessions with recording
       executionRoleArn:
         value: arn:aws:iam::123456789012:role/agentcore-tools-role
@@ -64,7 +64,7 @@ spec:
       certificates:
         - secretArn:
             value: arn:aws:secretsmanager:us-west-2:123456789012:secret:mtls-client-cert-AbCdEf
-    - name: internal-browser
+    - name: internal_browser
       description: Reaches intranet sites through the VPC
       network:
         mode: VPC
@@ -161,7 +161,7 @@ Managed cloud browsers.
 Browser name in AWS. The for_each key on both engines and the key in
 the `browser_ids` output map.
 
-- rule: {"string":{"minLen":"1"}}
+- rule: {"string":{"minLen":"1","pattern":"^[a-zA-Z][a-zA-Z0-9_]{0,47}$"}}
 
 ### spec.browsers[].description
 

@@ -156,6 +156,13 @@ var verifiers = map[string]Verifier{
 	"awsbedrockagentcoretokenvault": &agentCoreTokenVaultVerifier{},
 	"awssesaccountsettings":         &sesAccountSettingsVerifier{},
 
+	// The governance family (audit/compliance posture; per-kind
+	// contracts in governance.go).
+	"awscloudtrail":     &cloudTrailVerifier{},
+	"awsconfigrecorder": &configRecorderVerifier{},
+	"awsconfigrule":     &configRuleVerifier{},
+	"awsguardduty":      &guardDutyVerifier{},
+
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},
