@@ -184,6 +184,55 @@ var verifiers = map[string]Verifier{
 		pathFormat: "zones/%s/rulesets/%s",
 		outputKeys: []string{"zone_id", "ruleset_id"},
 	},
+	// The namespace is also the KV pair's install fixture, so this entry
+	// serves both its own lanes and the pair's fixture verification.
+	"cloudflarekvnamespace": &apiPathVerifier{
+		component:     "cloudflarekvnamespace",
+		pathFormat:    "accounts/%s/storage/kv/namespaces/%s",
+		outputKeys:    []string{"namespace_id"},
+		accountScoped: true,
+	},
+	// A KV entry's existence GET is the value endpoint (200 with the raw
+	// value when present). Keys are path-escaped by the API client; scenario
+	// keys stay slash-free so the import ID stays parseable too.
+	"cloudflareworkerskvpair": &apiPathVerifier{
+		component:     "cloudflareworkerskvpair",
+		pathFormat:    "accounts/%s/storage/kv/namespaces/%s/values/%s",
+		outputKeys:    []string{"namespace_id", "key_name"},
+		accountScoped: true,
+	},
+	// Note the singular "database" in the D1 path -- the provider's own Read
+	// path, not the plural most Cloudflare collections use.
+	"cloudflared1database": &apiPathVerifier{
+		component:     "cloudflared1database",
+		pathFormat:    "accounts/%s/d1/database/%s",
+		outputKeys:    []string{"database_id"},
+		accountScoped: true,
+	},
+	// The queue is also the R2 event-notification scenario's install fixture
+	// (a scenario-declared prerequisite), so this entry serves both.
+	"cloudflarequeue": &apiPathVerifier{
+		component:     "cloudflarequeue",
+		pathFormat:    "accounts/%s/queues/%s",
+		outputKeys:    []string{"queue_id"},
+		accountScoped: true,
+	},
+	// R2's identity is the bucket NAME (no separate id). Jurisdiction rides
+	// a cf-r2-jurisdiction HEADER, not the path -- this probe is honest only
+	// for default-jurisdiction buckets, which is all the live scenarios
+	// create; a non-default arm would need a header-aware client extension.
+	"cloudflarer2bucket": &apiPathVerifier{
+		component:     "cloudflarer2bucket",
+		pathFormat:    "accounts/%s/r2/buckets/%s",
+		outputKeys:    []string{"bucket_name"},
+		accountScoped: true,
+	},
+	"cloudflarehyperdriveconfig": &apiPathVerifier{
+		component:     "cloudflarehyperdriveconfig",
+		pathFormat:    "accounts/%s/hyperdrive/configs/%s",
+		outputKeys:    []string{"hyperdrive_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

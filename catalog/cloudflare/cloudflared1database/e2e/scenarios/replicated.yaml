@@ -1,0 +1,25 @@
+# Replicated CloudflareD1Database scenario: a region-hinted primary (weur)
+# with automatic read replication -- the placement and replication surfaces
+# in one lifecycle. Jurisdiction is deliberately absent: it is mutually
+# exclusive with region (both fix placement). The name carries the run id
+# (database names are unique within an account).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareD1Database
+metadata:
+  name: planton-oss-e2e-cloudflared1database-replicated
+  id: planton-oss-e2e-cloudflared1database-replicated
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflared1database
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  databaseName: planton-e2e-${E2E_RUN_ID}-d1-rep
+  region: weur
+  readReplication:
+    mode: auto

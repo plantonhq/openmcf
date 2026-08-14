@@ -1,0 +1,67 @@
+# Data-governance CloudflareR2Bucket scenario: the three bucket-scoped
+# policy resources -- CORS, object lifecycle, and object lock -- on one
+# bucket, proving each companion resource's lifecycle without any external
+# dependency. The lock rule is age-based and prefix-scoped, and no object is
+# ever written, so the lock never actually retains anything and destroy
+# stays clean. The name carries the run id (bucket names are unique within
+# an account).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareR2Bucket
+metadata:
+  name: planton-oss-e2e-cloudflarer2bucket-data-governance
+  id: planton-oss-e2e-cloudflarer2bucket-data-governance
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarer2bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-e2e-${E2E_RUN_ID}-r2-gov
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  storageClass: Standard
+  cors:
+    rules:
+      - id: e2e-app-origin
+        allowed:
+          methods:
+            - GET
+            - HEAD
+          origins:
+            - https://e2e.planton.dev
+          headers:
+            - x-e2e-request
+        exposeHeaders:
+          - Content-Encoding
+        maxAgeSeconds: 300
+  lifecycle:
+    rules:
+      - id: e2e-expire-tmp
+        enabled: true
+        conditions:
+          prefix: tmp/
+        deleteObjectsTransition:
+          condition:
+            type: Age
+            maxAgeSeconds: 86400
+        abortMultipartUploadsTransition:
+          maxAgeSeconds: 3600
+      - id: e2e-tier-archive
+        enabled: true
+        conditions:
+          prefix: archive/
+        storageClassTransitions:
+          - condition:
+              type: Age
+              maxAgeSeconds: 604800
+  lock:
+    rules:
+      - id: e2e-retain-audit
+        enabled: true
+        prefix: audit/
+        condition:
+          type: Age
+          maxAgeSeconds: 3600

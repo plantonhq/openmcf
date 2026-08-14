@@ -1,0 +1,27 @@
+# Offline-only domains plan. The custom domain needs a zone (and whether a
+# PENDING undelegated fixture zone can serve one is unverified offline), and
+# the managed r2.dev public domain is an orphan class -- the provider's Read
+# AND Delete for cloudflare_r2_managed_domain are empty, so once enabled it
+# stays in the API until manually removed. Neither belongs in a live lane
+# that must end zero-orphan, so this file is NOT under e2e/scenarios/. tofu
+# plan against it proves the module sends the managed-domain toggle
+# (public_access) and the full custom-domain surface (zone, minTls, ciphers);
+# live proof is a proof-lane call under its own design authority.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareR2Bucket
+metadata:
+  name: planton-oss-e2e-cloudflarer2bucket-domains
+  org: planton-oss
+  env: e2e
+spec:
+  bucketName: e2e-cfr2b-domains
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  publicAccess: true
+  customDomains:
+    - enabled: true
+      zoneId:
+        value: 023e105f4ecef8ad9ca31a8372d0c353
+      domain: media.planton-e2e.com
+      minTls: "1.2"
+      ciphers:
+        - ECDHE-ECDSA-AES128-GCM-SHA256

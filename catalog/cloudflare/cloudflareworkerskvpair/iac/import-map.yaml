@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareworkerskvpair
+spec:
+  # A KV entry's import identity is {account_id}/{namespace_id}/{key_name} --
+  # strictly positional slash-delimited segments, so an entry whose key
+  # contains "/" cannot be imported (the provider path-escapes keys on API
+  # calls but not in the import ID). account_id is spec-relative; the other
+  # two are the deploy's own outputs.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: namespace_id
+      derivations:
+        - from_stack_output: namespace_id
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> KV (the namespace ID
+        column), or `GET /accounts/<account_id>/storage/kv/namespaces` on the
+        Cloudflare v4 API (the id field).
+    - name: key_name
+      derivations:
+        - from_stack_output: key_name
+      where_to_find: >-
+        Cloudflare dashboard -> Storage & Databases -> KV -> the namespace ->
+        KV Pairs (the key column), or
+        `GET /accounts/<account_id>/storage/kv/namespaces/<namespace_id>/keys`
+        on the Cloudflare v4 API (the name field).

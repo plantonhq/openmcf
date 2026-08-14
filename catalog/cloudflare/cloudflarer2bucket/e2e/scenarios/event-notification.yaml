@@ -1,0 +1,36 @@
+# Event-notification CloudflareR2Bucket scenario: object events (uploads and
+# deletions under events/) delivered to a Cloudflare Queue. The queue is a
+# SCENARIO-declared prerequisite (planton.dev/e2e-prerequisites), not a
+# registry one, because a bucket does not require a queue -- only this arm
+# does. The reference resolves against the queue kind's install fixture. The
+# name carries the run id (bucket names are unique within an account).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareR2Bucket
+metadata:
+  name: planton-oss-e2e-cloudflarer2bucket-event-notification
+  id: planton-oss-e2e-cloudflarer2bucket-event-notification
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarer2bucket
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareQueue
+  tags:
+    - planton-e2e
+spec:
+  bucketName: planton-e2e-${E2E_RUN_ID}-r2-evt
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  eventNotifications:
+    - queue:
+        valueFrom:
+          kind: CloudflareQueue
+          name: planton-oss-e2e-cloudflarequeue-prereq
+          fieldPath: status.outputs.queue_id
+      rules:
+        - actions:
+            - PutObject
+            - DeleteObject
+          description: planton-e2e object events
+          prefix: events/

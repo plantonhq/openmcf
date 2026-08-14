@@ -1,0 +1,22 @@
+# Minimal CloudflareKvNamespace scenario: one namespace with a run-scoped
+# title. KV namespace titles are unique within an account, so the title
+# carries the run id to keep concurrent lanes from colliding. The account
+# comes from the harness env. The kind's whole spec surface is title +
+# account, so this single scenario exercises it completely.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareKvNamespace
+metadata:
+  name: planton-oss-e2e-cloudflarekvnamespace-minimal
+  id: planton-oss-e2e-cloudflarekvnamespace-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarekvnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  namespaceName: planton-e2e-${E2E_RUN_ID}-kv-min
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
