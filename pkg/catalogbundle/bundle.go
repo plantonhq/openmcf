@@ -14,7 +14,24 @@
 //	presets/**            every kind's preset manifests, provider/kind layout
 //	entries/**            every user-facing kind's catalog entry (title,
 //	                      description, slug, logo, contract links, official
-//	                      IaC module directories), provider/kind layout
+//	                      IaC module directories, and -- for covered
+//	                      components -- fact-sheet summaries), provider/kind
+//	                      layout
+//	costs/**              covered components' cost profiles, provider/kind
+//	                      layout, byte-identical to the tree's cost.yaml
+//	controls/**           covered components' control profiles (controls.yaml)
+//	permissions/**        covered components' permission manifests
+//	                      (iac/permissions.yaml)
+//	estimates/**          covered components' generated per-preset cost
+//	                      estimates, provider/kind layout
+//	compliance/**         the central control catalog and the framework
+//	                      crosswalks the control profiles are read against
+//	pricebooks/**         the pinned per-provider price books the estimates
+//	                      were generated from
+//
+// Fact-sheet coverage is presence-based: a component without the cost/
+// controls/permissions sidecars ships no cargo and its entry carries no
+// summaries -- absence means "not yet covered", never "free".
 //
 // The manifest's checksums make the bundle self-verifying; release signing
 // wraps the whole zip (the signature travels beside the artifact, not in

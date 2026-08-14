@@ -142,7 +142,7 @@ func TestReadCatalogPage(t *testing.T) {
 // A tree that cannot satisfy the registry fails the BUILD, naming every
 // missing component -- deploy coordinates are proven at release build time.
 func TestProjectEntriesRefusesForeignTree(t *testing.T) {
-	if _, err := projectEntries(t.TempDir()); err == nil {
+	if _, err := projectEntries(t.TempDir(), nil); err == nil {
 		t.Fatal("a catalog tree missing the registry's components must fail entry projection")
 	} else if !strings.Contains(err.Error(), "no component directory") {
 		t.Fatalf("refusal must name the missing components, got: %v", err)

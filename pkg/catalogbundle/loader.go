@@ -23,7 +23,9 @@ type Bundle struct {
 	// validation rules in options, the kind registry enum).
 	Files *protoregistry.Files
 	// entries holds the raw bundle contents by entry name (conversions/**,
-	// presets/**, entries/**, descriptors.binpb).
+	// presets/**, entries/**, the fact-sheet cargo trees costs/**,
+	// controls/**, permissions/**, estimates/**, compliance/**,
+	// pricebooks/**, and descriptors.binpb).
 	entries map[string][]byte
 	// catalogEntries are the decoded entries/** documents, sorted by kind.
 	catalogEntries []CatalogEntry
@@ -118,6 +120,45 @@ func (b *Bundle) Presets() map[string][]byte {
 // registry is the conformance gate's verdict, not the loader's.
 func (b *Bundle) CatalogEntries() []CatalogEntry {
 	return b.catalogEntries
+}
+
+// CostProfiles returns the bundle's component cost profiles keyed by entry
+// name (costs/<provider>/<kind>.yaml), sorted. Like presets, the contents
+// are raw bytes -- consumers parse what they read, and the conformance gate
+// has already proven every document parses against its schema.
+func (b *Bundle) CostProfiles() map[string][]byte {
+	return b.subtree(costsPrefix)
+}
+
+// ControlProfiles returns the bundle's component control profiles keyed by
+// entry name (controls/<provider>/<kind>.yaml), sorted.
+func (b *Bundle) ControlProfiles() map[string][]byte {
+	return b.subtree(controlsPrefix)
+}
+
+// Permissions returns the bundle's component permission manifests keyed by
+// entry name (permissions/<provider>/<kind>.yaml), sorted.
+func (b *Bundle) Permissions() map[string][]byte {
+	return b.subtree(permissionsPrefix)
+}
+
+// CostEstimates returns the bundle's generated per-preset cost estimates
+// keyed by entry name (estimates/<provider>/<kind>.yaml), sorted.
+func (b *Bundle) CostEstimates() map[string][]byte {
+	return b.subtree(estimatesPrefix)
+}
+
+// Compliance returns the bundle's central compliance documents keyed by
+// entry name (compliance/controls-catalog.yaml and
+// compliance/frameworks/<framework>.yaml), sorted.
+func (b *Bundle) Compliance() map[string][]byte {
+	return b.subtree(compliancePrefix)
+}
+
+// PriceBooks returns the bundle's pinned per-provider price books keyed by
+// entry name (pricebooks/<provider>.yaml), sorted.
+func (b *Bundle) PriceBooks() map[string][]byte {
+	return b.subtree(pricebooksPrefix)
 }
 
 func (b *Bundle) subtree(prefix string) map[string][]byte {

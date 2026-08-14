@@ -71,10 +71,19 @@ func Build(input BuildInput) (*Manifest, error) {
 		return nil, fmt.Errorf("no presets found under %s -- refusing to build a bundle without its preset cargo", input.CatalogDir)
 	}
 
+	// Fact-sheet cargo (cost/controls/permissions sidecars, estimates, and
+	// their central documents) packs the exact bytes it parses -- the
+	// parsed forms feed the entry summaries below, so summary and cargo
+	// can never disagree within one build.
+	cargo, err := collectCargo(input.CatalogDir, entries)
+	if err != nil {
+		return nil, err
+	}
+
 	// Catalog entries are projected from the tree plus the compiled kind
 	// registry -- the projection itself refuses missing components, dead
 	// module directories, and an empty result.
-	entryFiles, err := projectEntries(input.CatalogDir)
+	entryFiles, err := projectEntries(input.CatalogDir, cargo)
 	if err != nil {
 		return nil, err
 	}
