@@ -1,0 +1,23 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awseksfargateprofile
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: selectors
+      sku_meter: Fargate pod compute
+      pricing_unit: vCPU-hours
+      impact: Every pod matching a selector runs on Fargate, billing its requested vCPU and memory per second from image pull to termination -- a selector matching a busy namespace routes that namespace's entire compute bill onto Fargate rates without a single number in this manifest.
+    - field_path: selectors.labels
+      sku_meter: Fargate pod compute
+      pricing_unit: vCPU-hours
+      impact: Labels narrow the match to explicitly opted-in pods -- the difference between a scoped experiment and a whole-namespace commitment is one map.
+  estimate_exclusions:
+    - matched pods bill Fargate vCPU and memory rates by their own resource requests (rounded up to Fargate's size combinations) -- workload-driven and invisible in this manifest
+    - the profile requires private subnets, so matched pods' internet egress rides a NAT gateway billed on its AwsNatGateway component
+    - the cluster management fee bills on the AwsEksCluster component
+  notes: "The profile itself is free -- it is a routing rule, not capacity. What it routes is the money: preset 01's bare-namespace selector is a deliberate blank cheque (everything in the namespace moves to Fargate rates), while preset 02's label selector prices only what opts in. The cost story here is scope control, and the manifest is where the scope lives."

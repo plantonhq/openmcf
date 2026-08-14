@@ -1,0 +1,70 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awscloudfront
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: price_class
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: The headline lever -- which edge geographies serve traffic sets the per-GB and per-request rates. Unset means PriceClass_All (every location, the most expensive tiers); PriceClass_100 confines serving to the cheapest regions.
+    - field_path: default_cache_behavior.compress
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: Compression shrinks every compressible response -- directly fewer billed egress GB for the same traffic.
+    - field_path: default_cache_behavior.cache_policy_id
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: The cache policy sets hit ratio -- every miss is an origin fetch and, for cross-region origins, billed origin-facing transfer.
+    - field_path: geo_restriction
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: Geographic blocks stop requests before they bill egress -- a compliance control that is also a cost boundary.
+    - field_path: origins.origin_shield
+      sku_meter: Origin Shield requests
+      pricing_unit: requests
+      impact: Origin Shield adds a per-request charge for every request that flows through the shield region in exchange for collapsing origin load.
+    - field_path: default_cache_behavior.function_associations
+      sku_meter: edge function invocations
+      pricing_unit: requests
+      impact: CloudFront Functions bill per invocation on every matched request -- lightweight, but multiplied by full request volume.
+    - field_path: default_cache_behavior.lambda_function_associations
+      sku_meter: edge function invocations
+      pricing_unit: requests
+      impact: Lambda@Edge bills per request plus per GB-second of duration -- an order of magnitude above CloudFront Functions, on every matched request.
+    - field_path: default_cache_behavior.realtime_log_config_arn
+      sku_meter: real-time log records
+      pricing_unit: records
+      impact: Real-time logs bill per million records delivered to the referenced Kinesis stream -- full request volume again.
+    - field_path: enable_additional_metrics
+      sku_meter: additional CloudWatch metrics
+      pricing_unit: metrics
+      impact: Turns on eight additional per-distribution CloudWatch metrics (cache hit rate, error rates, latency), each billed at the custom-metric monthly rate.
+    - field_path: anycast_ip_list_id
+      sku_meter: Anycast static IPs
+      pricing_unit: IP-months
+      impact: Referencing an Anycast IP list attaches static edge IPs that bill per IP per month.
+    - field_path: viewer_certificate
+      sku_meter: dedicated-IP TLS endpoints
+      pricing_unit: months
+      impact: Choosing dedicated-IP SSL (ssl_support_method vip) instead of free SNI bills about $600 per month per distribution -- the single most expensive checkbox on this spec.
+    - field_path: staging
+      sku_meter: data transfer out
+      pricing_unit: GB
+      impact: A staging distribution is a second billable distribution -- continuous-deployment testing doubles the serving surface while it runs.
+    - field_path: origins.vpc_origin
+      sku_meter: VPC origin hours
+      pricing_unit: hours
+      impact: A VPC origin bills hourly for the private connection plus per GB of origin-facing transfer.
+  free_tier: The always-free tier covers 1 TB of data transfer out, 10 million HTTP/HTTPS requests, and 2 million CloudFront Function invocations each month.
+  estimate_exclusions:
+    - egress GB and request volume are entirely traffic-driven -- an idle distribution bills nothing
+    - per-GB and per-request rates are tiered by edge geography; the price class chooses which tiers can apply
+    - origin-side costs (S3 requests and storage, load balancer capacity) bill on the referenced origin components
+    - a WAF attached via web_acl_arn bills on its own web ACL resource
+    - standard access logs bill S3 storage on the referenced logging bucket
+  notes: "Distribution existence is free -- the bill is traffic shaped by geography, cache efficiency, and the opt-in per-request features (Origin Shield, edge functions, real-time logs). The committed-money checkboxes (dedicated-IP TLS, Anycast IPs, additional metrics) are all visible in the manifest."

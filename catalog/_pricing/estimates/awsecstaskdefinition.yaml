@@ -1,0 +1,48 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsecstaskdefinition
+spec:
+  presets:
+    - preset: 01-web-app
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each running copy bills 0.5 vCPU and 1 GB per hour at Fargate rates -- count lives on the AwsEcsService that runs this definition
+        - the auto-created log group ingests task output at CloudWatch rates and stores it for 30 days
+      notes: Zero committed cost -- a registered revision is free metadata until a service runs it.
+    - preset: 02-app-with-otel-sidecar
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each running copy bills 1 vCPU and 2 GB per hour at Fargate rates, split 768/1536 CPU units app and 256/512 sidecar -- the sidecar rides inside the task allocation, adding no separate charge
+        - telemetry the OTel collector exports bills at its destination
+      notes: Zero committed cost -- the observability sidecar's price is task headroom, visible in this definition's sizing.
+    - preset: 03-arm64-worker
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each running copy bills 0.25 vCPU and 0.5 GB per hour at Fargate's ARM64 rates, roughly 20% below x86_64
+      notes: Zero committed cost -- the Graviton discount is baked into the rate card this definition selects.
+    - preset: 04-launch-time-ebs-volume
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - each running copy bills 0.5 vCPU and 1 GB per hour at Fargate rates
+        - the configureAtLaunch volume's size, type, and therefore cost are supplied by the running service's volume_configuration -- the deliberate two-component contract with AwsEcsService's 04 preset
+      notes: Zero committed cost -- the volume declared here is a mount point; the GB-months bill on the service that materializes it.

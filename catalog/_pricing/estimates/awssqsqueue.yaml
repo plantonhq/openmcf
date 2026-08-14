@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awssqsqueue
+spec:
+  presets:
+    - preset: 01-standard-queue
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - requests bill per million after the always-free first million; 20-second long polling (receive_wait_time_seconds) minimizes empty receives
+        - message retention is free at any length -- the 4-day default changes exposure, never cost
+        - data transfer out of the region bills per GB
+      notes: Zero committed cost -- an idle standard queue with SSE-SQS encryption bills nothing at rest.
+    - preset: 02-fifo-with-deduplication
+      region_assumption: us-east-1
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - FIFO requests bill about 25% above standard-queue requests; high-throughput mode (perMessageGroupId) raises the ceiling, not the rate
+        - the dead-letter queue referenced by dead_letter_config is its own component billing its own requests
+        - data transfer out of the region bills per GB
+      notes: Zero committed cost -- FIFO ordering and deduplication change the per-request rate, never the (zero) baseline.

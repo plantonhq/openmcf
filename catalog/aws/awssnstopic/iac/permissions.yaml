@@ -1,0 +1,47 @@
+# Least-privilege permissions the IaC runner's AWS principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: awssnstopic
+spec:
+  aws:
+    statements:
+      - sid: ManageTopic
+        actions:
+          - sns:CreateTopic
+          - sns:DeleteTopic
+          - sns:GetTopicAttributes
+          - sns:SetTopicAttributes
+          - sns:TagResource
+          - sns:UntagResource
+          - sns:ListTagsForResource
+        resources:
+          - arn:aws:sns:*:*:*
+        provenance: derived
+        notes: Covers aws_sns_topic -- the access policy, delivery policy, encryption, archive policy, signature version, and delivery-feedback settings are all attributes written through SetTopicAttributes. The topic-name wildcard is the ARN's variable part.
+      - sid: ManageDataProtectionPolicy
+        actions:
+          - sns:PutDataProtectionPolicy
+          - sns:GetDataProtectionPolicy
+        resources:
+          - arn:aws:sns:*:*:*
+        provenance: derived
+        notes: Covers aws_sns_topic_data_protection_policy, created only when spec.data_protection_policy is set.
+      - sid: PassDeliveryFeedbackRoles
+        actions:
+          - iam:PassRole
+        resources:
+          - arn:aws:iam::*:role/*
+        provenance: derived
+        notes: Required only when delivery_feedback references success/failure feedback roles -- SNS assumes them to write delivery status logs, and configuring the topic passes them. Scope to the actual role ARNs in a hardened deployment.
+      - sid: UseCustomerManagedKey
+        actions:
+          - kms:DescribeKey
+        resources:
+          - arn:aws:kms:*:*:key/*
+        provenance: derived
+        notes: Required only when kms_key_id references a customer-managed key -- the provider validates the key on topic configuration. Publish-path KMS calls are made by publishers with their own identities, never by the runner. Scope to the actual key ARN in a hardened deployment.

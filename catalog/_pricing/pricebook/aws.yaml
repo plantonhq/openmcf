@@ -252,3 +252,15 @@ spec:
         usage_type: ReadCapacityUnit-Hrs
         operation: CommittedThroughput
         description_contains: beyond the free tier
+    - name: lambda-event-poller-unit-us-east-1
+      service_name: AWS Lambda
+      pricing_unit: EPU-hours
+      region: us-east-1
+      currency: USD
+      list_unit_price: "0.185"
+      price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSLambda/20260810200249/us-east-1/index.json
+      retrieved_on: "2026-08-14"
+      aws_selector:
+        offer_code: AWSLambda
+        region_code: us-east-1
+        usage_type: Lambda-Event-Poller-Unit-Hour

@@ -1,0 +1,63 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awslambda
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: memory_size_mb
+      sku_meter: function compute duration
+      pricing_unit: GB-seconds
+      impact: Memory is the GB-second multiplier -- every invocation bills its duration times this allocation, and CPU scales with it, so right-sizing memory is the dominant dial.
+    - field_path: architecture
+      sku_meter: function compute duration
+      pricing_unit: GB-seconds
+      impact: arm64 (Graviton) bills roughly 20% less per GB-second than x86_64 for the same duration.
+    - field_path: timeout_seconds
+      sku_meter: function compute duration
+      pricing_unit: GB-seconds
+      impact: The timeout caps how many GB-seconds a single invocation can burn -- a runaway function bills until this ceiling stops it.
+    - field_path: ephemeral_storage_mb
+      sku_meter: ephemeral storage duration
+      pricing_unit: GB-seconds
+      impact: Scratch space above the free 512 MB bills per GB-second of invocation duration.
+    - field_path: aliases.provisioned_concurrent_executions
+      sku_meter: provisioned concurrency
+      pricing_unit: GB-seconds
+      impact: Pre-warmed execution environments bill per GB-second around the clock while configured, whether or not requests arrive -- the one opt-in that turns Lambda into committed spend.
+    - field_path: scaling_configs
+      sku_meter: provisioned concurrency
+      pricing_unit: GB-seconds
+      impact: A scaling config's min_execution_environments holds a floor of warm environments that bills like provisioned concurrency until scaled to zero.
+    - field_path: snap_start
+      sku_meter: SnapStart snapshot storage
+      pricing_unit: GB-months
+      impact: SnapStart caches an initialized snapshot that bills for storage per published version, plus a per-GB restore charge on cold starts.
+    - field_path: function_url
+      sku_meter: function requests
+      pricing_unit: requests
+      impact: A function URL exposes direct HTTPS invocation -- every hit is a billed request plus internet data transfer out on responses.
+    - field_path: async_invoke_config.maximum_retry_attempts
+      sku_meter: function requests
+      pricing_unit: requests
+      impact: Each async retry is a fresh billed invocation -- retries multiply both requests and compute duration on failures.
+    - field_path: logging_config
+      sku_meter: log ingestion
+      pricing_unit: GB
+      impact: Function output ships to CloudWatch Logs at the standard ingestion rate; log level and format choices set the volume.
+    - field_path: tracing_mode
+      sku_meter: trace records
+      pricing_unit: traces
+      impact: Active tracing records an X-Ray trace per sampled invocation at X-Ray's per-trace rates.
+  free_tier: 1 million requests and 400,000 GB-seconds of compute per month are always free (not a 12-month trial); the free tier applies account-wide across all functions.
+  estimate_exclusions:
+    - request count and invocation duration are entirely workload-driven -- the meters exist from the first invocation, but their quantities cannot be known from the manifest
+    - internet data transfer out (function URL responses, external calls) bills per GB
+    - a VPC-attached function's internet egress rides a NAT gateway billed on its own component
+    - KMS requests for a customer-managed environment-variable key bill per call
+    - code artifacts bill where they live -- the S3 bucket or ECR repository referenced by the manifest
+    - CloudWatch Logs storage and X-Ray traces bill on their own meters as the function runs
+  notes: "An idle function with no provisioned concurrency and no scaling-config floor bills exactly nothing -- serverless's core economic promise. The committed-spend surfaces (aliases' provisioned concurrency, scaling-config minimums) are opt-in and visible in the manifest."

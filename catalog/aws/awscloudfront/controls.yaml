@@ -1,0 +1,92 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awscloudfront
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Cached content rests on encrypted storage structurally -- edge points of presence use encrypted SSDs and regional edge caches use encrypted EBS volumes (AWS's CloudFront data-protection documentation); function code and configuration are likewise stored encrypted.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: Edge cache encryption is provider-managed with no customer-key option; field-level encryption (field_level_encryption_id) protects specific request payloads under customer RSA keys, which is a data-in-processing feature, not cache-at-rest key control.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: default_cache_behavior.viewer_protocol_policy
+      evidence:
+        type: spec_default
+        reference: The viewer protocol policy decides whether plain HTTP is served, redirected to HTTPS, or refused (https-only); origin-side, each custom origin's protocol_policy and ssl_protocols pin the forward leg's TLS posture.
+      notes: All three presets pin redirect-to-https on every behavior; the API and management plane are HTTPS-only structurally.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A CDN distribution exists to be publicly reachable -- that is its function, not an exposure defect. What it must protect is the ORIGIN, which the module does by creating origin access control (create_origin_access_control) so S3 origins accept only this distribution's signed requests.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: default_cache_behavior.trusted_key_group_ids
+      evidence:
+        type: spec_default
+        reference: Unset means anyone may request content; trusted key groups require CloudFront-signed URLs or cookies per request, and viewer_mtls goes further by demanding client certificates from the referenced trust store.
+      notes: geo_restriction additionally blocks declared countries before any content is served.
+    - control_id: edge-protection
+      status: configurable
+      field_path: web_acl_arn
+      evidence:
+        type: spec_default
+        reference: Unset means no request filtering; referencing a WAF web ACL inspects every viewer request against its rules before CloudFront serves or forwards it -- this component IS the edge, so the WAF attachment point is native.
+    - control_id: rbac
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Distribution management is IAM-authorized against the distribution ARN; content-plane restriction is separately expressible through signed URLs and mTLS (restricted-ingress).
+    - control_id: workload-identity
+      status: enforced_by_default
+      evidence:
+        type: module_default
+        reference: When the module creates origin access control for S3 origins, CloudFront signs origin requests with SigV4 as a service principal -- no static origin credentials exist anywhere in the manifest.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: viewer_certificate
+      evidence:
+        type: spec_default
+        reference: The viewer certificate's minimum_protocol_version retires legacy TLS -- modern security policies refuse TLSv1.0/1.1 handshakes; custom origins likewise pin ssl_protocols for the forward leg.
+    - control_id: audit-logging
+      status: configurable
+      field_path: logging
+      evidence:
+        type: spec_default
+        reference: Unset means no access logs; the logging block delivers standard access logs (optionally with cookies) to the referenced S3 bucket, and realtime_log_config_arn streams per-request records within seconds.
+      notes: Management API calls are recorded in CloudTrail by default regardless.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CloudFront publishes request count, error rate, and transfer metrics to CloudWatch automatically for every distribution; enable_additional_metrics adds eight deeper metrics (cache hit rate, per-status error rates, latency percentiles).
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: A distribution stores no data of record -- the cache is disposable by design and origin content is the durable copy, governed on the origin components.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No stored data means no retention surface; cache TTLs are performance tuning, not retention policy.
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: CloudFront serves from hundreds of edge locations with automatic failover between them; origin_groups additionally fail over between origins on declared status codes.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: retain_on_delete
+      evidence:
+        type: spec_default
+        reference: Defaults to false (teardown disables and deletes the distribution); true means IaC destroy only disables it, leaving the distribution for a deliberate manual deletion.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed edge fleet -- AWS operates and patches every POP; the http_version field adopts newer protocols (HTTP/2, HTTP/3) without any customer patch surface.
