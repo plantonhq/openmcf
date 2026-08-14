@@ -192,7 +192,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 **Examples:**
 ```
-@forge-planton-component MongodbAtlas --provider atlas
+@forge-planton-component CloudflareD1Database --provider cloudflare
 @forge-planton-component GcpCertManagerCert --provider gcp
 @forge-planton-component PostgresKubernetes --provider kubernetes --category workload
 ```
@@ -446,16 +446,10 @@ are gated from this commit on.
 18. **017-test-validation** - Run `go test -v ./catalog/<provider>/<kind>/v1alpha1/` (verify component tests pass)
     - Validates spec_test.go tests all buf.validate rules
     - Ensures validation rules are syntactically and semantically correct
-19. **Site catalog regen** - Run `yarn copy-docs && yarn generate-structure` in `site/`
-    so the new component's public page materializes in the built site. The site builds each
-    component's public page from the KIND-ROOT `catalog.md`. The copy script self-cleans
-    provider directories, so stale pages disappear and new ones appear in the same pass.
-    Skipping this leaves the built catalog silently lagging the source -- the site build
-    does NOT pick up the source pages on its own.
 
 ### Phase 9: Guide + Reference Regeneration (Rule 019)
 
-20. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
+19. **019-guide** - Seed the component's `GUIDE.md` (the authored wisdom layer at the
     component root) from what this forging session learned -- internal conventions,
     judgment calls, operational recipes, parity accounting, diagram impact -- following
     `_rules/docs/write-planton-component-guide.mdc`.

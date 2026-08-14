@@ -1,3 +1,0 @@
-name: oci-nosql-table
-runtime: go
-description: OCI NoSQL Table component

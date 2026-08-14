@@ -31,11 +31,11 @@ const (
 	ProviderE2EProfileSpec_none ProviderE2EProfileSpec_CredentialApproach = 1
 	// GitHub OIDC federation (AWS, GCP, Azure).
 	ProviderE2EProfileSpec_oidc ProviderE2EProfileSpec_CredentialApproach = 2
-	// Scoped API token (DigitalOcean, Civo, Hetzner, Cloudflare).
+	// Scoped API token (DigitalOcean, Cloudflare).
 	ProviderE2EProfileSpec_api_token ProviderE2EProfileSpec_CredentialApproach = 3
 	// Service account JSON key (GCP).
 	ProviderE2EProfileSpec_service_account_key ProviderE2EProfileSpec_CredentialApproach = 4
-	// Self-hosted infrastructure (OpenFGA, OpenStack).
+	// Self-hosted infrastructure (OpenFGA).
 	ProviderE2EProfileSpec_self_hosted ProviderE2EProfileSpec_CredentialApproach = 5
 )
 
@@ -95,7 +95,7 @@ const (
 	ProviderE2EProfileSpec_kind ProviderE2EProfileSpec_TestSubstrate = 1
 	// Actual cloud provider API.
 	ProviderE2EProfileSpec_real_cloud ProviderE2EProfileSpec_TestSubstrate = 2
-	// Local container (OpenFGA, OpenStack DevStack).
+	// Local container (OpenFGA).
 	ProviderE2EProfileSpec_local_container ProviderE2EProfileSpec_TestSubstrate = 3
 )
 

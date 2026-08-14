@@ -1,3 +1,0 @@
-name: scaleway-serverless-container
-runtime: go
-description: Scaleway Serverless Container IaC module

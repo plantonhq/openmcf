@@ -10,8 +10,8 @@ import "buf/validate/validate.proto";
 // A value earns its place here when the platform brings its own credential shape:
 // the selected provider determines which sub-message of KubernetesProviderConfig
 // holds the connection details. Platforms that authenticate through a plain
-// kubeconfig (local development clusters, on-prem, bare metal, and managed
-// platforms like Civo or Scaleway that simply hand out a kubeconfig) share the
+// kubeconfig (local development clusters, on-prem, bare metal, and any managed
+// platform that simply hands out a kubeconfig) share the
 // single self_managed value rather than one value per platform.
 enum KubernetesProvider {
   kubernetes_provider_unspecified = 0; // Unspecified Kubernetes provider.
@@ -19,7 +19,7 @@ enum KubernetesProvider {
   aws_eks = 2; // Amazon Elastic Kubernetes Service (EKS) - A managed Kubernetes service by AWS that simplifies the deployment and management of Kubernetes clusters.
   azure_aks = 3; // Azure Kubernetes Service (AKS) - A managed Kubernetes service by Microsoft Azure that provides Kubernetes cluster orchestration and management.
   digital_ocean_doks = 4; // DigitalOcean Kubernetes Service (DOKS) - A managed Kubernetes service by DigitalOcean that simplifies the deployment and management of Kubernetes clusters.
-  self_managed = 5; // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and kubeconfig-only clouds (Civo, Scaleway). Connects through a plain kubeconfig.
+  self_managed = 5; // A cluster on no credential-bearing managed platform: kind/minikube/k3s, on-prem, bare metal, vSphere, and any kubeconfig-only cloud. Connects through a plain kubeconfig.
 }
 
 // KubernetesProviderConfig message represents the specification required to create or connect a Kubernetes Cluster.
@@ -45,7 +45,7 @@ message KubernetesProviderConfig {
   KubernetesProviderConfigDigitalOceanDoks digital_ocean_doks = 5;
 
   // Connection specification for self-managed clusters (kind, minikube, k3s, on-prem,
-  // bare metal, vSphere, and kubeconfig-only clouds such as Civo and Scaleway).
+  // bare metal, vSphere, and any kubeconfig-only cloud).
   KubernetesProviderConfigSelfManaged self_managed = 6;
 }
 
@@ -187,7 +187,7 @@ message KubernetesProviderConfigDigitalOceanDoks {
 // KubernetesProviderConfigSelfManaged carries the connection for any cluster that
 // authenticates through a plain kubeconfig: local development clusters (kind,
 // minikube, k3s, Docker Desktop), on-prem and bare-metal clusters, vSphere, and
-// managed platforms that simply hand out a kubeconfig (Civo, Scaleway). The file
+// any managed platform that simply hands out a kubeconfig. The file
 // bundles endpoint, CA data, and credential; there is no token to refresh and
 // therefore nothing else to configure.
 message KubernetesProviderConfigSelfManaged {

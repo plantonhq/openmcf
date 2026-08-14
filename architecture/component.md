@@ -69,10 +69,9 @@ status:
 - `KubernetesKafka` - Apache Kafka deployed to any Kubernetes cluster
 - `KubernetesDeployment` - Containerized workload deployment
 
-**SaaS Platform Resources:**
-- `AtlasMongodb` - MongoDB Atlas cluster
-- `ConfluentKafka` - Confluent Cloud Kafka cluster
-- `SnowflakeDatabase` - Snowflake database
+**Identity and Authorization Platforms:**
+- `Auth0Client` - Auth0 application client
+- `OpenFgaStore` - OpenFGA authorization store
 
 ---
 
@@ -165,21 +164,14 @@ The following sections define the complete, ideal state of any component. This s
 - [ ] **Enum Entry Exists** - Component has an entry in the `CloudResourceKind` enum
 - [ ] **Correct Provider Band** - Enum value is within the correct provider's 1,000-wide band (each provider owns a full band so its catalog can grow without colliding with a neighbor; the authoritative allocation table lives in the enum's header comment in `shared/cloudresourcekind/cloud_resource_kind.proto`):
   - Test/dev/custom: 1-49
-  - SaaS platforms: 50-199
   - AWS: 1000-1999
   - Azure: 2000-2999
   - GCP: 3000-3999
   - Kubernetes: 4000-4999
   - DigitalOcean: 5000-5999
-  - Civo: 6000-6999
   - Cloudflare: 7000-7999
   - Auth0: 8000-8999
   - OpenFGA: 9000-9999
-  - OpenStack: 10000-10999
-  - Scaleway: 11000-11999
-  - Alibaba Cloud: 12000-12999
-  - OCI: 13000-13999
-  - Hetzner Cloud: 14000-14999
 - [ ] **Unique Enum Value** - No duplicate enum numbers
 - [ ] **Unique ID Prefix** - The `id_prefix` is globally unique across all providers
 - [ ] **Proper Metadata** - `kind_meta` includes:

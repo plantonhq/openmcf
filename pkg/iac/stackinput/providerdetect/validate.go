@@ -8,21 +8,13 @@ import (
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 
-	alicloudprovider "github.com/plantonhq/planton/catalog/alicloud"
-	atlasprovider "github.com/plantonhq/planton/catalog/atlas"
 	auth0provider "github.com/plantonhq/planton/catalog/auth0"
 	awsprovider "github.com/plantonhq/planton/catalog/aws"
 	azureprovider "github.com/plantonhq/planton/catalog/azure"
 	cloudflareprovider "github.com/plantonhq/planton/catalog/cloudflare"
-	confluentprovider "github.com/plantonhq/planton/catalog/confluent"
 	gcpprovider "github.com/plantonhq/planton/catalog/gcp"
-	hetznercloudprovider "github.com/plantonhq/planton/catalog/hetznercloud"
 	kubernetesprovider "github.com/plantonhq/planton/catalog/kubernetes"
-	ociprovider "github.com/plantonhq/planton/catalog/oci"
 	openfgaprovider "github.com/plantonhq/planton/catalog/openfga"
-	openstackprovider "github.com/plantonhq/planton/catalog/openstack"
-	scalewayprovider "github.com/plantonhq/planton/catalog/scaleway"
-	snowflakeprovider "github.com/plantonhq/planton/catalog/snowflake"
 )
 
 // ValidateProviderConfig validates that the provider config file can be loaded
@@ -51,8 +43,6 @@ func ValidateProviderConfig(providerConfigPath string, provider cloudresourcekin
 // getProviderConfigProto returns a new proto message for the given provider.
 func getProviderConfigProto(provider cloudresourcekind.CloudResourceProvider) (proto.Message, error) {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return new(atlasprovider.AtlasProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return new(auth0provider.Auth0ProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_aws:
@@ -61,26 +51,12 @@ func getProviderConfigProto(provider cloudresourcekind.CloudResourceProvider) (p
 		return new(azureprovider.AzureProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return new(cloudflareprovider.CloudflareProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return new(confluentprovider.ConfluentProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_gcp:
 		return new(gcpprovider.GcpProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_kubernetes:
 		return new(kubernetesprovider.KubernetesProviderConfig), nil
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return new(openfgaprovider.OpenFgaProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return new(snowflakeprovider.SnowflakeProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return new(openstackprovider.OpenStackProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return new(scalewayprovider.ScalewayProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return new(alicloudprovider.AliCloudProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return new(ociprovider.OciProviderConfig), nil
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return new(hetznercloudprovider.HetznerCloudProviderConfig), nil
 	default:
 		return nil, errors.Errorf("unsupported provider: %s", provider.String())
 	}

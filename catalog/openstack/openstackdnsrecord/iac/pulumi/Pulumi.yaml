@@ -1,3 +1,0 @@
-name: openstack-dns-record
-runtime: go
-description: Pulumi module for OpenStackDnsRecord

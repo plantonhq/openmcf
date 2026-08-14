@@ -4,43 +4,28 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/plantonhq/planton/catalog/alicloud"
-	"github.com/plantonhq/planton/catalog/atlas"
 	"github.com/plantonhq/planton/catalog/auth0"
 	"github.com/plantonhq/planton/catalog/aws"
 	"github.com/plantonhq/planton/catalog/azure"
-	"github.com/plantonhq/planton/catalog/civo"
 	"github.com/plantonhq/planton/catalog/cloudflare"
-	"github.com/plantonhq/planton/catalog/confluent"
 	"github.com/plantonhq/planton/catalog/digitalocean"
 	"github.com/plantonhq/planton/catalog/gcp"
-	"github.com/plantonhq/planton/catalog/hetznercloud"
 	"github.com/plantonhq/planton/catalog/kubernetes"
-	"github.com/plantonhq/planton/catalog/oci"
 	"github.com/plantonhq/planton/catalog/openfga"
-	"github.com/plantonhq/planton/catalog/openstack"
-	"github.com/plantonhq/planton/catalog/scaleway"
-	"github.com/plantonhq/planton/catalog/snowflake"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 )
 
 // ProviderConfigExample returns an example YAML configuration for the given provider.
 func ProviderConfigExample(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return atlas.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return auth0.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_aws:
 		return aws.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return azure.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_civo:
-		return civo.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return cloudflare.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return confluent.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:
 		return digitalocean.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_gcp:
@@ -49,18 +34,6 @@ func ProviderConfigExample(provider cloudresourcekind.CloudResourceProvider) str
 		return kubernetes.ConfigFileExample
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return openfga.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return snowflake.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return openstack.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return scaleway.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return alicloud.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return oci.ConfigFileExample
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return hetznercloud.ConfigFileExample
 	default:
 		return "# Provider config format not available"
 	}
@@ -69,20 +42,14 @@ func ProviderConfigExample(provider cloudresourcekind.CloudResourceProvider) str
 // ProviderConfigFilename returns the suggested filename for the provider config.
 func ProviderConfigFilename(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return atlas.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return auth0.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_aws:
 		return aws.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return azure.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_civo:
-		return civo.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return cloudflare.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return confluent.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:
 		return digitalocean.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_gcp:
@@ -91,18 +58,6 @@ func ProviderConfigFilename(provider cloudresourcekind.CloudResourceProvider) st
 		return kubernetes.ConfigFileName
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return openfga.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return snowflake.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return openstack.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return scaleway.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return alicloud.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return oci.ConfigFileName
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return hetznercloud.ConfigFileName
 	default:
 		return "provider-config.yaml"
 	}
@@ -111,20 +66,14 @@ func ProviderConfigFilename(provider cloudresourcekind.CloudResourceProvider) st
 // ProviderEnvironmentVariablesHelp returns the environment variable export commands for the provider.
 func ProviderEnvironmentVariablesHelp(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return atlas.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return auth0.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_aws:
 		return aws.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return azure.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_civo:
-		return civo.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return cloudflare.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return confluent.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:
 		return digitalocean.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_gcp:
@@ -133,18 +82,6 @@ func ProviderEnvironmentVariablesHelp(provider cloudresourcekind.CloudResourcePr
 		return kubernetes.EnvironmentVariablesHelp
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return openfga.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return snowflake.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return openstack.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return scaleway.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return alicloud.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return oci.EnvironmentVariablesHelp
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return hetznercloud.EnvironmentVariablesHelp
 	default:
 		return "# Environment variables not available for this provider"
 	}
@@ -153,20 +90,14 @@ func ProviderEnvironmentVariablesHelp(provider cloudresourcekind.CloudResourcePr
 // ProviderDocsURL returns the documentation URL for the provider.
 func ProviderDocsURL(provider cloudresourcekind.CloudResourceProvider) string {
 	switch provider {
-	case cloudresourcekind.CloudResourceProvider_atlas:
-		return atlas.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_auth0:
 		return auth0.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_aws:
 		return aws.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_azure:
 		return azure.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_civo:
-		return civo.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_cloudflare:
 		return cloudflare.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_confluent:
-		return confluent.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_digital_ocean:
 		return digitalocean.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_gcp:
@@ -175,18 +106,6 @@ func ProviderDocsURL(provider cloudresourcekind.CloudResourceProvider) string {
 		return kubernetes.ProviderDocsURL
 	case cloudresourcekind.CloudResourceProvider_openfga:
 		return openfga.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_snowflake:
-		return snowflake.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_openstack:
-		return openstack.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_scaleway:
-		return scaleway.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_alicloud:
-		return alicloud.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_oci:
-		return oci.ProviderDocsURL
-	case cloudresourcekind.CloudResourceProvider_hetzner_cloud:
-		return hetznercloud.ProviderDocsURL
 	default:
 		return ""
 	}
@@ -246,7 +165,7 @@ Check your manifest file for:
   - Missing or misspelled 'kind'
   - Invalid YAML syntax
 
-For supported resource kinds, see: https://planton.dev/docs/resources`
+For supported resource kinds, see: https://planton.ai/docs`
 }
 
 // InvalidProviderConfigGuidance returns a helpful message when provider config is invalid.

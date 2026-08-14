@@ -100,12 +100,11 @@ func TestEntrySlugDerivation(t *testing.T) {
 		{"AwsS3Bucket", "aws", "aws-s3-bucket"},
 		{"AwsKmsKey", "aws", "aws-kms-key"},
 		{"AwsMemorydbCluster", "aws", "aws-memorydb-cluster"},
-		{"HetznerCloudServer", "hetznercloud", "hetznercloud-server"},
 		{"KubernetesDeployment", "kubernetes", "kubernetes-deployment"},
 		{"DigitalOceanDroplet", "digitalocean", "digitalocean-droplet"},
-		{"AlicloudVpc", "alicloud", "alicloud-vpc"},
+		{"CloudflareDnsZone", "cloudflare", "cloudflare-dns-zone"},
 		// A kind not prefixed by its provider kebabs whole.
-		{"MongodbAtlas", "atlas", "mongodb-atlas"},
+		{"GkeCluster", "gcp", "gke-cluster"},
 	}
 	for _, c := range cases {
 		if got := entrySlug(c.kindName, c.providerDir); got != c.want {

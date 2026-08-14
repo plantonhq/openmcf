@@ -1,3 +1,0 @@
-name: oci-postgresql-db-system
-runtime: go
-description: OCI PostgreSQL DB System component

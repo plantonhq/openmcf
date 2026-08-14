@@ -35,7 +35,7 @@ User: @audit-planton-component <ComponentName>
 ```
 
 **Examples:**
-- `@audit-planton-component AtlasMongodb`
+- `@audit-planton-component CloudflareD1Database`
 - `@audit-planton-component GcpCertManagerCert`
 - `@audit-planton-component kubernetesPostgres` (case-insensitive)
 
@@ -59,9 +59,9 @@ User: @audit-planton-component <ComponentName>
 ### Step 1: Validate Input and Locate Component
 
 1. **Accept component name** in various formats:
-   - PascalCase: `AtlasMongodb`, `GcpCertManagerCert`
-   - lowercase: `atlasmongodb`, `gcpcertmanagercert`
-   - With spaces: `Atlas Mongodb` → normalize to `AtlasMongodb`
+   - PascalCase: `CloudflareD1Database`, `GcpCertManagerCert`
+   - lowercase: `cloudflared1database`, `gcpcertmanagercert`
+   - With spaces: `Cloudflare D1 Database` → normalize to `CloudflareD1Database`
 
 2. **Lookup in cloud_resource_kind.proto**:
    - Read `~/scm/github.com/plantonhq/planton/shared/cloudresourcekind/cloud_resource_kind.proto`
@@ -668,7 +668,7 @@ Blocking issues that prevent production readiness:
 ✅ **Passed:**
 
 - Enum entry exists in `cloud_resource_kind.proto`
-- Enum value 51 is in correct range for provider (atlas: 50-199)
+- Enum value 7005 is in correct range for provider (cloudflare: 7000-7999)
 - ID prefix is unique
 
 ❌ **Failed:**
@@ -687,7 +687,7 @@ Blocking issues that prevent production readiness:
 
 ✅ **Passed:**
 
-- `go test ./pkg/anatomy/...` reports no violation for `catalog/atlas/atlasmongodb/`
+- `go test ./pkg/anatomy/...` reports no violation for `catalog/cloudflare/cloudflared1database/`
 - Component has no entries in `pkg/anatomy/baseline.yaml`
 
 ❌ **Failed:**
@@ -738,7 +738,7 @@ Blocking issues that prevent production readiness:
 To verify tests, run:
 
 ```bash
-cd catalog/atlas/atlasmongodb/v1alpha1/
+cd catalog/cloudflare/cloudflared1database/v1alpha1/
 go test -v
 ```
 
@@ -1242,13 +1242,13 @@ Displaying report in chat instead...
 
 **Input:**
 ```
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 ```
 
 **Expected behavior:**
-1. Search cloud_resource_kind.proto for `AtlasMongodb` enum entry
-2. Find the enum entry with provider `atlas`
-3. Determine path: `catalog/atlas/atlasmongodb/` (contract in `v1alpha1/`)
+1. Search cloud_resource_kind.proto for `CloudflareD1Database` enum entry
+2. Find the enum entry with provider `cloudflare`
+3. Determine path: `catalog/cloudflare/cloudflared1database/` (contract in `v1alpha1/`)
 4. Run all audit checks
 5. Calculate score (e.g., 65%)
 6. Get timestamp: `2025-11-13-143022`

@@ -133,8 +133,8 @@ func buildSelfManaged(c *kubernetesprovider.KubernetesProviderConfigSelfManaged)
 	if c == nil {
 		return "", errors.New("self_managed provider config is nil")
 	}
-	// Self-managed clusters (kind, on-prem, vSphere, kubeconfig-only clouds like Civo
-	// and Scaleway) authenticate through the kubeconfig itself -- pass-through, exactly
+	// Self-managed clusters (kind, on-prem, vSphere, and any kubeconfig-only
+	// cloud) authenticate through the kubeconfig itself -- pass-through, exactly
 	// like DOKS.
 	return c.KubeConfig, nil
 }

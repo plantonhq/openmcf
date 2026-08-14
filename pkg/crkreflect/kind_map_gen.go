@@ -11,37 +11,6 @@ package crkreflect
 import (
 	testcloudresourcegenericv1alpha2 "github.com/plantonhq/planton/catalog/_test/testcloudresourcegeneric/v1alpha2"
 	testcloudresourcekubernetesv1alpha1 "github.com/plantonhq/planton/catalog/_test/testcloudresourcekubernetes/v1alpha1"
-	alicloudapplicationloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudapplicationloadbalancer/v1alpha1"
-	alicloudcdndomainv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudcdndomain/v1alpha1"
-	alicloudceninstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudceninstance/v1alpha1"
-	alicloudcontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudcontainerregistry/v1alpha1"
-	aliclouddnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/aliclouddnsrecord/v1alpha1"
-	aliclouddnszonev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/aliclouddnszone/v1alpha1"
-	alicloudecsinstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudecsinstance/v1alpha1"
-	alicloudeipaddressv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudeipaddress/v1alpha1"
-	alicloudfunctionv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudfunction/v1alpha1"
-	alicloudkmskeyv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudkmskey/v1alpha1"
-	alicloudkubernetesclusterv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudkubernetescluster/v1alpha1"
-	alicloudkubernetesnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudkubernetesnodepool/v1alpha1"
-	alicloudlogprojectv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudlogproject/v1alpha1"
-	alicloudmongodbinstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudmongodbinstance/v1alpha1"
-	alicloudnasfilesystemv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudnasfilesystem/v1alpha1"
-	alicloudnatgatewayv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudnatgateway/v1alpha1"
-	alicloudnetworkloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudnetworkloadbalancer/v1alpha1"
-	alicloudpolardbclusterv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudpolardbcluster/v1alpha1"
-	alicloudprivatednszonev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudprivatednszone/v1alpha1"
-	alicloudrampolicyv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudrampolicy/v1alpha1"
-	alicloudramrolev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudramrole/v1alpha1"
-	alicloudrdsinstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudrdsinstance/v1alpha1"
-	alicloudredisinstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudredisinstance/v1alpha1"
-	alicloudrocketmqinstancev1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudrocketmqinstance/v1alpha1"
-	alicloudsaeapplicationv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudsaeapplication/v1alpha1"
-	alicloudsecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudsecuritygroup/v1alpha1"
-	alicloudstoragebucketv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudstoragebucket/v1alpha1"
-	alicloudvpcv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudvpc/v1alpha1"
-	alicloudvpngatewayv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudvpngateway/v1alpha1"
-	alicloudvswitchv1alpha1 "github.com/plantonhq/planton/catalog/alicloud/alicloudvswitch/v1alpha1"
-	atlasmongodbv1alpha1 "github.com/plantonhq/planton/catalog/atlas/atlasmongodb/v1alpha1"
 	auth0actionv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0action/v1alpha1"
 	auth0clientv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0client/v1alpha1"
 	auth0connectionv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0connection/v1alpha1"
@@ -382,18 +351,6 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
-	civobucketv1alpha1 "github.com/plantonhq/planton/catalog/civo/civobucket/v1alpha1"
-	civocertificatev1alpha1 "github.com/plantonhq/planton/catalog/civo/civocertificate/v1alpha1"
-	civocomputeinstancev1alpha1 "github.com/plantonhq/planton/catalog/civo/civocomputeinstance/v1alpha1"
-	civodatabasev1alpha1 "github.com/plantonhq/planton/catalog/civo/civodatabase/v1alpha1"
-	civodnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/civo/civodnsrecord/v1alpha1"
-	civodnszonev1alpha1 "github.com/plantonhq/planton/catalog/civo/civodnszone/v1alpha1"
-	civofirewallv1alpha1 "github.com/plantonhq/planton/catalog/civo/civofirewall/v1alpha1"
-	civoipaddressv1alpha1 "github.com/plantonhq/planton/catalog/civo/civoipaddress/v1alpha1"
-	civokubernetesclusterv1alpha1 "github.com/plantonhq/planton/catalog/civo/civokubernetescluster/v1alpha1"
-	civokubernetesnodepoolv1alpha1 "github.com/plantonhq/planton/catalog/civo/civokubernetesnodepool/v1alpha1"
-	civovolumev1alpha1 "github.com/plantonhq/planton/catalog/civo/civovolume/v1alpha1"
-	civovpcv1alpha1 "github.com/plantonhq/planton/catalog/civo/civovpc/v1alpha1"
 	cloudflarecertificatepackv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecertificatepack/v1alpha1"
 	cloudflarecustomhostnamev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1"
 	cloudflarecustomhostnamefallbackoriginv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1"
@@ -424,7 +381,6 @@ import (
 	cloudflarezerotrusttunnelv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1"
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
-	confluentkafkav1alpha1 "github.com/plantonhq/planton/catalog/confluent/confluentkafka/v1alpha1"
 	digitaloceanappplatformservicev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanappplatformservice/v1alpha1"
 	digitaloceanbucketv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1"
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
@@ -538,18 +494,6 @@ import (
 	gcpworkflowv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkflow/v1alpha1"
 	gcpworkloadidentitypoolv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkloadidentitypool/v1alpha1"
 	gcpworkloadidentitypoolproviderv1alpha1 "github.com/plantonhq/planton/catalog/gcp/gcpworkloadidentitypoolprovider/v1alpha1"
-	hetznercloudcertificatev1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudcertificate/v1alpha1"
-	hetznerclouddnszonev1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznerclouddnszone/v1alpha1"
-	hetznercloudfirewallv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudfirewall/v1alpha1"
-	hetznercloudfloatingipv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudfloatingip/v1alpha1"
-	hetznercloudloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudloadbalancer/v1alpha1"
-	hetznercloudnetworkv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudnetwork/v1alpha1"
-	hetznercloudplacementgroupv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudplacementgroup/v1alpha1"
-	hetznercloudprimaryipv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudprimaryip/v1alpha1"
-	hetznercloudserverv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudserver/v1alpha1"
-	hetznercloudsnapshotv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudsnapshot/v1alpha1"
-	hetznercloudsshkeyv1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudsshkey/v1alpha1"
-	hetznercloudvolumev1alpha1 "github.com/plantonhq/planton/catalog/hetznercloud/hetznercloudvolume/v1alpha1"
 	kubernetesairflowv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesairflow/v1alpha1"
 	kubernetesaltinityoperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesaltinityoperator/v1alpha1"
 	kubernetesargocdv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesargocd/v1alpha1"
@@ -670,90 +614,9 @@ import (
 	kubernetesudproutev1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesudproute/v1alpha1"
 	kubernetesvalkeyv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesvalkey/v1alpha1"
 	kubernetesvelerov1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesvelero/v1alpha1"
-	ocialarmv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocialarm/v1alpha1"
-	ociapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/oci/ociapigateway/v1alpha1"
-	ociapplicationloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/oci/ociapplicationloadbalancer/v1alpha1"
-	ociautonomousdatabasev1alpha1 "github.com/plantonhq/planton/catalog/oci/ociautonomousdatabase/v1alpha1"
-	ocibastionv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocibastion/v1alpha1"
-	ociblockvolumev1alpha1 "github.com/plantonhq/planton/catalog/oci/ociblockvolume/v1alpha1"
-	ocicompartmentv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocicompartment/v1alpha1"
-	ocicomputeinstancev1alpha1 "github.com/plantonhq/planton/catalog/oci/ocicomputeinstance/v1alpha1"
-	ocicontainerengineclusterv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocicontainerenginecluster/v1alpha1"
-	ocicontainerenginenodepoolv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocicontainerenginenodepool/v1alpha1"
-	ocicontainerinstancev1alpha1 "github.com/plantonhq/planton/catalog/oci/ocicontainerinstance/v1alpha1"
-	ocidbsystemv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidbsystem/v1alpha1"
-	ocidevopsprojectv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidevopsproject/v1alpha1"
-	ocidnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidnsrecord/v1alpha1"
-	ocidnszonev1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidnszone/v1alpha1"
-	ocidynamicgroupv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidynamicgroup/v1alpha1"
-	ocidynamicroutinggatewayv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocidynamicroutinggateway/v1alpha1"
-	ocifilesystemv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocifilesystem/v1alpha1"
-	ocifunctionsapplicationv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocifunctionsapplication/v1alpha1"
-	ociidentitypolicyv1alpha1 "github.com/plantonhq/planton/catalog/oci/ociidentitypolicy/v1alpha1"
-	ocikmskeyv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocikmskey/v1alpha1"
-	ocikmsvaultv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocikmsvault/v1alpha1"
-	ociloggroupv1alpha1 "github.com/plantonhq/planton/catalog/oci/ociloggroup/v1alpha1"
-	ocimysqldbsystemv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocimysqldbsystem/v1alpha1"
-	ocinetworkfirewallv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocinetworkfirewall/v1alpha1"
-	ocinetworkloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocinetworkloadbalancer/v1alpha1"
-	ocinosqltablev1alpha1 "github.com/plantonhq/planton/catalog/oci/ocinosqltable/v1alpha1"
-	ociobjectstoragebucketv1alpha1 "github.com/plantonhq/planton/catalog/oci/ociobjectstoragebucket/v1alpha1"
-	ocipostgresqldbsystemv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocipostgresqldbsystem/v1alpha1"
-	ocipublicipv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocipublicip/v1alpha1"
-	ociqueuev1alpha1 "github.com/plantonhq/planton/catalog/oci/ociqueue/v1alpha1"
-	ociredisclusterv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocirediscluster/v1alpha1"
-	ocisecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocisecuritygroup/v1alpha1"
-	ocistreampoolv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocistreampool/v1alpha1"
-	ocisubnetv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocisubnet/v1alpha1"
-	ocivaultsecretv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocivaultsecret/v1alpha1"
-	ocivcnv1alpha1 "github.com/plantonhq/planton/catalog/oci/ocivcn/v1alpha1"
 	openfgaauthorizationmodelv1alpha1 "github.com/plantonhq/planton/catalog/openfga/openfgaauthorizationmodel/v1alpha1"
 	openfgarelationshiptuplev1alpha1 "github.com/plantonhq/planton/catalog/openfga/openfgarelationshiptuple/v1alpha1"
 	openfgastorev1alpha1 "github.com/plantonhq/planton/catalog/openfga/openfgastore/v1alpha1"
-	openstackapplicationcredentialv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackapplicationcredential/v1alpha1"
-	openstackdnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackdnsrecord/v1alpha1"
-	openstackdnszonev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackdnszone/v1alpha1"
-	openstackfloatingipv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackfloatingip/v1alpha1"
-	openstackfloatingipassociatev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackfloatingipassociate/v1alpha1"
-	openstackimagev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackimage/v1alpha1"
-	openstackinstancev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackinstance/v1alpha1"
-	openstackkeypairv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackkeypair/v1alpha1"
-	openstackloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackloadbalancer/v1alpha1"
-	openstackloadbalancerlistenerv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackloadbalancerlistener/v1alpha1"
-	openstackloadbalancermemberv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackloadbalancermember/v1alpha1"
-	openstackloadbalancermonitorv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackloadbalancermonitor/v1alpha1"
-	openstackloadbalancerpoolv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackloadbalancerpool/v1alpha1"
-	openstacknetworkv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstacknetwork/v1alpha1"
-	openstacknetworkportv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstacknetworkport/v1alpha1"
-	openstackprojectv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackproject/v1alpha1"
-	openstackroleassignmentv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackroleassignment/v1alpha1"
-	openstackrouterv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackrouter/v1alpha1"
-	openstackrouterinterfacev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackrouterinterface/v1alpha1"
-	openstacksecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstacksecuritygroup/v1alpha1"
-	openstacksecuritygrouprulev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstacksecuritygrouprule/v1alpha1"
-	openstackservergroupv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackservergroup/v1alpha1"
-	openstacksubnetv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstacksubnet/v1alpha1"
-	openstackvolumev1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackvolume/v1alpha1"
-	openstackvolumeattachv1alpha1 "github.com/plantonhq/planton/catalog/openstack/openstackvolumeattach/v1alpha1"
-	scalewayblockvolumev1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayblockvolume/v1alpha1"
-	scalewaycontainerregistryv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaycontainerregistry/v1alpha1"
-	scalewaydnsrecordv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaydnsrecord/v1alpha1"
-	scalewaydnszonev1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaydnszone/v1alpha1"
-	scalewayinstancev1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayinstance/v1alpha1"
-	scalewayinstancesecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayinstancesecuritygroup/v1alpha1"
-	scalewaykapsuleclusterv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaykapsulecluster/v1alpha1"
-	scalewaykapsulepoolv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaykapsulepool/v1alpha1"
-	scalewayloadbalancerv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayloadbalancer/v1alpha1"
-	scalewaymongodbinstancev1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaymongodbinstance/v1alpha1"
-	scalewayobjectbucketv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayobjectbucket/v1alpha1"
-	scalewayprivatenetworkv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayprivatenetwork/v1alpha1"
-	scalewaypublicgatewayv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewaypublicgateway/v1alpha1"
-	scalewayrdbinstancev1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayrdbinstance/v1alpha1"
-	scalewayredisclusterv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayrediscluster/v1alpha1"
-	scalewayserverlesscontainerv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayserverlesscontainer/v1alpha1"
-	scalewayserverlessfunctionv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayserverlessfunction/v1alpha1"
-	scalewayvpcv1alpha1 "github.com/plantonhq/planton/catalog/scaleway/scalewayvpc/v1alpha1"
-	snowflakedatabasev1alpha1 "github.com/plantonhq/planton/catalog/snowflake/snowflakedatabase/v1alpha1"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 )
@@ -771,43 +634,6 @@ func merge(maps ...map[cloudresourcekind.CloudResourceKind]proto.Message) map[cl
 var ProviderTestMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_TestCloudResourceGeneric:    &testcloudresourcegenericv1alpha2.TestCloudResourceGeneric{},
 	cloudresourcekind.CloudResourceKind_TestCloudResourceKubernetes: &testcloudresourcekubernetesv1alpha1.TestCloudResourceKubernetes{},
-}
-
-var ProviderAlicloudMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_AliCloudApplicationLoadBalancer: &alicloudapplicationloadbalancerv1alpha1.AliCloudApplicationLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_AliCloudCdnDomain:               &alicloudcdndomainv1alpha1.AliCloudCdnDomain{},
-	cloudresourcekind.CloudResourceKind_AliCloudCenInstance:             &alicloudceninstancev1alpha1.AliCloudCenInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudContainerRegistry:       &alicloudcontainerregistryv1alpha1.AliCloudContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_AliCloudDnsRecord:               &aliclouddnsrecordv1alpha1.AliCloudDnsRecord{},
-	cloudresourcekind.CloudResourceKind_AliCloudDnsZone:                 &aliclouddnszonev1alpha1.AliCloudDnsZone{},
-	cloudresourcekind.CloudResourceKind_AliCloudEcsInstance:             &alicloudecsinstancev1alpha1.AliCloudEcsInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudEipAddress:              &alicloudeipaddressv1alpha1.AliCloudEipAddress{},
-	cloudresourcekind.CloudResourceKind_AliCloudFunction:                &alicloudfunctionv1alpha1.AliCloudFunction{},
-	cloudresourcekind.CloudResourceKind_AliCloudKmsKey:                  &alicloudkmskeyv1alpha1.AliCloudKmsKey{},
-	cloudresourcekind.CloudResourceKind_AliCloudKubernetesCluster:       &alicloudkubernetesclusterv1alpha1.AliCloudKubernetesCluster{},
-	cloudresourcekind.CloudResourceKind_AliCloudKubernetesNodePool:      &alicloudkubernetesnodepoolv1alpha1.AliCloudKubernetesNodePool{},
-	cloudresourcekind.CloudResourceKind_AliCloudLogProject:              &alicloudlogprojectv1alpha1.AliCloudLogProject{},
-	cloudresourcekind.CloudResourceKind_AliCloudMongodbInstance:         &alicloudmongodbinstancev1alpha1.AliCloudMongodbInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudNasFileSystem:           &alicloudnasfilesystemv1alpha1.AliCloudNasFileSystem{},
-	cloudresourcekind.CloudResourceKind_AliCloudNatGateway:              &alicloudnatgatewayv1alpha1.AliCloudNatGateway{},
-	cloudresourcekind.CloudResourceKind_AliCloudNetworkLoadBalancer:     &alicloudnetworkloadbalancerv1alpha1.AliCloudNetworkLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_AliCloudPolardbCluster:          &alicloudpolardbclusterv1alpha1.AliCloudPolardbCluster{},
-	cloudresourcekind.CloudResourceKind_AliCloudPrivateDnsZone:          &alicloudprivatednszonev1alpha1.AliCloudPrivateDnsZone{},
-	cloudresourcekind.CloudResourceKind_AliCloudRamPolicy:               &alicloudrampolicyv1alpha1.AliCloudRamPolicy{},
-	cloudresourcekind.CloudResourceKind_AliCloudRamRole:                 &alicloudramrolev1alpha1.AliCloudRamRole{},
-	cloudresourcekind.CloudResourceKind_AliCloudRdsInstance:             &alicloudrdsinstancev1alpha1.AliCloudRdsInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudRedisInstance:           &alicloudredisinstancev1alpha1.AliCloudRedisInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudRocketmqInstance:        &alicloudrocketmqinstancev1alpha1.AliCloudRocketmqInstance{},
-	cloudresourcekind.CloudResourceKind_AliCloudSaeApplication:          &alicloudsaeapplicationv1alpha1.AliCloudSaeApplication{},
-	cloudresourcekind.CloudResourceKind_AliCloudSecurityGroup:           &alicloudsecuritygroupv1alpha1.AliCloudSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_AliCloudStorageBucket:           &alicloudstoragebucketv1alpha1.AliCloudStorageBucket{},
-	cloudresourcekind.CloudResourceKind_AliCloudVpc:                     &alicloudvpcv1alpha1.AliCloudVpc{},
-	cloudresourcekind.CloudResourceKind_AliCloudVpnGateway:              &alicloudvpngatewayv1alpha1.AliCloudVpnGateway{},
-	cloudresourcekind.CloudResourceKind_AliCloudVswitch:                 &alicloudvswitchv1alpha1.AliCloudVswitch{},
-}
-
-var ProviderAtlasMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_AtlasMongodb: &atlasmongodbv1alpha1.AtlasMongodb{},
 }
 
 var ProviderAuth0Map = map[cloudresourcekind.CloudResourceKind]proto.Message{
@@ -1159,21 +985,6 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AzureWebApplicationFirewallPolicy:              &azurewebapplicationfirewallpolicyv1alpha1.AzureWebApplicationFirewallPolicy{},
 }
 
-var ProviderCivoMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_CivoBucket:             &civobucketv1alpha1.CivoBucket{},
-	cloudresourcekind.CloudResourceKind_CivoCertificate:        &civocertificatev1alpha1.CivoCertificate{},
-	cloudresourcekind.CloudResourceKind_CivoComputeInstance:    &civocomputeinstancev1alpha1.CivoComputeInstance{},
-	cloudresourcekind.CloudResourceKind_CivoDatabase:           &civodatabasev1alpha1.CivoDatabase{},
-	cloudresourcekind.CloudResourceKind_CivoDnsRecord:          &civodnsrecordv1alpha1.CivoDnsRecord{},
-	cloudresourcekind.CloudResourceKind_CivoDnsZone:            &civodnszonev1alpha1.CivoDnsZone{},
-	cloudresourcekind.CloudResourceKind_CivoFirewall:           &civofirewallv1alpha1.CivoFirewall{},
-	cloudresourcekind.CloudResourceKind_CivoIpAddress:          &civoipaddressv1alpha1.CivoIpAddress{},
-	cloudresourcekind.CloudResourceKind_CivoKubernetesCluster:  &civokubernetesclusterv1alpha1.CivoKubernetesCluster{},
-	cloudresourcekind.CloudResourceKind_CivoKubernetesNodePool: &civokubernetesnodepoolv1alpha1.CivoKubernetesNodePool{},
-	cloudresourcekind.CloudResourceKind_CivoVolume:             &civovolumev1alpha1.CivoVolume{},
-	cloudresourcekind.CloudResourceKind_CivoVpc:                &civovpcv1alpha1.CivoVpc{},
-}
-
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:               &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
 	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
@@ -1205,10 +1016,6 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:               &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:          &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork: &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
-}
-
-var ProviderConfluentMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_ConfluentKafka: &confluentkafkav1alpha1.ConfluentKafka{},
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
@@ -1328,21 +1135,6 @@ var ProviderGcpMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_GcpWorkflow:                            &gcpworkflowv1alpha1.GcpWorkflow{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPool:                &gcpworkloadidentitypoolv1alpha1.GcpWorkloadIdentityPool{},
 	cloudresourcekind.CloudResourceKind_GcpWorkloadIdentityPoolProvider:        &gcpworkloadidentitypoolproviderv1alpha1.GcpWorkloadIdentityPoolProvider{},
-}
-
-var ProviderHetznerCloudMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_HetznerCloudCertificate:    &hetznercloudcertificatev1alpha1.HetznerCloudCertificate{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudDnsZone:        &hetznerclouddnszonev1alpha1.HetznerCloudDnsZone{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudFirewall:       &hetznercloudfirewallv1alpha1.HetznerCloudFirewall{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudFloatingIp:     &hetznercloudfloatingipv1alpha1.HetznerCloudFloatingIp{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudLoadBalancer:   &hetznercloudloadbalancerv1alpha1.HetznerCloudLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudNetwork:        &hetznercloudnetworkv1alpha1.HetznerCloudNetwork{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudPlacementGroup: &hetznercloudplacementgroupv1alpha1.HetznerCloudPlacementGroup{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudPrimaryIp:      &hetznercloudprimaryipv1alpha1.HetznerCloudPrimaryIp{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudServer:         &hetznercloudserverv1alpha1.HetznerCloudServer{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudSnapshot:       &hetznercloudsnapshotv1alpha1.HetznerCloudSnapshot{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudSshKey:         &hetznercloudsshkeyv1alpha1.HetznerCloudSshKey{},
-	cloudresourcekind.CloudResourceKind_HetznerCloudVolume:         &hetznercloudvolumev1alpha1.HetznerCloudVolume{},
 }
 
 var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
@@ -1468,122 +1260,20 @@ var ProviderKubernetesMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_KubernetesVelero:                      &kubernetesvelerov1alpha1.KubernetesVelero{},
 }
 
-var ProviderOciMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_OciAlarm:                   &ocialarmv1alpha1.OciAlarm{},
-	cloudresourcekind.CloudResourceKind_OciApiGateway:              &ociapigatewayv1alpha1.OciApiGateway{},
-	cloudresourcekind.CloudResourceKind_OciApplicationLoadBalancer: &ociapplicationloadbalancerv1alpha1.OciApplicationLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_OciAutonomousDatabase:      &ociautonomousdatabasev1alpha1.OciAutonomousDatabase{},
-	cloudresourcekind.CloudResourceKind_OciBastion:                 &ocibastionv1alpha1.OciBastion{},
-	cloudresourcekind.CloudResourceKind_OciBlockVolume:             &ociblockvolumev1alpha1.OciBlockVolume{},
-	cloudresourcekind.CloudResourceKind_OciCompartment:             &ocicompartmentv1alpha1.OciCompartment{},
-	cloudresourcekind.CloudResourceKind_OciComputeInstance:         &ocicomputeinstancev1alpha1.OciComputeInstance{},
-	cloudresourcekind.CloudResourceKind_OciContainerEngineCluster:  &ocicontainerengineclusterv1alpha1.OciContainerEngineCluster{},
-	cloudresourcekind.CloudResourceKind_OciContainerEngineNodePool: &ocicontainerenginenodepoolv1alpha1.OciContainerEngineNodePool{},
-	cloudresourcekind.CloudResourceKind_OciContainerInstance:       &ocicontainerinstancev1alpha1.OciContainerInstance{},
-	cloudresourcekind.CloudResourceKind_OciDbSystem:                &ocidbsystemv1alpha1.OciDbSystem{},
-	cloudresourcekind.CloudResourceKind_OciDevopsProject:           &ocidevopsprojectv1alpha1.OciDevopsProject{},
-	cloudresourcekind.CloudResourceKind_OciDnsRecord:               &ocidnsrecordv1alpha1.OciDnsRecord{},
-	cloudresourcekind.CloudResourceKind_OciDnsZone:                 &ocidnszonev1alpha1.OciDnsZone{},
-	cloudresourcekind.CloudResourceKind_OciDynamicGroup:            &ocidynamicgroupv1alpha1.OciDynamicGroup{},
-	cloudresourcekind.CloudResourceKind_OciDynamicRoutingGateway:   &ocidynamicroutinggatewayv1alpha1.OciDynamicRoutingGateway{},
-	cloudresourcekind.CloudResourceKind_OciFileSystem:              &ocifilesystemv1alpha1.OciFileSystem{},
-	cloudresourcekind.CloudResourceKind_OciFunctionsApplication:    &ocifunctionsapplicationv1alpha1.OciFunctionsApplication{},
-	cloudresourcekind.CloudResourceKind_OciIdentityPolicy:          &ociidentitypolicyv1alpha1.OciIdentityPolicy{},
-	cloudresourcekind.CloudResourceKind_OciKmsKey:                  &ocikmskeyv1alpha1.OciKmsKey{},
-	cloudresourcekind.CloudResourceKind_OciKmsVault:                &ocikmsvaultv1alpha1.OciKmsVault{},
-	cloudresourcekind.CloudResourceKind_OciLogGroup:                &ociloggroupv1alpha1.OciLogGroup{},
-	cloudresourcekind.CloudResourceKind_OciMysqlDbSystem:           &ocimysqldbsystemv1alpha1.OciMysqlDbSystem{},
-	cloudresourcekind.CloudResourceKind_OciNetworkFirewall:         &ocinetworkfirewallv1alpha1.OciNetworkFirewall{},
-	cloudresourcekind.CloudResourceKind_OciNetworkLoadBalancer:     &ocinetworkloadbalancerv1alpha1.OciNetworkLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_OciNosqlTable:              &ocinosqltablev1alpha1.OciNosqlTable{},
-	cloudresourcekind.CloudResourceKind_OciObjectStorageBucket:     &ociobjectstoragebucketv1alpha1.OciObjectStorageBucket{},
-	cloudresourcekind.CloudResourceKind_OciPostgresqlDbSystem:      &ocipostgresqldbsystemv1alpha1.OciPostgresqlDbSystem{},
-	cloudresourcekind.CloudResourceKind_OciPublicIp:                &ocipublicipv1alpha1.OciPublicIp{},
-	cloudresourcekind.CloudResourceKind_OciQueue:                   &ociqueuev1alpha1.OciQueue{},
-	cloudresourcekind.CloudResourceKind_OciRedisCluster:            &ociredisclusterv1alpha1.OciRedisCluster{},
-	cloudresourcekind.CloudResourceKind_OciSecurityGroup:           &ocisecuritygroupv1alpha1.OciSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_OciStreamPool:              &ocistreampoolv1alpha1.OciStreamPool{},
-	cloudresourcekind.CloudResourceKind_OciSubnet:                  &ocisubnetv1alpha1.OciSubnet{},
-	cloudresourcekind.CloudResourceKind_OciVaultSecret:             &ocivaultsecretv1alpha1.OciVaultSecret{},
-	cloudresourcekind.CloudResourceKind_OciVcn:                     &ocivcnv1alpha1.OciVcn{},
-}
-
 var ProviderOpenfgaMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_OpenFgaAuthorizationModel: &openfgaauthorizationmodelv1alpha1.OpenFgaAuthorizationModel{},
 	cloudresourcekind.CloudResourceKind_OpenFgaRelationshipTuple:  &openfgarelationshiptuplev1alpha1.OpenFgaRelationshipTuple{},
 	cloudresourcekind.CloudResourceKind_OpenFgaStore:              &openfgastorev1alpha1.OpenFgaStore{},
 }
 
-var ProviderOpenstackMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_OpenStackApplicationCredential: &openstackapplicationcredentialv1alpha1.OpenStackApplicationCredential{},
-	cloudresourcekind.CloudResourceKind_OpenStackDnsRecord:             &openstackdnsrecordv1alpha1.OpenStackDnsRecord{},
-	cloudresourcekind.CloudResourceKind_OpenStackDnsZone:               &openstackdnszonev1alpha1.OpenStackDnsZone{},
-	cloudresourcekind.CloudResourceKind_OpenStackFloatingIp:            &openstackfloatingipv1alpha1.OpenStackFloatingIp{},
-	cloudresourcekind.CloudResourceKind_OpenStackFloatingIpAssociate:   &openstackfloatingipassociatev1alpha1.OpenStackFloatingIpAssociate{},
-	cloudresourcekind.CloudResourceKind_OpenStackImage:                 &openstackimagev1alpha1.OpenStackImage{},
-	cloudresourcekind.CloudResourceKind_OpenStackInstance:              &openstackinstancev1alpha1.OpenStackInstance{},
-	cloudresourcekind.CloudResourceKind_OpenStackKeypair:               &openstackkeypairv1alpha1.OpenStackKeypair{},
-	cloudresourcekind.CloudResourceKind_OpenStackLoadBalancer:          &openstackloadbalancerv1alpha1.OpenStackLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_OpenStackLoadBalancerListener:  &openstackloadbalancerlistenerv1alpha1.OpenStackLoadBalancerListener{},
-	cloudresourcekind.CloudResourceKind_OpenStackLoadBalancerMember:    &openstackloadbalancermemberv1alpha1.OpenStackLoadBalancerMember{},
-	cloudresourcekind.CloudResourceKind_OpenStackLoadBalancerMonitor:   &openstackloadbalancermonitorv1alpha1.OpenStackLoadBalancerMonitor{},
-	cloudresourcekind.CloudResourceKind_OpenStackLoadBalancerPool:      &openstackloadbalancerpoolv1alpha1.OpenStackLoadBalancerPool{},
-	cloudresourcekind.CloudResourceKind_OpenStackNetwork:               &openstacknetworkv1alpha1.OpenStackNetwork{},
-	cloudresourcekind.CloudResourceKind_OpenStackNetworkPort:           &openstacknetworkportv1alpha1.OpenStackNetworkPort{},
-	cloudresourcekind.CloudResourceKind_OpenStackProject:               &openstackprojectv1alpha1.OpenStackProject{},
-	cloudresourcekind.CloudResourceKind_OpenStackRoleAssignment:        &openstackroleassignmentv1alpha1.OpenStackRoleAssignment{},
-	cloudresourcekind.CloudResourceKind_OpenStackRouter:                &openstackrouterv1alpha1.OpenStackRouter{},
-	cloudresourcekind.CloudResourceKind_OpenStackRouterInterface:       &openstackrouterinterfacev1alpha1.OpenStackRouterInterface{},
-	cloudresourcekind.CloudResourceKind_OpenStackSecurityGroup:         &openstacksecuritygroupv1alpha1.OpenStackSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_OpenStackSecurityGroupRule:     &openstacksecuritygrouprulev1alpha1.OpenStackSecurityGroupRule{},
-	cloudresourcekind.CloudResourceKind_OpenStackServerGroup:           &openstackservergroupv1alpha1.OpenStackServerGroup{},
-	cloudresourcekind.CloudResourceKind_OpenStackSubnet:                &openstacksubnetv1alpha1.OpenStackSubnet{},
-	cloudresourcekind.CloudResourceKind_OpenStackVolume:                &openstackvolumev1alpha1.OpenStackVolume{},
-	cloudresourcekind.CloudResourceKind_OpenStackVolumeAttach:          &openstackvolumeattachv1alpha1.OpenStackVolumeAttach{},
-}
-
-var ProviderScalewayMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_ScalewayBlockVolume:           &scalewayblockvolumev1alpha1.ScalewayBlockVolume{},
-	cloudresourcekind.CloudResourceKind_ScalewayContainerRegistry:     &scalewaycontainerregistryv1alpha1.ScalewayContainerRegistry{},
-	cloudresourcekind.CloudResourceKind_ScalewayDnsRecord:             &scalewaydnsrecordv1alpha1.ScalewayDnsRecord{},
-	cloudresourcekind.CloudResourceKind_ScalewayDnsZone:               &scalewaydnszonev1alpha1.ScalewayDnsZone{},
-	cloudresourcekind.CloudResourceKind_ScalewayInstance:              &scalewayinstancev1alpha1.ScalewayInstance{},
-	cloudresourcekind.CloudResourceKind_ScalewayInstanceSecurityGroup: &scalewayinstancesecuritygroupv1alpha1.ScalewayInstanceSecurityGroup{},
-	cloudresourcekind.CloudResourceKind_ScalewayKapsuleCluster:        &scalewaykapsuleclusterv1alpha1.ScalewayKapsuleCluster{},
-	cloudresourcekind.CloudResourceKind_ScalewayKapsulePool:           &scalewaykapsulepoolv1alpha1.ScalewayKapsulePool{},
-	cloudresourcekind.CloudResourceKind_ScalewayLoadBalancer:          &scalewayloadbalancerv1alpha1.ScalewayLoadBalancer{},
-	cloudresourcekind.CloudResourceKind_ScalewayMongodbInstance:       &scalewaymongodbinstancev1alpha1.ScalewayMongodbInstance{},
-	cloudresourcekind.CloudResourceKind_ScalewayObjectBucket:          &scalewayobjectbucketv1alpha1.ScalewayObjectBucket{},
-	cloudresourcekind.CloudResourceKind_ScalewayPrivateNetwork:        &scalewayprivatenetworkv1alpha1.ScalewayPrivateNetwork{},
-	cloudresourcekind.CloudResourceKind_ScalewayPublicGateway:         &scalewaypublicgatewayv1alpha1.ScalewayPublicGateway{},
-	cloudresourcekind.CloudResourceKind_ScalewayRdbInstance:           &scalewayrdbinstancev1alpha1.ScalewayRdbInstance{},
-	cloudresourcekind.CloudResourceKind_ScalewayRedisCluster:          &scalewayredisclusterv1alpha1.ScalewayRedisCluster{},
-	cloudresourcekind.CloudResourceKind_ScalewayServerlessContainer:   &scalewayserverlesscontainerv1alpha1.ScalewayServerlessContainer{},
-	cloudresourcekind.CloudResourceKind_ScalewayServerlessFunction:    &scalewayserverlessfunctionv1alpha1.ScalewayServerlessFunction{},
-	cloudresourcekind.CloudResourceKind_ScalewayVpc:                   &scalewayvpcv1alpha1.ScalewayVpc{},
-}
-
-var ProviderSnowflakeMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
-	cloudresourcekind.CloudResourceKind_SnowflakeDatabase: &snowflakedatabasev1alpha1.SnowflakeDatabase{},
-}
-
 var ToMessageMap = merge(
 	ProviderTestMap,
-	ProviderAlicloudMap,
-	ProviderAtlasMap,
 	ProviderAuth0Map,
 	ProviderAwsMap,
 	ProviderAzureMap,
-	ProviderCivoMap,
 	ProviderCloudflareMap,
-	ProviderConfluentMap,
 	ProviderDigitalOceanMap,
 	ProviderGcpMap,
-	ProviderHetznerCloudMap,
 	ProviderKubernetesMap,
-	ProviderOciMap,
 	ProviderOpenfgaMap,
-	ProviderOpenstackMap,
-	ProviderScalewayMap,
-	ProviderSnowflakeMap,
 )

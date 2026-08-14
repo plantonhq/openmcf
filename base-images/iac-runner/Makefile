@@ -21,11 +21,7 @@ clean-pulumi:
 	docker rmi $(IMAGE_REPO):pulumi-kubernetes-v0.0.1 2>/dev/null || true
 	docker rmi $(IMAGE_REPO):pulumi-cloudflare-v0.0.1 2>/dev/null || true
 	docker rmi $(IMAGE_REPO):pulumi-digitalocean-v0.0.1 2>/dev/null || true
-	docker rmi $(IMAGE_REPO):pulumi-atlas-v0.0.1 2>/dev/null || true
 	docker rmi $(IMAGE_REPO):pulumi-auth0-v0.0.1 2>/dev/null || true
-	docker rmi $(IMAGE_REPO):pulumi-civo-v0.0.1 2>/dev/null || true
-	docker rmi $(IMAGE_REPO):pulumi-confluent-v0.0.1 2>/dev/null || true
-	docker rmi $(IMAGE_REPO):pulumi-snowflake-v0.0.1 2>/dev/null || true
 
 # Clean all local images
 clean: clean-terraform clean-pulumi

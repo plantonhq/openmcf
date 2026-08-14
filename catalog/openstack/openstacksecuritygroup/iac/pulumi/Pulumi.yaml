@@ -1,3 +1,0 @@
-name: openstack-security-group
-runtime: go
-description: Pulumi module for OpenStackSecurityGroup

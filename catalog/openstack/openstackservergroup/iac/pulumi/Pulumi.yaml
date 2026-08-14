@@ -1,3 +1,0 @@
-name: openstack-server-group
-runtime: go
-description: Pulumi module for OpenStackServerGroup

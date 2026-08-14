@@ -241,7 +241,7 @@ func readCatalogPage(path, kindName string) (title, description string) {
 
 // entrySlug derives a component's URL slug: the provider directory name kept
 // as one atomic word, then the kind name's remaining words kebab-cased
-// (HetznerCloudServer -> hetznercloud-server, AwsS3Bucket -> aws-s3-bucket).
+// (DigitalOceanDroplet -> digitalocean-droplet, AwsS3Bucket -> aws-s3-bucket).
 // A kind whose name does not start with its provider kebabs whole. One rule
 // for every kind -- uniqueness is gated at conformance.
 func entrySlug(kindName, providerDir string) string {

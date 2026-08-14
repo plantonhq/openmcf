@@ -103,7 +103,7 @@ Bootstrap complete, production-ready components from scratch.
 
 **Examples:**
 ```bash
-@forge-planton-component AtlasMongodb --provider atlas
+@forge-planton-component CloudflareD1Database --provider cloudflare
 @forge-planton-component GcpStorageBucket --provider gcp
 @forge-planton-component KubernetesPostgres --provider kubernetes --category workload
 ```
@@ -150,7 +150,7 @@ File-set presence and absence (folder structure, required files, forbidden resid
 
 **Examples:**
 ```bash
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 @audit-planton-component GcpCertManagerCert
 ```
 
@@ -203,7 +203,7 @@ Improve existing components by filling gaps, adding features, refreshing docs, o
 **Examples:**
 ```bash
 # Fill gaps from audit
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 
 # Propagate proto changes
 @update-planton-component GcpCertManagerCert --scenario proto-changed
@@ -261,10 +261,10 @@ One-command workflow that audits a component and automatically fills all gaps to
 **Examples:**
 ```bash
 # Basic usage (target: 95%)
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 
 # Preview without changes
-@complete-planton-component AtlasMongodb --dry-run
+@complete-planton-component CloudflareD1Database --dry-run
 
 # Custom target score
 @complete-planton-component KubernetesPostgres --target-score 100
@@ -351,7 +351,7 @@ Make targeted fixes to components and automatically propagate changes to all rel
 @fix-planton-component KubernetesPostgres --explain "presets use deprecated 'database_name' field, should be 'db_identifier'"
 
 # Fix test failures
-@fix-planton-component AtlasMongodb --explain "spec_test.go expects validation on cluster_tier but spec.proto has no validation rule"
+@fix-planton-component CloudflareD1Database --explain "spec_test.go expects validation on location but spec.proto has no validation rule"
 ```
 
 ### What Gets Updated
@@ -442,7 +442,6 @@ New ID prefix (current: k8sms): k8sdpl
 ✅ **Component directory** - Copied to new name, old deleted
 ✅ **All code references** - 7 patterns applied to all files
 ✅ **Registry** - Enum name and optional ID prefix updated
-✅ **Documentation** - All references in `site/public/docs/`
 ✅ **Build artifacts** - Proto stubs regenerated
 
 ### What Gets Preserved
@@ -815,7 +814,7 @@ grep "^\s*[A-Z]" shared/cloudresourcekind/cloud_resource_kind.proto
 **Solution:**
 ```bash
 # Check file sizes
-find catalog/atlas/atlasmongodb -type f -exec ls -lh {} \;
+find catalog/cloudflare/cloudflared1database -type f -exec ls -lh {} \;
 ```
 
 ### "Update fails with build errors"
@@ -911,9 +910,9 @@ grep -r "ComponentName" docs/
 ### SaaS Platform Components
 
 ```bash
-@forge-planton-component AtlasMongodb --provider atlas
-@forge-planton-component ConfluentKafka --provider confluent
-@forge-planton-component SnowflakeDatabase --provider snowflake
+@forge-planton-component CloudflareD1Database --provider cloudflare
+@forge-planton-component Auth0Client --provider auth0
+@forge-planton-component DigitalOceanBucket --provider digitalocean
 ```
 
 ---

@@ -39,7 +39,7 @@ Use complete when you want to:
 
 **Simplest usage:**
 ```bash
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 ```
 
 **With target score:**
@@ -59,7 +59,7 @@ Use complete when you want to:
 **Action:** Run audit to assess current state
 
 ```
-🔍 Auditing AtlasMongodb...
+🔍 Auditing CloudflareD1Database...
 
 Current State:
   Overall Score: 65%
@@ -89,7 +89,7 @@ IF score < target_score:
 **Action:** Run update --fill-gaps to complete component
 
 ```
-🔄 Completing AtlasMongodb (65% → 95%+)...
+🔄 Completing CloudflareD1Database (65% → 95%+)...
 
 Phase 1: Generate Terraform Module
 [1/7] ✅ Generated variables.tf (matches spec.proto)
@@ -143,7 +143,7 @@ The update --fill-gaps scenario will run appropriate forge flow rules to create:
 **Action:** Re-run audit to verify completion
 
 ```
-🔍 Re-auditing AtlasMongodb...
+🔍 Re-auditing CloudflareD1Database...
 
 Final State:
   Overall Score: 98%
@@ -160,7 +160,7 @@ Re-audit report delivered in session
 **Action:** Show before/after comparison
 
 ```
-✅ Completion Successful: AtlasMongodb
+✅ Completion Successful: CloudflareD1Database
 
 Before:
   Score: 65%
@@ -190,7 +190,7 @@ Next Steps:
   2. Test deployment with: e2e/manifest.yaml
   3. Commit changes:
      git add -A
-     git commit -m "improve: complete AtlasMongodb to 98%"
+     git commit -m "improve: complete CloudflareD1Database to 98%"
 ```
 
 ## Flags and Options
@@ -200,12 +200,12 @@ Next Steps:
 Preview what would be done without making changes:
 
 ```bash
-@complete-planton-component AtlasMongodb --dry-run
+@complete-planton-component CloudflareD1Database --dry-run
 ```
 
 **Output:**
 ```
-🔍 Dry-Run: Complete AtlasMongodb
+🔍 Dry-Run: Complete CloudflareD1Database
 
 Current State (from audit):
   Score: 65%
@@ -234,7 +234,7 @@ To proceed: remove --dry-run flag
 Stop when target score is reached:
 
 ```bash
-@complete-planton-component AtlasMongodb --target-score 90
+@complete-planton-component CloudflareD1Database --target-score 90
 ```
 
 **Behavior:**
@@ -254,7 +254,7 @@ Stop when target score is reached:
 Skip final build and test validation (faster but riskier):
 
 ```bash
-@complete-planton-component AtlasMongodb --skip-validation
+@complete-planton-component CloudflareD1Database --skip-validation
 ```
 
 **Warning:** Use only when confident updates won't break builds.
@@ -285,7 +285,7 @@ Audit report delivered in session
 ### Partial Completion Scenario
 
 ```bash
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 ```
 
 **Output:**
@@ -384,14 +384,14 @@ Duration: 3 minutes
 ### Component Not Found
 
 ```
-❌ Error: AtlasMongodb not found
+❌ Error: CloudflareD1Database not found
 
 Checked:
   ✓ cloud_resource_kind.proto - No enum entry
   ✓ File system - No component folder
 
 Did you mean to create it first?
-  @forge-planton-component AtlasMongodb --provider atlas
+  @forge-planton-component CloudflareD1Database --provider cloudflare
 ```
 
 ### Already at Target
@@ -408,7 +408,7 @@ Nothing to do. Component is production-ready! 🎉
 ### Update Failed
 
 ```
-❌ Error: Failed to complete AtlasMongodb
+❌ Error: Failed to complete CloudflareD1Database
 
 Initial Audit: ✅ 65%
 Gap Filling: ❌ Failed at rule 013 (Terraform module generation)
@@ -419,9 +419,9 @@ Error: terraform validate failed
 Recommendation:
   1. Check provider.tf configuration
   2. Run update manually to debug:
-     @update-planton-component AtlasMongodb --scenario fill-gaps
+     @update-planton-component CloudflareD1Database --scenario fill-gaps
   3. Or resume from failed rule:
-     @update-planton-component AtlasMongodb --resume-from 012
+     @update-planton-component CloudflareD1Database --resume-from 012
 
 Partial Progress:
   ✅ GUIDE.md written
@@ -451,7 +451,7 @@ Test Failures:
 
 Recommendation:
   Fix test failures manually, then re-run:
-  @complete-planton-component AtlasMongodb
+  @complete-planton-component CloudflareD1Database
 
 Current Score: 95% (validation issues don't affect score)
 ```
@@ -463,7 +463,7 @@ Current Score: 95% (validation issues don't affect score)
 Preview entire workflow without changes:
 
 ```bash
-@complete-planton-component AtlasMongodb --dry-run
+@complete-planton-component CloudflareD1Database --dry-run
 ```
 
 **Shows:**
@@ -504,15 +504,15 @@ Default target is **95% not 100%**:
 
 ```bash
 # Step 1: Check status
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Read report, identify gaps
 
 # Step 2: Fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 # Monitor progress, handle errors
 
 # Step 3: Verify
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Check score improved
 
 # Total: 3 commands, manual monitoring
@@ -522,7 +522,7 @@ Default target is **95% not 100%**:
 
 ```bash
 # Single command
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 
 # Automatically:
 # - Audits current state
@@ -603,12 +603,12 @@ done
 
 ```bash
 # Manual workflow
-@audit-planton-component AtlasMongodb
-@update-planton-component AtlasMongodb --scenario fill-gaps
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
+@update-planton-component CloudflareD1Database --scenario fill-gaps
+@audit-planton-component CloudflareD1Database
 
 # Automated workflow (equivalent)
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 ```
 
 ### Before Delete
@@ -631,7 +631,7 @@ done
 Complete provides detailed progress through all phases:
 
 ```
-🎯 Complete: AtlasMongodb
+🎯 Complete: CloudflareD1Database
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -744,7 +744,7 @@ Some gaps could not be filled automatically:
   
 Recommendation:
   Run manual update with specific scenario:
-  @update-planton-component AtlasMongodb --scenario refresh-docs
+  @update-planton-component CloudflareD1Database --scenario refresh-docs
 ```
 
 **Action:** Use manual update to fix specific failures.
@@ -785,7 +785,7 @@ After complete finishes successfully:
 ### Example 1: Complete Incomplete Component
 
 ```bash
-@complete-planton-component AtlasMongodb
+@complete-planton-component CloudflareD1Database
 
 # Before: 65% (missing Terraform, docs)
 # Process: 18 minutes

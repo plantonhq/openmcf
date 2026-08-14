@@ -43,7 +43,7 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Audit shows <100% completion
 
 ```bash
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 ```
 
 **Process:**
@@ -151,7 +151,7 @@ Update handles six distinct scenarios, each with its own workflow:
 **Trigger:** Not sure which scenario applies
 
 ```bash
-@update-planton-component AtlasMongodb
+@update-planton-component CloudflareD1Database
 ```
 
 **Process:**
@@ -172,15 +172,15 @@ Update handles six distinct scenarios, each with its own workflow:
 
 ```bash
 # 1. Check current state
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 65% complete (missing Terraform, docs)
 
 # 2. Fill gaps
-@update-planton-component AtlasMongodb --scenario fill-gaps
+@update-planton-component CloudflareD1Database --scenario fill-gaps
 # Runs rules 012-013, 019, validation
 
 # 3. Verify improvement
-@audit-planton-component AtlasMongodb
+@audit-planton-component CloudflareD1Database
 # Result: 98% complete
 ```
 
@@ -247,7 +247,7 @@ Update handles six distinct scenarios, each with its own workflow:
 
 ```bash
 # Preview gap-filling
-@update-planton-component AtlasMongodb --scenario fill-gaps --dry-run
+@update-planton-component CloudflareD1Database --scenario fill-gaps --dry-run
 
 # Update IaC with backup
 @update-planton-component GcpCertManagerCert --scenario update-iac --explain "add DNS validation" --backup
@@ -263,12 +263,12 @@ Update handles six distinct scenarios, each with its own workflow:
 Preview changes before applying:
 
 ```bash
-@update-planton-component AtlasMongodb --scenario fill-gaps --dry-run
+@update-planton-component CloudflareD1Database --scenario fill-gaps --dry-run
 ```
 
 **Output:**
 ```
-📋 Update Plan for AtlasMongodb
+📋 Update Plan for CloudflareD1Database
 
 Current State: 65% complete
 Missing Items:
@@ -371,7 +371,7 @@ Choice: _
 Update provides detailed progress:
 
 ```
-🔄 Updating AtlasMongodb
+🔄 Updating CloudflareD1Database
 
 Scenario: fill-gaps
 Current: 65% → Target: 95%+
@@ -404,7 +404,7 @@ Summary:
 
 Next Steps:
   1. Review generated files
-  2. Run: @audit-planton-component AtlasMongodb
+  2. Run: @audit-planton-component CloudflareD1Database
   3. Test with: e2e/manifest.yaml
   4. Commit changes
 ```
@@ -415,19 +415,19 @@ Next Steps:
 
 **Error: Component not found**
 ```
-❌ AtlasMongodb not found in cloud_resource_kind.proto
+❌ CloudflareD1Database not found in cloud_resource_kind.proto
 
 Did you mean:
   - MongodbKubernetes
-  - AtlasMongodb (check spelling)
+  - CloudflareD1Database (check spelling)
 
 Or create new:
-  @forge-planton-component AtlasMongodb --provider atlas
+  @forge-planton-component CloudflareD1Database --provider cloudflare
 ```
 
 **Error: Nothing to update**
 ```
-✅ AtlasMongodb is already 100% complete
+✅ CloudflareD1Database is already 100% complete
 
 Audit shows all items present:
   ✅ Proto files
@@ -449,7 +449,7 @@ Fix:
   1. Check spec.proto syntax
   2. Ensure all message types are defined
   3. Run: make protos
-  4. Resume: @update-planton-component AtlasMongodb --resume-from <rule-number>
+  4. Resume: @update-planton-component CloudflareD1Database --resume-from <rule-number>
 ```
 
 ### Recovery
@@ -459,7 +459,7 @@ If update fails:
 2. Suggestion for fix provided
 3. Resume from failure point:
    ```bash
-   @update-planton-component AtlasMongodb --resume-from <rule-number>
+   @update-planton-component CloudflareD1Database --resume-from <rule-number>
    ```
 
 ## Integration Examples

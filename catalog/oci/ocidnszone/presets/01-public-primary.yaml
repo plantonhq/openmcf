@@ -1,9 +1,0 @@
-apiVersion: oci.planton.dev/v1alpha1
-kind: OciDnsZone
-metadata:
-  name: my-public-zone
-spec:
-  compartmentId:
-    value: <compartment-ocid>
-  zoneType: primary
-  scope: global

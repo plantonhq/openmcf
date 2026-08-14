@@ -1,4 +1,0 @@
-name: scaleway-object-bucket
-runtime:
-  name: go
-description: Scaleway Object Bucket Pulumi module
