@@ -1,0 +1,99 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azurepostgresqlflexibleserver
+spec:
+  presets:
+    - preset: 01-dev-burstable
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server compute
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one B_Standard_B1ms server x 730 hours -- the Burstable tier's smallest production-capable size
+          list_unit_price: "0.017"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'B1MS' and productName eq 'Azure Database for PostgreSQL Flexible Server Burstable BS Series Compute' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "12.4100"
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "32"
+          quantity_basis: storage_mb is unset, so the 32768 MB (32 GiB) ladder minimum is provisioned
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "3.6800"
+      total_list_cost: "16.0900"
+      exclusions:
+        - backup storage beyond the free allowance (100% of provisioned storage) follows database churn at the 7-day default retention
+        - network egress follows client placement
+      notes: The burstable tier accrues CPU credits when idle -- sustained load beyond the baseline is the tier's known trade-off, not a billing surprise.
+    - preset: 02-production-private-ha
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server compute
+          pricing_unit: hours
+          pricing_quantity: "1460"
+          quantity_basis: GP_Standard_D4ds_v5 x 730 hours x 2 -- zone-redundant HA bills the synchronized standby's compute at the primary's rate (Microsoft's pricing FAQ states both replicas bill)
+          list_unit_price: "0.356"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4ds_v5' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "519.7600"
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "512"
+          quantity_basis: 262144 MB (256 GiB) provisioned x 2 -- the zone-redundant standby provisions its own equal storage, billed like the primary's per Microsoft's pricing FAQ
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "58.8800"
+      total_list_cost: "578.6400"
+      exclusions:
+        - backup storage beyond the free allowance follows churn at 35-day retention, and geo-redundant backups bill at roughly double the local backup rate
+        - auto-grow can step provisioned storage up the ladder under pressure, doubling each step's cost through the HA multiplier
+        - network egress follows client placement
+      notes: Zone-redundant HA is the deliberate 2x -- both compute and storage double, which is exactly what the 99.99% failover posture buys.
+    - preset: 03-hardened-cmk-entra
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server compute
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: GP_Standard_D4ds_v5 x 730 hours, single zone (no HA block)
+          list_unit_price: "0.356"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4ds_v5' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "259.8800"
+        - service_name: Azure Database for PostgreSQL
+          sku_meter: server storage
+          pricing_unit: GB-months
+          pricing_quantity: "128"
+          quantity_basis: 131072 MB (128 GiB) provisioned on the storage ladder
+          list_unit_price: "0.115"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "14.7200"
+      total_list_cost: "274.6000"
+      exclusions:
+        - backup storage beyond the free allowance follows churn at 35-day retention
+        - Key Vault operations for the customer-managed key bill on the referenced vault, a separate component
+        - network egress follows client placement
+      notes: The hardening choices (CMK, Entra-only authentication) change the security posture, not the bill -- compute and storage price identically to an unhardened server of the same shape.

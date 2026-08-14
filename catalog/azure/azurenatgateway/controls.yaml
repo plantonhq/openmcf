@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurenatgateway
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A NAT gateway forwards packets and stores no customer data at rest.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The gateway translates addresses without terminating or originating encryption; payload encryption is end-to-end between the workloads and their destinations.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: A NAT gateway is outbound-only by design -- it accepts no unsolicited inbound connections from the internet, and inbound reachability would require separate load balancers or public IPs on the workloads themselves.
+    - control_id: restricted-ingress
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Only connections initiated from subnets associated to the gateway are translated; unsolicited inbound traffic has no path through it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No inbound request surface exists to filter (see restricted-ingress).
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the gateway exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The gateway runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Traffic through the gateway is auditable with NSG flow logs or virtual network flow logs -- separate resources, not fields of this spec. Control-plane changes land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure publishes NAT gateway metrics (SNAT connection counts, dropped packets, data processed) to Azure Monitor automatically for every gateway; SNAT-exhaustion visibility needs no configuration.
+      notes: idle_timeout_in_minutes is the lever the SNAT metrics inform.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Stateless address translation -- no data to back up; the configuration is declarative and re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: zones
+      evidence:
+        type: spec_default
+        reference: A STANDARD gateway is zonal -- pinning one zone (or none) shares that zone's fate; sku_name STANDARD_V2 is zone-redundant by design and rejects a zones list.
+      notes: The 03-zone-redundant-v2 preset picks STANDARD_V2; zonal architectures compose one gateway per zone instead.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Azure nor this spec offers a deletion-protection flag for a NAT gateway; the blast radius of deletion is lost egress, recreated declaratively in minutes.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the NAT data plane; no customer-visible patch surface exists.

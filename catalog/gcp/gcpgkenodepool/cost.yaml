@@ -1,0 +1,66 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpgkenodepool
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Compute Engine
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      description: Every node the pool keeps running bills its machine type's vCPUs by the hour as ordinary Compute Engine instances -- GKE adds no markup on nodes.
+    - service_name: Compute Engine
+      sku_meter: node memory
+      pricing_unit: GiB-hours
+      description: Node memory bills per GiB-hour alongside the vCPUs; the machine type fixes the vCPU-to-memory ratio.
+    - service_name: Compute Engine
+      sku_meter: node boot disk storage
+      pricing_unit: GiB-months
+      description: Each node carries a persistent boot disk billed per GiB-month at its disk type's rate.
+  cost_drivers:
+    - field_path: node_config.machine_type
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: The single biggest lever -- the machine type fixes vCPU count, memory, and the price family (E2 is the budget family, N2 general purpose, G2 carries an embedded GPU).
+    - field_path: autoscaling.min_nodes
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: The autoscaling floor is the committed always-on spend -- the pool never bills below it, and min_nodes counts per zone, so a regional pool multiplies by its zone count. A floor of zero makes the idle pool free.
+    - field_path: autoscaling.max_nodes
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: The ceiling bounds the worst-case bill under load; it costs nothing until the autoscaler actually scales.
+    - field_path: node_count
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: A fixed-size pool bills exactly this many nodes per zone around the clock -- no floor/ceiling spread.
+    - field_path: node_locations
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: Per-zone sizing multiplies across the zones listed here (or inherited from the cluster) -- three zones at min_nodes=1 is three always-on nodes.
+    - field_path: node_config.spot
+      sku_meter: node vCPU
+      pricing_unit: vCPU-hours
+      impact: Spot nodes bill at market rates well under the on-demand price in exchange for preemption; the discount floats and is never a list price.
+    - field_path: node_config.disk_size_gb
+      sku_meter: node boot disk storage
+      pricing_unit: GiB-months
+      impact: Boot disk GiB per node, billed monthly at the disk type's rate (default 100 GiB).
+    - field_path: node_config.disk_type
+      sku_meter: node boot disk storage
+      pricing_unit: GiB-months
+      impact: Picks the per-GiB price class -- pd-standard is cheapest, pd-balanced the SSD-class default, pd-ssd and the hyperdisk families premium.
+    - field_path: node_config.guest_accelerators
+      sku_meter: GPU accelerators
+      impact: Each attached GPU bills per GPU-hour on top of the machine type (G2 machine types embed their L4s in the machine price instead).
+    - field_path: network_config.total_egress_bandwidth_tier
+      sku_meter: Tier_1 networking premium
+      impact: TIER_1 egress bandwidth is a premium networking capability billed on top of standard egress rates.
+  estimate_exclusions:
+    - autoscaling above the floor bills per additional node while it runs
+    - spot node market pricing floats below the on-demand ceiling
+    - network egress, local SSDs, and ephemeral storage beyond the boot disk follow workload behavior
+  notes: "The pool is where a GKE architecture's real money lives -- the cluster bills a flat management fee, the nodes bill like the fleet of VMs they are. GCP prices nodes as vCPU-hours plus GiB-hours (not per instance type), so the machine type is a ratio, and the floor-times-zones arithmetic is the committed spend."

@@ -1,0 +1,68 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: azuremanagedredis
+spec:
+  presets:
+    - preset: 01-keyless-balanced
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one BALANCED_B1 (1 GB) instance x 730 hours -- the listed rate includes the high-availability replicated pair, on by default
+          list_unit_price: "0.032"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'B1 Cache Instance' and productName eq 'Azure Managed Redis - Balanced' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "23.3600"
+      total_list_cost: "23.3600"
+      exclusions:
+        - network egress follows client placement
+      notes: The SKU-hour is the entire bill -- keyless authentication and eviction policy change posture, not price.
+    - preset: 02-search-json-enterprise
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one MEMORY_OPTIMIZED_M10 (10 GB) instance x 730 hours with HA included -- the RediSearch and RedisJSON modules add no charge
+          list_unit_price: "0.216"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'M10 Cache Instance' and productName eq 'Azure Managed Redis - Memory Optimized' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "157.6800"
+      total_list_cost: "157.6800"
+      exclusions:
+        - network egress follows client placement
+      notes: Modules are free capabilities on the same SKU rate; the memory-optimized family buys RAM headroom for index-heavy workloads.
+    - preset: 03-geo-replicated
+      region_assumption: eastus
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Redis Cache
+          sku_meter: cache instance
+          pricing_unit: hours
+          pricing_quantity: "730"
+          quantity_basis: one BALANCED_B3 (the geo-replication SKU floor) x 730 hours -- this manifest is one member of the geo group and bills only itself
+          list_unit_price: "0.065"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'B3 Cache Instance' and productName eq 'Azure Managed Redis - Balanced' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-14"
+          list_cost: "47.4500"
+      total_list_cost: "47.4500"
+      exclusions:
+        - every other member of the geo-replication group is its own component billing its own SKU-hour
+        - cross-region replication traffic follows the group's write volume
+      notes: Active geo-replication is priced as the sum of the members -- each instance carries its own line, so the group's total lives across the composed components.

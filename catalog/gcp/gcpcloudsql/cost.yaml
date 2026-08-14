@@ -1,0 +1,72 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpcloudsql
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloud SQL
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      description: The instance's vCPUs bill by the hour from creation while the activation policy keeps it running; the tier string (db-custom-CPUS-MEMORY_MB) fixes the count.
+    - service_name: Cloud SQL
+      sku_meter: instance memory
+      pricing_unit: GiB-hours
+      description: Instance memory bills per GiB-hour alongside the vCPUs, sized by the tier string's memory component.
+    - service_name: Cloud SQL
+      sku_meter: instance storage
+      pricing_unit: GiB-months
+      description: Provisioned disk bills per GiB-month at the disk type's rate whether used or empty; auto-resize only ever grows it.
+  cost_drivers:
+    - field_path: tier
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: The machine shape is the dominant lever -- db-custom-4-15360 is 4 vCPUs and 15 GiB, and both dimensions bill hourly at the engine's rates.
+    - field_path: availability_type
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: REGIONAL runs a synchronized standby in a second zone and bills the regional rates -- exactly double the zonal vCPU, memory, and storage rates. ZONAL (the default) is the single-zone price.
+    - field_path: database_engine
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: PostgreSQL and MySQL price identically in most regions; SQL Server adds per-core license charges on top of the machine rates.
+    - field_path: edition
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: ENTERPRISE_PLUS bills premium machine rates (and unlocks the data cache); ENTERPRISE (the default) is the standard rate card.
+    - field_path: disk.size_gb
+      sku_meter: instance storage
+      pricing_unit: GiB-months
+      impact: Provisioned GiB, billed monthly whether used or not (default 10 GiB).
+    - field_path: disk.type
+      sku_meter: instance storage
+      pricing_unit: GiB-months
+      impact: PD_SSD (the default) is the standard rate; PD_HDD roughly halves storage cost at lower IOPS; HYPERDISK_BALANCED adds separately billed provisioned IOPS and throughput.
+    - field_path: disk.auto_resize
+      sku_meter: instance storage
+      pricing_unit: GiB-months
+      impact: On by default -- storage grows automatically under pressure and the bill follows; auto_resize_limit is the only brake.
+    - field_path: activation_policy
+      sku_meter: instance vCPU
+      pricing_unit: vCPU-hours
+      impact: NEVER stops the instance -- compute billing pauses while storage and backups keep billing until reactivation.
+    - field_path: backup.retained_backups
+      sku_meter: backup storage
+      pricing_unit: GiB-months
+      impact: Each retained automated backup bills its incremental size per GiB-month; point-in-time recovery additionally retains transaction logs for its window.
+    - field_path: data_cache_enabled
+      sku_meter: data cache storage
+      pricing_unit: GiB-months
+      impact: The Enterprise Plus data cache bills local SSD per GiB-month on top of the premium machine rates.
+    - field_path: node_count
+      sku_meter: read pool nodes
+      pricing_unit: vCPU-hours
+      impact: A READ_POOL_INSTANCE multiplies the tier's machine cost by its node count; read_pool_auto_scale turns the count into a floor-to-ceiling range.
+  estimate_exclusions:
+    - backup storage bills per retained GiB and grows with database churn and retention settings
+    - network egress from the instance follows client placement
+    - SQL Server license charges apply only to that engine
+  notes: "Cloud SQL prices the machine, not the instance name: vCPU-hours plus GiB-hours plus provisioned storage, with REGIONAL availability doubling all three through its own SKUs. The tier string is arithmetic, not a lookup -- db-custom-C-M bills C vCPUs and M/1024 GiB."

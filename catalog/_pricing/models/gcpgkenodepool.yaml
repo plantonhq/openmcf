@@ -1,0 +1,50 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Presets with no quantity lines have no committed always-on
+# spend and estimate to zero. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: gcpgkenodepool
+spec:
+  presets:
+    - preset: 01-on-demand-autoscaling
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: node vCPU
+          price: n2-instance-core-us-central1
+          pricing_quantity: "2920"
+          quantity_basis: 1 n2-standard-4 node at the autoscaling floor x 4 vCPUs x 730 hours -- min_nodes counts per zone and the zone list comes from the referenced cluster, so a single-zone placement is assumed; a three-zone regional pool triples every line
+        - sku_meter: node memory
+          price: n2-instance-ram-us-central1
+          pricing_quantity: "11680"
+          quantity_basis: 1 node x 16 GiB (the n2-standard-4 ratio) x 730 hours at the floor, single-zone assumption as above
+        - sku_meter: node boot disk storage
+          price: balanced-pd-capacity-us-central1
+          pricing_quantity: "100"
+          quantity_basis: 1 node x the preset's 100 GiB pd-balanced boot disk, billed per GiB-month
+      exclusions:
+        - autoscaling above the 1-node floor bills each additional node (up to 5 per zone) at the same per-node rates while it runs
+        - network egress and any local or ephemeral storage beyond the boot disk follow workload behavior
+      notes: Estimated at the autoscaling floor -- the committed always-on spend. The ceiling at max_nodes=5 per zone is roughly five times every line.
+    - preset: 02-spot-cost-optimized
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the pool scales to zero (min_nodes 0), so the committed always-on spend is exactly zero
+        - while scaled up, spot e2-standard-4 nodes bill at floating market rates below the on-demand price -- a market rate is not a list price, so no dollar figure is honest here
+        - each running node also bills its 100 GiB pd-balanced boot disk per GiB-month
+      notes: Scale-to-zero spot capacity is the cheapest honest shape -- zero committed, market-priced when busy, preemptible by design.
+    - preset: 03-gpu-accelerated
+      region_assumption: us-central1
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the pool scales to zero (min_nodes 0), so the committed always-on spend is exactly zero
+        - while scaled up, each g2-standard-8 node bills the G2 machine rates (which embed the NVIDIA L4) plus its 200 GiB pd-ssd boot disk
+      notes: GPU capacity that scales to zero -- the preset's own comment says why -- so the estimate is zero committed and the real spend follows queued ML work.

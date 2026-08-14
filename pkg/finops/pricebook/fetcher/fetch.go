@@ -1,22 +1,25 @@
 // Package main (the price-book fetcher) refreshes every price-book entry
-// that carries a machine selector from the provider's public price API --
-// the AWS Price List bulk API today. For each refreshed entry it rewrites
-// the unit price, the price_source (pinned to the offer's VERSIONED
-// document URL, a citation that stays fetchable after prices change), and
-// the retrieval date. Entries without a selector -- and whole books without
-// any -- are left untouched: they are refreshed by hand, or by a future
-// provider fetcher.
+// that carries a machine selector from its provider's public price API:
+// the AWS Price List bulk API (this file), the Azure Retail Prices API
+// (azure.go), and the GCP Cloud Billing Catalog API (gcp.go). For each
+// refreshed entry it rewrites the unit price, the price_source (a citation
+// that can be fetched again -- AWS pins the offer's VERSIONED document URL,
+// Azure records the version-pinned filter query, GCP records the service's
+// SKU collection), and the retrieval date. Entries without a selector --
+// and whole books without any -- are left untouched: they are refreshed by
+// hand.
 //
 // Selection is deterministic or dead: a selector that matches zero or
-// several products, or zero or several price dimensions, is a hard error,
+// several products, price dimensions, tiers, or rates is a hard error,
 // never a guess. Free-tier $0 dimensions sit beside the standard rate in
-// the offer files, so tiered SKUs disambiguate with description_contains
-// (list-price semantics never net free tiers out).
+// every provider's catalog, so tiered SKUs disambiguate explicitly
+// (description_contains, tier_minimum_units, start_usage_amount --
+// list-price semantics never net free tiers out).
 //
 // Run through `make generate-price-book`. Requires network access; CI never
 // fetches -- the lint lane validates the committed snapshot. An unchanged
-// upstream offer version rewrites a byte-identical book (apart from
-// retrieved_on, which honestly records the re-verification date).
+// upstream price rewrites a byte-identical book (apart from retrieved_on,
+// which honestly records the re-verification date).
 package main
 
 import (
@@ -103,10 +106,20 @@ func fetchOffer(client *http.Client, offerCode, regionCode string) (*regionalOff
 	return &regionalOffer{file: &file, versionedURL: versionedURL}, nil
 }
 
-// refreshEntry rewrites one entry's price, source, and date from its
-// selector's match in the regional offer document.
-func refreshEntry(entry *pricebookv1.PriceBookEntry, offer *regionalOffer, today string) error {
+// refreshAwsEntry rewrites one entry's price, source, and date from its
+// selector's match in the (cached) regional offer document.
+func refreshAwsEntry(client *http.Client, offers map[string]*regionalOffer, entry *pricebookv1.PriceBookEntry, today string) error {
 	selector := entry.GetAwsSelector()
+	offerKey := selector.GetOfferCode() + "/" + selector.GetRegionCode()
+	offer, ok := offers[offerKey]
+	if !ok {
+		fetched, err := fetchOffer(client, selector.GetOfferCode(), selector.GetRegionCode())
+		if err != nil {
+			return err
+		}
+		offers[offerKey] = fetched
+		offer = fetched
+	}
 
 	var matched []string
 	for sku, product := range offer.file.Products {

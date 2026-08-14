@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: azurednszone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A hosted zone holds public DNS routing data served from Azure's managed authoritative fleet; it exposes no customer at-rest encryption surface.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No at-rest encryption surface to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: Standard DNS resolution is a plaintext protocol by design; the zone exposes no transport-encryption control.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: This kind hosts PUBLIC zones -- internet-wide resolvability is the product, not a defect. Private resolution scoped to virtual networks is the separate AzurePrivateDnsZone kind with its own posture.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: A public zone answers every resolver by design; scoped resolution belongs to the private-zone kind.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DNS queries are answered by Azure's authoritative edge; there is no request-filtering attachment point on a zone.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is subscription/resource-group RBAC posture, not a component choice; the zone exposes no authentication plane of its own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The zone runs no workloads and holds no credentials of its own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: Azure DNS public zones do not currently expose DNSSEC signing through this resource's API surface, so no authentication-strengthening lever exists on the spec to examine.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Per-query logging is not offered for Azure DNS public zones; administrative changes to the zone and its record sets land in the Azure Activity Log as subscription-level posture.
+    - control_id: monitoring-integration
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure DNS publishes zone metrics (query volume, record set count and capacity utilization) to Azure Monitor for every public zone without configuration.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Zone contents are declarative record manifests (AzureDnsRecord kinds) recreated from source control; Microsoft operates the authoritative store redundantly. No customer backup surface exists.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Azure DNS is a global anycast service -- every zone is served from Microsoft's worldwide authoritative name-server fleet with a 100% availability SLA; single-zone operation is unrepresentable.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the Azure DNS API nor this spec offers a deletion-protection flag (Azure resource locks are subscription-side governance outside the manifest); zone contents are recreated declaratively from record manifests.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Microsoft operates and patches the authoritative DNS fleet; no customer-visible patch surface exists.

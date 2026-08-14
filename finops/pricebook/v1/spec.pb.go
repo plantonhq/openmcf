@@ -108,11 +108,18 @@ type PriceBookEntry struct {
 	// The date the unit price was read from price_source (YYYY-MM-DD).
 	// Prices drift; a dated price is a fact, an undated price is a rumor.
 	RetrievedOn string `protobuf:"bytes,8,opt,name=retrieved_on,json=retrievedOn,proto3" json:"retrieved_on,omitempty"`
-	// How the price-book fetcher re-reads this price from the AWS Price
-	// List bulk API. Present only on AWS entries; entries without a
-	// selector are refreshed by hand (or by a future provider fetcher) and
-	// the fetcher leaves them untouched.
-	AwsSelector   *AwsPriceSelector `protobuf:"bytes,9,opt,name=aws_selector,json=awsSelector,proto3" json:"aws_selector,omitempty"`
+	// How the price-book fetcher re-reads this price from the provider's
+	// public price API. At most one selector, matching the book's own
+	// provider (the conformance gate enforces the pairing; the oneof makes
+	// a second selector structurally impossible). Entries without a
+	// selector are refreshed by hand and the fetcher leaves them untouched.
+	//
+	// Types that are valid to be assigned to Selector:
+	//
+	//	*PriceBookEntry_AwsSelector
+	//	*PriceBookEntry_AzureSelector
+	//	*PriceBookEntry_GcpSelector
+	Selector      isPriceBookEntry_Selector `protobuf_oneof:"selector"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -203,12 +210,64 @@ func (x *PriceBookEntry) GetRetrievedOn() string {
 	return ""
 }
 
-func (x *PriceBookEntry) GetAwsSelector() *AwsPriceSelector {
+func (x *PriceBookEntry) GetSelector() isPriceBookEntry_Selector {
 	if x != nil {
-		return x.AwsSelector
+		return x.Selector
 	}
 	return nil
 }
+
+func (x *PriceBookEntry) GetAwsSelector() *AwsPriceSelector {
+	if x != nil {
+		if x, ok := x.Selector.(*PriceBookEntry_AwsSelector); ok {
+			return x.AwsSelector
+		}
+	}
+	return nil
+}
+
+func (x *PriceBookEntry) GetAzureSelector() *AzurePriceSelector {
+	if x != nil {
+		if x, ok := x.Selector.(*PriceBookEntry_AzureSelector); ok {
+			return x.AzureSelector
+		}
+	}
+	return nil
+}
+
+func (x *PriceBookEntry) GetGcpSelector() *GcpPriceSelector {
+	if x != nil {
+		if x, ok := x.Selector.(*PriceBookEntry_GcpSelector); ok {
+			return x.GcpSelector
+		}
+	}
+	return nil
+}
+
+type isPriceBookEntry_Selector interface {
+	isPriceBookEntry_Selector()
+}
+
+type PriceBookEntry_AwsSelector struct {
+	// Locates the price in the AWS Price List bulk API.
+	AwsSelector *AwsPriceSelector `protobuf:"bytes,9,opt,name=aws_selector,json=awsSelector,proto3,oneof"`
+}
+
+type PriceBookEntry_AzureSelector struct {
+	// Locates the price in the Azure Retail Prices API.
+	AzureSelector *AzurePriceSelector `protobuf:"bytes,10,opt,name=azure_selector,json=azureSelector,proto3,oneof"`
+}
+
+type PriceBookEntry_GcpSelector struct {
+	// Locates the price in the GCP Cloud Billing Catalog API.
+	GcpSelector *GcpPriceSelector `protobuf:"bytes,11,opt,name=gcp_selector,json=gcpSelector,proto3,oneof"`
+}
+
+func (*PriceBookEntry_AwsSelector) isPriceBookEntry_Selector() {}
+
+func (*PriceBookEntry_AzureSelector) isPriceBookEntry_Selector() {}
+
+func (*PriceBookEntry_GcpSelector) isPriceBookEntry_Selector() {}
 
 // AwsPriceSelector locates one price dimension in the AWS Price List bulk
 // API (the public, unauthenticated offer files at
@@ -308,13 +367,235 @@ func (x *AwsPriceSelector) GetDescriptionContains() string {
 	return ""
 }
 
+// AzurePriceSelector locates one meter in the Azure Retail Prices API
+// (the public, unauthenticated endpoint at prices.azure.com). The fetcher
+// composes an OData $filter from the populated fields, requests USD
+// consumption prices, and requires the matches to agree on exactly one
+// price -- the API repeats a meter once per display region, so several
+// rows carrying one identical price are that one price, while rows
+// disagreeing on price or unit are a hard error, never a guess. Field
+// names mirror the API's own filter vocabulary verbatim; values are
+// CASE-SENSITIVE (the fetcher pins api-version=2023-01-01-preview, where
+// filters match exactly).
+type AzurePriceSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The API's serviceName filter, e.g. "Virtual Machines", "Azure DNS".
+	ServiceName string `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	// The API's armRegionName filter, e.g. "eastus" -- or "Global" for
+	// meters Azure prices identically everywhere (matching the entry's
+	// region "global").
+	ArmRegionName string `protobuf:"bytes,2,opt,name=arm_region_name,json=armRegionName,proto3" json:"arm_region_name,omitempty"`
+	// The API's armSkuName filter, e.g. "Standard_D4s_v5". Empty when the
+	// meter carries no ARM SKU (many non-compute meters).
+	ArmSkuName string `protobuf:"bytes,3,opt,name=arm_sku_name,json=armSkuName,proto3" json:"arm_sku_name,omitempty"`
+	// The API's meterName filter, e.g. "D4s v5", "P10 LRS Disk". The most
+	// precise meter identity; prefer it over productName when both would
+	// work.
+	MeterName string `protobuf:"bytes,4,opt,name=meter_name,json=meterName,proto3" json:"meter_name,omitempty"`
+	// The API's productName filter, e.g. "Virtual Machines Dsv5 Series" --
+	// needed when meterName alone is ambiguous (Windows vs Linux product
+	// lines share meter names).
+	ProductName string `protobuf:"bytes,5,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
+	// The API's skuName filter, e.g. "Standard". A further disambiguator
+	// when meter and product names still match several items.
+	SkuName string `protobuf:"bytes,6,opt,name=sku_name,json=skuName,proto3" json:"sku_name,omitempty"`
+	// The API's priceType filter. Empty means "Consumption" (pay-as-you-go
+	// list price) -- reservations and savings plans are never list prices.
+	PriceType string `protobuf:"bytes,7,opt,name=price_type,json=priceType,proto3" json:"price_type,omitempty"`
+	// Picks one tier of a tiered meter by its tierMinimumUnits value
+	// (decimal string, e.g. "0", "25"). The Azure analog of the AWS
+	// selector's description_contains: list-price semantics price the
+	// standard tier, never a free or volume-discount tier. Empty when the
+	// meter has exactly one tier.
+	TierMinimumUnits string `protobuf:"bytes,8,opt,name=tier_minimum_units,json=tierMinimumUnits,proto3" json:"tier_minimum_units,omitempty"`
+	// The meter's stable GUID (the API's meterId) -- the strongest anchor,
+	// for meters the name filters cannot isolate (e.g. globally priced
+	// meters whose commercial-cloud row carries an EMPTY armRegionName,
+	// where a name filter would also match sovereign-cloud twins). When
+	// set, the fetcher filters by meterId alone and the name fields above
+	// are the human-readable record of what it identifies.
+	MeterId       string `protobuf:"bytes,9,opt,name=meter_id,json=meterId,proto3" json:"meter_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AzurePriceSelector) Reset() {
+	*x = AzurePriceSelector{}
+	mi := &file_finops_pricebook_v1_spec_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AzurePriceSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AzurePriceSelector) ProtoMessage() {}
+
+func (x *AzurePriceSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_finops_pricebook_v1_spec_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AzurePriceSelector.ProtoReflect.Descriptor instead.
+func (*AzurePriceSelector) Descriptor() ([]byte, []int) {
+	return file_finops_pricebook_v1_spec_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AzurePriceSelector) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetArmRegionName() string {
+	if x != nil {
+		return x.ArmRegionName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetArmSkuName() string {
+	if x != nil {
+		return x.ArmSkuName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetMeterName() string {
+	if x != nil {
+		return x.MeterName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetProductName() string {
+	if x != nil {
+		return x.ProductName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetSkuName() string {
+	if x != nil {
+		return x.SkuName
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetPriceType() string {
+	if x != nil {
+		return x.PriceType
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetTierMinimumUnits() string {
+	if x != nil {
+		return x.TierMinimumUnits
+	}
+	return ""
+}
+
+func (x *AzurePriceSelector) GetMeterId() string {
+	if x != nil {
+		return x.MeterId
+	}
+	return ""
+}
+
+// GcpPriceSelector locates one SKU in the GCP Cloud Billing Catalog API
+// (cloudbilling.googleapis.com, authenticated -- see the fetcher for the
+// credential contract). Google assigns every price a stable SKU ID, so
+// selection is direct rather than attribute matching; the fetcher verifies
+// the SKU still serves the entry's region and converts the API's exact
+// units+nanos price to the decimal string -- floats never touch the money.
+type GcpPriceSelector struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The Cloud Billing service identity that owns the SKU, e.g.
+	// "6F81-5844-456A" (Compute Engine). The services list at
+	// /v1/services names them all; recorded so the fetcher queries one
+	// service's SKU pages, never the whole catalog.
+	ServiceId string `protobuf:"bytes,1,opt,name=service_id,json=serviceId,proto3" json:"service_id,omitempty"`
+	// The SKU's stable identifier within the service, e.g.
+	// "2E27-4F75-95CD". The deterministic anchor: a missing sku_id in the
+	// service's live SKU list is a hard error.
+	SkuId string `protobuf:"bytes,2,opt,name=sku_id,json=skuId,proto3" json:"sku_id,omitempty"`
+	// Picks one tiered rate of the SKU's pricing expression by its
+	// startUsageAmount (decimal string, e.g. "0"). List-price semantics:
+	// price the standard rate, never a free tier. Empty when the SKU has
+	// exactly one rate.
+	StartUsageAmount string `protobuf:"bytes,3,opt,name=start_usage_amount,json=startUsageAmount,proto3" json:"start_usage_amount,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *GcpPriceSelector) Reset() {
+	*x = GcpPriceSelector{}
+	mi := &file_finops_pricebook_v1_spec_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GcpPriceSelector) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GcpPriceSelector) ProtoMessage() {}
+
+func (x *GcpPriceSelector) ProtoReflect() protoreflect.Message {
+	mi := &file_finops_pricebook_v1_spec_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GcpPriceSelector.ProtoReflect.Descriptor instead.
+func (*GcpPriceSelector) Descriptor() ([]byte, []int) {
+	return file_finops_pricebook_v1_spec_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GcpPriceSelector) GetServiceId() string {
+	if x != nil {
+		return x.ServiceId
+	}
+	return ""
+}
+
+func (x *GcpPriceSelector) GetSkuId() string {
+	if x != nil {
+		return x.SkuId
+	}
+	return ""
+}
+
+func (x *GcpPriceSelector) GetStartUsageAmount() string {
+	if x != nil {
+		return x.StartUsageAmount
+	}
+	return ""
+}
+
 var File_finops_pricebook_v1_spec_proto protoreflect.FileDescriptor
 
 const file_finops_pricebook_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"\x1efinops/pricebook/v1/spec.proto\x12\x1fdev.planton.finops.pricebook.v1\"Z\n" +
 	"\rPriceBookSpec\x12I\n" +
-	"\aentries\x18\x01 \x03(\v2/.dev.planton.finops.pricebook.v1.PriceBookEntryR\aentries\"\xe2\x02\n" +
+	"\aentries\x18\x01 \x03(\v2/.dev.planton.finops.pricebook.v1.PriceBookEntryR\aentries\"\xa6\x04\n" +
 	"\x0ePriceBookEntry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12!\n" +
@@ -323,8 +604,13 @@ const file_finops_pricebook_v1_spec_proto_rawDesc = "" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12&\n" +
 	"\x0flist_unit_price\x18\x06 \x01(\tR\rlistUnitPrice\x12!\n" +
 	"\fprice_source\x18\a \x01(\tR\vpriceSource\x12!\n" +
-	"\fretrieved_on\x18\b \x01(\tR\vretrievedOn\x12T\n" +
-	"\faws_selector\x18\t \x01(\v21.dev.planton.finops.pricebook.v1.AwsPriceSelectorR\vawsSelector\"\xc2\x01\n" +
+	"\fretrieved_on\x18\b \x01(\tR\vretrievedOn\x12V\n" +
+	"\faws_selector\x18\t \x01(\v21.dev.planton.finops.pricebook.v1.AwsPriceSelectorH\x00R\vawsSelector\x12\\\n" +
+	"\x0eazure_selector\x18\n" +
+	" \x01(\v23.dev.planton.finops.pricebook.v1.AzurePriceSelectorH\x00R\razureSelector\x12V\n" +
+	"\fgcp_selector\x18\v \x01(\v21.dev.planton.finops.pricebook.v1.GcpPriceSelectorH\x00R\vgcpSelectorB\n" +
+	"\n" +
+	"\bselector\"\xc2\x01\n" +
 	"\x10AwsPriceSelector\x12\x1d\n" +
 	"\n" +
 	"offer_code\x18\x01 \x01(\tR\tofferCode\x12\x1f\n" +
@@ -333,7 +619,25 @@ const file_finops_pricebook_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"usage_type\x18\x03 \x01(\tR\tusageType\x12\x1c\n" +
 	"\toperation\x18\x04 \x01(\tR\toperation\x121\n" +
-	"\x14description_contains\x18\x05 \x01(\tR\x13descriptionContainsB\x8f\x02\n" +
+	"\x14description_contains\x18\x05 \x01(\tR\x13descriptionContains\"\xc6\x02\n" +
+	"\x12AzurePriceSelector\x12!\n" +
+	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12&\n" +
+	"\x0farm_region_name\x18\x02 \x01(\tR\rarmRegionName\x12 \n" +
+	"\farm_sku_name\x18\x03 \x01(\tR\n" +
+	"armSkuName\x12\x1d\n" +
+	"\n" +
+	"meter_name\x18\x04 \x01(\tR\tmeterName\x12!\n" +
+	"\fproduct_name\x18\x05 \x01(\tR\vproductName\x12\x19\n" +
+	"\bsku_name\x18\x06 \x01(\tR\askuName\x12\x1d\n" +
+	"\n" +
+	"price_type\x18\a \x01(\tR\tpriceType\x12,\n" +
+	"\x12tier_minimum_units\x18\b \x01(\tR\x10tierMinimumUnits\x12\x19\n" +
+	"\bmeter_id\x18\t \x01(\tR\ameterId\"v\n" +
+	"\x10GcpPriceSelector\x12\x1d\n" +
+	"\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\x12\x15\n" +
+	"\x06sku_id\x18\x02 \x01(\tR\x05skuId\x12,\n" +
+	"\x12start_usage_amount\x18\x03 \x01(\tR\x10startUsageAmountB\x8f\x02\n" +
 	"#com.dev.planton.finops.pricebook.v1B\tSpecProtoP\x01Z<github.com/plantonhq/planton/finops/pricebook/v1;pricebookv1\xa2\x02\x04DPFP\xaa\x02\x1fDev.Planton.Finops.Pricebook.V1\xca\x02\x1fDev\\Planton\\Finops\\Pricebook\\V1\xe2\x02+Dev\\Planton\\Finops\\Pricebook\\V1\\GPBMetadata\xea\x02#Dev::Planton::Finops::Pricebook::V1b\x06proto3"
 
 var (
@@ -348,20 +652,24 @@ func file_finops_pricebook_v1_spec_proto_rawDescGZIP() []byte {
 	return file_finops_pricebook_v1_spec_proto_rawDescData
 }
 
-var file_finops_pricebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_finops_pricebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_finops_pricebook_v1_spec_proto_goTypes = []any{
-	(*PriceBookSpec)(nil),    // 0: dev.planton.finops.pricebook.v1.PriceBookSpec
-	(*PriceBookEntry)(nil),   // 1: dev.planton.finops.pricebook.v1.PriceBookEntry
-	(*AwsPriceSelector)(nil), // 2: dev.planton.finops.pricebook.v1.AwsPriceSelector
+	(*PriceBookSpec)(nil),      // 0: dev.planton.finops.pricebook.v1.PriceBookSpec
+	(*PriceBookEntry)(nil),     // 1: dev.planton.finops.pricebook.v1.PriceBookEntry
+	(*AwsPriceSelector)(nil),   // 2: dev.planton.finops.pricebook.v1.AwsPriceSelector
+	(*AzurePriceSelector)(nil), // 3: dev.planton.finops.pricebook.v1.AzurePriceSelector
+	(*GcpPriceSelector)(nil),   // 4: dev.planton.finops.pricebook.v1.GcpPriceSelector
 }
 var file_finops_pricebook_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.finops.pricebook.v1.PriceBookSpec.entries:type_name -> dev.planton.finops.pricebook.v1.PriceBookEntry
 	2, // 1: dev.planton.finops.pricebook.v1.PriceBookEntry.aws_selector:type_name -> dev.planton.finops.pricebook.v1.AwsPriceSelector
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	3, // 2: dev.planton.finops.pricebook.v1.PriceBookEntry.azure_selector:type_name -> dev.planton.finops.pricebook.v1.AzurePriceSelector
+	4, // 3: dev.planton.finops.pricebook.v1.PriceBookEntry.gcp_selector:type_name -> dev.planton.finops.pricebook.v1.GcpPriceSelector
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_finops_pricebook_v1_spec_proto_init() }
@@ -369,13 +677,18 @@ func file_finops_pricebook_v1_spec_proto_init() {
 	if File_finops_pricebook_v1_spec_proto != nil {
 		return
 	}
+	file_finops_pricebook_v1_spec_proto_msgTypes[1].OneofWrappers = []any{
+		(*PriceBookEntry_AwsSelector)(nil),
+		(*PriceBookEntry_AzureSelector)(nil),
+		(*PriceBookEntry_GcpSelector)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_finops_pricebook_v1_spec_proto_rawDesc), len(file_finops_pricebook_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

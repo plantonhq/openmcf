@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpredisinstance
+spec:
+  gcp:
+    groups:
+      - purpose: EnableRedisApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling redis.googleapis.com on the target project. disable_on_destroy is false in the module, so the disable permission is never needed.
+      - purpose: ManageInstance
+        permissions:
+          - redis.instances.create
+          - redis.instances.get
+          - redis.instances.update
+          - redis.instances.delete
+          - redis.operations.get
+        provenance: derived
+        notes: Covers google_redis_instance -- create, read/refresh, in-place updates (size, replicas, persistence, maintenance), and destroy, plus polling the long-running operation every mutation returns.

@@ -22,7 +22,7 @@ spec:
           pricing_quantity: "2190"
           quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
           list_unit_price: "0.192"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and priceType eq 'Consumption' and serviceName eq 'Virtual Machines'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "420.4800"
         - service_name: Azure Kubernetes Service
@@ -30,8 +30,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
-          list_unit_price: "0.10"
-          price_source: https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Kubernetes Service' and meterName eq 'Standard Uptime SLA' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
         - service_name: Storage
@@ -40,7 +40,7 @@ spec:
           pricing_quantity: "3"
           quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
           list_unit_price: "19.71"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "59.1300"
         - service_name: Load Balancer
@@ -49,7 +49,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
           list_unit_price: "0.025"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=serviceName eq 'Load Balancer' and contains(meterName, 'Standard Included')"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "18.2500"
         - service_name: Virtual Network
@@ -58,7 +58,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
           list_unit_price: "0.005"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'Global' and contains(meterName, 'Static Public IP') and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "3.6500"
       total_list_cost: "574.5100"
@@ -78,7 +78,7 @@ spec:
           pricing_quantity: "2190"
           quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
           list_unit_price: "0.192"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and priceType eq 'Consumption' and serviceName eq 'Virtual Machines'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "420.4800"
         - service_name: Azure Kubernetes Service
@@ -86,8 +86,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
-          list_unit_price: "0.10"
-          price_source: https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Kubernetes Service' and meterName eq 'Standard Uptime SLA' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
         - service_name: Storage
@@ -96,7 +96,7 @@ spec:
           pricing_quantity: "3"
           quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
           list_unit_price: "19.71"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "59.1300"
         - service_name: Load Balancer
@@ -105,7 +105,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
           list_unit_price: "0.025"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=serviceName eq 'Load Balancer' and contains(meterName, 'Standard Included')"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "18.2500"
         - service_name: Virtual Network
@@ -114,7 +114,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
           list_unit_price: "0.005"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'Global' and contains(meterName, 'Static Public IP') and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "3.6500"
       total_list_cost: "574.5100"
@@ -134,7 +134,7 @@ spec:
           pricing_quantity: "2190"
           quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
           list_unit_price: "0.192"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and priceType eq 'Consumption' and serviceName eq 'Virtual Machines'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "420.4800"
         - service_name: Azure Kubernetes Service
@@ -142,8 +142,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: sku_tier STANDARD bills the uptime-SLA control plane every hour of the month
-          list_unit_price: "0.10"
-          price_source: https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/
+          list_unit_price: "0.1"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Kubernetes Service' and meterName eq 'Standard Uptime SLA' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
         - service_name: Storage
@@ -152,7 +152,7 @@ spec:
           pricing_quantity: "3"
           quantity_basis: one P10 (128 GiB) Premium SSD managed OS disk per node at the autoscaling floor -- the AKS default size when os_disk_size_gb is unset
           list_unit_price: "19.71"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "59.1300"
         - service_name: Load Balancer
@@ -161,7 +161,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: the default outbound_type (LOAD_BALANCER) provisions a Standard Load Balancer whose included-rules bundle bills every hour
           list_unit_price: "0.025"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=serviceName eq 'Load Balancer' and contains(meterName, 'Standard Included')"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "18.2500"
         - service_name: Virtual Network
@@ -170,7 +170,7 @@ spec:
           pricing_quantity: "730"
           quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
           list_unit_price: "0.005"
-          price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'Global' and contains(meterName, 'Static Public IP') and priceType eq 'Consumption'"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "3.6500"
       total_list_cost: "574.5100"

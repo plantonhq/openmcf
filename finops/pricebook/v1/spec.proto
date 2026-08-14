@@ -56,11 +56,19 @@ message PriceBookEntry {
   // Prices drift; a dated price is a fact, an undated price is a rumor.
   string retrieved_on = 8;
 
-  // How the price-book fetcher re-reads this price from the AWS Price
-  // List bulk API. Present only on AWS entries; entries without a
-  // selector are refreshed by hand (or by a future provider fetcher) and
-  // the fetcher leaves them untouched.
-  AwsPriceSelector aws_selector = 9;
+  // How the price-book fetcher re-reads this price from the provider's
+  // public price API. At most one selector, matching the book's own
+  // provider (the conformance gate enforces the pairing; the oneof makes
+  // a second selector structurally impossible). Entries without a
+  // selector are refreshed by hand and the fetcher leaves them untouched.
+  oneof selector {
+    // Locates the price in the AWS Price List bulk API.
+    AwsPriceSelector aws_selector = 9;
+    // Locates the price in the Azure Retail Prices API.
+    AzurePriceSelector azure_selector = 10;
+    // Locates the price in the GCP Cloud Billing Catalog API.
+    GcpPriceSelector gcp_selector = 11;
+  }
 }
 
 // AwsPriceSelector locates one price dimension in the AWS Price List bulk
@@ -95,4 +103,86 @@ message AwsPriceSelector {
   // tier -- list-price semantics never net free tiers out). Empty when the
   // product has exactly one dimension.
   string description_contains = 5;
+}
+
+// AzurePriceSelector locates one meter in the Azure Retail Prices API
+// (the public, unauthenticated endpoint at prices.azure.com). The fetcher
+// composes an OData $filter from the populated fields, requests USD
+// consumption prices, and requires the matches to agree on exactly one
+// price -- the API repeats a meter once per display region, so several
+// rows carrying one identical price are that one price, while rows
+// disagreeing on price or unit are a hard error, never a guess. Field
+// names mirror the API's own filter vocabulary verbatim; values are
+// CASE-SENSITIVE (the fetcher pins api-version=2023-01-01-preview, where
+// filters match exactly).
+message AzurePriceSelector {
+  // The API's serviceName filter, e.g. "Virtual Machines", "Azure DNS".
+  string service_name = 1;
+
+  // The API's armRegionName filter, e.g. "eastus" -- or "Global" for
+  // meters Azure prices identically everywhere (matching the entry's
+  // region "global").
+  string arm_region_name = 2;
+
+  // The API's armSkuName filter, e.g. "Standard_D4s_v5". Empty when the
+  // meter carries no ARM SKU (many non-compute meters).
+  string arm_sku_name = 3;
+
+  // The API's meterName filter, e.g. "D4s v5", "P10 LRS Disk". The most
+  // precise meter identity; prefer it over productName when both would
+  // work.
+  string meter_name = 4;
+
+  // The API's productName filter, e.g. "Virtual Machines Dsv5 Series" --
+  // needed when meterName alone is ambiguous (Windows vs Linux product
+  // lines share meter names).
+  string product_name = 5;
+
+  // The API's skuName filter, e.g. "Standard". A further disambiguator
+  // when meter and product names still match several items.
+  string sku_name = 6;
+
+  // The API's priceType filter. Empty means "Consumption" (pay-as-you-go
+  // list price) -- reservations and savings plans are never list prices.
+  string price_type = 7;
+
+  // Picks one tier of a tiered meter by its tierMinimumUnits value
+  // (decimal string, e.g. "0", "25"). The Azure analog of the AWS
+  // selector's description_contains: list-price semantics price the
+  // standard tier, never a free or volume-discount tier. Empty when the
+  // meter has exactly one tier.
+  string tier_minimum_units = 8;
+
+  // The meter's stable GUID (the API's meterId) -- the strongest anchor,
+  // for meters the name filters cannot isolate (e.g. globally priced
+  // meters whose commercial-cloud row carries an EMPTY armRegionName,
+  // where a name filter would also match sovereign-cloud twins). When
+  // set, the fetcher filters by meterId alone and the name fields above
+  // are the human-readable record of what it identifies.
+  string meter_id = 9;
+}
+
+// GcpPriceSelector locates one SKU in the GCP Cloud Billing Catalog API
+// (cloudbilling.googleapis.com, authenticated -- see the fetcher for the
+// credential contract). Google assigns every price a stable SKU ID, so
+// selection is direct rather than attribute matching; the fetcher verifies
+// the SKU still serves the entry's region and converts the API's exact
+// units+nanos price to the decimal string -- floats never touch the money.
+message GcpPriceSelector {
+  // The Cloud Billing service identity that owns the SKU, e.g.
+  // "6F81-5844-456A" (Compute Engine). The services list at
+  // /v1/services names them all; recorded so the fetcher queries one
+  // service's SKU pages, never the whole catalog.
+  string service_id = 1;
+
+  // The SKU's stable identifier within the service, e.g.
+  // "2E27-4F75-95CD". The deterministic anchor: a missing sku_id in the
+  // service's live SKU list is a hard error.
+  string sku_id = 2;
+
+  // Picks one tiered rate of the SKU's pricing expression by its
+  // startUsageAmount (decimal string, e.g. "0"). List-price semantics:
+  // price the standard rate, never a free tier. Empty when the SKU has
+  // exactly one rate.
+  string start_usage_amount = 3;
 }

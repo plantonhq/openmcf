@@ -1,10 +1,11 @@
 # The Azure price book: every Azure unit price the catalog's cost
 # estimates cite, pinned with source URL and retrieval date. Entries are
 # referenced by slug from the estimate models under ../models/; the
-# estimate generator joins the two. Sources are Microsoft Retail Prices
-# API filter URLs (machine-refetchable) where the API carries the meter,
-# and the published pricing page otherwise; entries here are refreshed by
-# hand until an Azure fetcher lands. Schema: finops/pricebook/v1.
+# estimate generator joins the two. Entries with an azure_selector are
+# machine-refreshed from the Microsoft Retail Prices API by the price-book
+# fetcher (make generate-price-book); their sources are version-pinned
+# filter URLs that can be fetched again. Entries without a selector are
+# refreshed by hand. Schema: finops/pricebook/v1.
 apiVersion: finops.planton.dev/v1
 kind: PriceBook
 metadata:
@@ -17,37 +18,184 @@ spec:
       region: eastus
       currency: USD
       list_unit_price: "0.192"
-      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and priceType eq 'Consumption' and serviceName eq 'Virtual Machines'"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Virtual Machines
+        arm_region_name: eastus
+        arm_sku_name: Standard_D4s_v5
+        meter_name: D4s v5
+        product_name: Virtual Machines Dsv5 Series
     - name: aks-standard-management-fee
       service_name: Azure Kubernetes Service
       pricing_unit: hours
       region: global
       currency: USD
-      list_unit_price: "0.10"
-      price_source: https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/
+      list_unit_price: "0.1"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Kubernetes Service' and meterName eq 'Standard Uptime SLA' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Azure Kubernetes Service
+        meter_name: Standard Uptime SLA
     - name: managed-disk-p10-eastus
       service_name: Storage
       pricing_unit: disk-months
       region: eastus
       currency: USD
       list_unit_price: "19.71"
-      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and priceType eq 'Consumption'"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Storage' and armRegionName eq 'eastus' and meterName eq 'P10 LRS Disk' and productName eq 'Premium SSD Managed Disks' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Storage
+        arm_region_name: eastus
+        meter_name: P10 LRS Disk
+        product_name: Premium SSD Managed Disks
     - name: standard-lb-included-rules
       service_name: Load Balancer
       pricing_unit: hours
       region: global
       currency: USD
       list_unit_price: "0.025"
-      price_source: "https://prices.azure.com/api/retail/prices?$filter=serviceName eq 'Load Balancer' and contains(meterName, 'Standard Included')"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Load Balancer' and armRegionName eq 'Global' and meterName eq 'Standard Included LB Rules and Outbound Rules' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Load Balancer
+        arm_region_name: Global
+        meter_name: Standard Included LB Rules and Outbound Rules
     - name: standard-static-public-ip
       service_name: Virtual Network
       pricing_unit: IP-hours
       region: global
       currency: USD
       list_unit_price: "0.005"
-      price_source: "https://prices.azure.com/api/retail/prices?$filter=armRegionName eq 'Global' and contains(meterName, 'Static Public IP') and priceType eq 'Consumption'"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Virtual Network
+        arm_region_name: Global
+        meter_name: Standard IPv4 Static Public IP
+        product_name: IP Addresses
+    - name: postgres-flexible-b1ms-eastus
+      service_name: Azure Database for PostgreSQL
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.017"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'B1MS' and productName eq 'Azure Database for PostgreSQL Flexible Server Burstable BS Series Compute' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Azure Database for PostgreSQL
+        arm_region_name: eastus
+        meter_name: B1MS
+        product_name: Azure Database for PostgreSQL Flexible Server Burstable BS Series Compute
+    - name: postgres-flexible-d4ds-v5-eastus
+      service_name: Azure Database for PostgreSQL
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.356"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4ds_v5' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Azure Database for PostgreSQL
+        arm_region_name: eastus
+        arm_sku_name: Standard_D4ds_v5
+    - name: postgres-flexible-storage-eastus
+      service_name: Azure Database for PostgreSQL
+      pricing_unit: GB-months
+      region: eastus
+      currency: USD
+      list_unit_price: "0.115"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Azure Database for PostgreSQL
+        arm_region_name: eastus
+        meter_name: Storage Data Stored
+        product_name: Az DB for PostgreSQL Flexible Server Storage
+    - name: managed-redis-balanced-b1-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.032"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'B1 Cache Instance' and productName eq 'Azure Managed Redis - Balanced' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        meter_name: B1 Cache Instance
+        product_name: Azure Managed Redis - Balanced
+    - name: managed-redis-balanced-b3-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.065"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'B3 Cache Instance' and productName eq 'Azure Managed Redis - Balanced' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        meter_name: B3 Cache Instance
+        product_name: Azure Managed Redis - Balanced
+    - name: managed-redis-memory-optimized-m10-eastus
+      service_name: Redis Cache
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.216"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Redis Cache' and armRegionName eq 'eastus' and meterName eq 'M10 Cache Instance' and productName eq 'Azure Managed Redis - Memory Optimized' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Redis Cache
+        arm_region_name: eastus
+        meter_name: M10 Cache Instance
+        product_name: Azure Managed Redis - Memory Optimized
+    - name: vm-standard-nc4as-t4-v3-eastus
+      service_name: Virtual Machines
+      pricing_unit: hours
+      region: eastus
+      currency: USD
+      list_unit_price: "0.526"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_NC4as_T4_v3' and meterName eq 'NC4as T4 v3' and productName eq 'Virtual Machines NCasT4 v3 Series' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Virtual Machines
+        arm_region_name: eastus
+        arm_sku_name: Standard_NC4as_T4_v3
+        meter_name: NC4as T4 v3
+        product_name: Virtual Machines NCasT4 v3 Series
+    - name: storage-sftp-endpoint
+      service_name: Storage
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.30"
+      price_source: https://learn.microsoft.com/en-us/azure/storage/blobs/secure-file-transfer-protocol-support
+      retrieved_on: "2026-08-14"
+    - name: nat-gateway-hours
+      service_name: NAT Gateway
+      pricing_unit: hours
+      region: global
+      currency: USD
+      list_unit_price: "0.045"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'NAT Gateway' and armRegionName eq 'Global' and meterName eq 'Standard Gateway' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: NAT Gateway
+        arm_region_name: Global
+        meter_name: Standard Gateway
+    - name: dns-public-zone
+      service_name: Azure DNS
+      pricing_unit: zone-months
+      region: global
+      currency: USD
+      list_unit_price: "0.5"
+      price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure DNS' and armRegionName eq 'Zone 1' and meterName eq 'Public Zone' and priceType eq 'Consumption'"
+      retrieved_on: "2026-08-14"
+      azure_selector:
+        service_name: Azure DNS
+        arm_region_name: Zone 1
+        meter_name: Public Zone
+        tier_minimum_units: "0"

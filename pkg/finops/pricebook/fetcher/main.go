@@ -30,6 +30,9 @@ func main() {
 	today := time.Now().Format("2006-01-02")
 	// One offer document serves every entry that selects from it.
 	offers := map[string]*regionalOffer{}
+	// The GCP catalog authenticates and caches lazily: books without GCP
+	// selectors never demand a credential.
+	var catalog *gcpCatalog
 	refreshed := 0
 	var problems []string
 
@@ -41,21 +44,25 @@ func main() {
 
 		touched := false
 		for _, entry := range book.GetSpec().GetEntries() {
-			selector := entry.GetAwsSelector()
-			if selector == nil {
+			var refreshErr error
+			switch {
+			case entry.GetAwsSelector() != nil:
+				refreshErr = refreshAwsEntry(client, offers, entry, today)
+			case entry.GetAzureSelector() != nil:
+				refreshErr = refreshAzureEntry(client, entry, today)
+			case entry.GetGcpSelector() != nil:
+				if catalog == nil {
+					catalog, err = newGcpCatalog(client)
+					if err != nil {
+						fatal(err)
+					}
+				}
+				refreshErr = refreshGcpEntry(catalog, entry, today)
+			default:
 				continue
 			}
-			offerKey := selector.GetOfferCode() + "/" + selector.GetRegionCode()
-			offer, ok := offers[offerKey]
-			if !ok {
-				offer, err = fetchOffer(client, selector.GetOfferCode(), selector.GetRegionCode())
-				if err != nil {
-					fatal(err)
-				}
-				offers[offerKey] = offer
-			}
-			if err := refreshEntry(entry, offer, today); err != nil {
-				problems = append(problems, fmt.Sprintf("%s price book entry %q: %v", provider, entry.GetName(), err))
+			if refreshErr != nil {
+				problems = append(problems, fmt.Sprintf("%s price book entry %q: %v", provider, entry.GetName(), refreshErr))
 				continue
 			}
 			touched = true
@@ -132,6 +139,36 @@ func renderBook(header string, book *pricebookv1.PriceBook) string {
 			}
 			if selector.GetDescriptionContains() != "" {
 				yamlemit.WriteKV(&b, 8, "description_contains", selector.GetDescriptionContains(), false)
+			}
+		}
+		if selector := entry.GetAzureSelector(); selector != nil {
+			b.WriteString("      azure_selector:\n")
+			for _, field := range []struct{ key, value string }{
+				{"service_name", selector.GetServiceName()},
+				{"arm_region_name", selector.GetArmRegionName()},
+				{"arm_sku_name", selector.GetArmSkuName()},
+				{"meter_name", selector.GetMeterName()},
+				{"product_name", selector.GetProductName()},
+				{"sku_name", selector.GetSkuName()},
+				{"price_type", selector.GetPriceType()},
+			} {
+				if field.value != "" {
+					yamlemit.WriteKV(&b, 8, field.key, field.value, false)
+				}
+			}
+			if selector.GetTierMinimumUnits() != "" {
+				yamlemit.WriteKV(&b, 8, "tier_minimum_units", selector.GetTierMinimumUnits(), true)
+			}
+			if selector.GetMeterId() != "" {
+				yamlemit.WriteKV(&b, 8, "meter_id", selector.GetMeterId(), false)
+			}
+		}
+		if selector := entry.GetGcpSelector(); selector != nil {
+			b.WriteString("      gcp_selector:\n")
+			yamlemit.WriteKV(&b, 8, "service_id", selector.GetServiceId(), false)
+			yamlemit.WriteKV(&b, 8, "sku_id", selector.GetSkuId(), false)
+			if selector.GetStartUsageAmount() != "" {
+				yamlemit.WriteKV(&b, 8, "start_usage_amount", selector.GetStartUsageAmount(), true)
 			}
 		}
 	}

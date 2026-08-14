@@ -21,8 +21,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate (identical for zonal and regional clusters)
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/CCD8-9BF1-090E/skus
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
       total_list_cost: "73.0000"
@@ -41,8 +41,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/CCD8-9BF1-090E/skus
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
       total_list_cost: "73.0000"
@@ -60,8 +60,8 @@ spec:
           pricing_unit: hours
           pricing_quantity: "730"
           quantity_basis: one cluster, billed every hour of the month at the flat per-cluster rate
-          list_unit_price: "0.10"
-          price_source: https://cloud.google.com/kubernetes-engine/pricing
+          list_unit_price: "0.1"
+          price_source: https://cloudbilling.googleapis.com/v1/services/CCD8-9BF1-090E/skus
           retrieved_on: "2026-08-14"
           list_cost: "73.0000"
       total_list_cost: "73.0000"

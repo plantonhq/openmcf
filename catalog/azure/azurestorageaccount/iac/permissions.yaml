@@ -1,0 +1,37 @@
+# Least-privilege permissions the IaC runner's Azure principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: azurestorageaccount
+spec:
+  azure:
+    groups:
+      - purpose: ManageStorageAccount
+        actions:
+          - Microsoft.Storage/storageAccounts/read
+          - Microsoft.Storage/storageAccounts/write
+          - Microsoft.Storage/storageAccounts/delete
+          - Microsoft.Storage/storageAccounts/listKeys/action
+        provenance: derived
+        notes: Covers azurerm_storage_account -- create, read/refresh, in-place updates (tiers, network rules, blob properties), and destroy. The provider lists account keys to manage data-plane settings (static website) and export connection outputs; with shared keys disabled the static-website sub-resource still configures through the management plane.
+      - purpose: ManageLifecyclePolicy
+        actions:
+          - Microsoft.Storage/storageAccounts/managementPolicies/read
+          - Microsoft.Storage/storageAccounts/managementPolicies/write
+          - Microsoft.Storage/storageAccounts/managementPolicies/delete
+        provenance: derived
+        notes: Required only when lifecycle_rules are declared -- azurerm_storage_management_policy manages the account's policy as its own resource.
+      - purpose: JoinNetworkRuleSubnets
+        actions:
+          - Microsoft.Network/virtualNetworks/subnets/join/action
+        provenance: derived
+        notes: Required only when network_rules allowlists virtual-network subnets -- binding a subnet service endpoint to the account demands join on each subnet.
+      - purpose: ReadResourceGroup
+        actions:
+          - Microsoft.Resources/subscriptions/resourceGroups/read
+        provenance: derived
+        notes: The provider resolves the target resource group before creating the account in it.

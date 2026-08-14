@@ -26,8 +26,13 @@ var (
 //     pricing_unit, region (a region code or "global"), currency, a plain
 //     decimal unit price, a source URL, and a YYYY-MM-DD retrieval date.
 //     A price without a source and date is a rumor, not a fact.
-//  4. An entry's AWS selector, when present, is complete enough to
-//     re-fetch deterministically: offer code, region code, and usage type.
+//  4. An entry's selector, when present, matches the book's own provider
+//     (an aws_selector belongs only in the aws book, and so on -- the
+//     oneof already guarantees at most one selector per entry) and is
+//     complete enough to re-fetch deterministically: AWS needs offer code,
+//     region code, and usage type; Azure needs a meter identity (a meter
+//     ID, or a service plus at least one meter-identifying name filter);
+//     GCP needs the service ID and SKU ID.
 //
 // Whether entries are actually referenced (and agree with component cost
 // profiles on units) is the estimate generator's cross-artifact check --
@@ -114,6 +119,34 @@ func TestPriceBookConformance(t *testing.T) {
 					}
 					if strings.TrimSpace(selector.GetUsageType()) == "" {
 						t.Errorf("entry %q aws_selector has no usage_type", name)
+					}
+				}
+
+				if selector := entry.GetAzureSelector(); selector != nil {
+					if provider != "azure" {
+						t.Errorf("entry %q carries an azure_selector in the %q book", name, provider)
+					}
+					hasMeterIdentity := strings.TrimSpace(selector.GetMeterId()) != "" ||
+						strings.TrimSpace(selector.GetArmSkuName()) != "" ||
+						strings.TrimSpace(selector.GetMeterName()) != "" ||
+						strings.TrimSpace(selector.GetProductName()) != ""
+					if !hasMeterIdentity {
+						t.Errorf("entry %q azure_selector identifies no meter -- set meter_id, or arm_sku_name/meter_name/product_name", name)
+					}
+					if strings.TrimSpace(selector.GetMeterId()) == "" && strings.TrimSpace(selector.GetServiceName()) == "" {
+						t.Errorf("entry %q azure_selector filters by name without a service_name -- name filters only isolate within a service", name)
+					}
+				}
+
+				if selector := entry.GetGcpSelector(); selector != nil {
+					if provider != "gcp" {
+						t.Errorf("entry %q carries a gcp_selector in the %q book", name, provider)
+					}
+					if strings.TrimSpace(selector.GetServiceId()) == "" {
+						t.Errorf("entry %q gcp_selector has no service_id", name)
+					}
+					if strings.TrimSpace(selector.GetSkuId()) == "" {
+						t.Errorf("entry %q gcp_selector has no sku_id", name)
 					}
 				}
 			}

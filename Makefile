@@ -339,11 +339,13 @@ generate-cost-estimates:
 	go run ./pkg/finops/estimategen
 
 # Refreshes the price-book entries that carry a machine selector from the
-# providers' public price APIs (AWS Price List bulk API today), rewriting
-# each refreshed entry's price, versioned source URL, and retrieval date.
-# Requires network access; CI never fetches -- it validates the committed
-# snapshot. After a refresh, run generate-cost-estimates to roll the new
-# prices into the estimates.
+# providers' public price APIs -- the AWS Price List bulk API, the Azure
+# Retail Prices API, and the GCP Cloud Billing Catalog API (which needs
+# GCP_BILLING_API_KEY or gcloud application-default credentials) --
+# rewriting each refreshed entry's price, refetchable source URL, and
+# retrieval date. Requires network access; CI never fetches -- it validates
+# the committed snapshot. After a refresh, run generate-cost-estimates to
+# roll the new prices into the estimates.
 .PHONY: generate-price-book
 generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
