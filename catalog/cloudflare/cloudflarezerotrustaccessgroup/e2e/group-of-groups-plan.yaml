@@ -1,0 +1,25 @@
+# Offline-only group-of-groups plan. The `group` rule composes another Access
+# group by ID -- but a group fixture for a group's own lane is a SELF-KIND
+# fixture the framework rejects, so the edge cannot ride a live scenario --
+# this file is NOT under e2e/scenarios/. tofu plan against it proves the
+# module maps the group rule's referenced ID in all three rule lists' shape;
+# live proof arrives when a proof session composes two groups under its own
+# design authority. Values are literals (no run tokens): a plan needs shape,
+# not a live account.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessGroup
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessgroup-group-of-groups
+  org: planton-oss
+  env: e2e
+spec:
+  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
+  name: e2e-cfztg-group-of-groups
+  include:
+    - group:
+        id:
+          value: 11111111-2222-3333-4444-555555555555
+  exclude:
+    - group:
+        id:
+          value: 66666666-7777-8888-9999-aaaaaaaaaaaa

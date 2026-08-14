@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezerotrusttunnelvirtualnetwork
+spec:
+  # The virtual network imports as "{account_id}/{virtual_network_id}": the
+  # owning account plus the network's server-assigned UUID. account_id is
+  # spec-relative; virtual_network_id is the deploy's own output.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: virtual_network_id
+      derivations:
+        - from_stack_output: virtual_network_id
+      where_to_find: >-
+        Zero Trust dashboard -> Networks -> Virtual networks (the network ID
+        is in the API, not the UI), or
+        `GET /accounts/<account_id>/teamnet/virtual_networks` on the
+        Cloudflare v4 API (the id field of the entry whose name matches).

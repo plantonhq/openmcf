@@ -26,6 +26,12 @@ type API interface {
 	// presence (200) vs absence (404, or Cloudflare's 400/7003 unknown-
 	// object answer); any other status is an error.
 	ResourceExists(ctx context.Context, path string) (bool, error)
+	// ResourceActive is the soft-delete-aware sibling: a 200 whose envelope
+	// carries a non-null result.deleted_at counts as ABSENT. Used only by
+	// verifiers whose family soft-deletes (cloudflared tunnels, teamnet
+	// routes) -- it parses the v4 envelope, so it must never replace
+	// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
+	ResourceActive(ctx context.Context, path string) (bool, error)
 	// AccountID returns the Cloudflare account the harness is scoped to.
 	AccountID() string
 }
@@ -53,6 +59,13 @@ type apiPathVerifier struct {
 	pathFormat    string
 	outputKeys    []string
 	accountScoped bool
+	// softDeleted opts into the deleted_at-aware probe for families whose
+	// destroy never yields a 404: the GET keeps answering 200 with a
+	// non-null deleted_at (measured on cloudflared tunnels and teamnet
+	// routes at provider v5.23.0 -- the provider's own destroy check asserts
+	// deleted_at != nil, and its test sweepers filter on it). Without this,
+	// verify-destroyed would report a false "still exists" on every lane.
+	softDeleted bool
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -66,7 +79,7 @@ func (v *apiPathVerifier) VerifyExists(ctx context.Context, api API, outputs map
 	if err != nil {
 		return err
 	}
-	exists, err := api.ResourceExists(ctx, path)
+	exists, err := v.probe(ctx, api, path)
 	if err != nil {
 		return errors.Wrapf(err, "%s verify-exists failed", v.component)
 	}
@@ -82,7 +95,7 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 	if err != nil {
 		return err
 	}
-	exists, err := api.ResourceExists(ctx, path)
+	exists, err := v.probe(ctx, api, path)
 	if err != nil {
 		return errors.Wrapf(err, "%s verify-absent failed", v.component)
 	}
@@ -91,6 +104,15 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 			v.component, outputs[v.IDOutputKey()], path)
 	}
 	return nil
+}
+
+// probe selects the existence check: the plain status-code probe, or the
+// deleted_at-aware one for soft-deleting families.
+func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
+	if v.softDeleted {
+		return api.ResourceActive(ctx, path)
+	}
+	return api.ResourceExists(ctx, path)
 }
 
 // buildPath fills the path template from the account scope (when account-
@@ -231,6 +253,59 @@ var verifiers = map[string]Verifier{
 		component:     "cloudflarehyperdriveconfig",
 		pathFormat:    "accounts/%s/hyperdrive/configs/%s",
 		outputKeys:    []string{"hyperdrive_id"},
+		accountScoped: true,
+	},
+	// The Access kinds are dual-scope (account XOR zone) but their live
+	// scenarios are account-scoped -- the common, reusable case. A
+	// zone-scoped arm would need zones/%s/access/... variants reading a
+	// zone_id the outputs do not carry today (the ruleset precedent:
+	// recorded as not-wired, a follow-up if a zone-scoped arm is ever
+	// queued).
+	"cloudflarezerotrustaccessapplication": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccessapplication",
+		pathFormat:    "accounts/%s/access/apps/%s",
+		outputKeys:    []string{"application_id"},
+		accountScoped: true,
+	},
+	"cloudflarezerotrustaccessgroup": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccessgroup",
+		pathFormat:    "accounts/%s/access/groups/%s",
+		outputKeys:    []string{"group_id"},
+		accountScoped: true,
+	},
+	// The policy is also the Access application's self-hosted fixture (a
+	// scenario-declared prerequisite), so this entry serves both.
+	"cloudflarezerotrustaccesspolicy": &apiPathVerifier{
+		component:     "cloudflarezerotrustaccesspolicy",
+		pathFormat:    "accounts/%s/access/policies/%s",
+		outputKeys:    []string{"policy_id"},
+		accountScoped: true,
+	},
+	// The tunnel is also the tunnel route's registry-prerequisite fixture.
+	// Cloudflared tunnels SOFT-DELETE: the GET answers 200 with deleted_at
+	// set after destroy, so the probe is the deleted_at-aware one.
+	"cloudflarezerotrusttunnel": &apiPathVerifier{
+		component:     "cloudflarezerotrusttunnel",
+		pathFormat:    "accounts/%s/cfd_tunnel/%s",
+		outputKeys:    []string{"tunnel_id"},
+		accountScoped: true,
+		softDeleted:   true,
+	},
+	// Routes and virtual networks live under teamnet/, not cfd_tunnel/.
+	// Routes soft-delete like tunnels; virtual networks 404 honestly.
+	"cloudflarezerotrusttunnelroute": &apiPathVerifier{
+		component:     "cloudflarezerotrusttunnelroute",
+		pathFormat:    "accounts/%s/teamnet/routes/%s",
+		outputKeys:    []string{"route_id"},
+		accountScoped: true,
+		softDeleted:   true,
+	},
+	// Also the route's isolated-vnet fixture (a scenario-declared
+	// prerequisite), so this entry serves both.
+	"cloudflarezerotrusttunnelvirtualnetwork": &apiPathVerifier{
+		component:     "cloudflarezerotrusttunnelvirtualnetwork",
+		pathFormat:    "accounts/%s/teamnet/virtual_networks/%s",
+		outputKeys:    []string{"virtual_network_id"},
 		accountScoped: true,
 	},
 }

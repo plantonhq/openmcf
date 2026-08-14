@@ -1,0 +1,24 @@
+# Minimal CloudflareZeroTrustTunnelVirtualNetwork scenario: one named network
+# with a comment -- the kind's whole live-provable surface (is_default_network
+# is deliberately never set live: promoting a network to the account default
+# demotes the existing default, a real account-level mutation; see the
+# profile). The name carries the run id (virtual network names are unique
+# within an account).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnelVirtualNetwork
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-minimal
+  id: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnelvirtualnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-vnet-min
+  comment: planton-e2e lifecycle proof

@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezerotrusttunnelvirtualnetwork
+spec:
+  # A tunnel virtual network under live E2E: account-scoped, no prerequisites
+  # -- deploy -> GET accounts/{account_id}/teamnet/virtual_networks/{vnet_id}
+  # verify -> destroy -> verify-destroyed on both provisioners. The minimal
+  # scenario creates one named network with a comment (names are unique within
+  # an account, so the name carries the run id). Deliberately not live:
+  # is_default_network -- promoting a network to the account's default demotes
+  # the existing default, a real account-level mutation a throwaway lane must
+  # not make; the field is preset-proven (presets/02-default-network). Unlike
+  # tunnels and routes, a destroyed virtual network 404s honestly, so the
+  # plain existence probe verifies destroy. Objects create in seconds at zero
+  # cost (part of Zero Trust Free).
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

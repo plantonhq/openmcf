@@ -1,0 +1,28 @@
+# CloudflareZeroTrustAccessPolicy install profile used as a SCENARIO-declared
+# prerequisite (planton.dev/e2e-prerequisites) by the Access application's
+# self-hosted arm: an application binds standalone policies by reference, but
+# an application does not REQUIRE a policy, so the edge is per-scenario, never
+# a registry prerequisite. The fixture is the cheapest reusable policy (allow +
+# include everyone) on the account scope. The name is run-scoped so concurrent
+# lanes stay distinguishable in the dashboard. metadata.name stays stable --
+# it is the key consumers' valueFrom references resolve against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessPolicy
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccesspolicy-prereq
+  id: planton-oss-e2e-cloudflarezerotrustaccesspolicy-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccesspolicy
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-pol-prereq
+  decision: allow
+  include:
+    - everyone: {}

@@ -1,0 +1,23 @@
+# Minimal CloudflareZeroTrustTunnel scenario: a bare remotely-managed tunnel
+# -- no ingress, so the module's config-absent branch is exercised (the
+# separate config resource is NOT created; the remote-ingress scenario covers
+# the other branch). No tunnel_secret: Cloudflare generates one, and the run
+# token is exported in the outputs regardless. The name carries the run id.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnel
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnel-minimal
+  id: planton-oss-e2e-cloudflarezerotrusttunnel-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnel
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-tun-min
+  configSrc: cloudflare

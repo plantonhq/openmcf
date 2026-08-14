@@ -1,0 +1,27 @@
+# CloudflareZeroTrustTunnelVirtualNetwork install profile used as a
+# SCENARIO-declared prerequisite (planton.dev/e2e-prerequisites) by the tunnel
+# route's isolated-vnet arm: a route only belongs to a virtual network when the
+# optional virtual_network_id is set, so the edge is per-scenario, never a
+# registry prerequisite. The name is run-scoped (virtual network names are
+# unique within an account); is_default_network is deliberately never set on a
+# fixture -- flipping the account's default virtual network is a real
+# account-level mutation. metadata.name stays stable -- it is the key
+# consumers' valueFrom references resolve against.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnelVirtualNetwork
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-prereq
+  id: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-prereq
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnelvirtualnetwork
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-vnet-prereq
+  comment: planton-e2e isolated-vnet fixture

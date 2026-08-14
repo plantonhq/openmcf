@@ -206,3 +206,38 @@ spec:
     - terraform_type: cloudflare_hyperdrive_config
       pulumi_type: cloudflare:index/hyperdriveConfig:HyperdriveConfig
       id_format: "{account_id}/{hyperdrive_id}"
+    # --- Zero Trust: Access -------------------------------------------------------
+    # Applications and groups are dual-scope: the documented import ID carries a
+    # literal scope prefix ("{accounts|zones}/{account_id|zone_id}/{id}"); the
+    # catalog kinds' live scenarios are account-scoped, so the accounts/ arm is
+    # the one recorded here (a zone-scoped object imports via the zones/ arm).
+    # Standalone policies are account-scoped by API design -- no scope prefix.
+    - terraform_type: cloudflare_zero_trust_access_application
+      pulumi_type: cloudflare:index/zeroTrustAccessApplication:ZeroTrustAccessApplication
+      id_format: "accounts/{account_id}/{application_id}"
+    - terraform_type: cloudflare_zero_trust_access_group
+      pulumi_type: cloudflare:index/zeroTrustAccessGroup:ZeroTrustAccessGroup
+      id_format: "accounts/{account_id}/{group_id}"
+    - terraform_type: cloudflare_zero_trust_access_policy
+      pulumi_type: cloudflare:index/zeroTrustAccessPolicy:ZeroTrustAccessPolicy
+      id_format: "{account_id}/{policy_id}"
+    # --- Zero Trust: Tunnels ------------------------------------------------------
+    # The tunnel and its remote-ingress config are separate provider resources
+    # sharing ONE identity: the config is a tunnel-singleton, so both import as
+    # "<account_id>/<tunnel_id>". Routes and virtual networks carry their own
+    # server-assigned UUIDs. Tunnels and routes SOFT-DELETE (the API keeps
+    # answering with deleted_at set), so an import target must be an ACTIVE
+    # object -- importing a soft-deleted id converges on a create, not an
+    # adoption.
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflared:ZeroTrustTunnelCloudflared
+      id_format: "{account_id}/{tunnel_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_config
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredConfig:ZeroTrustTunnelCloudflaredConfig
+      id_format: "{account_id}/{tunnel_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_route
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredRoute:ZeroTrustTunnelCloudflaredRoute
+      id_format: "{account_id}/{route_id}"
+    - terraform_type: cloudflare_zero_trust_tunnel_cloudflared_virtual_network
+      pulumi_type: cloudflare:index/zeroTrustTunnelCloudflaredVirtualNetwork:ZeroTrustTunnelCloudflaredVirtualNetwork
+      id_format: "{account_id}/{virtual_network_id}"

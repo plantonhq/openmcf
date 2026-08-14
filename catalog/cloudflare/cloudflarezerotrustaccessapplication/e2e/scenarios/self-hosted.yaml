@@ -1,0 +1,39 @@
+# Self-hosted CloudflareZeroTrustAccessApplication scenario: the flagship
+# type, protecting a hostname of the run-scoped pending-zone fixture, with a
+# standalone Access policy attached by reference -- the app->policy graph
+# edge, proven live. BOTH fixtures are SCENARIO-declared
+# (planton.dev/e2e-prerequisites): an application requires neither a zone nor
+# a policy, so the edges are per-scenario, never registry prerequisites. The
+# domain cannot be a valueFrom (it is a plain string), so it composes the
+# SAME run token the zone fixture's name uses -- the two resolve to the same
+# domain by construction. Whether Access accepts a self_hosted app on a
+# PENDING (undelegated) zone is unverified offline; the proof-queue
+# watch-list carries it. Session policy: 24h explicit, proving the duration
+# path.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustAccessApplication
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrustaccessapplication-self-hosted
+  id: planton-oss-e2e-cloudflarezerotrustaccessapplication-self-hosted
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrustaccessapplication
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "CloudflareDnsZone, CloudflareZeroTrustAccessPolicy"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-app-sh
+  type: self_hosted
+  domain: app.planton-e2e-${E2E_RUN_ID}.com
+  sessionDuration: 24h
+  policies:
+    - policy:
+        valueFrom:
+          kind: CloudflareZeroTrustAccessPolicy
+          name: planton-oss-e2e-cloudflarezerotrustaccesspolicy-prereq
+          fieldPath: status.outputs.policy_id

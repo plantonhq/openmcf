@@ -96,6 +96,51 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 	}
 }
 
+// ResourceActive reports whether a GET on the given path finds a resource
+// that is not soft-deleted. Some Cloudflare families (cloudflared tunnels,
+// teamnet routes) never 404 a destroyed object: the GET keeps answering 200
+// with a non-null `result.deleted_at` (the provider's own destroy check
+// asserts deleted_at != nil rather than expecting an error). This probe is
+// OPT-IN per verifier: it parses the standard v4 envelope, so it must never
+// replace ResourceExists on endpoints that return raw bodies (e.g. the KV
+// value endpoint).
+func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) {
+	resp, body, err := c.get(ctx, path)
+	if err != nil {
+		return false, err
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var envelope struct {
+			Result struct {
+				DeletedAt *string `json:"deleted_at"`
+			} `json:"result"`
+		}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			return false, errors.Errorf("GET %s returned 200 with an unparseable body: %s", path, body)
+		}
+		if envelope.Result.DeletedAt != nil && *envelope.Result.DeletedAt != "" {
+			return false, nil
+		}
+		return true, nil
+	case http.StatusNotFound:
+		return false, nil
+	case http.StatusBadRequest:
+		var envelope cloudflareEnvelope
+		if json.Unmarshal(body, &envelope) == nil {
+			for _, e := range envelope.Errors {
+				if e.Code == 7003 {
+					return false, nil
+				}
+			}
+		}
+		return false, errors.Errorf("GET %s returned 400: %s", path, body)
+	default:
+		return false, errors.Errorf("GET %s returned %d: %s", path, resp.StatusCode, body)
+	}
+}
+
 // VerifyConnectivity proves the token is valid and active using Cloudflare's
 // purpose-built, side-effect-free endpoint, then proves the token can see the
 // configured account. Failing fast here keeps credential problems from

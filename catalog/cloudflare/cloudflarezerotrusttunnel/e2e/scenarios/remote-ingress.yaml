@@ -1,0 +1,37 @@
+# Remote-ingress CloudflareZeroTrustTunnel scenario: a remotely-managed tunnel
+# with ingress rules -- the separate config resource's full lifecycle (the
+# module's config-present branch). Two rules: a hostname rule mapping a
+# hostname under the tunnel's own workers.dev-independent namespace to a local
+# service, and the MANDATORY trailing catch-all (empty hostname +
+# http_status:404, enforced by the spec's CEL). Tunnel-level origin_request
+# settings prove the defaults path without any per-rule override. The hostname
+# needs no owned zone -- ingress hostnames are configuration, only resolvable
+# once a DNS record CNAMEs to the tunnel; nothing validates ownership at
+# create time. The name carries the run id.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnel
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnel-remote-ingress
+  id: planton-oss-e2e-cloudflarezerotrusttunnel-remote-ingress
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnel
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-tun-ing
+  configSrc: cloudflare
+  ingress:
+    - hostname: app.planton-e2e-${E2E_RUN_ID}.example.com
+      service: http://localhost:8080
+      path: /api/.*
+    - service: http_status:404
+  originRequest:
+    connectTimeout: 30
+    keepAliveConnections: 10
+    httpHostHeader: app.internal

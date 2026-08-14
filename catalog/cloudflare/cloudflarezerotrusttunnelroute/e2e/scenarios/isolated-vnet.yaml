@@ -1,0 +1,37 @@
+# Isolated-vnet CloudflareZeroTrustTunnelRoute scenario: the same-shaped CIDR
+# inside its OWN virtual network -- proving the optional virtual_network_id
+# edge. The virtual network is a SCENARIO-declared prerequisite
+# (planton.dev/e2e-prerequisites), not a registry one, because a route only
+# belongs to a virtual network when the field is set. Being vnet-scoped also
+# makes this arm collision-free across concurrent runs (CIDR uniqueness is
+# per virtual network). The tunnel fixture arrives via the registry
+# prerequisite as usual.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnelRoute
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnelroute-isolated-vnet
+  id: planton-oss-e2e-cloudflarezerotrusttunnelroute-isolated-vnet
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnelroute
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareZeroTrustTunnelVirtualNetwork
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  network: 172.30.255.16/28
+  tunnelId:
+    valueFrom:
+      kind: CloudflareZeroTrustTunnel
+      name: planton-oss-e2e-cloudflarezerotrusttunnel-prereq
+      fieldPath: status.outputs.tunnel_id
+  virtualNetworkId:
+    valueFrom:
+      kind: CloudflareZeroTrustTunnelVirtualNetwork
+      name: planton-oss-e2e-cloudflarezerotrusttunnelvirtualnetwork-prereq
+      fieldPath: status.outputs.virtual_network_id
+  comment: planton-e2e isolated-vnet route

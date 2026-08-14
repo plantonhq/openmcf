@@ -1,0 +1,30 @@
+# Minimal CloudflareZeroTrustTunnelRoute scenario: a private CIDR routed
+# through the run-scoped tunnel fixture (the registry prerequisite) in the
+# account's DEFAULT virtual network -- virtual_network_id deliberately absent
+# to prove the omit-for-default path. Route CIDRs are unique per virtual
+# network, so this arm can collide if two runs share one account concurrently;
+# the proof-queue watch-list carries that. The CIDR is a documentation-unlike
+# RFC1918 /28 chosen to dodge real corporate ranges.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareZeroTrustTunnelRoute
+metadata:
+  name: planton-oss-e2e-cloudflarezerotrusttunnelroute-minimal
+  id: planton-oss-e2e-cloudflarezerotrusttunnelroute-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarezerotrusttunnelroute
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  network: 172.30.255.0/28
+  tunnelId:
+    valueFrom:
+      kind: CloudflareZeroTrustTunnel
+      name: planton-oss-e2e-cloudflarezerotrusttunnel-prereq
+      fieldPath: status.outputs.tunnel_id
+  comment: planton-e2e default-vnet route
