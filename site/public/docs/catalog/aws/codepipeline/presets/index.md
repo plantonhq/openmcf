@@ -24,6 +24,10 @@ presets:
     rank: "04"
     title: "Gated Production Deploy with Automatic Rollback"
     excerpt: "This preset creates a three-stage V2 pipeline that treats the production deploy as a guarded, self-healing operation: the deploy stage only opens during business hours (a DeploymentWindow entry..."
+  - slug: "05-inline-compute-checks"
+    rank: "05"
+    title: "Inline Compute Checks Without a Build Project"
+    excerpt: "This preset creates a three-stage V2 pipeline whose quality gate runs as a Compute action — shell commands executed directly in CodePipeline-managed compute, with no CodeBuild project to create or..."
 ---
 
 # CodePipeline Presets

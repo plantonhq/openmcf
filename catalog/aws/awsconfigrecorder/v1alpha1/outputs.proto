@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsconfigrecorder.v1alpha1;
+
+// AwsConfigRecorderStackOutputs captures the observable state of the
+// region's Config recording posture after apply.
+message AwsConfigRecorderStackOutputs {
+  // The recorder's name - AWS's regional singleton convention
+  // ("default"); also the provider's import ID for the recorder.
+  string recorder_name = 1;
+
+  // The delivery channel's name ("default"); set only when
+  // spec.delivery_channel is configured.
+  string delivery_channel_name = 2;
+
+  // Whether the recorder is running after apply (the folded
+  // recorder-status truth, echoed for chart consumers).
+  bool recording_enabled = 3;
+}

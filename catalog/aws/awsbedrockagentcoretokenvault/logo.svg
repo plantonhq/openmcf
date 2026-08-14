@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock AgentCore Identity</title>
+    <defs>
+        <linearGradient id="acidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#EF4444"/>
+            <stop offset="100%" stop-color="#7F1D1D"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#acidGradient)"/>
+    <circle cx="34" cy="34" r="12" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <circle cx="34" cy="34" r="4" fill="#FFFFFF"/>
+    <line x1="42" y1="42" x2="60" y2="60" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <line x1="52" y1="52" x2="58" y2="46" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

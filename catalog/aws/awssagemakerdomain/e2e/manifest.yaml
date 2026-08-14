@@ -204,7 +204,8 @@ spec:
         jupyterLabAppSettings:
           defaultResourceSpec:
             instanceType: ml.t3.medium
-          idleSettings:
-            idleTimeoutInMinutes: 60
+          # No idle settings here: alice (the owner profile) resolves
+          # lifecycleManagement DISABLED for JupyterLab, and AWS rejects
+          # SpaceIdleSettings on a disabled plane.
         spaceStorageSettings:
           ebsVolumeSizeInGb: 25

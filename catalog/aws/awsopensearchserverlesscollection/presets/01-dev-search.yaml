@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOpenSearchServerlessCollection
+metadata:
+  name: <app>-search
+spec:
+  region: <aws-region>
+  description: Development search collection for <app>
+  type: SEARCH
+  # DISABLED halves the OCU floor (0.5 indexing + 0.5 search) -- the right
+  # dev/test posture. ForceNew: a dev collection cannot be upgraded in
+  # place to the HA posture.
+  standbyReplicas: DISABLED
+  dataAccess:
+    - principals:
+        - valueFrom:
+            kind: AwsIamRole
+            name: <app-role-resource-name>
+            fieldPath: status.outputs.role_arn
+      indexPermissions:
+        - aoss:ReadDocument
+        - aoss:WriteDocument
+        - aoss:CreateIndex
+        - aoss:DescribeIndex

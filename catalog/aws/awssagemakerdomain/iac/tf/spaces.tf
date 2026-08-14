@@ -65,7 +65,13 @@ resource "aws_sagemaker_space" "this" {
 
           # The space idle dial carries only the timeout — no
           # lifecycle_management switch and no min/max guardrails (those
-          # exist only on the domain/user plane).
+          # exist only on the domain/user plane). The module forwards it
+          # verbatim; legality is resolved server-side — CreateSpace 400s
+          # ("Idle Shutdown is disabled for this space") when idle shutdown
+          # resolves DISABLED for the space through the domain/owner-profile
+          # inheritance chain (live-verified 2026-08-13). The spec's
+          # space_idle_requires_owner_lifecycle_* CELs catch the in-manifest
+          # contradiction before the API does.
           dynamic "app_lifecycle_management" {
             for_each = jupyter_lab_app_settings.value.idle_settings != null ? [jupyter_lab_app_settings.value.idle_settings] : []
             content {

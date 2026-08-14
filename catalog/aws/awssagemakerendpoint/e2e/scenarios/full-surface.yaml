@@ -1,0 +1,56 @@
+# AwsSagemakerEndpoint full-surface scenario: ONE instance-backed
+# variant (ml.m5.large, ~$0.115/hour for the minutes the lane runs)
+# with an explicit name and weight, least-outstanding-requests routing,
+# raised startup/download timeouts, data capture to the shared bucket
+# fixture, and a rolling deployment policy - the update-choreography
+# claim UpdateEndpoint would follow. Deliberately not live: async
+# inference (a distinct endpoint mode - unblock: a third scenario with
+# SNS topics), managed instance scaling and core dumps
+# (inference-component/crash surfaces), shadow variants (doubles the
+# fleet), KMS volumes (nitro families reject them), and blue/green
+# canary sizing - all offline-proven via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerEndpoint
+metadata:
+  name: planton-oss-e2e-awssgmep-full
+  id: planton-oss-e2e-awssgmep-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerendpoint
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSagemakerModel,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  productionVariants:
+    - variantName: primary
+      model:
+        valueFrom:
+          kind: AwsSagemakerModel
+          name: planton-oss-e2e-awssgmmd-prereq
+          fieldPath: status.outputs.model_name
+      instanceType: ml.m5.large
+      initialInstanceCount: 1
+      initialVariantWeight: 1
+      routingStrategy: LEAST_OUTSTANDING_REQUESTS
+      containerStartupHealthCheckTimeoutSeconds: 600
+      modelDataDownloadTimeoutSeconds: 600
+  dataCapture:
+    destinationS3Uri: s3://planton-oss-e2e-awss3bucket-prereq/sagemaker-capture/
+    initialSamplingPercentage: 100
+    captureModes:
+      - Input
+      - Output
+    enableCapture: true
+    jsonContentTypes:
+      - application/json
+  deployment:
+    rolling:
+      maximumBatchSize:
+        type: CAPACITY_PERCENT
+        value: 50
+      waitIntervalSeconds: 60

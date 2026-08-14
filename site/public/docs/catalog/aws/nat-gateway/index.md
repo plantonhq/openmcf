@@ -8,14 +8,14 @@ componentName: "awsnatgateway"
 
 # AWS NAT Gateway
 
-Gives instances in a private subnet outbound network access while keeping them unreachable from inbound connections -- the standard way to let private workloads reach the internet (or other private networks) without exposing them. A NAT gateway is an AWS-managed, highly-available service that lives in a single subnet and is referenced by other subnets' route tables as the target of their default route. It is a first-class, independently composable building block rather than something bundled inside the VPC: create it as its own graph node, place it in exactly the subnet you intend, and reference its id from the subnets that should egress through it.
+Gives instances in a private subnet outbound network access while keeping them unreachable from inbound connections -- the standard way to let private workloads reach the internet (or other private networks) without exposing them. A NAT gateway is an AWS-managed, highly-available service referenced by subnets' route tables as the target of their default route: classically one gateway per subnet/AZ (`zonal`), or -- since re:Invent 2025 -- one regional gateway spanning every AZ of a VPC. It is a first-class, independently composable building block rather than something bundled inside the VPC: create it as its own graph node, place it exactly where you intend, and reference its id from the subnets that should egress through it.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **NAT gateway** -- an EC2 NAT gateway created in the specified subnet, either `public` (fronted by an Elastic IP) or `private` (no Elastic IP)
-- **Elastic IP association** -- for a public gateway, the referenced Elastic IP (`allocationId`) is bound as the gateway's stable outbound address; secondary allocations are attached when provided
+- **NAT gateway** -- an EC2 NAT gateway, either `public` (fronted by Elastic IPs) or `private` (no Elastic IP), placed zonally in one subnet or regionally across a whole VPC (`availabilityMode: regional`)
+- **Elastic IP association** -- for a zonal public gateway, the referenced Elastic IP (`allocationId`) is bound as the gateway's stable outbound address; secondary allocations are attached when provided. A regional gateway carries its per-zone allocations in `availabilityZoneAddresses`, or lets AWS allocate and manage them (auto mode)
 - **AWS Tags** -- resource-identity tags (organization, environment, resource kind, resource ID) applied to the gateway
 
 Creating a NAT gateway does not route anything on its own. To build a working egress topology, compose the companion components listed under [Works With](#works-with).
@@ -31,15 +31,16 @@ Creating a NAT gateway does not route anything on its own. To build a working eg
 
 ### AWS Account
 
-- **Public gateways need an internet path** -- a public NAT gateway must live in a public subnet whose route table already reaches an [AWS Internet Gateway](/cloud-catalog/aws-internet-gateway), or it has no upstream internet path itself.
-- **Zonal service** -- a NAT gateway lives in one Availability Zone. For high availability, run one per AZ and route each zone's private subnets to the gateway in their own zone.
-- **Region** -- the gateway is created in the specified `region`, which must match the subnet's region.
+- **Public gateways need an internet path** -- a public NAT gateway must live in a public subnet whose route table already reaches an [AWS Internet Gateway](/cloud-catalog/aws-internet-gateway) (regional gateways likewise need the IGW attached to the VPC), or it has no upstream internet path itself.
+- **Zonal vs regional** -- a zonal gateway lives in one Availability Zone; for high availability run one per AZ, or deploy a single `regional` gateway and let AWS span every zone for you.
+- **Region** -- the gateway is created in the specified `region`, which must match the subnet's (or VPC's) region.
+- **Regional IAM** -- creating a regional gateway additionally requires the `ec2:DescribeAvailabilityZones` permission on the deploying role.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **AWS NAT Gateway**, and click **Deploy**. The creation wizard walks two steps: **Placement** (public vs private connectivity, region, and the subnet the gateway lives in) and **Addressing** (the Elastic IP for a public gateway, or private addressing for a private one). Start from a preset in the [Presets](#presets) tab -- **Public NAT Gateway** or **Private NAT Gateway**.
+Open the deployment store, find **AWS NAT Gateway**, and click **Deploy**. The creation wizard walks two steps: **Placement** (public vs private connectivity, zonal vs regional mode, region, and the subnet or VPC the gateway spans) and **Addressing** (the Elastic IP for a zonal public gateway, private addressing for a private one, or the per-zone layout for a regional one). Start from a preset in the [Presets](#presets) tab -- **Public NAT Gateway**, **Private NAT Gateway**, or **Regional NAT Gateway**.
 
 ### CLI
 
@@ -79,9 +80,9 @@ A NAT gateway's value is in how it composes; most deployments touch only a few f
 
 **Connectivity type** -- `connectivityType` is required and immutable: `public` (Elastic IP, internet egress) or `private` (no Elastic IP, egress to peered/transit/VPN networks only). Changing it replaces the gateway.
 
-**Placement** -- `subnetId` is required and immutable; the gateway is built inside this subnet. A public gateway must sit in a public subnet. `region` must match the subnet's region.
+**Placement mode** -- `availabilityMode` picks the placement model: `zonal` (default) builds the classic gateway inside one subnet (`subnetId`, required and immutable there); `regional` builds one AWS-managed gateway spanning every AZ of the referenced `vpcId`, either letting AWS pick zones (auto mode) or pinning them via `availabilityZoneAddresses` (switching a live gateway between auto and manual replaces it). `region` must match the subnet's (or VPC's) region.
 
-**Elastic IP (public)** -- `allocationId` is required for a public gateway and references an `AwsElasticIp` (`status.outputs.allocation_id`) rather than embedding an address, so the IP keeps its own lifecycle. Add `secondaryAllocationIds` only for very high-throughput egress that exhausts a single EIP's source ports.
+**Elastic IP (public)** -- for a zonal public gateway `allocationId` is required and references an `AwsElasticIp` (`status.outputs.allocation_id`) rather than embedding an address, so the IP keeps its own lifecycle. Add `secondaryAllocationIds` only for very high-throughput egress that exhausts a single EIP's source ports. A regional public gateway carries per-zone allocations inside `availabilityZoneAddresses` instead -- or none at all in auto mode.
 
 **Private addressing (private)** -- a private gateway can pin a fixed `privateIp` from the subnet's range (or let AWS choose), and add secondary private IPs either as an explicit list (`secondaryPrivateIpAddresses`) or an auto-assign count (`secondaryPrivateIpAddressCount`) -- the two are mutually exclusive.
 
@@ -98,8 +99,10 @@ Via ValueFromRef, this component references:
 | Input | Source Resource | Source Output |
 |-------|-----------------|---------------|
 | `subnetId` | [AWS Subnet](/cloud-catalog/aws-subnet) | `status.outputs.subnet_id` |
+| `vpcId` (regional mode) | [AWS VPC](/cloud-catalog/aws-vpc) | `status.outputs.vpc_id` |
 | `allocationId` | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
 | `secondaryAllocationIds` | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
+| `availabilityZoneAddresses[].allocationIds` (regional mode) | [AWS Elastic IP](/cloud-catalog/aws-elastic-ip) | `status.outputs.allocation_id` |
 
 ### What This Component Provides
 
@@ -122,7 +125,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Private-subnet internet egress** -- the canonical pattern: a public NAT gateway in a public subnet, with private subnets routing `0.0.0.0/0` to its `nat_gateway_id`. Start from the **Public NAT Gateway** preset.
 
-**High-availability egress** -- one NAT gateway per Availability Zone, each in that zone's public subnet, so a zonal failure does not sever egress and cross-AZ data-processing charges are avoided.
+**High-availability egress** -- a single regional gateway (start from the **Regional NAT Gateway** preset) that spans every AZ with zone-local egress; or, in the classic form, one zonal NAT gateway per Availability Zone, each in that zone's public subnet, so a zonal failure does not sever egress and cross-AZ data-processing charges are avoided.
 
 **Private inter-network egress** -- a private NAT gateway for outbound communication to other VPCs or on-premises networks (via peering/Transit Gateway/VPN) without any internet exposure. Start from the **Private NAT Gateway** preset.
 

@@ -331,8 +331,7 @@ reference to a GcpPubSubTopic resource (its topic_id output,
 projects/{project}/topics/{topic}). The provider documents the form
 projects/{project}/locations/{location}/topics/{topic} for this field;
 both name the same topic — the live API accepts the canonical Pub/Sub
-form (live-verified: a pipeline created with the canonical form went
-ACTIVE and re-planned clean on both engines).
+form.
 
 - references: GcpPubSubTopic (`status.outputs.topic_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpPubSubTopic, name: <that resource's name>, fieldPath: status.outputs.topic_id}} -- a bare string does not parse

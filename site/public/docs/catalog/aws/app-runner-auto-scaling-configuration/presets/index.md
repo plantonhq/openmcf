@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Cost-Conscious"
     excerpt: "A scaling posture for internal tools and low-traffic services: one warm instance, maximum request packing, and a tight scale-out cap so a traffic anomaly can never triple the bill."
+  - slug: "03-org-default-policy"
+    rank: "03"
+    title: "Organization Default Scaling Policy"
+    excerpt: "This preset registers a balanced auto scaling configuration and claims it as the ACCOUNT-WIDE default for its region: every App Runner service created afterwards without an explicit..."
 ---
 
 # App Runner Auto Scaling Configuration Presets

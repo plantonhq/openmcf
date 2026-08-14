@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveAccount
+metadata:
+  name: openai-prod
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: acme-openai-prod
+  kind: OpenAI
+  skuName: S0
+  # Enables Entra ID (token) auth and keeps network hardening open.
+  customSubdomainName: acme-openai-prod

@@ -8,14 +8,14 @@ componentName: "awsmskserverlesscluster"
 
 # AWS MSK Serverless Cluster
 
-Deploys an Amazon MSK Serverless cluster — Apache Kafka with every capacity decision removed. AWS scales throughput and partitions automatically and bills per use: no broker counts, no instance types, no storage provisioning, no Kafka version management. The spec is exactly what remains — where the cluster lives (region + subnets) and who can reach it (security groups) — and all of it is create-time immutable. Authentication is fixed at SASL/IAM on port 9098 (the only scheme, always on), so producer and consumer identity is pure IAM. The cluster integrates with Planton's Provider Connections for AWS credential management and exports the bootstrap string and ARN that downstream consumers and Lambda event source mappings wire to.
+Deploys an Amazon MSK Serverless cluster — Apache Kafka with every capacity decision removed. AWS scales throughput and partitions automatically and bills per use: no broker counts, no instance types, no storage provisioning, no Kafka version management. The spec is exactly what remains — where the cluster lives (one or more VPC placements, each with subnets and security groups) — and all of it is create-time immutable. Authentication is fixed at SASL/IAM on port 9098 (the only scheme, always on), so producer and consumer identity is pure IAM. The cluster integrates with Planton's Provider Connections for AWS credential management and exports the bootstrap string and ARN that downstream consumers and Lambda event source mappings wire to.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **MSK Serverless Cluster** -- an AWS-managed Kafka fleet with automatic throughput and partition scaling, SASL/IAM authentication always on
-- **VPC Network Interfaces** -- ENIs in the provided subnets through which clients reach the bootstrap endpoint
+- **VPC Network Interfaces** -- ENIs in every declared VPC placement's subnets, through which that VPC's clients reach the bootstrap endpoint
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -41,7 +41,7 @@ Open the deployment store, find **AWS MSK Serverless Cluster**, and click **Depl
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsMskServerlessCluster
 metadata:
   name: events-serverless
@@ -49,11 +49,12 @@ metadata:
   env: prod
 spec:
   region: us-west-2
-  subnetIds:
-    - value: subnet-0a1b2c3d4e5f00001
-    - value: subnet-0a1b2c3d4e5f00002
-  securityGroupIds:
-    - value: sg-0123456789abcdef0
+  vpcConfigs:
+    - subnetIds:
+        - value: subnet-0a1b2c3d4e5f00001
+        - value: subnet-0a1b2c3d4e5f00002
+      securityGroupIds:
+        - value: sg-0123456789abcdef0
 ```
 
 ```shell
@@ -68,31 +69,34 @@ When deploying as part of a multi-resource environment, wire the placement from 
 
 ```yaml
 spec:
-  subnetIds:
-    - valueFrom:
-        kind: AwsSubnet
-        name: private-az1
-        fieldPath: status.outputs.subnet_id
-    - valueFrom:
-        kind: AwsSubnet
-        name: private-az2
-        fieldPath: status.outputs.subnet_id
-  securityGroupIds:
-    - valueFrom:
-        kind: AwsSecurityGroup
-        name: kafka-clients
-        fieldPath: status.outputs.security_group_id
+  vpcConfigs:
+    - subnetIds:
+        - valueFrom:
+            kind: AwsSubnet
+            name: private-az1
+            fieldPath: status.outputs.subnet_id
+        - valueFrom:
+            kind: AwsSubnet
+            name: private-az2
+            fieldPath: status.outputs.subnet_id
+      securityGroupIds:
+        - valueFrom:
+            kind: AwsSecurityGroup
+            name: kafka-clients
+            fieldPath: status.outputs.security_group_id
 ```
 
 ## Key Configuration
 
 These are the only decisions an MSK Serverless cluster asks for — everything else is AWS-managed. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**The whole spec is a one-way door** -- region, subnets, and security groups are all create-time immutable; the cluster is an atomic placement record (only tags change in place). Changing any of them replaces the cluster, and topics/data do not migrate — decide the placement deliberately.
+**The whole spec is a one-way door** -- region and every VPC placement are create-time immutable; the cluster is an atomic placement record (only tags change in place). Changing any of them replaces the cluster, and topics/data do not migrate — decide the placement set deliberately.
 
-**Subnets** -- where the cluster's network interfaces land. Private subnets in at least two availability zones is the production shape; a single-AZ placement is a single point of failure.
+**VPC placements** -- one `vpcConfigs` entry per VPC. AWS provisions client-facing network interfaces in EACH declared VPC, so workloads in every listed VPC connect privately with no peering, transit routing, or PrivateLink setup. One entry is the common shape; add more to share the cluster across VPCs (each entry's subnets must belong to the same VPC).
 
-**Security groups** -- up to 5, gating network access to the bootstrap endpoint. The TCP-9098 ingress rules are composed on first-class AwsSecurityGroup resources, never embedded here. Empty attaches the VPC's default group — attach a purpose-made group at create time; it cannot be added later.
+**Subnets** -- where a placement's network interfaces land. Private subnets in at least two availability zones is the production shape; a single-AZ placement is a single point of failure.
+
+**Security groups** -- up to 5 per placement, gating network access to the bootstrap endpoint from that VPC. The TCP-9098 ingress rules are composed on first-class AwsSecurityGroup resources, never embedded here. Empty attaches the VPC's default group — attach a purpose-made group at create time; it cannot be added later.
 
 **What is deliberately absent** -- no broker/storage/version fields (AWS manages capacity), no auth fields (SASL/IAM is the only scheme and is always on), no ingress rules (composed on security groups). If a workload needs steady multi-MB/s throughput, SCRAM/mTLS auth, or version pinning, the provisioned [AWS MSK Cluster](/cloud-catalog/aws-msk-cluster) is the right kind.
 
@@ -102,8 +106,8 @@ These are the only decisions an MSK Serverless cluster asks for — everything e
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsSubnet** | `subnetIds` | `status.outputs.subnet_id` |
-| **AwsSecurityGroup** (optional) | `securityGroupIds` | `status.outputs.security_group_id` |
+| **AwsSubnet** | `vpcConfigs[].subnetIds` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `vpcConfigs[].securityGroupIds` | `status.outputs.security_group_id` |
 
 ### What This Component Provides
 
@@ -123,6 +127,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Event-driven microservices** -- spiky, unpredictable throughput where paying per use beats provisioning for peak. Start from the **Basic IAM** preset.
 
 **Graph-composed placement** -- subnets and security groups wired from the resource graph so the whole event fabric deploys as one InfraChart. Start from the **Composed References** preset.
+
+**Shared cluster across VPCs** -- one Kafka fabric serving producers and consumers in separate VPCs, each through its own placement and security group. Start from the **Multi-VPC Access** preset.
 
 ## Works With
 

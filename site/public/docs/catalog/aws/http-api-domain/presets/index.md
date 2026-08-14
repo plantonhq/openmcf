@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Preset: Multi-API mTLS Domain"
     excerpt: "Use this preset for B2B / machine-to-machine API surfaces: several APIs composed under one hostname, with mutual TLS requiring partner clients to present certificates chaining to your CA truststore."
+  - slug: "03-rule-routed-domain"
+    rank: "03"
+    title: "Preset: Rule-Routed Domain"
+    excerpt: "Use this preset when one hostname must route requests to DIFFERENT REST APIs by path or header — a service split (`/orders` to the orders API), tenant pinning (beta tenants to a canary API), or a..."
 ---
 
 # HTTP API Domain Presets

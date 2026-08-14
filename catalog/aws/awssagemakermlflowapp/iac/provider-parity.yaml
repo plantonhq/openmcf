@@ -1,0 +1,20 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_mlflow_app:
+    mappings:
+      # The provider's oddly-named list arg; the spec wires SageMaker
+      # domains by reference.
+      - arg: default_domain_id_list
+        spec: spec.default_domain_ids
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the component's name IS the app name (the ARN, not the name, is the app's AWS identity)
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface

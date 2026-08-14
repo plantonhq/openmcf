@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Private NAT Gateway"
     excerpt: "A private NAT gateway (no Elastic IP) placed in an `AwsSubnet` by reference. A private gateway provides outbound access to other private networks — peered VPCs, a transit gateway, or an on-premises..."
+  - slug: "03-regional-nat-gateway"
+    rank: "03"
+    title: "Regional NAT Gateway"
+    excerpt: "A regional NAT gateway: one AWS-managed gateway that spans every availability zone of a VPC, replacing the classic per-AZ gateway fleet. AWS places capacity in each zone, allocates and rotates the..."
 ---
 
 # NAT Gateway Presets

@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapivpclink.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsRestApiVpcLinkSpec defines the desired configuration for an AWS
+// API Gateway VPC link (the API Gateway v1 form).
+//
+// A REST API VPC link lets REST API integrations reach private
+// services: the link fronts a Network Load Balancer in your VPC, and
+// integrations with connection_type VPC_LINK route through it instead
+// of the public internet. One link is shared by many APIs and owns its
+// own network attachment - which is why it is its own component rather
+// than part of AwsRestApiGateway.
+//
+// (HTTP APIs use a different link resource that attaches to subnets
+// directly - that is the AwsHttpApiVpcLink component. The two are not
+// interchangeable.)
+//
+// Provisioning takes several minutes while AWS builds the network
+// attachment; creating the link is free - standard NLB charges apply
+// to the balancer it fronts.
+message AwsRestApiVpcLinkSpec {
+  // The AWS region where the VPC link will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this link reaches (e.g. "orders service NLB").
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // The internal Network Load Balancer the link fronts. AWS accepts
+  // exactly one balancer per link, and it cannot be changed after
+  // creation - a different NLB means a new link.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsNlb,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.load_balancer_arn"
+  ];
+}

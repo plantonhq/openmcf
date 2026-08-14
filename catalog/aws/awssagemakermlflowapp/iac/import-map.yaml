@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssagemakermlflowapp
+spec:
+  # The app imports by its ARN (the app's AWS identity - names are
+  # mutable).
+  values:
+    - name: app_arn
+      derivations:
+        - from_stack_output: app_arn
+      where_to_find: >-
+        `aws sagemaker list-mlflow-apps` shows Arn per app (shape
+        "arn:aws:sagemaker:<region>:<account>:mlflow-app/app-...").

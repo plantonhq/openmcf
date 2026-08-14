@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrail
+metadata:
+  name: compliance-audit-trail
+spec:
+  region: <aws-region>
+  s3BucketName:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: <audit-logs-bucket>
+      fieldPath: status.outputs.bucket_id
+  s3KeyPrefix: audit
+  isMultiRegionTrail: true
+  enableLogFileValidation: true
+  advancedEventSelectors:
+    - name: Management events
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Management"]
+  insightTypes:
+    - ApiCallRateInsight
+    - ApiErrorRateInsight

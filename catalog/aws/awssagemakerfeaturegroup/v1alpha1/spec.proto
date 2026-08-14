@@ -1,0 +1,281 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerfeaturegroup.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerFeatureGroupSpec defines the desired configuration for an
+// Amazon SageMaker Feature Store feature group - the schema'd store ML
+// features are written to and served from. The group's AWS name derives
+// from metadata.name.
+//
+// A feature group has an ONLINE store (low-latency reads for serving),
+// an OFFLINE store (an S3/Glue table for training), or both - at least
+// one. Everything except the online store's TTL and the throughput
+// settings is create-time only: changing it replaces the group (AWS's
+// contract).
+message AwsSagemakerFeatureGroupSpec {
+  // The AWS region where the feature group will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The feature whose value uniquely identifies a record (must be one
+  // of `feature_definitions`; 1-64 characters).
+  string record_identifier_feature_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$"
+  }];
+
+  // The feature carrying each record's event time (must be one of
+  // `feature_definitions`; Fractional epoch seconds or String
+  // ISO-8601). The TTL clock and offline-store partitioning key.
+  string event_time_feature_name = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$"
+  }];
+
+  // Free-form description (max 128 characters). Changing it replaces
+  // the group (provider-enforced).
+  string description = 4 [(buf.validate.field).string.max_len = 128];
+
+  // IAM role used to persist data into the offline store's S3 location.
+  // The role must trust sagemaker.amazonaws.com and be able to write
+  // the bucket.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The group's schema: every feature records may carry (1-2500).
+  repeated AwsSagemakerFeatureGroupFeature feature_definitions = 6 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 2500
+  }];
+
+  // Low-latency store for real-time serving.
+  AwsSagemakerFeatureGroupOnlineStore online_store = 7;
+
+  // S3/Glue store for training datasets and point-in-time queries.
+  AwsSagemakerFeatureGroupOfflineStore offline_store = 8;
+
+  // Read/write billing mode - on-demand (default) or provisioned
+  // capacity. The one surface besides TTL that updates in place.
+  AwsSagemakerFeatureGroupThroughput throughput = 9;
+
+  // A feature group without any store stores nothing (AWS requires at
+  // least one; an online store block with enabled=false does not
+  // count).
+  option (buf.validate.message).cel = {
+    id: "at_least_one_store"
+    message: "at least one of online_store (enabled) and offline_store must be configured"
+    expression: "(has(this.online_store) && this.online_store.enabled) || has(this.offline_store)"
+  };
+
+  // Feature names are the schema's identity.
+  option (buf.validate.message).cel = {
+    id: "feature_names_unique"
+    message: "feature_definitions entries must have unique names"
+    expression: "this.feature_definitions.map(f, f.name).unique()"
+  };
+
+  // AWS requires both special features to be defined in the schema.
+  option (buf.validate.message).cel = {
+    id: "record_identifier_defined"
+    message: "record_identifier_feature_name must be one of feature_definitions"
+    expression: "this.feature_definitions.exists(f, f.name == this.record_identifier_feature_name)"
+  };
+  option (buf.validate.message).cel = {
+    id: "event_time_defined"
+    message: "event_time_feature_name must be one of feature_definitions"
+    expression: "this.feature_definitions.exists(f, f.name == this.event_time_feature_name)"
+  };
+}
+
+// AwsSagemakerFeatureGroupFeature is one feature in the group's schema.
+message AwsSagemakerFeatureGroupFeature {
+  // Feature name (1-64 characters; letters, digits, hyphen,
+  // underscore). AWS reserves "is_deleted", "write_time", and
+  // "api_invocation_time".
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+    pattern: "^[0-9A-Za-z]([-_]*[0-9A-Za-z])*$"
+    not_in: [
+      "is_deleted",
+      "write_time",
+      "api_invocation_time"
+    ]
+  }];
+
+  // Value type: "Integral", "Fractional", or "String".
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "Integral",
+      "Fractional",
+      "String"
+    ]
+  }];
+
+  // Collection shape for multi-valued features: "List", "Set", or
+  // "Vector" (embeddings - requires `vector_dimension`). Omitted =
+  // scalar. Collections require an online store with InMemory storage.
+  string collection_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "List",
+        "Set",
+        "Vector"
+      ]
+    }
+  ];
+
+  // Number of dimensions of a Vector feature (1-8192). Required exactly
+  // when collection_type is Vector.
+  optional int32 vector_dimension = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 8192
+  }];
+
+  // AWS pairs the dimension with the Vector collection type exactly.
+  option (buf.validate.message).cel = {
+    id: "vector_dimension_pairs_with_vector"
+    message: "vector_dimension is required when collection_type is Vector and forbidden otherwise"
+    expression: "(this.collection_type == 'Vector') == has(this.vector_dimension)"
+  };
+}
+
+// AwsSagemakerFeatureGroupOnlineStore serves features at low latency.
+message AwsSagemakerFeatureGroupOnlineStore {
+  // Turn the online store on. Changing it replaces the group.
+  bool enabled = 1;
+
+  // KMS key encrypting the online store at rest.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Storage tier: "Standard" (default) or "InMemory" (lowest latency;
+  // required for collection-typed features). Changing it replaces the
+  // group.
+  string storage_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Standard",
+        "InMemory"
+      ]
+    }
+  ];
+
+  // Hard-delete records this long after their event time
+  // (ExpiresAt = EventTime + ttl). The ONLY online-store setting that
+  // updates in place.
+  AwsSagemakerFeatureGroupTtl ttl = 4;
+}
+
+// AwsSagemakerFeatureGroupTtl is the online store's record
+// time-to-live.
+message AwsSagemakerFeatureGroupTtl {
+  // "Seconds", "Minutes", "Hours", "Days", or "Weeks".
+  string unit = 1 [(buf.validate.field).string = {
+    in: [
+      "Seconds",
+      "Minutes",
+      "Hours",
+      "Days",
+      "Weeks"
+    ]
+  }];
+
+  // The duration count (>= 1).
+  int32 value = 2 [(buf.validate.field).int32.gte = 1];
+}
+
+// AwsSagemakerFeatureGroupOfflineStore lands every write in S3 for
+// training and historical queries.
+message AwsSagemakerFeatureGroupOfflineStore {
+  // S3 URI records are written under. Example: "s3://my-features/"
+  string s3_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // KMS key encrypting offline-store objects.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Skip the automatic Glue Data Catalog table (register your own
+  // catalog entry instead - pair with `data_catalog`).
+  bool disable_glue_table_creation = 3;
+
+  // Table format: "Glue" (default - a standard Glue table) or
+  // "Iceberg" (Apache Iceberg - faster queries, compaction).
+  string table_format = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Glue",
+        "Iceberg"
+      ]
+    }
+  ];
+
+  // Name your own Glue catalog entry (with
+  // disable_glue_table_creation) or override the generated one's
+  // location.
+  AwsSagemakerFeatureGroupDataCatalog data_catalog = 5;
+}
+
+// AwsSagemakerFeatureGroupDataCatalog names the Glue Data Catalog
+// entry for the offline store.
+message AwsSagemakerFeatureGroupDataCatalog {
+  // Glue catalog name.
+  string catalog = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Glue database name.
+  string database = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Glue table name.
+  string table_name = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsSagemakerFeatureGroupThroughput is the store's billing mode.
+message AwsSagemakerFeatureGroupThroughput {
+  // "OnDemand" (default - pay per request) or "Provisioned" (fixed
+  // capacity - pair with the capacity units).
+  string mode = 1 [(buf.validate.field).string = {
+    in: [
+      "OnDemand",
+      "Provisioned"
+    ]
+  }];
+
+  // Provisioned read capacity units (0-10000000). Only with Provisioned
+  // mode.
+  optional int32 provisioned_read_capacity_units = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10000000
+  }];
+
+  // Provisioned write capacity units (0-10000000). Only with
+  // Provisioned mode.
+  optional int32 provisioned_write_capacity_units = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 10000000
+  }];
+
+  // Capacity units belong to the Provisioned mode.
+  option (buf.validate.message).cel = {
+    id: "capacity_units_pair_with_provisioned"
+    message: "provisioned capacity units require mode Provisioned"
+    expression: "this.mode == 'Provisioned' || (!has(this.provisioned_read_capacity_units) && !has(this.provisioned_write_capacity_units))"
+  };
+}

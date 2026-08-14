@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapigatewayaccountsettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsApiGatewayAccountSettingsSpec defines the desired API Gateway
+// account-level settings for one AWS region.
+//
+// This is a SETTINGS SINGLETON: the resource's identity is the
+// account+region pair, not a name - AWS keeps exactly one API Gateway
+// account object per region, and this component manages it. Deploy at
+// most one instance per region; two instances targeting the same
+// region fight over the same settings object. metadata.name never
+// reaches AWS - it is Planton-side identity only.
+//
+// The one configurable lever is the CloudWatch Logs role: API Gateway
+// uses it to push execution and access logs for every REST API stage
+// in the region. Stage-level logging on AwsRestApiGateway silently
+// does nothing until this role is set - that cross-component contract
+// is why this kind exists.
+//
+// Destroying this component RESETS the role to none (the region
+// reverts to no API Gateway logging); the account object itself
+// always exists and cannot be deleted.
+message AwsApiGatewayAccountSettingsSpec {
+  // The AWS region whose API Gateway account settings this instance
+  // manages. The region IS the resource identity - one instance per
+  // region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The IAM role API Gateway assumes to write execution/access logs
+  // to CloudWatch for every REST API in the region. The role must
+  // trust "apigateway.amazonaws.com" and carry CloudWatch Logs write
+  // permissions (the AWS-managed policy
+  // AmazonAPIGatewayPushToCloudWatchLogs is the canonical grant) -
+  // AWS validates both at apply and rejects a role it cannot use
+  // ("The role ARN does not have required permissions"). IAM
+  // propagation can lag role creation by a few seconds; both engines'
+  // providers retry through that window.
+  //
+  // Leave unset to manage the region WITHOUT a logging role (the
+  // explicit "no API Gateway logging" posture - applying an unset
+  // value clears any role previously set by anyone).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cloudwatch_role_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+}

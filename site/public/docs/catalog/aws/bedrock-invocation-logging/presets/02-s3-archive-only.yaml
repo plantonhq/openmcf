@@ -1,0 +1,15 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInvocationLogging
+metadata:
+  name: bedrock-invocation-archive
+spec:
+  region: <aws-region>
+  videoDataDeliveryEnabled: false
+  embeddingDataDeliveryEnabled: false
+  s3:
+    bucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <bedrock-log-bucket>
+        fieldPath: status.outputs.bucket_id
+    keyPrefix: invocations

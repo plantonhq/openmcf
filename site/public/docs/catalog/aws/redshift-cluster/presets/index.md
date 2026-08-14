@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "High-Performance Analytics Cluster"
     excerpt: "This preset creates a 4-node RA3 Redshift cluster sized for large-scale analytical workloads. The ra3.4xlarge nodes each provide 12 vCPUs, 96 GiB RAM, and managed storage that automatically tiers..."
+  - slug: "04-governed-warehouse"
+    rank: "04"
+    title: "Governed Warehouse with Cost Controls and Cross-VPC Access"
+    excerpt: "This preset creates a production RA3 cluster whose spend and access are governed declaratively: usage limits cap what Spectrum and concurrency scaling may consume each day, scheduled actions pause..."
 ---
 
 # Redshift Cluster Presets

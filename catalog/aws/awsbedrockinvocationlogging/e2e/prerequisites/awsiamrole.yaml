@@ -1,0 +1,37 @@
+# Consumer-scoped AwsIamRole install profile for the invocation-logging
+# singleton: ONE role trusting bedrock.amazonaws.com with CloudWatch
+# Logs write on the fixture log group's streams. Scoping keeps the
+# chain off the shared fixed-name set and DEPENDENCIES-UP to one role.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-bedil-role
+  id: planton-oss-e2e-bedil-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role Bedrock assumes to write invocation logs
+  inlinePolicies:
+    bedrockInvocationLogging:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "arn:aws:logs:us-west-2:*:log-group:planton-oss-e2e-bedil-lg:log-stream:*"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: bedrock.amazonaws.com
+        Action: sts:AssumeRole

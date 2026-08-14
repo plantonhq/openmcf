@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssagemakermlflowapp
+spec:
+  # A serverless MLflow app under live E2E: two lanes, $0 idle (billed
+  # per use; the lanes never invoke; provider timeouts 10m per
+  # operation - a FIRST LIVE DATAPOINT on actual create/delete
+  # duration belongs here after Q36). The minimal lane proves the bare
+  # create -> Created lifecycle; the full-surface lane adds
+  # auto-registration and the maintenance window. Verification is
+  # DescribeMlflowApp keyed on app_arn (status Created; DELETED is a
+  # terminal soft-delete status the verifier accepts as absent).
+  #
+  # Deliberately not exercised live: account_default_status ENABLED
+  # (account-GLOBAL on the shared test account - only one app per
+  # account may hold the default; unblock: owner decision to dedicate
+  # the account default to a lane) and the domain-association arm
+  # (needs a SageMaker domain fixture, an expensive standing resource -
+  # unblock: compose the AwsSagemakerDomain install profile on an
+  # owner-approved fixture budget) - offline-proven via
+  # e2e/manifest.yaml.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q36
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

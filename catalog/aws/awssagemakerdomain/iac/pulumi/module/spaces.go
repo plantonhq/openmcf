@@ -92,6 +92,13 @@ func buildSpaceSettings(ss *awssagemakerdomainv1alpha1.AwsSagemakerDomainSpaceSe
 			}
 			jlArgs.CodeRepositories = repos
 		}
+		// The module forwards the space idle timeout verbatim; whether it is
+		// LEGAL is resolved server-side — CreateSpace 400s ("Idle Shutdown is
+		// disabled for this space") when idle shutdown resolves DISABLED for
+		// the space through the domain/owner-profile inheritance chain
+		// (live-verified 2026-08-13). The spec's
+		// space_idle_requires_owner_lifecycle_* CELs catch the in-manifest
+		// contradiction before the API does.
 		if idle := jl.IdleSettings; idle != nil && idle.IdleTimeoutInMinutes != nil {
 			jlArgs.AppLifecycleManagement = &sagemaker.SpaceSpaceSettingsJupyterLabAppSettingsAppLifecycleManagementArgs{
 				IdleSettings: &sagemaker.SpaceSpaceSettingsJupyterLabAppSettingsAppLifecycleManagementIdleSettingsArgs{

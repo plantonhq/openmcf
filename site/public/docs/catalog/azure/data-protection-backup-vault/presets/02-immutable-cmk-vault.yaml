@@ -1,0 +1,33 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupVault
+metadata:
+  name: compliance-backup-vault
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  name: compliance-backup-vault
+  datastoreType: VaultStore
+  redundancy: GeoRedundant
+  # Deleted backup data stays recoverable for 30 days (14-180).
+  retentionDurationInDays: 30
+  # Unlocked blocks backup deletion but can still be turned off --
+  # the trial run. Move to Locked ONLY when certain: Locked is
+  # permanent (leaving it replaces the vault).
+  immutability: Unlocked
+  # Required for customer-managed-key encryption: Azure unwraps the
+  # key with the vault's SYSTEM-assigned identity.
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Backup data encrypted with your own Key Vault key. ONE-WAY: once
+  # enabled, CMK can never be removed (only the key rotates). Grant
+  # the vault's identity wrap/unwrap on the key first.
+  encryption:
+    keyId:
+      valueFrom:
+        kind: AzureKeyVaultKey
+        name: "<your-key-vault-key>"
+        fieldPath: status.outputs.versionless_id

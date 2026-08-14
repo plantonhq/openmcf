@@ -1,0 +1,49 @@
+# Consumer-scoped AwsKmsKey install profile for findings export: the
+# key policy keeps the account root in control and grants
+# guardduty.amazonaws.com GenerateDataKey (AWS rejects the publishing
+# destination without it). Short deletion window -- scheduled deletion
+# is the fixture's "gone" state.
+#
+# The root statement needs the account id a committed fixture cannot
+# carry honestly -- the lane exports it as PLANTON_E2E_AWS_ACCOUNT_ID
+# (`aws sts get-caller-identity --query Account --output text`) and
+# the harness expands the ${E2E_ENV:} token at deploy time.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsKmsKey
+metadata:
+  name: planton-oss-e2e-awsgd-key
+  id: planton-oss-e2e-awsgd-key
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awskmskey
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E key GuardDuty encrypts exported findings with
+  deletionWindowDays: 7
+  # The kind's policy field is a JSON document string.
+  policy: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Sid": "EnableRootAccess",
+          "Effect": "Allow",
+          "Principal": {"AWS": "arn:aws:iam::${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:root"},
+          "Action": "kms:*",
+          "Resource": "*"
+        },
+        {
+          "Sid": "AllowGuardDutyExportEncryption",
+          "Effect": "Allow",
+          "Principal": {"Service": "guardduty.amazonaws.com"},
+          "Action": "kms:GenerateDataKey",
+          "Resource": "*"
+        }
+      ]
+    }

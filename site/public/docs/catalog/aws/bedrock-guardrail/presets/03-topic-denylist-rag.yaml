@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockGuardrail
+metadata:
+  name: topic-denylist-rag
+spec:
+  region: us-west-2
+  description: Denied topics plus grounding enforcement for a RAG assistant
+  blockedInputMessaging: I can't discuss that topic.
+  blockedOutputsMessaging: I can't provide an answer on that topic.
+  # The STANDARD tier requires cross-region inference (AWS rejects it
+  # otherwise); the geography-qualified profile id is the portable shape.
+  crossRegionProfile: us.guardrail.v1:0
+  topicPolicy:
+    tier: STANDARD
+    topics:
+      - name: legal-advice
+        definition: Interpreting laws or advising on legal rights, obligations, or disputes.
+        examples:
+          - Can I sue my landlord for this?
+      - name: medical-advice
+        definition: Diagnosing conditions or recommending treatments and medications.
+        examples:
+          - What dose should I take for this pain?
+  contextualGroundingPolicy:
+    filters:
+      - type: GROUNDING
+        threshold: 0.75
+      - type: RELEVANCE
+        threshold: 0.5

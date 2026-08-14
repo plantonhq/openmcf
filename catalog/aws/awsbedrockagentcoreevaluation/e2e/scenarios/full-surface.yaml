@@ -1,0 +1,60 @@
+# AwsBedrockAgentCoreEvaluation full-surface scenario: an LLM-judge
+# evaluator plus a Bedrock harness on the shared AgentCore role
+# fixture. Creating these objects is free; AWS bills per evaluation
+# run (the lanes never start a run). Whether create validates Bedrock
+# model access rides the Q37 watch-list (the standing model-access
+# payment-instrument deferral).
+#
+# Deliberately not exercised live: the online evaluation config (needs
+# a CloudWatch log group that AgentCore observability actually writes
+# to -- unblock: compose AwsCloudwatchLogGroup once a lane budget
+# allows), Gemini/OpenAI harness vendors (need Secrets Manager API
+# keys), and the explicit runtime-environment arm (the omitted path
+# proves the computed default) -- all offline-proven via
+# e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreEvaluation
+metadata:
+  name: planton-oss-e2e-awsacev-full
+  id: planton-oss-e2e-awsacev-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoreevaluation
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  evaluators:
+    - name: planton_e2e_judge
+      description: Planton E2E LLM judge
+      level: SESSION
+      llmAsAJudge:
+        instructions: Score whether the agent answered the question.
+        model:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          inference:
+            temperature: 0
+        ratingScale:
+          categorical:
+            - label: pass
+              definition: The agent answered correctly
+            - label: fail
+              definition: The agent did not answer
+  harnesses:
+    - name: planton-e2e-bench
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-agentcore-role
+          fieldPath: status.outputs.role_arn
+      model:
+        bedrock:
+          modelId: anthropic.claude-3-haiku-20240307-v1:0
+          temperature: 0
+      systemPrompts:
+        - text: You are an agent under evaluation.

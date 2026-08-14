@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "DNS-Validated Certificate with External DNS"
     excerpt: "This preset requests an ACM certificate for a domain whose DNS lives outside Route53 (Cloudflare, a registrar's DNS, an on-prem zone). The deployment creates the certificate and finishes without..."
+  - slug: "04-private-ca-internal-tls"
+    rank: "04"
+    title: "Private CA Certificate for Internal TLS"
+    excerpt: "This preset issues a certificate from your AWS Private Certificate Authority (ACM-PCA) with managed early renewal -- the shape for internal TLS where clients trust your private root instead of a..."
 ---
 
 # Cert Manager Certificate Presets

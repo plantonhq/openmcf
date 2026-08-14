@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapigatewayaccountsettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsapigatewayaccountsettings/v1alpha1/outputs.proto";
+import "catalog/aws/awsapigatewayaccountsettings/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+message AwsApiGatewayAccountSettings {
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+  string kind = 2 [(buf.validate.field).string.const = 'AwsApiGatewayAccountSettings'];
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+  AwsApiGatewayAccountSettingsSpec spec = 4 [(buf.validate.field).required = true];
+  AwsApiGatewayAccountSettingsStatus status = 5;
+}
+
+message AwsApiGatewayAccountSettingsStatus {
+  AwsApiGatewayAccountSettingsStackOutputs outputs = 1;
+}

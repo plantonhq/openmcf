@@ -1,0 +1,207 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagentcore_gateway:
+    mappings:
+      # DEBUG is the only exception level AWS defines -- the spec models
+      # it as a bool and the module owns the constant.
+      - arg: exception_level
+        spec: spec.expose_debug_exceptions
+      # The single-member authorizer wrapper flattens to the JWT message.
+      - arg: authorizer_configuration
+        spec: spec.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer
+        spec: spec.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration
+        spec: spec.custom_jwt_authorizer.allowed_workloads
+      # Repeated single-leaf blocks flatten to a repeated string.
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment
+        spec: spec.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment.arn
+        spec: spec.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      # The claim's two-level match-value wrappers flatten onto the claim
+      # entry.
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim
+        spec: spec.custom_jwt_authorizer.custom_claims
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_name
+        spec: spec.custom_jwt_authorizer.custom_claims.claim_name
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_value_type
+        spec: spec.custom_jwt_authorizer.custom_claims.value_type
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value
+        spec: spec.custom_jwt_authorizer.custom_claims.match_operator
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_operator
+        spec: spec.custom_jwt_authorizer.custom_claims.match_operator
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value
+        spec: spec.custom_jwt_authorizer.custom_claims.match_value
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string
+        spec: spec.custom_jwt_authorizer.custom_claims.match_value
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string_list
+        spec: spec.custom_jwt_authorizer.custom_claims.match_values
+      # The private endpoint's provider `_resource` suffixes; the spec
+      # names the arms directly.
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint.self_managed_lattice.resource_configuration_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice.resource_configuration_id
+      # Repeated singular blocks pluralize in the spec; the interceptor's
+      # single-member wrappers flatten to the Lambda ARN leaf.
+      - arg: interceptor_configuration
+        spec: spec.interceptors
+      - arg: interceptor_configuration.input_configuration
+        spec: spec.interceptors.pass_request_headers
+      - arg: interceptor_configuration.input_configuration.pass_request_headers
+        spec: spec.interceptors.pass_request_headers
+      - arg: interceptor_configuration.interceptor
+        spec: spec.interceptors.lambda_arn
+      - arg: interceptor_configuration.interceptor.lambda
+        spec: spec.interceptors.lambda_arn
+      - arg: interceptor_configuration.interceptor.lambda.arn
+        spec: spec.interceptors.lambda_arn
+      - arg: policy_engine_configuration
+        spec: spec.policy_engine
+      - arg: policy_engine_configuration.arn
+        spec: spec.policy_engine.policy_engine_arn
+      # MCP is the gateway's only protocol -- the tuning block flattens
+      # one level.
+      - arg: protocol_configuration
+        spec: spec.mcp
+      - arg: protocol_configuration.mcp
+        spec: spec.mcp
+      # SEMANTIC is the only search type AWS defines -- the spec models
+      # it as a bool and the module owns the constant.
+      - arg: protocol_configuration.mcp.search_type
+        spec: spec.mcp.enable_semantic_search
+      - arg: protocol_configuration.mcp.session_configuration
+        spec: spec.mcp.session_timeout_seconds
+      - arg: protocol_configuration.mcp.session_configuration.session_timeout_in_seconds
+        spec: spec.mcp.session_timeout_seconds
+      - arg: protocol_configuration.mcp.streaming_configuration
+        spec: spec.mcp.enable_response_streaming
+      - arg: protocol_configuration.mcp.streaming_configuration.enable_response_streaming
+        spec: spec.mcp.enable_response_streaming
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the gateway name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: protocol_type
+        reason: MCP is the only protocol type AWS defines (Optional+Computed at the provider) -- the provider computes it and the module never sends it; a field with one legal value is drift surface, not configuration
+
+  aws_bedrockagentcore_gateway_target:
+    specRoot: spec.targets
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The http/mcp protocol wrappers collapse -- the spec's backend
+      # message carries the six arms directly (exactly one,
+      # spec-validated).
+      - arg: target_configuration
+        spec: spec.targets.backend
+      - arg: target_configuration.http
+        spec: spec.targets.backend
+      - arg: target_configuration.http.agentcore_runtime
+        spec: spec.targets.backend.agentcore_runtime
+      - arg: target_configuration.http.agentcore_runtime.arn
+        spec: spec.targets.backend.agentcore_runtime.agent_runtime_arn
+      - arg: target_configuration.mcp
+        spec: spec.targets.backend
+      - arg: target_configuration.mcp.api_gateway
+        spec: spec.targets.backend.api_gateway
+      # The tool-configuration wrapper flattens; repeated singular blocks
+      # pluralize in the spec.
+      - arg: target_configuration.mcp.api_gateway.api_gateway_tool_configuration
+        spec: spec.targets.backend.api_gateway.tool_filters
+      - arg: target_configuration.mcp.api_gateway.api_gateway_tool_configuration.tool_filter
+        spec: spec.targets.backend.api_gateway.tool_filters
+      - arg: target_configuration.mcp.api_gateway.api_gateway_tool_configuration.tool_override
+        spec: spec.targets.backend.api_gateway.tool_overrides
+      - arg: target_configuration.mcp.lambda
+        spec: spec.targets.backend.lambda
+      # The tool_schema wrapper flattens; inline tool definitions
+      # pluralize as `tools`, the S3 alternative as `tools_s3`.
+      - arg: target_configuration.mcp.lambda.tool_schema
+        spec: spec.targets.backend.lambda.tools
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload
+        spec: spec.targets.backend.lambda.tools
+      - arg: target_configuration.mcp.lambda.tool_schema.s3
+        spec: spec.targets.backend.lambda.tools_s3
+      # The provider's singular `property` blocks pluralize as
+      # `properties` at every level of the three-level schema tree.
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.input_schema.property
+        spec: spec.targets.backend.lambda.tools.input_schema.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.input_schema.property.property
+        spec: spec.targets.backend.lambda.tools.input_schema.properties.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.input_schema.property.items.property
+        spec: spec.targets.backend.lambda.tools.input_schema.properties.items.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.input_schema.items.property
+        spec: spec.targets.backend.lambda.tools.input_schema.items.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.output_schema.property
+        spec: spec.targets.backend.lambda.tools.output_schema.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.output_schema.property.property
+        spec: spec.targets.backend.lambda.tools.output_schema.properties.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.output_schema.property.items.property
+        spec: spec.targets.backend.lambda.tools.output_schema.properties.items.properties
+      - arg: target_configuration.mcp.lambda.tool_schema.inline_payload.output_schema.items.property
+        spec: spec.targets.backend.lambda.tools.output_schema.items.properties
+      - arg: target_configuration.mcp.mcp_server
+        spec: spec.targets.backend.mcp_server
+      # The schema document's inline_payload block carries a single
+      # payload leaf; the spec is the string.
+      - arg: target_configuration.mcp.open_api_schema
+        spec: spec.targets.backend.open_api_schema
+      - arg: target_configuration.mcp.open_api_schema.inline_payload
+        spec: spec.targets.backend.open_api_schema.inline_payload
+      - arg: target_configuration.mcp.open_api_schema.inline_payload.payload
+        spec: spec.targets.backend.open_api_schema.inline_payload
+      - arg: target_configuration.mcp.smithy_model
+        spec: spec.targets.backend.smithy_model
+      - arg: target_configuration.mcp.smithy_model.inline_payload
+        spec: spec.targets.backend.smithy_model.inline_payload
+      - arg: target_configuration.mcp.smithy_model.inline_payload.payload
+        spec: spec.targets.backend.smithy_model.inline_payload
+      # The credential wrapper; the spec calls it what it is.
+      - arg: credential_provider_configuration
+        spec: spec.targets.credentials
+      - arg: metadata_configuration
+        spec: spec.targets.metadata
+      # The private endpoint's provider `_resource` suffixes; the spec
+      # names the arms directly.
+      - arg: private_endpoint.managed_vpc_resource
+        spec: spec.targets.private_endpoint.managed_vpc
+      - arg: private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.targets.private_endpoint.managed_vpc.vpc_id
+      - arg: private_endpoint.self_managed_lattice_resource
+        spec: spec.targets.private_endpoint.self_managed_lattice
+      - arg: private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.targets.private_endpoint.self_managed_lattice.resource_configuration_id
+    exclusions:
+      - arg: gateway_identifier
+        reason: wired by the module to the gateway this kind deploys -- targets are folded satellites, never cross-gateway surface
+
+specExclusions:
+  # Passing the caller's JWT through to the backend is selected by the
+  # presence of the provider's EMPTY jwt_passthrough block (no argument
+  # leaves to map); the spec models it as a bool and the modules render
+  # the matching empty block.
+  - field: spec.targets.credentials.jwt_passthrough
+    reason: renders the provider's empty credential_provider_configuration.jwt_passthrough block -- block presence IS the value; no argument leaf exists to map

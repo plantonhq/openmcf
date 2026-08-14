@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Development VPC"
     excerpt: "This preset creates a minimal IPv4-only VPC with a `/16` CIDR and DNS enabled -- a clean foundation for development and testing networks. Add `AwsSubnet` components (and, if outbound internet access..."
+  - slug: "03-ipam-grown-network"
+    rank: "03"
+    title: "IPAM-Governed, Growing Network"
+    excerpt: "This preset creates a VPC whose address space is governed by AWS IPAM rather than hand-picked CIDRs: the primary /16 is allocated from an IPAM pool, additional ranges (an IPAM-sized /20, a pinned..."
 ---
 
 # VPC Presets

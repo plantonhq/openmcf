@@ -1,0 +1,30 @@
+# AwsSagemakerEndpoint minimal scenario: one SERVERLESS variant serving
+# the model prerequisite - $0 idle (serverless bills per inference and
+# the lane never invokes). Proves the config-and-endpoint fold's
+# create -> InService lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerEndpoint
+metadata:
+  name: planton-oss-e2e-awssgmep-min
+  id: planton-oss-e2e-awssgmep-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerendpoint
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsSagemakerModel"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  productionVariants:
+    - model:
+        valueFrom:
+          kind: AwsSagemakerModel
+          name: planton-oss-e2e-awssgmmd-prereq
+          fieldPath: status.outputs.model_name
+      serverless:
+        maxConcurrency: 5
+        memorySizeMb: 2048

@@ -1,0 +1,52 @@
+# Canonical AwsBedrockAgentCoreIdentity example (hack/dev manifest and
+# refgen Example source): the full identity-and-access bundle -- workload
+# identities, a vaulted API key, OAuth2 providers (well-known and custom
+# vendors), and a Cedar policy engine with policies. The credential
+# values are placeholders: real manifests supply managed-secret
+# references resolved just-in-time at deploy.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreIdentity
+metadata:
+  name: support-agent-identity
+  id: support-agent-identity
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  workloadIdentities:
+    - name: support-agent
+      allowedResourceOauth2ReturnUrls:
+        - https://app.example.com/oauth/callback
+  apiKeyCredentialProviders:
+    - name: docs-api
+      apiKey: placeholder-api-key-value
+  oauth2CredentialProviders:
+    - name: github
+      vendor: GITHUB
+      clientId: Iv1.placeholder
+      clientSecret: placeholder-client-secret
+    - name: internal-idp
+      vendor: CUSTOM
+      clientId: planton-agents
+      clientSecret: placeholder-client-secret
+      oauthDiscovery:
+        discoveryUrl: https://idp.example.com/.well-known/openid-configuration
+    - name: legacy-idp
+      vendor: CUSTOM
+      clientId: legacy-client
+      clientSecret: placeholder-client-secret
+      oauthDiscovery:
+        authorizationServerMetadata:
+          issuer: https://legacy.example.com
+          authorizationEndpoint: https://legacy.example.com/authorize
+          tokenEndpoint: https://legacy.example.com/token
+          responseTypes:
+            - code
+  policyEngine:
+    engineName: agent_authz
+    description: Tool-call authorization for the support agent
+    policies:
+      - name: allow_order_reads
+        description: Let every principal call the order lookup tool
+        cedarStatement: 'permit(principal, action == Action::"get_order", resource is AgentCore::Gateway);'
+        validationMode: FAIL_ON_ANY_FINDINGS

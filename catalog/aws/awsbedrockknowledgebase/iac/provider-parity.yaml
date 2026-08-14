@@ -1,0 +1,245 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagent_knowledge_base:
+    mappings:
+      # The four knowledge-base types ride a knowledge_base_configuration
+      # wrapper with a type discriminator; the spec carries each arm
+      # directly and the modules derive the type (see exclusions).
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration
+        spec: spec.vector
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration
+        spec: spec.managed
+      - arg: knowledge_base_configuration.kendra_knowledge_base_configuration
+        spec: spec.kendra
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration
+        spec: spec.sql
+      # Embedding tuning rides a two-level bedrock_embedding_model wrapper;
+      # the spec carries one embedding_model message.
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration
+        spec: spec.vector.embedding_model
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration.audio.segmentation_configuration.fixed_length_duration
+        spec: spec.vector.embedding_model.audio_segmentation_seconds
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration.video.segmentation_configuration.fixed_length_duration
+        spec: spec.vector.embedding_model.video_segmentation_seconds
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration
+        spec: spec.managed.embedding_model
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration.audio.segmentation_configuration.fixed_length_duration
+        spec: spec.managed.embedding_model.audio_segmentation_seconds
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.embedding_model_configuration.bedrock_embedding_model_configuration.video.segmentation_configuration.fixed_length_duration
+        spec: spec.managed.embedding_model.video_segmentation_seconds
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.server_side_encryption_configuration.kms_key_arn
+        spec: spec.managed.kms_key_arn
+      # The supplemental S3 location rides a fixed two-level wrapper
+      # (storage_location type S3 + s3_location.uri); the spec carries the
+      # URI leaf directly (type S3 is the only location type AWS defines --
+      # see exclusions).
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration.supplemental_data_storage_configuration.storage_location.s3_location.uri
+        spec: spec.vector.supplemental_data_s3_uri
+      # SQL: the whole surface rides a redshift_configuration wrapper
+      # (REDSHIFT is the only SQL engine -- see exclusions); the spec
+      # carries the engine arms, the warehouse, and query generation
+      # directly.
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_engine_configuration.provisioned_configuration
+        spec: spec.sql.provisioned
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_engine_configuration.provisioned_configuration.auth_configuration
+        spec: spec.sql.provisioned.auth
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_engine_configuration.serverless_configuration
+        spec: spec.sql.serverless
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_engine_configuration.serverless_configuration.auth_configuration
+        spec: spec.sql.serverless.auth
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.storage_configuration
+        spec: spec.sql.warehouse
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.storage_configuration.aws_data_catalog_configuration
+        spec: spec.sql.warehouse.data_catalog
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.storage_configuration.redshift_configuration
+        spec: spec.sql.warehouse.redshift
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_generation_configuration
+        spec: spec.sql.query_generation
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_generation_configuration.generation_context.curated_query
+        spec: spec.sql.query_generation.curated_queries
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_generation_configuration.generation_context.table
+        spec: spec.sql.query_generation.tables
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_generation_configuration.generation_context.table.column
+        spec: spec.sql.query_generation.tables.columns
+      # The eight vector-store backends drop the provider's _configuration
+      # suffix; two also rename for readability.
+      - arg: storage_configuration.opensearch_serverless_configuration
+        spec: spec.storage.opensearch_serverless
+      - arg: storage_configuration.opensearch_managed_cluster_configuration
+        spec: spec.storage.opensearch_managed
+      - arg: storage_configuration.s3_vectors_configuration
+        spec: spec.storage.s3_vectors
+      - arg: storage_configuration.rds_configuration
+        spec: spec.storage.rds
+      - arg: storage_configuration.pinecone_configuration
+        spec: spec.storage.pinecone
+      - arg: storage_configuration.mongo_db_atlas_configuration
+        spec: spec.storage.mongodb_atlas
+      - arg: storage_configuration.neptune_analytics_configuration
+        spec: spec.storage.neptune_analytics
+      - arg: storage_configuration.redis_enterprise_cloud_configuration
+        spec: spec.storage.redis_enterprise_cloud
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the knowledge base name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: knowledge_base_configuration.type
+        reason: wired by the module -- derived from which type arm (vector/managed/kendra/sql) the spec sets; a leaf that must agree with structure is drift surface, not configuration
+      - arg: knowledge_base_configuration.managed_knowledge_base_configuration.embedding_model_type
+        reason: wired by the module -- CUSTOM exactly when embedding_model_arn is brought, MANAGED otherwise (AWS's own contract); always sent because the provider's Optional+Computed unknown strands the created KB outside Pulumi state at apply
+      - arg: storage_configuration.type
+        reason: wired by the module -- derived from which backend arm the spec sets
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.type
+        reason: wired by the module (REDSHIFT is the only SQL engine AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.query_engine_configuration.type
+        reason: wired by the module -- derived from which engine arm (provisioned/serverless) the spec sets
+      - arg: knowledge_base_configuration.sql_knowledge_base_configuration.redshift_configuration.storage_configuration.type
+        reason: wired by the module -- derived from which warehouse arm (data_catalog/redshift) the spec sets
+      - arg: knowledge_base_configuration.vector_knowledge_base_configuration.supplemental_data_storage_configuration.storage_location.type
+        reason: wired by the module (S3 is the only supplemental storage location type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+
+  aws_bedrockagent_data_source:
+    specRoot: spec.data_sources
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The KMS key rides a server_side_encryption wrapper; the spec
+      # carries the ARN leaf directly.
+      - arg: server_side_encryption_configuration.kms_key_arn
+        spec: spec.data_sources.kms_key_arn
+      # The six connectors ride a data_source_configuration wrapper with a
+      # type discriminator; the spec carries each arm directly and the
+      # modules derive the type (see exclusions).
+      - arg: data_source_configuration.s3_configuration
+        spec: spec.data_sources.s3
+      # AWS accepts at most one prefix; the spec is a single string.
+      - arg: data_source_configuration.s3_configuration.inclusion_prefixes
+        spec: spec.data_sources.s3.inclusion_prefix
+      # Web: the crawler and seed-url wrappers flatten onto the arm.
+      - arg: data_source_configuration.web_configuration.source_configuration.url_configuration.seed_urls
+        spec: spec.data_sources.web.seed_urls
+      - arg: data_source_configuration.web_configuration.source_configuration.url_configuration.seed_urls.url
+        spec: spec.data_sources.web.seed_urls
+      - arg: data_source_configuration.web_configuration.crawler_configuration
+        spec: spec.data_sources.web
+      - arg: data_source_configuration.web_configuration.crawler_configuration.crawler_limits.max_pages
+        spec: spec.data_sources.web.max_pages
+      - arg: data_source_configuration.web_configuration.crawler_configuration.crawler_limits.rate_limit
+        spec: spec.data_sources.web.rate_limit
+      # Confluence/Salesforce/SharePoint: source_configuration leaves
+      # flatten onto each arm; the PATTERN filter tree flattens to one
+      # filters list per arm (host/auth constants -- see exclusions).
+      - arg: data_source_configuration.confluence_configuration.source_configuration.host_url
+        spec: spec.data_sources.confluence.host_url
+      - arg: data_source_configuration.confluence_configuration.source_configuration.auth_type
+        spec: spec.data_sources.confluence.auth_type
+      - arg: data_source_configuration.confluence_configuration.source_configuration.credentials_secret_arn
+        spec: spec.data_sources.confluence.credentials_secret_arn
+      - arg: data_source_configuration.confluence_configuration.crawler_configuration.filter_configuration.pattern_object_filter.filters
+        spec: spec.data_sources.confluence.filters
+      - arg: data_source_configuration.salesforce_configuration.source_configuration.host_url
+        spec: spec.data_sources.salesforce.host_url
+      - arg: data_source_configuration.salesforce_configuration.source_configuration.credentials_secret_arn
+        spec: spec.data_sources.salesforce.credentials_secret_arn
+      - arg: data_source_configuration.salesforce_configuration.crawler_configuration.filter_configuration.pattern_object_filter.filters
+        spec: spec.data_sources.salesforce.filters
+      - arg: data_source_configuration.share_point_configuration.source_configuration.site_urls
+        spec: spec.data_sources.sharepoint.site_urls
+      - arg: data_source_configuration.share_point_configuration.source_configuration.domain
+        spec: spec.data_sources.sharepoint.domain
+      - arg: data_source_configuration.share_point_configuration.source_configuration.tenant_id
+        spec: spec.data_sources.sharepoint.tenant_id
+      - arg: data_source_configuration.share_point_configuration.source_configuration.auth_type
+        spec: spec.data_sources.sharepoint.auth_type
+      - arg: data_source_configuration.share_point_configuration.source_configuration.credentials_secret_arn
+        spec: spec.data_sources.sharepoint.credentials_secret_arn
+      - arg: data_source_configuration.share_point_configuration.crawler_configuration.filter_configuration.pattern_object_filter.filters
+        spec: spec.data_sources.sharepoint.filters
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration
+        spec: spec.data_sources.managed_connector
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.deletion_protection_configuration
+        spec: spec.data_sources.managed_connector.deletion_protection
+      # ENABLED/DISABLED two-value states; the spec models each as a bool.
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.deletion_protection_configuration.deletion_protection_status
+        spec: spec.data_sources.managed_connector.deletion_protection.enabled
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.deletion_protection_configuration.deletion_protection_threshold
+        spec: spec.data_sources.managed_connector.deletion_protection.threshold_percent
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.media_extraction_configuration
+        spec: spec.data_sources.managed_connector.media_extraction
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.media_extraction_configuration.audio_extraction_configuration.audio_extraction_status
+        spec: spec.data_sources.managed_connector.media_extraction.audio
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.media_extraction_configuration.image_extraction_configuration.image_extraction_status
+        spec: spec.data_sources.managed_connector.media_extraction.image
+      - arg: data_source_configuration.managed_knowledge_base_connector_configuration.media_extraction_configuration.video_extraction_configuration.video_extraction_status
+        spec: spec.data_sources.managed_connector.media_extraction.video
+      # The ingestion pipeline drops the provider's _configuration
+      # suffixes.
+      - arg: vector_ingestion_configuration
+        spec: spec.data_sources.vector_ingestion
+      - arg: vector_ingestion_configuration.chunking_configuration
+        spec: spec.data_sources.vector_ingestion.chunking
+      - arg: vector_ingestion_configuration.chunking_configuration.chunking_strategy
+        spec: spec.data_sources.vector_ingestion.chunking.strategy
+      - arg: vector_ingestion_configuration.chunking_configuration.fixed_size_chunking_configuration
+        spec: spec.data_sources.vector_ingestion.chunking.fixed_size
+      - arg: vector_ingestion_configuration.chunking_configuration.hierarchical_chunking_configuration
+        spec: spec.data_sources.vector_ingestion.chunking.hierarchical
+      - arg: vector_ingestion_configuration.chunking_configuration.hierarchical_chunking_configuration.level_configuration
+        spec: spec.data_sources.vector_ingestion.chunking.hierarchical.levels
+      - arg: vector_ingestion_configuration.chunking_configuration.semantic_chunking_configuration
+        spec: spec.data_sources.vector_ingestion.chunking.semantic
+      # The provider spells this one singular.
+      - arg: vector_ingestion_configuration.chunking_configuration.semantic_chunking_configuration.max_token
+        spec: spec.data_sources.vector_ingestion.chunking.semantic.max_tokens
+      - arg: vector_ingestion_configuration.parsing_configuration
+        spec: spec.data_sources.vector_ingestion.parsing
+      - arg: vector_ingestion_configuration.parsing_configuration.parsing_strategy
+        spec: spec.data_sources.vector_ingestion.parsing.strategy
+      # MULTIMODAL is the only parsing modality AWS defines -- the spec
+      # models each modality switch as a bool and the modules own the
+      # constant.
+      - arg: vector_ingestion_configuration.parsing_configuration.bedrock_data_automation_configuration.parsing_modality
+        spec: spec.data_sources.vector_ingestion.parsing.multimodal
+      - arg: vector_ingestion_configuration.parsing_configuration.bedrock_foundation_model_configuration
+        spec: spec.data_sources.vector_ingestion.parsing.foundation_model
+      - arg: vector_ingestion_configuration.parsing_configuration.bedrock_foundation_model_configuration.parsing_modality
+        spec: spec.data_sources.vector_ingestion.parsing.foundation_model.multimodal
+      - arg: vector_ingestion_configuration.parsing_configuration.bedrock_foundation_model_configuration.parsing_prompt.parsing_prompt_string
+        spec: spec.data_sources.vector_ingestion.parsing.foundation_model.parsing_prompt
+      # The custom transformation flattens its fixed wrappers (the
+      # POST_CHUNKING step constant -- see exclusions).
+      - arg: vector_ingestion_configuration.custom_transformation_configuration
+        spec: spec.data_sources.vector_ingestion.custom_transformation
+      - arg: vector_ingestion_configuration.custom_transformation_configuration.intermediate_storage.s3_location.uri
+        spec: spec.data_sources.vector_ingestion.custom_transformation.intermediate_s3_uri
+      - arg: vector_ingestion_configuration.custom_transformation_configuration.transformation.transformation_function.transformation_lambda_configuration.lambda_arn
+        spec: spec.data_sources.vector_ingestion.custom_transformation.lambda_arn
+    exclusions:
+      - arg: knowledge_base_id
+        reason: wired by the module to the knowledge base it creates -- parent linkage, never user surface
+      - arg: data_source_configuration.type
+        reason: wired by the module -- derived from which connector arm the spec sets; a leaf that must agree with structure is drift surface, not configuration
+      - arg: data_source_configuration.confluence_configuration.source_configuration.host_type
+        reason: wired by the module (SAAS is the only Confluence host type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: data_source_configuration.salesforce_configuration.source_configuration.auth_type
+        reason: wired by the module (OAUTH2_CLIENT_CREDENTIALS is the only Salesforce auth type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: data_source_configuration.share_point_configuration.source_configuration.host_type
+        reason: wired by the module (ONLINE is the only SharePoint host type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: data_source_configuration.confluence_configuration.crawler_configuration.filter_configuration.type
+        reason: wired by the module (PATTERN is the only crawl filter type AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration
+      - arg: data_source_configuration.salesforce_configuration.crawler_configuration.filter_configuration.type
+        reason: wired by the module (PATTERN is the only crawl filter type AWS defines at the pin)
+      - arg: data_source_configuration.share_point_configuration.crawler_configuration.filter_configuration.type
+        reason: wired by the module (PATTERN is the only crawl filter type AWS defines at the pin)
+      - arg: vector_ingestion_configuration.custom_transformation_configuration.transformation.step_to_apply
+        reason: wired by the module (POST_CHUNKING is the only transformation step AWS defines at the pin) -- a single-value vocabulary is a constant, not configuration

@@ -8,51 +8,6 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
-**AzureFunctionAppFlexConsumptionSpec** defines the configuration for
-creating an Azure Function App on the Flex Consumption plan
-(Microsoft.Web/sites kind=functionapp,linux on an FC1 plan) -- Azure's
-newest serverless Functions hosting model.
-
-Flex Consumption differs from the classic Consumption/Premium models in
-three ways, and each shapes this spec:
-
-  1. **Deployment storage is explicit.** The app's code package lives in
-     a blob container YOU provide (`storage_container_endpoint`), and the
-     app authenticates to it by connection string, system-assigned
-     identity, or user-assigned identity
-     (`storage_authentication_type`). There is no platform-managed
-     content share.
-  2. **Scale is per-instance and configurable.** Instances have a chosen
-     memory size (`instance_memory_in_mb`), a scale-out ceiling
-     (`maximum_instance_count`), optional per-instance HTTP concurrency
-     (`http_concurrency`), and named always-ready instance pools
-     (`always_ready`) that eliminate cold starts for specific
-     functions or groups.
-  3. **The runtime is declared flat.** `runtime_name` + `runtime_version`
-     replace the classic application_stack block; containers are not
-     supported on Flex Consumption.
-
-**Relationship to AzureFunctionApp**: Azure models Flex Consumption
-function apps as their own resource type with a distinct configuration
-surface, so they are a separate kind. Classic Consumption (Y1), Elastic
-Premium (EP*), and Dedicated-plan function apps are AzureFunctionApp.
-
-**Relationship to AzureServicePlan**: the referenced plan MUST be the
-FLEX_CONSUMPTION_FC1 SKU -- Azure rejects app creation on any other
-tier ("the sku name is ... which is not valid for a flex consumption
-function app"). One FC1 plan can host multiple flex apps.
-
-**Authentication (Easy Auth)**: the `auth_settings_v2` block turns on
-App Service's built-in authentication layer -- Azure validates identity
-tokens at the front door (Entra ID, Apple, Facebook, GitHub, Google,
-Microsoft account, Twitter, or any OpenID Connect provider) before
-requests reach function code. Provider secrets are referenced by APP
-SETTING NAME (never inline). Legacy `auth_settings` (v1) is superseded
-by v2 and deliberately not modeled.
-
-**ForceNew fields** (changing these destroys and recreates the app):
-`function_app_name`, `region`, `resource_group`, `service_plan_id`.
-
 ## Example
 
 ```yaml
@@ -427,25 +382,11 @@ spec:
 
 `string` · required
 
-The Azure region where the Function App will be created.
-Examples: "eastus", "westus2", "westeurope", "southeastasia".
-
-Flex Consumption is not available in every region -- check
-availability before choosing (the service plan and the app must be
-in the same region).
-
-**ForceNew**: Changing this destroys and recreates the function app.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.resourceGroup
 
 `string | valueFrom` · required
-
-The Azure Resource Group where the Function App will be created.
-Can be a literal string or a reference to an AzureResourceGroup output.
-
-**ForceNew**: Changing this destroys and recreates the function app.
 
 - references: AzureResourceGroup (`status.outputs.resource_group_name`)
 - rule: {"required":true}
@@ -455,30 +396,12 @@ Can be a literal string or a reference to an AzureResourceGroup output.
 
 `string` · required
 
-The name of the Function App.
-Must be globally unique across Azure (it forms the default hostname:
-`{function_app_name}.azurewebsites.net`).
-
-Allowed characters: alphanumeric and dashes, 1 to 60 characters
-(exactly the rule Azure's own tooling enforces; names that start or
-end with a dash produce awkward hostnames but are accepted).
-
-**ForceNew**: Changing this destroys and recreates the function app.
-
 - rule: function_app_name may only contain alphanumeric characters and dashes and must be 1 to 60 characters long
 - rule: {"required":true}
 
 ### spec.servicePlanId
 
 `string | valueFrom` · required
-
-The App Service Plan that hosts this Function App. The plan's SKU
-MUST be FLEX_CONSUMPTION_FC1 -- Azure rejects creation on any other
-tier at apply time. One FC1 plan can host multiple flex apps; the
-plan itself has no idle compute cost (billing follows executions and
-always-ready instances).
-
-**ForceNew**: Changing this destroys and recreates the function app.
 
 - references: AzureServicePlan (`status.outputs.service_plan_id`)
 - rule: {"required":true}
@@ -488,16 +411,6 @@ always-ready instances).
 
 `string` · required
 
-The HTTPS endpoint of the blob CONTAINER holding the app's code
-package -- Flex Consumption's deployment storage. Format:
-https://{storage-account}.blob.core.windows.net/{container}
-
-Compose it from an AzureStorageAccount's `primary_blob_endpoint`
-output plus an AzureStorageContainer's name (the container kind
-deliberately exports no URL -- the endpoint is account-level).
-The container must exist before the app is created; the platform
-uploads the deployment package into it.
-
 - rule: storage_container_endpoint must be an https blob container URL (https://{account}.blob.core.windows.net/{container})
 - rule: {"required":true}
 
@@ -505,38 +418,18 @@ uploads the deployment package into it.
 
 `enum` · required
 
-How the app authenticates to the deployment storage container.
-
-STORAGE_ACCOUNT_CONNECTION_STRING requires storage_access_key;
-USER_ASSIGNED_IDENTITY requires storage_user_assigned_identity_id
-(both enforced here, exactly as Azure enforces them at apply time);
-SYSTEM_ASSIGNED_IDENTITY needs neither -- grant the app's
-system-assigned identity "Storage Blob Data Contributor" on the
-storage account instead.
-
 - rule: {"required":true,"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_storage_authentication_type_unspecified` -- Not specified -- invalid; pick an explicit authentication method.
-- `STORAGE_ACCOUNT_CONNECTION_STRING` -- Authenticate with the storage account's access key (requires storage_access_key). Azure derives the connection string and manages it as the DEPLOYMENT_STORAGE_CONNECTION_STRING app setting.
-- `SYSTEM_ASSIGNED_IDENTITY` -- Authenticate as the app's system-assigned managed identity (credential-free; grant it "Storage Blob Data Contributor" on the storage account).
-- `USER_ASSIGNED_IDENTITY` -- Authenticate as a user-assigned managed identity (requires storage_user_assigned_identity_id; attach the same identity via identity.identity_ids).
+- `azure_function_app_flex_consumption_storage_authentication_type_unspecified`
+- `STORAGE_ACCOUNT_CONNECTION_STRING`
+- `SYSTEM_ASSIGNED_IDENTITY`
+- `USER_ASSIGNED_IDENTITY`
 
 ### spec.storageAccessKey
 
 `string | valueFrom` · sensitive
-
-The storage account access key, required when
-storage_authentication_type is STORAGE_ACCOUNT_CONNECTION_STRING.
-Defaults to referencing an AzureStorageAccount's primary_access_key
-output so the binding composes in one manifest set; a literal value
-or a managed-secret reference works too.
-
-SECRET-BEARING (treated as sensitive here even though the write-only
-wire field is not marked so upstream). Prefer an identity-based
-storage_authentication_type where the workload supports it -- keys
-are static credential material.
 
 - references: AzureStorageAccount (`status.outputs.primary_access_key`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureStorageAccount, name: <that resource's name>, fieldPath: status.outputs.primary_access_key}} -- a bare string does not parse
@@ -545,12 +438,6 @@ are static credential material.
 
 `string | valueFrom`
 
-The user-assigned managed identity that accesses the deployment
-storage, required when storage_authentication_type is
-USER_ASSIGNED_IDENTITY. The identity needs "Storage Blob Data
-Contributor" on the storage account, and must also be attached to
-the app via identity.identity_ids.
-
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
 
@@ -558,29 +445,21 @@ the app via identity.identity_ids.
 
 `enum` · required
 
-The language runtime the app's functions run on.
-
 - rule: {"required":true,"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_runtime_name_unspecified` -- Not specified -- invalid; pick a runtime.
-- `NODE` -- Node.js (deploys as "node").
-- `DOTNET_ISOLATED` -- .NET isolated worker (deploys as "dotnet-isolated"; the in-process model does not exist on Flex Consumption).
-- `JAVA` -- Java (deploys as "java").
-- `POWERSHELL` -- PowerShell (deploys as "powershell").
-- `PYTHON` -- Python (deploys as "python").
-- `CUSTOM_HANDLER` -- Custom handler -- any language implementing the Functions custom handler protocol (deploys as "custom"; named CUSTOM_HANDLER here because proto enum values share the file scope with the connection-string type vocabulary's CUSTOM).
+- `azure_function_app_flex_consumption_runtime_name_unspecified`
+- `NODE`
+- `DOTNET_ISOLATED`
+- `JAVA`
+- `POWERSHELL`
+- `PYTHON`
+- `CUSTOM_HANDLER`
 
 ### spec.runtimeVersion
 
 `string` · required
-
-The runtime version, as Azure spells it for the chosen runtime.
-Azure evolves the supported set continuously, so any non-empty value
-is accepted here and validated by Azure at apply time. Current
-examples: node "20"/"22", python "3.11"/"3.12", java "11"/"17"/"21",
-dotnet-isolated "8.0"/"9.0", powershell "7.4".
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -588,23 +467,11 @@ dotnet-isolated "8.0"/"9.0", powershell "7.4".
 
 `int32` · optional (explicit presence)
 
-Memory available to EACH instance, in MB. Azure offers fixed sizes
-(currently 512, 2048, and 4096); the accepted set is validated by
-Azure at apply time. Unset deploys 2048.
-
 - default: `2048`
 
 ### spec.maximumInstanceCount
 
 `int32` · optional (explicit presence)
-
-The scale-out ceiling -- the maximum number of instances the app can
-fan out to. Range 1-1000. Unset deploys 100.
-
-The sum of always_ready instance counts must stay within this
-ceiling (Azure enforces it at apply time with "the total number of
-always-ready instances should not exceed the maximum scale out
-limit" -- a sum constraint manifest validation cannot express).
 
 - default: `100`
 - rule: {"int32":{"lte":1000,"gte":1}}
@@ -613,30 +480,15 @@ limit" -- a sum constraint manifest validation cannot express).
 
 `int32` · optional (explicit presence)
 
-Concurrent HTTP requests each instance handles before Azure scales
-out further. Range 1-1000. Unset lets Azure pick the runtime's
-default concurrency for the chosen instance memory size.
-
 - rule: {"int32":{"lte":1000,"gte":1}}
 
 ### spec.alwaysReady
 
 `[]AzureFunctionAppFlexConsumptionAlwaysReady`
 
-Named pools of pre-warmed instances that never scale to zero --
-Flex Consumption's cold-start eliminator. Each entry names a scope
-("http", "durable", "blob", or "function:{functionName}") and how
-many instances stay warm for it. Always-ready instances bill for
-their uptime (the app's only idle cost).
-
 ### spec.alwaysReady[].name
 
 `string` · required
-
-What the pool keeps warm: "http" (all HTTP triggers), "durable"
-(Durable Functions), "blob" (blob triggers), or
-"function:{functionName}" for one specific function. Azure
-lower-cases the name on save, so treat it case-insensitively.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -644,18 +496,11 @@ lower-cases the name on save, so treat it case-insensitively.
 
 `int32` · optional (explicit presence)
 
-How many instances stay warm for this scope. Range 0-1000. The sum
-across all always_ready entries must not exceed
-maximum_instance_count (Azure enforces this at apply time).
-
 - rule: {"int32":{"lte":1000,"gte":0}}
 
 ### spec.siteConfig
 
 `AzureFunctionAppFlexConsumptionSiteConfig` · required
-
-Site-level configuration: App Insights wiring, access restrictions,
-TLS floors, CORS, health checks, and operational toggles.
 
 - rule: {"required":true}
 - rule: health_check_path and health_check_eviction_time_in_min require each other (Azure pairs them both ways)
@@ -664,52 +509,25 @@ TLS floors, CORS, health checks, and operational toggles.
 
 `string`
 
-The ARM ID of the API Management API this app backs. Wires the app
-into an API Management gateway so the API surface is managed there.
-Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/
-        Microsoft.ApiManagement/service/{apim}/apis/{api}
-
 ### spec.siteConfig.apiDefinitionUrl
 
 `string`
-
-URL of the OpenAPI/Swagger definition describing this app's API.
-Surfaces in the portal's API Definition blade and to API consumers.
 
 ### spec.siteConfig.appCommandLine
 
 `string`
 
-The program and any arguments used to launch this app via the
-command line. (Example: "node myapp.js").
-
 ### spec.siteConfig.applicationInsightsKey
 
 `string` · sensitive
-
-Application Insights instrumentation key (classic).
-Prefer application_insights_connection_string on the parent spec
-for new deployments. This field is for backward compatibility with
-apps already using the instrumentation key. Travels as the
-APPINSIGHTS_INSTRUMENTATIONKEY app setting.
 
 ### spec.siteConfig.appServiceLogs
 
 `AzureFunctionAppFlexConsumptionAppServiceLogs`
 
-App Service logging configuration (disk quota + retention for the
-file-system logs). Azure applies this on UPDATE operations only and
-never returns it on read -- expect the portal, not the manifest, to
-reflect drift here.
-
 ### spec.siteConfig.appServiceLogs.diskQuotaMb
 
 `int32` · optional (explicit presence)
-
-Disk quota for app service logs in megabytes.
-Range: 25 to 100.
-
-Default: 35
 
 - default: `35`
 - rule: {"int32":{"lte":100,"gte":25}}
@@ -718,19 +536,11 @@ Default: 35
 
 `int32` · optional (explicit presence)
 
-Log retention in days. Set to 0 for indefinite retention.
-
 - rule: {"int32":{"gte":0}}
 
 ### spec.siteConfig.containerRegistryUseManagedIdentity
 
 `bool` · optional (explicit presence)
-
-Use managed identity for pulling container images from Azure
-Container Registry (relevant to future container-based features;
-Flex Consumption itself runs language runtimes, not containers).
-
-Default: false
 
 - default: `false`
 
@@ -738,17 +548,9 @@ Default: false
 
 `[]string`
 
-Default documents served when a request maps to a directory.
-Evaluated in order (e.g. ["index.html", "default.html"]).
-
 ### spec.siteConfig.elasticInstanceMinimum
 
 `int32` · optional (explicit presence)
-
-Minimum instance count for Elastic-Premium-style pre-warming.
-Azure accepts the value on this hosting model but never returns it
-on read (always-ready pools are the flex-native warm-instance
-mechanism -- prefer always_ready on the spec).
 
 - rule: {"int32":{"gte":0}}
 
@@ -756,32 +558,19 @@ mechanism -- prefer always_ready on the spec).
 
 `bool` · optional (explicit presence)
 
-Enable the HTTP/2 protocol.
-
-Default: false
-
 - default: `false`
 
 ### spec.siteConfig.ipRestrictions
 
 `[]AzureFunctionAppFlexConsumptionIpRestriction`
 
-IP restriction rules for the main site.
-Controls which IP addresses, service tags, or subnets can access
-the Function App.
-
 ### spec.siteConfig.ipRestrictions[].name
 
 `string`
 
-Rule name for identification.
-
 ### spec.siteConfig.ipRestrictions[].priority
 
 `int32` · optional (explicit presence)
-
-Rule priority. Lower numbers are evaluated first.
-Range: 1 to 65000.
 
 - rule: {"int32":{"lte":65000,"gte":1}}
 
@@ -789,13 +578,11 @@ Range: 1 to 65000.
 
 `enum`
 
-Whether matching traffic is allowed or denied. Unset deploys ALLOW.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_ip_restriction_action_unspecified` -- Not specified -- deploys ALLOW.
+- `azure_function_app_flex_consumption_ip_restriction_action_unspecified`
 - `ALLOW`
 - `DENY`
 
@@ -803,22 +590,13 @@ Allowed values (use exactly as shown):
 
 `string`
 
-IP address or CIDR range (comma-separated ranges are accepted).
-Example: "10.0.0.0/24", "203.0.113.50/32"
-
 ### spec.siteConfig.ipRestrictions[].serviceTag
 
 `string`
 
-Azure service tag.
-Example: "AzureFrontDoor.Backend", "AzureCloud.WestUS"
-
 ### spec.siteConfig.ipRestrictions[].virtualNetworkSubnetId
 
 `string | valueFrom`
-
-Subnet ID for VNet-based access control.
-Traffic from this subnet is allowed/denied based on the action.
 
 - references: AzureSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -827,22 +605,13 @@ Traffic from this subnet is allowed/denied based on the action.
 
 `string`
 
-Human-readable description of the rule.
-
 ### spec.siteConfig.ipRestrictions[].headers
 
 `AzureFunctionAppFlexConsumptionIpRestrictionHeaders`
 
-HTTP header filters for the rule.
-Used with Azure Front Door or other reverse proxies to restrict
-access based on request headers.
-
 ### spec.siteConfig.ipRestrictions[].headers.xForwardedFor
 
 `[]string`
-
-X-Forwarded-For header values to match.
-Up to 8 entries. CIDR ranges are supported.
 
 - rule: {"repeated":{"maxItems":"8"}}
 
@@ -850,23 +619,11 @@ Up to 8 entries. CIDR ranges are supported.
 
 `[]string`
 
-X-Forwarded-Host header values to match.
-Up to 8 entries.
-
 - rule: {"repeated":{"maxItems":"8"}}
 
 ### spec.siteConfig.ipRestrictions[].headers.xAzureFdid
 
 `[]string | valueFrom`
-
-X-Azure-FDID (Front Door ID) header values to match, up to 8
-entries. Locks the app to specific Front Door instances: pair an
-ALLOW rule on the AzureFrontDoor.Backend service tag with this
-filter so only YOUR profile's traffic reaches the origin -- without
-it, anyone who discovers the app's default hostname bypasses the
-edge (and its WAF) entirely. Each entry references an
-AzureFrontDoorProfile's resource_guid output or carries the GUID as
-a literal.
 
 - references: AzureFrontDoorProfile (`status.outputs.resource_guid`)
 - rule: {"repeated":{"maxItems":"8"}}
@@ -876,24 +633,17 @@ a literal.
 
 `[]string`
 
-X-FD-HealthProbe header values to match.
-The only supported value is "1" (allow Front Door health probes).
-
 - rule: {"repeated":{"maxItems":"1"}}
 
 ### spec.siteConfig.ipRestrictionDefaultAction
 
 `enum`
 
-Default action for traffic that matches no ip_restrictions rule.
-Unset deploys ALLOW (rules act as a deny-list); DENY flips the rules
-into an allow-list.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_ip_restriction_action_unspecified` -- Not specified -- deploys ALLOW.
+- `azure_function_app_flex_consumption_ip_restriction_action_unspecified`
 - `ALLOW`
 - `DENY`
 
@@ -901,32 +651,19 @@ Allowed values (use exactly as shown):
 
 `bool` · optional (explicit presence)
 
-Use the main site's IP restrictions for the SCM (Kudu) site.
-When true, scm_ip_restrictions are ignored.
-
-Default: false
-
 - default: `false`
 
 ### spec.siteConfig.scmIpRestrictions
 
 `[]AzureFunctionAppFlexConsumptionIpRestriction`
 
-IP restriction rules for the SCM (Kudu) site.
-Only used when scm_use_main_ip_restriction is false.
-
 ### spec.siteConfig.scmIpRestrictions[].name
 
 `string`
 
-Rule name for identification.
-
 ### spec.siteConfig.scmIpRestrictions[].priority
 
 `int32` · optional (explicit presence)
-
-Rule priority. Lower numbers are evaluated first.
-Range: 1 to 65000.
 
 - rule: {"int32":{"lte":65000,"gte":1}}
 
@@ -934,13 +671,11 @@ Range: 1 to 65000.
 
 `enum`
 
-Whether matching traffic is allowed or denied. Unset deploys ALLOW.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_ip_restriction_action_unspecified` -- Not specified -- deploys ALLOW.
+- `azure_function_app_flex_consumption_ip_restriction_action_unspecified`
 - `ALLOW`
 - `DENY`
 
@@ -948,22 +683,13 @@ Allowed values (use exactly as shown):
 
 `string`
 
-IP address or CIDR range (comma-separated ranges are accepted).
-Example: "10.0.0.0/24", "203.0.113.50/32"
-
 ### spec.siteConfig.scmIpRestrictions[].serviceTag
 
 `string`
 
-Azure service tag.
-Example: "AzureFrontDoor.Backend", "AzureCloud.WestUS"
-
 ### spec.siteConfig.scmIpRestrictions[].virtualNetworkSubnetId
 
 `string | valueFrom`
-
-Subnet ID for VNet-based access control.
-Traffic from this subnet is allowed/denied based on the action.
 
 - references: AzureSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -972,22 +698,13 @@ Traffic from this subnet is allowed/denied based on the action.
 
 `string`
 
-Human-readable description of the rule.
-
 ### spec.siteConfig.scmIpRestrictions[].headers
 
 `AzureFunctionAppFlexConsumptionIpRestrictionHeaders`
 
-HTTP header filters for the rule.
-Used with Azure Front Door or other reverse proxies to restrict
-access based on request headers.
-
 ### spec.siteConfig.scmIpRestrictions[].headers.xForwardedFor
 
 `[]string`
-
-X-Forwarded-For header values to match.
-Up to 8 entries. CIDR ranges are supported.
 
 - rule: {"repeated":{"maxItems":"8"}}
 
@@ -995,23 +712,11 @@ Up to 8 entries. CIDR ranges are supported.
 
 `[]string`
 
-X-Forwarded-Host header values to match.
-Up to 8 entries.
-
 - rule: {"repeated":{"maxItems":"8"}}
 
 ### spec.siteConfig.scmIpRestrictions[].headers.xAzureFdid
 
 `[]string | valueFrom`
-
-X-Azure-FDID (Front Door ID) header values to match, up to 8
-entries. Locks the app to specific Front Door instances: pair an
-ALLOW rule on the AzureFrontDoor.Backend service tag with this
-filter so only YOUR profile's traffic reaches the origin -- without
-it, anyone who discovers the app's default hostname bypasses the
-edge (and its WAF) entirely. Each entry references an
-AzureFrontDoorProfile's resource_guid output or carries the GUID as
-a literal.
 
 - references: AzureFrontDoorProfile (`status.outputs.resource_guid`)
 - rule: {"repeated":{"maxItems":"8"}}
@@ -1021,23 +726,17 @@ a literal.
 
 `[]string`
 
-X-FD-HealthProbe header values to match.
-The only supported value is "1" (allow Front Door health probes).
-
 - rule: {"repeated":{"maxItems":"1"}}
 
 ### spec.siteConfig.scmIpRestrictionDefaultAction
 
 `enum`
 
-Default action for traffic that matches no scm_ip_restrictions rule.
-Unset deploys ALLOW.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_ip_restriction_action_unspecified` -- Not specified -- deploys ALLOW.
+- `azure_function_app_flex_consumption_ip_restriction_action_unspecified`
 - `ALLOW`
 - `DENY`
 
@@ -1045,15 +744,12 @@ Allowed values (use exactly as shown):
 
 `enum`
 
-Load balancing mode for distributing requests across instances.
-Unset deploys LEAST_REQUESTS.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_load_balancing_mode_unspecified` -- Not specified -- deploys LEAST_REQUESTS.
-- `LEAST_REQUESTS` -- Route to the instance with the fewest active requests (the default).
+- `azure_function_app_flex_consumption_load_balancing_mode_unspecified`
+- `LEAST_REQUESTS`
 - `WEIGHTED_ROUND_ROBIN`
 - `LEAST_RESPONSE_TIME`
 - `WEIGHTED_TOTAL_TRAFFIC`
@@ -1064,26 +760,17 @@ Allowed values (use exactly as shown):
 
 `enum`
 
-IIS-lineage request pipeline mode. INTEGRATED (the default) is
-correct for everything modern; CLASSIC exists for legacy
-compatibility only.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_managed_pipeline_mode_unspecified` -- Not specified -- deploys INTEGRATED.
-- `INTEGRATED` -- The modern pipeline (the default; correct for everything current).
-- `CLASSIC` -- Legacy-compatibility pipeline.
+- `azure_function_app_flex_consumption_managed_pipeline_mode_unspecified`
+- `INTEGRATED`
+- `CLASSIC`
 
 ### spec.siteConfig.remoteDebuggingEnabled
 
 `bool` · optional (explicit presence)
-
-Enable remote debugging (Visual Studio attach). Turn off outside
-active debugging sessions.
-
-Default: false
 
 - default: `false`
 
@@ -1091,26 +778,15 @@ Default: false
 
 `string`
 
-The Visual Studio generation remote debugging targets.
-Leave empty to let Azure pick the current generation.
-
 - rule: remote_debugging_version must be one of: VS2017, VS2019, VS2022
 
 ### spec.siteConfig.runtimeScaleMonitoringEnabled
 
 `bool` · optional (explicit presence)
 
-Enable runtime scale monitoring for KEDA-based triggers.
-When enabled, the Functions runtime can directly monitor event
-sources to make more accurate scaling decisions.
-
 ### spec.siteConfig.websocketsEnabled
 
 `bool` · optional (explicit presence)
-
-Enable WebSocket connections.
-
-Default: false
 
 - default: `false`
 
@@ -1118,20 +794,9 @@ Default: false
 
 `string`
 
-Health check endpoint path.
-Azure periodically sends requests to this path and marks the
-instance as unhealthy if it doesn't respond with a 200-299 status
-code. Requires health_check_eviction_time_in_min (paired both ways,
-exactly as Azure pairs them). Common paths: "/api/health".
-
 ### spec.siteConfig.healthCheckEvictionTimeInMin
 
 `int32` · optional (explicit presence)
-
-Time in minutes after which a continuously-unhealthy instance is
-evicted from the load balancer. Range 2-10. Requires
-health_check_path. Travels as the
-WEBSITE_HEALTHCHECK_MAXPINGFAILURES app setting.
 
 - rule: {"int32":{"lte":10,"gte":2}}
 
@@ -1139,52 +804,39 @@ WEBSITE_HEALTHCHECK_MAXPINGFAILURES app setting.
 
 `int32` · optional (explicit presence)
 
-The number of workers for this app. Range 1-100. Unset lets the
-platform manage it (instance scaling on this hosting model is
-driven by the spec's maximum_instance_count and always_ready).
-
 - rule: {"int32":{"lte":100,"gte":1}}
 
 ### spec.siteConfig.minimumTlsVersion
 
 `enum`
 
-Minimum TLS version for incoming HTTPS requests. Unset deploys
-TLS_1_2 (the industry floor; TLS_1_3 for maximum security).
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_tls_version_unspecified` -- Not specified -- deploys TLS_1_2.
-- `TLS_1_0` -- TLS 1.0 -- legacy clients only; fails modern compliance baselines.
-- `TLS_1_1` -- TLS 1.1 -- legacy clients only; fails modern compliance baselines.
-- `TLS_1_2` -- TLS 1.2 -- the industry floor (the default).
-- `TLS_1_3` -- TLS 1.3 -- the strongest option; requires modern clients.
+- `azure_function_app_flex_consumption_tls_version_unspecified`
+- `TLS_1_0`
+- `TLS_1_1`
+- `TLS_1_2`
+- `TLS_1_3`
 
 ### spec.siteConfig.scmMinimumTlsVersion
 
 `enum`
 
-Minimum TLS version for the SCM (Kudu) site. Unset deploys TLS_1_2.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_tls_version_unspecified` -- Not specified -- deploys TLS_1_2.
-- `TLS_1_0` -- TLS 1.0 -- legacy clients only; fails modern compliance baselines.
-- `TLS_1_1` -- TLS 1.1 -- legacy clients only; fails modern compliance baselines.
-- `TLS_1_2` -- TLS 1.2 -- the industry floor (the default).
-- `TLS_1_3` -- TLS 1.3 -- the strongest option; requires modern clients.
+- `azure_function_app_flex_consumption_tls_version_unspecified`
+- `TLS_1_0`
+- `TLS_1_1`
+- `TLS_1_2`
+- `TLS_1_3`
 
 ### spec.siteConfig.cors
 
 `AzureFunctionAppFlexConsumptionCorsSettings`
-
-CORS (Cross-Origin Resource Sharing) configuration.
-Controls which origins are allowed to make cross-origin requests to
-the Function App's HTTP endpoints.
 
 - rule: support_credentials cannot be used with a wildcard '*' origin
 
@@ -1192,21 +844,11 @@ the Function App's HTTP endpoints.
 
 `[]string` · required
 
-List of origins allowed to make cross-origin requests.
-Use "*" to allow all origins (not recommended for production).
-Example: ["https://myapp.example.com", "https://admin.example.com"]
-
 - rule: {"repeated":{"minItems":"1"}}
 
 ### spec.siteConfig.cors.supportCredentials
 
 `bool` · optional (explicit presence)
-
-Allow credentials (cookies, authorization headers) in cross-origin
-requests. Cannot be combined with a wildcard origin (enforced here
--- browsers reject the pairing).
-
-Default: false
 
 - default: `false`
 
@@ -1214,44 +856,19 @@ Default: false
 
 `bool` · optional (explicit presence)
 
-Route all outbound traffic from the Function App through the VNet.
-Requires virtual_network_subnet_id on the spec (spec-enforced).
-
-When false (default), only RFC1918 traffic routes through the VNet.
-When true, all outbound traffic (including public internet) routes
-through the VNet, enabling inspection via NSG rules or a firewall.
-
-Default: false
-
 - default: `false`
 
 ### spec.appSettings
 
 `map<string, string>`
 
-Application settings (environment variables) for the Function App.
-Key-value pairs available to functions at runtime.
-
-Azure automatically manages several settings (AzureWebJobsStorage,
-DEPLOYMENT_STORAGE_CONNECTION_STRING, the App Insights keys) --
-user-provided settings are merged with these system settings. Auth
-provider secrets referenced by auth_settings_v2 setting names also
-live here.
-
 ### spec.connectionStrings
 
 `[]AzureFunctionAppFlexConsumptionConnectionString`
 
-Named connection strings for database and service connections.
-Each connection string has a name, type, and value. The type
-determines how Azure exposes the connection in the runtime
-environment.
-
 ### spec.connectionStrings[].name
 
 `string` · required
-
-The name of the connection string.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1259,15 +876,11 @@ The name of the connection string.
 
 `enum` · required
 
-The service type. Determines the environment variable prefix Azure
-exposes the value under (e.g. SQLAZURECONNSTR_, MYSQLCONNSTR_,
-CUSTOMCONNSTR_).
-
 - rule: {"required":true,"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_connection_string_type_unspecified` -- Not specified -- invalid; pick the service type (CUSTOM for anything without a dedicated type).
+- `azure_function_app_flex_consumption_connection_string_type_unspecified`
 - `MYSQL`
 - `SQL_SERVER`
 - `SQL_AZURE`
@@ -1284,9 +897,6 @@ Allowed values (use exactly as shown):
 
 `string | valueFrom` · required · sensitive
 
-The connection string value. This is a sensitive credential.
-Can be a literal value or a reference to a secrets manager.
-
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -1294,18 +904,11 @@ Can be a literal value or a reference to a secrets manager.
 
 `AzureFunctionAppFlexConsumptionStickySettings`
 
-Settings pinned to the production slot during slot swaps.
-Named app settings and connection strings listed here do NOT move
-with the app content when a staging slot is swapped into production.
-
 - rule: sticky_settings requires at least one app_setting_names or connection_string_names entry
 
 ### spec.stickySettings.appSettingNames
 
 `[]string`
-
-Names of app_settings entries that stay with the production slot
-during a swap.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -1313,20 +916,11 @@ during a swap.
 
 `[]string`
 
-Names of connection_strings entries that stay with the production
-slot during a swap.
-
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.applicationInsightsConnectionString
 
 `string | valueFrom`
-
-Application Insights connection string for APM telemetry.
-When provided, Azure automatically configures the Function App to
-send telemetry (requests, dependencies, exceptions, traces) to
-Application Insights. This is the recommended way to monitor
-Function Apps (the legacy instrumentation key lives in site_config).
 
 - references: AzureApplicationInsights (`status.outputs.connection_string`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureApplicationInsights, name: <that resource's name>, fieldPath: status.outputs.connection_string}} -- a bare string does not parse
@@ -1335,22 +929,11 @@ Function Apps (the legacy instrumentation key lives in site_config).
 
 `bool` · optional (explicit presence)
 
-Enforce HTTPS-only access to the Function App.
-When true, all HTTP requests are redirected to HTTPS.
-
-Default: true (secure by default, unlike the Azure API default of false)
-
 - default: `true`
 
 ### spec.publicNetworkAccessEnabled
 
 `bool` · optional (explicit presence)
-
-Enable or disable public network access to the Function App.
-When false, the Function App is only accessible via Private
-Endpoints.
-
-Default: true
 
 - default: `true`
 
@@ -1358,24 +941,11 @@ Default: true
 
 `bool` · optional (explicit presence)
 
-Enable or disable the Function App.
-When false, the app is stopped and does not run functions, but the
-resource still exists. Useful for temporarily disabling an app
-without deleting it.
-
-Default: true
-
 - default: `true`
 
 ### spec.clientCertificateEnabled
 
 `bool` · optional (explicit presence)
-
-Enable client certificate authentication (mutual TLS).
-When true, clients must present a valid certificate to access the
-app (subject to client_certificate_mode).
-
-Default: false
 
 - default: `false`
 
@@ -1383,36 +953,22 @@ Default: false
 
 `enum`
 
-Client certificate mode -- how strictly client certificates are
-enforced when client_certificate_enabled is true. Unset deploys
-OPTIONAL (certificate requested but not required).
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_client_certificate_mode_unspecified` -- Not specified -- deploys OPTIONAL.
-- `REQUIRED` -- All requests must present a valid client certificate.
-- `OPTIONAL` -- Certificate is requested but not required.
-- `OPTIONAL_INTERACTIVE_USER` -- Certificate is optional for interactive (browser) users, required for non-interactive clients.
+- `azure_function_app_flex_consumption_client_certificate_mode_unspecified`
+- `REQUIRED`
+- `OPTIONAL`
+- `OPTIONAL_INTERACTIVE_USER`
 
 ### spec.clientCertificateExclusionPaths
 
 `string`
 
-Paths excluded from client certificate validation.
-Semicolon-separated list of paths where client certificates are not
-required. Example: "/api/health;/api/status"
-
 ### spec.virtualNetworkSubnetId
 
 `string | valueFrom`
-
-The subnet ID for VNet integration. When provided, the Function
-App's outbound traffic routes through this subnet, enabling access
-to VNet-connected resources (databases, Redis, etc.) without public
-endpoints. The subnet must be delegated to Microsoft.App/environments
-for Flex Consumption apps.
 
 - references: AzureSubnet (`status.outputs.subnet_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureSubnet, name: <that resource's name>, fieldPath: status.outputs.subnet_id}} -- a bare string does not parse
@@ -1421,38 +977,24 @@ for Flex Consumption apps.
 
 `AzureFunctionAppFlexConsumptionIdentity`
 
-Managed identity configuration for the Function App.
-Enables the app to authenticate with Azure services (Key Vault,
-Storage, ACR, etc.) without managing credentials. Identity-based
-deployment storage authentication also rides on this block.
-
 - rule: identity_ids is required when type includes USER_ASSIGNED, and must be empty for SYSTEM_ASSIGNED
 
 ### spec.identity.type
 
 `enum` · required
 
-The identity model: Azure-managed (tied to the app's lifecycle),
-bring-your-own (independent lifecycle), or both.
-
 - rule: {"required":true,"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_identity_type_unspecified` -- Not specified -- invalid; pick an explicit identity model.
-- `SYSTEM_ASSIGNED` -- Azure creates and rotates an identity tied to the app's lifecycle.
-- `USER_ASSIGNED` -- Attach pre-created AzureUserAssignedIdentity resources (independent lifecycle; shareable across apps).
-- `SYSTEM_AND_USER_ASSIGNED` -- Both a system-assigned identity and user-assigned identities.
+- `azure_function_app_flex_consumption_identity_type_unspecified`
+- `SYSTEM_ASSIGNED`
+- `USER_ASSIGNED`
+- `SYSTEM_AND_USER_ASSIGNED`
 
 ### spec.identity.identityIds
 
 `[]string | valueFrom`
-
-User Assigned Identity Azure resource IDs.
-Required when type includes USER_ASSIGNED.
-
-Can be literal ARM resource IDs or references to
-AzureUserAssignedIdentity outputs.
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -1461,35 +1003,15 @@ AzureUserAssignedIdentity outputs.
 
 `bool` · optional (explicit presence)
 
-Allow basic-auth (username/password) publishing over Web Deploy
-(msdeploy). Disabling it closes the classic credential-based
-deployment path and forces identity-based deployment (recommended
-posture for locked-down environments).
-
-Default: true (Azure's own default; flip to false to harden)
-
 - default: `true`
 
 ### spec.zipDeployFile
 
 `string`
 
-Path to a local ZIP package to deploy on create/update (one-shot
-zip deploy through the publishing endpoint). Primarily useful for
-simple pipelines that produce a build artifact next to the manifest;
-most production deployments push code through CI/CD instead.
-Write-only: Azure never returns it, so imports cannot recover it.
-
 ### spec.authSettingsV2
 
 `AzureFunctionAppFlexConsumptionAuthSettingsV2`
-
-App Service built-in authentication (Easy Auth v2). When enabled,
-Azure authenticates requests at the platform layer -- before they
-reach function code -- against any of the configured identity
-providers. Provider client secrets are referenced by APP SETTING
-NAME (set the actual secret value in app_settings or via a Key
-Vault reference), never inline in this block.
 
 - rule: forward_proxy_custom_host_header_name and forward_proxy_custom_scheme_header_name require forward_proxy_convention FORWARD_PROXY_CUSTOM
 
@@ -1497,20 +1019,11 @@ Vault reference), never inline in this block.
 
 `bool` · optional (explicit presence)
 
-Master switch: whether the authentication/authorization layer
-intercepts requests.
-
-Default: false
-
 - default: `false`
 
 ### spec.authSettingsV2.runtimeVersion
 
 `string` · optional (explicit presence)
-
-The Easy Auth middleware runtime version.
-
-Default: "~1"
 
 - default: `~1`
 
@@ -1518,17 +1031,9 @@ Default: "~1"
 
 `string`
 
-Path to a config file carrying the auth settings when they are
-file-managed instead of ARM-managed. Rarely used.
-
 ### spec.authSettingsV2.requireAuthentication
 
 `bool` · optional (explicit presence)
-
-Require every request to be authenticated (subject to
-excluded_paths).
-
-Default: false
 
 - default: `false`
 
@@ -1536,42 +1041,27 @@ Default: false
 
 `enum`
 
-What happens to unauthenticated requests. Unset deploys
-REDIRECT_TO_LOGIN_PAGE.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_unauthenticated_action_unspecified` -- Not specified -- deploys REDIRECT_TO_LOGIN_PAGE.
-- `REDIRECT_TO_LOGIN_PAGE` -- Redirect to the login page of the default provider.
-- `ALLOW_ANONYMOUS` -- Let the request through; the app decides (identity headers are populated when present).
-- `RETURN_401` -- Reject with HTTP 401.
-- `RETURN_403` -- Reject with HTTP 403.
+- `azure_function_app_flex_consumption_unauthenticated_action_unspecified`
+- `REDIRECT_TO_LOGIN_PAGE`
+- `ALLOW_ANONYMOUS`
+- `RETURN_401`
+- `RETURN_403`
 
 ### spec.authSettingsV2.defaultProvider
 
 `string`
 
-The provider unauthenticated requests are redirected to when
-unauthenticated_action is REDIRECT_TO_LOGIN_PAGE and more than one
-provider is configured: "apple", "azureactivedirectory", "facebook",
-"github", "google", "twitter", or the name of a custom_oidc_v2
-provider.
-
 ### spec.authSettingsV2.excludedPaths
 
 `[]string`
 
-Paths that skip authentication entirely (e.g. ["/api/health"]).
-
 ### spec.authSettingsV2.requireHttps
 
 `bool` · optional (explicit presence)
-
-Require HTTPS for authentication requests.
-
-Default: true
 
 - default: `true`
 
@@ -1579,49 +1069,32 @@ Default: true
 
 `string` · optional (explicit presence)
 
-The prefix that the Easy Auth HTTP endpoints (login, logout, token
-refresh) are served under.
-
-Default: "/.auth"
-
 - default: `/.auth`
 
 ### spec.authSettingsV2.forwardProxyConvention
 
 `enum`
 
-How the original request URL is derived when the app sits behind a
-forward proxy. Unset deploys FORWARD_PROXY_NO_PROXY.
-
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_forward_proxy_convention_unspecified` -- Not specified -- deploys FORWARD_PROXY_NO_PROXY.
-- `FORWARD_PROXY_NO_PROXY` -- No proxy: use the request as received (the default).
-- `FORWARD_PROXY_STANDARD` -- Standard X-Forwarded-Host/X-Forwarded-Proto headers.
-- `FORWARD_PROXY_CUSTOM` -- Custom header names (set the two custom header name fields).
+- `azure_function_app_flex_consumption_forward_proxy_convention_unspecified`
+- `FORWARD_PROXY_NO_PROXY`
+- `FORWARD_PROXY_STANDARD`
+- `FORWARD_PROXY_CUSTOM`
 
 ### spec.authSettingsV2.forwardProxyCustomHostHeaderName
 
 `string`
 
-The header carrying the original host, when forward_proxy_convention
-is FORWARD_PROXY_CUSTOM.
-
 ### spec.authSettingsV2.forwardProxyCustomSchemeHeaderName
 
 `string`
 
-The header carrying the original scheme, when
-forward_proxy_convention is FORWARD_PROXY_CUSTOM.
-
 ### spec.authSettingsV2.login
 
 `AzureFunctionAppFlexConsumptionAuthV2Login` · required
-
-Login/session behavior (token store, cookie expiration, nonce).
-Required by Azure whenever auth_settings_v2 is configured.
 
 - rule: {"required":true}
 - rule: token_store_path and token_store_sas_setting_name are mutually exclusive
@@ -1630,26 +1103,15 @@ Required by Azure whenever auth_settings_v2 is configured.
 
 `string`
 
-The endpoint the browser is sent to on logout (clears the session).
-
 ### spec.authSettingsV2.login.tokenStoreEnabled
 
 `bool` · optional (explicit presence)
-
-Durably store identity tokens so the app (and the /.auth/me
-endpoint) can retrieve them later. Required for token refresh.
-
-Default: false
 
 - default: `false`
 
 ### spec.authSettingsV2.login.tokenRefreshExtensionTime
 
 `double` · optional (explicit presence)
-
-Hours after session expiry that a token refresh may still succeed.
-
-Default: 72
 
 - default: `72`
 - rule: {"double":{"gte":0}}
@@ -1658,23 +1120,13 @@ Default: 72
 
 `string`
 
-File-system path backing the token store (mutually exclusive with
-the SAS-setting form).
-
 ### spec.authSettingsV2.login.tokenStoreSasSettingName
 
 `string`
 
-Name of the app setting holding the SAS URL of the blob container
-backing the token store (mutually exclusive with the path form).
-
 ### spec.authSettingsV2.login.preserveUrlFragmentsForLogins
 
 `bool` · optional (explicit presence)
-
-Preserve URL fragments (#...) across the login redirect dance.
-
-Default: false
 
 - default: `false`
 
@@ -1682,31 +1134,21 @@ Default: false
 
 `[]string`
 
-External URLs that post-login/logout redirects may target (in
-addition to same-host URLs, which are always allowed).
-
 ### spec.authSettingsV2.login.cookieExpirationConvention
 
 `enum`
-
-How session cookies expire. Unset deploys FIXED_TIME.
 
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):
 
-- `azure_function_app_flex_consumption_cookie_expiration_convention_unspecified` -- Not specified -- deploys FIXED_TIME.
-- `FIXED_TIME` -- Cookies expire after cookie_expiration_time (the default).
-- `IDENTITY_PROVIDER_DERIVED` -- Cookie lifetime follows the identity provider's token lifetime.
+- `azure_function_app_flex_consumption_cookie_expiration_convention_unspecified`
+- `FIXED_TIME`
+- `IDENTITY_PROVIDER_DERIVED`
 
 ### spec.authSettingsV2.login.cookieExpirationTime
 
 `string` · optional (explicit presence)
-
-Session cookie lifetime (hh:mm:ss) when the convention is
-FIXED_TIME.
-
-Default: "08:00:00"
 
 - default: `08:00:00`
 - rule: cookie_expiration_time must be hh:mm:ss (e.g. 08:00:00)
@@ -1715,19 +1157,11 @@ Default: "08:00:00"
 
 `bool` · optional (explicit presence)
 
-Validate the anti-forgery nonce during the login flow. Leave on.
-
-Default: true
-
 - default: `true`
 
 ### spec.authSettingsV2.login.nonceExpirationTime
 
 `string` · optional (explicit presence)
-
-Nonce lifetime (hh:mm:ss).
-
-Default: "00:05:00"
 
 - default: `00:05:00`
 - rule: nonce_expiration_time must be hh:mm:ss (e.g. 00:05:00)
@@ -1736,13 +1170,9 @@ Default: "00:05:00"
 
 `AzureFunctionAppFlexConsumptionAuthV2Apple`
 
-Sign in with Apple.
-
 ### spec.authSettingsV2.appleV2.clientId
 
 `string` · required
-
-The Apple Services ID (client ID).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1750,16 +1180,11 @@ The Apple Services ID (client ID).
 
 `string` · required
 
-Name of the app setting holding the client secret (never the secret
-itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.activeDirectoryV2
 
 `AzureFunctionAppFlexConsumptionAuthV2ActiveDirectory`
-
-Microsoft Entra ID (Azure Active Directory).
 
 - rule: client_secret_setting_name and client_secret_certificate_thumbprint are mutually exclusive
 
@@ -1767,16 +1192,11 @@ Microsoft Entra ID (Azure Active Directory).
 
 `string` · required
 
-The Entra app registration's client ID.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.activeDirectoryV2.tenantAuthEndpoint
 
 `string` · required
-
-The OpenID issuer endpoint for the tenant, e.g.
-https://login.microsoftonline.com/v2.0/{tenant-guid}/
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1784,30 +1204,17 @@ https://login.microsoftonline.com/v2.0/{tenant-guid}/
 
 `string`
 
-Name of the app setting holding the client secret (mutually
-exclusive with the certificate thumbprint).
-
 ### spec.authSettingsV2.activeDirectoryV2.clientSecretCertificateThumbprint
 
 `string`
-
-Thumbprint of the certificate used as the client credential
-(mutually exclusive with the secret setting name).
 
 ### spec.authSettingsV2.activeDirectoryV2.loginParameters
 
 `map<string, string>`
 
-Extra parameters sent to the authorization endpoint on login
-(key=value form).
-
 ### spec.authSettingsV2.activeDirectoryV2.wwwAuthenticationDisabled
 
 `bool` · optional (explicit presence)
-
-Suppress the WWW-Authenticate challenge header on 401 responses.
-
-Default: false
 
 - default: `false`
 
@@ -1815,49 +1222,33 @@ Default: false
 
 `[]string`
 
-Group claim values the JWT must carry to be accepted.
-
 ### spec.authSettingsV2.activeDirectoryV2.jwtAllowedClientApplications
 
 `[]string`
-
-Client-application claim values the JWT must carry to be accepted.
 
 ### spec.authSettingsV2.activeDirectoryV2.allowedGroups
 
 `[]string`
 
-Entra group object IDs allowed access.
-
 ### spec.authSettingsV2.activeDirectoryV2.allowedIdentities
 
 `[]string`
-
-Identity object IDs allowed access.
 
 ### spec.authSettingsV2.activeDirectoryV2.allowedApplications
 
 `[]string`
 
-Client (application) IDs allowed access.
-
 ### spec.authSettingsV2.activeDirectoryV2.allowedAudiences
 
 `[]string`
-
-Token audiences accepted in addition to the client ID.
 
 ### spec.authSettingsV2.azureStaticWebAppV2
 
 `AzureFunctionAppFlexConsumptionAuthV2StaticWebApp`
 
-Azure Static Web Apps authentication (when fronted by one).
-
 ### spec.authSettingsV2.azureStaticWebAppV2.clientId
 
 `string` · required
-
-The Static Web App's client ID.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1865,14 +1256,9 @@ The Static Web App's client ID.
 
 `[]AzureFunctionAppFlexConsumptionAuthV2CustomOidc`
 
-Any OpenID Connect provider(s), by name.
-
 ### spec.authSettingsV2.customOidcV2[].name
 
 `string` · required
-
-The provider's name (also the login route segment and the
-default_provider value that selects it).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1880,16 +1266,11 @@ default_provider value that selects it).
 
 `string` · required
 
-The provider's client ID.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.customOidcV2[].openidConfigurationEndpoint
 
 `string` · required
-
-The provider's OpenID configuration (discovery) endpoint, e.g.
-https://idp.example.com/.well-known/openid-configuration
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1897,25 +1278,17 @@ https://idp.example.com/.well-known/openid-configuration
 
 `string`
 
-The claim carrying the user's display name.
-
 ### spec.authSettingsV2.customOidcV2[].scopes
 
 `[]string`
-
-OAuth scopes requested at login.
 
 ### spec.authSettingsV2.facebookV2
 
 `AzureFunctionAppFlexConsumptionAuthV2Facebook`
 
-Facebook login.
-
 ### spec.authSettingsV2.facebookV2.appId
 
 `string` · required
-
-The Facebook app's App ID.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1923,34 +1296,23 @@ The Facebook app's App ID.
 
 `string` · required
 
-Name of the app setting holding the app secret (never the secret
-itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.facebookV2.graphApiVersion
 
 `string`
 
-The Facebook Graph API version used for login (e.g. "v17.0").
-
 ### spec.authSettingsV2.facebookV2.loginScopes
 
 `[]string`
-
-OAuth scopes requested at login.
 
 ### spec.authSettingsV2.githubV2
 
 `AzureFunctionAppFlexConsumptionAuthV2Github`
 
-GitHub login.
-
 ### spec.authSettingsV2.githubV2.clientId
 
 `string` · required
-
-The GitHub OAuth app's client ID.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1958,28 +1320,19 @@ The GitHub OAuth app's client ID.
 
 `string` · required
 
-Name of the app setting holding the client secret (never the secret
-itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.githubV2.loginScopes
 
 `[]string`
 
-OAuth scopes requested at login.
-
 ### spec.authSettingsV2.googleV2
 
 `AzureFunctionAppFlexConsumptionAuthV2Google`
 
-Google login.
-
 ### spec.authSettingsV2.googleV2.clientId
 
 `string` · required
-
-The Google OAuth client ID.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1987,34 +1340,23 @@ The Google OAuth client ID.
 
 `string` · required
 
-Name of the app setting holding the client secret (never the secret
-itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.googleV2.allowedAudiences
 
 `[]string`
 
-Token audiences accepted in addition to the client ID.
-
 ### spec.authSettingsV2.googleV2.loginScopes
 
 `[]string`
-
-OAuth scopes requested at login.
 
 ### spec.authSettingsV2.microsoftV2
 
 `AzureFunctionAppFlexConsumptionAuthV2Microsoft`
 
-Microsoft account (consumer) login.
-
 ### spec.authSettingsV2.microsoftV2.clientId
 
 `string` · required
-
-The Microsoft app registration's client ID.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -2022,34 +1364,23 @@ The Microsoft app registration's client ID.
 
 `string` · required
 
-Name of the app setting holding the client secret (never the secret
-itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.authSettingsV2.microsoftV2.allowedAudiences
 
 `[]string`
 
-Token audiences accepted in addition to the client ID.
-
 ### spec.authSettingsV2.microsoftV2.loginScopes
 
 `[]string`
-
-OAuth scopes requested at login.
 
 ### spec.authSettingsV2.twitterV2
 
 `AzureFunctionAppFlexConsumptionAuthV2Twitter`
 
-Twitter login.
-
 ### spec.authSettingsV2.twitterV2.consumerKey
 
 `string` · required
-
-The Twitter app's consumer (API) key.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -2057,20 +1388,11 @@ The Twitter app's consumer (API) key.
 
 `string` · required
 
-Name of the app setting holding the consumer secret (never the
-secret itself).
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.tags
 
 `map<string, string>`
-
-Free-form Azure resource tags applied to the Function App, merged
-over the platform's metadata-derived tags (user tags win on key
-collision) -- the hooks for cost allocation, chargeback reports, and
-Azure Policy governance rules that filter or group by them.
-Updatable in place.
 
 ## Validation Rules
 
@@ -2084,16 +1406,16 @@ Reference an output from another manifest as `valueFrom: {kind: AzureFunctionApp
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.function_app_id` | `string` | The Azure Resource Manager ID of the Function App. Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Web/sites/{name} |
-| `status.outputs.default_hostname` | `string` | The default hostname of the Function App. Format: {name}.azurewebsites.net This is the primary endpoint for HTTP-triggered functions. Custom domains can be added via Azure portal or DNS configuration. |
-| `status.outputs.outbound_ip_addresses` | `[]string` | Outbound IP addresses used by the Function App. These IPs should be allowed in downstream firewall rules (e.g., database firewall, third-party API whitelists). Note: outbound IPs on serverless plans are shared across the region and may change -- use possible_outbound_ip_addresses for allowlists that must survive scale events. |
-| `status.outputs.identity_principal_id` | `string` | The principal ID of the system-assigned managed identity. Populated only when the app has a system-assigned identity (identity.type includes "SystemAssigned"). Used for granting RBAC roles: e.g., "Storage Blob Data Contributor" (identity-based deployment storage), "Key Vault Secrets User". |
-| `status.outputs.identity_tenant_id` | `string` | The tenant ID of the system-assigned managed identity. Paired with identity_principal_id for RBAC configuration. |
-| `status.outputs.custom_domain_verification_id` | `string` | The custom domain verification ID. Used when binding custom domains to the Function App. Add this value as a TXT record at `asuid.{custom-domain}` to verify domain ownership. |
-| `status.outputs.kind` | `string` | The resource kind string as reported by Azure. Example: "functionapp,linux" |
-| `status.outputs.possible_outbound_ip_addresses` | `[]string` | Every outbound IP address the platform could EVER route this app's traffic through (a superset of outbound_ip_addresses, which lists only the currently active set). Use THIS list for downstream firewall allowlists that must survive scale events and platform moves. |
-| `status.outputs.site_credential_name` | `string` | The site-level publishing credential's username (the Kudu/SCM basic-auth user). Paired with site_credential_password; only usable while webdeploy_publish_basic_authentication_enabled is true. |
-| `status.outputs.site_credential_password` | `string` | The site-level publishing credential's password. SECRET-BEARING: anyone holding it can deploy code to the app over Web Deploy/SCM while basic-auth publishing is enabled -- treat it like an admin password (disable the basic-auth toggle to revoke the surface entirely). |
+| `status.outputs.function_app_id` | `string` |  |
+| `status.outputs.default_hostname` | `string` |  |
+| `status.outputs.outbound_ip_addresses` | `[]string` |  |
+| `status.outputs.identity_principal_id` | `string` |  |
+| `status.outputs.identity_tenant_id` | `string` |  |
+| `status.outputs.custom_domain_verification_id` | `string` |  |
+| `status.outputs.kind` | `string` |  |
+| `status.outputs.possible_outbound_ip_addresses` | `[]string` |  |
+| `status.outputs.site_credential_name` | `string` |  |
+| `status.outputs.site_credential_password` | `string` |  |
 
 ## References
 

@@ -118,7 +118,7 @@ These are the most important decisions when configuring an MWAA environment. Exp
 
 **Worker scaling** -- Set `minWorkers` and `maxWorkers` to control Celery worker auto-scaling based on task queue depth. Start with 1-10 for most workloads. Each additional worker incurs per-hour compute cost proportional to the environment class.
 
-**Webserver access** -- Set `webserverAccessMode` to `PRIVATE_ONLY` (default) for VPC-only access via VPC endpoint, or `PUBLIC_ONLY` for internet-accessible UI with IAM-based login. Private access is recommended for production and compliance environments.
+**Webserver access** -- Set `webserverAccessMode` to `PRIVATE_ONLY` (default) for VPC-only access via VPC endpoint, `PUBLIC_ONLY` for internet-accessible UI with IAM-based login, or `PUBLIC_AND_PRIVATE` for both. Private access is recommended for production and compliance environments.
 
 **Logging** -- Enable individual logging modules (`loggingConfiguration`) for DAG processing, scheduler, task, webserver, and worker. Each module can have its own log level. Enable at least task and scheduler logs for production debugging.
 

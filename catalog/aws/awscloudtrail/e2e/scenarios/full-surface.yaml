@@ -1,0 +1,51 @@
+# Full single-account surface: a multi-region trail with log-file
+# validation, advanced event selectors, both Insights engines, and
+# CloudWatch Logs mirroring through the fixture group + role. All
+# fixtures are consumer-scoped (e2e/prerequisites/): the bucket fixture
+# carries the cloudtrail.amazonaws.com bucket policy AWS validates at
+# trail creation. Destroy is a REAL delete (the delivered log files
+# stay in the bucket).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrail
+metadata:
+  name: planton-oss-e2e-awstrail-full
+  id: planton-oss-e2e-awstrail-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscloudtrail
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsCloudwatchLogGroup,AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  s3BucketName:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awstrail-logs
+      fieldPath: status.outputs.bucket_id
+  s3KeyPrefix: audit
+  isMultiRegionTrail: true
+  enableLogFileValidation: true
+  cloudwatchLogs:
+    logGroupArn:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: planton-oss-e2e-awstrail-lg
+        fieldPath: status.outputs.log_group_arn
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: planton-oss-e2e-awstrail-role
+        fieldPath: status.outputs.role_arn
+  advancedEventSelectors:
+    - name: Management events
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Management"]
+  insightTypes:
+    - ApiCallRateInsight
+    - ApiErrorRateInsight

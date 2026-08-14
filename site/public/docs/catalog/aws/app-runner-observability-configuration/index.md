@@ -8,13 +8,13 @@ componentName: "awsapprunnerobservabilityconfiguration"
 
 # AWS App Runner Observability Configuration
 
-Deploys an App Runner observability configuration — the reusable tracing policy that [App Runner services](/cloud-catalog/aws-app-runner-service) reference to enable distributed request tracing. It is deliberately its own resource: one configuration is shared by any number of services, and attaching the reference IS the tracing on-switch — there is no separate toggle to keep in sync per service. With tracing configured, each instance of a referencing service runs an OpenTelemetry collector sidecar that forwards request spans to AWS X-Ray. AWS versions the configuration — a change registers a new revision under the same name. The configuration integrates with Planton's Provider Connections for AWS credential management.
+Deploys an App Runner observability configuration — the reusable tracing policy that [App Runner services](/cloud-catalog/aws-app-runner-service) reference to enable distributed request tracing. It is deliberately its own resource: one configuration is shared by any number of services, and attaching the reference IS the tracing on-switch — there is no separate toggle to keep in sync per service. With tracing configured, each instance of a referencing service runs an OpenTelemetry collector sidecar that forwards request spans to AWS X-Ray. Treat the configuration as immutable once created: to change tracing posture, register a new configuration name and repoint services (see the configuration notes). The configuration integrates with Planton's Provider Connections for AWS credential management.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **App Runner Observability Configuration** -- a named, versioned tracing policy; the trace settings are fixed per revision, and a change registers a new revision under the same name
+- **App Runner Observability Configuration** -- a named, versioned tracing policy; the trace settings are fixed at creation (see the change-workflow note below)
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -81,7 +81,7 @@ These are the most important decisions when configuring an observability configu
 
 **Two halves make tracing work** -- this configuration enables the collector; the application must emit spans via the ADOT SDK. An uninstrumented app traces nothing even with X-Ray attached.
 
-**Every change is a new revision** -- the trace settings are create-time immutable at AWS; editing them registers a new revision under the same name, and referencing services adopt it on their next deployment.
+**Changing tracing means a new configuration name** (upstream provider gap) -- the provider's update path is tags-only and does not replace on trace changes, so editing `traceConfiguration` on an existing configuration applies cleanly and silently changes NOTHING at AWS. To change tracing posture, create a new configuration (a new `metadata.name`) and repoint referencing services; with X-Ray as the only supported vendor, the block's practical states are present or absent at creation.
 
 ## Outputs and Dependencies
 

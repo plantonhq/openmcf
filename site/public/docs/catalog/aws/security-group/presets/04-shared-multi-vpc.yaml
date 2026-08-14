@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSecurityGroup
+metadata:
+  name: ${name}
+spec:
+  region: <aws-region>
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: <primary-vpc-name>
+      fieldPath: status.outputs.vpc_id
+  description: Shared baseline group used by workloads in several VPCs
+  ingress:
+    - protocol: tcp
+      fromPort: 443
+      toPort: 443
+      ipv4Cidrs:
+        - 10.0.0.0/8
+      description: HTTPS from private address space
+  egress:
+    - protocol: "-1"
+      fromPort: 0
+      toPort: 0
+      ipv4Cidrs:
+        - 0.0.0.0/0
+      description: All outbound (inline egress revokes the AWS default)
+  additionalVpcIds:
+    - valueFrom:
+        kind: AwsVpc
+        name: <secondary-vpc-name>
+        fieldPath: status.outputs.vpc_id

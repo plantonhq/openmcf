@@ -121,15 +121,9 @@ models carry their publisher's format string.
 
 `string` · required
 
-The model's catalog name, e.g. "gpt-5.4-mini",
+The model's catalog name, e.g. "gpt-4o", "gpt-4o-mini",
 "text-embedding-3-large". Regional availability differs -- the
-account's region decides which models can deploy. Models AGE:
-ARM rejects a model whose catalog lifecycle is "Deprecating" for
-NEW deployments (error ServiceModelDeprecating) well before its
-final retirement date -- existing deployments keep running. Pick
-from the currently GenerallyAvailable catalog:
-`az cognitiveservices model list -l <region>
- --query "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"`.
+account's region decides which models can deploy.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -245,7 +239,7 @@ Reference an output from another manifest as `valueFrom: {kind: AzureCognitiveDe
 |---|---|---|
 | `status.outputs.deployment_id` | `string` | The Azure Resource Manager ID of the deployment. Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{account}/deployments/{name} |
 | `status.outputs.deployment_name` | `string` | The deployment's name -- what applications pass as the model/deployment parameter when calling the account's endpoint. |
-| `status.outputs.model_version` | `string` | The deployed model's version as ARM reports it -- the resolved value when the spec left version unset. Engine nuance (live-proven): with version unset, the Pulumi engine populates this at create while Terraform leaves it EMPTY until the next refresh or import (the v5 provider does not read the resolved version back at create). Pin model.version when automation needs this output deterministically on both engines. |
+| `status.outputs.model_version` | `string` | The deployed model's version as ARM reports it -- the resolved value when the spec left version unset. |
 
 ## References
 

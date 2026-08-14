@@ -18,10 +18,14 @@ spec:
   # exists AND its status matches the access_key_status output against
   # ListAccessKeys (the Inactive rotation-lever arm's API evidence).
   tier: 1
-  # pending_proof: the tag-convergence sweep re-keyed the Pulumi managed-policy
-  # attachments index -> sanitized-ARN (the stable-key satellite idiom; reorder
-  # becomes a no-op instead of a transient detach) and added the canonical Name
-  # key to the Pulumi identity map -- Q31 proves both classes
-  status: pending_proof
-  validated_provisioners: []
+  # Re-proven live 2026-08-13, both engines ×2 runs (4 green lanes — the
+  # first pair re-ran for watcher evidence, doubling as a repeatability
+  # proof), after the tag-convergence sweep: ListAttachedUserPolicies
+  # echoed BOTH attachment paths (the referenced Planton policy + the
+  # literal AWS-managed ARN) per engine through the re-keyed sanitized-ARN
+  # Pulumi addresses, and the user's tag set carried the six-key identity
+  # map including Name per engine (distinct CreateDates/key IDs attribute
+  # the windows).
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 10

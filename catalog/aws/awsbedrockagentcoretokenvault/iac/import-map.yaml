@@ -1,0 +1,16 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockagentcoretokenvault
+spec:
+  values:
+    - name: token_vault_id
+      derivations:
+        # The spec field when set; AWS's one default vault otherwise
+        # (the module sends "default" for an unset spec value).
+        - from_spec_field: token_vault_id
+        - literal: default
+      where_to_find: >-
+        The vault id -- "default" unless the account uses a named
+        vault (`aws bedrock-agentcore-control get-token-vault` shows
+        tokenVaultId).

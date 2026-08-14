@@ -1,0 +1,300 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermodel.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerModelSpec defines the desired configuration for an Amazon
+// SageMaker AI model - the immutable serving definition (container
+// image, model artifacts, execution role, networking) that endpoints,
+// batch transform jobs, and inference components deploy. The model's
+// AWS name derives from metadata.name.
+//
+// A model is either a SINGLE container (`primary_container`) or an
+// inference PIPELINE of 2-15 containers executed in sequence or called
+// directly (`containers` + `inference_execution_mode`) - exactly one of
+// the two forms. Every field below is create-time only: SageMaker
+// models are immutable, so any change replaces the model (AWS's own
+// contract - roll a new model and repoint the endpoint).
+message AwsSagemakerModelSpec {
+  // The AWS region where the model will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role SageMaker AI assumes to pull the container image from ECR
+  // and read model artifacts from S3. The role must trust
+  // sagemaker.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Isolate the model container: no inbound or outbound network calls
+  // (not even to AWS services). Model artifacts and images still load
+  // normally; combine with `vpc_config` for private serving.
+  bool enable_network_isolation = 3;
+
+  // The single serving container - the common form. Exactly one of
+  // `primary_container` and `containers` must be set.
+  AwsSagemakerModelContainer primary_container = 4;
+
+  // An inference pipeline of 2-15 containers. Exactly one of
+  // `primary_container` and `containers` must be set.
+  repeated AwsSagemakerModelContainer containers = 5 [(buf.validate.field).repeated.max_items = 15];
+
+  // How pipeline containers are invoked: "Serial" (each container's
+  // output feeds the next) or "Direct" (callers address a container by
+  // hostname). Only meaningful with `containers`; omitted = AWS default
+  // (Serial).
+  string inference_execution_mode = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Serial",
+        "Direct"
+      ]
+    }
+  ];
+
+  // Attach the model containers to your VPC (private serving,
+  // Model Monitor over private data). Changing it replaces the model.
+  AwsSagemakerModelVpcConfig vpc_config = 7;
+
+  // A model is one container or a pipeline, never both, never neither
+  // (AWS's CreateModel contract - not schema-enforced upstream, so the
+  // spec owns it).
+  option (buf.validate.message).cel = {
+    id: "container_form_exactly_one"
+    message: "exactly one of primary_container and containers must be set"
+    expression: "has(this.primary_container) != (this.containers.size() > 0)"
+  };
+
+  // AWS accepts the execution mode only on multi-container models.
+  option (buf.validate.message).cel = {
+    id: "execution_mode_requires_pipeline"
+    message: "inference_execution_mode requires containers (an inference pipeline)"
+    expression: "this.inference_execution_mode == '' || this.containers.size() > 0"
+  };
+}
+
+// AwsSagemakerModelContainer is one serving container - the image (or
+// model package) plus where its model artifacts live.
+message AwsSagemakerModelContainer {
+  // ECR registry path of the inference image (max 255 characters, no
+  // whitespace). Example:
+  // "746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+  // (AWS-owned per-region registries host the built-in framework
+  // images). At least one of `image` and `model_package_arn` is
+  // required.
+  string image = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 255
+      pattern: "^\\S+$"
+    }
+  ];
+
+  // Deploy from a versioned model package in the model registry instead
+  // of a raw image (an "arn:aws:sagemaker:...:model-package/..." ARN).
+  // At least one of `image` and `model_package_arn` is required.
+  string model_package_arn = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // DNS hostname for this container (1-63 characters; letters, digits,
+  // hyphens). Pipelines use it with Direct invocation.
+  string container_hostname = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[0-9A-Za-z-]+$"
+    }
+  ];
+
+  // Environment variables for the container (keys: letters, digits,
+  // underscore, not starting with a digit; key and value each max 1024
+  // characters).
+  map<string, string> environment = 4;
+
+  // "SingleModel" (default) or "MultiModel" (one endpoint serves many
+  // models loaded on demand from the artifact prefix). Omitted = AWS
+  // default (SingleModel).
+  string mode = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SingleModel",
+        "MultiModel"
+      ]
+    }
+  ];
+
+  // S3 URL of the model artifacts (a .tar.gz for SingleModel, a prefix
+  // for MultiModel). The classic compressed form - for uncompressed
+  // artifacts use `model_data_source` instead (at most one of the two).
+  string model_data_url = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 1024
+      pattern: "^(https|s3)://([^/]+)/?(.*)$"
+    }
+  ];
+
+  // Model artifacts as an S3 data source (supports uncompressed
+  // deployment and gated-model EULA acceptance). At most one of
+  // `model_data_url` and `model_data_source`.
+  AwsSagemakerModelS3DataSource model_data_source = 7;
+
+  // Additional artifact channels mounted under
+  // /opt/ml/additional-model-data-sources/<channel_name>/ (adapters,
+  // draft models for speculative decoding).
+  repeated AwsSagemakerModelAdditionalDataSource additional_model_data_sources = 8;
+
+  // Inference specification to use from the model package (only with
+  // `model_package_arn`).
+  string inference_specification_name = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[0-9A-Za-z-]+$"
+    }
+  ];
+
+  // MultiModel caching: "Enabled" or "Disabled". Omitted = AWS default
+  // (Enabled). Only meaningful when mode is MultiModel.
+  string multi_model_cache = 10 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Enabled",
+        "Disabled"
+      ]
+    }
+  ];
+
+  // Pull the image from a private Docker registry in your VPC instead
+  // of ECR.
+  AwsSagemakerModelImageConfig image_config = 11;
+
+  // AWS requires something to serve: an image or a model package.
+  option (buf.validate.message).cel = {
+    id: "image_or_model_package"
+    message: "at least one of image and model_package_arn must be set"
+    expression: "this.image != '' || this.model_package_arn != ''"
+  };
+
+  // The two artifact forms are alternatives (AWS rejects both).
+  option (buf.validate.message).cel = {
+    id: "model_data_one_form"
+    message: "at most one of model_data_url and model_data_source may be set"
+    expression: "this.model_data_url == '' || !has(this.model_data_source)"
+  };
+
+  // Environment keys follow AWS's charset (letters, digits, underscore;
+  // not starting with a digit).
+  option (buf.validate.message).cel = {
+    id: "environment_key_charset"
+    message: "environment keys must match ^[A-Za-z_][0-9A-Za-z_]*$ (max 1024 chars)"
+    expression: "this.environment.all(k, k.matches('^[A-Za-z_][0-9A-Za-z_]*$') && size(k) <= 1024)"
+  };
+
+  // Cache tuning exists only on multi-model containers.
+  option (buf.validate.message).cel = {
+    id: "cache_requires_multi_model"
+    message: "multi_model_cache requires mode MultiModel"
+    expression: "this.multi_model_cache == '' || this.mode == 'MultiModel'"
+  };
+}
+
+// AwsSagemakerModelS3DataSource locates model artifacts in S3 (the
+// uncompressed-deployment form; upstream nests it one level deeper -
+// the spec flattens the single-member wrapper).
+message AwsSagemakerModelS3DataSource {
+  // The S3 path of the artifacts. Example:
+  // "s3://my-models/llm-7b/" (S3Prefix) or
+  // "s3://my-models/model.tar.gz" (S3Object).
+  string s3_uri = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // "S3Prefix" (everything under the prefix) or "S3Object" (one file).
+  string s3_data_type = 2 [(buf.validate.field).string = {
+    in: [
+      "S3Prefix",
+      "S3Object"
+    ]
+  }];
+
+  // "None" (uncompressed - required for large models deployed as
+  // prefixes) or "Gzip" (a .tar.gz artifact).
+  string compression_type = 3 [(buf.validate.field).string = {
+    in: [
+      "None",
+      "Gzip"
+    ]
+  }];
+
+  // Accept the end-user license agreement of a gated model (must be
+  // true for EULA-gated artifacts; AWS rejects false).
+  bool accept_eula = 4;
+}
+
+// AwsSagemakerModelAdditionalDataSource is one extra artifact channel.
+message AwsSagemakerModelAdditionalDataSource {
+  // Channel name - artifacts mount under
+  // /opt/ml/additional-model-data-sources/<channel_name>/.
+  string channel_name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Where the channel's artifacts live.
+  AwsSagemakerModelS3DataSource source = 2 [(buf.validate.field).required = true];
+}
+
+// AwsSagemakerModelImageConfig points the container at a private Docker
+// registry accessible from your VPC.
+message AwsSagemakerModelImageConfig {
+  // "Platform" (ECR - the default when this block is omitted) or "Vpc"
+  // (a private registry reachable from the model's VPC).
+  string repository_access_mode = 1 [(buf.validate.field).string = {
+    in: [
+      "Platform",
+      "Vpc"
+    ]
+  }];
+
+  // Lambda function that returns credentials for the private registry
+  // (only with Vpc access mode; omit for registries that need no
+  // authentication).
+  string repository_credentials_provider_arn = 2 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+
+  // Credentials only make sense against a private (Vpc) registry.
+  option (buf.validate.message).cel = {
+    id: "credentials_require_vpc_mode"
+    message: "repository_credentials_provider_arn requires repository_access_mode Vpc"
+    expression: "this.repository_credentials_provider_arn == '' || this.repository_access_mode == 'Vpc'"
+  };
+}
+
+// AwsSagemakerModelVpcConfig attaches the model containers to a VPC.
+message AwsSagemakerModelVpcConfig {
+  // Subnets the model ENIs are placed in (1-16).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 16
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to the model ENIs (1-5).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 5
+    },
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}

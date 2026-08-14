@@ -8,7 +8,7 @@ componentName: "gcpgcsbucket"
 
 # Storage Bucket on GCP
 
-Deploys a Google Cloud Storage bucket — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data. The spec covers the full bucket surface: the four placement shapes (region, multi-region, predefined and custom dual-regions with turbo replication), the modern IAM-only access model with additive per-bucket grants, Autoclass and lifecycle management, WORM retention with the irreversible lock, soft delete, CMEK, static website serving, CORS, access logging, and network-layer IP filtering. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, KMS keys, service accounts, VPC networks, and other buckets.
+Deploys a Google Cloud Storage bucket — the durable object store behind static sites, data lakes, build artifacts, backups, and every GCP service that stages data. The spec covers the full bucket surface: the four placement shapes (region, multi-region, predefined and custom dual-regions with turbo replication), the modern IAM-only access model with additive per-bucket grants, Autoclass and lifecycle management, WORM retention with the irreversible lock, soft delete, CMEK, static website serving, CORS, access logging, network-layer IP filtering, and the bucket's structural companions — folders (real directories on hierarchical-namespace buckets), managed folders (prefix-scoped IAM anchors), and Pub/Sub notification configs (object-change events for event-driven pipelines). Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, KMS keys, service accounts, VPC networks, Pub/Sub topics, and other buckets.
 
 ## What Gets Created
 
@@ -17,6 +17,9 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Cloud Storage Bucket** -- a GCS bucket in the specified project and location, with the configured placement shape, storage class or Autoclass, access model, data-protection posture (versioning, retention, soft delete, holds), and optional features (website, CORS, logging, IP filter)
 - **IAM Grants** -- created only when `iamMembers` are provided; each entry additively grants one role to one member at the bucket level (optionally scoped by an IAM condition) and composes safely with grants made elsewhere
 - **Lifecycle Rules** -- created only when `lifecycleRules` are provided; automate object deletion, storage class transitions, and multipart-upload cleanup based on age, version count, prefixes, and more
+- **Folders** -- created only when `folders` are provided (hierarchical-namespace buckets); real directories created parents-first, each with its own force-destroy posture
+- **Managed Folders** -- created only when `managedFolders` are provided; prefix-scoped IAM anchor points for grants like "read `reports/` only"
+- **Notification Configs** -- created only when `notifications` are provided; object-change event feeds into Pub/Sub topics (the GCS service agent's `roles/pubsub.publisher` grant on the topic is a composed prerequisite)
 - **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) plus any custom labels from `labels`, applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -98,6 +101,8 @@ These are the most important decisions when configuring a GCS bucket. Explore th
 
 **Network-layer security** -- `ipFilter` restricts FROM WHERE the bucket may be reached before IAM is even evaluated: public CIDR ranges and/or VPC networks (reference GcpVpcNetwork resources). Defense-in-depth for data-exfiltration control.
 
+**Structure and events** -- On hierarchical-namespace buckets, `folders` creates real directories (list every ancestor; the API never auto-creates parents). `managedFolders` needs only uniform bucket-level access and anchors prefix-scoped IAM — grant on `reports/` through the managed-folder IAM surface without granting the bucket. `notifications` streams object-change events (create, delete, metadata update, archive) into a Pub/Sub topic — reference a GcpPubSubTopic and grant the project's GCS service agent `roles/pubsub.publisher` on it first (the agent's email derives from this kind's `project_number` output). Notification configs are immutable: any change replaces the config, with a brief un-replayed gap in event delivery.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -109,6 +114,7 @@ These are the most important decisions when configuring a GCS bucket. Explore th
 | **GcpServiceAccount** | `iamMembers[].member` | `status.outputs.member` |
 | **GcpGcsBucket** | `logging.logBucket` | `status.outputs.bucket_id` |
 | **GcpVpcNetwork** | `ipFilter.vpcNetworkSources[].network` | `status.outputs.network_id` |
+| **GcpPubSubTopic** | `notifications[].topic` | `status.outputs.topic_id` |
 
 ### What This Component Provides
 
@@ -133,10 +139,13 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Dual-region data lake with Autoclass** -- A custom dual-region pinned to your analytics regions, Autoclass to ARCHIVE, multipart-upload hygiene and `tmp/` TTL rules, and prefix-scoped reader grants via IAM conditions. Start from the **Data Lake Autoclass** preset.
 
+**Event-driven pipeline bucket** -- A private bucket that publishes object-change events to a Pub/Sub topic: `OBJECT_FINALIZE` under an `uploads/` prefix triggers downstream processing (Cloud Run, Cloud Functions, Eventarc all consume the topic). Composes with a GcpPubSubTopic and the GCS service agent's publisher grant. Start from the **Event-Driven Pipeline** preset.
+
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the bucket is created
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- customer-managed encryption for objects at rest
 - [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- workload identities receiving bucket IAM grants
 - [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- VPC sources for the bucket IP filter
+- [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- destination for bucket notification events
 - [**GCP Backend Bucket**](/cloud-catalog/gcp-backend-bucket) -- serves this bucket through the HTTPS load-balancer chain with CDN

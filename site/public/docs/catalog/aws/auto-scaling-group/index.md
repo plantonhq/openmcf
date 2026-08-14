@@ -14,10 +14,10 @@ Deploys an EC2 Auto Scaling group — the fleet manager that keeps a set of inst
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Auto Scaling Group** -- the fleet with its bounds, subnet spread, health model, and capacity source (single template or mixed-instances policy)
-- **Scaling Policies** -- one per `scalingPolicies` entry (target tracking, step, simple, or predictive); target tracking's underlying CloudWatch alarms are created and managed by AWS
+- **Auto Scaling Group** -- the fleet with its bounds, subnet spread, health model, capacity source (single template or mixed-instances policy), Capacity Reservation targeting, traffic sources (VPC Lattice / Classic ELB), and terminate-hook retention policy
+- **Scaling Policies** -- one per `scalingPolicies` entry (target tracking, step, simple, or predictive — with pair, split, or fully customized forecast metrics); target tracking's underlying CloudWatch alarms are created and managed by AWS; `disabled` pauses a policy without deleting it
 - **Scheduled Actions** -- one per `scheduledActions` entry: cron-driven or one-shot capacity changes
-- **Lifecycle Hooks** -- one per `lifecycleHooks` entry: pause points at launch and termination
+- **Lifecycle Hooks** -- one per `lifecycleHooks` entry: pause points at launch and termination; hooks flagged `applyAtLaunch` attach atomically at group creation so even the first instance is caught
 - **Warm Pool** -- attached only when `warmPool` is configured; pre-initialized instances that cut scale-out latency
 - **Notification Configurations** -- attached only when `notifications` names an SNS topic
 
@@ -148,6 +148,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Spot mixed fleet** -- An On-Demand base of two with an all-Spot majority across four instance pools, capacity rebalance on. Start from the **Spot Mixed Fleet** preset.
 
 **Scheduled scale** -- Business-hours scale-up and overnight scale-to-zero on cron, with a stopped warm pool for fast mornings. Start from the **Scheduled Scale** preset.
+
+**Reserved fleet** -- Fill pre-purchased Capacity Reservations first, place capacity reservations-then-balanced, retain failed-drain instances for post-mortems, and attach the warm-up hook atomically at creation. Start from the **Reserved Fleet** preset.
 
 ## Works With
 

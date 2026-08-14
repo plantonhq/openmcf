@@ -1,0 +1,26 @@
+# AwsBedrockAgentCoreGateway minimal scenario: the smallest useful
+# gateway -- IAM (SigV4) inbound auth and the shared AgentCore role
+# fixture, no targets. Proves the create -> READY lifecycle and the
+# gateway URL both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreGateway
+metadata:
+  name: planton-oss-e2e-awsacgw-min
+  id: planton-oss-e2e-awsacgw-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoregateway
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-agentcore-role
+      fieldPath: status.outputs.role_arn
+  authorizerType: AWS_IAM

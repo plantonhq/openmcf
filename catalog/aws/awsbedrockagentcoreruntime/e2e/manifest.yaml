@@ -1,0 +1,89 @@
+# Canonical AwsBedrockAgentCoreRuntime example (hack/dev manifest and
+# refgen Example source): a code-bundle runtime exercising every arm --
+# VPC networking, JWT authorization with custom claims and a private
+# endpoint, filesystems, named endpoints, and the resource policy.
+# Literal ARNs/ids stand in for composed references so the offline
+# `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreRuntime
+metadata:
+  name: support-agent-runtime
+  id: support-agent-runtime
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  runtimeName: support_agent
+  description: Hosts the support agent's LangGraph service
+  roleArn:
+    value: arn:aws:iam::123456789012:role/agentcore-runtime-role
+  artifact:
+    code:
+      runtime: PYTHON_3_13
+      entryPoint:
+        - main.py
+      s3:
+        bucket:
+          value: my-agent-code-bucket
+        prefix: bundles/support-agent.zip
+  network:
+    mode: VPC
+    vpcConfig:
+      subnets:
+        - value: subnet-0123456789abcdef0
+      securityGroups:
+        - value: sg-0123456789abcdef0
+  serverProtocol: HTTP
+  environmentVariables:
+    LOG_LEVEL: info
+  lifecycle:
+    idleRuntimeSessionTimeoutSeconds: 900
+    maxLifetimeSeconds: 3600
+  customJwtAuthorizer:
+    discoveryUrl: https://accounts.google.com/.well-known/openid-configuration
+    allowedAudience:
+      - support-agents
+    allowedClients:
+      - support-client
+    customClaims:
+      - claimName: org
+        valueType: STRING
+        matchOperator: EQUALS
+        matchValue: acme
+    privateEndpoint:
+      managedVpc:
+        vpcId:
+          value: vpc-0123456789abcdef0
+        subnetIds:
+          - value: subnet-0123456789abcdef0
+        securityGroupIds:
+          - value: sg-0123456789abcdef0
+        endpointIpAddressType: IPV4
+    privateEndpointOverrides:
+      - domain: idp.internal.example.com
+        privateEndpoint:
+          selfManagedLattice:
+            resourceConfigurationId: rcfg-0123456789abcdef0
+  requestHeaderAllowlist:
+    - X-Trace-Id
+  filesystems:
+    - mountPath: /mnt/scratch
+      sessionStorage: true
+    - mountPath: /mnt/shared
+      efsAccessPointArn:
+        value: arn:aws:elasticfilesystem:us-west-2:123456789012:access-point/fsap-0123456789abcdef0
+  endpoints:
+    - name: live
+      description: Production traffic (tracks the latest version)
+    - name: pinned
+      agentRuntimeVersion: "1"
+  # Statements carry no Resource member: AWS requires it to be exactly
+  # the runtime's own ARN (unknowable pre-create), so the modules inject
+  # it into every statement.
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::210987654321:root
+        Action: bedrock-agentcore:InvokeAgentRuntime

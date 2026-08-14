@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Route53 Hosted Zone** -- a public hosted zone resolving globally on the internet, or a private hosted zone resolving only within associated VPCs
 - **VPC Associations** -- created only when `isPrivate` is `true`; each association allows the private zone to resolve DNS queries from the specified VPC (cross-region associations supported via `vpcRegion`)
-- **DNSSEC Signing** -- created only when the `dnssec` block is configured; a key-signing key is created from the referenced KMS key and the zone's signing status is switched on
+- **DNSSEC Signing** -- created only when the `dnssec` block is configured; a key-signing key is created from the referenced KMS key (status configurable: `ACTIVE` by default, `INACTIVE` as the diagnostics lever) and the zone's signing status is switched on. The signed zone exports `ds_record`, `dnskey_record`, and `key_signing_key_tag` outputs -- the values the registrar needs to complete the chain of trust
 - **Query Logging** -- created only when the `queryLogging` block is configured; sends DNS query logs to the referenced CloudWatch Logs group for debugging and security monitoring
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -34,7 +34,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **A VPC** (required for private zones) -- one or more VPCs with `enableDnsHostnames` and `enableDnsSupport` enabled. Provide VPC IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
 - **A KMS key** (required for DNSSEC) -- must live in us-east-1, be an asymmetric key with key spec ECC_NIST_P256 and SIGN_VERIFY usage, and its key policy must allow the Route53 DNSSEC service principal (dnssec-route53.amazonaws.com). Reference an AwsKmsKey Cloud Resource or pass the key ARN.
 - **A CloudWatch Log Group** (required for query logging) -- must live in us-east-1 (Route53 delivers query logs there regardless of the zone's region), and an account-level CloudWatch Logs resource policy must allow the route53.amazonaws.com service principal to write. Reference an AwsCloudwatchLogGroup Cloud Resource or pass the log group ARN.
-- **Domain registrar DS record** (DNSSEC only) -- signing is half the chain of trust; after deployment, register the zone's DS record with the domain registrar to complete it.
+- **Domain registrar DS record** (DNSSEC only) -- signing is half the chain of trust; after deployment, register the zone's DS record with the domain registrar to complete it. The value is exported as the `ds_record` stack output (with `key_signing_key_tag` for registrar forms that ask for it) -- no console fishing required.
 
 ## Deploy
 

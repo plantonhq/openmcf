@@ -25,7 +25,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Point-in-Time Recovery** -- enabled only when `pointInTimeRecovery.enabled` is `true`; continuous backups with per-second granularity over the configured recovery window (1-35 days)
 - **Time-to-Live** -- enabled only when `ttl.enabled` is `true`; automatically deletes expired items based on an epoch-seconds attribute, free of write cost
 - **Contributor Insights** -- enabled only when `contributorInsights.enabled` is `true`; CloudWatch per-key access profiling on the table and optionally on named GSIs
-- **Resource Policy** -- attached only when `resourcePolicy` carries a JSON policy document; resource-based IAM grants on the table itself
+- **Resource Policy** -- attached only when `resourcePolicy` is configured (the policy document as native YAML plus the `confirmRemoveSelfResourceAccess` lockout guard); resource-based IAM grants on the table itself
+- **Capacity Auto Scaling** -- on PROVISIONED tables, Application Auto Scaling owns live read/write capacity: target tracking inside `autoscaling` bounds with optional named `scheduledAdjustments`, or pinned min = max targets from `provisionedThroughput` when no autoscaling is configured -- so the block can be added or removed in place
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy

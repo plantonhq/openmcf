@@ -29,8 +29,8 @@ that has progressed.
 |---|---|
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 98 |
-| Distinct provider resources consumed | 150 |
-| Spec fields authored across all kinds | 3668 |
+| Distinct provider resources consumed | 153 |
+| Spec fields authored across all kinds | 3677 |
 | Module pins on `google` | `~> 7.43` × 98 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,7 +45,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 23 proven live.**
+**98 of 98 kinds are at total accounting; 22 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -90,7 +90,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | — |
-| GcpGcsBucket | 64 | 30 | 29 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGcsBucket | 78 | 39 | 31 | 8 | 0 | ✅ | — |
 | GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
 | GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -154,10 +154,10 @@ All resources of `google@7.43.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 150 | consumed by a kind's Terraform module today |
+| Modeled | 153 | consumed by a kind's Terraform module today |
 | IAM-covered | 407 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 6 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 5 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 2 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 689 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 76 | deprecated or superseded provider surface |
 | **Total** | **1333** | |
@@ -167,7 +167,7 @@ All resources of `google@7.43.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (150)
+### Modeled (153)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -314,6 +314,9 @@ rather than trusted.
 | `google_sql_user` | consumed by GcpCloudSqlUser |
 | `google_storage_bucket` | consumed by GcpGcsBucket |
 | `google_storage_bucket_iam_member` | consumed by GcpGcsBucket |
+| `google_storage_folder` | consumed by GcpGcsBucket |
+| `google_storage_managed_folder` | consumed by GcpGcsBucket |
+| `google_storage_notification` | consumed by GcpGcsBucket |
 | `google_vertex_ai_endpoint` | consumed by GcpVertexAiEndpoint |
 | `google_vertex_ai_index` | consumed by GcpVertexAiIndex |
 | `google_vertex_ai_index_endpoint` | consumed by GcpVertexAiIndexEndpoint |
@@ -745,15 +748,12 @@ rather than trusted.
 | `google_logging_project_exclusion` | GcpLoggingSink models sink exclusions inline (spec.exclusions); this standalone resource manages the same surface on the scope's console-managed _Default sink |
 | `google_project_iam_member_remove` | declarative member removal is inherent to the additive iam_members reconciliation on the IAM member kinds (GcpProjectIamMember); a dedicated removal escape hatch is redundant |
 
-### Planned (5)
+### Planned (2)
 
 | Resource | Recorded reason |
 |---|---|
 | `google_certificate_manager_certificate_issuance_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
 | `google_certificate_manager_trust_config` | planned composition into the existing GcpCertManagerCert kind (trust and issuance configuration) |
-| `google_storage_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
-| `google_storage_managed_folder` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
-| `google_storage_notification` | planned composition into the existing GcpGcsBucket kind (structural bucket companions: hierarchical-namespace folders, managed folders as IAM anchor points, and Pub/Sub notification configs) |
 
 ### Deferred (689)
 

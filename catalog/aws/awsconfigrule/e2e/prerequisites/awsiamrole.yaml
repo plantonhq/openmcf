@@ -1,0 +1,44 @@
+# Consumer-scoped AwsIamRole install profile for the fixture recorder
+# this kind's rules evaluate under (AWS rejects PutConfigRule without a
+# configuration recorder in the region).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awscfgrl-role
+  id: planton-oss-e2e-awscfgrl-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role AWS Config assumes for the rule kind's fixture recorder
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+  inlinePolicies:
+    configBucketDelivery:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgrl-history/*"
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Effect: Allow
+          Action:
+            - s3:GetBucketAcl
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgrl-history"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: config.amazonaws.com
+        Action: sts:AssumeRole

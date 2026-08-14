@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1;
+
+// AwsBedrockAgentCoreEvaluationStackOutputs captures observable
+// identifiers from a provisioned AgentCore Evaluations bundle.
+// Downstream resources (online configs in other bundles referencing
+// custom evaluators, dashboards reading the output log groups) wire
+// dependencies via StringValueOrRef.
+message AwsBedrockAgentCoreEvaluationStackOutputs {
+  // Evaluator IDs keyed by each `evaluators` entry's name.
+  map<string, string> evaluator_ids = 1;
+
+  // Evaluator ARNs keyed by each `evaluators` entry's name.
+  map<string, string> evaluator_arns = 2;
+
+  // Harness IDs keyed by each `harnesses` entry's name.
+  map<string, string> harness_ids = 3;
+
+  // Harness ARNs keyed by each `harnesses` entry's name.
+  map<string, string> harness_arns = 4;
+
+  // Online evaluation config IDs keyed by each
+  // `online_evaluation_configs` entry's name.
+  map<string, string> online_evaluation_config_ids = 5;
+
+  // Online evaluation config ARNs keyed by each
+  // `online_evaluation_configs` entry's name.
+  map<string, string> online_evaluation_config_arns = 6;
+
+  // CloudWatch log group each online config writes its evaluation
+  // results to (server-assigned), keyed by the entry's name.
+  map<string, string> online_evaluation_output_log_groups = 7;
+}

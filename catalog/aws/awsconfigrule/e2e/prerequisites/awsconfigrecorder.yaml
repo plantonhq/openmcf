@@ -1,0 +1,37 @@
+# Consumer-scoped AwsConfigRecorder install profile: rules only
+# evaluate under a RUNNING recorder, and AWS rejects PutConfigRule
+# without one in the region (NoAvailableConfigurationRecorderException)
+# -- the same regional singleton the AwsConfigRecorder kind manages,
+# scoped here to the cheapest possible recording surface.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: planton-oss-e2e-awscfgrl-recorder
+  id: planton-oss-e2e-awscfgrl-recorder
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrecorder
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awscfgrl-role
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awscfgrl-history
+        fieldPath: status.outputs.bucket_id

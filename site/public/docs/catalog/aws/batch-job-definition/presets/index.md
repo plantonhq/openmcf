@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "EC2 GPU Job"
     excerpt: "An EC2 GPU job definition for ML training and CUDA workloads — one pinned GPU, raised file limits, large shared memory, and a day-long timeout."
+  - slug: "03-eks-pod-job"
+    rank: "03"
+    title: "EKS Pod Job"
+    excerpt: "A Batch-on-EKS job definition — the workload half of an EKS-attached compute environment: a hardened pipeline pod with an init container, in-memory scratch, and secret-projected configuration."
 ---
 
 # Batch Job Definition Presets

@@ -913,10 +913,10 @@ Fixed at creation.
 
 `string | valueFrom`
 
-The classic pre-zones fault/update-domain grouping. Prefer zones
-in zoned regions. Can be a literal ARM ID or a reference to an
-AzureAvailabilitySet's availability_set_id output. Conflicts with
-zone and capacity_reservation_group_id. Fixed at creation.
+The classic pre-zones fault/update-domain grouping, by ARM ID.
+Prefer zones in zoned regions. Plain ARM ID: availability sets are
+not modeled as a Planton kind. Conflicts with zone and
+capacity_reservation_group_id. Fixed at creation.
 
 - references: AzureAvailabilitySet (`status.outputs.availability_set_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureAvailabilitySet, name: <that resource's name>, fieldPath: status.outputs.availability_set_id}} -- a bare string does not parse

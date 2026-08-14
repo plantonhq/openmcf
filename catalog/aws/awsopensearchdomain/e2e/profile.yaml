@@ -9,17 +9,15 @@ spec:
   # DescribeDomain keyed on the domain name. Auto-Tune is excluded from
   # the scenario because t3 instance types do not support it.
   #
-  # pending_proof: the recorded offline-only deferral (domain creation
-  # runs 15-25 minutes each way per engine; both engines were validated
-  # offline against the hack manifest) is REOPENED by owner decision --
-  # the cost is trivial (t3.small.search pennies per hour, ~$0.20 per
-  # lane pair) and only the wall clock is heavy, the class the
-  # CloudFront proof already handled. The depth closure also changed the
-  # live send surface (encryption/node-to-node/software-update blocks
-  # always sent, off-peak default-on, warm value gates, the SAML and
-  # VPC-endpoint-grant satellites), so the lane rides Q29.
+  # The one-time offline-only deferral (domain creation runs 15-25
+  # minutes each way per engine) was REOPENED by owner decision -- cost
+  # is trivial (t3.small.search pennies per hour, ~$0.20 per lane pair),
+  # only the wall clock is heavy. The SAML and VPC-endpoint-grant
+  # satellites remain offline-proven: SAML needs a real IdP metadata
+  # document and the endpoint grant a second-account consumer fixture --
+  # recorded deferrals with those unblocks.
   tier: 1
-  status: pending_proof
+  status: green
   validated_provisioners:
     - pulumi
     - terraform

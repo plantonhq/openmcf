@@ -1,0 +1,25 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssagemakerimage
+spec:
+  # A SageMaker image under live E2E: two free lanes (the provider
+  # sleeps ~1 minute before every create for IAM propagation - the
+  # lanes' floor). The minimal lane is the bare registry entry; the
+  # full-surface lane adds the display metadata. Verification is
+  # DescribeImage keyed on image_name (status CREATED) plus the
+  # metadata echoes.
+  #
+  # Deliberately not exercised live: the versions fold -
+  # CreateImageVersion requires a real container image in the SAME
+  # account's ECR, and upstream's own acceptance tests skip unless an
+  # env var supplies one (unblock: a seeded ECR image fixture the
+  # harness ensures, then extend the full-surface scenario and assert
+  # the version_numbers map) - offline-proven via e2e/manifest.yaml.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q36
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 20

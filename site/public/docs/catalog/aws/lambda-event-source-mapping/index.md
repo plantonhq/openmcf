@@ -142,7 +142,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Kinesis consumer** -- `TRIM_HORIZON` to process the backlog, `parallelizationFactor` to multiply per-shard throughput while preserving per-key ordering, bisect-on-error plus a failure destination for poison records. Start from the **Kinesis Consumer** preset.
 
-**Kafka consumer** -- MSK by reference (or self-managed brokers with source-access credentials from Secrets Manager), topics and an optional pinned consumer group, provisioned pollers when throughput must be predictable.
+**Kafka consumer** -- MSK by reference (or self-managed brokers with source-access credentials from Secrets Manager), topics and an optional pinned consumer group, provisioned pollers when throughput must be predictable -- and a `pollerGroupName` to share one provisioned fleet across many mappings (the cost lever for many low-traffic topics). Start from the **MSK Consumer with Shared Provisioned Pollers** preset.
 
 ## Works With
 

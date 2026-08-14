@@ -19,6 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Origin Groups** -- primary/failover pairs created only for `originGroups[]` entries; behaviors targeting a group's ID get automatic per-request failover
 - **Cache Behaviors** -- the required default behavior plus one path-matched behavior per `orderedCacheBehaviors[]` entry, each on the modern cache-policy generation or the legacy forwarded-values generation
 - **Viewer Certificate wiring** -- the default *.cloudfront.net certificate, or your ACM/IAM certificate with SNI and a minimum TLS version when custom domains are configured
+- **Continuous-Deployment Policy** -- created when `continuousDeployment` is set: the blue/green policy routing a weighted or header-selected traffic slice to a staging distribution, attached to this (primary) distribution
 - **Custom Error Responses, Geo Restriction, Access Logging** -- created only when configured
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -110,9 +111,13 @@ These are the most important decisions when configuring a CloudFront distributio
 
 **Custom domains** -- Add `aliases` and set `viewerCertificate` with the ACM arm (the certificate must live in `us-east-1` and cover every alias). Without aliases the distribution serves on its generated `*.cloudfront.net` domain. Point Route53 alias records at the `domain_name` output — and with `isIpv6Enabled`, add the AAAA record too.
 
-**Private buckets via OAC** -- `s3Origin.createOriginAccessControl: true` provisions an Origin Access Control (SigV4 request signing) so the bucket stays fully private. An existing OAC or a legacy Origin Access Identity can be attached instead — the three access arms are mutually exclusive.
+**Private origins via OAC** -- `s3Origin.createOriginAccessControl: true` provisions an Origin Access Control (SigV4 request signing) so the bucket stays fully private. An existing OAC of any type attaches at the origin level (`originAccessControlId`) — the shape for Lambda function URL, MediaPackage v2, and MediaStore origins too. A legacy Origin Access Identity is accepted on the S3 arm; attach-vs-create stays mutually exclusive.
 
-**Operational posture** -- `enabled: false` keeps a distribution deployed-but-dark for staging a configuration; `waitForDeployment` decides whether deploys block on edge propagation (5-15 minutes); `retainOnDelete` disables instead of deleting on destroy; `enableAdditionalMetrics` turns on the cache-hit-rate/origin-latency dashboard.
+**Blue/green rollouts** -- Deploy the candidate configuration as its own distribution with `staging: true`, then give the primary a `continuousDeployment` block: a weighted slice (up to 15%, with optional session stickiness) or an `aws-cf-cd-*` opt-in header routes production traffic to staging before you promote. An externally managed policy attaches via `continuousDeploymentPolicyId`.
+
+**Mutual TLS, both directions** -- `viewerMtls` validates VIEWER client certificates against a CloudFront trust store (required/optional/passthrough); `customOrigin.mtlsClientCertificateArn` has CloudFront present an ACM client certificate to the ORIGIN so only CloudFront can reach the backend.
+
+**Operational posture** -- `enabled: false` keeps a distribution deployed-but-dark for staging a configuration; `waitForDeployment` decides whether deploys block on edge propagation (5-15 minutes); `retainOnDelete` disables instead of deleting on destroy; `enableAdditionalMetrics` turns on the cache-hit-rate/origin-latency dashboard; `cacheTagHeaderName` enables tag-based invalidation (one invalidation purges every object carrying a label; write the header name lowercase — AWS stores it lowercased).
 
 ## Outputs and Dependencies
 
@@ -121,7 +126,9 @@ These are the most important decisions when configuring a CloudFront distributio
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AwsCertManagerCert** (optional) | `viewerCertificate.acmCertificateArn` | `status.outputs.cert_arn` |
+| **AwsCertManagerCert** (optional) | `origins[].customOrigin.mtlsClientCertificateArn` | `status.outputs.cert_arn` |
 | **AwsWafWebAcl** (optional) | `webAclArn` | `status.outputs.web_acl_arn` |
+| **AwsCloudFront** (optional) | `continuousDeployment.stagingDistributionDnsNames[]` | `status.outputs.domain_name` |
 
 ### What This Component Provides
 
@@ -142,6 +149,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **S3 static website** -- A private bucket behind a created Origin Access Control, redirect-to-https with edge compression and `Managed-CachingOptimized`, `index.html` as the root object, and the single-page-app error mapping (S3's 403-for-missing-object served as `/index.html` with a 200). Start from the **S3 Static Website** preset.
 
 **Custom domain CDN** -- The static-site shape plus `aliases`, the ACM certificate reference, and dual-stack IPv6. Start from the **Custom Domain CDN** preset.
+
+**Blue/green rollout** -- A primary distribution owning a continuous-deployment policy that canaries 10% of traffic (session-sticky) to a staging distribution. Start from the **Blue/Green Continuous Deployment** preset.
 
 ## Works With
 

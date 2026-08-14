@@ -1,0 +1,17 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningDatastore
+metadata:
+  name: training-data
+spec:
+  workspaceId:
+    value: "<your-machine-learning-workspace-id>"
+  # 1-255 chars, alphanumerics/hyphens/underscores -- what jobs and
+  # data assets reference.
+  name: training_data
+  # The hardened posture: the workspace's identity reads the data --
+  # no key or SAS in the manifest. Grant the identity Storage Blob
+  # Data Reader/Contributor on the container first.
+  serviceDataIdentity: WORKSPACE_SYSTEM_ASSIGNED_IDENTITY
+  blobStorage:
+    storageContainerId:
+      value: "<your-storage-container-id>"

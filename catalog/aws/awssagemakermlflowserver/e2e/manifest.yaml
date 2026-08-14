@@ -1,0 +1,21 @@
+# Canonical AwsSagemakerMlflowServer example (hack/dev manifest and
+# refgen Example source): a Medium server exercising every arm -
+# version pin, auto-registration, and the maintenance window. Literal
+# ARNs stand in for composed references so the offline `tofu plan`
+# renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowServer
+metadata:
+  name: ml-experiments
+  id: ml-experiments
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://my-mlflow/artifacts
+  roleArn:
+    value: arn:aws:iam::123456789012:role/mlflow-server
+  size: Medium
+  mlflowVersion: "3.0"
+  automaticModelRegistration: true
+  weeklyMaintenanceWindowStart: TUE:03:30

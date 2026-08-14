@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerfeaturegroup.v1alpha1;
+
+// AwsSagemakerFeatureGroupStackOutputs captures observable identifiers
+// from a provisioned feature group.
+message AwsSagemakerFeatureGroupStackOutputs {
+  // The feature group name (the AWS identity ingestion and serving
+  // calls use).
+  string feature_group_name = 1;
+
+  // The Amazon Resource Name of the feature group.
+  string feature_group_arn = 2;
+}

@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockcustommodel.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockCustomModelSpec defines the desired configuration for an Amazon
+// Bedrock custom model - a foundation model customized with your training
+// data through a Bedrock model-customization job (fine-tuning, continued
+// pre-training, or distillation). Deploying this component STARTS the
+// customization job; the job runs asynchronously in AWS (minutes to many
+// hours depending on data size and model) and produces the custom model
+// when it completes. Training incurs real cost billed per token processed.
+//
+// The custom model's name is taken from `metadata.name` (1-63 characters).
+//
+// EVERY spec field is create-time-immutable: a customization job cannot be
+// altered once started, so any change destroys the job record and custom
+// model and starts a new job. Job names must be unique per account for all
+// time (AWS never reuses them) - a recreate with the same derived job name
+// fails, so set `job_name` explicitly when re-running a customization (the
+// name-history class).
+//
+// To serve real traffic, a custom model needs Provisioned Throughput
+// (AwsBedrockProvisionedThroughput referencing this model's output ARN) or
+// on-demand custom-model deployment where AWS supports it.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsBedrockCustomModelSpec {
+  // The AWS region where the customization job runs and the custom model
+  // is created. Model customization is supported in a subset of Bedrock
+  // regions (us-east-1 has the widest base-model coverage).
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ARN of the base foundation model to customize (format:
+  // arn:aws:bedrock:<region>::foundation-model/<model-id>). The model must
+  // support the chosen customization type - see the Bedrock console's
+  // "Custom models" page for the eligible list per region.
+  string base_model_arn = 2 [(buf.validate.field).string.pattern = "^arn:aws[a-z-]*:bedrock:[a-z0-9-]+::foundation-model/.+$"];
+
+  // The customization method. FINE_TUNING (the default when omitted)
+  // trains on labeled prompt/completion pairs; CONTINUED_PRE_TRAINING
+  // trains on unlabeled domain text; DISTILLATION transfers capability
+  // from a larger teacher model; REINFORCEMENT_FINE_TUNING trains against
+  // a reward signal. (IMPORTED custom models arrive through import, not
+  // through a customization job, and are out of this kind's scope.)
+  string customization_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "FINE_TUNING",
+        "CONTINUED_PRE_TRAINING",
+        "DISTILLATION",
+        "REINFORCEMENT_FINE_TUNING"
+      ]
+    }
+  ];
+
+  // Name for the customization job (1-63 characters; alphanumeric plus
+  // + - . starting alphanumeric). Defaults to metadata.name. Job names are
+  // unique per account FOREVER - AWS rejects reuse even after the job is
+  // deleted - so a destroy/recreate of this component needs a fresh
+  // job_name.
+  string job_name = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 63
+      pattern: "^[a-zA-Z0-9](-*[a-zA-Z0-9+\\-.])*$"
+    }
+  ];
+
+  // Training hyperparameters as key/value strings - the keys and legal
+  // values are defined per base model in the Bedrock documentation
+  // (typical keys: "epochCount", "batchSize", "learningRate",
+  // "learningRateWarmupSteps"). At least one entry is required by AWS.
+  // Example: {"epochCount": "1", "batchSize": "1", "learningRate": "0.00001"}
+  map<string, string> hyperparameters = 5 [(buf.validate.field).map.min_pairs = 1];
+
+  // ---------------------------------------------------------------------------
+  // IAM and Encryption
+  // ---------------------------------------------------------------------------
+
+  // IAM role Bedrock assumes to run the job. The role must trust
+  // bedrock.amazonaws.com and grant read access to the training/validation
+  // S3 locations and write access to the output location (plus KMS
+  // permissions when the buckets or the model are customer-key encrypted).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 6 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Customer-managed KMS key ARN for encrypting the resulting custom
+  // model. Without it, AWS encrypts with a Bedrock-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef custom_model_kms_key_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Data Locations (S3 URIs)
+  // ---------------------------------------------------------------------------
+
+  // S3 URI of the training dataset (s3://bucket/key). Format requirements
+  // (JSONL with prompt/completion fields for fine-tuning; plain text for
+  // continued pre-training) are per customization type in the Bedrock
+  // docs.
+  string training_data_s3_uri = 8 [(buf.validate.field).string.pattern = "^s3://.+$"];
+
+  // S3 URI (s3://bucket/prefix) where Bedrock writes job outputs
+  // (metrics, logs).
+  string output_data_s3_uri = 9 [(buf.validate.field).string.pattern = "^s3://.+$"];
+
+  // S3 URIs of up to 10 validation datasets - Bedrock reports per-dataset
+  // validation metrics on the finished job.
+  repeated string validation_data_s3_uris = 10 [
+    (buf.validate.field).repeated.max_items = 10,
+    (buf.validate.field).repeated.items.string.pattern = "^s3://.+$"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Networking (optional)
+  // ---------------------------------------------------------------------------
+
+  // Run the job inside your VPC (both members required together) - for
+  // training data reachable only through private networking. Omit to run
+  // with Bedrock's managed networking.
+  AwsBedrockCustomModelVpcConfig vpc_config = 11;
+}
+
+// AwsBedrockCustomModelVpcConfig places the customization job's data
+// access inside a VPC.
+message AwsBedrockCustomModelVpcConfig {
+  // Subnets the job's network interfaces attach to (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef subnet_ids = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSubnet,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.subnet_id"
+  ];
+
+  // Security groups applied to those interfaces (at least one).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).repeated.min_items = 1,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
+  ];
+}

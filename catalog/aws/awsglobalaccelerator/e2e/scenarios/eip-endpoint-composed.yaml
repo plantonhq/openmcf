@@ -4,8 +4,14 @@
 # end. The non-default surface is exercised deliberately: an explicit
 # SOURCE_IP client affinity, the fast 10-second health-check interval (AWS
 # accepts exactly 10 or 30 -- the API rejects anything else at create time),
-# a dedicated health-check port, an explicit endpoint weight, an explicit
-# traffic dial, and a port override. The EIP
+# a dedicated health-check port, an explicit traffic dial, and a port
+# override. The endpoint's weight is DELIBERATELY OMITTED: this is the
+# zero-drain heal's live proof -- both modules must materialize AWS's
+# documented 128 default (DescribeEndpointGroup echoes Weight=128), where the
+# pre-heal modules transmitted the Go zero value and silently drained the
+# endpoint. The explicit-weight path (module forwards a set value verbatim,
+# explicit 0 stays expressible for deliberate draining) is proven by spec
+# tests and the offline plan gate. The EIP
 # endpoint type does not support client IP preservation, so that field is
 # deliberately omitted (the AWS per-type default applies). Arms excluded from
 # the live lane, proven by spec tests + the offline plan gate instead:
@@ -50,7 +56,6 @@ spec:
                   kind: AwsElasticIp
                   name: planton-oss-e2e-awselasticip-prereq
                   fieldPath: status.outputs.allocation_id
-              weight: 100
           portOverrides:
             - listenerPort: 443
               endpointPort: 8443

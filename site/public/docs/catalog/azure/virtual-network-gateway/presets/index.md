@@ -11,7 +11,7 @@ presets:
   - slug: "01-site-to-site-vpn"
     rank: "01"
     title: "Site-to-Site VPN Gateway"
-    excerpt: "This preset creates a route-based VpnGw1 VPN gateway with BGP -- the standard Azure-side anchor for datacenter-to-Azure connectivity. Pair it with an `AzureLocalNetworkGateway` per site and an..."
+    excerpt: "This preset creates a route-based VpnGw1AZ VPN gateway with BGP -- the standard Azure-side anchor for datacenter-to-Azure connectivity. Pair it with an `AzureLocalNetworkGateway` per site and an..."
   - slug: "02-active-active-zone-redundant"
     rank: "02"
     title: "Active-Active Zone-Redundant Gateway"

@@ -7,7 +7,7 @@ spec:
   resourceGroup:
     value: "<your-resource-group-name>"
   name: hub-vpn-gateway
-  sku: VPN_GW_1 # the production entry point; resize within the VpnGw family is in-place
+  sku: VPN_GW_1_AZ # the production entry point (non-AZ VpnGw SKUs are retired); resize within the VpnGw family is in-place
   ipConfigurations:
     - subnetId:
         valueFrom:

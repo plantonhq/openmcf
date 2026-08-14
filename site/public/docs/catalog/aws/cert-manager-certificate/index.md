@@ -87,11 +87,13 @@ These are the most important decisions when configuring an ACM certificate. Expl
 
 **Region** -- ACM certificates are regional. Certificates for CloudFront must be created in `us-east-1`. For ALB, API Gateway, and other regional services, create the certificate in the same region as the service.
 
-**Validation** -- DNS validation (the default) proves ownership with one CNAME per domain and renews automatically as long as the records stay in place. With `route53HostedZoneId` set, the records are managed for you; without it, they are exported as the `domain_validation_records` output for external DNS and the deployment does not wait. EMAIL validation requires manual approval at issuance and every renewal -- prefer DNS.
+**Validation** -- DNS validation (the default) proves ownership with one CNAME per domain and renews automatically as long as the records stay in place. With `route53HostedZoneId` set, the records are managed for you; without it, they are exported as the `domain_validation_records` output for external DNS and the deployment does not wait. EMAIL validation requires manual approval at issuance and every renewal; HTTP validation serves a token from the domain for cases where DNS is untouchable -- prefer DNS.
 
 **Key algorithm** -- Create-time immutable. `RSA_2048` (the default) works with every client; ECDSA curves (`EC_prime256v1` and up) give smaller, faster TLS handshakes when your clients support them.
 
 **Certificate options** -- Certificate Transparency logging defaults to enabled (browsers increasingly require it); disable only to keep internal hostnames out of public logs. Key export lets non-AWS infrastructure serve the certificate, at an extra AWS charge.
+
+**Private-CA early renewal** -- For ACM-PCA certificates, `earlyRenewalDuration` (e.g. `P90D`) starts ACM's managed renewal ahead of expiry while keeping the same ARN. Public certificates renew on ACM's own schedule; imported ones never renew.
 
 ## Outputs and Dependencies
 

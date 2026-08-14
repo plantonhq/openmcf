@@ -1,0 +1,38 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsconfigrule
+spec:
+  # An AWS Config rule under live E2E, two scenarios: a managed rule
+  # (S3_BUCKET_VERSIONING_ENABLED scoped to buckets, DETECTIVE) and a
+  # Guard custom-policy rule -- both under the kind's own fixture
+  # recorder (rules cannot exist in a region without one:
+  # NoAvailableConfigurationRecorderException). Verifies
+  # DescribeConfigRules echoes source, scope, and evaluation modes;
+  # destroy is a real delete.
+  #
+  # The fixture chain deliberately includes an AwsConfigRecorder
+  # instance -- the same regional singleton the sibling kind manages,
+  # so this kind's lanes and awsconfigrecorder's lanes MUST NOT run
+  # concurrently in one region (the queue entry sequences them).
+  #
+  # Deliberately not exercised live:
+  #   - custom_lambda -- needs a Lambda function fixture wired for
+  #     config.amazonaws.com invocation; proven arm-for-arm offline.
+  #     Unblock: an AwsLambda fixture with the invoke permission
+  #     (cheap; fold in when the proof lane wants it).
+  #   - remediation -- SSM document parameters carry account-scoped
+  #     role ARNs a committed scenario cannot compose; proven
+  #     arm-for-arm offline. Unblock: the ${E2E_ENV:} token vocabulary
+  #     (the guardduty KMS fixture precedent) composing the role ARN.
+  #   - organization (managed/custom/custom_policy org rules) -- the
+  #     single-account wall; the provider's own acceptance tests gate
+  #     all four org resources behind an Organizations precheck.
+  #     Unblock: an organization-enabled test account pair.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q39
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 25

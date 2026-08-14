@@ -15,7 +15,7 @@ Deploys an Elastic Container Registry repository — the private Docker/OCI imag
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **ECR Repository** -- a Docker image registry with the specified name, tag mutability setting (and exclusion filters), encryption configuration, and scan-on-push behavior
-- **Lifecycle Policy** -- created only when `lifecycleRules` are configured; each rule selects images by tag state (untagged, tagged by prefix or pattern, or every image) and expires them by keep-last-N count or age in days
+- **Lifecycle Policy** -- created only when `lifecycleRules` are configured; each rule selects images by tag state (untagged, tagged by prefix or pattern, or every image) and either expires them (keep-last-N count, age since push, or days since last pull) or transitions them to the cheaper archive storage class; archived images get their own retention clock (`sinceImageTransitioned`)
 - **Repository Policy** -- created only when `repositoryPolicy` is configured; the resource-based IAM policy for cross-account pulls and service access (e.g. Lambda container images)
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -96,7 +96,7 @@ These are the most important decisions when configuring an ECR repository. Explo
 
 **Encryption type** -- Unset keeps the AWS default (`AES256`, no cost). Set `encryptionType: KMS` with a `kmsKeyId` when you need CloudTrail audit logging of key usage or customer-controlled rotation; `KMS_DSSE` adds a second independent envelope layer for DoD CC SRG-class requirements. Encryption is a create-time choice — changing it replaces the repository, and images are not migrated.
 
-**Lifecycle rules** -- Structured `lifecycleRules[]` evaluated daily by ascending priority; an image is expired by the FIRST rule that selects it. The starter pair: expire untagged images by age, and keep the newest N per release prefix. At most one `tagStatus: any` rule, and it must carry the highest priority.
+**Lifecycle rules** -- Structured `lifecycleRules[]` evaluated daily by ascending priority; an image is acted on by the FIRST rule that selects it. The starter pair: expire untagged images by age, and keep the newest N per release prefix. The cost-tiering pattern: `actionType: transition` + `targetStorageClass: archive` moves images nobody pulls to the cheaper archive tier (`sinceImagePulled`), and a `storageClass: archive` + `sinceImageTransitioned` rule expires them after their time in archive. At most one `tagStatus: any` rule per storage-class tier.
 
 **Repository policy** -- A standard IAM policy document for access beyond this account: cross-account pulls (grant `ecr:BatchGetImage` / `ecr:GetDownloadUrlForLayer`) and AWS services such as Lambda pulling container images. Leave unset for same-account access.
 

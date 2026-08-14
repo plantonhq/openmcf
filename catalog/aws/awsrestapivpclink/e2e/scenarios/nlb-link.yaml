@@ -1,0 +1,27 @@
+# REST API VPC link fronting the registry-declared AwsNlb prerequisite
+# (NLB's minimal scenario: VPC + two-AZ subnets + the balancer).
+# Creating the link is free; standard NLB charges apply to the balancer
+# it fronts. Provisioning waits until AVAILABLE (typically several
+# minutes).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiVpcLink
+metadata:
+  name: planton-oss-e2e-awsrestvl
+  id: planton-oss-e2e-awsrestvl
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapivpclink
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E REST API VPC link
+  targetArn:
+    valueFrom:
+      kind: AwsNlb
+      name: planton-oss-e2e-awsnlb-smoke
+      fieldPath: status.outputs.load_balancer_arn

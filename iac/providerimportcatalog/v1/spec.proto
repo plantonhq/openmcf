@@ -80,4 +80,19 @@ message ResourceTypeImportId {
   // therefore structurally invisible to scans -- consumers must treat their
   // absence as "not discoverable", never as an error.
   string cloud_control_type_name = 7;
+  // Set when the resource type's upstream provider ships NO importer at the
+  // pinned version -- the type structurally cannot be imported, so an
+  // id_format cannot honestly exist for it (authoring one anyway would only
+  // fail at import time). The value records WHY, with the pinned-version
+  // citation (e.g. "no Importer on the upstream resource at v6.58.0; the
+  // service call is an idempotent upsert"). Mutually exclusive with
+  // id_format -- the offline conformance guard enforces exactly one of the
+  // two. The live round-trip skips these addresses at import and instead
+  // proves the ADOPTER'S contract for them: the plan over the re-imported
+  // state proposes re-creating the resource, and the reconcile-apply
+  // executes it -- so declare this only for types whose create path
+  // CONVERGES on an existing cloud resource (an upsert-style Put), which
+  // the round-trip lane verifies live. A type whose create would conflict
+  // with its own survivor needs a different treatment, not this field.
+  string not_importable_upstream_reason = 8;
 }

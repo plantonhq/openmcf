@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockprompt.v1alpha1;
+
+// AwsBedrockPromptStackOutputs captures observable identifiers from a
+// provisioned Bedrock prompt. These outputs are used by downstream
+// resources (flows) to wire dependencies via StringValueOrRef.
+message AwsBedrockPromptStackOutputs {
+  // The unique prompt identifier (e.g. "1A2BC3DEFG").
+  string prompt_id = 1;
+
+  // The Amazon Resource Name of the prompt - the value a flow's prompt
+  // node consumes.
+  string prompt_arn = 2;
+
+  // The prompt's mutable working version - always the literal "DRAFT".
+  string draft_version = 3;
+}

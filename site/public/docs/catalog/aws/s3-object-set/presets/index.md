@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Encrypted Compliance Drop"
     excerpt: "This preset writes an audit artifact under WORM (write-once-read-many) retention: customer-managed KMS encryption, a SHA256 upload checksum, and COMPLIANCE-mode Object Lock that nobody — including..."
+  - slug: "04-promote-golden-artifacts"
+    rank: "04"
+    title: "Promote Golden Artifacts"
+    excerpt: "This preset copies released build artifacts from a golden artifacts bucket into an environment's bucket, server-side — the bytes move inside S3 and never through the deploy host, so artifact size is..."
 ---
 
 # S3 Object Set Presets

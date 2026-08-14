@@ -1,0 +1,28 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureVpnGateway
+metadata:
+  name: my-vpn-gateway
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-vpn-gateway
+  virtualHubId:
+    value: "<your-virtual-hub-arm-id>"
+  scaleUnit: 2
+  bgpRouteTranslationForNatEnabled: true
+  natRules:
+    - name: branch-a-overlap
+      mode: INGRESS_SNAT
+      type: STATIC_NAT
+      externalMappings:
+        - addressSpace: "100.64.10.0/24"
+      internalMappings:
+        - addressSpace: "192.168.10.0/24"
+    - name: branch-b-overlap
+      mode: INGRESS_SNAT
+      type: STATIC_NAT
+      externalMappings:
+        - addressSpace: "100.64.20.0/24"
+      internalMappings:
+        - addressSpace: "192.168.10.0/24"

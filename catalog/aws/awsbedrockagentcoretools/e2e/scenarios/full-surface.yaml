@@ -1,0 +1,53 @@
+# AwsBedrockAgentCoreTools full-surface scenario: a PUBLIC browser with
+# traffic signing, a saved browser profile, and PUBLIC + SANDBOX code
+# interpreters with the shared AgentCore role fixture (composed via the
+# e2e-prerequisites annotation -- the kind itself is dependency-free).
+# Every tool is create/delete-only at the provider (no update), so the
+# lanes prove clean recreate semantics implicitly.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTools
+metadata:
+  name: planton-oss-e2e-awsactl-full
+  id: planton-oss-e2e-awsactl-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoretools
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  browsers:
+    # Browser names forbid hyphens (letter first, then letters/digits/
+    # underscore) -- CreateBrowser rejects them server-side.
+    - name: planton_e2e_browser
+      description: Planton E2E public browser
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-agentcore-role
+          fieldPath: status.outputs.role_arn
+      network:
+        mode: PUBLIC
+      signingEnabled: true
+  browserProfiles:
+    - name: planton_e2e_profile
+      description: Planton E2E saved browser state
+  codeInterpreters:
+    - name: planton_e2e_sandbox
+      description: No-network sandbox
+      network:
+        mode: SANDBOX
+    - name: planton_e2e_public
+      description: Public-egress interpreter
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: planton-oss-e2e-agentcore-role
+          fieldPath: status.outputs.role_arn
+      network:
+        mode: PUBLIC

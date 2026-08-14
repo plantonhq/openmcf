@@ -8,19 +8,6 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
-**AzureDataFactorySpec** defines an Azure Data Factory -- the
-factory is the workspace every other Data Factory resource lives
-inside: pipelines (AzureDataFactoryPipeline), data flows, linked
-services, datasets, triggers, and integration runtimes are all
-created against a factory's ARM ID.
-
-The factory itself carries the workspace-level posture: its managed
-identity, an optional git repository binding (GitHub or Azure
-DevOps -- at most one), workspace-wide global parameters,
-customer-managed-key encryption, named credentials its linked
-services authenticate with, a managed virtual network, and managed
-private endpoints for private egress from that network.
-
 ## Example
 
 ```yaml
@@ -159,12 +146,6 @@ spec:
 
 `string | valueFrom` · required
 
-The Azure Resource Group the factory lives in. Can be a literal
-string or a reference to an AzureResourceGroup output.
-
-**ForceNew**: changing this destroys and recreates the factory
-(and everything inside it).
-
 - references: AzureResourceGroup (`status.outputs.resource_group_name`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureResourceGroup, name: <that resource's name>, fieldPath: status.outputs.resource_group_name}} -- a bare string does not parse
@@ -173,15 +154,6 @@ string or a reference to an AzureResourceGroup output.
 
 `string` · required
 
-The factory's name -- 3-63 characters; letters, numbers, and
-hyphens; must start and end with a letter or number (no
-consecutive-hyphen segments beyond single separators). Data
-Factory names are GLOBALLY unique across Azure (the name becomes
-part of the factory's URL), so prefix it with your org -- a taken
-name fails at deploy time.
-
-**ForceNew**: changing this destroys and recreates the factory.
-
 - rule: Factory names must be 3-63 characters of letters, numbers, and hyphens, starting and ending with a letter or number
 - rule: {"required":true}
 
@@ -189,20 +161,11 @@ name fails at deploy time.
 
 `string` · required
 
-The Azure region the factory is created in, e.g. "eastus".
-
-**ForceNew**: changing this destroys and recreates the factory.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.identity
 
 `AzureDataFactoryIdentity`
-
-The factory's managed identity -- required for customer-managed-key
-encryption (user-assigned) and for linked services that
-authenticate with the factory's own identity. Omit when nothing
-requires one.
 
 - rule: identity_ids is required for USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED
 
@@ -210,28 +173,18 @@ requires one.
 
 `enum` · required
 
-Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
-with the factory; USER_ASSIGNED brings identities you manage
-(grantable on data stores BEFORE the factory exists);
-SYSTEM_AND_USER_ASSIGNED carries both.
-
 - rule: {"required":true}
 
 Allowed values (use exactly as shown):
 
-- `azure_data_factory_identity_type_unspecified` -- Not specified: rejected -- an identity block requires a flavor.
-- `SYSTEM_ASSIGNED` -- Azure-managed identity created with the factory. Wire value: "SystemAssigned".
-- `USER_ASSIGNED` -- Identities you create and manage (AzureUserAssignedIdentity). Wire value: "UserAssigned".
-- `SYSTEM_AND_USER_ASSIGNED` -- Both at once. Wire value: "SystemAssigned, UserAssigned".
+- `azure_data_factory_identity_type_unspecified`
+- `SYSTEM_ASSIGNED`
+- `USER_ASSIGNED`
+- `SYSTEM_AND_USER_ASSIGNED`
 
 ### spec.identity.identityIds
 
 `[]string | valueFrom`
-
-For USER_ASSIGNED and SYSTEM_AND_USER_ASSIGNED: the user-assigned
-identities attached to the factory, by ARM ID. Reference
-AzureUserAssignedIdentity resources so data-store grants can be
-composed before the factory is created.
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -240,19 +193,9 @@ composed before the factory is created.
 
 `AzureDataFactoryGithubConfiguration`
 
-Bind the factory to a GitHub repository for git-integrated
-authoring. At most one of github_configuration and
-vsts_configuration may be set. The binding is applied through a
-separate configure-repo call after the factory exists, and
-REMOVING the block does not detach the repository -- detach it in
-the Data Factory Studio or leave the block in place.
-
 ### spec.githubConfiguration.accountName
 
 `string` · required
-
-The GitHub account or organization that owns the repository, e.g.
-"acme-corp".
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -260,24 +203,15 @@ The GitHub account or organization that owns the repository, e.g.
 
 `string` · required
 
-The collaboration branch the factory authors against, e.g.
-"main".
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.githubConfiguration.gitUrl
 
 `string`
 
-The GitHub service URL -- only for GitHub Enterprise Server, e.g.
-"https://github.mycompany.com". Omit for github.com.
-
 ### spec.githubConfiguration.repositoryName
 
 `string` · required
-
-The repository's name (without the account prefix), e.g.
-"data-pipelines".
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -285,19 +219,11 @@ The repository's name (without the account prefix), e.g.
 
 `string` · required
 
-The folder inside the repository the factory's resources are
-stored under, e.g. "/" for the root.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.githubConfiguration.publishingEnabled
 
 `bool` · optional (explicit presence)
-
-Whether "Publish" from the factory's collaboration branch is
-enabled. Default: true (the provider's default) -- the platform
-sends the value explicitly (Azure stores the inverse
-"disablePublish" flag; both engines translate).
 
 - default: `true`
 
@@ -305,16 +231,9 @@ sends the value explicitly (Azure stores the inverse
 
 `AzureDataFactoryVstsConfiguration`
 
-Bind the factory to an Azure DevOps (VSTS) repository for
-git-integrated authoring. At most one of github_configuration and
-vsts_configuration may be set. The same detach caveat as
-github_configuration applies.
-
 ### spec.vstsConfiguration.accountName
 
 `string` · required
-
-The Azure DevOps organization name, e.g. "acme-corp".
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -322,16 +241,11 @@ The Azure DevOps organization name, e.g. "acme-corp".
 
 `string` · required
 
-The collaboration branch the factory authors against, e.g.
-"main".
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.vstsConfiguration.projectName
 
 `string` · required
-
-The Azure DevOps project the repository lives in.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -339,16 +253,11 @@ The Azure DevOps project the repository lives in.
 
 `string` · required
 
-The repository's name.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.vstsConfiguration.rootFolder
 
 `string` · required
-
-The folder inside the repository the factory's resources are
-stored under, e.g. "/" for the root.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -356,18 +265,11 @@ stored under, e.g. "/" for the root.
 
 `string` · required
 
-The Microsoft Entra tenant the Azure DevOps organization belongs
-to, as a UUID.
-
 - rule: {"required":true,"string":{"uuid":true}}
 
 ### spec.vstsConfiguration.publishingEnabled
 
 `bool` · optional (explicit presence)
-
-Whether "Publish" from the factory's collaboration branch is
-enabled. Default: true (the provider's default) -- the platform
-sends the value explicitly.
 
 - default: `true`
 
@@ -375,16 +277,9 @@ sends the value explicitly.
 
 `[]AzureDataFactoryGlobalParameter`
 
-Workspace-wide parameters every pipeline in the factory can
-reference. Names are the parameters' identity, so they must be
-unique.
-
 ### spec.globalParameters[].name
 
 `string` · required
-
-The parameter's name -- its identity across the factory, so names
-must be unique.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -392,18 +287,11 @@ must be unique.
 
 `string` · required
 
-The parameter's type: "Array", "Bool", "Float", "Int", "Object",
-or "String" (Azure's own vocabulary).
-
 - rule: {"required":true,"string":{"in":["Array","Bool","Float","Int","Object","String"]}}
 
 ### spec.globalParameters[].value
 
 `string` · required
-
-The parameter's value, as a string. For "Array" and "Object"
-parameters pass the JSON text (e.g. "[1,2]" or "{\"a\":1}") --
-Azure stores the typed value; the string is how it travels.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -411,23 +299,9 @@ Azure stores the typed value; the string is how it travels.
 
 `bool` · optional (explicit presence)
 
-Whether the factory gets a managed virtual network -- Azure-managed
-private networking its integration runtimes execute inside, and
-the prerequisite for managed_private_endpoints. Enabling it on an
-existing factory is an in-place update.
-
-**ForceNew (one direction)**: DISABLING it after it is enabled
-replaces the factory -- decide the posture before shipping
-workloads.
-
 ### spec.publicNetworkEnabled
 
 `bool` · optional (explicit presence)
-
-Whether the factory's endpoints accept traffic from the public
-internet. Set false to restrict access to private endpoints only.
-Default: true (Azure's default) -- the platform sends the value
-explicitly.
 
 - default: `true`
 
@@ -435,35 +309,15 @@ explicitly.
 
 `string | valueFrom`
 
-Connect the factory to a Microsoft Purview account for lineage
-and catalog integration, by the Purview account's ARM ID. Omit
-when Purview is not in use. (The catalog has no Purview kind yet,
-so pass the ID as a literal or wire an explicit reference.)
-
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.customerManagedKey
 
 `AzureDataFactoryCustomerManagedKey`
 
-Customer-managed-key encryption at rest: a Key Vault key plus the
-user-assigned identity Azure uses to unwrap it. Requires the
-identity block to carry a user-assigned flavor, and the unwrap
-identity needs get/unwrap/wrap permissions on the vault BEFORE
-create -- Azure validates both at deploy time. Once enabled, the
-key cannot be removed without recreating the factory (Azure has
-no decrypt path).
-
 ### spec.customerManagedKey.keyVaultKeyId
 
 `string | valueFrom` · required
-
-The Key Vault key that encrypts the factory's data. Both
-versionless and versioned key identifiers are accepted
-(https://{vault}.vault.azure.net/keys/{name}[/{version}]) --
-prefer versionless so rotation propagates automatically.
-Reference an AzureKeyVaultKey output or pass a literal
-identifier.
 
 - references: AzureKeyVaultKey (`status.outputs.versionless_id`)
 - rule: {"required":true}
@@ -473,11 +327,6 @@ identifier.
 
 `string | valueFrom` · required
 
-The user-assigned identity Azure authenticates as when unwrapping
-the key. It must be attached to the factory (the identity block's
-identity_ids) and hold get/unwrap/wrap permissions on the vault
-before the factory is created.
-
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -486,31 +335,15 @@ before the factory is created.
 
 `[]AzureDataFactoryUserManagedIdentityCredential`
 
-Named credentials backed by user-assigned managed identities --
-the factory's linked services reference these BY NAME to
-authenticate as the identity. Credential names share one
-namespace with service_principal_credentials, so they must be
-unique across both lists.
-
 ### spec.userManagedIdentityCredentials[].name
 
 `string` · required
-
-The credential's name -- its identity under the factory (shared
-namespace with service-principal credentials), so names must be
-unique. Renaming replaces the credential.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.userManagedIdentityCredentials[].identityId
 
 `string | valueFrom` · required
-
-The user-assigned identity the credential wraps, by ARM ID.
-Reference an AzureUserAssignedIdentity output or pass a literal
-ID.
-
-**ForceNew**: changing the identity replaces the credential.
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: {"required":true}
@@ -520,31 +353,17 @@ ID.
 
 `string`
 
-A human-readable description of what the credential is for.
-
 ### spec.userManagedIdentityCredentials[].annotations
 
 `[]string`
-
-Free-form annotation strings stored on the credential.
 
 ### spec.servicePrincipalCredentials
 
 `[]AzureDataFactoryServicePrincipalCredential`
 
-Named credentials backed by a service principal whose key lives
-in Key Vault (referenced through a Key Vault linked service --
-the secret itself never enters this spec). Credential names share
-one namespace with user_managed_identity_credentials, so they
-must be unique across both lists.
-
 ### spec.servicePrincipalCredentials[].name
 
 `string` · required
-
-The credential's name -- its identity under the factory (shared
-namespace with user-managed-identity credentials), so names must
-be unique. Renaming replaces the credential.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -552,16 +371,11 @@ be unique. Renaming replaces the credential.
 
 `string` · required
 
-The Microsoft Entra tenant the service principal belongs to, as a
-UUID.
-
 - rule: {"required":true,"string":{"uuid":true}}
 
 ### spec.servicePrincipalCredentials[].servicePrincipalId
 
 `string` · required
-
-The service principal's application (client) ID, as a UUID.
 
 - rule: {"required":true,"string":{"uuid":true}}
 
@@ -569,16 +383,9 @@ The service principal's application (client) ID, as a UUID.
 
 `AzureDataFactoryServicePrincipalKey`
 
-Where the service principal's key lives: a secret read through a
-Key Vault linked service defined in the factory. Omit for
-credentials that only carry the principal's identity.
-
 ### spec.servicePrincipalCredentials[].servicePrincipalKey.linkedServiceName
 
 `string` · required
-
-The name of the factory's Key Vault LINKED SERVICE the secret is
-read through (not the vault's own name).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -586,53 +393,29 @@ read through (not the vault's own name).
 
 `string` · required
 
-The secret's name inside the vault.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.servicePrincipalCredentials[].servicePrincipalKey.secretVersion
 
 `string`
 
-The secret's version. Omit to follow the latest version.
-
 ### spec.servicePrincipalCredentials[].description
 
 `string`
-
-A human-readable description of what the credential is for.
 
 ### spec.servicePrincipalCredentials[].annotations
 
 `[]string`
 
-Free-form annotation strings stored on the credential.
-
 ### spec.managedPrivateEndpoints
 
 `[]AzureDataFactoryManagedPrivateEndpoint`
-
-Managed private endpoints -- private egress from the factory's
-managed virtual network to data stores (a storage account, a SQL
-server, a Private Link Service). Requires
-managed_virtual_network_enabled. The TARGET side must approve
-each endpoint's connection before traffic flows; approval happens
-outside this resource.
-
-**ForceNew (each entry)**: an endpoint cannot be changed after
-create -- changing any field replaces that endpoint (siblings are
-untouched; entries are keyed by name).
 
 - rule: Exactly one of subresource_name (regular ARM targets) and fqdns (Private Link Service targets) must be set
 
 ### spec.managedPrivateEndpoints[].name
 
 `string` · required
-
-The endpoint's name -- its identity under the factory, so names
-must be unique; 2-80 characters of letters, numbers, dots,
-hyphens, and underscores, starting with a letter or number and
-ending with a letter, number, or underscore.
 
 - rule: Endpoint names must be 2-80 characters of letters, numbers, dots, hyphens, and underscores, starting with a letter or number and ending with a letter, number, or underscore
 - rule: {"required":true}
@@ -641,10 +424,6 @@ ending with a letter, number, or underscore.
 
 `string | valueFrom` · required
 
-The resource the endpoint connects to, by ARM ID -- a storage
-account, a SQL server, or a Private Link Service. Pass a literal
-ID or wire a reference to the target kind's own ID output.
-
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -652,31 +431,17 @@ ID or wire a reference to the target kind's own ID output.
 
 `string`
 
-For regular ARM targets: which sub-resource the endpoint binds,
-e.g. "blob" for a storage account or "sqlServer" for a SQL
-server. Required for regular targets and FORBIDDEN when the
-target is a Private Link Service (set fqdns instead) -- exactly
-one of the two arms is set.
-
 - rule: subresource_name must be 3-63 characters of letters, numbers, dots, hyphens, and underscores, starting and ending with a letter or number
 
 ### spec.managedPrivateEndpoints[].fqdns
 
 `[]string`
 
-For Private Link Service targets: the fully-qualified domain
-names the endpoint serves. Required for Private Link Service
-targets and FORBIDDEN for regular ARM targets (set
-subresource_name instead) -- exactly one of the two arms is set.
-
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.tags
 
 `map<string, string>`
-
-Tags to apply to the factory, merged over the Planton-derived
-metadata tags (user values win on key conflicts).
 
 ## Validation Rules
 
@@ -693,11 +458,11 @@ Reference an output from another manifest as `valueFrom: {kind: AzureDataFactory
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.data_factory_id` | `string` | The factory's Azure Resource Manager ID -- the target an AzureDataFactoryPipeline's data_factory_id references. |
-| `status.outputs.data_factory_name` | `string` | The factory's name. |
-| `status.outputs.identity_principal_id` | `string` | The principal ID of the factory's system-assigned identity (empty when no system-assigned identity is configured) -- grant this on data stores the factory reads and writes with its own identity. |
-| `status.outputs.credential_ids` | `map<string, string>` | The ARM IDs of the factory's named credentials, keyed by credential name ({factory_id}/credentials/{name}) -- covers both credential flavors. |
-| `status.outputs.managed_private_endpoint_ids` | `map<string, string>` | The ARM IDs of the factory's managed private endpoints, keyed by endpoint name ({factory_id}/managedVirtualNetworks/default/managedPrivateEndpoints/{name}). |
+| `status.outputs.data_factory_id` | `string` |  |
+| `status.outputs.data_factory_name` | `string` |  |
+| `status.outputs.identity_principal_id` | `string` |  |
+| `status.outputs.credential_ids` | `map<string, string>` |  |
+| `status.outputs.managed_private_endpoint_ids` | `map<string, string>` |  |
 
 ## References
 

@@ -1,0 +1,42 @@
+# AwsSagemakerNotebookInstance full-surface scenario: the folded
+# lifecycle configuration (both scripts), a grown volume, IMDSv2-only,
+# root lockdown, the AL2023 platform, and a public default code
+# repository - everything exercisable without VPC wiring. Deliberately
+# not live: the VPC/KMS arms (direct_internet_access Disabled needs a
+# NAT path for the notebook to reach SageMaker APIs - unblock: a
+# NAT-wired subnet fixture) - offline-proven via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerNotebookInstance
+metadata:
+  name: planton-oss-e2e-awssgmnb-full
+  id: planton-oss-e2e-awssgmnb-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakernotebookinstance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  instanceType: ml.t3.medium
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  volumeSizeGb: 20
+  rootAccess: Disabled
+  platformIdentifier: notebook-al2023-v1
+  defaultCodeRepository: https://github.com/aws/amazon-sagemaker-examples.git
+  imdsMinimumVersion: "2"
+  lifecycleConfig:
+    onCreate: |
+      #!/bin/bash
+      echo "created at $(date)" > /home/ec2-user/SageMaker/.created
+    onStart: |
+      #!/bin/bash
+      echo "started at $(date)" >> /home/ec2-user/SageMaker/.starts

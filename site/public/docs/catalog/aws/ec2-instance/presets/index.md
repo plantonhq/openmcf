@@ -20,6 +20,14 @@ presets:
     rank: "03"
     title: "Spot Worker Instance"
     excerpt: "This preset runs a standalone instance on Spot capacity -- typically 60-90% cheaper than On-Demand -- configured as a persistent request that stops (rather than terminates) on interruption and..."
+  - slug: "04-static-eni-identity"
+    rank: "04"
+    title: "Static Network Identity (Pre-Provisioned ENI)"
+    excerpt: "This preset attaches a pre-provisioned network interface (ENI) as the instance's primary interface instead of creating one. The ENI -- not the instance -- owns the network identity: the subnet, the..."
+  - slug: "05-capacity-block-ml"
+    rank: "05"
+    title: "Capacity Block ML Training Node"
+    excerpt: "This preset launches a GPU instance into a pre-purchased EC2 Capacity Block -- reserved GPU capacity for a defined time window at a committed price, the way AWS sells scarce accelerators (P5/P4,..."
 ---
 
 # EC2 Instance Presets

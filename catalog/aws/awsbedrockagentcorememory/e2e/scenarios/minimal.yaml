@@ -1,0 +1,21 @@
+# AwsBedrockAgentCoreMemory minimal scenario: the smallest useful memory
+# -- a 7-day short-term window, no strategies. Proves the
+# create -> ACTIVE lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreMemory
+metadata:
+  name: planton-oss-e2e-awsacmem-min
+  id: planton-oss-e2e-awsacmem-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcorememory
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  memoryName: planton_e2e_acmem_min
+  eventExpiryDays: 7

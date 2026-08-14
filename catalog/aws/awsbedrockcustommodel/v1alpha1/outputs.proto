@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockcustommodel.v1alpha1;
+
+// AwsBedrockCustomModelStackOutputs captures observable identifiers from a
+// Bedrock model-customization deployment. These outputs are used by
+// downstream resources (provisioned throughput) to wire dependencies via
+// StringValueOrRef.
+message AwsBedrockCustomModelStackOutputs {
+  // ARN of the resulting custom model - the value
+  // AwsBedrockProvisionedThroughput references to buy serving capacity
+  // for this model.
+  string custom_model_arn = 1;
+
+  // The custom model's name. Matches metadata.name.
+  string custom_model_name = 2;
+
+  // ARN of the customization job that produced (or is producing) the
+  // model - the stable identifier the job record is tracked by.
+  string job_arn = 3;
+
+  // Status of the customization job at the end of the deploy:
+  // InProgress, Completed, Failed, Stopping, or Stopped. Training
+  // continues asynchronously after the deploy returns - poll the job (or
+  // re-read this component) for completion.
+  string job_status = 4;
+}

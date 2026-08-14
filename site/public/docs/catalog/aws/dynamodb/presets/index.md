@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Global Table (Multi-Region Active-Active)"
     excerpt: "This preset creates a DynamoDB Global Tables v2 deployment: the table in its home region plus one full read/write replica in a second region. Applications write to whichever region is closest and..."
+  - slug: "04-provisioned-autoscaled"
+    rank: "04"
+    title: "Provisioned Table with Auto Scaling"
+    excerpt: "This preset creates a provisioned DynamoDB table whose read and write capacity is managed by Application Auto Scaling: target tracking holds utilization near 70%, and two scheduled adjustments raise..."
 ---
 
 # DynamoDB Presets

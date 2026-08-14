@@ -24,6 +24,10 @@ presets:
     rank: "04"
     title: "Preset: Error-Count Metric Filter"
     excerpt: "**Use case:** Alarm on errors that only exist in application logs."
+  - slug: "05-transformed-ingest-pipeline"
+    rank: "05"
+    title: "Preset: Transformed Ingest Pipeline"
+    excerpt: "**Use case:** Normalize messy service logs at ingestion so queries, filters, and alarms all see one clean shape."
 ---
 
 # CloudWatch Log Group Presets

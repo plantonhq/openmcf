@@ -1,0 +1,26 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataProtectionBackupPolicy
+metadata:
+  name: daily-disk-policy
+spec:
+  vaultId:
+    valueFrom:
+      kind: AzureDataProtectionBackupVault
+      name: "<your-backup-vault>"
+      fieldPath: status.outputs.backup_vault_id
+  # 3-150 chars, letters/digits/hyphens, unique on the vault.
+  name: daily-disk-policy
+  # The variant block IS the datasource type -- set exactly one.
+  disk:
+    # Daily at 02:00 UTC, anchored by the interval's date-time part.
+    backupRepeatingTimeIntervals:
+      - R/2024-01-01T02:00:00+00:00/P1D
+    # Every backup kept 7 days unless a named rule keeps it longer.
+    defaultRetentionDuration: P7D
+    # The first backup of each week kept for 90 days.
+    retentionRules:
+      - name: weekly
+        duration: P90D
+        criteria:
+          absoluteCriteria: FirstOfWeek
+        priority: 25

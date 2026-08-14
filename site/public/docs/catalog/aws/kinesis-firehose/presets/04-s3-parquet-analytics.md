@@ -25,7 +25,9 @@ Extended S3 destination with Parquet format conversion for data lake analytics. 
 ## Key Configuration
 
 - **Kinesis stream source** — `valueFrom` references an AwsKinesisStream; Firehose consumes with automatic checkpointing
-- **Data format conversion** — OPENX_JSON → PARQUET with SNAPPY compression
+- **Data format conversion** — the `openXJson` deserializer arm reads the JSON, the `parquet` serializer arm writes columnar output; exactly one arm on each side selects the format
+- **Deserializer tuning** — `columnToJsonKeyMappings` reads the JSON key `timestamp` into the Glue column `ts` (avoiding the Hive reserved word), and dotted JSON keys convert to underscores so they land in valid Glue columns
+- **Parquet tuning** — GZIP compression (harder than the SNAPPY default; right when storage/scan cost outweighs write throughput), 128 MiB row groups, dictionary encoding for low-cardinality columns, and writer version V2 (confirm downstream reader support)
 - **Glue catalog schema** — `analytics_db.events` table defines the Parquet schema
 - **Metadata extraction + dynamic partitioning** — a JQ processor extracts `event_type` from each record; the S3 prefix references it as `!{partitionKeyFromQuery:event_type}` so data lands in query-prunable partitions
 - **File extension** — `.parquet` for delivered objects

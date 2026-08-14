@@ -1095,6 +1095,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBedrockKnowledgeBase | `spec.storage.opensearchManaged.domainArn` | `status.outputs.domain_arn` |
 | AwsKinesisFirehose | `spec.opensearch.domainArn` | `status.outputs.domain_arn` |
 
 ## See Also

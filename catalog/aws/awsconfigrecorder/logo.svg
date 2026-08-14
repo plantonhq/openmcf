@@ -1,0 +1,11 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="80" height="80" fill="#E7157B"/>
+<g fill="#FFFFFF">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M40 22c-9.94 0-18 8.06-18 18s8.06 18 18 18 18-8.06 18-18-8.06-18-18-18zm0 4c7.73 0 14 6.27 14 14s-6.27 14-14 14-14-6.27-14-14 6.27-14 14-14z"/>
+<circle cx="40" cy="40" r="5"/>
+<rect x="38.5" y="14" width="3" height="8"/>
+<rect x="38.5" y="58" width="3" height="8"/>
+<rect x="14" y="38.5" width="8" height="3"/>
+<rect x="58" y="38.5" width="8" height="3"/>
+</g>
+</svg>

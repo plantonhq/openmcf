@@ -1,0 +1,20 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMachineLearningOnlineEndpoint
+metadata:
+  name: internal-scoring
+spec:
+  workspaceId:
+    value: "<your-machine-learning-workspace-id>"
+  name: internal-scoring
+  region: eastus
+  # Microsoft Entra tokens -- the keyless posture: no scoring secret
+  # exists anywhere; callers authenticate with their own identity.
+  authMode: AADToken
+  identity:
+    type: SYSTEM_ASSIGNED
+  # The scoring address answers only through the workspace's private
+  # endpoints -- pair with a workspace behind Private Link.
+  publicNetworkAccessEnabled: false
+  traffic:
+    blue: 100
+  description: Internal keyless scoring endpoint, private access only

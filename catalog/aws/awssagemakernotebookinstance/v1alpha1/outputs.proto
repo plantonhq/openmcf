@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakernotebookinstance.v1alpha1;
+
+// AwsSagemakerNotebookInstanceStackOutputs captures observable
+// identifiers from a provisioned notebook instance.
+message AwsSagemakerNotebookInstanceStackOutputs {
+  // The notebook instance name (the AWS identity).
+  string notebook_instance_name = 1;
+
+  // The Amazon Resource Name of the notebook instance.
+  string notebook_instance_arn = 2;
+
+  // URL to open the Jupyter notebook.
+  string url = 3;
+
+  // The ENI SageMaker created in your subnet (set only for VPC
+  // notebooks).
+  string network_interface_id = 4;
+
+  // The folded lifecycle configuration's name (empty when
+  // spec.lifecycle_config is not set).
+  string lifecycle_config_name = 5;
+}

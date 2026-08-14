@@ -1,0 +1,1164 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsrestapigateway.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsRestApiGatewaySpec defines the desired configuration for an AWS
+// API Gateway REST API (API Gateway v1).
+//
+// REST APIs are API Gateway's full-featured protocol surface: request/
+// response transformation with mapping templates, request validation
+// against JSON Schema models, API keys and usage plans, per-method
+// caching and throttling, WAF integration, canary-capable stages, EDGE/
+// REGIONAL/PRIVATE endpoints, and gateway-level response customization.
+// (HTTP APIs - API Gateway v2 - are the leaner, cheaper alternative and
+// are the AwsHttpApiGateway component.)
+//
+// This component bundles the API, its resource/method tree, a single
+// stage with an explicit deployment, and the API-scoped satellites
+// (authorizers, models, request validators, gateway responses, the
+// resource policy, documentation, and an optional generated client
+// certificate) into one declarative resource.
+//
+// Key design choices:
+// - The API definition is EXACTLY ONE of `routes` (typed routes with
+//   inline integrations; the modules derive the API Gateway resource
+//   tree from the paths) or `openapi` (an OpenAPI document AWS imports).
+// - REST APIs deploy by EXPLICIT snapshot, not auto-deploy: the modules
+//   create one deployment whose trigger hashes the full API definition,
+//   so every spec change redeploys automatically - the declarative
+//   behavior a Planton component owes its users.
+// - A single stage, since Planton resources are already
+//   environment-scoped. Canary traffic shifting is a deploy-workflow
+//   surface (it needs two live deployments) and is not modeled.
+// - Authorizers, models, and validators are named and referenced by
+//   routes for clean separation.
+// - Custom domains are the AwsRestApiDomain component (a domain outlives
+//   any one API and maps many APIs); VPC links are the AwsRestApiVpcLink
+//   component (one link is shared by many APIs); usage plans and API
+//   keys are the AwsRestApiUsagePlan component (a plan spans APIs and
+//   stages).
+// - The account-level CloudWatch-logging role is a region singleton and
+//   deliberately not modeled here - stage access logs (`stage.access_log`)
+//   need no account role, while method-level execution logging
+//   (`method_settings.logging_level`) requires the account's CloudWatch
+//   role to be configured once per region.
+//
+// Credentials, region, and deployment workflow live outside this spec
+// in stack inputs.
+message AwsRestApiGatewaySpec {
+  // The AWS region where the API will be created.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ---------------------------------------------------------------------------
+  // API configuration
+  // ---------------------------------------------------------------------------
+
+  // Human-readable description of the API.
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // Where API Gateway reads API keys from on requests to methods with
+  // api_key_required: the X-Api-Key HEADER (default) or the identity an
+  // AUTHORIZER returns.
+  string api_key_source = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "HEADER",
+        "AUTHORIZER"
+      ]
+    },
+    (dev.planton.shared.options.sensitive_exempt_reason) = "HEADER vs AUTHORIZER enum for where API Gateway reads the key, not the key itself"
+  ];
+
+  // Media types treated as binary (e.g. "image/png",
+  // "application/octet-stream", or the "*/*" wildcard). Payloads with
+  // other content types are handled as UTF-8 text.
+  repeated string binary_media_types = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Compress responses at or above this size in bytes (0-10485760).
+  // 0 compresses everything. Omitted = compression disabled on create,
+  // UNCHANGED on update (the provider attribute is Computed, so a null
+  // keeps whatever is set). Set -1 to explicitly turn compression back
+  // off after it was enabled - AWS's own clear sentinel.
+  optional int32 minimum_compression_size = 5 [(buf.validate.field).int32 = {
+    gte: -1
+    lte: 10485760
+  }];
+
+  // Disable the default execute-api endpoint. Set to true when a custom
+  // domain (AwsRestApiDomain) fronts this API to prevent callers from
+  // bypassing the domain (and its TLS policy / WAF) via the default
+  // endpoint.
+  bool disable_execute_api_endpoint = 6;
+
+  // Endpoint type and addressing. Omitted = a REGIONAL endpoint (the
+  // right default for almost every new API; EDGE routes through
+  // CloudFront, PRIVATE is reachable only through VPC endpoints).
+  AwsRestApiGatewayEndpointConfiguration endpoint_configuration = 7;
+
+  // Restrict how the API's endpoints resolve callers: BASIC (default)
+  // or STRICT (rejects requests whose Host header does not match the
+  // invoked endpoint - hardens against host-header confusion).
+  string endpoint_access_mode = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BASIC",
+        "STRICT"
+      ]
+    }
+  ];
+
+  // Minimum TLS version and cipher policy on the API's default
+  // endpoint. Omitted = the AWS default for the endpoint type. The
+  // SecurityPolicy_TLS13_* values are the 2025-09 policy family
+  // (FIPS/PFS/PQ variants); TLS_1_0 and TLS_1_2 are the legacy names.
+  string security_policy = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "TLS_1_0",
+        "TLS_1_2",
+        "SecurityPolicy_TLS13_1_3_2025_09",
+        "SecurityPolicy_TLS13_1_3_FIPS_2025_09",
+        "SecurityPolicy_TLS13_1_2_PFS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_FIPS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_FIPS_PFS_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_PQ_2025_09",
+        "SecurityPolicy_TLS13_1_2_2021_06",
+        "SecurityPolicy_TLS13_2025_EDGE",
+        "SecurityPolicy_TLS12_PFS_2025_EDGE",
+        "SecurityPolicy_TLS12_2018_EDGE"
+      ]
+    }
+  ];
+
+  // Resource policy controlling who may invoke the API (IAM policy
+  // document as structured YAML/JSON). REQUIRED in practice for PRIVATE
+  // endpoints (allow the VPC endpoints); also used to IP-allowlist or
+  // cross-account-share public APIs.
+  google.protobuf.Struct policy = 10;
+
+  // ---------------------------------------------------------------------------
+  // API definition - exactly one of `routes` or `openapi`
+  // ---------------------------------------------------------------------------
+
+  // Typed routes with inline integrations. The modules derive the API
+  // Gateway resource tree from the route paths, then create the method,
+  // integration, and response resources per route.
+  repeated AwsRestApiGatewayRoute routes = 11;
+
+  // An OpenAPI 3.0 (or Swagger 2.0) document AWS imports as the API
+  // definition - routes, integrations (x-amazon-apigateway-* extensions),
+  // models, and authorizers all come from the document.
+  AwsRestApiGatewayOpenApiDefinition openapi = 12;
+
+  // ---------------------------------------------------------------------------
+  // Named satellites referenced by routes
+  // ---------------------------------------------------------------------------
+
+  // JSON Schema models validating and documenting payloads. Routes
+  // reference models by name in request_models/response_models. The
+  // AWS built-ins "Empty" and "Error" exist on every API without being
+  // defined here.
+  repeated AwsRestApiGatewayModel models = 13;
+
+  // Request validators routes opt into by name - reject malformed
+  // bodies and/or missing required parameters before the backend is
+  // invoked.
+  repeated AwsRestApiGatewayRequestValidator request_validators = 14;
+
+  // Named authorizers routes reference: Lambda TOKEN/REQUEST authorizers
+  // or Cognito user pools.
+  repeated AwsRestApiGatewayAuthorizer authorizers = 15;
+
+  // Customize the responses API Gateway itself generates (4XX/5XX
+  // classes, throttling, missing auth, WAF blocks) - inject headers or
+  // rewrite bodies before they reach callers.
+  repeated AwsRestApiGatewayGatewayResponse gateway_responses = 16;
+
+  // ---------------------------------------------------------------------------
+  // Stage and documentation
+  // ---------------------------------------------------------------------------
+
+  // The stage serving the deployed API. Omitted = a stage named "prod"
+  // with defaults.
+  AwsRestApiGatewayStage stage = 17;
+
+  // API documentation: typed documentation parts plus an optional
+  // published version served on the stage.
+  AwsRestApiGatewayDocumentation documentation = 18;
+
+  // ---------------------------------------------------------------------------
+  // CEL validations
+  // ---------------------------------------------------------------------------
+
+  // The API needs exactly one definition source.
+  option (buf.validate.message).cel = {
+    id: "definition_exactly_one_source"
+    message: "define the API with exactly one of routes (typed) or openapi (imported document)"
+    expression: "(this.routes.size() > 0) != has(this.openapi)"
+  };
+
+  // A duplicate path+method pair would mean one route silently wins.
+  option (buf.validate.message).cel = {
+    id: "route_path_method_unique"
+    message: "route path+method pairs must be unique - two routes with the same path and method would conflict in API Gateway"
+    expression: "this.routes.all(r1, this.routes.filter(r2, r2.path == r1.path && r2.method == r1.method).size() == 1)"
+  };
+
+  // The modules derive the resource tree level-by-level and support
+  // five path segments; deeper trees are better served by a
+  // greedy-proxy tail ("/a/b/c/d/{proxy+}") that hands the rest to the
+  // backend.
+  option (buf.validate.message).cel = {
+    id: "route_path_depth_max_five"
+    message: "route paths support at most five segments - use a greedy-proxy tail ({proxy+}) for deeper hierarchies"
+    expression: "this.routes.all(r, r.path == '/' || r.path.split('/').size() <= 6)"
+  };
+
+  // Names are how routes address satellites - duplicates make the
+  // references ambiguous.
+  option (buf.validate.message).cel = {
+    id: "model_names_unique"
+    message: "model names must be unique - routes reference models by name"
+    expression: "this.models.map(m, m.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "request_validator_names_unique"
+    message: "request validator names must be unique - routes reference validators by name"
+    expression: "this.request_validators.map(v, v.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "authorizer_names_unique"
+    message: "authorizer names must be unique - routes reference authorizers by name"
+    expression: "this.authorizers.map(a, a.name).unique()"
+  };
+
+  // One customization per gateway response type - AWS keys them by type.
+  option (buf.validate.message).cel = {
+    id: "gateway_response_types_unique"
+    message: "gateway_responses entries must have unique response_type values"
+    expression: "this.gateway_responses.map(g, g.response_type).unique()"
+  };
+
+  // Routes with authorizer-backed auth must name their authorizer.
+  option (buf.validate.message).cel = {
+    id: "authorized_route_requires_authorizer_name"
+    message: "routes with authorization 'CUSTOM' or 'COGNITO_USER_POOLS' must specify an authorizer_name"
+    expression: "this.routes.all(r, !(r.authorization in ['CUSTOM', 'COGNITO_USER_POOLS']) || r.authorizer_name != '')"
+  };
+
+  // Authorizer references must resolve.
+  option (buf.validate.message).cel = {
+    id: "route_authorizer_name_must_exist"
+    message: "route authorizer_name must match a defined authorizer name"
+    expression: "this.routes.all(r, r.authorizer_name == '' || this.authorizers.exists(a, a.name == r.authorizer_name))"
+  };
+
+  // The route's authorization must agree with the referenced
+  // authorizer's kind: CUSTOM binds Lambda (TOKEN/REQUEST) authorizers,
+  // COGNITO_USER_POOLS binds Cognito authorizers. AWS rejects mismatched
+  // pairs at deploy time; catching it here saves a failed apply.
+  option (buf.validate.message).cel = {
+    id: "route_authorizer_type_matches"
+    message: "a route's authorization must match its authorizer: 'CUSTOM' routes reference TOKEN or REQUEST authorizers, 'COGNITO_USER_POOLS' routes reference COGNITO_USER_POOLS authorizers"
+    expression: "this.routes.all(r, r.authorizer_name == '' || this.authorizers.all(a, a.name != r.authorizer_name || (r.authorization == 'CUSTOM' && a.type in ['TOKEN', 'REQUEST']) || (r.authorization == 'COGNITO_USER_POOLS' && a.type == 'COGNITO_USER_POOLS')))"
+  };
+
+  // Authorization scopes are a Cognito feature on REST APIs.
+  option (buf.validate.message).cel = {
+    id: "authorization_scopes_cognito_only"
+    message: "authorization_scopes apply only to routes with authorization 'COGNITO_USER_POOLS'"
+    expression: "this.routes.all(r, r.authorization_scopes.size() == 0 || r.authorization == 'COGNITO_USER_POOLS')"
+  };
+
+  // Request validator references must resolve.
+  option (buf.validate.message).cel = {
+    id: "route_validator_name_must_exist"
+    message: "route request_validator_name must match a defined request validator name"
+    expression: "this.routes.all(r, r.request_validator_name == '' || this.request_validators.exists(v, v.name == r.request_validator_name))"
+  };
+
+  // Model references must resolve to a defined model or an AWS built-in
+  // ("Empty", "Error").
+  option (buf.validate.message).cel = {
+    id: "route_request_models_must_exist"
+    message: "route request_models values must reference a defined model name or the AWS built-ins 'Empty'/'Error'"
+    expression: "this.routes.all(r, r.request_models.all(k, r.request_models[k] in ['Empty', 'Error'] || this.models.exists(m, m.name == r.request_models[k])))"
+  };
+  option (buf.validate.message).cel = {
+    id: "route_response_models_must_exist"
+    message: "route response model values must reference a defined model name or the AWS built-ins 'Empty'/'Error'"
+    expression: "this.routes.all(r, r.responses.all(resp, resp.response_models.all(k, resp.response_models[k] in ['Empty', 'Error'] || this.models.exists(m, m.name == resp.response_models[k]))))"
+  };
+
+  // The stage's method settings and documentation version live on the
+  // stage message; their cross-references are validated there where
+  // possible, and against `documentation` here.
+  option (buf.validate.message).cel = {
+    id: "stage_documentation_version_requires_documentation"
+    message: "stage.documentation_version requires documentation.published_version with the same version - the stage can only serve a version this spec publishes"
+    expression: "!has(this.stage) || this.stage.documentation_version == '' || (has(this.documentation) && has(this.documentation.published_version) && this.documentation.published_version.version == this.stage.documentation_version)"
+  };
+}
+
+// AwsRestApiGatewayEndpointConfiguration selects the endpoint type and
+// addressing for the API's default endpoint.
+message AwsRestApiGatewayEndpointConfiguration {
+  // The endpoint type. REGIONAL serves from this region (front it with
+  // your own CloudFront/domain as needed); EDGE provisions a managed
+  // CloudFront distribution; PRIVATE is reachable only through interface
+  // VPC endpoints.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "REGIONAL",
+      "EDGE",
+      "PRIVATE"
+    ]
+  }];
+
+  // Endpoint addressing: "ipv4" or "dualstack". Omitted = the AWS
+  // default. PRIVATE endpoints require dualstack.
+  string ip_address_type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ipv4",
+        "dualstack"
+      ]
+    }
+  ];
+
+  // VPC endpoints associated with a PRIVATE API - the interface
+  // endpoints callers invoke it through (they also generate the
+  // Route 53 aliases).
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_endpoint_ids = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsVpcEndpoint,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_endpoint_id"
+  ];
+
+  // AWS rejects PRIVATE endpoints resolving IPv4-only.
+  option (buf.validate.message).cel = {
+    id: "private_requires_dualstack"
+    message: "PRIVATE endpoints require ip_address_type 'dualstack' (or omit it for the AWS default)"
+    expression: "!(this.type == 'PRIVATE' && this.ip_address_type == 'ipv4')"
+  };
+
+  // VPC endpoints only make sense on PRIVATE APIs.
+  option (buf.validate.message).cel = {
+    id: "vpc_endpoints_private_only"
+    message: "vpc_endpoint_ids apply only to PRIVATE endpoint types"
+    expression: "this.vpc_endpoint_ids.size() == 0 || this.type == 'PRIVATE'"
+  };
+}
+
+// AwsRestApiGatewayOpenApiDefinition imports the API from an OpenAPI
+// document instead of typed routes.
+message AwsRestApiGatewayOpenApiDefinition {
+  // The OpenAPI 3.0 (or Swagger 2.0) document, as JSON or YAML text.
+  // Integrations are declared with the x-amazon-apigateway-* extensions.
+  string body = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Fail the deployment when AWS reports import warnings (unknown
+  // extensions, ignored fields) instead of silently continuing.
+  bool fail_on_warnings = 2;
+
+  // OpenAPI import parameters (e.g. {"endpointConfigurationTypes":
+  // "REGIONAL"} or {"basepath": "prepend"}).
+  map<string, string> parameters = 3;
+
+  // How re-imports apply the document: "overwrite" (default - the
+  // document is the whole truth and replaces the API definition) or
+  // "merge" (the document is layered onto the existing definition).
+  string mode = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "overwrite",
+        "merge"
+      ]
+    }
+  ];
+}
+
+// AwsRestApiGatewayModel is a JSON Schema payload model.
+message AwsRestApiGatewayModel {
+  // Model name (alphanumeric). Routes reference it in request_models/
+  // response_models; mapping templates address it via $ref.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z0-9]+$"
+  }];
+
+  // The content type the model describes (e.g. "application/json").
+  // Immutable in AWS - changing it replaces the model.
+  string content_type = 2 [(buf.validate.field).string.min_len = 1];
+
+  // What the model represents.
+  string description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // The JSON Schema document (draft 4), as JSON text.
+  string schema = 4;
+}
+
+// AwsRestApiGatewayRequestValidator validates requests before the
+// backend is invoked.
+message AwsRestApiGatewayRequestValidator {
+  // Validator name routes reference in request_validator_name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Validate request bodies against the method's request_models.
+  bool validate_request_body = 2;
+
+  // Validate that required parameters (request_parameters entries set
+  // to true) are present.
+  bool validate_request_parameters = 3;
+}
+
+// AwsRestApiGatewayAuthorizer is a named authorizer routes bind to.
+// REST APIs support Lambda TOKEN authorizers (a bearer token in one
+// header), Lambda REQUEST authorizers (full request context), and
+// Cognito user pools.
+message AwsRestApiGatewayAuthorizer {
+  // Unique name for this authorizer. Routes reference authorizers by
+  // this name, and it is the key in the `authorizer_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+  }];
+
+  // The authorizer kind: "TOKEN" (Lambda, single bearer token),
+  // "REQUEST" (Lambda, full request parameters), or
+  // "COGNITO_USER_POOLS" (Cognito ID/access tokens). Switching to or
+  // from COGNITO_USER_POOLS replaces the authorizer in AWS.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "TOKEN",
+      "REQUEST",
+      "COGNITO_USER_POOLS"
+    ]
+  }];
+
+  // The Lambda function evaluating authorization, for TOKEN/REQUEST
+  // authorizers. This is the function's API Gateway INVOKE ARN
+  // (arn:aws:apigateway:{region}:lambda:path/2015-03-31/functions/
+  // {function-arn}/invocations) - the AwsLambda invoke_arn output
+  // carries exactly this form.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_invoke_uri = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.invoke_arn"
+  ];
+
+  // IAM role API Gateway assumes to invoke the authorizer Lambda.
+  // Omitted = the Lambda's resource policy must allow
+  // apigateway.amazonaws.com instead.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Cognito user pools whose tokens the authorizer accepts, for
+  // COGNITO_USER_POOLS authorizers.
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef provider_arns = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCognitoUserPool,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.user_pool_arn"
+  ];
+
+  // Where the token/identity lives on the request. Omitted = the AWS
+  // default "method.request.header.Authorization". REQUEST authorizers
+  // may list several sources comma-separated
+  // ("method.request.header.Auth, method.request.querystring.Name").
+  string identity_source = 6;
+
+  // Regex the incoming token must match BEFORE the authorizer is
+  // invoked (TOKEN authorizers) - rejects malformed tokens without
+  // paying for a Lambda call.
+  string identity_validation_expression = 7;
+
+  // Seconds API Gateway caches authorizer results (0-3600; 0 disables
+  // caching). Omitted = the AWS default of 300.
+  optional int32 result_ttl_seconds = 8 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 3600
+  }];
+
+  // Lambda authorizers need the function; Cognito authorizers need the
+  // pools. AWS enforces this at deploy time; catching it here saves a
+  // failed apply.
+  option (buf.validate.message).cel = {
+    id: "authorizer_arm_matches_type"
+    message: "TOKEN and REQUEST authorizers require lambda_invoke_uri (and take no provider_arns); COGNITO_USER_POOLS authorizers require provider_arns (and take no lambda_invoke_uri)"
+    expression: "(this.type in ['TOKEN', 'REQUEST'] && has(this.lambda_invoke_uri) && this.provider_arns.size() == 0) || (this.type == 'COGNITO_USER_POOLS' && this.provider_arns.size() > 0 && !has(this.lambda_invoke_uri))"
+  };
+
+  // The pre-Lambda token regex only applies where there is a single
+  // token to match.
+  option (buf.validate.message).cel = {
+    id: "identity_validation_token_only"
+    message: "identity_validation_expression applies only to TOKEN authorizers"
+    expression: "this.identity_validation_expression == '' || this.type == 'TOKEN'"
+  };
+}
+
+// AwsRestApiGatewayGatewayResponse customizes one API Gateway-generated
+// response type.
+message AwsRestApiGatewayGatewayResponse {
+  // Which gateway-generated response to customize.
+  string response_type = 1 [(buf.validate.field).string = {
+    in: [
+      "DEFAULT_4XX",
+      "DEFAULT_5XX",
+      "RESOURCE_NOT_FOUND",
+      "UNAUTHORIZED",
+      "INVALID_API_KEY",
+      "ACCESS_DENIED",
+      "AUTHORIZER_FAILURE",
+      "AUTHORIZER_CONFIGURATION_ERROR",
+      "INVALID_SIGNATURE",
+      "EXPIRED_TOKEN",
+      "MISSING_AUTHENTICATION_TOKEN",
+      "INTEGRATION_FAILURE",
+      "INTEGRATION_TIMEOUT",
+      "API_CONFIGURATION_ERROR",
+      "UNSUPPORTED_MEDIA_TYPE",
+      "BAD_REQUEST_PARAMETERS",
+      "BAD_REQUEST_BODY",
+      "REQUEST_TOO_LARGE",
+      "THROTTLED",
+      "QUOTA_EXCEEDED",
+      "WAF_FILTERED"
+    ]
+  }];
+
+  // Override the response's status code (e.g. return "404" for
+  // MISSING_AUTHENTICATION_TOKEN to hide the API's existence). Omitted =
+  // the type's default code.
+  string status_code = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[1-5][0-9][0-9]$"
+  ];
+
+  // Header mappings on the customized response - keys like
+  // "gatewayresponse.header.Access-Control-Allow-Origin", values are
+  // static strings ("'*'") or context expressions.
+  map<string, string> response_parameters = 3;
+
+  // Body templates per content type (e.g. "application/json" ->
+  // "{\"message\":$context.error.messageString}").
+  map<string, string> response_templates = 4;
+}
+
+// AwsRestApiGatewayRoute maps one path+method to a backend integration,
+// with optional request validation and typed responses.
+message AwsRestApiGatewayRoute {
+  // The request path, starting with "/" ("/" itself addresses the root
+  // resource). Path parameters use braces ("/users/{id}"); a
+  // greedy-proxy tail is "{proxy+}" ("/files/{proxy+}"). The modules
+  // derive the API Gateway resource tree from these paths - intermediate
+  // segments need no route of their own.
+  string path = 1 [(buf.validate.field).string.pattern = "^/"];
+
+  // The HTTP method ("ANY" matches every method).
+  string method = 2 [(buf.validate.field).string = {
+    in: [
+      "ANY",
+      "DELETE",
+      "GET",
+      "HEAD",
+      "OPTIONS",
+      "PATCH",
+      "POST",
+      "PUT"
+    ]
+  }];
+
+  // How callers authorize: "NONE" (default), "AWS_IAM" (SigV4),
+  // "CUSTOM" (a Lambda authorizer), or "COGNITO_USER_POOLS".
+  string authorization = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "NONE",
+        "AWS_IAM",
+        "CUSTOM",
+        "COGNITO_USER_POOLS"
+      ]
+    }
+  ];
+
+  // Name of the authorizer (from `authorizers`) securing this route.
+  // Required when authorization is "CUSTOM" or "COGNITO_USER_POOLS".
+  string authorizer_name = 4;
+
+  // OAuth scopes a Cognito access token must carry (COGNITO_USER_POOLS
+  // routes; with scopes set, only access tokens are accepted - ID
+  // tokens are rejected).
+  repeated string authorization_scopes = 5 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Require a valid API key (from an AwsRestApiUsagePlan) on this
+  // route.
+  bool api_key_required = 6;
+
+  // Operation name surfaced in exports as the operationId - useful when
+  // generated client SDKs need stable method names.
+  string operation_name = 7 [(buf.validate.field).string.max_len = 64];
+
+  // Method request parameters API Gateway should know about, mapped to
+  // whether each is REQUIRED. Keys use the method-request form:
+  // "method.request.header.X-Tenant", "method.request.querystring.page",
+  // "method.request.path.id". Required parameters are enforced when the
+  // route's validator validates parameters.
+  map<string, bool> request_parameters = 8;
+
+  // Request body models per content type (e.g. "application/json" ->
+  // "OrderInput"). Values reference `models` entries by name (or the
+  // AWS built-ins "Empty"/"Error"). Enforced when the route's validator
+  // validates bodies.
+  map<string, string> request_models = 9;
+
+  // Name of the request validator (from `request_validators`) applied
+  // to this route.
+  string request_validator_name = 10;
+
+  // The backend integration processing matched requests.
+  AwsRestApiGatewayIntegration integration = 11 [(buf.validate.field).required = true];
+
+  // Typed method responses with their integration response mappings.
+  // Required for non-proxy integrations (AWS/HTTP/MOCK - API Gateway
+  // only returns statuses declared here); proxy integrations pass the
+  // backend response through and need none.
+  repeated AwsRestApiGatewayRouteResponse responses = 12;
+
+  // One response mapping per status code.
+  option (buf.validate.message).cel = {
+    id: "response_status_codes_unique"
+    message: "responses entries must have unique status_code values"
+    expression: "this.responses.map(r, r.status_code).unique()"
+  };
+}
+
+// AwsRestApiGatewayIntegration defines the backend target for one
+// route. REST APIs support five types:
+// - AWS_PROXY: Lambda proxy - the standard Lambda pattern; the raw
+//   request goes to the function, its return shape is the response.
+// - AWS: a raw AWS service action (including non-proxy Lambda) with
+//   mapping templates transforming request and response.
+// - HTTP_PROXY / HTTP: an HTTP endpoint, passed through or transformed.
+// - MOCK: API Gateway answers from the mapping templates alone - no
+//   backend (the canonical CORS-preflight and health-check pattern).
+message AwsRestApiGatewayIntegration {
+  // The integration type.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "MOCK",
+      "HTTP",
+      "HTTP_PROXY",
+      "AWS",
+      "AWS_PROXY"
+    ]
+  }];
+
+  // The backend target. For AWS_PROXY (and non-proxy Lambda AWS
+  // integrations) this is the function's API Gateway INVOKE ARN - the
+  // AwsLambda invoke_arn output carries exactly this form. For other
+  // AWS integrations it is the service's apigateway path ARN
+  // (arn:aws:apigateway:{region}:{service}:path/...). For HTTP/
+  // HTTP_PROXY it is the endpoint URL (with a VPC link, the private
+  // resource's URL). MOCK integrations take no target.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef uri = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.invoke_arn"
+  ];
+
+  // The HTTP method API Gateway uses toward the backend. Lambda
+  // invocations (AWS_PROXY, and AWS with a Lambda target) are always
+  // POST. Omitted for MOCK.
+  string http_method = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ANY",
+        "DELETE",
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "PATCH",
+        "POST",
+        "PUT"
+      ]
+    }
+  ];
+
+  // IAM role API Gateway assumes to call the backend. Required for AWS
+  // service integrations; for Lambda, the alternative is a resource
+  // policy on the function allowing apigateway.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // How the request reaches the backend: "INTERNET" (default) or
+  // "VPC_LINK" (through an AwsRestApiVpcLink to an NLB-fronted private
+  // service).
+  string connection_type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "INTERNET",
+        "VPC_LINK"
+      ]
+    }
+  ];
+
+  // The VPC link to route through. Required when connection_type is
+  // "VPC_LINK"; must be omitted otherwise.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef vpc_link_id = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRestApiVpcLink,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.vpc_link_id"
+  ];
+
+  // What happens to requests whose content type matches no request
+  // template (non-proxy integrations): "WHEN_NO_MATCH" passes the body
+  // through, "WHEN_NO_TEMPLATES" passes through only when NO template
+  // is defined at all, "NEVER" rejects with 415. Omitted = the AWS
+  // default (WHEN_NO_MATCH).
+  string passthrough_behavior = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "WHEN_NO_MATCH",
+        "WHEN_NO_TEMPLATES",
+        "NEVER"
+      ]
+    }
+  ];
+
+  // Convert the request body between text and binary before it reaches
+  // the backend. Omitted = passthrough (no conversion).
+  string content_handling = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CONVERT_TO_BINARY",
+        "CONVERT_TO_TEXT"
+      ]
+    }
+  ];
+
+  // Request parameters cached as cache keys for this method (e.g.
+  // "method.request.querystring.page") - responses are cached per
+  // distinct combination when the stage cache is on.
+  repeated string cache_key_parameters = 9 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Cache namespace shared across methods that should share cached
+  // responses. Omitted = AWS scopes the cache to this method's
+  // resource.
+  string cache_namespace = 10;
+
+  // Integration request parameter mappings - keys like
+  // "integration.request.header.X-Backend-Auth", values are static
+  // strings ("'value'") or method-request expressions
+  // ("method.request.header.Authorization").
+  map<string, string> request_parameters = 11;
+
+  // VTL mapping templates transforming the request body, per content
+  // type (non-proxy integrations).
+  map<string, string> request_templates = 12;
+
+  // Backend timeout in milliseconds. 50-300000 with BUFFERED responses
+  // (the default; AWS default 29000), up to 900000 with STREAM.
+  // Omitted = the AWS default.
+  int32 timeout_milliseconds = 13 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 50
+      lte: 900000
+    }
+  ];
+
+  // How API Gateway relays the backend response: "BUFFERED" (default)
+  // assembles it, "STREAM" relays chunks as they arrive (enables
+  // response streaming and the longer 900s timeout ceiling).
+  string response_transfer_mode = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "BUFFERED",
+        "STREAM"
+      ]
+    }
+  ];
+
+  // Skip TLS certificate verification toward the backend (HTTP
+  // integrations to endpoints with untrusted certificates - a
+  // last-resort knob; prefer fixing the backend certificate).
+  bool tls_insecure_skip_verification = 15;
+
+  // MOCK answers from templates; every other type calls a target.
+  option (buf.validate.message).cel = {
+    id: "uri_per_type"
+    message: "MOCK integrations take no uri; every other integration type requires one"
+    expression: "(this.type == 'MOCK') != has(this.uri)"
+  };
+
+  // Lambda invocations are always POST - AWS rejects anything else at
+  // deploy time.
+  option (buf.validate.message).cel = {
+    id: "aws_proxy_posts"
+    message: "AWS_PROXY (Lambda proxy) integrations use http_method 'POST' (or omit it and the modules send POST)"
+    expression: "this.type != 'AWS_PROXY' || this.http_method == '' || this.http_method == 'POST'"
+  };
+
+  // Non-MOCK integrations need a backend method.
+  option (buf.validate.message).cel = {
+    id: "http_method_required_for_backends"
+    message: "http_method is required for HTTP, HTTP_PROXY, and AWS integrations (AWS_PROXY defaults to POST; MOCK takes none)"
+    expression: "this.type in ['MOCK', 'AWS_PROXY'] || this.http_method != ''"
+  };
+
+  // VPC_LINK and vpc_link_id go together.
+  option (buf.validate.message).cel = {
+    id: "vpc_link_coupling"
+    message: "integrations with connection_type 'VPC_LINK' must set vpc_link_id (the link to route through), and vpc_link_id must not be set otherwise"
+    expression: "(this.connection_type == 'VPC_LINK') == has(this.vpc_link_id)"
+  };
+
+  // Private integrations proxy HTTP traffic through the link.
+  option (buf.validate.message).cel = {
+    id: "vpc_link_http_only"
+    message: "integrations with connection_type 'VPC_LINK' must use integration type 'HTTP' or 'HTTP_PROXY' - REST VPC links front NLB-based HTTP backends"
+    expression: "this.connection_type != 'VPC_LINK' || this.type in ['HTTP', 'HTTP_PROXY']"
+  };
+
+  // The BUFFERED ceiling is 300s; only STREAM may go to 900s.
+  option (buf.validate.message).cel = {
+    id: "timeout_within_transfer_mode"
+    message: "timeout_milliseconds above 300000 requires response_transfer_mode 'STREAM' (BUFFERED responses cap at 300000)"
+    expression: "this.timeout_milliseconds <= 300000 || this.response_transfer_mode == 'STREAM'"
+  };
+}
+
+// AwsRestApiGatewayRouteResponse declares one method response and how
+// backend responses map onto it (non-proxy integrations).
+message AwsRestApiGatewayRouteResponse {
+  // The status code API Gateway may return (e.g. "200", "404").
+  string status_code = 1 [(buf.validate.field).string.pattern = "^[1-5][0-9][0-9]$"];
+
+  // Response body models per content type, referencing `models` names
+  // (or the AWS built-ins "Empty"/"Error") - documents the response
+  // shape in exports.
+  map<string, string> response_models = 2;
+
+  // Response headers this method may return, mapped to whether each is
+  // required. Keys use the method-response form:
+  // "method.response.header.Access-Control-Allow-Origin".
+  map<string, bool> response_parameters = 3;
+
+  // Regex selecting which backend responses map to this status code -
+  // matched against the backend status code (HTTP) or the Lambda error
+  // message (AWS). The empty pattern is the DEFAULT mapping every
+  // unmatched response falls through to; exactly one response should
+  // leave it empty.
+  string selection_pattern = 4;
+
+  // Integration response header mappings - keys like
+  // "method.response.header.Access-Control-Allow-Origin", values are
+  // static strings ("'*'") or integration-response expressions.
+  map<string, string> integration_response_parameters = 5;
+
+  // VTL templates transforming the backend response body, per content
+  // type.
+  map<string, string> integration_response_templates = 6;
+
+  // Convert the response body between text and binary. Omitted =
+  // passthrough.
+  string content_handling = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CONVERT_TO_BINARY",
+        "CONVERT_TO_TEXT"
+      ]
+    }
+  ];
+}
+
+// AwsRestApiGatewayStage configures the single stage serving the
+// deployed API.
+message AwsRestApiGatewayStage {
+  // Stage name (letters, digits, hyphens, underscores; it appears in
+  // the invoke URL path). Omitted = "prod".
+  string name = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 128
+      pattern: "^[a-zA-Z0-9_-]+$"
+    }
+  ];
+
+  // Human-readable description of the stage.
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+
+  // Stage variables integrations can read (e.g. per-environment
+  // backend hosts referenced as ${stageVariables.backendHost}).
+  map<string, string> stage_variables = 3;
+
+  // Trace requests with AWS X-Ray.
+  bool xray_tracing_enabled = 4;
+
+  // The stage response cache. Provisioning a cache cluster bills
+  // hourly by size while enabled; per-method caching behavior is tuned
+  // in method_settings.
+  AwsRestApiGatewayCacheCluster cache_cluster = 5;
+
+  // TLS client certificate API Gateway presents to HTTP backends, so
+  // they can verify calls really come through the API.
+  AwsRestApiGatewayClientCertificate client_certificate = 6;
+
+  // Access logging to CloudWatch.
+  AwsRestApiGatewayAccessLog access_log = 7;
+
+  // The published documentation version this stage serves. Must match
+  // documentation.published_version.version.
+  string documentation_version = 8;
+
+  // Per-method overrides of logging, metrics, throttling, and caching.
+  repeated AwsRestApiGatewayMethodSettings method_settings = 9;
+
+  // One settings entry per method path.
+  option (buf.validate.message).cel = {
+    id: "method_settings_paths_unique"
+    message: "method_settings entries must have unique method_path values"
+    expression: "this.method_settings.map(m, m.method_path).unique()"
+  };
+}
+
+// AwsRestApiGatewayCacheCluster provisions the stage response cache.
+message AwsRestApiGatewayCacheCluster {
+  // Enable the cache cluster. Enabling or resizing can take up to 90
+  // minutes while AWS provisions it; caching still applies only to
+  // methods that enable caching_enabled in method_settings.
+  bool enabled = 1;
+
+  // Cache size in GB - one of AWS's fixed tiers. Larger tiers bill
+  // more per hour.
+  string size = 2 [(buf.validate.field).string = {
+    in: [
+      "0.5",
+      "1.6",
+      "6.1",
+      "13.5",
+      "28.4",
+      "58.2",
+      "118",
+      "237"
+    ]
+  }];
+}
+
+// AwsRestApiGatewayClientCertificate configures the TLS client
+// certificate presented to HTTP backends - exactly one arm.
+message AwsRestApiGatewayClientCertificate {
+  // Generate a certificate with this API (AWS creates and rotates the
+  // key material; the PEM is exported for backend trust
+  // configuration).
+  bool generate = 1;
+
+  // Use an existing API Gateway client certificate by ID.
+  string existing_certificate_id = 2;
+
+  // Description on the generated certificate.
+  string description = 3 [(buf.validate.field).string.max_len = 1024];
+
+  // Exactly one source.
+  option (buf.validate.message).cel = {
+    id: "client_certificate_exactly_one_arm"
+    message: "set exactly one of generate or existing_certificate_id"
+    expression: "this.generate != (this.existing_certificate_id != '')"
+  };
+
+  // The description belongs to the certificate this spec generates.
+  option (buf.validate.message).cel = {
+    id: "description_generated_only"
+    message: "description applies only to a generated certificate"
+    expression: "this.description == '' || this.generate"
+  };
+}
+
+// AwsRestApiGatewayAccessLog streams access logs to CloudWatch.
+message AwsRestApiGatewayAccessLog {
+  // CloudWatch Log Group ARN for access log delivery.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef destination_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"
+  ];
+
+  // Log format template using $context variables.
+  //
+  // Common JSON format:
+  //   {"requestId":"$context.requestId","ip":"$context.identity.sourceIp",
+  //    "method":"$context.httpMethod","path":"$context.resourcePath",
+  //    "status":"$context.status","latency":"$context.responseLatency"}
+  string format = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsRestApiGatewayMethodSettings overrides stage behavior for one
+// method path. Only explicitly set fields override; the rest inherit.
+message AwsRestApiGatewayMethodSettings {
+  // The methods these settings target: "*/*" for every method, or
+  // "{resource-path}/{method}" ("users/GET",
+  // "orders/{id}/items/POST").
+  string method_path = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Emit per-method CloudWatch metrics (billed per metric).
+  optional bool metrics_enabled = 2;
+
+  // Execution logging level for these methods. Requires the account's
+  // region-level CloudWatch role to be configured (a region singleton
+  // outside this component).
+  string logging_level = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "OFF",
+        "ERROR",
+        "INFO"
+      ]
+    }
+  ];
+
+  // Log full request/response bodies (INFO logging) - invaluable for
+  // debugging, unsafe for production PII.
+  optional bool data_trace_enabled = 4;
+
+  // Token-bucket burst for these methods. Omitted = the account
+  // default.
+  optional int32 throttling_burst_limit = 5 [(buf.validate.field).int32.gte = 0];
+
+  // Steady-state request rate (requests/second). Omitted = the account
+  // default.
+  optional double throttling_rate_limit = 6 [(buf.validate.field).double.gte = 0];
+
+  // Cache responses for these methods (requires the stage
+  // cache_cluster).
+  optional bool caching_enabled = 7;
+
+  // Cached-response TTL in seconds.
+  optional int32 cache_ttl_in_seconds = 8 [(buf.validate.field).int32.gte = 0];
+
+  // Encrypt cached responses.
+  optional bool cache_data_encrypted = 9;
+
+  // Only authorized callers may send Cache-Control headers that bypass
+  // or invalidate the cache.
+  optional bool require_authorization_for_cache_control = 10;
+
+  // What happens to unauthorized cache-control requests:
+  // fail, succeed with a warning header, or succeed silently.
+  string unauthorized_cache_control_header_strategy = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "FAIL_WITH_403",
+        "SUCCEED_WITH_RESPONSE_HEADER",
+        "SUCCEED_WITHOUT_RESPONSE_HEADER"
+      ]
+    }
+  ];
+}
+
+// AwsRestApiGatewayDocumentation authors API documentation: typed parts
+// plus an optional published version.
+message AwsRestApiGatewayDocumentation {
+  // Documentation parts - each attaches a properties document to one
+  // API element.
+  repeated AwsRestApiGatewayDocumentationPart parts = 1;
+
+  // Publish the parts as a documentation version (REST APIs serve
+  // documentation from published versions, not live parts). The stage's
+  // documentation_version selects it.
+  AwsRestApiGatewayDocumentationVersion published_version = 2;
+}
+
+// AwsRestApiGatewayDocumentationPart documents one API element.
+message AwsRestApiGatewayDocumentationPart {
+  // Where the documentation attaches.
+  AwsRestApiGatewayDocumentationLocation location = 1 [(buf.validate.field).required = true];
+
+  // The documentation content as a JSON object (OpenAPI documentation
+  // fields, e.g. {"description":"Lists users","summary":"..."}).
+  string properties = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsRestApiGatewayDocumentationLocation addresses one API element.
+message AwsRestApiGatewayDocumentationLocation {
+  // The element type being documented.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "API",
+      "AUTHORIZER",
+      "MODEL",
+      "RESOURCE",
+      "METHOD",
+      "PATH_PARAMETER",
+      "QUERY_PARAMETER",
+      "REQUEST_HEADER",
+      "REQUEST_BODY",
+      "RESPONSE",
+      "RESPONSE_HEADER",
+      "RESPONSE_BODY"
+    ]
+  }];
+
+  // The resource path the element lives under (e.g. "/users/{id}").
+  // Omitted = matches every path.
+  string path = 2;
+
+  // The HTTP method the element belongs to. Omitted = matches every
+  // method.
+  string method = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "ANY",
+        "DELETE",
+        "GET",
+        "HEAD",
+        "OPTIONS",
+        "PATCH",
+        "POST",
+        "PUT"
+      ]
+    }
+  ];
+
+  // The named element (parameter/header name, authorizer or model
+  // name) for types that address one.
+  string name = 4;
+
+  // The status code for RESPONSE* types. Omitted = matches every
+  // status.
+  string status_code = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([1-5][0-9][0-9]|\\*)$"
+  ];
+}
+
+// AwsRestApiGatewayDocumentationVersion publishes the documentation
+// parts as a version.
+message AwsRestApiGatewayDocumentationVersion {
+  // The version identifier (e.g. "1.0.0"). Publishing a changed
+  // version replaces the published snapshot.
+  string version = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What this documentation version covers.
+  string description = 2 [(buf.validate.field).string.max_len = 1024];
+}

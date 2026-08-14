@@ -17,7 +17,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **MSK Cluster** -- a managed Kafka cluster with the specified broker count, instance type, and Kafka version, distributed across subnets in multiple Availability Zones
 - **Inline MSK Configuration** -- created only when `serverProperties` entries are provided; applies Apache Kafka `server.properties` overrides (replication factor, min ISR, partition count, log retention)
 - **Connectivity Updates** -- public access (`publicAccessType`) and multi-VPC PrivateLink (`vpcConnectivity`) are applied by AWS as follow-up updates after the cluster creates
-- **Cluster Policy** -- attached only when `clusterPolicy` is provided; the resource-based IAM policy that grants cross-account principals PrivateLink connection rights
+- **Cluster Policy** -- attached only when `clusterPolicy` is provided; the resource-based IAM policy (a structured document in the spec) that grants cross-account principals PrivateLink connection rights
+- **Kafka Topics** -- one per `topics` entry, managed through the MSK topic API with no Kafka client or bootstrap connectivity needed; keyed by name, exported as the `topic_arns` output map
 - **Broker Log Delivery** -- configurable delivery to CloudWatch Logs, Kinesis Data Firehose, and S3 (all three can be enabled simultaneously)
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -120,6 +121,8 @@ These are the most important decisions when configuring an MSK cluster. Explore 
 **Encryption** -- Keep `clientBrokerEncryption` at `TLS` (the default, and the only posture that allows public access). `inClusterEncryption` (broker-to-broker TLS) and `kmsKeyArn` (at-rest) are immutable after creation.
 
 **Server properties** -- Use `serverProperties` to override Kafka `server.properties` (e.g., `default.replication.factor: "3"`, `min.insync.replicas: "2"`, `auto.create.topics.enable: "false"`), or pin an externally managed MSK Configuration via `configurationArn` + `configurationRevision` -- never both.
+
+**Declared topics** -- `topics` entries deploy WITH the cluster through the MSK topic API: no Kafka client, bootstrap connectivity, or credentials at deploy time. Each entry is keyed by name (adding or removing one never churns the others); partition counts can only grow in place, while name and replication factor changes replace the topic. Pair with `auto.create.topics.enable: "false"` so the declared contract topics are the only ones applications can rely on. Deleting an entry deletes the topic and its data (requires `delete.topic.enable=true`, MSK's default).
 
 **Storage** -- Set `ebsVolumeSizeGib` for per-broker EBS volume size (1-16384 GiB; grows in place). Enable `storageMode: TIERED` to offload warm data to low-cost storage (one-way). Enable provisioned throughput on `kafka.m5.4xlarge`+ for guaranteed per-broker EBS bandwidth. Express brokers manage their own storage -- none of these apply.
 

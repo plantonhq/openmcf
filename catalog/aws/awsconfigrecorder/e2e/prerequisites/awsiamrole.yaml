@@ -1,0 +1,45 @@
+# Consumer-scoped AwsIamRole install profile for the recorder: ONE
+# role trusting config.amazonaws.com, carrying the AWS-managed
+# AWS_ConfigRole grant (read every resource's configuration) plus
+# write access to the fixture delivery bucket.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsIamRole
+metadata:
+  name: planton-oss-e2e-awscfgr-role
+  id: planton-oss-e2e-awscfgr-role
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsiamrole
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E role AWS Config assumes to record and deliver configuration
+  managedPolicyArns:
+    - value: arn:aws:iam::aws:policy/service-role/AWS_ConfigRole
+  inlinePolicies:
+    configBucketDelivery:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgr-history/*"
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Effect: Allow
+          Action:
+            - s3:GetBucketAcl
+          Resource: "arn:aws:s3:::planton-oss-e2e-awscfgr-history"
+  trustPolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal:
+          Service: config.amazonaws.com
+        Action: sts:AssumeRole

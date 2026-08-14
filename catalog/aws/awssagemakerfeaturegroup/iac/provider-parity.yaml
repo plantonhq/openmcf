@@ -1,0 +1,60 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_sagemaker_feature_group:
+    mappings:
+      - arg: feature_definition
+        spec: spec.feature_definitions
+      - arg: feature_definition.feature_name
+        spec: spec.feature_definitions.name
+      - arg: feature_definition.feature_type
+        spec: spec.feature_definitions.type
+      # The two-level single-member vector wrapper flattens to one
+      # dimension field (paired with the Vector collection type by CEL).
+      - arg: feature_definition.collection_config
+        spec: spec.feature_definitions.vector_dimension
+      - arg: feature_definition.collection_config.vector_config
+        spec: spec.feature_definitions.vector_dimension
+      - arg: feature_definition.collection_config.vector_config.dimension
+        spec: spec.feature_definitions.vector_dimension
+      - arg: online_store_config
+        spec: spec.online_store
+      - arg: online_store_config.enable_online_store
+        spec: spec.online_store.enabled
+      # The single-member security wrapper flattens to the key ARN.
+      - arg: online_store_config.security_config
+        spec: spec.online_store.kms_key_arn
+      - arg: online_store_config.security_config.kms_key_id
+        spec: spec.online_store.kms_key_arn
+      - arg: online_store_config.ttl_duration
+        spec: spec.online_store.ttl
+      - arg: offline_store_config
+        spec: spec.offline_store
+      # The single-member S3 wrapper flattens onto the store message.
+      - arg: offline_store_config.s3_storage_config
+        spec: spec.offline_store
+      - arg: offline_store_config.s3_storage_config.s3_uri
+        spec: spec.offline_store.s3_uri
+      - arg: offline_store_config.s3_storage_config.kms_key_id
+        spec: spec.offline_store.kms_key_arn
+      - arg: offline_store_config.data_catalog_config
+        spec: spec.offline_store.data_catalog
+      - arg: throughput_config
+        spec: spec.throughput
+      - arg: throughput_config.throughput_mode
+        spec: spec.throughput.mode
+    exclusions:
+      - arg: feature_group_name
+        reason: wired by the module from metadata.name -- the component's name IS the feature group name
+      - arg: offline_store_config.s3_storage_config.resolved_output_s3_uri
+        reason: an AWS-computed output path echoed back through the schema (Optional+Computed upstream) -- observable state, not configuration; consumers read it from AWS after the group exists
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own

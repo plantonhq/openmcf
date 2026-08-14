@@ -27,6 +27,7 @@ This preset creates a read replica of an existing RDS instance. The replica inhe
 - **No credentials, engine, or storage here** -- all inherited from the source; the spec's validation rejects them on a replica so drift is impossible.
 - **No final snapshot** (`skipFinalSnapshot: true`) -- a replica holds no unique data; backups live with the source.
 - **Independent sizing** -- the replica's `instanceClass` can differ from the source (bigger for heavy analytics, smaller for light read traffic).
+- **Storage config upgrade** (`upgradeStorageConfig: true`) -- upgrades the storage file system layout while the replica is created, when the source still runs the older 32-bit configuration; one-way, and only meaningful on replicas and snapshot restores.
 
 ## Placeholders to Replace
 

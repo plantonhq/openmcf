@@ -101,10 +101,14 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// separately: the changed attribute is then re-compared with only those
 	// sub-paths pruned, so an undeclared sibling drift still fails.
 	formats := map[string]string{}
+	notImportableReasons := map[string]string{}
 	toleratedAttributes := map[string]map[string]bool{}
 	toleratedSubPaths := map[string][][]string{}
 	for _, rt := range catalog.GetSpec().GetResourceTypes() {
 		formats[rt.GetTerraformType()] = rt.GetIdFormat()
+		if reason := rt.GetNotImportableUpstreamReason(); reason != "" {
+			notImportableReasons[rt.GetTerraformType()] = reason
+		}
 		declared := append(append([]string{}, rt.GetConfigOnlyAttributes()...), rt.GetWriteNormalizedAttributes()...)
 		for _, attr := range declared {
 			if strings.Contains(attr, ".") {
@@ -153,10 +157,22 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 	// output would let a wrong recipe pass.
 	accountArnParts := accountLevelArnParts(tc.FlatOutputs)
 
+	skippedNotImportable := 0
 	for _, address := range addresses {
 		resourceType, logicalName, instanceKey, parsed := importmap.ParseTofuAddress(address)
 		if !parsed {
 			return errors.Errorf("address %q is not mappable (module-nested?)", address)
+		}
+		// Types the upstream provider ships no importer for cannot enter the
+		// re-imported state. Their proof is the adopter's contract instead:
+		// the oracle below expects the plan to propose re-CREATING exactly
+		// these addresses, and the reconcile-apply executes it -- honest only
+		// because the catalog admits the reason solely for upsert-convergent
+		// create paths.
+		if reason, declared := notImportableReasons[resourceType]; declared {
+			fmt.Printf("  [import-rt] skipping %s: %s not importable upstream (%s)\n", address, resourceType, reason)
+			skippedNotImportable++
+			continue
 		}
 		idFormat, mapped := formats[resourceType]
 		if !mapped {
@@ -231,8 +247,19 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		return errors.Wrap(err, "plan after re-import")
 	}
 	tolerated := 0
+	recreated := 0
 	for address, rc := range planStruct.ResourceChangesMap {
 		if rc.Change == nil || rc.Change.Actions.NoOp() || rc.Change.Actions.Read() || rc.Mode == "data" {
+			continue
+		}
+		// A not-importable type's address was deliberately never imported, so
+		// the ONLY honest plan for it is a create (the adopter's first apply
+		// re-puts the resource). Anything else on such an address -- and a
+		// create on any other type -- still fails.
+		if _, declared := notImportableReasons[rc.Type]; declared && rc.Change.Actions.Create() {
+			fmt.Printf("  [import-rt] tolerating re-create of %s: %s not importable upstream; the reconcile-apply takes ownership\n",
+				address, rc.Type)
+			recreated++
 			continue
 		}
 		if !rc.Change.Actions.Update() {
@@ -277,8 +304,8 @@ func runImportRoundTrip(tc *provider.ComponentTestContext) error {
 		tolerated++
 	}
 
-	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated)\n",
-		len(addresses), tolerated)
+	fmt.Printf("  [import-rt] %d resources re-imported blind; plan proposes no real change (%d config-only updates tolerated, %d not-importable-upstream re-creates via reconcile-apply)\n",
+		len(addresses)-skippedNotImportable, tolerated, recreated)
 
 	// 5. Reconcile the imported state the way a real adopter does: import →
 	// APPLY → operate. An import cannot read CONFIG-ONLY attributes back

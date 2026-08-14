@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Development ECR Repository"
     excerpt: "This preset creates an ECR repository optimized for development workflows. Mutable tags allow developers to push `latest` or branch-based tags repeatedly without errors. Aggressive lifecycle rules..."
+  - slug: "03-archive-cost-tiering"
+    rank: "03"
+    title: "Archive Cost-Tiering ECR Repository"
+    excerpt: "This preset creates an ECR repository with the canonical storage-tiering policy: images nobody pulls for 90 days move to the archive storage class (materially cheaper than standard ECR storage), and..."
 ---
 
 # ECR Repo Presets

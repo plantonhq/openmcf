@@ -1,0 +1,41 @@
+# Consumer-scoped AwsS3Bucket install profile serving BOTH GuardDuty
+# arms: the trusted/threat list files (GuardDuty reads them as
+# guardduty.amazonaws.com) and the findings-export destination
+# (GuardDuty writes findings as the same principal).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3Bucket
+metadata:
+  name: planton-oss-e2e-awsgd-bucket
+  id: planton-oss-e2e-awsgd-bucket
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowGuardDutyListReads
+        Effect: Allow
+        Principal:
+          Service: guardduty.amazonaws.com
+        Action: s3:GetObject
+        Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket/lists/*
+      - Sid: AllowGuardDutyBucketLocation
+        Effect: Allow
+        Principal:
+          Service: guardduty.amazonaws.com
+        Action: s3:GetBucketLocation
+        Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket
+      - Sid: AllowGuardDutyFindingsExport
+        Effect: Allow
+        Principal:
+          Service: guardduty.amazonaws.com
+        Action: s3:PutObject
+        Resource: arn:aws:s3:::planton-oss-e2e-awsgd-bucket/findings/*

@@ -111,13 +111,13 @@ These are the most important decisions when configuring an EC2 instance. Explore
 
 **IMDS hardening** -- Set `metadataOptions.httpTokens: required` to enforce IMDSv2, the single most effective hardening against credential-stealing SSRF attacks. Set `httpPutResponseHopLimit: 2` when containers on the instance need metadata access.
 
-**Network identity** -- Place the instance inline (`subnetId`, `securityGroupIds`, optional pinned `privateIp`, IPv6) or attach a pre-provisioned ENI as eth0 (`primaryNetworkInterfaceId`) to inherit a fixed IP, MAC, and security groups that survive instance replacement. The two are mutually exclusive -- the ENI carries the whole network identity.
+**Network identity** -- Place the instance inline (`subnetId`, `securityGroupIds`, optional pinned `privateIp`, IPv6) or attach a pre-provisioned ENI as eth0 (`primaryNetworkInterfaceId`) to inherit a fixed IP, MAC, and security groups that survive instance replacement. The two are mutually exclusive -- the ENI carries the whole network identity, including `sourceDestCheck`. Leave `sourceDestCheck` unset to keep AWS's default (checking ON); an explicit `false` is the router/NAT posture for instances that forward traffic.
 
-**Storage** -- `rootBlockDevice` reshapes the boot disk the AMI defines (unset fields inherit): grow it, switch it to `gp3`, encrypt it with a customer-managed AwsKmsKey. `ebsBlockDevices` attaches launch-time data volumes (create-time mappings -- prefer standalone volumes when data should outlive the instance); `ephemeralBlockDevices` maps instance-store disks or suppresses AMI-baked devices.
+**Storage** -- `rootBlockDevice` reshapes the boot disk the AMI defines (unset fields inherit): grow it, switch it to `gp3` (up to 2000 MiB/s throughput), encrypt it with a customer-managed AwsKmsKey. `ebsBlockDevices` attaches launch-time data volumes (create-time mappings -- prefer standalone volumes when data should outlive the instance); `ephemeralBlockDevices` maps instance-store disks or suppresses AMI-baked devices. Tag volumes one of two ways: `volumeTags` applies uniform tags to EVERY volume at creation (including AMI-inherited ones -- the shape ABAC/SCP tag-at-creation policies require), or per-device `tags` on each mapping for per-volume values (applied after creation). The two are mutually exclusive.
 
-**Purchase and placement** -- Leave `spotOptions` unset for On-Demand (the pet posture). For interruption-tolerant standalone workloads, a persistent Spot request with `instanceInterruptionBehavior: stop` survives reclaims. `capacityReservation` targets pre-purchased capacity for failover-critical singletons; `placement` pins the AZ, placement group, or tenancy. All fixed at launch.
+**Purchase and placement** -- Leave `marketType` and `spotOptions` unset for On-Demand (the pet posture). For interruption-tolerant standalone workloads, a persistent Spot request with `instanceInterruptionBehavior: stop` survives reclaims. `marketType: capacity-block` launches into a pre-purchased ML Capacity Block (GPU training windows); `interruptible-capacity-reservation` launches into an interruptible reservation -- both require targeting the reservation via `capacityReservation`. `capacityReservation.preference: capacity-reservations-only` guarantees the launch lands in reserved capacity or fails. `placement` pins the AZ, placement group, or tenancy. All fixed at launch.
 
-**Lifecycle protections** -- Set `disableApiTermination: true` for production pets (the wizard preselects it). `userDataReplaceOnChange` decides whether a user-data edit replaces the instance (fresh boot) or stop-updates it (the changed script does NOT re-run -- cloud-init runs once per instance).
+**Lifecycle protections** -- Set `disableApiTermination: true` for production pets (the wizard preselects it). Pair it with `forceDestroy: true` to keep teardown declarative: destroy lifts the protection itself instead of failing. `userDataReplaceOnChange` decides whether a user-data edit replaces the instance (fresh boot) or stop-updates it (the changed script does NOT re-run -- cloud-init runs once per instance).
 
 ## Outputs and Dependencies
 
@@ -157,7 +157,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Spot worker** -- a persistent Spot request with `stop` interruption behavior for interruption-tolerant standalone workloads (build agents, batch boxes): AWS reclaims with two minutes' notice, then restarts the machine when capacity returns. Start from the **Spot Worker** preset.
 
-**Static-identity appliance** -- attach a pre-provisioned ENI (`primaryNetworkInterfaceId`) so the firewall/NAT/license-server keeps its fixed private IP and MAC across instance replacements.
+**Static-identity appliance** -- attach a pre-provisioned ENI (`primaryNetworkInterfaceId`) so the firewall/NAT/license-server keeps its fixed private IP and MAC across instance replacements. Start from the **Static Network Identity** preset.
+
+**Capacity-block training node** -- launch a GPU instance into a pre-purchased ML Capacity Block (`marketType: capacity-block` targeting the block's reservation) for scheduled training runs on scarce accelerators. Start from the **Capacity Block ML Training Node** preset.
 
 ## Works With
 

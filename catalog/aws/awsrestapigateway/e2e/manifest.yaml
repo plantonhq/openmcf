@@ -1,0 +1,113 @@
+# Canonical AwsRestApiGateway example (hack/dev manifest and refgen
+# Example source): a typed-route REST API exercising every coexisting
+# arm -- MOCK + HTTP integrations, models, a request validator, a TOKEN
+# authorizer, a gateway response, a resource policy, documentation, and
+# a stage with method settings. Literal ARNs stand in for composed
+# references so the offline `tofu plan` renders every arm. The OpenAPI
+# definition source is the XOR alternative (exactly-one with routes)
+# and is proven by spec tests, not this manifest.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiGateway
+metadata:
+  name: orders-api
+  id: orders-api
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Orders REST API
+  apiKeySource: HEADER
+  binaryMediaTypes:
+    - application/octet-stream
+  minimumCompressionSize: 1024
+  endpointConfiguration:
+    type: REGIONAL
+    ipAddressType: ipv4
+  endpointAccessMode: BASIC
+  securityPolicy: TLS_1_2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Effect: Allow
+        Principal: "*"
+        Action: execute-api:Invoke
+        Resource: "*"
+  models:
+    - name: Order
+      contentType: application/json
+      description: An order payload
+      schema: '{"type":"object","properties":{"id":{"type":"string"}}}'
+  requestValidators:
+    - name: body-and-params
+      validateRequestBody: true
+      validateRequestParameters: true
+  authorizers:
+    - name: orders-token
+      type: TOKEN
+      lambdaInvokeUri:
+        value: arn:aws:apigateway:us-west-2:lambda:path/2015-03-31/functions/arn:aws:lambda:us-west-2:123456789012:function:orders-auth/invocations
+      identitySource: method.request.header.Authorization
+      resultTtlSeconds: 300
+  gatewayResponses:
+    - responseType: UNAUTHORIZED
+      statusCode: "401"
+      responseTemplates:
+        application/json: '{"message":"unauthorized"}'
+  documentation:
+    parts:
+      - properties: '{"description":"Orders API"}'
+        location:
+          type: API
+    publishedVersion:
+      version: "1"
+      description: First published snapshot
+  stage:
+    name: prod
+    description: Production stage
+    xrayTracingEnabled: true
+    methodSettings:
+      - methodPath: "*/*"
+        metricsEnabled: true
+        loggingLevel: ERROR
+        throttlingBurstLimit: 100
+        throttlingRateLimit: 50
+  routes:
+    - path: /health
+      method: GET
+      operationName: getHealth
+      integration:
+        type: MOCK
+        requestTemplates:
+          application/json: '{"statusCode": 200}'
+      responses:
+        - statusCode: "200"
+          integrationResponseTemplates:
+            application/json: '{"ok": true}'
+    - path: /orders/{id}
+      method: GET
+      authorization: CUSTOM
+      authorizerName: orders-token
+      apiKeyRequired: true
+      requestValidatorName: body-and-params
+      requestParameters:
+        method.request.path.id: true
+      requestModels:
+        application/json: Order
+      integration:
+        type: HTTP
+        httpMethod: GET
+        uri:
+          value: https://orders.internal.example.com/orders/{id}
+        connectionType: INTERNET
+        passthroughBehavior: WHEN_NO_MATCH
+        timeoutMilliseconds: 29000
+      responses:
+        - statusCode: "200"
+          responseModels:
+            application/json: Order
+          integrationResponseTemplates:
+            application/json: "$input.json('$')"
+        - statusCode: "404"
+          selectionPattern: ".*not found.*"
+          integrationResponseTemplates:
+            application/json: '{"error":"not found"}'

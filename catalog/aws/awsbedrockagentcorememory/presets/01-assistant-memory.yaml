@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreMemory
+metadata:
+  name: my-assistant-memory
+spec:
+  region: us-west-2
+  memoryName: my_assistant_memory
+  description: Facts and summaries for the assistant
+  eventExpiryDays: 30
+  strategies:
+    - name: facts
+      type: SEMANTIC
+      description: Standalone facts from conversations
+      namespaceTemplates:
+        - /facts/{actorId}
+    - name: summaries
+      type: SUMMARIZATION
+      namespaceTemplates:
+        - /summaries/{actorId}/{sessionId}

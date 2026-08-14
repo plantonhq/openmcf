@@ -1,0 +1,58 @@
+# AwsBedrockKnowledgeBase full-surface scenario: the VECTOR type on the
+# standing S3 Vectors fixture (the harness ensures the bucket+index and
+# exports the index ARN as the environment token below -- a committed
+# manifest cannot carry one account's fixture ARN honestly), a tuned
+# embedding model whose 256 dimensions pair with the fixture index's
+# shape, and an S3 data source over the shared bucket fixture with
+# fixed-size chunking.
+#
+# data_deletion_policy DELETE keeps the destroy clean: vectors ingested
+# from the data source are purged when the lane tears down.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockKnowledgeBase
+metadata:
+  name: planton-oss-e2e-awsbrkb-full
+  id: planton-oss-e2e-awsbrkb-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockknowledgebase
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Full-surface vector knowledge base on S3 Vectors
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  vector:
+    embeddingModelArn: arn:aws:bedrock:us-west-2::foundation-model/amazon.titan-embed-text-v2:0
+    embeddingModel:
+      dimensions: 256
+      embeddingDataType: FLOAT32
+  storage:
+    s3Vectors:
+      indexArn: ${E2E_ENV:PLANTON_E2E_S3VECTORS_INDEX_ARN}
+  dataSources:
+    - name: docs
+      description: Shared bucket fixture as the document source
+      dataDeletionPolicy: DELETE
+      s3:
+        bucketArn:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: planton-oss-e2e-awss3bucket-prereq
+            fieldPath: status.outputs.bucket_arn
+        inclusionPrefix: bedrock-kb/
+      vectorIngestion:
+        chunking:
+          strategy: FIXED_SIZE
+          fixedSize:
+            maxTokens: 300
+            overlapPercentage: 20

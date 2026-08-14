@@ -1,0 +1,38 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateDnsResolver
+metadata:
+  name: hub-dns-resolver
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  name: hub-dns-resolver
+  # The network the resolver anchors to -- Azure allows at most ONE
+  # resolver per virtual network, so put it in the hub.
+  virtualNetworkId:
+    valueFrom:
+      kind: AzureVirtualNetwork
+      name: "<your-hub-vnet>"
+      fieldPath: status.outputs.virtual_network_id
+  # The address on-premises DNS forwarders point at. Each endpoint
+  # needs its own dedicated subnet delegated to
+  # Microsoft.Network/dnsResolvers (/28-/24, nothing else in it).
+  inboundEndpoints:
+    - name: inbound
+      subnetId:
+        valueFrom:
+          kind: AzureSubnet
+          name: "<your-dns-inbound-subnet>"
+          fieldPath: status.outputs.subnet_id
+  # The egress point queries leave Azure through -- what a forwarding
+  # ruleset binds to steer corp-domain queries on-premises.
+  outboundEndpoints:
+    - name: outbound
+      subnetId:
+        valueFrom:
+          kind: AzureSubnet
+          name: "<your-dns-outbound-subnet>"
+          fieldPath: status.outputs.subnet_id

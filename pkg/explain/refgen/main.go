@@ -19,6 +19,16 @@ import (
 )
 
 func main() {
+	// Refuse ANY argument: generation is always whole-catalog and writes
+	// hundreds of committed files, and an exploratory invocation (a
+	// `--help` probe, a guessed scoping flag) must never trigger it --
+	// silently ignoring arguments has caused accidental whole-tree
+	// regens on dirty checkouts twice.
+	if len(os.Args) > 1 {
+		fmt.Fprintf(os.Stderr, "refgen takes no arguments (got %v); it regenerates the ENTIRE committed reference tree from the current descriptors. Run through `make generate-reference` on a settled tree.\n", os.Args[1:])
+		os.Exit(2)
+	}
+
 	repoRoot, err := os.Getwd()
 	if err != nil {
 		fatal(err)

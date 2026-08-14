@@ -1325,6 +1325,14 @@ Fields that can point at another resource's outputs:
 | `spec.s3Import.ingestionRole` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.activityStream.kmsKeyId` | AwsKmsKey | `status.outputs.key_arn` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockKnowledgeBase | `spec.storage.rds.resourceArn` | `status.outputs.arn` |
+
 ## See Also
 
 - [Overview](../README.md)

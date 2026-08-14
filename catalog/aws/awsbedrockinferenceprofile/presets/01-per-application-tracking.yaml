@@ -1,0 +1,8 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInferenceProfile
+metadata:
+  name: checkout-service-nova
+spec:
+  region: us-west-2
+  description: Nova Micro usage attributed to the checkout service
+  sourceArn: arn:aws:bedrock:us-west-2:123456789012:inference-profile/us.amazon.nova-micro-v1:0

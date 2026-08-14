@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePointToSiteVpnGateway
+metadata:
+  name: secured-remote-users-gw
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: secured-remote-users-gw
+  virtualHubId:
+    value: "<your-virtual-hub-arm-id>"
+  vpnServerConfigurationId:
+    value: "<your-vpn-server-configuration-arm-id>"
+  scaleUnit: 2
+  connectionConfigurations:
+    - name: secured-clients
+      addressPrefixes:
+        - "172.16.202.0/24"
+      internetSecurityEnabled: true

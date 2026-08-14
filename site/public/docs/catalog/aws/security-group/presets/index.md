@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Bastion Host Security Group"
     excerpt: "This preset creates a security group for a bastion (jump) host that only accepts SSH connections from trusted IP addresses. Never use `0.0.0.0/0` for bastion SSH access -- always restrict to your..."
+  - slug: "04-shared-multi-vpc"
+    rank: "04"
+    title: "Preset: Shared Multi-VPC Security Group"
+    excerpt: "**Use case:** One firewall definition attached by workloads in several VPCs — instead of maintaining drifting per-VPC copies of the same rules."
 ---
 
 # Security Group Presets

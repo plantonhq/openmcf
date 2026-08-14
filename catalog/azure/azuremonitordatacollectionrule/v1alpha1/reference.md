@@ -8,28 +8,6 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
-**AzureMonitorDataCollectionRuleSpec** defines an Azure Monitor data
-collection rule (DCR) -- the routing table of Azure Monitor. A rule
-declares WHAT telemetry to collect (data sources: Linux syslog,
-Windows event logs, performance counters, Prometheus metrics, IIS
-logs, custom log files, ...), WHERE it goes (destinations: Log
-Analytics workspaces, Azure Monitor metrics, Event Hubs, storage),
-and HOW the two wire together (data flows, optionally with a KQL
-transformation applied in the ingestion pipeline).
-
-A rule does nothing on its own: machines are attached to it with
-AzureMonitorDataCollectionRuleAssociation resources (one association
-per machine), and the Azure Monitor Agent on each associated machine
-downloads the rule and starts collecting. One rule serves any number
-of machines; one machine can carry many associations.
-
-**Names wire the rule together**: every data source and every
-destination carries a `name` that is local to this rule; data flows
-reference destinations by exactly those names, and Azure rejects a
-deploy whose flow references a name that no destination carries.
-Destination names must be unique across ALL destination arms (they
-share one namespace -- Azure enforces this at deploy time).
-
 ## Example
 
 ```yaml
@@ -219,11 +197,6 @@ spec:
 
 `string | valueFrom` · required
 
-The Azure Resource Group the data collection rule lives in. Can be
-a literal string or a reference to an AzureResourceGroup output.
-
-**ForceNew**: changing this destroys and recreates the rule.
-
 - references: AzureResourceGroup (`status.outputs.resource_group_name`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureResourceGroup, name: <that resource's name>, fieldPath: status.outputs.resource_group_name}} -- a bare string does not parse
@@ -232,22 +205,11 @@ a literal string or a reference to an AzureResourceGroup output.
 
 `string` · required
 
-The name of the data collection rule, unique within the resource
-group.
-
-**ForceNew**: changing this destroys and recreates the rule.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.region
 
 `string` · required
-
-The Azure region the rule is created in, e.g. "eastus". Machines in
-any region can associate with the rule; the region only places the
-rule object (and its ingestion processing) itself.
-
-**ForceNew**: changing this destroys and recreates the rule.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -255,40 +217,15 @@ rule object (and its ingestion processing) itself.
 
 `string` · optional (explicit presence)
 
-The rule's platform kind. OMIT for the default rule kind, which
-accepts data sources of every platform. "Linux" and "Windows"
-restrict the rule to that platform's sources (Azure rejects a
-Linux rule carrying windows_event_log sources, and a Windows rule
-carrying syslog sources, at deploy time -- the provider performs no
-early check). "AgentDirectToStore" is required for the *_direct
-destinations (agent writes straight to storage/Event Hubs), and
-"WorkspaceTransforms" is for workspace-scoped transformation rules
-that carry no agent data sources.
-
-**Replace-on-change once set**: a rule created WITHOUT a kind can
-adopt one in place, but changing (or clearing) a kind that has been
-set destroys and recreates the rule -- the provider enforces this
-lifecycle.
-
 - rule: {"string":{"in":["Linux","Windows","AgentDirectToStore","WorkspaceTransforms"]}}
 
 ### spec.description
 
 `string`
 
-A free-text description of the rule, shown in the portal.
-
 ### spec.dataCollectionEndpointId
 
 `string | valueFrom`
-
-The ARM ID of the Azure Monitor Data Collection Endpoint (DCE) the
-rule ingests through. Required by Azure when the rule declares
-custom streams (stream_declarations / the log_file and
-prometheus_forwarder sources); optional otherwise. Format:
-/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionEndpoints/{name}
-Provide the literal ARM ID of an endpoint managed outside this
-catalog; leave unset to use Azure's default ingestion endpoints.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -296,40 +233,23 @@ catalog; leave unset to use Azure's default ingestion endpoints.
 
 `AzureMonitorDataCollectionRuleIdentity`
 
-The rule's managed identity -- required when a destination needs
-the rule to authenticate as itself (for example storage
-destinations on AgentDirectToStore rules, or transformations that
-query other resources). Omit when no destination requires one.
-
 - rule: identity_ids is required for USER_ASSIGNED and must be empty for SYSTEM_ASSIGNED
 
 ### spec.identity.type
 
 `enum` · required
 
-Identity flavor. SYSTEM_ASSIGNED is created and rotated by Azure
-with the rule; USER_ASSIGNED brings an identity you manage
-(grantable on destinations BEFORE the rule exists). The provider
-supports exactly one flavor at a time on this resource -- there is
-no combined mode.
-
 - rule: {"required":true}
 
 Allowed values (use exactly as shown):
 
-- `azure_monitor_data_collection_rule_identity_type_unspecified` -- Not specified: rejected -- an identity block requires a flavor.
-- `SYSTEM_ASSIGNED` -- Azure-managed identity created with the rule.
-- `USER_ASSIGNED` -- An identity you create and manage (AzureUserAssignedIdentity).
+- `azure_monitor_data_collection_rule_identity_type_unspecified`
+- `SYSTEM_ASSIGNED`
+- `USER_ASSIGNED`
 
 ### spec.identity.identityIds
 
 `[]string | valueFrom`
-
-For USER_ASSIGNED: the user-assigned identity attached to the
-rule, by ARM ID. Reference an AzureUserAssignedIdentity resource so
-destination grants can be composed before the rule is created.
-Azure currently supports at most ONE user-assigned identity on a
-data collection rule (enforced at deploy time).
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -338,21 +258,13 @@ data collection rule (enforced at deploy time).
 
 `AzureMonitorDataCollectionRuleDataSources`
 
-The data sources to collect. Omit entirely for rules that carry no
-agent sources (for example WorkspaceTransforms rules, or rules used
-purely for direct ingestion through a DCE).
-
 ### spec.dataSources.syslogs
 
 `[]AzureMonitorDataCollectionRuleSyslog`
 
-Linux syslog sources (requires rule kind "Linux" or no kind).
-
 ### spec.dataSources.syslogs[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -360,16 +272,11 @@ The source's rule-local name.
 
 `[]string` · required
 
-The syslog facilities to collect ("*" for all). Values are the
-provider's exact lowercase tokens.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"in":["*","alert","audit","auth","authpriv","clock","cron","daemon","ftp","kern","local0","local1","local2","local3","local4","local5","local6","local7","lpr","mail","mark","news","nopri","ntp","syslog","user","uucp"]}}}}
 
 ### spec.dataSources.syslogs[].logLevels
 
 `[]string` · required
-
-The minimum severities to collect ("*" for all).
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"in":["*","Alert","Critical","Debug","Emergency","Error","Info","Notice","Warning"]}}}}
 
@@ -377,22 +284,15 @@ The minimum severities to collect ("*" for all).
 
 `[]string` · required
 
-The streams the collected records are tagged with -- syslog
-records flow on "Microsoft-Syslog".
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.performanceCounters
 
 `[]AzureMonitorDataCollectionRulePerformanceCounter`
 
-Performance counter sources (both platforms).
-
 ### spec.dataSources.performanceCounters[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -400,20 +300,11 @@ The source's rule-local name.
 
 `int32` · required · optional (explicit presence)
 
-How often the counters are sampled, in seconds (1-1800). Streams
-targeting "Microsoft-InsightsMetrics" require exactly 60 (Azure
-enforces this at deploy time).
-
 - rule: {"required":true,"int32":{"lte":1800,"gte":1}}
 
 ### spec.dataSources.performanceCounters[].counterSpecifiers
 
 `[]string` · required
-
-The counter specifiers to sample, e.g.
-"\\Processor(_Total)\\% Processor Time" on Windows or
-"Processor(*)\\% Processor Time" on Linux ("\\*" collects all
-counters).
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -421,24 +312,15 @@ counters).
 
 `[]string` · required
 
-The streams the samples are tagged with -- "Microsoft-Perf" for
-Log Analytics, "Microsoft-InsightsMetrics" for Azure Monitor
-metrics (the latter requires 60-second sampling).
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.windowsEventLogs
 
 `[]AzureMonitorDataCollectionRuleWindowsEventLog`
 
-Windows event log sources (requires rule kind "Windows" or no
-kind).
-
 ### spec.dataSources.windowsEventLogs[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -446,18 +328,11 @@ The source's rule-local name.
 
 `[]string` · required
 
-XPath queries selecting the events to collect, e.g.
-"System!*[System[(Level=1 or Level=2 or Level=3)]]". The part
-before "!" is the channel; the part after filters its events.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.windowsEventLogs[].streams
 
 `[]string` · required
-
-The streams the events are tagged with -- Windows events flow on
-"Microsoft-Event".
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -465,14 +340,9 @@ The streams the events are tagged with -- Windows events flow on
 
 `[]AzureMonitorDataCollectionRuleExtension`
 
-Azure Monitor Agent extension sources -- telemetry produced by an
-agent extension (for example the workload insights extensions).
-
 ### spec.dataSources.extensions[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -480,25 +350,15 @@ The source's rule-local name.
 
 `string` · required
 
-The agent extension that produces the telemetry (for example
-"DependencyAgent").
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.dataSources.extensions[].extensionJson
 
 `string`
 
-Extension-specific settings as a JSON object string. Both engines
-validate the JSON syntax at plan time; the KEYS inside are defined
-by each extension.
-
 ### spec.dataSources.extensions[].inputDataSources
 
 `[]string`
-
-The names of other data sources in this rule the extension
-consumes as its inputs.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -506,21 +366,15 @@ consumes as its inputs.
 
 `[]string` · required
 
-The streams the extension's records are tagged with.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.iisLogs
 
 `[]AzureMonitorDataCollectionRuleIisLog`
 
-IIS access-log sources (Windows).
-
 ### spec.dataSources.iisLogs[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -528,17 +382,11 @@ The source's rule-local name.
 
 `[]string`
 
-Absolute paths of the IIS log directories to collect from. Omit to
-collect from the server's configured IIS log location.
-
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.iisLogs[].streams
 
 `[]string` · required
-
-The streams the log records are tagged with -- IIS logs flow on
-"Microsoft-W3CIISLog".
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -546,15 +394,9 @@ The streams the log records are tagged with -- IIS logs flow on
 
 `[]AzureMonitorDataCollectionRuleLogFile`
 
-Custom text/JSON log-file sources. Each references a CUSTOM stream
-that must be declared in stream_declarations, and custom streams
-require the rule to ingest through a Data Collection Endpoint.
-
 ### spec.dataSources.logFiles[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -562,16 +404,11 @@ The source's rule-local name.
 
 `[]string` · required
 
-Glob patterns of the files to collect, e.g. "/var/log/myapp/*.log"
-(Linux) or "C:\\logs\\*.log" (Windows).
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.logFiles[].format
 
 `string` · required
-
-The file format: "text" or "json".
 
 - rule: {"required":true,"string":{"in":["json","text"]}}
 
@@ -579,13 +416,9 @@ The file format: "text" or "json".
 
 `AzureMonitorDataCollectionRuleLogFileSettings`
 
-Text-format settings; omit for JSON files.
-
 ### spec.dataSources.logFiles[].settings.text
 
 `AzureMonitorDataCollectionRuleLogFileSettingsText` · required
-
-How a new record is recognized in the text file.
 
 - rule: {"required":true}
 
@@ -593,17 +426,11 @@ How a new record is recognized in the text file.
 
 `string` · required
 
-The timestamp format that marks the start of a record, from
-Azure's fixed vocabulary.
-
 - rule: {"required":true,"string":{"in":["ISO 8601","YYYY-MM-DD HH:MM:SS","M/D/YYYY HH:MM:SS AM/PM","Mon DD, YYYY HH:MM:SS","yyMMdd HH:mm:ss","ddMMyy HH:mm:ss","MMM d hh:mm:ss","dd/MMM/yyyy:HH:mm:ss zzz","yyyy-MM-ddTHH:mm:ssK"]}}
 
 ### spec.dataSources.logFiles[].streams
 
 `[]string` · required
-
-The CUSTOM stream (declared in stream_declarations) the file's
-records are tagged with, e.g. "Custom-MyAppLogs".
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -611,14 +438,9 @@ records are tagged with, e.g. "Custom-MyAppLogs".
 
 `[]AzureMonitorDataCollectionRulePrometheusForwarder`
 
-Prometheus metrics forwarder sources (Kubernetes / Managed
-Prometheus).
-
 ### spec.dataSources.prometheusForwarders[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -626,15 +448,9 @@ The source's rule-local name.
 
 `[]AzureMonitorDataCollectionRuleLabelIncludeFilter`
 
-Label filters: only time series carrying one of these label/value
-pairs are forwarded. Omit to forward everything.
-
 ### spec.dataSources.prometheusForwarders[].labelIncludeFilters[].label
 
 `string` · required
-
-The filter label -- Azure currently supports exactly
-"microsoft_metrics_include_label".
 
 - rule: {"required":true,"string":{"in":["microsoft_metrics_include_label"]}}
 
@@ -642,17 +458,11 @@ The filter label -- Azure currently supports exactly
 
 `string` · required
 
-The label value that must be present for a time series to be
-forwarded.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.dataSources.prometheusForwarders[].streams
 
 `[]string` · required
-
-The stream the metrics are tagged with -- Prometheus metrics flow
-only on "Microsoft-PrometheusMetrics".
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"in":["Microsoft-PrometheusMetrics"]}}}}
 
@@ -660,13 +470,9 @@ only on "Microsoft-PrometheusMetrics".
 
 `[]AzureMonitorDataCollectionRuleWindowsFirewallLog`
 
-Windows Firewall log sources (Windows).
-
 ### spec.dataSources.windowsFirewallLogs[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -674,22 +480,15 @@ The source's rule-local name.
 
 `[]string` · required
 
-The streams the log records are tagged with.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.platformTelemetries
 
 `[]AzureMonitorDataCollectionRulePlatformTelemetry`
 
-Platform telemetry (resource-level telemetry collected without an
-agent).
-
 ### spec.dataSources.platformTelemetries[].name
 
 `string` · required
-
-The source's rule-local name.
 
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
@@ -697,24 +496,15 @@ The source's rule-local name.
 
 `[]string` · required
 
-The streams the telemetry is tagged with.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataSources.dataImport
 
 `AzureMonitorDataCollectionRuleDataImport`
 
-Event Hub data import -- the rule pulls events FROM an Event Hub
-as a source.
-
 ### spec.dataSources.dataImport.eventHubDataSource
 
 `AzureMonitorDataCollectionRuleDataImportEventHub` · required
-
-The Event Hub source. Azure's rule model carries exactly ONE
-event-hub import per rule -- this is a single block by design (the
-provider accepts a list but silently uses only the first entry).
 
 - rule: {"required":true}
 
@@ -722,15 +512,11 @@ provider accepts a list but silently uses only the first entry).
 
 `string` · required
 
-The source's rule-local name.
-
 - rule: {"required":true,"string":{"minLen":"1","maxLen":"32"}}
 
 ### spec.dataSources.dataImport.eventHubDataSource.stream
 
 `string` · required
-
-The stream the imported events are tagged with.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -738,17 +524,9 @@ The stream the imported events are tagged with.
 
 `string`
 
-The Event Hub consumer group to read from. Omit for the default
-consumer group.
-
 ### spec.destinations
 
 `AzureMonitorDataCollectionRuleDestinations` · required
-
-The destinations telemetry can be routed to. At least one
-destination is required; each carries a rule-local `name` that
-data flows reference. Destination names share ONE namespace across
-all arms -- Azure rejects duplicates at deploy time.
 
 - rule: {"required":true}
 - rule: configure at least one destination (log_analytics, azure_monitor_metrics, event_hub, event_hub_direct, monitor_accounts, storage_blobs, storage_blob_directs or storage_table_directs)
@@ -757,22 +535,15 @@ all arms -- Azure rejects duplicates at deploy time.
 
 `[]AzureMonitorDataCollectionRuleLogAnalytics`
 
-Log Analytics workspace destinations.
-
 ### spec.destinations.logAnalytics[].name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.logAnalytics[].workspaceResourceId
 
 `string | valueFrom` · required
-
-The destination workspace, by ARM resource ID. Can be a literal
-ARM ID or a reference to an AzureLogAnalyticsWorkspace output.
 
 - references: AzureLogAnalyticsWorkspace (`status.outputs.workspace_id`)
 - rule: {"required":true}
@@ -782,14 +553,9 @@ ARM ID or a reference to an AzureLogAnalyticsWorkspace output.
 
 `AzureMonitorDataCollectionRuleAzureMonitorMetrics`
 
-The Azure Monitor metrics destination (at most one per rule) --
-where "Microsoft-InsightsMetrics" performance counters land.
-
 ### spec.destinations.azureMonitorMetrics.name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -797,22 +563,15 @@ The destination's rule-local name (referenced by data flows).
 
 `AzureMonitorDataCollectionRuleEventHubDestination`
 
-An Event Hub destination (at most one per rule).
-
 ### spec.destinations.eventHub.name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.eventHub.eventHubId
 
 `string | valueFrom` · required
-
-The destination Event Hub, by ARM resource ID. Can be a literal
-ARM ID or a reference to an AzureEventHub output.
 
 - references: AzureEventHub (`status.outputs.event_hub_id`)
 - rule: {"required":true}
@@ -822,24 +581,15 @@ ARM ID or a reference to an AzureEventHub output.
 
 `AzureMonitorDataCollectionRuleEventHubDestination`
 
-An Event Hub DIRECT destination (at most one per rule; requires
-rule kind "AgentDirectToStore" -- the agent writes straight to the
-hub).
-
 ### spec.destinations.eventHubDirect.name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.eventHubDirect.eventHubId
 
 `string | valueFrom` · required
-
-The destination Event Hub, by ARM resource ID. Can be a literal
-ARM ID or a reference to an AzureEventHub output.
 
 - references: AzureEventHub (`status.outputs.event_hub_id`)
 - rule: {"required":true}
@@ -849,26 +599,15 @@ ARM ID or a reference to an AzureEventHub output.
 
 `[]AzureMonitorDataCollectionRuleMonitorAccount`
 
-Azure Monitor workspace (managed Prometheus) destinations -- where
-"Microsoft-PrometheusMetrics" streams land.
-
 ### spec.destinations.monitorAccounts[].name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.monitorAccounts[].monitorAccountId
 
 `string | valueFrom` · required
-
-The ARM ID of the Azure Monitor workspace (managed Prometheus
-account). Format:
-/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Monitor/accounts/{name}
-Provide the literal ARM ID of a workspace managed outside this
-catalog.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -877,13 +616,9 @@ catalog.
 
 `[]AzureMonitorDataCollectionRuleStorageBlobDestination`
 
-Storage blob destinations.
-
 ### spec.destinations.storageBlobs[].name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -891,16 +626,11 @@ The destination's rule-local name (referenced by data flows).
 
 `string` · required
 
-The blob container the telemetry is written to.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.storageBlobs[].storageAccountId
 
 `string | valueFrom` · required
-
-The destination storage account, by ARM resource ID. Can be a
-literal ARM ID or a reference to an AzureStorageAccount output.
 
 - references: AzureStorageAccount (`status.outputs.storage_account_id`)
 - rule: {"required":true}
@@ -910,14 +640,9 @@ literal ARM ID or a reference to an AzureStorageAccount output.
 
 `[]AzureMonitorDataCollectionRuleStorageBlobDestination`
 
-Storage blob DIRECT destinations (require rule kind
-"AgentDirectToStore").
-
 ### spec.destinations.storageBlobDirects[].name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -925,16 +650,11 @@ The destination's rule-local name (referenced by data flows).
 
 `string` · required
 
-The blob container the telemetry is written to.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.storageBlobDirects[].storageAccountId
 
 `string | valueFrom` · required
-
-The destination storage account, by ARM resource ID. Can be a
-literal ARM ID or a reference to an AzureStorageAccount output.
 
 - references: AzureStorageAccount (`status.outputs.storage_account_id`)
 - rule: {"required":true}
@@ -944,14 +664,9 @@ literal ARM ID or a reference to an AzureStorageAccount output.
 
 `[]AzureMonitorDataCollectionRuleStorageTableDirect`
 
-Storage table DIRECT destinations (require rule kind
-"AgentDirectToStore").
-
 ### spec.destinations.storageTableDirects[].name
 
 `string` · required
-
-The destination's rule-local name (referenced by data flows).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -959,16 +674,11 @@ The destination's rule-local name (referenced by data flows).
 
 `string` · required
 
-The storage table the telemetry is written to.
-
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destinations.storageTableDirects[].storageAccountId
 
 `string | valueFrom` · required
-
-The destination storage account, by ARM resource ID. Can be a
-literal ARM ID or a reference to an AzureStorageAccount output.
 
 - references: AzureStorageAccount (`status.outputs.storage_account_id`)
 - rule: {"required":true}
@@ -978,21 +688,11 @@ literal ARM ID or a reference to an AzureStorageAccount output.
 
 `[]AzureMonitorDataCollectionRuleDataFlow` · required
 
-The flows wiring streams to destinations (at least one). Each flow
-takes the records of the listed streams and delivers them to the
-listed destinations, optionally transforming them with KQL on the
-way in.
-
 - rule: {"repeated":{"minItems":"1"}}
 
 ### spec.dataFlows[].streams
 
 `[]string` · required
-
-The streams this flow picks up: platform streams
-("Microsoft-Syslog", "Microsoft-Perf", "Microsoft-InsightsMetrics",
-"Microsoft-Event", ...) or custom streams declared in
-stream_declarations ("Custom-...").
 
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
@@ -1000,53 +700,27 @@ stream_declarations ("Custom-...").
 
 `[]string` · required
 
-The destination NAMES (from the destinations block) this flow
-delivers to. Azure rejects a flow referencing a name no
-destination carries.
-
 - rule: {"repeated":{"minItems":"1","items":{"string":{"minLen":"1"}}}}
 
 ### spec.dataFlows[].builtInTransform
 
 `string`
 
-A built-in transformation applied in the ingestion pipeline.
-Mutually relevant with transform_kql -- most flows set neither.
-
 ### spec.dataFlows[].outputStream
 
 `string`
-
-The stream the transformed records continue on when the
-transformation changes the schema (e.g. "Microsoft-Syslog" records
-transformed into a custom table's shape). Requires transform_kql.
 
 ### spec.dataFlows[].transformKql
 
 `string`
 
-A KQL query applied to every record in the ingestion pipeline --
-filter, project, or reshape records before they land (for example
-"source | where SeverityLevel != 'verbose'").
-
 ### spec.streamDeclarations
 
 `[]AzureMonitorDataCollectionRuleStreamDeclaration`
 
-Declarations of CUSTOM streams (names starting "Custom-") used for
-text/JSON log files and direct ingestion: each declares the schema
-(column names and types) of one custom stream. Platform streams
-(Microsoft-*) are never declared here. Custom streams require the
-rule to ingest through a Data Collection Endpoint
-(data_collection_endpoint_id).
-
 ### spec.streamDeclarations[].streamName
 
 `string` · required
-
-The custom stream's name. Azure requires custom stream names to
-start with "Custom-" (enforced at deploy time), e.g.
-"Custom-MyAppLogs".
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1054,15 +728,11 @@ start with "Custom-" (enforced at deploy time), e.g.
 
 `[]AzureMonitorDataCollectionRuleStreamDeclarationColumn` · required
 
-The stream's columns, in order.
-
 - rule: {"repeated":{"minItems":"1"}}
 
 ### spec.streamDeclarations[].columns[].name
 
 `string` · required
-
-The column name (e.g. "TimeGenerated", "RawData").
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -1070,16 +740,11 @@ The column name (e.g. "TimeGenerated", "RawData").
 
 `string` · required
 
-The column type, from Azure's fixed vocabulary.
-
 - rule: {"required":true,"string":{"in":["boolean","datetime","dynamic","int","long","real","string"]}}
 
 ### spec.tags
 
 `map<string, string>`
-
-Tags to apply to the data collection rule, merged over the
-Planton-derived metadata tags (user values win on key conflicts).
 
 ## Validation Rules
 
@@ -1091,10 +756,10 @@ Reference an output from another manifest as `valueFrom: {kind: AzureMonitorData
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.data_collection_rule_id` | `string` | The rule's ARM resource ID (.../providers/Microsoft.Insights/dataCollectionRules/{name}) -- the value associations and Log Analytics workspaces reference. |
-| `status.outputs.data_collection_rule_name` | `string` | The rule's resource name within its resource group. |
-| `status.outputs.immutable_id` | `string` | The rule's immutable ID -- the identifier agents and the ingestion API address the rule by (stable across moves, unlike the ARM ID's casing). |
-| `status.outputs.identity_principal_id` | `string` | The principal ID of the rule's system-assigned identity, when one is configured -- grant this principal access on destinations (empty otherwise). |
+| `status.outputs.data_collection_rule_id` | `string` |  |
+| `status.outputs.data_collection_rule_name` | `string` |  |
+| `status.outputs.immutable_id` | `string` |  |
+| `status.outputs.identity_principal_id` | `string` |  |
 
 ## References
 

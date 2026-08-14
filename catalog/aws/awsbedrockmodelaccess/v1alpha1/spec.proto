@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockmodelaccess.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+// AwsBedrockModelAccessSpec defines the desired configuration for Amazon
+// Bedrock model access - accepting the marketplace agreement that entitles
+// this AWS account (in this region) to invoke a specific foundation model.
+// This is the declarative form of the console's "Model access" page: one
+// component instance per model.
+//
+// Deploying accepts the model's PUBLIC offer (the modules look the offer
+// token up at deploy time, so the spec needs only the model identifier).
+// Most offers have a $0 subscription component - invocations bill
+// per-token regardless. Destroying the component CANCELS the agreement,
+// removing the account's access to the model in that region.
+//
+// Anthropic model agreements additionally require the account's use-case
+// form to be on file - supply `use_case_form` (or record it once in the
+// console) before the agreement will activate.
+//
+// EVERY spec field is create-time-immutable: changing the model (or the
+// form) replaces the agreement.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsBedrockModelAccessSpec {
+  // The AWS region whose model access this agreement grants (agreements
+  // are regional; the use-case form is account-global).
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The foundation model identifier to enable access to, as listed by
+  // Bedrock (ListFoundationModels / the console's Model access page).
+  // Example: "anthropic.claude-3-5-haiku-20241022-v1:0"
+  string model_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The account's use-case-for-model-access form, as the JSON object the
+  // Bedrock console submits (keys like companyName, companyWebsite,
+  // intendedUsers, industryOption, useCases). ACCOUNT-GLOBAL and
+  // write-once per account: AWS keeps exactly one form; deleting this
+  // component never removes it (AWS provides no delete), and two
+  // instances with DIFFERENT forms conflict - keep one instance the owner
+  // of the form and omit it everywhere else. Required (once per account)
+  // for Anthropic models; other vendors' models need no form.
+  google.protobuf.Struct use_case_form = 3;
+}

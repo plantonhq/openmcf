@@ -1,0 +1,276 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoreidentity.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsBedrockAgentCoreIdentitySpec defines the desired configuration for
+// an Amazon Bedrock AgentCore identity-and-access bundle - the
+// credentials and authorization control plane your agents, gateways, and
+// tools authenticate through:
+//
+//   - `workload_identities`: named identities AgentCore workloads present
+//     when calling other services;
+//   - `api_key_credential_providers` / `oauth2_credential_providers`:
+//     vaulted outbound credentials (AWS stores the secrets; gateway
+//     targets and harness tools reference the provider ARN, never the
+//     secret);
+//   - `policy_engine`: a Cedar authorization engine with its policies -
+//     gateways evaluate tool calls against it.
+//
+// Every arm is optional; author the ones this bundle owns (at least
+// one). The account/region token-vault CMK is deliberately NOT part of
+// this kind - it is an account-level settings singleton.
+message AwsBedrockAgentCoreIdentitySpec {
+  // The AWS region where the identity resources will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Named identities AgentCore workloads (runtimes, gateways) present
+  // when calling other services.
+  repeated AwsBedrockAgentCoreWorkloadIdentity workload_identities = 2;
+
+  // Vaulted API keys for outbound calls (AWS stores each key in Secrets
+  // Manager under the service's token vault).
+  repeated AwsBedrockAgentCoreApiKeyProvider api_key_credential_providers = 3;
+
+  // Vaulted OAuth2 client credentials for outbound token flows.
+  repeated AwsBedrockAgentCoreOauth2Provider oauth2_credential_providers = 4;
+
+  // A Cedar policy engine with its policies.
+  AwsBedrockAgentCorePolicyEngine policy_engine = 5;
+
+  // An empty bundle configures nothing.
+  option (buf.validate.message).cel = {
+    id: "at_least_one_arm"
+    message: "set at least one of workload_identities, api_key_credential_providers, oauth2_credential_providers, or policy_engine"
+    expression: "this.workload_identities.size() > 0 || this.api_key_credential_providers.size() > 0 || this.oauth2_credential_providers.size() > 0 || has(this.policy_engine)"
+  };
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "workload_identity_names_unique"
+    message: "workload_identities entries must have unique names"
+    expression: "this.workload_identities.map(w, w.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "api_key_provider_names_unique"
+    message: "api_key_credential_providers entries must have unique names"
+    expression: "this.api_key_credential_providers.map(p, p.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "oauth2_provider_names_unique"
+    message: "oauth2_credential_providers entries must have unique names"
+    expression: "this.oauth2_credential_providers.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreWorkloadIdentity is one named workload identity.
+message AwsBedrockAgentCoreWorkloadIdentity {
+  // Identity name in AWS (3-255 characters; letters, digits, and
+  // _ . -). The for_each key on both engines and the key in the
+  // `workload_identity_arns` output map. Changing it replaces the
+  // identity.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 255
+    pattern: "^[A-Za-z0-9_.-]+$"
+  }];
+
+  // OAuth2 redirect URLs this workload may use in user-delegated token
+  // flows (the browser must land on an allow-listed URL). AWS validates
+  // each URL server-side at CreateWorkloadIdentity and rejects
+  // reserved/documentation TLDs ("Invalid redirect url" -- .test
+  // rejected, live-caught 2026-08-14); real-TLD https URLs and
+  // http://localhost URLs are accepted.
+  repeated string allowed_resource_oauth2_return_urls = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreApiKeyProvider vaults one API key.
+message AwsBedrockAgentCoreApiKeyProvider {
+  // Provider name in AWS (1-128 characters; letters, digits, hyphen,
+  // underscore). The for_each key on both engines and the key in the
+  // `api_key_provider_arns` output map. Changing it replaces the
+  // provider.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-zA-Z0-9\\-_]+$"
+  }];
+
+  // The API key to vault. Handled as a sensitive value end to end: use a
+  // secret reference in manifests (resolved just-in-time at deploy),
+  // never a literal. Rotating the key updates in place.
+  string api_key = 2 [
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive) = true
+  ];
+}
+
+// AwsBedrockAgentCoreOauth2Provider vaults one OAuth2 client and knows
+// how to reach its token endpoints.
+message AwsBedrockAgentCoreOauth2Provider {
+  // Provider name in AWS (1-128 characters; letters, digits, hyphen,
+  // underscore). The for_each key on both engines and the key in the
+  // `oauth2_provider_arns` output map. Changing it replaces the provider.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-zA-Z0-9\\-_]+$"
+  }];
+
+  // The OAuth vendor. The well-known vendors (GOOGLE, GITHUB, MICROSOFT,
+  // SALESFORCE, SLACK) carry AWS-known endpoints - no discovery needed;
+  // CUSTOM requires `oauth_discovery`. Changing the vendor replaces the
+  // provider.
+  string vendor = 2 [(buf.validate.field).string = {
+    in: [
+      "CUSTOM",
+      "GITHUB",
+      "GOOGLE",
+      "MICROSOFT",
+      "SALESFORCE",
+      "SLACK"
+    ]
+  }];
+
+  // The OAuth2 client ID (1-256 characters). Sensitive: use a secret
+  // reference in manifests, never a literal.
+  string client_id = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // The OAuth2 client secret (1-2048 characters). Sensitive: use a
+  // secret reference in manifests (resolved just-in-time at deploy),
+  // never a literal. Rotating it updates in place.
+  string client_secret = 4 [
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 2048
+    },
+    (dev.planton.shared.options.sensitive) = true
+  ];
+
+  // How to reach a CUSTOM vendor's endpoints - required exactly when
+  // vendor is CUSTOM.
+  AwsBedrockAgentCoreOauth2Discovery oauth_discovery = 5;
+
+  // AWS pairs discovery with the CUSTOM vendor exactly - the well-known
+  // vendors carry their own endpoints.
+  option (buf.validate.message).cel = {
+    id: "discovery_pairs_with_custom"
+    message: "oauth_discovery is required when vendor is CUSTOM and forbidden otherwise"
+    expression: "(this.vendor == 'CUSTOM') == has(this.oauth_discovery)"
+  };
+}
+
+// AwsBedrockAgentCoreOauth2Discovery locates a CUSTOM vendor's OAuth
+// endpoints - exactly one arm.
+message AwsBedrockAgentCoreOauth2Discovery {
+  // The vendor's OIDC discovery URL (must serve
+  // /.well-known/openid-configuration).
+  string discovery_url = 1;
+
+  // Or spell the endpoints out when the vendor has no discovery
+  // document.
+  AwsBedrockAgentCoreOauth2ServerMetadata authorization_server_metadata = 2;
+
+  // Exactly one discovery arm.
+  option (buf.validate.message).cel = {
+    id: "discovery_exactly_one"
+    message: "set exactly one of discovery_url or authorization_server_metadata"
+    expression: "(this.discovery_url != '') != has(this.authorization_server_metadata)"
+  };
+}
+
+// AwsBedrockAgentCoreOauth2ServerMetadata spells out a vendor's OAuth
+// endpoints.
+message AwsBedrockAgentCoreOauth2ServerMetadata {
+  // The token issuer URL (the "iss" claim value).
+  string issuer = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The authorization endpoint (user-delegated flows).
+  string authorization_endpoint = 2 [(buf.validate.field).string.min_len = 1];
+
+  // The token endpoint (all flows).
+  string token_endpoint = 3 [(buf.validate.field).string.min_len = 1];
+
+  // OAuth response types the server supports. Omitted = AWS defaults.
+  repeated string response_types = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
+}
+
+// AwsBedrockAgentCorePolicyEngine is a Cedar authorization engine with
+// its policies.
+message AwsBedrockAgentCorePolicyEngine {
+  // Engine name in AWS (1-48 characters; letter first, then letters,
+  // digits, underscore - AWS rejects hyphens here). Changing it replaces
+  // the engine.
+  string engine_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 48
+    pattern: "^[A-Za-z][A-Za-z0-9_]*$"
+  }];
+
+  // Human-readable description (1-4096 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 4096];
+
+  // Customer-managed KMS key encrypting the engine's policies at rest.
+  // Without it, AWS uses a service-managed key. Changing it replaces the
+  // engine.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // The engine's Cedar policies.
+  repeated AwsBedrockAgentCoreCedarPolicy policies = 4;
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "policy_names_unique"
+    message: "policies entries must have unique names"
+    expression: "this.policies.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreCedarPolicy is one Cedar policy in the engine.
+message AwsBedrockAgentCoreCedarPolicy {
+  // Policy name in AWS (1-48 characters; letter first, then letters,
+  // digits, underscore). The for_each key on both engines and the key in
+  // the `policy_ids` output map. Changing it replaces the policy.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 48
+    pattern: "^[A-Za-z][A-Za-z0-9_]*$"
+  }];
+
+  // Human-readable description (1-4096 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 4096];
+
+  // The Cedar policy statement (permit/forbid rules over principals,
+  // actions, and resources). AWS rejects a fully-wildcard resource at
+  // CreatePolicy ("a wildcard resource was detected", live-caught
+  // 2026-08-14): constrain the resource to a specific
+  // AgentCore::Gateway entity or to the type, e.g.
+  // `permit(principal, action, resource is AgentCore::Gateway);`.
+  string cedar_statement = 3 [(buf.validate.field).string.min_len = 1];
+
+  // What AWS does with static-analysis findings on the statement:
+  // FAIL_ON_ANY_FINDINGS rejects a policy with findings (the safe
+  // default); IGNORE_ALL_FINDINGS stores it anyway. Omitted = AWS
+  // default.
+  string validation_mode = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "FAIL_ON_ANY_FINDINGS",
+        "IGNORE_ALL_FINDINGS"
+      ]
+    }
+  ];
+}

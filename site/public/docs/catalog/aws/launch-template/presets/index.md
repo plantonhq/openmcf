@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Hardened Baseline"
     excerpt: "This preset is the strict-posture template for compliance-sensitive workloads: IMDSv2 with the hop limit locked to the host, root volume encrypted with a customer-managed KMS key (revocable,..."
+  - slug: "04-capacity-block-ml"
+    rank: "04"
+    title: "Capacity Block ML Training Fleet"
+    excerpt: "This preset launches into a pre-purchased Capacity Block -- AWS's reservation product for GPU capacity, bought for a defined window at a known price. `marketType: capacity-block` tells EC2 this is..."
 ---
 
 # Launch Template Presets

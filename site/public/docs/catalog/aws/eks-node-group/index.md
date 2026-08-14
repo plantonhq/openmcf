@@ -17,6 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **EKS Managed Node Group** -- EC2 worker nodes attached to the referenced EKS cluster, placed in your subnets, assuming the referenced IAM role, with the launch configuration, capacity type, scaling bounds, scheduling metadata, and update/repair policy you declare
 - **Auto Scaling Group** -- managed by EKS behind the node group, scaling between `scaling.minSize` and `scaling.maxSize`
 - **SSH Security Group** -- only when `remoteAccess.ec2SshKey` is set without source security groups; AWS opens port 22 wide, so always scope SSH when enabling it
+- **Warm Pool** -- only when `warmPoolConfig` is set; pre-initialized instances held stopped, running, or hibernated so scale-out joins in seconds
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -120,6 +121,8 @@ These are the most important decisions when configuring an EKS node group. Explo
 
 **Node auto-repair** -- `nodeRepairConfig` lets EKS replace or reboot unhealthy nodes within parallelism and unhealthy-threshold bounds, with per-condition overrides (e.g. Reboot on GPU XID errors instead of Replace).
 
+**Warm pools** -- `warmPoolConfig` keeps pre-initialized nodes on standby: `poolState` picks the cost/latency trade-off (`STOPPED` bills only EBS; `RUNNING` joins instantly at full price; `HIBERNATED` restores RAM from disk), `minSize` sets the standby floor, `maxGroupPreparedCapacity` caps the pool (omit for AWS's default ceiling, explicit 0 for nothing beyond the floor), and `reuseOnScaleIn` returns scaled-in nodes to the pool. Updates in place.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -152,6 +155,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Spot cost-optimized** -- Several similar instance types on Spot, a `node-lifecycle: spot` label, and a taint if only Spot-tolerant workloads should land there. Pair with an On-Demand group for critical services. Start from the **Spot Cost-Optimized** preset.
 
 **Template-driven fleet** -- A `launchTemplate` reference with a pinned version: custom AMI, IMDSv2 required, encrypted volumes. Roll the fleet by publishing a new template version and bumping the pin.
+
+**Warm standby capacity** -- A `warmPoolConfig` with `poolState: STOPPED`, a small standby floor, and `reuseOnScaleIn: true`: scale-out serves traffic in seconds while pooled nodes bill only their EBS storage. Start from the **Warm Pool** preset.
 
 ## Works With
 

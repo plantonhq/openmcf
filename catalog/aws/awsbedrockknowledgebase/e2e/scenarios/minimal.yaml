@@ -1,0 +1,27 @@
+# AwsBedrockKnowledgeBase minimal scenario: the MANAGED type -- AWS
+# manages the vector store, so the lane is fully self-contained (no
+# vector-store fixture). Proves the create -> ACTIVE lifecycle both
+# engines share and the MANAGED arm's first live render.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockKnowledgeBase
+metadata:
+  name: planton-oss-e2e-awsbrkb-min
+  id: planton-oss-e2e-awsbrkb-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockknowledgebase
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Minimal managed knowledge base
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  managed: {}
