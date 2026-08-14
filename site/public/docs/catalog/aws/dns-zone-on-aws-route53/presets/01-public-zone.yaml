@@ -1,8 +1,0 @@
-apiVersion: aws.planton.dev/v1alpha1
-kind: AwsRoute53Zone
-metadata:
-  # metadata.name IS the zone's domain name (create-time immutable).
-  name: <domain-name>
-spec:
-  region: <aws-region>
-  isPrivate: false  # public zone: resolves globally; nameservers exported for registrar delegation

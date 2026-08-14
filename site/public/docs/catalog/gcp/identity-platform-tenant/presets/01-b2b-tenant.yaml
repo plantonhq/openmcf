@@ -1,8 +1,0 @@
-apiVersion: gcp.planton.dev/v1alpha1
-kind: GcpIdentityPlatformTenant
-metadata:
-  name: acme-corp-tenant
-spec:
-  displayName: acme-corp
-  allowPasswordSignup: true
-  deletionPolicy: PREVENT

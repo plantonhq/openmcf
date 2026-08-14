@@ -1,9 +1,0 @@
-apiVersion: openstack.planton.dev/v1alpha1
-kind: OpenStackFloatingIp
-metadata:
-  name: my-associated-floating-ip
-spec:
-  floatingNetworkId:
-    value: <external-network-id>
-  portId:
-    value: <port-id>

@@ -494,14 +494,6 @@ release:  ## auto-bump version, tag & push (bump=major|minor|patch, default: pat
 .PHONY: test-and-release
 test-and-release: test release
 
-.PHONY: run-docs
-run-docs:
-	$(MAKE) -C docs run
-
-.PHONY: build-docs
-build-docs:
-	$(MAKE) -C docs build
-
 # ── E2E Tests ─────────────────────────────────────────────────────────────────
 # Every provider test package sets up its harness in TestMain BEFORE Go applies
 # the -run filter, so sweeping ./e2e/... pays every provider's harness setup --

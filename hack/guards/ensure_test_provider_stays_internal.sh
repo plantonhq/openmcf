@@ -15,8 +15,7 @@ set -euo pipefail
 #   1. Release content packaging (tools/ci/release/package_content.sh)
 #      excludes _test in every selector AND refuses _test paths inside
 #      create_zip itself. The dry-run below exercises both.
-#   2. The catalog site copier skips the _test provider directory.
-#   3. Module auto-tagging skips _test components (auto-tag.yaml).
+#   2. Module auto-tagging skips _test components (auto-tag.yaml).
 #
 # What _test content legitimately reaches: the kind registry, generated
 # stubs, and test/certification surfaces -- exactly what needs it.
@@ -32,12 +31,7 @@ if ! bash tools/ci/release/package_content.sh vGUARD --dry-run >/dev/null 2>&1; 
   failures+=("tools/ci/release/package_content.sh --dry-run failed -- a content selector matched _test provider content (or no longer matches the tree)")
 fi
 
-# 2. The catalog site copier must skip the _test provider directory.
-if ! grep -q "item === '_test'" site/scripts/copy-component-docs.ts; then
-  failures+=("site/scripts/copy-component-docs.ts no longer skips the _test provider")
-fi
-
-# 3. Module auto-tagging must skip _test components.
+# 2. Module auto-tagging must skip _test components.
 if ! grep -q '"_test"' .github/workflows/auto-tag.yaml; then
   failures+=(".github/workflows/auto-tag.yaml no longer skips the _test provider")
 fi
@@ -50,4 +44,4 @@ if [ ${#failures[@]} -gt 0 ]; then
   exit 1
 fi
 
-echo "OK: _test provider stays internal (packaging, site, auto-tagging)."
+echo "OK: _test provider stays internal (packaging, auto-tagging)."

@@ -1,8 +1,0 @@
-apiVersion: kubernetes.planton.dev/v1alpha1
-kind: KubernetesServiceAccount
-metadata:
-  name: app-identity
-spec:
-  name: app-identity
-  namespace:
-    value: "<your-namespace>"
