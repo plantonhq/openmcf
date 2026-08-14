@@ -1,0 +1,90 @@
+# =============================================================================
+# Stub SDK Release (Reusable Workflow)
+# =============================================================================
+# Builds the Java and TypeScript protobuf stub trees ONCE at the release tag
+# and uploads them to Cloudflare R2 (downloads.planton.dev) as prebuilt
+# artifacts. The platform repo extracts these trees into its stubs directories
+# during `make upgrade-planton` instead of cloning this repo and regenerating
+# ~26k files -- generation happens once, at the source of truth.
+#
+# Byte-fidelity contract: the SDK templates (buf.gen.sdk.java.yaml,
+# buf.gen.sdk.ts.yaml) mirror the managed-mode config the platform's retired
+# local generation used, and the generator pins are cross-repo lockstepped
+# (see the Makefile's CROSS-REPO LOCKSTEP note). The manifest records the
+# pins; the platform's fetch REFUSES artifacts whose pins disagree with its
+# own Makefile, so drift fails the next platform upgrade loudly instead of
+# shipping divergent bytes.
+#
+# buf is version-pinned here (unlike the lint lanes' floating install)
+# because buf's managed-mode behavior is a generation input: the artifact's
+# bytes must not shift underneath a release because a runner picked up a new
+# buf. The pinned version rides the manifest for forensics.
+#
+# Artifacts created (uploaded to releases/{tag}/stubs/):
+#   stubs-java.zip           -- Java message + gRPC stub sources
+#                               (protos.dev.planton.*, javac-ready tree)
+#   stubs-java.zip.sha256    -- integrity checksum
+#   stubs-ts.zip             -- TypeScript protobuf-es stubs (js+dts) incl.
+#                               protovalidate (buf/validate) types
+#   stubs-ts.zip.sha256      -- integrity checksum
+#   stub-sdks-manifest.json  -- release tag + generator pins + file counts
+#
+# Called by: .github/workflows/release.yaml (after its github-release job)
+# =============================================================================
+
+name: release.stub-sdks
+
+on:
+  workflow_call:
+    secrets:
+      CLOUDFLARE_R2_ACCESS_KEY_ID:
+        required: true
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY:
+        required: true
+      CLOUDFLARE_R2_ENDPOINT:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  R2_BUCKET: downloads-dot-planton-dot-dev-bucket
+  # Generation input, not just tooling -- see the header note.
+  BUF_VERSION: 1.65.0
+
+jobs:
+  stub-sdks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (protoc-gen-es plugin)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup buf (pinned)
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+          version: ${{ env.BUF_VERSION }}
+
+      - name: Build and verify the stub SDK artifacts
+        run: |
+          make build-stub-sdks tag="${GITHUB_REF_NAME}"
+
+      - name: Upload to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          set -euo pipefail
+          for artifact in stubs-java.zip stubs-java.zip.sha256 stubs-ts.zip stubs-ts.zip.sha256 stub-sdks-manifest.json; do
+            R2_KEY="releases/${GITHUB_REF_NAME}/stubs/${artifact}"
+            aws s3 cp "generated/stub-sdks/${artifact}" "s3://${R2_BUCKET}/${R2_KEY}" \
+              --endpoint-url "${AWS_ENDPOINT_URL}"
+            echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+          done

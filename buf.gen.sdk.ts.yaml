@@ -1,0 +1,23 @@
+# TypeScript stub SDK template -- release cargo for the platform repo.
+#
+# Built by `make build-stub-sdks` and shipped at
+# downloads.planton.dev/releases/{tag}/stubs/stubs-ts.zip. The platform
+# extracts this tree into product/apis/stubs/ts, where its own generated
+# stubs import these types by RELATIVE path -- the single-tree layout is
+# load-bearing, so output must stay byte-equivalent to what the platform's
+# retired local generation produced. include_imports also generates the
+# protovalidate (buf/validate) types; google/protobuf well-known types come
+# from the @bufbuild/protobuf npm package and are not generated. The plugin
+# version is the cross-repo lockstepped pin in the Makefile's proto toolchain
+# section -- see the CROSS-REPO LOCKSTEP note there.
+version: v2
+managed:
+  enabled: true
+plugins:
+  - local: .tools/node_modules/.bin/protoc-gen-es
+    out: generated/stub-sdks/ts
+    opt:
+      - target=js+dts
+    include_imports: true
+inputs:
+  - directory: .

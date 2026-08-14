@@ -62,13 +62,22 @@ buf-generate: protos
 #    PROTOC_GEN_GRPC_JAVA_VERSION  <-> io.grpc:*                         (MODULE.bazel)
 #    PROTOC_GEN_GO_VERSION         <-> google.golang.org/protobuf        (go.mod)
 #    PROTOC_GEN_GO_GRPC_VERSION    <-> google.golang.org/grpc            (go.mod)
+#    PROTOC_GEN_ES_VERSION         <-> @bufbuild/protobuf (platform stubs/ts)
+#
+#  CROSS-REPO LOCKSTEP: protoc, grpc-java, and protoc-gen-es are ONE pin set
+#  shared with the platform repo (planton-platform/product/apis/Makefile).
+#  The stub-sdk release artifacts (make build-stub-sdks) record these pins in
+#  their manifest, and the platform's fetch step REFUSES artifacts whose pins
+#  disagree with its own -- so bumping here without bumping there (or vice
+#  versa) fails the next platform upgrade loudly. Bump both repos together.
 # --------------------------------------------------------------------------- #
 PROTO_TOOLS_DIR := .tools
 
-PROTOC_VERSION               := 30.1
-PROTOC_GEN_GRPC_JAVA_VERSION := 1.65.0
+PROTOC_VERSION               := 34.0
+PROTOC_GEN_GRPC_JAVA_VERSION := 1.79.0
 PROTOC_GEN_GO_VERSION        := v1.36.6
 PROTOC_GEN_GO_GRPC_VERSION   := v1.5.1
+PROTOC_GEN_ES_VERSION        := 2.11.0
 
 # protoc and grpc-java release artifacts share this platform naming scheme:
 # osx-aarch_64 / osx-x86_64 / linux-aarch_64 / linux-x86_64
@@ -81,6 +90,7 @@ PROTOC_STAMP             := $(PROTO_TOOLS_DIR)/.stamp.protoc.$(PROTOC_VERSION)
 GRPC_JAVA_STAMP          := $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-grpc-java.$(PROTOC_GEN_GRPC_JAVA_VERSION)
 PROTOC_GEN_GO_STAMP      := $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-go.$(PROTOC_GEN_GO_VERSION)
 PROTOC_GEN_GO_GRPC_STAMP := $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-go-grpc.$(PROTOC_GEN_GO_GRPC_VERSION)
+PROTOC_GEN_ES_STAMP      := $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-es.$(PROTOC_GEN_ES_VERSION)
 
 $(PROTOC_STAMP):
 	@echo "installing protoc $(PROTOC_VERSION) into $(PROTO_TOOLS_DIR)/protoc/"
@@ -113,6 +123,13 @@ $(PROTOC_GEN_GO_GRPC_STAMP):
 	@rm -f $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-go-grpc.*
 	@mkdir -p $(PROTO_TOOLS_DIR)
 	@GOBIN=$(abspath $(PROTO_TOOLS_DIR)) go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@$(PROTOC_GEN_GO_GRPC_VERSION)
+	@touch $@
+
+$(PROTOC_GEN_ES_STAMP):
+	@echo "installing @bufbuild/protoc-gen-es $(PROTOC_GEN_ES_VERSION) into $(PROTO_TOOLS_DIR)/node_modules/"
+	@rm -f $(PROTO_TOOLS_DIR)/.stamp.protoc-gen-es.*
+	@mkdir -p $(PROTO_TOOLS_DIR)
+	@npm install --prefix $(PROTO_TOOLS_DIR) --no-audit --no-fund --loglevel=error @bufbuild/protoc-gen-es@$(PROTOC_GEN_ES_VERSION) >/dev/null
 	@touch $@
 
 .PHONY: proto-tools
@@ -151,6 +168,47 @@ protos: buf-lint buf-fmt proto-tools
 	@echo "Verifying every CEL rule compiles on protovalidate-java..."
 	${BAZEL} test ${BAZEL_REMOTE_FLAGS} //hack/javagate:protovalidate_conformance_gate
 	${BAZEL} run //:gazelle
+
+# --------------------------------------------------------------------------- #
+#  Prebuilt stub SDK artifacts (release cargo for the platform repo)
+#
+#  The platform consumes this repo's Java and TypeScript stubs as prebuilt
+#  release artifacts (downloads.planton.dev/releases/{tag}/stubs/) instead of
+#  cloning this repo and regenerating ~26k files on every pin upgrade. The
+#  trees must be byte-identical to what the platform's retired local
+#  generation produced, which is why the SDK templates mirror the platform's
+#  managed-mode config and the toolchain pins are cross-repo lockstepped (see
+#  the pin section above). The manifest records the pins; the platform's
+#  fetch refuses artifacts whose pins disagree with its own.
+#
+#  The file-count floors are the release-packaging guard's "never ship a
+#  silently empty zip" discipline applied to generation output: a
+#  misconfigured template or input fails HERE, not in a consumer's build.
+# --------------------------------------------------------------------------- #
+STUB_SDKS_DIR        := generated/stub-sdks
+STUB_SDKS_JAVA_FLOOR := 10000
+STUB_SDKS_TS_FLOOR   := 3000
+
+.PHONY: build-stub-sdks
+build-stub-sdks: $(PROTOC_STAMP) $(GRPC_JAVA_STAMP) $(PROTOC_GEN_ES_STAMP)
+	@test -n "$(tag)" || { echo "usage: make build-stub-sdks tag=vX.Y.Z"; exit 1; }
+	rm -rf $(STUB_SDKS_DIR)
+	mkdir -p $(STUB_SDKS_DIR)/java $(STUB_SDKS_DIR)/ts
+	buf generate --disable-symlinks --timeout 20m --template buf.gen.sdk.java.yaml
+	buf generate --disable-symlinks --timeout 20m --template buf.gen.sdk.ts.yaml
+	@set -e; \
+	java_count=$$(find $(STUB_SDKS_DIR)/java -type f -name '*.java' | wc -l | tr -d ' '); \
+	ts_count=$$(find $(STUB_SDKS_DIR)/ts -type f | wc -l | tr -d ' '); \
+	echo "generated: $$java_count java files, $$ts_count ts files"; \
+	test "$$java_count" -ge $(STUB_SDKS_JAVA_FLOOR) || { echo "ERROR: java stub tree suspiciously thin ($$java_count < $(STUB_SDKS_JAVA_FLOOR)) -- template or input misconfigured; never ship a silently thin artifact"; exit 1; }; \
+	test "$$ts_count" -ge $(STUB_SDKS_TS_FLOOR) || { echo "ERROR: ts stub tree suspiciously thin ($$ts_count < $(STUB_SDKS_TS_FLOOR)) -- template or input misconfigured; never ship a silently thin artifact"; exit 1; }; \
+	(cd $(STUB_SDKS_DIR)/java && zip -qr ../stubs-java.zip .); \
+	(cd $(STUB_SDKS_DIR)/ts && zip -qr ../stubs-ts.zip .); \
+	(cd $(STUB_SDKS_DIR) && shasum -a 256 stubs-java.zip > stubs-java.zip.sha256 && shasum -a 256 stubs-ts.zip > stubs-ts.zip.sha256); \
+	printf '{\n  "releaseTag": "%s",\n  "bufVersion": "%s",\n  "pins": {\n    "protoc": "%s",\n    "protocGenGrpcJava": "%s",\n    "protocGenEs": "%s"\n  },\n  "fileCounts": {\n    "java": %s,\n    "ts": %s\n  }\n}\n' \
+		"$(tag)" "$$(buf --version)" "$(PROTOC_VERSION)" "$(PROTOC_GEN_GRPC_JAVA_VERSION)" "$(PROTOC_GEN_ES_VERSION)" "$$java_count" "$$ts_count" \
+		> $(STUB_SDKS_DIR)/stub-sdks-manifest.json; \
+	echo "stub SDK artifacts ready in $(STUB_SDKS_DIR)/"
 
 .PHONY: build-optional-linter-plugin
 build-optional-linter-plugin:
