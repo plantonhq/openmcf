@@ -1,0 +1,24 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarelist
+spec:
+  # A list's import identity is {account_id}/{list_id}. account_id is
+  # spec-relative; list_id is the deploy's own output. Items are a
+  # separate kind (CloudflareListItem) -- this module never declares
+  # inline items.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: list_id
+      derivations:
+        - from_stack_output: list_id
+      where_to_find: >-
+        Cloudflare dashboard -> Manage Account -> Configurations -> Lists
+        (the list id is in the API, not always the UI), or
+        `GET /accounts/<account_id>/rules/lists` on the Cloudflare v4 API
+        (the id field of the entry whose name matches).

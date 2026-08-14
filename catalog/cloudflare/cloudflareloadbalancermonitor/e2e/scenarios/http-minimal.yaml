@@ -1,0 +1,19 @@
+# Http-minimal CloudflareLoadBalancerMonitor scenario: an HTTP health check
+# with provider defaults (type defaults to http, no port required). The
+# account comes from the harness env. Requires the Load Balancing add-on.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerMonitor
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancermonitor-http-minimal
+  id: planton-oss-e2e-cloudflareloadbalancermonitor-http-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancermonitor
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}

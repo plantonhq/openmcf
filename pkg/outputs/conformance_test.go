@@ -5456,20 +5456,24 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"certificate_id", "certificate"},
 		},
 		{
-			// CloudflareCertificatePack: both engines emit the pack id, status, and
-			// primary certificate id.
+			// CloudflareCertificatePack: both engines emit the pack id, status,
+			// primary certificate id, and the zone the pack was ordered in
+			// (a pack's API identity is zone_id + certificate_pack_id).
 			name: "CloudflareCertificatePack",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCertificatePack,
 			rawOutputs: map[string]interface{}{
 				"certificate_pack_id": "3822ff90e3534420ac41fc7e4a1f4b07",
 				"status":              "active",
 				"primary_certificate": "caa875a3-b2f0-4f7e-9a1e-0d2b4c6e8f10",
+				"zone_id":             "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"certificate_pack_id", "status"},
+			mustPopulate: []string{"certificate_pack_id", "status", "zone_id"},
 		},
 		{
 			// CloudflareCustomHostname: both engines emit the hostname id, status,
-			// the ownership-verification records, and the creation timestamp.
+			// the ownership-verification records, the creation timestamp, and
+			// the zone the hostname was onboarded onto (API identity is
+			// zone_id + custom_hostname_id).
 			name: "CloudflareCustomHostname",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostname,
 			rawOutputs: map[string]interface{}{
@@ -5482,12 +5486,14 @@ func TestStackOutputsConformance(t *testing.T) {
 				"ownership_verification_http_body": "1f2e3d4c5b6a7988",
 				"verification_errors":              []interface{}{},
 				"created_at":                       "2026-06-25T00:00:00Z",
+				"zone_id":                          "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"custom_hostname_id", "status"},
+			mustPopulate: []string{"custom_hostname_id", "status", "zone_id"},
 		},
 		{
-			// CloudflareCustomHostnameFallbackOrigin: both engines emit status and
-			// timestamps for the zone's fallback origin.
+			// CloudflareCustomHostnameFallbackOrigin: both engines emit status,
+			// timestamps, and the zone this singleton belongs to (the fallback
+			// origin has no resource id; its API identity IS the zone).
 			name: "CloudflareCustomHostnameFallbackOrigin",
 			kind: cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin,
 			rawOutputs: map[string]interface{}{
@@ -5495,8 +5501,9 @@ func TestStackOutputsConformance(t *testing.T) {
 				"created_at": "2026-06-25T00:00:00Z",
 				"updated_at": "2026-06-25T00:00:00Z",
 				"errors":     []interface{}{},
+				"zone_id":    "023e105f4ecef8ad9ca31a8372d0c353",
 			},
-			mustPopulate: []string{"status"},
+			mustPopulate: []string{"status", "zone_id"},
 		},
 		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,

@@ -42,3 +42,8 @@ output "created_at" {
   description = "RFC3339 timestamp of when the custom hostname was created"
   value       = cloudflare_custom_hostname.main.created_at
 }
+
+output "zone_id" {
+  description = "The Cloudflare zone the hostname was onboarded onto (a custom hostname's API identity is zone_id + custom_hostname_id)"
+  value       = cloudflare_custom_hostname.main.zone_id
+}

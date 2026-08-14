@@ -43,7 +43,12 @@ type CloudflareCustomHostnameStackOutputs struct {
 	// Any verification errors reported by Cloudflare.
 	VerificationErrors []string `protobuf:"bytes,8,rep,name=verification_errors,json=verificationErrors,proto3" json:"verification_errors,omitempty"`
 	// RFC3339 timestamp of when the custom hostname was created.
-	CreatedAt     string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CreatedAt string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The Cloudflare Zone ID the hostname was onboarded onto. A custom hostname's
+	// API identity is (zone_id, custom_hostname_id), so downstream consumers --
+	// verification tooling, imports, chart blocks composing on the hostname --
+	// need the zone alongside the hostname's own id.
+	ZoneId        string `protobuf:"bytes,10,opt,name=zone_id,json=zoneId,proto3" json:"zone_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -141,11 +146,18 @@ func (x *CloudflareCustomHostnameStackOutputs) GetCreatedAt() string {
 	return ""
 }
 
+func (x *CloudflareCustomHostnameStackOutputs) GetZoneId() string {
+	if x != nil {
+		return x.ZoneId
+	}
+	return ""
+}
+
 var File_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\x8e\x04\n" +
+	"Bcatalog/cloudflare/cloudflarecustomhostname/v1alpha1/outputs.proto\x128dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1\"\xa7\x04\n" +
 	"$CloudflareCustomHostnameStackOutputs\x12,\n" +
 	"\x12custom_hostname_id\x18\x01 \x01(\tR\x10customHostnameId\x12\x16\n" +
 	"\x06status\x18\x02 \x01(\tR\x06status\x12>\n" +
@@ -156,7 +168,9 @@ const file_catalog_cloudflare_cloudflarecustomhostname_v1alpha1_outputs_proto_ra
 	" ownership_verification_http_body\x18\a \x01(\tR\x1downershipVerificationHttpBody\x12/\n" +
 	"\x13verification_errors\x18\b \x03(\tR\x12verificationErrors\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\tR\tcreatedAtB\xc5\x03\n" +
+	"created_at\x18\t \x01(\tR\tcreatedAt\x12\x17\n" +
+	"\azone_id\x18\n" +
+	" \x01(\tR\x06zoneIdB\xc5\x03\n" +
 	"<com.dev.planton.cloudflare.cloudflarecustomhostname.v1alpha1B\fOutputsProtoP\x01Zrgithub.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1;cloudflarecustomhostnamev1alpha1\xa2\x02\x04DPCC\xaa\x028Dev.Planton.Cloudflare.Cloudflarecustomhostname.V1alpha1\xca\x028Dev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\xe2\x02DDev\\Planton\\Cloudflare\\Cloudflarecustomhostname\\V1alpha1\\GPBMetadata\xea\x02<Dev::Planton::Cloudflare::Cloudflarecustomhostname::V1alpha1b\x06proto3"
 
 var (

@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareloadbalancerpool
+spec:
+  # A pool's import identity is {account_id}/{pool_id}. account_id is
+  # spec-relative; pool_id is the deploy's own output. Requires the Load
+  # Balancing add-on.
+  values:
+    - name: account_id
+      derivations:
+        - from_spec_field: account_id
+      where_to_find: >-
+        Cloudflare dashboard -> the account's Overview (Account ID in the
+        right-hand API panel), or `GET /accounts` on the Cloudflare v4 API.
+    - name: pool_id
+      derivations:
+        - from_stack_output: pool_id
+      where_to_find: >-
+        Cloudflare dashboard -> Traffic -> Load Balancing -> Pools (open
+        the pool; the id is in the URL), or
+        `GET /accounts/<account_id>/load_balancers/pools` on the
+        Cloudflare v4 API (the id field of the entry whose name matches).

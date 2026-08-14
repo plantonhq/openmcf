@@ -15,9 +15,24 @@ package verify
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 )
+
+// EnvelopePresence selects which 200-body signals count as ABSENT. The zero
+// value treats any 200 as present (same answer as ResourceExists, but
+// ResourcePresent still parses the v4 envelope -- never use it on raw-body
+// endpoints).
+type EnvelopePresence struct {
+	// SoftDeleted: a 200 whose result.deleted_at is set counts as absent
+	// (cloudflared tunnels, teamnet routes).
+	SoftDeleted bool
+	// AbsentStatuses: a 200 whose result.status is one of these counts as
+	// absent (certificate packs, custom hostnames, fallback origin --
+	// pending_deletion / deleted).
+	AbsentStatuses []string
+}
 
 // API is the surface verifiers need from the harness client: an
 // existence probe plus the account scope resolved at Setup.
@@ -32,6 +47,11 @@ type API interface {
 	// routes) -- it parses the v4 envelope, so it must never replace
 	// ResourceExists on raw-body endpoints (e.g. the KV value endpoint).
 	ResourceActive(ctx context.Context, path string) (bool, error)
+	// ResourcePresent is the envelope-aware probe: 404 / 400-7003 are
+	// always absent; a 200 is absent when SoftDeleted sees deleted_at or
+	// result.status matches AbsentStatuses. Parses the v4 envelope --
+	// never use on raw-body endpoints.
+	ResourcePresent(ctx context.Context, path string, opts EnvelopePresence) (bool, error)
 	// AccountID returns the Cloudflare account the harness is scoped to.
 	AccountID() string
 }
@@ -66,6 +86,15 @@ type apiPathVerifier struct {
 	// deleted_at != nil, and its test sweepers filter on it). Without this,
 	// verify-destroyed would report a false "still exists" on every lane.
 	softDeleted bool
+	// absentStatuses opts into the status-enum absence probe: a 200 whose
+	// result.status is one of these counts as gone (certificate packs,
+	// custom hostnames, fallback origin -- pending_deletion / deleted).
+	absentStatuses []string
+	// absentRetries is the number of VerifyAbsent probes, 1s apart. List
+	// items delete through an async bulk POST the provider never polls; a
+	// single GET immediately after destroy races the 404. Zero/one means
+	// a single probe (everyone else's default).
+	absentRetries int
 }
 
 // IDOutputKey returns the last output key -- the resource's own identifier
@@ -95,22 +124,40 @@ func (v *apiPathVerifier) VerifyAbsent(ctx context.Context, api API, outputs map
 	if err != nil {
 		return err
 	}
-	exists, err := v.probe(ctx, api, path)
-	if err != nil {
-		return errors.Wrapf(err, "%s verify-absent failed", v.component)
+	attempts := v.absentRetries
+	if attempts < 1 {
+		attempts = 1
 	}
-	if exists {
-		return errors.Errorf("%s %s still exists after destroy (GET %s)",
-			v.component, outputs[v.IDOutputKey()], path)
+	var exists bool
+	for i := 0; i < attempts; i++ {
+		if i > 0 {
+			select {
+			case <-time.After(time.Second):
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		var probeErr error
+		exists, probeErr = v.probe(ctx, api, path)
+		if probeErr != nil {
+			return errors.Wrapf(probeErr, "%s verify-absent failed", v.component)
+		}
+		if !exists {
+			return nil
+		}
 	}
-	return nil
+	return errors.Errorf("%s %s still exists after destroy (GET %s)",
+		v.component, outputs[v.IDOutputKey()], path)
 }
 
 // probe selects the existence check: the plain status-code probe, or the
-// deleted_at-aware one for soft-deleting families.
+// envelope-aware one for soft-deleting / status-enum families.
 func (v *apiPathVerifier) probe(ctx context.Context, api API, path string) (bool, error) {
-	if v.softDeleted {
-		return api.ResourceActive(ctx, path)
+	if v.softDeleted || len(v.absentStatuses) > 0 {
+		return api.ResourcePresent(ctx, path, EnvelopePresence{
+			SoftDeleted:    v.softDeleted,
+			AbsentStatuses: v.absentStatuses,
+		})
 	}
 	return api.ResourceExists(ctx, path)
 }
@@ -307,6 +354,75 @@ var verifiers = map[string]Verifier{
 		pathFormat:    "accounts/%s/teamnet/virtual_networks/%s",
 		outputKeys:    []string{"virtual_network_id"},
 		accountScoped: true,
+	},
+	// Certificate packs, custom hostnames, and the fallback origin answer
+	// GET 200 with status pending_deletion/deleted after destroy rather
+	// than 404ing (measured in the provider's own destroy checks at
+	// v5.23.0). The status-enum probe treats those as gone.
+	"cloudflarecertificatepack": &apiPathVerifier{
+		component:      "cloudflarecertificatepack",
+		pathFormat:     "zones/%s/ssl/certificate_packs/%s",
+		outputKeys:     []string{"zone_id", "certificate_pack_id"},
+		absentStatuses: []string{"pending_deletion", "deleted"},
+	},
+	"cloudflarecustomhostname": &apiPathVerifier{
+		component:      "cloudflarecustomhostname",
+		pathFormat:     "zones/%s/custom_hostnames/%s",
+		outputKeys:     []string{"zone_id", "custom_hostname_id"},
+		absentStatuses: []string{"pending_deletion", "deleted"},
+	},
+	// Zone singleton: no resource id -- zone_id is the identity and the
+	// only output the verifier keys on (email-routing-settings precedent).
+	"cloudflarecustomhostnamefallbackorigin": &apiPathVerifier{
+		component:      "cloudflarecustomhostnamefallbackorigin",
+		pathFormat:     "zones/%s/custom_hostnames/fallback_origin",
+		outputKeys:     []string{"zone_id"},
+		absentStatuses: []string{"pending_deletion", "deleted"},
+	},
+	"cloudflarelist": &apiPathVerifier{
+		component:     "cloudflarelist",
+		pathFormat:    "accounts/%s/rules/lists/%s",
+		outputKeys:    []string{"list_id"},
+		accountScoped: true,
+	},
+	// List-item delete is an async bulk POST the provider never polls;
+	// a single GET immediately after destroy races the 404.
+	"cloudflarelistitem": &apiPathVerifier{
+		component:     "cloudflarelistitem",
+		pathFormat:    "accounts/%s/rules/lists/%s/items/%s",
+		outputKeys:    []string{"list_id", "item_id"},
+		accountScoped: true,
+		absentRetries: 5,
+	},
+	"cloudflareloadbalancermonitor": &apiPathVerifier{
+		component:     "cloudflareloadbalancermonitor",
+		pathFormat:    "accounts/%s/load_balancers/monitors/%s",
+		outputKeys:    []string{"monitor_id"},
+		accountScoped: true,
+	},
+	// Identity is the project NAME, not a UUID -- the provider's Read is
+	// GET accounts/{a}/pages/projects/{name}.
+	"cloudflarepagesproject": &apiPathVerifier{
+		component:     "cloudflarepagesproject",
+		pathFormat:    "accounts/%s/pages/projects/%s",
+		outputKeys:    []string{"project_name"},
+		accountScoped: true,
+	},
+	// Identity is the sitekey. Path segment is challenges/widgets, not
+	// turnstile/.
+	"cloudflareturnstilewidget": &apiPathVerifier{
+		component:     "cloudflareturnstilewidget",
+		pathFormat:    "accounts/%s/challenges/widgets/%s",
+		outputKeys:    []string{"sitekey"},
+		accountScoped: true,
+	},
+	// User-scoped (no accounts/ or zones/ prefix). Delete is a revoke;
+	// a post-destroy 200 is possible and recorded on the watch-list --
+	// the plain 404 probe is the honest starting point.
+	"cloudflareorigincacertificate": &apiPathVerifier{
+		component:  "cloudflareorigincacertificate",
+		pathFormat: "certificates/%s",
+		outputKeys: []string{"certificate_id"},
 	},
 }
 

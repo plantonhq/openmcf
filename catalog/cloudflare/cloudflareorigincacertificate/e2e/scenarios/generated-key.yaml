@@ -1,0 +1,26 @@
+# Generated-key CloudflareOriginCaCertificate scenario: the module mints
+# the private key and CSR (the one-click path). Hostnames belong to the
+# run-scoped pending zone, which is a SCENARIO-declared CloudflareDnsZone
+# edge -- hostnames are plain strings, not a zone FK, so the edge is
+# per-scenario, never a registry prerequisite. The FQDN composes the SAME
+# run token the zone fixture uses.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareOriginCaCertificate
+metadata:
+  name: planton-oss-e2e-cloudflareorigincacertificate-generated-key
+  id: planton-oss-e2e-cloudflareorigincacertificate-generated-key
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareorigincacertificate
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareDnsZone
+  tags:
+    - planton-e2e
+spec:
+  hostnames:
+    - planton-e2e-${E2E_RUN_ID}.com
+    - "*.planton-e2e-${E2E_RUN_ID}.com"
+  requestType: origin-rsa

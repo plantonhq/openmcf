@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarecertificatepack
+spec:
+  # An advanced certificate pack under live E2E: the harness installs the
+  # CloudflareDnsZone prerequisite first (the kind's registry prerequisite),
+  # then deploy -> GET zones/{zone_id}/ssl/certificate_packs/{id} verify ->
+  # destroy -> verify-destroyed on both provisioners. The live scenario
+  # orders a Let's Encrypt pack with TXT DCV covering the run-scoped pending
+  # zone's apex; DCV will sit pending (the fixture zone is undelegated) --
+  # that is the lifecycle we can prove. Destroy is delete-and-recreate (the
+  # provider has no Update); the verifier treats GET 200 with status
+  # pending_deletion/deleted as gone. Entitlement gate: Advanced Certificate
+  # Manager is a paid per-zone add-on. Objects create in seconds.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 15
+  cost_class: cheap_ephemeral

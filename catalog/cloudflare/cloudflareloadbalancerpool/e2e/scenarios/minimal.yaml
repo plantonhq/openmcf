@@ -1,0 +1,26 @@
+# Minimal CloudflareLoadBalancerPool scenario: one TEST-NET-1 origin, no
+# monitor (origins without a monitor are always considered healthy). Pool
+# names are unique per account, so the name carries the run id. Distinct
+# from the load balancer's registry-prerequisite fixture (different
+# metadata.name). Requires the Load Balancing add-on.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancerpool-minimal
+  id: planton-oss-e2e-cloudflareloadbalancerpool-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancerpool
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-pmin-${E2E_RUN_ID}
+  origins:
+    - name: origin-1
+      address:
+        value: 192.0.2.20

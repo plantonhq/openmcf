@@ -1,0 +1,27 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflareorigincacertificate
+spec:
+  # An Origin CA certificate imports as the bare certificate_id (the API
+  # is unscoped: GET /certificates/{id}). csr never round-trips (write-only)
+  # and requested_validity is not returned after creation. The generated-key
+  # path also declares hashicorp/tls helpers: the private key imports as
+  # the PEM from the stack's private_key output; the CSR has no importer.
+  values:
+    - name: certificate_id
+      derivations:
+        - from_stack_output: certificate_id
+      where_to_find: >-
+        Cloudflare dashboard -> SSL/TLS -> Origin Server (open the
+        certificate; the id is in the URL), or `GET /certificates` on the
+        Cloudflare Origin CA API (the id field of the entry whose hostnames
+        match).
+    - name: private_key_pem
+      derivations:
+        - from_stack_output: private_key
+      where_to_find: >-
+        The prior deploy's `private_key` stack output (populated only when
+        the module generated the key). Empty when the spec supplied a CSR
+        -- in that case the tls helpers are absent (count = 0) and this
+        placeholder is unused. The PEM is never shown in the dashboard.

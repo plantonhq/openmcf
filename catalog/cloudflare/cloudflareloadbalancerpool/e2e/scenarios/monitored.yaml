@@ -1,0 +1,32 @@
+# Monitored CloudflareLoadBalancerPool scenario: one TEST-NET origin plus
+# the optional monitor FK, resolved from a SCENARIO-declared
+# CloudflareLoadBalancerMonitor prerequisite (a pool does not require a
+# monitor, so the edge is per-scenario, never registry). Requires the Load
+# Balancing add-on.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancerPool
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancerpool-monitored
+  id: planton-oss-e2e-cloudflareloadbalancerpool-monitored
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancerpool
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: CloudflareLoadBalancerMonitor
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-pmon-${E2E_RUN_ID}
+  origins:
+    - name: origin-1
+      address:
+        value: 192.0.2.21
+  monitor:
+    valueFrom:
+      kind: CloudflareLoadBalancerMonitor
+      name: planton-oss-e2e-cloudflareloadbalancermonitor-prereq
+      fieldPath: status.outputs.monitor_id

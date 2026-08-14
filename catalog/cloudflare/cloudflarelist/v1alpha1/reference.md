@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareListSpec provisions an account-scoped Cloudflare List: a reusable,
 named collection referenced from rule expressions (e.g. a WAF/custom rule's
 `ip.src in $my_list`, or a Bulk Redirect ruleset's `from_list`). The list is

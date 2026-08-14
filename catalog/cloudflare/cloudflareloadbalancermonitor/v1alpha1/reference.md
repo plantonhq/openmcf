@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareLoadBalancerMonitorSpec defines an account-scoped health monitor for
 Cloudflare Load Balancing. A monitor probes the origins inside a
 CloudflareLoadBalancerPool and decides whether each origin (and the pool) is

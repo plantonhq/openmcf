@@ -1,0 +1,25 @@
+# Offline-only Pages custom-domain arm: attaching a domain to a direct-upload
+# project. Not a live scenario -- on a throwaway name the domain sits
+# initializing/pending forever, and the managed-domain class is not needed
+# here. Plan-proves the cloudflare_pages_domain send path (the import catalog
+# row is still recorded; the live round-trip only runs for resources in state).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflarePagesProject
+metadata:
+  name: planton-oss-e2e-cloudflarepagesproject-domains-plan
+  id: planton-oss-e2e-cloudflarepagesproject-domains-plan
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarepagesproject
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: plante2e-pages-domains-plan
+  productionBranch: main
+  domains:
+    - example.planton.dev

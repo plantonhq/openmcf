@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareCertificatePackSpec orders an advanced edge certificate for a zone:
 a publicly-trusted TLS certificate, provisioned and auto-renewed by Cloudflare,
 that covers the hostnames you list (beyond the free Universal SSL certificate).
@@ -126,6 +128,7 @@ Reference an output from another manifest as `valueFrom: {kind: CloudflareCertif
 | `status.outputs.certificate_pack_id` | `string` | The certificate pack identifier. |
 | `status.outputs.status` | `string` | The order/issuance status (e.g. "pending_validation", "active"). |
 | `status.outputs.primary_certificate` | `string` | The identifier of the primary certificate in the pack. |
+| `status.outputs.zone_id` | `string` | The Cloudflare Zone ID the pack was ordered in. A pack's API identity is (zone_id, certificate_pack_id), so downstream consumers -- verification tooling, imports, chart blocks composing on the pack -- need the zone alongside the pack's own id. |
 
 ## References
 

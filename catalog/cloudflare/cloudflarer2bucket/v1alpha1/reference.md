@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareR2BucketSpec defines the user configuration for a Cloudflare R2 bucket
 and its bucket-scoped configuration (custom domains, public access, CORS,
 object lifecycle, and object lock). These sub-resources have no independent

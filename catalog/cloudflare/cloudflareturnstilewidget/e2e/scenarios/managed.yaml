@@ -1,0 +1,24 @@
+# Managed CloudflareTurnstileWidget scenario: Cloudflare decides the
+# challenge. Domains are a dummy hostname -- they do not need to be a
+# Cloudflare zone. The sitekey is the API identity; the secret is a
+# sensitive output.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareTurnstileWidget
+metadata:
+  name: planton-oss-e2e-cloudflareturnstilewidget-managed
+  id: planton-oss-e2e-cloudflareturnstilewidget-managed
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareturnstilewidget
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  name: planton-e2e-${E2E_RUN_ID}-ts-mng
+  domains:
+    - planton-e2e.example
+  mode: managed

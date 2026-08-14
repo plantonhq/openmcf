@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareZeroTrustTunnelVirtualNetworkSpec configures a Cloudflare Tunnel virtual
 network: an isolated routing segment that lets the same private CIDR (for example
 10.0.0.0/8) be connected through more than one tunnel without collision. Routes

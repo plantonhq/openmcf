@@ -54,6 +54,7 @@ func customHostname(
 	ctx.Export(OpOwnershipVerificationHttpBody, created.OwnershipVerificationHttp.HttpBody())
 	ctx.Export(OpVerificationErrors, created.VerificationErrors)
 	ctx.Export(OpCreatedAt, created.CreatedAt)
+	ctx.Export(OpZoneId, created.ZoneId)
 
 	return nil
 }

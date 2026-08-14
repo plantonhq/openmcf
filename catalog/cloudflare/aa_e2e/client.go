@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/catalog/cloudflare/aa_e2e/verify"
 )
 
 const (
@@ -96,15 +97,13 @@ func (c *Client) ResourceExists(ctx context.Context, path string) (bool, error) 
 	}
 }
 
-// ResourceActive reports whether a GET on the given path finds a resource
-// that is not soft-deleted. Some Cloudflare families (cloudflared tunnels,
-// teamnet routes) never 404 a destroyed object: the GET keeps answering 200
-// with a non-null `result.deleted_at` (the provider's own destroy check
-// asserts deleted_at != nil rather than expecting an error). This probe is
-// OPT-IN per verifier: it parses the standard v4 envelope, so it must never
-// replace ResourceExists on endpoints that return raw bodies (e.g. the KV
-// value endpoint).
-func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) {
+// ResourcePresent reports whether a GET finds a resource that is still
+// present after applying opts. 404 and Cloudflare's 400/7003 unknown-object
+// answer are always absent. A 200 is present unless SoftDeleted sees a
+// non-null result.deleted_at or result.status matches AbsentStatuses.
+// Parses the v4 envelope, so it must never replace ResourceExists on
+// raw-body endpoints (e.g. the KV value endpoint).
+func (c *Client) ResourcePresent(ctx context.Context, path string, opts verify.EnvelopePresence) (bool, error) {
 	resp, body, err := c.get(ctx, path)
 	if err != nil {
 		return false, err
@@ -112,16 +111,25 @@ func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) 
 
 	switch resp.StatusCode {
 	case http.StatusOK:
+		if !opts.SoftDeleted && len(opts.AbsentStatuses) == 0 {
+			return true, nil
+		}
 		var envelope struct {
 			Result struct {
 				DeletedAt *string `json:"deleted_at"`
+				Status    string  `json:"status"`
 			} `json:"result"`
 		}
 		if err := json.Unmarshal(body, &envelope); err != nil {
 			return false, errors.Errorf("GET %s returned 200 with an unparseable body: %s", path, body)
 		}
-		if envelope.Result.DeletedAt != nil && *envelope.Result.DeletedAt != "" {
+		if opts.SoftDeleted && envelope.Result.DeletedAt != nil && *envelope.Result.DeletedAt != "" {
 			return false, nil
+		}
+		for _, status := range opts.AbsentStatuses {
+			if envelope.Result.Status == status {
+				return false, nil
+			}
 		}
 		return true, nil
 	case http.StatusNotFound:
@@ -139,6 +147,13 @@ func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) 
 	default:
 		return false, errors.Errorf("GET %s returned %d: %s", path, resp.StatusCode, body)
 	}
+}
+
+// ResourceActive is the deleted_at-aware probe: a 200 whose envelope carries
+// a non-null result.deleted_at counts as ABSENT. Kept as a one-line wrapper
+// so existing tunnel/route registrations and the API interface do not move.
+func (c *Client) ResourceActive(ctx context.Context, path string) (bool, error) {
+	return c.ResourcePresent(ctx, path, verify.EnvelopePresence{SoftDeleted: true})
 }
 
 // VerifyConnectivity proves the token is valid and active using Cloudflare's

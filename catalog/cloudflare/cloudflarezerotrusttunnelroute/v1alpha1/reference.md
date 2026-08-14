@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareZeroTrustTunnelRouteSpec configures a Cloudflare Tunnel route: it advertises
 a private IP range (CIDR) as reachable through a specific tunnel, within a virtual
 network. WARP clients and other tunnels can then reach that range. A route has an

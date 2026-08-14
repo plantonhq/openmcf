@@ -1,0 +1,24 @@
+# Ip-minimal CloudflareList scenario: an empty IP list -- entries are
+# managed by the CloudflareListItem kind (the provider forbids mixing
+# inline items with list_item resources). List names are unique within an
+# account and CEL-constrained to letters/digits/underscores, so the name
+# is underscored and carries E2E_RUN_ID_UNDERSCORE (the hyphenated
+# engine suffix on E2E_RUN_ID would fail CEL).
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareList
+metadata:
+  name: planton-oss-e2e-cloudflarelist-ip-minimal
+  id: planton-oss-e2e-cloudflarelist-ip-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflarelist
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  accountId: ${E2E_ENV:PLANTON_E2E_CLOUDFLARE_ACCOUNT_ID}
+  kind: ip
+  name: plante2e_${E2E_RUN_ID_UNDERSCORE}
