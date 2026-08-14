@@ -87,6 +87,8 @@ These are the most important decisions when configuring a MemoryDB user. Explore
 
 **Authentication** -- exactly one mechanism, and every user authenticates: MemoryDB has no credential-less user type (unauthenticated access exists only through the built-in `open-access` ACL, never through a user). `password` works everywhere (1–2 secret references; two enable rotation: add the new password, roll clients, remove the old). `iam` replaces long-lived secrets with short-lived tokens signed by the workload's AWS identity — it requires a TLS-enabled cluster. The whole authentication mode edits in place.
 
+**Passwords are write-only at AWS** -- the API never returns them, so a password changed outside the manifest is undetectable drift, and a user adopted by import carries no password state. The manifest is the source of truth: re-assert the passwords there to manage them, and rotate through the two-entry overlap rather than by out-of-band edits.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssagemakerimage
+spec:
+  # The image imports by its bare name; versions compose the image name
+  # with their AWS-assigned numbers, derived blind from the
+  # version_numbers output map keyed exactly like the modules' for_each
+  # entries (entry position as a string).
+  values:
+    - name: image_name
+      derivations:
+        - from_stack_output: image_name
+      where_to_find: >-
+        SageMaker console -> Images (the name), or
+        `aws sagemaker list-images` (ImageName).
+    - name: version
+      derivations:
+        - from_stack_output_keyed_by_address: version_numbers
+      where_to_find: >-
+        `aws sagemaker list-image-versions --image-name <name>` shows
+        Version per entry; match each to its spec.versions entry by
+        position (versions are AWS-numbered in creation order).

@@ -92,9 +92,9 @@ These are the most important decisions when configuring a VPC endpoint. Explore 
 
 **Exactly one service target** -- `serviceName` (AWS services and PrivateLink providers' `com.amazonaws.vpce.…` names), `resourceConfigurationArn` (Lattice Resource), or `serviceNetworkArn` (Lattice ServiceNetwork). The service name embeds the region — it must match the endpoint's placement.
 
-**Private DNS (interface)** -- ON means the service's public name (e.g. `sts.us-west-2.amazonaws.com`) resolves to the endpoint's private IPs inside the VPC: zero client changes. The S3 dual-stack pattern combines a free gateway endpoint for in-VPC traffic with an interface endpoint whose `dnsOptions.privateDnsOnlyForInboundResolverEndpoint` serves only on-premises resolver traffic.
+**Private DNS (interface)** -- ON means the service's public name (e.g. `sts.us-west-2.amazonaws.com`) resolves to the endpoint's private IPs inside the VPC: zero client changes. Tri-state: leave it unset and AWS keeps its default (off) — and keeps an existing endpoint's current setting; set an EXPLICIT `false` to turn private DNS back off once enabled. The S3 dual-stack pattern combines a free gateway endpoint for in-VPC traffic with an interface endpoint whose `dnsOptions.privateDnsOnlyForInboundResolverEndpoint` serves only on-premises resolver traffic (requires private DNS enabled — validated).
 
-**The endpoint policy** -- empty means full access (the endpoint is purely a network path). A custom document turns the private path into a governance point — the classic S3 control allows only your organization's principals or your own buckets, so a compromised workload cannot exfiltrate data through your own endpoint. It restricts; it never grants what IAM has not.
+**The endpoint policy** -- empty means full access (the endpoint is purely a network path). A custom document turns the private path into a governance point — the classic S3 control allows only your organization's principals or your own buckets, so a compromised workload cannot exfiltrate data through your own endpoint. It restricts; it never grants what IAM has not. The policy is authored as a structured document (`policy:` with `Version`/`Statement` as YAML), matching every other policy field in the catalog.
 
 ## Outputs and Dependencies
 

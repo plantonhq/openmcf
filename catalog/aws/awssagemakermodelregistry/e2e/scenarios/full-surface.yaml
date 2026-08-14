@@ -1,0 +1,22 @@
+# AwsSagemakerModelRegistry full-surface scenario: the described group.
+# Deliberately not live: the resource-policy arm (a valid policy needs
+# a real account principal - unblock: an account-id token in the
+# harness's E2E_ENV vocabulary, then extend this scenario) -
+# offline-proven via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModelRegistry
+metadata:
+  name: planton-oss-e2e-awssgmmr-full
+  id: planton-oss-e2e-awssgmmr-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermodelregistry
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: e2e full-surface model package group

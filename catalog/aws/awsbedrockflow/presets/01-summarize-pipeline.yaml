@@ -1,0 +1,56 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockFlow
+metadata:
+  name: summarizer
+spec:
+  region: us-west-2
+  description: One-step summarization pipeline
+  executionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: bedrock-flow-role
+      fieldPath: status.outputs.role_arn
+  definition:
+    nodes:
+      - name: FlowInput
+        type: Input
+        outputs:
+          - name: document
+            type: String
+      - name: Summarize
+        type: Prompt
+        inputs:
+          - name: input
+            expression: $.data
+            type: String
+        outputs:
+          - name: modelCompletion
+            type: String
+        prompt:
+          inline:
+            modelId: amazon.nova-micro-v1:0
+            text:
+              text: "Summarize in one sentence: {{input}}"
+              inputVariables:
+                - input
+            inferenceConfiguration:
+              temperature: 0
+      - name: FlowOutput
+        type: Output
+        inputs:
+          - name: document
+            expression: $.data
+            type: String
+    connections:
+      - name: InToPrompt
+        source: FlowInput
+        target: Summarize
+        data:
+          sourceOutput: document
+          targetInput: input
+      - name: PromptToOut
+        source: Summarize
+        target: FlowOutput
+        data:
+          sourceOutput: modelCompletion
+          targetInput: document

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Preset: Multi-Authentication with Full Logging"
     excerpt: "An MSK cluster demonstrating all three authentication methods and all three log destinations enabled simultaneously. Useful for organizations with diverse client populations and comprehensive audit..."
+  - slug: "04-declared-topics"
+    rank: "04"
+    title: "Preset: Cluster with Declared Contract Topics"
+    excerpt: "An MSK cluster whose topics deploy WITH it: three contract topics (an event stream, its dead-letter queue, and a compacted snapshot topic) declared in the spec and managed through the MSK topic API —..."
 ---
 
 # MSK Cluster Presets

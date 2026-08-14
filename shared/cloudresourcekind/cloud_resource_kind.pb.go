@@ -319,6 +319,193 @@ const (
 	// destinations reference other kinds only optionally.
 	CloudResourceKind_AwsSesConfigurationSet CloudResourceKind = 1166
 	CloudResourceKind_AwsSesEmailIdentity    CloudResourceKind = 1167
+	// A dependency-free leaf: the KMS key, rotation Lambda, and external
+	// rotation role references are all optional composition -- scenarios
+	// declare them via the e2e-prerequisites annotation, never registry
+	// edges.
+	CloudResourceKind_AwsSecretsManagerSecret CloudResourceKind = 1180
+	// A dependency-free leaf: the collection-scoped encryption/network/
+	// data-access/retention policies are module-rendered, and the KMS key
+	// and data-access principal references are optional composition
+	// (e2e-prerequisites annotation).
+	CloudResourceKind_AwsOpenSearchServerlessCollection CloudResourceKind = 1185
+	// A dependency-free leaf: the KMS key reference is optional composition
+	// (e2e-prerequisites annotation); published versions are folded
+	// satellites of the guardrail itself.
+	CloudResourceKind_AwsBedrockGuardrail CloudResourceKind = 1190
+	// AwsIamRole is a prerequisite because Bedrock assumes the job role to
+	// read training data and write outputs; the S3 locations and KMS key
+	// are optional composition (e2e-prerequisites annotation).
+	CloudResourceKind_AwsBedrockCustomModel CloudResourceKind = 1191
+	// A dependency-free leaf: the model source is a foundation model or an
+	// AWS system-defined cross-region profile, never a customer resource.
+	CloudResourceKind_AwsBedrockInferenceProfile CloudResourceKind = 1192
+	// A dependency-free leaf in the registry: capacity is typically bought
+	// for an AwsBedrockCustomModel (the default reference), but foundation
+	// model ARNs are equally legal, so the edge is optional composition.
+	CloudResourceKind_AwsBedrockProvisionedThroughput CloudResourceKind = 1193
+	// A dependency-free leaf: the agreement covers an AWS-listed foundation
+	// model, never a customer resource.
+	CloudResourceKind_AwsBedrockModelAccess CloudResourceKind = 1194
+	// Region settings singleton (one invocation-logging configuration per
+	// account+region; identity = the region). Delivery destinations are
+	// optional references (at least one of CloudWatch/S3, enforced by CEL),
+	// so prerequisites stay empty and E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsBedrockInvocationLogging CloudResourceKind = 1195
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// agent resource role to invoke models, action-group Lambdas, and
+	// knowledge bases; the guardrail, KMS key, provisioned throughput, and
+	// collaborator/knowledge-base edges are optional composition
+	// (e2e-prerequisites annotation). Action groups, aliases, collaborators,
+	// and knowledge-base associations are folded satellites of the agent.
+	CloudResourceKind_AwsBedrockAgent CloudResourceKind = 1200
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// knowledge-base role to read data sources, call the embedding model,
+	// and read/write the vector store; the vector-store and data-source
+	// reference edges (OpenSearch, S3, Secrets Manager, ...) are optional
+	// composition (e2e-prerequisites annotation). Data sources are folded
+	// satellites of the knowledge base.
+	CloudResourceKind_AwsBedrockKnowledgeBase CloudResourceKind = 1201
+	// AwsIamRole is a prerequisite because the Bedrock service assumes the
+	// flow execution role to invoke the models, agents, knowledge bases,
+	// and Lambdas its nodes reference; the node-level reference edges are
+	// optional composition (e2e-prerequisites annotation).
+	CloudResourceKind_AwsBedrockFlow CloudResourceKind = 1202
+	// A dependency-free leaf: variants target AWS-listed foundation models
+	// by ID; targeting another agent's alias is optional composition
+	// (e2e-prerequisites annotation).
+	CloudResourceKind_AwsBedrockPrompt CloudResourceKind = 1203
+	// AwsIamRole is a prerequisite because the AgentCore service assumes
+	// the runtime role to pull the container image or read the S3 code
+	// bundle and to run the hosted agent; the code-bundle S3 bucket and
+	// VPC placement edges are optional composition (e2e-prerequisites
+	// annotation). Endpoints and the runtime's resource policy are folded
+	// satellites of the runtime.
+	CloudResourceKind_AwsBedrockAgentCoreRuntime CloudResourceKind = 1210
+	// AwsIamRole is a prerequisite because the gateway assumes its role to
+	// reach targets (invoke Lambdas, sign SigV4 requests); the target and
+	// credential-provider reference edges (runtime, Lambda, Identity
+	// providers, policy engine) are optional composition
+	// (e2e-prerequisites annotation). Targets are folded satellites of the
+	// gateway - AWS deletes them before the gateway at destroy.
+	CloudResourceKind_AwsBedrockAgentCoreGateway CloudResourceKind = 1211
+	// A dependency-free leaf for built-in strategies: the execution role
+	// (custom strategies, Kinesis delivery), KMS key, and Kinesis stream
+	// edges are optional composition (e2e-prerequisites annotation).
+	// Strategies are folded satellites of the memory - AWS serializes
+	// their changes through the parent.
+	CloudResourceKind_AwsBedrockAgentCoreMemory CloudResourceKind = 1212
+	// A dependency-free leaf: workload identities, credential providers,
+	// and the Cedar policy engine with its policies are all name-keyed
+	// arms of one identity-and-access bundle; the KMS key edge is optional
+	// composition (e2e-prerequisites annotation). The account/region
+	// token-vault CMK is deliberately NOT modeled here (settings
+	// singleton).
+	CloudResourceKind_AwsBedrockAgentCoreIdentity CloudResourceKind = 1213
+	// A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution
+	// role (recordings, certificates), S3, Secrets Manager, and VPC edges
+	// are optional composition (e2e-prerequisites annotation). Browsers,
+	// profiles, and code interpreters are name-keyed arms of one tools
+	// bundle; AWS exposes no update - every field change recreates the
+	// tool.
+	CloudResourceKind_AwsBedrockAgentCoreTools CloudResourceKind = 1214
+	// The AgentCore Evaluations bundle - evaluators (LLM-judge or
+	// Lambda scorers), harnesses (repeatable agent test benches), and
+	// online evaluation configs (continuous scoring of sampled
+	// production sessions). Deploys standalone - no arm requires an
+	// agent runtime to exist. No registry prerequisite: every arm is
+	// optional, so no dependency is required for the kind to function
+	// (scenarios compose IAM roles via annotations).
+	CloudResourceKind_AwsBedrockAgentCoreEvaluation CloudResourceKind = 1215
+	// Account/region settings singleton: sets the KMS key on the ONE
+	// default AgentCore token vault. The KMS reference is conditional on
+	// key_type (CEL-enforced), so prerequisites stay empty and E2E
+	// fixtures ride scenario annotations.
+	CloudResourceKind_AwsBedrockAgentCoreTokenVault CloudResourceKind = 1216
+	// The immutable serving definition (container image + artifacts +
+	// execution role) that endpoints deploy - one container or an
+	// inference pipeline.
+	CloudResourceKind_AwsSagemakerModel CloudResourceKind = 1220
+	// A real-time inference endpoint WITH its folded endpoint
+	// configuration - the configuration is immutable upstream, so the
+	// modules roll name-suffixed configurations create-before-destroy
+	// and repoint the endpoint.
+	CloudResourceKind_AwsSagemakerEndpoint CloudResourceKind = 1221
+	// A managed Jupyter notebook EC2 instance with its folded lifecycle
+	// configuration (bootstrap scripts).
+	CloudResourceKind_AwsSagemakerNotebookInstance CloudResourceKind = 1222
+	// A Feature Store feature group - online and/or offline stores over
+	// a declared feature schema.
+	CloudResourceKind_AwsSagemakerFeatureGroup CloudResourceKind = 1223
+	// A model registry package group with its folded resource policy -
+	// model package VERSIONS register into it imperatively (training
+	// pipelines), never declaratively.
+	CloudResourceKind_AwsSagemakerModelRegistry CloudResourceKind = 1224
+	// An ML workflow DAG (the SageMaker pipeline-definition JSON) that
+	// executions run against - free to create, billed per execution.
+	CloudResourceKind_AwsSagemakerPipeline CloudResourceKind = 1225
+	// A named registry entry exposing YOUR container images to Studio,
+	// with folded AWS-numbered versions (append-only by position).
+	CloudResourceKind_AwsSagemakerImage CloudResourceKind = 1226
+	// The classic hourly-billed managed MLflow tracking server (~25 min
+	// to provision; Small ~$0.6/hour). The serverless successor is
+	// AwsSagemakerMlflowApp.
+	CloudResourceKind_AwsSagemakerMlflowServer CloudResourceKind = 1227
+	// The serverless MLflow 3.x deployment (billed per use) - standalone,
+	// associating with SageMaker domains; NOT a tracking-server
+	// satellite.
+	CloudResourceKind_AwsSagemakerMlflowApp CloudResourceKind = 1228
+	// A full REST API (API Gateway v1): the resource/method tree with
+	// inline integrations (or an imported OpenAPI document), one stage
+	// with an explicit hash-triggered deployment, and the API-scoped
+	// satellites (authorizers, models, validators, gateway responses,
+	// policy, documentation, client certificate). Self-contained: a
+	// MOCK-integration API needs no other resource.
+	CloudResourceKind_AwsRestApiGateway CloudResourceKind = 1230
+	// A custom domain for REST APIs with base-path mappings and - for
+	// PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert
+	// is a prerequisite because the domain cannot be created without a
+	// TLS certificate covering it.
+	CloudResourceKind_AwsRestApiDomain CloudResourceKind = 1231
+	// A usage plan metering REST API consumers - stage coverage, quota,
+	// throttles, and the API keys it admits. No registry prerequisite: a
+	// plan is valid with no stage coverage (scenarios compose the REST
+	// API via annotations).
+	CloudResourceKind_AwsRestApiUsagePlan CloudResourceKind = 1232
+	// A REST API VPC link fronting an internal Network Load Balancer so
+	// REST integrations reach private services. AwsNlb is a prerequisite
+	// because AWS rejects link creation without the target balancer.
+	CloudResourceKind_AwsRestApiVpcLink CloudResourceKind = 1233
+	// Region settings singleton (one API Gateway account object per
+	// account+region; identity = the region). The CloudWatch role is an
+	// optional reference (unset = the explicit no-logging posture), so
+	// prerequisites stay empty and E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsApiGatewayAccountSettings CloudResourceKind = 1234
+	// The account's API audit trail. AwsS3Bucket is a prerequisite
+	// because AWS rejects trail creation without a delivery bucket
+	// carrying the CloudTrail service-principal policy. 1240 opens the
+	// governance sub-band (1240-1249).
+	CloudResourceKind_AwsCloudTrail CloudResourceKind = 1240
+	// Region singleton (one AWS Config recorder per region, named
+	// "default" by AWS; identity = the region). AwsIamRole is a
+	// prerequisite because the recorder cannot exist without its
+	// service role.
+	CloudResourceKind_AwsConfigRecorder CloudResourceKind = 1241
+	// One AWS Config compliance rule (managed, custom-lambda, or
+	// custom-policy; account- or organization-scoped) with optional
+	// auto-remediation. Managed rules need no prerequisites; the
+	// custom-lambda arm's function reference is conditional, so E2E
+	// fixtures ride scenario annotations.
+	CloudResourceKind_AwsConfigRule CloudResourceKind = 1242
+	// Region singleton (AWS allows one GuardDuty detector per
+	// account+region; the detector has no name - identity = the
+	// region). Satellite references (S3 export bucket, KMS key) are
+	// conditional, so E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsGuardDuty CloudResourceKind = 1243
+	// Account/region settings singleton (one SES account object per
+	// account+region): the suppression list and VDM posture. 1360 opens
+	// the SES P1 sub-band (1360-1369).
+	CloudResourceKind_AwsSesAccountSettings CloudResourceKind = 1360
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1831,6 +2018,44 @@ var (
 		1176:  "AwsRoute53HealthCheck",
 		1166:  "AwsSesConfigurationSet",
 		1167:  "AwsSesEmailIdentity",
+		1180:  "AwsSecretsManagerSecret",
+		1185:  "AwsOpenSearchServerlessCollection",
+		1190:  "AwsBedrockGuardrail",
+		1191:  "AwsBedrockCustomModel",
+		1192:  "AwsBedrockInferenceProfile",
+		1193:  "AwsBedrockProvisionedThroughput",
+		1194:  "AwsBedrockModelAccess",
+		1195:  "AwsBedrockInvocationLogging",
+		1200:  "AwsBedrockAgent",
+		1201:  "AwsBedrockKnowledgeBase",
+		1202:  "AwsBedrockFlow",
+		1203:  "AwsBedrockPrompt",
+		1210:  "AwsBedrockAgentCoreRuntime",
+		1211:  "AwsBedrockAgentCoreGateway",
+		1212:  "AwsBedrockAgentCoreMemory",
+		1213:  "AwsBedrockAgentCoreIdentity",
+		1214:  "AwsBedrockAgentCoreTools",
+		1215:  "AwsBedrockAgentCoreEvaluation",
+		1216:  "AwsBedrockAgentCoreTokenVault",
+		1220:  "AwsSagemakerModel",
+		1221:  "AwsSagemakerEndpoint",
+		1222:  "AwsSagemakerNotebookInstance",
+		1223:  "AwsSagemakerFeatureGroup",
+		1224:  "AwsSagemakerModelRegistry",
+		1225:  "AwsSagemakerPipeline",
+		1226:  "AwsSagemakerImage",
+		1227:  "AwsSagemakerMlflowServer",
+		1228:  "AwsSagemakerMlflowApp",
+		1230:  "AwsRestApiGateway",
+		1231:  "AwsRestApiDomain",
+		1232:  "AwsRestApiUsagePlan",
+		1233:  "AwsRestApiVpcLink",
+		1234:  "AwsApiGatewayAccountSettings",
+		1240:  "AwsCloudTrail",
+		1241:  "AwsConfigRecorder",
+		1242:  "AwsConfigRule",
+		1243:  "AwsGuardDuty",
+		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2541,6 +2766,44 @@ var (
 		"AwsRoute53HealthCheck":                          1176,
 		"AwsSesConfigurationSet":                         1166,
 		"AwsSesEmailIdentity":                            1167,
+		"AwsSecretsManagerSecret":                        1180,
+		"AwsOpenSearchServerlessCollection":              1185,
+		"AwsBedrockGuardrail":                            1190,
+		"AwsBedrockCustomModel":                          1191,
+		"AwsBedrockInferenceProfile":                     1192,
+		"AwsBedrockProvisionedThroughput":                1193,
+		"AwsBedrockModelAccess":                          1194,
+		"AwsBedrockInvocationLogging":                    1195,
+		"AwsBedrockAgent":                                1200,
+		"AwsBedrockKnowledgeBase":                        1201,
+		"AwsBedrockFlow":                                 1202,
+		"AwsBedrockPrompt":                               1203,
+		"AwsBedrockAgentCoreRuntime":                     1210,
+		"AwsBedrockAgentCoreGateway":                     1211,
+		"AwsBedrockAgentCoreMemory":                      1212,
+		"AwsBedrockAgentCoreIdentity":                    1213,
+		"AwsBedrockAgentCoreTools":                       1214,
+		"AwsBedrockAgentCoreEvaluation":                  1215,
+		"AwsBedrockAgentCoreTokenVault":                  1216,
+		"AwsSagemakerModel":                              1220,
+		"AwsSagemakerEndpoint":                           1221,
+		"AwsSagemakerNotebookInstance":                   1222,
+		"AwsSagemakerFeatureGroup":                       1223,
+		"AwsSagemakerModelRegistry":                      1224,
+		"AwsSagemakerPipeline":                           1225,
+		"AwsSagemakerImage":                              1226,
+		"AwsSagemakerMlflowServer":                       1227,
+		"AwsSagemakerMlflowApp":                          1228,
+		"AwsRestApiGateway":                              1230,
+		"AwsRestApiDomain":                               1231,
+		"AwsRestApiUsagePlan":                            1232,
+		"AwsRestApiVpcLink":                              1233,
+		"AwsApiGatewayAccountSettings":                   1234,
+		"AwsCloudTrail":                                  1240,
+		"AwsConfigRecorder":                              1241,
+		"AwsConfigRule":                                  1242,
+		"AwsGuardDuty":                                   1243,
+		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3511,7 +3774,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\x8f\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb2\xcf\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3636,7 +3899,46 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AwsPlantonRunner\x10\x82\t\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsrun:\x02\xbc\b\x123\n" +
 	"\x15AwsRoute53HealthCheck\x10\x98\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05r53hc\x127\n" +
 	"\x16AwsSesConfigurationSet\x10\x8e\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssescs\x124\n" +
-	"\x13AwsSesEmailIdentity\x10\x8f\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesid\x121\n" +
+	"\x13AwsSesEmailIdentity\x10\x8f\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesid\x125\n" +
+	"\x17AwsSecretsManagerSecret\x10\x9c\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awssm\x12@\n" +
+	"!AwsOpenSearchServerlessCollection\x10\xa1\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsoss\x124\n" +
+	"\x13AwsBedrockGuardrail\x10\xa6\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbrgrd\x129\n" +
+	"\x15AwsBedrockCustomModel\x10\xa7\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrcm:\x02\xf0\a\x12:\n" +
+	"\x1aAwsBedrockInferenceProfile\x10\xa8\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrip\x12?\n" +
+	"\x1fAwsBedrockProvisionedThroughput\x10\xa9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrpt\x125\n" +
+	"\x15AwsBedrockModelAccess\x10\xaa\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrma\x12<\n" +
+	"\x1bAwsBedrockInvocationLogging\x10\xab\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbedil\x124\n" +
+	"\x0fAwsBedrockAgent\x10\xb0\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbragt:\x02\xf0\a\x12;\n" +
+	"\x17AwsBedrockKnowledgeBase\x10\xb1\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrkb:\x02\xf0\a\x123\n" +
+	"\x0eAwsBedrockFlow\x10\xb2\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbrflw:\x02\xf0\a\x121\n" +
+	"\x10AwsBedrockPrompt\x10\xb3\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbrpmt\x12>\n" +
+	"\x1aAwsBedrockAgentCoreRuntime\x10\xba\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacrt:\x02\xf0\a\x12>\n" +
+	"\x1aAwsBedrockAgentCoreGateway\x10\xbb\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsacgw:\x02\xf0\a\x12:\n" +
+	"\x19AwsBedrockAgentCoreMemory\x10\xbc\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacmem\x12;\n" +
+	"\x1bAwsBedrockAgentCoreIdentity\x10\xbd\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacid\x128\n" +
+	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x12=\n" +
+	"\x1dAwsBedrockAgentCoreEvaluation\x10\xbf\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacev\x12>\n" +
+	"\x1dAwsBedrockAgentCoreTokenVault\x10\xc0\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacetv\x126\n" +
+	"\x11AwsSagemakerModel\x10\xc4\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmd:\x02\xf0\a\x129\n" +
+	"\x14AwsSagemakerEndpoint\x10\xc5\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmep:\x02\xc4\t\x12A\n" +
+	"\x1cAwsSagemakerNotebookInstance\x10\xc6\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmnb:\x02\xf0\a\x12=\n" +
+	"\x18AwsSagemakerFeatureGroup\x10\xc7\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmfg:\x02\xf0\a\x12:\n" +
+	"\x19AwsSagemakerModelRegistry\x10\xc8\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssgmmr\x129\n" +
+	"\x14AwsSagemakerPipeline\x10\xc9\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmpl:\x02\xf0\a\x126\n" +
+	"\x11AwsSagemakerImage\x10\xca\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmim:\x02\xf0\a\x12=\n" +
+	"\x18AwsSagemakerMlflowServer\x10\xcb\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmf:\x02\xf0\a\x12:\n" +
+	"\x15AwsSagemakerMlflowApp\x10\xcc\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmma:\x02\xf0\a\x123\n" +
+	"\x11AwsRestApiGateway\x10\xce\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestgw\x126\n" +
+	"\x10AwsRestApiDomain\x10\xcf\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestdm:\x02\xe9\a\x125\n" +
+	"\x13AwsRestApiUsagePlan\x10\xd0\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestup\x127\n" +
+	"\x11AwsRestApiVpcLink\x10\xd1\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestvl:\x02\xb8\b\x12=\n" +
+	"\x1cAwsApiGatewayAccountSettings\x10\xd2\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsapias\x122\n" +
+	"\rAwsCloudTrail\x10\xd8\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawstrail:\x02\xf5\a\x125\n" +
+	"\x11AwsConfigRecorder\x10\xd9\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscfgr:\x02\xf0\a\x12.\n" +
+	"\rAwsConfigRule\x10\xda\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscfgrl\x12*\n" +
+	"\fAwsGuardDuty\x10\xdb\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsgd\x126\n" +
+	"\x15AwsSesAccountSettings\x10\xd0\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

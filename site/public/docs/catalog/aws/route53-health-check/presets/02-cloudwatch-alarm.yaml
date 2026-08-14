@@ -6,5 +6,5 @@ spec:
   region: <aws-region>
   checkType: CLOUDWATCH_METRIC
   cloudwatchAlarmName: <alarm-name>  # the alarm whose state this check mirrors
-  cloudwatchAlarmRegion: <alarm-region>  # alarms are regional; checks are global
+  cloudwatchAlarmRegion: us-east-1  # replace with the alarm's own region (alarms are regional; checks are global)
   insufficientDataHealthStatus: LastKnownStatus  # sane default while the alarm lacks data

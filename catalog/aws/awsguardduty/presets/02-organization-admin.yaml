@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsGuardDuty
+metadata:
+  name: guardduty-org-admin
+spec:
+  region: <aws-region>
+  features:
+    - name: S3_DATA_EVENTS
+    - name: RUNTIME_MONITORING
+  organization:
+    autoEnableOrganizationMembers: NEW
+    features:
+      - name: S3_DATA_EVENTS
+        autoEnable: ALL
+      - name: RUNTIME_MONITORING
+        autoEnable: NEW

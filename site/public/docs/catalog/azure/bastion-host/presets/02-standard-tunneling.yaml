@@ -1,0 +1,35 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureBastionHost
+metadata:
+  name: platform-bastion
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: "<your-resource-group>"
+      fieldPath: status.outputs.resource_group_name
+  name: platform-bastion
+  # STANDARD unlocks scaling and the feature set.
+  sku: STANDARD
+  ipConfiguration:
+    name: bastion-ip-config
+    subnetId:
+      valueFrom:
+        kind: AzureSubnet
+        name: "<your-bastion-subnet>"
+        fieldPath: status.outputs.subnet_id
+    publicIpAddressId:
+      valueFrom:
+        kind: AzurePublicIp
+        name: "<your-bastion-pip>"
+        fieldPath: status.outputs.public_ip_id
+  # Native-client sessions: az network bastion ssh/rdp/tunnel from a
+  # local terminal instead of the browser.
+  tunnelingEnabled: true
+  # Upload/download through the session.
+  fileCopyEnabled: true
+  # Reach VMs by private IP address (e.g. across peerings).
+  ipConnectEnabled: true
+  # ~20 concurrent sessions per unit; scale 2-50 in place.
+  scaleUnits: 4

@@ -1,0 +1,3 @@
+name: awssagemakerendpoint
+runtime:
+  name: go

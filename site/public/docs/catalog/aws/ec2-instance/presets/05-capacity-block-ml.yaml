@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsEc2Instance
+metadata:
+  name: my-training-node
+spec:
+  region: <aws-region>
+  ami: ami-0123456789abcdef0  # replace with a GPU AMI (e.g. Deep Learning AMI)
+  instanceType: p5.48xlarge  # must match the instance type the Capacity Block was purchased for
+  subnetId:
+    value: "<private-subnet-id>"
+  securityGroupIds:
+    - value: "<security-group-id>"
+  instanceProfile:
+    value: "<instance-profile-name>"
+  # The capacity-block market launches INTO a pre-purchased ML Capacity
+  # Block -- GPU capacity reserved for a defined window at a committed
+  # price. The reservation target is REQUIRED for this market.
+  marketType: capacity-block
+  capacityReservation:
+    capacityReservationId: cr-0123456789abcdef0  # replace with your Capacity Block reservation id
+  metadataOptions:
+    httpTokens: required
+  rootBlockDevice:
+    volumeSizeGb: 500
+    volumeType: gp3
+    throughputMibps: 1000
+    encrypted: true
+  # Uniform at-creation volume tags satisfy ABAC/SCP tag-at-creation
+  # policies common in ML cost governance.
+  volumeTags:
+    cost-center: ml-training

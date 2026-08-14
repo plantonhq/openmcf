@@ -1,0 +1,35 @@
+# Canonical AwsRestApiUsagePlan example (hack/dev manifest and refgen
+# Example source): a plan covering one REST API stage with a quota, a
+# throttle, a per-method throttle, and one API key. Literal ids stand
+# in for composed references so the offline `tofu plan` renders every
+# arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiUsagePlan
+metadata:
+  name: orders-free-tier
+  id: orders-free-tier
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Free tier -- 1000 requests/day
+  apiStages:
+    - restApiId:
+        value: abcdef1234
+      stageName:
+        value: prod
+      methodThrottles:
+        - path: /search/GET
+          burstLimit: 10
+          rateLimit: 5
+  quota:
+    limit: 1000
+    period: DAY
+    offset: 0
+  throttle:
+    burstLimit: 100
+    rateLimit: 50
+  apiKeys:
+    - name: acme-mobile
+      description: acme-corp mobile app
+      enabled: true

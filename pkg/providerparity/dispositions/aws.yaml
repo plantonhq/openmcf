@@ -95,84 +95,9 @@ resources:
   - resource: aws_amplify_webhook
     disposition: model-planned
     reason: "judged as a planned AwsAmplifyApp kind (app with branches, domain associations, webhooks, backend environments)"
-  - resource: aws_api_gateway_account
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_api_key
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_authorizer
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_base_path_mapping
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_client_certificate
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_deployment
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_documentation_part
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_documentation_version
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_domain_name
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_domain_name_access_association
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiDomain kind (custom domains with base-path mappings and access associations)"
-  - resource: aws_api_gateway_gateway_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_integration
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_integration_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method_response
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_method_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_model
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_request_validator
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_resource
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_rest_api
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_rest_api_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
   - resource: aws_api_gateway_rest_api_put
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_stage
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
-  - resource: aws_api_gateway_usage_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_usage_plan_key
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiUsagePlan kind (usage plans, plan keys, API keys)"
-  - resource: aws_api_gateway_vpc_link
-    disposition: model-planned
-    reason: "judged as a planned AwsRestApiGateway kind (REST v1 API: resources, methods, integrations, deployments, stages, authorizers, models, validators, policies and account settings fold in)"
+    disposition: composed
+    reason: "the aws_api_gateway_rest_api resource already owns this capability through its body argument (Create -> PutRestApi -> reconcile choreography in the provider source); AwsRestApiGateway's OpenAPI arm is the surface -- re-judged 2026-08-14 from model-planned: a second one-shot put resource would be duplicate machinery over the same API call"
   - resource: aws_apigatewayv2_deployment
     disposition: model-planned
     reason: "judged into the planned AwsWebSocketApiGateway kind (WebSocket APIs are their own protocol surface -- AwsHttpApiGateway records that boundary in its spec); explicit deployments are the WebSocket publish mechanism, while HTTP APIs deploy via the stage's auto_deploy, already modeled on AwsHttpApiGateway"
@@ -428,117 +353,9 @@ resources:
   - resource: aws_bcmdataexports_export
     disposition: model-planned
     reason: "billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition)"
-  - resource: aws_bedrock_custom_model
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockCustomModel kind"
   - resource: aws_bedrock_evaluation_job
     disposition: deferred
     reason: "model evaluation jobs are imperative run-once workloads, a poor declarative fit; deferred"
-  - resource: aws_bedrock_foundation_model_agreement
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
-  - resource: aws_bedrock_guardrail
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockGuardrail kind (guardrail with versions)"
-  - resource: aws_bedrock_guardrail_version
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockGuardrail kind (guardrail with versions)"
-  - resource: aws_bedrock_inference_profile
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockInferenceProfile kind"
-  - resource: aws_bedrock_model_invocation_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
-  - resource: aws_bedrock_provisioned_model_throughput
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockProvisionedThroughput kind"
-  - resource: aws_bedrock_use_case_for_model_access
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockModelAccess kind (foundation-model agreements, use cases, invocation logging)"
-  - resource: aws_bedrockagent_agent
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_action_group
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_alias
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_collaborator
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_agent_knowledge_base_association
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgent kind (agent with action groups, aliases, collaborators, knowledge-base associations)"
-  - resource: aws_bedrockagent_data_source
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockKnowledgeBase kind (knowledge base with data sources)"
-  - resource: aws_bedrockagent_flow
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockFlow kind"
-  - resource: aws_bedrockagent_knowledge_base
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockKnowledgeBase kind (knowledge base with data sources)"
-  - resource: aws_bedrockagent_prompt
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockPrompt kind"
-  - resource: aws_bedrockagentcore_agent_runtime
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_agent_runtime_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_api_key_credential_provider
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_browser
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
-  - resource: aws_bedrockagentcore_browser_profile
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
-  - resource: aws_bedrockagentcore_code_interpreter
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTools kind (browsers with profiles, code interpreters)"
-  - resource: aws_bedrockagentcore_evaluator
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_gateway
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreGateway kind (gateways with targets)"
-  - resource: aws_bedrockagentcore_gateway_target
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreGateway kind (gateways with targets)"
-  - resource: aws_bedrockagentcore_harness
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_memory
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreMemory kind (memories with strategies)"
-  - resource: aws_bedrockagentcore_memory_strategy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreMemory kind (memories with strategies)"
-  - resource: aws_bedrockagentcore_oauth2_credential_provider
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_online_evaluation_config
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_policy_engine
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_resource_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreRuntime kind (agent runtimes with endpoints; evaluation and resource-policy companions fold in)"
-  - resource: aws_bedrockagentcore_token_vault_cmk
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
-  - resource: aws_bedrockagentcore_workload_identity
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreIdentity kind (workload identities, credential providers, token vault, policy engine)"
   - resource: aws_billing_view
     disposition: deferred
     reason: "billing views are console/reporting configuration; deferred pending demand"
@@ -707,15 +524,9 @@ resources:
   - resource: aws_cloudsearch_domain_service_access_policy
     disposition: excluded-deprecated
     reason: "CloudSearch is legacy, superseded by OpenSearch (covered by AwsOpenSearchDomain)"
-  - resource: aws_cloudtrail
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin)"
   - resource: aws_cloudtrail_event_data_store
     disposition: model-planned
-    reason: "judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin)"
-  - resource: aws_cloudtrail_organization_delegated_admin_account
-    disposition: model-planned
-    reason: "judged as a planned AwsCloudTrail kind (trails, event data stores, organization delegated admin)"
+    reason: "judged as a planned AwsCloudTrailEventDataStore kind: CloudTrail Lake carries no trail edge -- it deploys with zero trails and owns its own billing mode, retention, and termination protection (re-judged 2026-08-14 out of the AwsCloudTrail fold by the standalone-vs-satellite test)"
   - resource: aws_cloudwatch_alarm_mute_rule
     disposition: model-planned
     reason: "judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class)"
@@ -898,43 +709,16 @@ resources:
     reason: "Compute Optimizer is a read-mostly advisory service; deferred"
   - resource: aws_config_aggregate_authorization
     disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
-  - resource: aws_config_config_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
+    reason: "judged as a planned AwsConfigAggregator kind: the reciprocal grant of cross-account aggregation -- no recorder edge (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test)"
   - resource: aws_config_configuration_aggregator
     disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
-  - resource: aws_config_configuration_recorder
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
-  - resource: aws_config_configuration_recorder_status
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
+    reason: "judged as a planned AwsConfigAggregator kind: aggregation references no recorder and works in an account with zero recorders (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test)"
   - resource: aws_config_conformance_pack
     disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_delivery_channel
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
+    reason: "judged as a planned AwsConfigConformancePack kind: a pack is a template bundle that creates its own rules with its own delivery bucket -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test)"
   - resource: aws_config_organization_conformance_pack
     disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_organization_custom_policy_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_organization_custom_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_organization_managed_rule
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_remediation_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRule kind (managed/custom/organization rules, remediation, conformance packs)"
-  - resource: aws_config_retention_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsConfigRecorder kind (recorders, delivery channels, retention, aggregators)"
+    reason: "judged as a planned AwsConfigConformancePack kind: the org-scoped arm of the pack bundle -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test)"
   - resource: aws_connect_bot_association
     disposition: deferred
     reason: "contact-center vertical (Amazon Connect); deferred pending demand"
@@ -1805,45 +1589,9 @@ resources:
   - resource: aws_grafana_workspace_service_account_token
     disposition: model-planned
     reason: "judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts)"
-  - resource: aws_guardduty_detector
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_detector_feature
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_filter
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_invite_accepter
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_ipset
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
   - resource: aws_guardduty_malware_protection_plan
     disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_member
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_member_detector_feature
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_organization_admin_account
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_organization_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_organization_configuration_feature
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_publishing_destination
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
-  - resource: aws_guardduty_threatintelset
-    disposition: model-planned
-    reason: "judged as a planned AwsGuardDuty kind (detectors, features, filters, IP/threat-intel sets, malware protection, publishing destinations, organization administration)"
+    reason: "judged as a planned AwsGuardDutyMalwareProtectionPlan kind: the plan carries no detector_id anywhere in its schema -- it protects an S3 bucket, not a detector (re-judged 2026-08-14 out of the AwsGuardDuty fold by the standalone-vs-satellite test)"
   - resource: aws_iam_account_alias
     disposition: model-planned
     reason: "judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features)"
@@ -2645,27 +2393,15 @@ resources:
   - resource: aws_opensearch_vpc_endpoint
     disposition: model-planned
     reason: "judged as a planned AwsOpenSearchVpcEndpoint kind -- a consumer-side endpoint created in the consumer's VPC (cross-account capable) with its own lifecycle"
-  - resource: aws_opensearchserverless_access_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_collection
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
   - resource: aws_opensearchserverless_collection_group
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_lifecycle_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "a shared OCU-capacity container many collections join -- its own lifecycle and capacity limits fail a fold into the per-collection kind (the standalone-vs-satellite test); judged as a future AwsOpenSearchServerlessCollectionGroup kind (AwsOpenSearchServerlessCollection models the membership side via collection_group_name)"
   - resource: aws_opensearchserverless_security_config
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
-  - resource: aws_opensearchserverless_security_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "account-level Dashboards identity-provider configuration (SAML / IAM Identity Center / IAM federation) shared by every collection -- never per-collection surface; judged as a future AwsOpenSearchServerlessSecurityConfig kind (the session's collection close split the founding blanket)"
   - resource: aws_opensearchserverless_vpc_endpoint
     disposition: model-planned
-    reason: "judged as a planned AwsOpenSearchServerlessCollection kind (collections with security/access/lifecycle policies and VPC endpoints)"
+    reason: "the consumer-side VPC endpoint referenced by many collections' network policies -- own lifecycle in the consumer's VPC (the managed-OpenSearch vpc_endpoint split, verbatim); judged as a future AwsOpenSearchServerlessVpcEndpoint kind (AwsOpenSearchServerlessCollection models the reference side via network.vpc_endpoint_ids)"
   - resource: aws_organizations_account
     disposition: model-planned
     reason: "judged as a planned AwsOrganizationAccount kind"
@@ -3245,15 +2981,6 @@ resources:
   - resource: aws_sagemaker_device_fleet
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_endpoint
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations)"
-  - resource: aws_sagemaker_endpoint_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerEndpoint kind (endpoints with configurations)"
-  - resource: aws_sagemaker_feature_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerFeatureGroup kind"
   - resource: aws_sagemaker_flow_definition
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -3269,48 +2996,18 @@ resources:
   - resource: aws_sagemaker_hyper_parameter_tuning_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_image
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerImage kind (images with versions)"
-  - resource: aws_sagemaker_image_version
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerImage kind (images with versions)"
   - resource: aws_sagemaker_labeling_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_mlflow_app
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerMlflowServer kind (tracking servers with apps)"
-  - resource: aws_sagemaker_mlflow_tracking_server
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerMlflowServer kind (tracking servers with apps)"
-  - resource: aws_sagemaker_model
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModel kind"
   - resource: aws_sagemaker_model_card
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
   - resource: aws_sagemaker_model_card_export_job
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_model_package_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModelRegistry kind (package groups with policies)"
-  - resource: aws_sagemaker_model_package_group_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerModelRegistry kind (package groups with policies)"
   - resource: aws_sagemaker_monitoring_schedule
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
-  - resource: aws_sagemaker_notebook_instance
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations)"
-  - resource: aws_sagemaker_notebook_instance_lifecycle_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerNotebookInstance kind (instances with lifecycle configurations)"
-  - resource: aws_sagemaker_pipeline
-    disposition: model-planned
-    reason: "judged as a planned AwsSagemakerPipeline kind"
   - resource: aws_sagemaker_project
     disposition: deferred
     reason: "SageMaker workload content (training/tuning/labeling jobs, monitoring schedules, model cards, workforces, devices, hubs, algorithms, code repositories, flow definitions, projects) is imperative or data-plane surface; deferred"
@@ -3350,15 +3047,9 @@ resources:
   - resource: aws_schemas_schema
     disposition: deferred
     reason: "EventBridge schema registry content; deferred pending demand"
-  - resource: aws_secretsmanager_secret_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
-  - resource: aws_secretsmanager_secret_rotation
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
   - resource: aws_secretsmanager_tag
-    disposition: model-planned
-    reason: "judged as a planned AwsSecretsManagerSecret kind (secret with versions, rotation, policy, tags)"
+    disposition: composed
+    reason: "the per-tag granular twin of the secret's own tags argument -- AwsSecretsManagerSecret's module-wired identity tag map owns the surface (the ecs_tag/ec2_tag imperative-helper class)"
   - resource: aws_security_group_rule
     disposition: composed
     reason: "covered by AwsSecurityGroup's inline ingress/egress rules (same payload: protocol/ports/CIDRs/prefix lists/groups/self/description); the legacy standalone rule resource cannot be mixed with inline rules on one group -- the module's inline blocks are the single owner of the rule set"
@@ -3554,12 +3245,6 @@ resources:
   - resource: aws_ses_template
     disposition: excluded-deprecated
     reason: "SES v1 identity/configuration surface is superseded by the SESv2 resources consumed by the SES kinds"
-  - resource: aws_sesv2_account_suppression_attributes
-    disposition: model-planned
-    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
-  - resource: aws_sesv2_account_vdm_attributes
-    disposition: model-planned
-    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
   - resource: aws_sesv2_contact_list
     disposition: deferred
     reason: "SES tenants and contact lists; deferred pending demand"

@@ -1,0 +1,1169 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockknowledgebase.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsBedrockKnowledgeBaseSpec defines the desired configuration for an
+// Amazon Bedrock knowledge base - the RAG (retrieval-augmented generation)
+// store that ingests documents from data sources, embeds them, and answers
+// retrieval queries for agents and applications.
+//
+// The knowledge base's name is taken from `metadata.name` (letters,
+// digits, hyphen, underscore; AWS rejects spaces and dots).
+//
+// Exactly ONE knowledge-base type is configured:
+//   - `vector`: embeddings-based retrieval over a vector store you own
+//     (set `storage` to say which one) - the classic RAG shape;
+//   - `managed`: embeddings-based retrieval where AWS manages the vector
+//     store for you - no `storage` block at all;
+//   - `kendra`: retrieval delegated to an existing Amazon Kendra index;
+//   - `sql`: natural-language-to-SQL over a Redshift warehouse (no
+//     embeddings, no vector store).
+//
+// Almost every field below is create-time only - changing anything except
+// the description, the role, and data sources replaces the knowledge base
+// (AWS re-ingests from the data sources afterwards). Knowledge bases are
+// free to create; embedding and retrieval bill per use, and a managed
+// vector store bills for what AWS provisions behind it.
+message AwsBedrockKnowledgeBaseSpec {
+  // The AWS region where the knowledge base will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the Bedrock console. Updates in
+  // place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // IAM role the Bedrock service assumes to operate the knowledge base
+  // (read data sources, call the embedding model, read/write the vector
+  // store). The role must trust bedrock.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Knowledge-Base Type (exactly one; the modules derive AWS's `type`
+  // discriminator from which arm is set)
+  // ---------------------------------------------------------------------------
+
+  // Embeddings-based retrieval over a vector store you own - pair with
+  // `storage`.
+  AwsBedrockKnowledgeBaseVectorConfig vector = 4;
+
+  // Embeddings-based retrieval with the vector store fully managed by
+  // AWS - no `storage` block.
+  AwsBedrockKnowledgeBaseManagedConfig managed = 5;
+
+  // Retrieval delegated to an existing Amazon Kendra index.
+  AwsBedrockKnowledgeBaseKendraConfig kendra = 6;
+
+  // Natural-language-to-SQL over Amazon Redshift.
+  AwsBedrockKnowledgeBaseSqlConfig sql = 7;
+
+  // ---------------------------------------------------------------------------
+  // Vector Store (required with `vector`, forbidden otherwise)
+  // ---------------------------------------------------------------------------
+
+  // Where the `vector` type stores and queries embeddings - exactly one
+  // backend.
+  AwsBedrockKnowledgeBaseStorage storage = 8;
+
+  // ---------------------------------------------------------------------------
+  // Data Sources
+  // ---------------------------------------------------------------------------
+
+  // Where the knowledge base ingests documents from. Each entry is one
+  // connector (S3 bucket, website crawl, Confluence, Salesforce,
+  // SharePoint, or an AWS-managed connector) with its own chunking and
+  // parsing configuration.
+  repeated AwsBedrockKnowledgeBaseDataSource data_sources = 9;
+
+  // Exactly one knowledge-base type.
+  option (buf.validate.message).cel = {
+    id: "kb_type_exactly_one"
+    message: "exactly one of vector, managed, kendra, or sql must be configured"
+    expression: "[has(this.vector), has(this.managed), has(this.kendra), has(this.sql)].filter(x, x).size() == 1"
+  };
+
+  // The vector type brings its own store; every other type must not.
+  option (buf.validate.message).cel = {
+    id: "storage_iff_vector"
+    message: "storage is required with the vector type and forbidden with managed/kendra/sql (AWS manages or delegates their storage)"
+    expression: "has(this.vector) == has(this.storage)"
+  };
+
+  // Data source names are for_each keys on both engines - duplicates
+  // would silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "data_source_names_unique"
+    message: "data_sources entries must have unique names"
+    expression: "this.data_sources.map(d, d.name).unique()"
+  };
+}
+
+// AwsBedrockKnowledgeBaseVectorConfig configures embeddings-based
+// retrieval over a customer-owned vector store.
+message AwsBedrockKnowledgeBaseVectorConfig {
+  // ARN of the embedding foundation model (e.g. Titan Text Embeddings V2:
+  // arn:aws:bedrock:<region>::foundation-model/amazon.titan-embed-text-v2:0).
+  string embedding_model_arn = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Tune the embedding model's output.
+  AwsBedrockKnowledgeBaseEmbeddingModelConfig embedding_model = 2;
+
+  // S3 location (s3://bucket/prefix) where AWS stores supplemental data
+  // for multimodal retrieval (images extracted from documents). Required
+  // when parsing extracts multimodal content.
+  string supplemental_data_s3_uri = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^s3://[a-z0-9.-]+(/.*)?$"
+  ];
+}
+
+// AwsBedrockKnowledgeBaseManagedConfig configures embeddings-based
+// retrieval with the vector store fully managed by AWS.
+message AwsBedrockKnowledgeBaseManagedConfig {
+  // ARN of the embedding foundation model. Omitted = AWS uses its
+  // service-managed embedding model. Setting an ARN switches the
+  // embedding-model type to CUSTOM; the modules derive and always send
+  // that discriminator (AWS's embeddingModelType is CUSTOM exactly when
+  // an ARN is brought, MANAGED otherwise - a leaf that must agree with
+  // structure is drift surface, not configuration).
+  string embedding_model_arn = 1;
+
+  // Tune the embedding model's output.
+  AwsBedrockKnowledgeBaseEmbeddingModelConfig embedding_model = 2;
+
+  // Customer-managed KMS key for encrypting the managed store. Without
+  // it, AWS uses a service-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsBedrockKnowledgeBaseEmbeddingModelConfig tunes the embedding model's
+// output vectors.
+message AwsBedrockKnowledgeBaseEmbeddingModelConfig {
+  // Vector dimensionality (the model must support it - e.g. Titan V2
+  // supports 256, 512, 1024). Omitted = the model's default.
+  int32 dimensions = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Vector element type: FLOAT32 (default) or BINARY (compact binary
+  // embeddings; the model and the vector store must both support it).
+  string embedding_data_type = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["FLOAT32", "BINARY"]}
+  ];
+
+  // Segment ingested AUDIO into fixed-length chunks of this many seconds
+  // before embedding (multimodal models only).
+  int32 audio_segmentation_seconds = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Segment ingested VIDEO into fixed-length chunks of this many seconds
+  // before embedding (multimodal models only).
+  int32 video_segmentation_seconds = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsBedrockKnowledgeBaseKendraConfig delegates retrieval to an existing
+// Amazon Kendra index.
+message AwsBedrockKnowledgeBaseKendraConfig {
+  // ARN of the Kendra index that answers retrieval queries.
+  string kendra_index_arn = 1 [(buf.validate.field).string.pattern = "^arn:aws[a-z-]*:kendra:[a-z0-9-]+:[0-9]{12}:index/.+$"];
+}
+
+// AwsBedrockKnowledgeBaseSqlConfig configures natural-language-to-SQL
+// retrieval over Amazon Redshift (the only SQL engine AWS defines; the
+// modules send the REDSHIFT type constant).
+message AwsBedrockKnowledgeBaseSqlConfig {
+  // The Redshift compute that runs generated queries - exactly one arm.
+  AwsBedrockKnowledgeBaseRedshiftProvisioned provisioned = 1;
+
+  // Redshift Serverless workgroup arm.
+  AwsBedrockKnowledgeBaseRedshiftServerless serverless = 2;
+
+  // Where the warehouse's table metadata lives - exactly one arm.
+  AwsBedrockKnowledgeBaseRedshiftStorage warehouse = 3 [(buf.validate.field).required = true];
+
+  // Teach the query generator about your schema (curated examples, table
+  // and column descriptions, inclusion/exclusion).
+  AwsBedrockKnowledgeBaseQueryGeneration query_generation = 4;
+
+  // Exactly one query engine.
+  option (buf.validate.message).cel = {
+    id: "sql_engine_exactly_one"
+    message: "exactly one of provisioned or serverless must be configured"
+    expression: "has(this.provisioned) != has(this.serverless)"
+  };
+}
+
+// AwsBedrockKnowledgeBaseRedshiftProvisioned points at a provisioned
+// Redshift cluster.
+message AwsBedrockKnowledgeBaseRedshiftProvisioned {
+  // The Redshift cluster that runs generated queries.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef cluster_identifier = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRedshiftCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.cluster_identifier"
+  ];
+
+  // How Bedrock authenticates to the cluster.
+  AwsBedrockKnowledgeBaseRedshiftProvisionedAuth auth = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseRedshiftProvisionedAuth authenticates to a
+// provisioned cluster.
+message AwsBedrockKnowledgeBaseRedshiftProvisionedAuth {
+  // IAM (role-based), USERNAME (database user via IAM temporary
+  // credentials), or USERNAME_PASSWORD (Secrets Manager secret).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "IAM",
+      "USERNAME",
+      "USERNAME_PASSWORD"
+    ]
+  }];
+
+  // Database user for the USERNAME type.
+  string database_user = 2;
+
+  // Secrets Manager secret holding username/password for the
+  // USERNAME_PASSWORD type.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef username_password_secret_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Each auth type brings exactly its own credential field.
+  option (buf.validate.message).cel = {
+    id: "provisioned_auth_shape"
+    message: "USERNAME requires database_user; USERNAME_PASSWORD requires username_password_secret_arn; IAM takes neither"
+    expression: "this.type == 'USERNAME' ? (this.database_user != '' && !has(this.username_password_secret_arn)) : (this.type == 'USERNAME_PASSWORD' ? (has(this.username_password_secret_arn) && this.database_user == '') : (this.database_user == '' && !has(this.username_password_secret_arn)))"
+  };
+}
+
+// AwsBedrockKnowledgeBaseRedshiftServerless points at a Redshift
+// Serverless workgroup.
+message AwsBedrockKnowledgeBaseRedshiftServerless {
+  // The Redshift Serverless workgroup that runs generated queries.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef workgroup_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRedshiftServerlessWorkgroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.arn"
+  ];
+
+  // How Bedrock authenticates to the workgroup.
+  AwsBedrockKnowledgeBaseRedshiftServerlessAuth auth = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseRedshiftServerlessAuth authenticates to a
+// serverless workgroup.
+message AwsBedrockKnowledgeBaseRedshiftServerlessAuth {
+  // IAM (role-based) or USERNAME_PASSWORD (Secrets Manager secret).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "IAM",
+      "USERNAME_PASSWORD"
+    ]
+  }];
+
+  // Secrets Manager secret holding username/password for the
+  // USERNAME_PASSWORD type.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef username_password_secret_arn = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // The secret comes exactly with its auth type.
+  option (buf.validate.message).cel = {
+    id: "serverless_auth_shape"
+    message: "USERNAME_PASSWORD requires username_password_secret_arn; IAM takes none"
+    expression: "(this.type == 'USERNAME_PASSWORD') == has(this.username_password_secret_arn)"
+  };
+}
+
+// AwsBedrockKnowledgeBaseRedshiftStorage says where table metadata lives -
+// exactly one arm.
+message AwsBedrockKnowledgeBaseRedshiftStorage {
+  // Read table metadata from AWS Glue Data Catalog tables.
+  AwsBedrockKnowledgeBaseDataCatalogStorage data_catalog = 1;
+
+  // Read table metadata directly from a Redshift database.
+  AwsBedrockKnowledgeBaseRedshiftDatabaseStorage redshift = 2;
+
+  // Exactly one metadata source.
+  option (buf.validate.message).cel = {
+    id: "warehouse_exactly_one"
+    message: "exactly one of data_catalog or redshift must be configured"
+    expression: "has(this.data_catalog) != has(this.redshift)"
+  };
+}
+
+// AwsBedrockKnowledgeBaseDataCatalogStorage lists Glue Data Catalog
+// tables.
+message AwsBedrockKnowledgeBaseDataCatalogStorage {
+  // Glue table names the query generator may use (at least one).
+  repeated string table_names = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// AwsBedrockKnowledgeBaseRedshiftDatabaseStorage names the Redshift
+// database holding the tables.
+message AwsBedrockKnowledgeBaseRedshiftDatabaseStorage {
+  // Database name (1-200 characters).
+  string database_name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+}
+
+// AwsBedrockKnowledgeBaseQueryGeneration teaches the natural-language-to-
+// SQL generator about your schema.
+message AwsBedrockKnowledgeBaseQueryGeneration {
+  // Abort query generation after this many seconds (1-200).
+  int32 execution_timeout_seconds = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 200
+    }
+  ];
+
+  // Curated question-to-SQL examples that anchor generation (at most 10).
+  repeated AwsBedrockKnowledgeBaseCuratedQuery curated_queries = 2 [(buf.validate.field).repeated.max_items = 10];
+
+  // Table-level guidance: descriptions and inclusion/exclusion (at most
+  // 50).
+  repeated AwsBedrockKnowledgeBaseQueryTable tables = 3 [(buf.validate.field).repeated.max_items = 50];
+}
+
+// AwsBedrockKnowledgeBaseCuratedQuery is one question-to-SQL example.
+message AwsBedrockKnowledgeBaseCuratedQuery {
+  // The natural-language question.
+  string natural_language = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The SQL that correctly answers it.
+  string sql = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockKnowledgeBaseQueryTable is guidance for one warehouse table.
+message AwsBedrockKnowledgeBaseQueryTable {
+  // Table name (as the query engine sees it, e.g.
+  // "database.schema.table").
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the table contains (1-200 characters when set) - context for the
+  // query generator.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // INCLUDE or EXCLUDE this table from generation. Omitted = included.
+  string inclusion = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["INCLUDE", "EXCLUDE"]}
+  ];
+
+  // Column-level guidance within this table.
+  repeated AwsBedrockKnowledgeBaseQueryColumn columns = 4;
+}
+
+// AwsBedrockKnowledgeBaseQueryColumn is guidance for one column.
+message AwsBedrockKnowledgeBaseQueryColumn {
+  // Column name.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the column contains (1-200 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // INCLUDE or EXCLUDE this column. Omitted = included.
+  string inclusion = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["INCLUDE", "EXCLUDE"]}
+  ];
+}
+
+// AwsBedrockKnowledgeBaseStorage selects the vector store backend for the
+// `vector` type - exactly one arm. Every arm is create-time only.
+message AwsBedrockKnowledgeBaseStorage {
+  // Amazon OpenSearch Serverless collection (VECTORSEARCH type). The
+  // vector index must already exist in the collection - AWS does not
+  // create it.
+  AwsBedrockKnowledgeBaseOpenSearchServerlessStorage opensearch_serverless = 1;
+
+  // Self-managed Amazon OpenSearch domain.
+  AwsBedrockKnowledgeBaseOpenSearchManagedStorage opensearch_managed = 2;
+
+  // Amazon S3 Vectors - purpose-built, pay-per-use vector storage (the
+  // lowest-cost self-contained option).
+  AwsBedrockKnowledgeBaseS3VectorsStorage s3_vectors = 3;
+
+  // Aurora PostgreSQL with pgvector.
+  AwsBedrockKnowledgeBaseRdsStorage rds = 4;
+
+  // Pinecone (SaaS vector database).
+  AwsBedrockKnowledgeBasePineconeStorage pinecone = 5;
+
+  // MongoDB Atlas Vector Search.
+  AwsBedrockKnowledgeBaseMongoDbAtlasStorage mongodb_atlas = 6;
+
+  // Amazon Neptune Analytics graph (GraphRAG).
+  AwsBedrockKnowledgeBaseNeptuneAnalyticsStorage neptune_analytics = 7;
+
+  // Redis Enterprise Cloud.
+  AwsBedrockKnowledgeBaseRedisEnterpriseCloudStorage redis_enterprise_cloud = 8;
+
+  // Exactly one backend.
+  option (buf.validate.message).cel = {
+    id: "storage_backend_exactly_one"
+    message: "exactly one vector store backend must be configured"
+    expression: "[has(this.opensearch_serverless), has(this.opensearch_managed), has(this.s3_vectors), has(this.rds), has(this.pinecone), has(this.mongodb_atlas), has(this.neptune_analytics), has(this.redis_enterprise_cloud)].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockKnowledgeBaseFieldMapping names the index fields Bedrock
+// writes to and reads from.
+message AwsBedrockKnowledgeBaseFieldMapping {
+  // Field holding the embedding vectors.
+  string vector_field = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Field holding the raw chunk text.
+  string text_field = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Field holding chunk metadata (source attribution).
+  string metadata_field = 3 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockKnowledgeBaseOpenSearchServerlessStorage stores vectors in an
+// OpenSearch Serverless collection.
+message AwsBedrockKnowledgeBaseOpenSearchServerlessStorage {
+  // The VECTORSEARCH-type collection.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef collection_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOpenSearchServerlessCollection,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.collection_arn"
+  ];
+
+  // Name of the pre-created vector index inside the collection.
+  string vector_index_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Index field names Bedrock uses.
+  AwsBedrockKnowledgeBaseFieldMapping field_mapping = 3 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseOpenSearchManagedStorage stores vectors in a
+// self-managed OpenSearch domain.
+message AwsBedrockKnowledgeBaseOpenSearchManagedStorage {
+  // The OpenSearch domain.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef domain_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsOpenSearchDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.domain_arn"
+  ];
+
+  // The domain's HTTPS endpoint.
+  string domain_endpoint = 2 [(buf.validate.field).string.pattern = "^https://.*$"];
+
+  // Name of the pre-created vector index in the domain.
+  string vector_index_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Index field names Bedrock uses.
+  AwsBedrockKnowledgeBaseFieldMapping field_mapping = 4 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseS3VectorsStorage stores vectors in Amazon S3
+// Vectors. Point at an existing index by ARN, or name a bucket and an
+// index within it - exactly one addressing shape.
+message AwsBedrockKnowledgeBaseS3VectorsStorage {
+  // ARN of an existing S3 vector index.
+  string index_arn = 1;
+
+  // Name of the vector index inside `vector_bucket_arn`.
+  string index_name = 2;
+
+  // ARN of the S3 vector bucket holding `index_name`.
+  string vector_bucket_arn = 3;
+
+  // Address by index ARN, or by bucket ARN + index name - never both.
+  option (buf.validate.message).cel = {
+    id: "s3_vectors_addressing"
+    message: "set index_arn alone, or vector_bucket_arn with index_name"
+    expression: "this.index_arn != '' ? (this.index_name == '' && this.vector_bucket_arn == '') : (this.index_name != '' && this.vector_bucket_arn != '')"
+  };
+}
+
+// AwsBedrockKnowledgeBaseRdsStorage stores vectors in Aurora PostgreSQL
+// (pgvector).
+message AwsBedrockKnowledgeBaseRdsStorage {
+  // The Aurora cluster.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsRdsCluster,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.arn"
+  ];
+
+  // Secrets Manager secret with the database credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Database name.
+  string database_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Table name holding the vector data.
+  string table_name = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Column names Bedrock uses.
+  AwsBedrockKnowledgeBaseRdsFieldMapping field_mapping = 5 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseRdsFieldMapping names the Aurora table columns
+// Bedrock uses (RDS adds a primary-key column to the standard mapping).
+message AwsBedrockKnowledgeBaseRdsFieldMapping {
+  // Column holding the embedding vectors.
+  string vector_field = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Column holding the raw chunk text.
+  string text_field = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Column holding chunk metadata.
+  string metadata_field = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Primary-key column.
+  string primary_key_field = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Column for custom document metadata (filterable attributes).
+  string custom_metadata_field = 5;
+}
+
+// AwsBedrockKnowledgeBasePineconeStorage stores vectors in Pinecone.
+message AwsBedrockKnowledgeBasePineconeStorage {
+  // Pinecone index connection string (host URL).
+  string connection_string = 1 [
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive_exempt_reason) = "the Pinecone index HOST URL, not credential material -- the API key lives in credentials_secret_arn"
+  ];
+
+  // Secrets Manager secret with the Pinecone API key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Pinecone namespace to isolate this knowledge base's vectors.
+  string namespace = 3;
+
+  // Field names Bedrock uses (Pinecone stores vectors natively - only
+  // text and metadata fields are mapped).
+  AwsBedrockKnowledgeBaseTextMetadataFieldMapping field_mapping = 4 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseTextMetadataFieldMapping names text and metadata
+// fields for backends that store vectors natively (Pinecone, Neptune
+// Analytics).
+message AwsBedrockKnowledgeBaseTextMetadataFieldMapping {
+  // Field holding the raw chunk text.
+  string text_field = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Field holding chunk metadata.
+  string metadata_field = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockKnowledgeBaseMongoDbAtlasStorage stores vectors in MongoDB
+// Atlas Vector Search.
+message AwsBedrockKnowledgeBaseMongoDbAtlasStorage {
+  // Atlas cluster endpoint (mongodb+srv host).
+  string endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Database name.
+  string database_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Collection name.
+  string collection_name = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Atlas Vector Search index name.
+  string vector_index_name = 4 [(buf.validate.field).string.min_len = 1];
+
+  // Atlas Search index for hybrid text search.
+  string text_index_name = 5;
+
+  // PrivateLink endpoint service name when Atlas is reached privately.
+  string endpoint_service_name = 6;
+
+  // Secrets Manager secret with the Atlas credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 7 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Field names Bedrock uses.
+  AwsBedrockKnowledgeBaseFieldMapping field_mapping = 8 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseNeptuneAnalyticsStorage stores vectors in an
+// Amazon Neptune Analytics graph (GraphRAG - retrieval enriched with
+// graph relationships).
+message AwsBedrockKnowledgeBaseNeptuneAnalyticsStorage {
+  // ARN of the Neptune Analytics graph.
+  string graph_arn = 1 [(buf.validate.field).string.pattern = "^arn:aws[a-z-]*:neptune-graph:[a-z0-9-]+:[0-9]{12}:graph/.+$"];
+
+  // Field names Bedrock uses (the graph stores vectors natively).
+  AwsBedrockKnowledgeBaseTextMetadataFieldMapping field_mapping = 2 [(buf.validate.field).required = true];
+}
+
+// AwsBedrockKnowledgeBaseRedisEnterpriseCloudStorage stores vectors in
+// Redis Enterprise Cloud.
+message AwsBedrockKnowledgeBaseRedisEnterpriseCloudStorage {
+  // Redis Enterprise Cloud database endpoint.
+  string endpoint = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Vector index name in the database.
+  string vector_index_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Secrets Manager secret with the Redis credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Field names Bedrock uses (Redis accepts partial mappings - AWS
+  // derives what is omitted).
+  AwsBedrockKnowledgeBaseRedisFieldMapping field_mapping = 4;
+}
+
+// AwsBedrockKnowledgeBaseRedisFieldMapping names Redis index fields (all
+// optional - AWS derives omitted fields).
+message AwsBedrockKnowledgeBaseRedisFieldMapping {
+  // Field holding the embedding vectors.
+  string vector_field = 1;
+
+  // Field holding the raw chunk text.
+  string text_field = 2;
+
+  // Field holding chunk metadata.
+  string metadata_field = 3;
+}
+
+// AwsBedrockKnowledgeBaseDataSource is one document connector - exactly
+// one connector arm plus optional chunking/parsing configuration.
+message AwsBedrockKnowledgeBaseDataSource {
+  // Data source name (1-100 characters; letters, digits, hyphen,
+  // underscore). The for_each key on both engines and the key in the
+  // `data_source_ids` output map; also the name in AWS. Renaming replaces
+  // the data source.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // What this source contains (1-200 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // What happens to already-ingested vectors when this data source is
+  // deleted: RETAIN keeps them queryable; DELETE purges them. Omitted =
+  // AWS default (DELETE).
+  string data_deletion_policy = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["RETAIN", "DELETE"]}
+  ];
+
+  // Customer-managed KMS key for encrypting transient ingestion data.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Connector (exactly one; the modules derive AWS's `type` discriminator
+  // from which arm is set)
+  // ---------------------------------------------------------------------------
+
+  // Ingest objects from an S3 bucket.
+  AwsBedrockKnowledgeBaseS3DataSource s3 = 5;
+
+  // Crawl websites from seed URLs.
+  AwsBedrockKnowledgeBaseWebDataSource web = 6;
+
+  // Ingest Confluence spaces and pages.
+  AwsBedrockKnowledgeBaseConfluenceDataSource confluence = 7;
+
+  // Ingest Salesforce objects.
+  AwsBedrockKnowledgeBaseSalesforceDataSource salesforce = 8;
+
+  // Ingest SharePoint sites.
+  AwsBedrockKnowledgeBaseSharePointDataSource sharepoint = 9;
+
+  // AWS-managed knowledge-base connector (connector-specific parameters
+  // as a JSON document).
+  AwsBedrockKnowledgeBaseManagedConnectorDataSource managed_connector = 10;
+
+  // ---------------------------------------------------------------------------
+  // Ingestion Pipeline
+  // ---------------------------------------------------------------------------
+
+  // How documents are split into chunks, parsed, and transformed before
+  // embedding. Create-time only - changing it replaces the data source.
+  AwsBedrockKnowledgeBaseVectorIngestion vector_ingestion = 11;
+
+  // Exactly one connector.
+  option (buf.validate.message).cel = {
+    id: "connector_exactly_one"
+    message: "exactly one of s3, web, confluence, salesforce, sharepoint, or managed_connector must be configured"
+    expression: "[has(this.s3), has(this.web), has(this.confluence), has(this.salesforce), has(this.sharepoint), has(this.managed_connector)].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockKnowledgeBaseS3DataSource ingests objects from S3.
+message AwsBedrockKnowledgeBaseS3DataSource {
+  // The bucket to ingest from.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // Only ingest objects under this key prefix (1-300 characters; AWS
+  // accepts at most one prefix).
+  string inclusion_prefix = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 300
+    }
+  ];
+
+  // Bucket owner's account ID when the bucket lives in another account.
+  string bucket_owner_account_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+}
+
+// AwsBedrockKnowledgeBaseWebDataSource crawls websites.
+message AwsBedrockKnowledgeBaseWebDataSource {
+  // Where the crawl starts (1-100 URLs, http/https).
+  repeated string seed_urls = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    items: {
+      string: {pattern: "^https?://[A-Za-z0-9][^\\s]*$"}
+    }
+  }];
+
+  // How far the crawl may wander from the seeds: HOST_ONLY stays on each
+  // seed's host; SUBDOMAINS also crawls its subdomains. Omitted = AWS
+  // default (host plus deeper paths of the seed).
+  string scope = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["HOST_ONLY", "SUBDOMAINS"]}
+  ];
+
+  // Only crawl URLs matching these regex patterns (at most 25, each up to
+  // 1000 characters).
+  repeated string inclusion_filters = 3 [(buf.validate.field).repeated = {
+    max_items: 25
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+
+  // Never crawl URLs matching these regex patterns (at most 25).
+  repeated string exclusion_filters = 4 [(buf.validate.field).repeated = {
+    max_items: 25
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+
+  // Custom User-Agent suffix for the crawler (15-40 characters).
+  string user_agent = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 15
+      max_len: 40
+    }
+  ];
+
+  // Stop after crawling this many pages.
+  int32 max_pages = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Crawl at most this many URLs per minute per host (1-300).
+  int32 rate_limit = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 300
+    }
+  ];
+}
+
+// AwsBedrockKnowledgeBaseCrawlFilter narrows what a SaaS connector
+// (Confluence/Salesforce/SharePoint) ingests, per content object type.
+message AwsBedrockKnowledgeBaseCrawlFilter {
+  // The connector-specific content type this filter applies to (e.g.
+  // Confluence "Space"/"Page", Salesforce "Account", SharePoint "Page").
+  string object_type = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Only ingest objects matching these regex patterns (at most 25).
+  repeated string inclusion_filters = 2 [(buf.validate.field).repeated = {
+    max_items: 25
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+
+  // Never ingest objects matching these regex patterns (at most 25).
+  repeated string exclusion_filters = 3 [(buf.validate.field).repeated = {
+    max_items: 25
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1000
+      }
+    }
+  }];
+}
+
+// AwsBedrockKnowledgeBaseConfluenceDataSource ingests Confluence Cloud
+// (the SAAS host type - the only one AWS defines; the modules send the
+// constant).
+message AwsBedrockKnowledgeBaseConfluenceDataSource {
+  // The Confluence Cloud instance URL (https://<company>.atlassian.net).
+  string host_url = 1 [(buf.validate.field).string.pattern = "^https://[A-Za-z0-9][^\\s]*$"];
+
+  // How Bedrock authenticates: BASIC (username + API token) or
+  // OAUTH2_CLIENT_CREDENTIALS.
+  string auth_type = 2 [(buf.validate.field).string = {
+    in: [
+      "BASIC",
+      "OAUTH2_CLIENT_CREDENTIALS"
+    ]
+  }];
+
+  // Secrets Manager secret with the Confluence credentials (shape depends
+  // on auth_type - see the AWS connector documentation).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Narrow what gets ingested, per content type.
+  repeated AwsBedrockKnowledgeBaseCrawlFilter filters = 4;
+}
+
+// AwsBedrockKnowledgeBaseSalesforceDataSource ingests Salesforce objects
+// (OAuth2 client credentials - the only auth type AWS defines; the modules
+// send the constant).
+message AwsBedrockKnowledgeBaseSalesforceDataSource {
+  // The Salesforce instance URL (1-256 characters).
+  string host_url = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+    pattern: "^https://[A-Za-z0-9][^\\s]*$"
+  }];
+
+  // Secrets Manager secret with the Salesforce connected-app credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Narrow what gets ingested, per object type.
+  repeated AwsBedrockKnowledgeBaseCrawlFilter filters = 3;
+}
+
+// AwsBedrockKnowledgeBaseSharePointDataSource ingests SharePoint Online
+// sites (the ONLINE host type - the only one AWS defines; the modules send
+// the constant).
+message AwsBedrockKnowledgeBaseSharePointDataSource {
+  // Site URLs to ingest (1-100, https).
+  repeated string site_urls = 1 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 100
+    items: {
+      string: {pattern: "^https://[A-Za-z0-9][^\\s]*$"}
+    }
+  }];
+
+  // The SharePoint domain (1-50 characters).
+  string domain = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 50
+  }];
+
+  // Azure AD tenant ID (UUID).
+  string tenant_id = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+  ];
+
+  // How Bedrock authenticates: OAUTH2_CLIENT_CREDENTIALS or
+  // OAUTH2_SHAREPOINT_APP_ONLY_CLIENT_CREDENTIALS.
+  string auth_type = 4 [(buf.validate.field).string = {
+    in: [
+      "OAUTH2_CLIENT_CREDENTIALS",
+      "OAUTH2_SHAREPOINT_APP_ONLY_CLIENT_CREDENTIALS"
+    ]
+  }];
+
+  // Secrets Manager secret with the Azure app credentials.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef credentials_secret_arn = 5 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecretsManagerSecret,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.secret_arn"
+  ];
+
+  // Narrow what gets ingested, per content type.
+  repeated AwsBedrockKnowledgeBaseCrawlFilter filters = 6;
+}
+
+// AwsBedrockKnowledgeBaseManagedConnectorDataSource ingests through an
+// AWS-managed knowledge-base connector.
+message AwsBedrockKnowledgeBaseManagedConnectorDataSource {
+  // Connector-specific parameters as a JSON document (shape defined by
+  // the connector - see the AWS connector catalog).
+  google.protobuf.Struct connector_parameters = 1;
+
+  // Refuse a sync that would delete more than `threshold` percent of the
+  // already-ingested documents (guards against accidental mass deletion
+  // upstream).
+  AwsBedrockKnowledgeBaseDeletionProtection deletion_protection = 2;
+
+  // Extract text from non-text media during ingestion.
+  AwsBedrockKnowledgeBaseMediaExtraction media_extraction = 3;
+}
+
+// AwsBedrockKnowledgeBaseDeletionProtection guards managed-connector syncs
+// against mass deletions.
+message AwsBedrockKnowledgeBaseDeletionProtection {
+  // Turn the guard on or off.
+  bool enabled = 1;
+
+  // Abort a sync that would delete more than this percent of documents
+  // (0-100).
+  int32 threshold_percent = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 100
+    }
+  ];
+}
+
+// AwsBedrockKnowledgeBaseMediaExtraction enables per-modality text
+// extraction on a managed connector.
+message AwsBedrockKnowledgeBaseMediaExtraction {
+  // Extract text from audio files.
+  bool audio = 1;
+
+  // Extract text from images.
+  bool image = 2;
+
+  // Extract text from video files.
+  bool video = 3;
+}
+
+// AwsBedrockKnowledgeBaseVectorIngestion configures the chunk-parse-
+// transform pipeline. Create-time only.
+message AwsBedrockKnowledgeBaseVectorIngestion {
+  // How documents split into chunks before embedding.
+  AwsBedrockKnowledgeBaseChunking chunking = 1;
+
+  // How documents are parsed into text.
+  AwsBedrockKnowledgeBaseParsing parsing = 2;
+
+  // Run a Lambda between pipeline steps to reshape chunks.
+  AwsBedrockKnowledgeBaseCustomTransformation custom_transformation = 3;
+}
+
+// AwsBedrockKnowledgeBaseChunking selects a chunking strategy. The
+// strategy leaf is explicit because NONE (treat each document as one
+// chunk) carries no configuration block.
+message AwsBedrockKnowledgeBaseChunking {
+  // FIXED_SIZE (token windows with overlap), HIERARCHICAL (parent/child
+  // levels), SEMANTIC (split at meaning boundaries), or NONE (one chunk
+  // per document). Omitted at the data-source level = AWS default
+  // (FIXED_SIZE, 300 tokens).
+  string strategy = 1 [(buf.validate.field).string = {
+    in: [
+      "FIXED_SIZE",
+      "HIERARCHICAL",
+      "SEMANTIC",
+      "NONE"
+    ]
+  }];
+
+  // FIXED_SIZE settings.
+  AwsBedrockKnowledgeBaseFixedSizeChunking fixed_size = 2;
+
+  // HIERARCHICAL settings.
+  AwsBedrockKnowledgeBaseHierarchicalChunking hierarchical = 3;
+
+  // SEMANTIC settings.
+  AwsBedrockKnowledgeBaseSemanticChunking semantic = 4;
+
+  // The strategy brings exactly its own configuration; NONE brings none.
+  option (buf.validate.message).cel = {
+    id: "chunking_strategy_shape"
+    message: "configure exactly the block matching strategy (FIXED_SIZE -> fixed_size, HIERARCHICAL -> hierarchical, SEMANTIC -> semantic, NONE -> none)"
+    expression: "(this.strategy == 'FIXED_SIZE' ? [has(this.fixed_size), !has(this.hierarchical), !has(this.semantic)] : (this.strategy == 'HIERARCHICAL' ? [!has(this.fixed_size), has(this.hierarchical), !has(this.semantic)] : (this.strategy == 'SEMANTIC' ? [!has(this.fixed_size), !has(this.hierarchical), has(this.semantic)] : [!has(this.fixed_size), !has(this.hierarchical), !has(this.semantic)]))).all(x, x)"
+  };
+}
+
+// AwsBedrockKnowledgeBaseFixedSizeChunking splits documents into
+// fixed-size token windows.
+message AwsBedrockKnowledgeBaseFixedSizeChunking {
+  // Maximum tokens per chunk.
+  int32 max_tokens = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Percent of each chunk shared with the next (1-99).
+  int32 overlap_percentage = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 99
+  }];
+}
+
+// AwsBedrockKnowledgeBaseHierarchicalChunking splits documents into
+// parent/child chunk levels (children are retrieved, parents provide
+// context).
+message AwsBedrockKnowledgeBaseHierarchicalChunking {
+  // Tokens shared between adjacent child chunks.
+  int32 overlap_tokens = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Exactly two levels: the parent level first, the child level second.
+  repeated AwsBedrockKnowledgeBaseChunkingLevel levels = 2 [(buf.validate.field).repeated = {
+    min_items: 2
+    max_items: 2
+  }];
+}
+
+// AwsBedrockKnowledgeBaseChunkingLevel is one hierarchical level.
+message AwsBedrockKnowledgeBaseChunkingLevel {
+  // Maximum tokens per chunk at this level (1-8192).
+  int32 max_tokens = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 8192
+  }];
+}
+
+// AwsBedrockKnowledgeBaseSemanticChunking splits documents at meaning
+// boundaries.
+message AwsBedrockKnowledgeBaseSemanticChunking {
+  // Split where sentence similarity drops below this percentile (50-99;
+  // higher = fewer, larger chunks).
+  int32 breakpoint_percentile_threshold = 1 [(buf.validate.field).int32 = {
+    gte: 50
+    lte: 99
+  }];
+
+  // Sentences to group when computing similarity (0 or 1).
+  int32 buffer_size = 2 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Maximum tokens per chunk.
+  int32 max_tokens = 3 [(buf.validate.field).int32.gte = 1];
+}
+
+// AwsBedrockKnowledgeBaseParsing selects how documents are parsed. AWS's
+// default parser handles text natively; the BEDROCK_DATA_AUTOMATION and
+// BEDROCK_FOUNDATION_MODEL strategies also parse visuals (tables, charts,
+// scanned PDFs); SMART_PARSING lets AWS pick per document.
+message AwsBedrockKnowledgeBaseParsing {
+  // BEDROCK_DATA_AUTOMATION, BEDROCK_FOUNDATION_MODEL, or SMART_PARSING.
+  string strategy = 1 [(buf.validate.field).string = {
+    in: [
+      "BEDROCK_DATA_AUTOMATION",
+      "BEDROCK_FOUNDATION_MODEL",
+      "SMART_PARSING"
+    ]
+  }];
+
+  // Parse multimodal content (images embedded in documents) with Bedrock
+  // Data Automation. Only meaningful with BEDROCK_DATA_AUTOMATION.
+  bool multimodal = 2;
+
+  // BEDROCK_FOUNDATION_MODEL settings (required with that strategy).
+  AwsBedrockKnowledgeBaseFoundationModelParsing foundation_model = 3;
+
+  // The foundation-model strategy brings exactly its own configuration.
+  option (buf.validate.message).cel = {
+    id: "parsing_strategy_shape"
+    message: "foundation_model is required with BEDROCK_FOUNDATION_MODEL and forbidden otherwise"
+    expression: "(this.strategy == 'BEDROCK_FOUNDATION_MODEL') == has(this.foundation_model)"
+  };
+
+  // The multimodal switch belongs to Bedrock Data Automation.
+  option (buf.validate.message).cel = {
+    id: "multimodal_requires_bda"
+    message: "multimodal requires strategy BEDROCK_DATA_AUTOMATION"
+    expression: "!this.multimodal || this.strategy == 'BEDROCK_DATA_AUTOMATION'"
+  };
+}
+
+// AwsBedrockKnowledgeBaseFoundationModelParsing parses documents with a
+// foundation model.
+message AwsBedrockKnowledgeBaseFoundationModelParsing {
+  // ARN of the parsing foundation model.
+  string model_arn = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Parse multimodal content (images embedded in documents).
+  bool multimodal = 2;
+
+  // Custom parsing prompt. Omitted = AWS's built-in parsing prompt.
+  string parsing_prompt = 3;
+}
+
+// AwsBedrockKnowledgeBaseCustomTransformation runs a Lambda between
+// ingestion steps.
+message AwsBedrockKnowledgeBaseCustomTransformation {
+  // S3 location (s3://bucket/prefix) AWS uses to hand chunks to the
+  // Lambda and read its output.
+  string intermediate_s3_uri = 1 [(buf.validate.field).string.pattern = "^s3://[a-z0-9.-]+(/.*)?$"];
+
+  // The transformation Lambda (runs after chunking - POST_CHUNKING, the
+  // only step AWS defines; the modules send the constant).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+}

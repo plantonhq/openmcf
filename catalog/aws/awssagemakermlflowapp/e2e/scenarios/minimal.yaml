@@ -1,0 +1,26 @@
+# AwsSagemakerMlflowApp minimal scenario: the smallest serverless
+# MLflow deployment (billed per use - $0 idle for a never-invoked
+# lane). Proves the create -> Created lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerMlflowApp
+metadata:
+  name: planton-oss-e2e-awssgmma-min
+  id: planton-oss-e2e-awssgmma-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakermlflowapp
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole,AwsS3Bucket"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  artifactStoreUri: s3://planton-oss-e2e-awss3bucket-prereq/mlflow-app-min
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn

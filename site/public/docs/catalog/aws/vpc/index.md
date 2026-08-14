@@ -15,7 +15,9 @@ Deploys a Virtual Private Cloud on AWS -- the isolated network foundation that o
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **VPC** -- the virtual network with your primary IPv4 CIDR (an explicit block or an IPAM allocation), DNS resolution and hostname settings, and the instance tenancy mode
-- **Secondary IPv4 CIDRs** -- created only when `secondaryIpv4CidrBlocks` is set; each additional range is associated as its own block and can be added or removed without recreating the VPC
+- **Secondary IPv4 CIDRs** -- created only when `secondaryIpv4Cidrs` is set; each entry (an explicit block, an IPAM-sized allocation, or a pool-pinned block) is associated as its own resource and can be added or removed without recreating the VPC
+- **Secondary IPv6 CIDRs** -- created only when `secondaryIpv6Cidrs` is set; each entry names exactly one source (an Amazon-provided block, a BYOIP public pool, or an IPAM pool)
+- **Encryption Control** -- created only when `encryptionControl` is set; monitors or enforces encryption in transit VPC-wide, with per-service exclusions in enforce mode
 - **IPv6 association** -- created only when IPv6 is enabled; either an Amazon-provided `/56` or an IPAM-allocated block, making the VPC dual-stack
 - **Default route table, security group, and network ACL** -- AWS creates these automatically with every VPC; their IDs are surfaced as outputs
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the VPC
@@ -72,7 +74,9 @@ These are the most important decisions when configuring a VPC. Explore the full 
 
 **Primary IPv4 source** -- Provide either an explicit `cidrBlock` (the common path) or allocate it from an IPAM pool (`ipv4IpamPoolId` + `ipv4NetmaskLength`). The two are mutually exclusive. A `/16` block gives 65,536 addresses; the primary range cannot change after creation without replacing the VPC.
 
-**Secondary CIDRs** -- Add `secondaryIpv4CidrBlocks` when a single range runs low or you need a distinct space (such as `100.64.0.0/10`). Unlike the primary, secondaries can be added and removed in place.
+**Secondary CIDRs** -- Add `secondaryIpv4Cidrs` when a single range runs low or you need a distinct space (such as `100.64.0.0/10`). Each entry takes an explicit `cidrBlock`, an IPAM allocation (`ipamPoolId` + `netmaskLength`), or a pool-pinned block (both) -- the same three modes as the primary range. IPv6 grows the same way through `secondaryIpv6Cidrs`, whose entries choose an Amazon-provided block (`assignGenerated`), a BYOIP `ipv6Pool`, or an IPAM pool. Unlike the primary, secondaries can be added and removed in place.
+
+**Encryption in transit** -- `encryptionControl` turns on AWS's VPC-wide encryption-in-transit control: `monitor` observes and reports unencrypted traffic paths; `enforce` blocks them, honoring per-service exclusions (internet gateway, NAT gateway, Lambda, EFS, ...) for paths that cannot encrypt. Roll out monitor-first, review the findings, then enforce with the minimum exclusion list.
 
 **IPv6** -- Opt in for globally routable addresses. **Amazon-provided** is the simplest (one setting yields a `/56`); **IPAM** suits orgs that govern IPv6 space centrally. Pair a dual-stack VPC with an egress-only internet gateway for outbound-only IPv6.
 
@@ -100,6 +104,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `default_network_acl_id` | ID of the default network ACL | Subnet-level network ACLs |
 | `owner_id` | AWS account ID that owns the VPC | Cross-account references |
 | `region` | Region the VPC was created in | Downstream region wiring |
+| `secondary_ipv4_cidr_association_ids` | Association IDs of secondary IPv4 CIDR blocks, keyed by CIDR (or `ipam-<index>`) | Disassociation tooling, state import |
+| `secondary_ipv6_cidr_association_ids` | Association IDs of secondary IPv6 CIDR blocks, keyed by CIDR (or `ipv6-<index>`) | Disassociation tooling, state import |
+| `encryption_control_id` | ID of the VPC Encryption Control (empty when not configured) | Encryption-posture inspection, state import |
 
 ## Common Patterns
 

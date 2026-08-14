@@ -679,9 +679,9 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 	ginkgo.It("fails for a jwt_options block with no validation source, even when disabled", func() {
 		spec.EngineVersion = "OpenSearch_2.11"
 		spec.AdvancedSecurityOptions = &AwsOpenSearchDomainAdvancedSecurityOptions{
-			Enabled:        true,
-			MasterUserArn:  strRef("arn:aws:iam::123456789012:role/master"),
-			JwtOptions:     &AwsOpenSearchDomainJwtOptions{Enabled: false},
+			Enabled:       true,
+			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
+			JwtOptions:    &AwsOpenSearchDomainJwtOptions{Enabled: false},
 		}
 		err := protovalidate.Validate(spec)
 		gomega.Expect(err).NotTo(gomega.BeNil())
@@ -723,8 +723,8 @@ var _ = ginkgo.Describe("AwsOpenSearchDomainSpec validations", func() {
 			MasterUserArn: strRef("arn:aws:iam::123456789012:role/master"),
 		}
 		spec.SamlOptions = &AwsOpenSearchDomainSamlOptions{
-			IdpEntityId:        "https://idp.example.com/saml/metadata",
-			IdpMetadataContent: "<EntityDescriptor>...</EntityDescriptor>",
+			IdpEntityId:           "https://idp.example.com/saml/metadata",
+			IdpMetadataContent:    "<EntityDescriptor>...</EntityDescriptor>",
 			SessionTimeoutMinutes: 120,
 		}
 		gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())

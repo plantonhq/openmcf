@@ -503,6 +503,19 @@ must be non-empty (the harness prints its authentication line first). If the
 process is gone with an empty log, relaunch under a supervised/managed shell
 rather than retrying `nohup` from another transient shell.
 
+A harder grain of the same class under agent tooling (live-caught
+2026-08-13, twice in one hour): detachment does NOT guarantee survival.
+Both a plain `&` child AND a double-forked `(nohup ... &)` process were
+killed when the agent tool-shell that launched them was cleaned up -- one
+died mid-scenario minutes after launch (orphaning a half-deployed
+resource outside any engine state), the other silently stopped an
+evidence watcher between lanes. The reliable shape is the agent harness's
+own MANAGED background terminal (the launch stays the foreground command
+of a persistent session the harness supervises), where both survived the
+full session. Signature of the class: a lane log that simply stops
+mid-phase with no `ok`/`FAIL` trailer and no error, while an identical
+managed relaunch runs clean.
+
 ### `AzureCLICredential: signal: killed` is host starvation, not Azure
 
 The Azure verifiers authenticate through the ambient `az` login, which
@@ -985,6 +998,17 @@ failed run's teardown to ALSO have failed on credentials — sweep its fixture
 chain before relaunching (deployed dependencies stay cloud-side when
 DEPENDENCIES-DOWN never got usable credentials).
 
+The rescue's granularity is PER PROCESS, not per lane (live hit
+2026-08-13): a `pulumi destroy` SPAWNED while the token was dead can wedge
+inside its provider-configure refresh loop and never consult the fresh
+cache — observed hung 40+ minutes after the login landed, while sibling
+CLI calls succeeded. When a dependency-teardown retry ladder is cycling
+and one attempt's child process outlives its plausible runtime, kill THAT
+process (SIGKILL if needed — destroys are state-safe to interrupt) and
+let the ladder's next attempt relaunch with a fresh process that reads
+the new token. Killing the hung child is the in-place rescue; killing the
+lane is still the last resort.
+
 Timing observed live (us-west-2): IAM/EIP/Cognito lanes run 30-90s per
 engine; a zonal NAT gateway scenario ~7 min per engine end-to-end (create
 ~2 min, delete ~1 min, fixture chain ~1.5 min up + ~2 min down); a regional
@@ -1020,7 +1044,30 @@ CreateHealthCheck rejects reserved/documentation IP addresses
 TEST-NET ranges included, and DISABLED does not exempt the check), so an
 endpoint-check fixture must place its placeholder in `fqdn`, never in
 `ip_address` (AWS resolves domains at probe time and a disabled check
-never probes — the domain placeholder deploys cleanly). When a lane fails with a 4xx the offline
+never probes — the domain placeholder deploys cleanly); on SageMaker,
+CreateSpace rejects a space idle timeout wherever idle shutdown resolves
+DISABLED for the space through the domain/owner-profile inheritance chain
+("Idle Shutdown is disabled for this space, SpaceIdleSettings cannot be set
+for this space" — identical 400 on both engines, 2026-08-13: a scenario that
+proves the defined-but-disabled profile plane must NOT also set an idle
+timeout on a space that profile owns; cross-RESOURCE contracts like this
+live in no provider schema, so scenario design must resolve the inheritance
+chain by hand — the kind's spec now CEL-rejects the in-manifest
+contradiction); on Bedrock guardrails, CreateGuardrail rejects a
+STANDARD policy tier without cross-region inference ("Can't configure
+guardrail policy tier. Enable cross-Region inference..." — 2026-08-13;
+the pairing probe also settled that the API accepts the
+geography-qualified profile id "us.guardrail.v1:0" directly while the
+PROVIDER's schema demands an ARN — provider-stricter-than-API, the
+inverse of the usual gap — so the modules compose the account-scoped
+ARN from a caller-identity lookup and committed manifests never embed
+an account id); on
+Bedrock inference profiles, CreateInferenceProfile rejects a
+foundation-model source whose model supports only INFERENCE_PROFILE
+invocation ("The provided foundation model does not support On Demand
+inference" — the Nova family and most 2025+ models; probe a model's arms
+with `list-foundation-models --by-inference-type ON_DEMAND` before
+fixing a scenario source). When a lane fails with a 4xx the offline
 gates never produced, probe the contract directly with the AWS CLI on
 throwaway resources (the default VPC makes MI-class probes fixture-free)
 before touching the module — ten minutes of probing settled both the
@@ -1083,6 +1130,34 @@ history-dependent; (2) a provider whose attribute-satellite delete writes
 a zero value plants that value permanently on the name — expect
 "unmanaged" reads on long-lived fixed-name fixtures to reflect the LAST
 manager, not the service default.
+
+**Cross-region satellites deleted ASYNCHRONOUSLY by the service are an
+orphan class the primary-region check never sees.** Secrets Manager is the
+canonical case (live-caught 2026-08-13): RemoveRegionsFromReplication only
+REQUESTS replica deletion — AWS performs it asynchronously (~40-90s,
+probed) — and the provider deletes the primary immediately after, without
+waiting. Usually the deletion completes anyway, but a force-deleted
+primary (recovery window 0) can outrun it and strand the replica as a
+live standalone secret in ITS region. Three grains: (1) verify-absent for
+such kinds must check the SATELLITE regions, recorded at exists-time (the
+AWS secret verifier keeps an ARN→replica-regions map across the
+lifecycle — the stateless per-region probe cannot know them after the
+primary is gone); (2) the strand REJECTS a direct delete ("Operation not
+permitted on a replica secret") even with its primary deleted — recover
+with stop-replication-to-replica in the replica's region, then delete;
+(3) a stranded ex-replica BLOCKS the same name's next replication with a
+status-only failure ("currently replicated to <region> with a different
+arn") that force_overwrite does not clear and NO engine surfaces at apply
+(the provider has no replication waiter in either direction) — so
+verify-exists must poll every declared replica to InSync, or a green
+deploy carries a dead replica claim; (4) a SWEPT replica can be
+RE-MATERIALIZED by the deleted primary's replication machinery tens of
+minutes later (observed live: fresh CreatedDate 40+ min after the
+promote-and-delete sweep, PrimaryRegion pointing at the long-deleted
+primary) — the end-of-session sweep must RE-CHECK replica regions after
+a settle, not just once. Scenario design: a replicated fixed-name
+scenario sits in all these traps across the dual-engine recreate —
+run-scope the name and destroy with a recovery window.
 
 **A 4xx from a create call does not mean nothing was created — sweep before
 re-running.** Some AWS creates are not atomic: the service materializes the
@@ -1182,6 +1257,69 @@ alive until its window is CLOSED" rule at process granularity — and a
 killed-mid-teardown lane means a manual dependency-ordered sweep
 (attachment before gateway, subnets before VPC) before any relaunch.
 
+**The ps check is a HARD PRE-LAUNCH GATE, not just a diagnosis aid — and
+it must gate, not merely print.** Second and third live hits of the class
+(2026-08-13): an agent-tooling launcher reported a lane invocation
+complete-with-failure after 23 seconds while the invocation's `go test`
+kept running for TEN MORE MINUTES (deploying and destroying the full
+13-role IAM fixture set), and a relaunch issued on the strength of that
+false completion collided 409 with the invisible sibling's live fixtures;
+later the same day one launched command produced TWO complete trailer
+sets in one log file — two full executions, which stayed green only
+because they shared run-scoped dependency stacks. Binding rules: (1)
+before ANY lane launch or relaunch, run `ps` for the exact `-run` pattern
+and let a non-empty result BLOCK the launch (a chained command that
+prints the count and proceeds anyway is not a check — the same
+gate-vs-print failure the lock protocol records); (2) after every
+launch, verify exactly ONE `go test` driver + ONE `*.test` binary exist
+for the pattern; (3) count `^ok |^FAIL` package trailers in the lane log
+before citing it as evidence — two trailer sets means two executions and
+the log's phases interleave; (4) in a PERSISTENT/stateful agent shell, the
+gate must block by SKIPPING the launch (an `if` that simply does not run
+it), never by `exit` — an `exit` kills the shell itself, agent tooling
+restarts it and can RE-RUN the whole chain, and the re-execution races the
+first (two live hits 2026-08-13: a "blocked" gate report belonged to the
+duplicate execution while the first was already running the lanes; the
+truth is always the process table + the log file, never the launcher's
+printed verdict).
+
+**A re-executed launch can TRUNCATE its own log, making the first
+execution invisible — anchor forensics on cloud-side timestamps, not the
+log.** The duplicate-execution class above (one launch, two runs) has a
+harder grain when the lane command pipes through `tee` WITHOUT `-a`: the
+re-execution truncates the shared log file, so the trailer count reads ONE
+and the log looks like a single clean run — while the first execution's
+fixtures are live in the cloud, colliding 409 with the second's and
+stranding orphans when the first dies teardown-less (live hit 2026-08-13:
+a Bedrock flow lane's first execution created the fixed-name MANAGED-KB
+prerequisite six minutes before the reported execution's own start, which
+then failed 409 against it; the stranded KB outlived both). The signature
+is a cloud resource whose `createdAt` PRECEDES the reported command's
+possible start window. Defenses: pipe lane logs through `tee -a` with a
+per-launch header line (echo a timestamped RUN marker before `go test`) so
+a truncation-invisible predecessor cannot exist, and treat any
+fixture-collision 409 as unattributed until the resource's create time is
+checked against the launch window.
+
+**When an authoring session holds the checkout, run proof lanes from a
+dedicated detached worktree at the proven HEAD — and never sync edits
+into it while a lane runs.** A live authoring session's in-flight edits
+to shared packages (the verify package, `go.mod`) can leave the main
+tree uncompilable for `go test` at any moment; `git worktree add
+--detach <path> HEAD` gives the lanes the last committed (proven) tree,
+with the proof session's own files copied in. Two hard rules from the
+first live use (2026-08-14): (1) copy files into the worktree ONLY
+between lanes — a stub synced mid-run broke the running lane's own
+DESTROY, because `pulumi destroy` recompiles the module program against
+the tree as it stands and a new CEL rejected the in-flight stack-input
+(the never-edit-what-a-lane-reads class via the sync side door); and
+(2) the main tree stays the record tree — profile flips and spec/module
+fixes land there first and copy over, so the wrap commit never depends
+on worktree state. Expect a sibling's commit to overwrite YOUR
+uncommitted edits to shared files (import catalog, verifier map) —
+re-apply on top after their commit lands; the worktree copy keeps the
+lanes honest meanwhile.
+
 **A stale AWS CLI silently DROPS new API surface from its output — verify
 the CLI's model before diagnosing a missing field.** The CLI parses
 responses against its bundled service model and discards members it does
@@ -1220,6 +1358,32 @@ calls the moment it exists, and let it idle through both engines' windows
 so each lane's instance is sampled independently. The poller doubles as
 per-engine attribution: two capture blocks with different resource IDs
 prove BOTH engines' instances carried the arm.
+
+Four watcher-authoring traps, all live-caught 2026-08-13: (0) **zsh
+RESERVED parameters carry setter semantics** — assigning `GID` (also
+`UID`, `EUID`, `USERNAME`) in a zsh watcher script attempts to change
+the process's group id and kills the script with "failed to change
+group ID: operation not permitted"; a watcher log that contains only
+its header line with the process gone is this class — name loop
+variables defensively (`G_ID`), same family as the `:s`/`:l` modifier
+trap below. (1) **watch
+the name the MODULE derives, not metadata.name** — some kinds name their
+cloud resource from a spec field (ECR's `spec.repository_name`), and a
+watcher armed on metadata.name polls a resource that never exists,
+producing an all-NotFound log that looks like a timing miss (28 clean
+iterations, zero captures — beyond plausible bad luck is the signature;
+read the module's locals before arming). (2) **In zsh, BRACE every
+variable expansion that a colon follows inside a composed ARN** —
+`"$ACCT:stateMachine:x"` silently applies the history-style `:s`
+substitution modifier and `"$ARN:live"` the `:l` lowercase modifier,
+mangling the ARN into a shape the service rejects (or worse, a DIFFERENT
+valid ARN); write `"${ACCT}:stateMachine:x"` / `"${ARN}:live"`. (3)
+**Size the poll interval to the resource's ALIVE window, and keep the
+loop single-purpose** — a multi-service loop whose per-iteration API
+latency exceeds a seconds-scale resource's lifetime misses every window;
+give sub-minute kinds a dedicated 1-2s watcher and re-run their
+minutes-cheap lanes when a window was missed (the re-run doubles as a
+repeatability proof).
 
 **Destroy-ORDER claims need the engine's own log, never a poller.** A
 polling watcher cannot order two deletions that land inside one poll

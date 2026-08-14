@@ -1,0 +1,35 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockguardrail
+spec:
+  # The guardrail imports as "{guardrail_id},{version}" with the literal
+  # DRAFT version (the mutable working definition this module owns); each
+  # published version imports as "{guardrail_arn},{version}" with its
+  # AWS-assigned number, derived blind from the version_numbers map output
+  # keyed exactly like the module's for_each entries.
+  values:
+    - name: guardrail_id
+      derivations:
+        - from_stack_output: guardrail_id
+      where_to_find: >-
+        Bedrock console -> Safeguards -> Guardrails -> <guardrail> (the
+        ID), or `aws bedrock list-guardrails` (id).
+    - name: guardrail_arn
+      derivations:
+        - from_stack_output: guardrail_arn
+      where_to_find: >-
+        Bedrock console -> Safeguards -> Guardrails -> <guardrail> (the
+        ARN), or `aws bedrock list-guardrails` (arn).
+    - name: version
+      tofu_resource_name: this
+      derivations:
+        - literal: DRAFT
+    - name: version
+      tofu_resource_name: published
+      derivations:
+        - from_stack_output_keyed_by_address: version_numbers
+      where_to_find: >-
+        `aws bedrock list-guardrails --guardrail-identifier <arn>` lists
+        the numbered versions; match each to its spec.versions entry by
+        description/recency.

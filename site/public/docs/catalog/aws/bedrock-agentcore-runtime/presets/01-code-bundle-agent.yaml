@@ -1,0 +1,32 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreRuntime
+metadata:
+  name: my-agent-runtime
+spec:
+  region: us-west-2
+  runtimeName: my_agent
+  description: Hosts my agent's Python service on the managed runtime
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: my-agentcore-role
+      fieldPath: status.outputs.role_arn
+  artifact:
+    code:
+      runtime: PYTHON_3_13
+      entryPoint:
+        - main.py
+      s3:
+        bucket:
+          valueFrom:
+            kind: AwsS3Bucket
+            name: my-agent-code
+            fieldPath: status.outputs.bucket_id
+        prefix: bundles/my-agent.zip
+  network:
+    mode: PUBLIC
+  environmentVariables:
+    LOG_LEVEL: info
+  endpoints:
+    - name: live
+      description: Production traffic (tracks the latest version)

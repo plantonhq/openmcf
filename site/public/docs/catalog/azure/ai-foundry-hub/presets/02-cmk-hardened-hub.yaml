@@ -1,0 +1,38 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAiFoundry
+metadata:
+  name: cmk-hardened-hub
+spec:
+  region: eastus
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: acme-ai-hub-secure
+  keyVaultId:
+    value: "<your-key-vault-id>"
+  storageAccountId:
+    value: "<your-storage-account-id>"
+  # A user-assigned identity so key/storage grants can exist BEFORE
+  # the hub does -- required for CMK, where the identity must already
+  # have wrap/unwrap access on the key at create time.
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - value: "<your-user-assigned-identity-id>"
+  primaryUserAssignedIdentity:
+    value: "<your-user-assigned-identity-id>"
+  publicNetworkAccessEnabled: false
+  encryption:
+    keyVaultId:
+      value: "<your-key-vault-id>"
+    # A VERSIONED key URL (the hub's own contract -- versionless is
+    # rejected; re-point the field to rotate). Example value shape
+    # shown; replace with your key's versioned data-plane URL.
+    keyId:
+      value: https://acme-vault.vault.azure.net/keys/hub-cmk/0123456789abcdef0123456789abcdef # replace with your versioned key URL
+    userAssignedIdentityId:
+      value: "<your-user-assigned-identity-id>"
+  managedNetwork:
+    isolationMode: ALLOW_ONLY_APPROVED_OUTBOUND
+  highBusinessImpactEnabled: true
+  friendlyName: Secure AI Hub
+  description: CMK-encrypted, network-isolated AI Foundry hub

@@ -31,9 +31,11 @@ This preset creates an ECR repository optimized for development workflows. Mutab
 
 ## Placeholders to Replace
 
+The example `repositoryName` (`team-blue/checkout-service`) is a realistic
+registry path — replace it with your own naming convention.
+
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<repository-name>` | ECR repository name (e.g., `myorg/api-service-dev` or `team-blue/frontend`) | Your team's container image naming convention |
 
 ## Related Presets
 

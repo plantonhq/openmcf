@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakermlflowserver.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerMlflowServerSpec defines the desired configuration for an
+// Amazon SageMaker AI MLflow tracking server - the classic managed
+// MLflow deployment (experiments, runs, model tracking) billed per
+// hour while it runs. The server's AWS name derives from metadata.name.
+//
+// Operational facts worth planning around: creation takes ~25 minutes
+// and deletion is similar (AWS provisions dedicated capacity), and the
+// server bills hourly from Created onward - Small is ~$0.6/hour. For
+// the serverless successor product, see AwsSagemakerMlflowApp.
+message AwsSagemakerMlflowServerSpec {
+  // The AWS region where the tracking server will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // S3 location where MLflow artifacts (model files, run outputs) are
+  // stored. Example: "s3://my-mlflow/artifacts". Updates in place.
+  string artifact_store_uri = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1024
+    pattern: "^(https|s3)://([^/]+)/?(.*)$"
+  }];
+
+  // IAM role the server uses to read and write the artifact store. Must
+  // trust sagemaker.amazonaws.com with S3 access to the artifact
+  // bucket. Changing it replaces the server.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 3 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Server size: "Small" (AWS default - up to ~25 users), "Medium"
+  // (~50), or "Large" (~100). Resizes in place (a maintenance-window
+  // style operation).
+  string size = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Small",
+        "Medium",
+        "Large"
+      ]
+    }
+  ];
+
+  // MLflow version as "major.minor" (e.g. "3.0") - AWS normalizes away
+  // the patch, so a patch-level value here would drift forever. Omitted
+  // = AWS picks the latest. Changing it replaces the server.
+  string mlflow_version = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^\\d+\\.\\d+$"
+  ];
+
+  // Auto-register models logged to MLflow into the SageMaker Model
+  // Registry. UPSTREAM TRAP: the provider cannot turn this back OFF
+  // (a true-to-false change is silently not transmitted) - disabling
+  // requires replacing the server or an out-of-band API call.
+  bool automatic_model_registration = 6;
+
+  // Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
+  // "TUE:03:30"). Omitted = AWS picks.
+  string weekly_maintenance_window_start = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$"
+  ];
+}

@@ -17,6 +17,8 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Cognito User Pool** -- a user directory with the configured identity model (email/phone or alias sign-in), feature tier, password policy, passwordless first factors (email OTP, SMS OTP, passkeys), MFA settings, account recovery order, verification/invitation message templates, device tracking, and threat protection
 - **User Pool Domain** -- created only when `domain` is configured; a Cognito-hosted prefix domain or a custom domain backed by an ACM certificate for the hosted sign-in UI and OAuth endpoints
 - **Custom Schema Attributes** -- created only when `customAttributes` entries are provided; extends the pool's user schema beyond the standard set (append-only after creation)
+- **User Groups** -- created only when `userGroups` entries are provided; one group per entry with its description, precedence, and optional IAM role (membership surfaces in the `cognito:groups` token claim; assigning users to groups is a runtime operation, not configuration)
+- **Risk Configuration** -- created only when `riskConfiguration` is set (requires threat protection AUDIT/ENFORCED); the pool-wide automated-response policy for account-takeover and compromised-credential events, notification email templates, and IP allow/block exceptions
 - **Log Export Configurations** -- created only when `logConfigurations` entries are provided; streams notification errors or auth events to CloudWatch Logs, Kinesis Firehose, or S3
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -99,7 +101,11 @@ These are the most important decisions when configuring a Cognito User Pool. Exp
 
 **Identity model** -- Choose between `usernameAttributes` (email/phone as the sign-in identifier) and `aliasAttributes` (separate username with email/phone/preferred_username as aliases). These fields and `usernameCaseSensitive` are ForceNew in AWS -- changing them destroys and recreates the pool with all users. Choose carefully before your first production deployment.
 
-**Feature tier** -- `userPoolTier` selects the pricing plan: `LITE` (password-only basics), `ESSENTIALS` (the AWS default: passwordless factors, passkeys, managed login branding), or `PLUS` (adds threat protection). Several capabilities are tier-gated: passwordless first factors and email MFA need Essentials+; `userPoolAddOns` threat protection and auth-event log exports need Plus.
+**Feature tier** -- `userPoolTier` selects the pricing plan: `LITE` (password-only basics), `ESSENTIALS` (the AWS default: passwordless factors, passkeys, managed login branding), or `PLUS` (adds threat protection). Several capabilities are tier-gated: passwordless first factors and email MFA need Essentials+; `userPoolAddOns` threat protection, `riskConfiguration`, and auth-event log exports need Plus.
+
+**Threat protection responses** -- `userPoolAddOns.advancedSecurityMode` turns risk evaluation on (AUDIT observes, ENFORCED acts); `riskConfiguration` is the policy it acts on: per-risk-level account-takeover responses with user-notification emails, compromised-credential blocking, and IP allow/block exceptions. The pool-wide policy covers every app client; a client that needs its own posture overrides it with `riskConfiguration` on the AwsCognitoUserPoolClient spec.
+
+**User groups** -- `userGroups` declares the pool's groups (name, precedence, optional IAM role for identity-pool federation). Membership lands in the `cognito:groups` token claim; assigning users to groups is a runtime admin operation, never configuration.
 
 **Sign-in factors** -- `allowedFirstAuthFactors` opts users into passwordless sign-in: `EMAIL_OTP`, `SMS_OTP` (requires `smsConfiguration`), and `WEB_AUTHN` passkeys (configure the relying-party domain in `webAuthn`). An empty list keeps the AWS default of password-only.
 
@@ -115,9 +121,11 @@ These are the most important decisions when configuring a Cognito User Pool. Exp
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsIamRole** (optional) | `smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
+| **AwsIamRole** (optional) | `smsConfiguration.snsCallerArn`, `userGroups[].roleArn` | `status.outputs.role_arn` |
 | **AwsLambda** (optional) | `lambdaConfig.preSignUp`, `preAuthentication`, `postAuthentication`, `postConfirmation`, `preTokenGeneration`, `preTokenGenerationConfig.lambdaArn`, `customMessage`, `userMigration`, `defineAuthChallenge`, `createAuthChallenge`, `verifyAuthChallengeResponse`, `customEmailSender.lambdaArn`, `customSmsSender.lambdaArn` | `status.outputs.function_arn` |
 | **AwsKmsKey** (optional) | `lambdaConfig.kmsKeyId` | `status.outputs.key_arn` |
+| **AwsSesEmailIdentity** (optional) | `emailConfiguration.sourceArn`, `riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
+| **AwsSesConfigurationSet** (optional) | `emailConfiguration.configurationSet` | `status.outputs.configuration_set_name` |
 | **AwsCloudwatchLogGroup** (optional) | `logConfigurations[].cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 | **AwsKinesisFirehose** (optional) | `logConfigurations[].firehoseStreamArn` | `status.outputs.delivery_stream_arn` |
 | **AwsS3Bucket** (optional) | `logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
@@ -148,6 +156,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **OAuth with hosted UI** -- A Cognito-hosted domain for the sign-in pages plus an AwsCognitoUserPoolClient with the Authorization Code flow. Suitable for web applications needing OAuth/OIDC. Start from the **OAuth with Hosted UI** preset.
 
 **Production hardened** -- Strong password policy with history, optional MFA with TOTP, SES-based email, verify-before-update, threat protection on the Plus tier, and deletion protection. Start from the **Production Hardened** preset.
+
+**Threat protected** -- The hardened baseline plus the full automated-response policy: block high-risk sign-ins with user notification, MFA-challenge medium risk, block compromised credentials, skip evaluation for trusted CIDRs, and user groups with an admin role. Start from the **Threat Protected** preset.
 
 ## Works With
 

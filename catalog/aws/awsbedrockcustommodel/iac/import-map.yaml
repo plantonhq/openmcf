@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockcustommodel
+spec:
+  # The custom model imports by its model-customization JOB ARN (the
+  # provider's tracked object; the model is re-derived from the job).
+  values:
+    - name: job_arn
+      derivations:
+        - from_stack_output: job_arn
+      where_to_find: >-
+        `aws bedrock list-model-customization-jobs` (jobArn), or Bedrock
+        console -> Custom models -> Jobs -> <job> (the Job ARN).

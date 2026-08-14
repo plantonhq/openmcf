@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockguardrail.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsbedrockguardrail/v1alpha1/outputs.proto";
+import "catalog/aws/awsbedrockguardrail/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AwsBedrockGuardrail is a component for creating and managing Amazon
+// Bedrock guardrails - content-safety policy sets (content filters, denied
+// topics, word filters, sensitive-information handling, contextual
+// grounding) evaluated on model inputs and outputs, with immutable
+// published versions for production pinning.
+message AwsBedrockGuardrail {
+  // api_version specifies the API version for this resource.
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  // kind identifies this resource type.
+  string kind = 2 [(buf.validate.field).string.const = 'AwsBedrockGuardrail'];
+
+  // metadata contains standard resource metadata including name, labels, and annotations.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec defines the desired state of the guardrail.
+  AwsBedrockGuardrailSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status contains the observed state and outputs from the deployment.
+  AwsBedrockGuardrailStatus status = 5;
+}
+
+// AwsBedrockGuardrailStatus contains the status and outputs for the
+// guardrail.
+message AwsBedrockGuardrailStatus {
+  // outputs contains the values exported from the IaC stack after deployment.
+  AwsBedrockGuardrailStackOutputs outputs = 1;
+}

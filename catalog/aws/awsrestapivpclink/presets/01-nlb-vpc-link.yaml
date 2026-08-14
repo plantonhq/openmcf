@@ -1,0 +1,12 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiVpcLink
+metadata:
+  name: my-nlb-link
+spec:
+  region: <aws-region>
+  description: Private NLB for REST API backends
+  targetArn:
+    valueFrom:
+      kind: AwsNlb
+      name: <internal-nlb>
+      fieldPath: status.outputs.load_balancer_arn

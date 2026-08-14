@@ -1,0 +1,22 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiDomain
+metadata:
+  name: my-api-domain
+spec:
+  region: <aws-region>
+  domainName: api.example.com
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: <acm-certificate>
+      fieldPath: status.outputs.cert_arn
+  endpointConfiguration:
+    type: REGIONAL
+  basePathMappings:
+    - restApiId:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: <rest-api>
+          fieldPath: status.outputs.rest_api_id
+      stageName:
+        value: prod

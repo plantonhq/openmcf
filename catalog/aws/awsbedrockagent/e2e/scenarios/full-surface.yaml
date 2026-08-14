@@ -1,0 +1,83 @@
+# AwsBedrockAgent full-surface scenario: an agent exercising every
+# satellite the offline bar can compose live -- a custom function-schema
+# action group on the return-control executor (no Lambda fixture needed),
+# the reserved user-input capability, memory, a prompt override, a
+# knowledge-base association (the MANAGED-type prerequisite), and one
+# published alias whose creation snapshots the assembled draft.
+#
+# Deliberately not exercised here: the guardrail attachment (its
+# prerequisite manifest lives in the guardrail kind's folder, which is
+# QUEUED for live proof) and the collaborator satellite (a collaborator
+# targets ANOTHER agent's alias, and the harness forbids a scenario
+# declaring its own kind as a prerequisite -- the cycle class). Both arms
+# are offline-proven via e2e/manifest.yaml and recorded in the profile
+# with their unblocks.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgent
+metadata:
+  name: planton-oss-e2e-awsbragt-full
+  id: planton-oss-e2e-awsbragt-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagent
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsBedrockKnowledgeBase"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Full-surface agent
+  foundationModel: amazon.nova-micro-v1:0
+  agentResourceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  instruction: >-
+    You are a customer support agent. Use the order tools for order
+    questions and retrieve documentation for how-to questions.
+  idleSessionTtlSeconds: 900
+  memory:
+    # CEL upper bound (AWS documents 0-365; omitted = 30). The live
+    # lane is the service-acceptance proof the GUIDE defers to.
+    storageDays: 365
+    maxRecentSessions: 5
+  promptOverride:
+    promptConfigurations:
+      - promptType: ORCHESTRATION
+        basePromptTemplate: "$instruction$ $question$ $agent_scratchpad$"
+        promptState: ENABLED
+        inferenceConfiguration:
+          maxLength: 2048
+          temperature: 0
+  actionGroups:
+    - name: orders
+      description: Look up customer orders.
+      executor:
+        returnControl: true
+      functionSchema:
+        functions:
+          - name: get_order
+            description: Look up one order by its ID.
+            parameters:
+              - name: order_id
+                type: string
+                description: The order identifier.
+                required: true
+    - name: user-input
+      parentActionGroupSignature: AMAZON.UserInput
+  aliases:
+    - name: live
+      description: Production serving endpoint
+  knowledgeBaseAssociations:
+    - name: docs
+      knowledgeBaseId:
+        valueFrom:
+          kind: AwsBedrockKnowledgeBase
+          name: planton-oss-e2e-bedrock-kb-prereq
+          fieldPath: status.outputs.knowledge_base_id
+      description: Product documentation for troubleshooting answers.
+      state: ENABLED

@@ -169,7 +169,14 @@ spec:
             maxIdleTimeoutInMinutes: 240
   # The folded collaboration plane: one private space owned by the profile
   # above (ownership and sharing travel together -- AWS's RequiredWith
-  # contract, CEL-enforced).
+  # contract, CEL-enforced). The space deliberately carries NO idle timeout:
+  # its owner profile above proves the DISABLED lifecycle plane, and AWS
+  # rejects SpaceIdleSettings wherever idle shutdown resolves disabled
+  # through the inheritance chain (CreateSpace 400 "Idle Shutdown is
+  # disabled for this space" -- live-caught 2026-08-13, both engines;
+  # spec CEL now forbids the contradiction). The valid combination -- a
+  # space timeout under an ENABLED owner plane -- is proven by spec tests
+  # and the offline plan gate.
   spaces:
     - spaceName: e2e-team-space
       displayName: E2E Team Space
@@ -182,7 +189,5 @@ spec:
         jupyterLabAppSettings:
           defaultResourceSpec:
             instanceType: ml.t3.medium
-          idleSettings:
-            idleTimeoutInMinutes: 60
         spaceStorageSettings:
           ebsVolumeSizeInGb: 10

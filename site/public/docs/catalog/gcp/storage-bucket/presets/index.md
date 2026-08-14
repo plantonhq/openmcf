@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Dual-Region Data Lake with Autoclass"
     excerpt: "Analytics storage that manages its own cost: a custom dual-region bucket where Autoclass moves every object to the cheapest justified storage class, hygiene rules reclaim hidden and temporary..."
+  - slug: "04-event-driven-pipeline"
+    rank: "04"
+    title: "Event-Driven Pipeline Bucket"
+    excerpt: "An intake bucket that announces its own changes: every new object under `uploads/` (and every delete) publishes an event to a Pub/Sub topic, which is where the processing pipeline — Cloud Run..."
 ---
 
 # Storage Bucket Presets

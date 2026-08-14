@@ -1,0 +1,281 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcorememory.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockAgentCoreMemorySpec defines the desired configuration for an
+// Amazon Bedrock AgentCore memory - a managed store that gives agents
+// both short-term memory (raw session events, kept for
+// `event_expiry_days`) and long-term memory (structured records a
+// STRATEGY extracts from those events: facts, summaries, preferences,
+// episodes).
+//
+// Each `strategies` entry is one extraction pipeline. Built-in strategy
+// types (SEMANTIC, SUMMARIZATION, USER_PREFERENCE, EPISODIC) run
+// AWS-managed extraction; CUSTOM lets you override the extraction/
+// consolidation prompts and models. AWS serializes all strategy changes
+// through the parent memory (the modules order them; strategy operations
+// can take tens of minutes).
+message AwsBedrockAgentCoreMemorySpec {
+  // The AWS region where the memory will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Memory name in AWS (1-48 characters; must start with a letter, then
+  // letters, digits, underscore - AWS rejects hyphens here, so the name
+  // is an explicit field rather than metadata.name). Changing it replaces
+  // the memory.
+  string memory_name = 2 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // Human-readable description shown in the AgentCore console (1-4096
+  // characters when set). Updates in place.
+  string description = 3 [(buf.validate.field).string.max_len = 4096];
+
+  // Days AWS retains raw session events - the short-term memory window
+  // (7-365). Long-term records extracted by strategies outlive it.
+  int32 event_expiry_days = 4 [(buf.validate.field).int32 = {
+    gte: 7
+    lte: 365
+  }];
+
+  // Customer-managed KMS key encrypting the memory at rest. Without it,
+  // AWS uses a service-managed key. Changing it replaces the memory.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef encryption_key_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // IAM role AWS assumes for memory operations that touch YOUR resources
+  // (custom-strategy model invocation, Kinesis stream delivery). The role
+  // must trust bedrock-agentcore.amazonaws.com. Required in practice when
+  // `strategies` has a CUSTOM entry or `kinesis_delivery` is set.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef execution_role_arn = 6 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Metadata keys indexed for filtered retrieval (1-10 entries when set).
+  // Changing the set replaces the memory.
+  repeated AwsBedrockAgentCoreMemoryIndexedKey indexed_keys = 7 [(buf.validate.field).repeated.max_items = 10];
+
+  // Stream long-term memory records to a Kinesis data stream as they are
+  // written (build your own analytics or replication on top).
+  AwsBedrockAgentCoreMemoryKinesisDelivery kinesis_delivery = 8;
+
+  // Long-term extraction pipelines.
+  repeated AwsBedrockAgentCoreMemoryStrategy strategies = 9;
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "strategy_names_unique"
+    message: "strategies entries must have unique names"
+    expression: "this.strategies.map(s, s.name).unique()"
+  };
+
+  // Indexed keys are identity - AWS rejects duplicates.
+  option (buf.validate.message).cel = {
+    id: "indexed_keys_unique"
+    message: "indexed_keys entries must have unique keys"
+    expression: "this.indexed_keys.map(k, k.key).unique()"
+  };
+}
+
+// AwsBedrockAgentCoreMemoryIndexedKey is one metadata key indexed for
+// filtered retrieval.
+message AwsBedrockAgentCoreMemoryIndexedKey {
+  // The metadata key (1-128 characters; letters, digits, spaces, and
+  // . _ : / = + @ -).
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 128
+    pattern: "^[a-zA-Z0-9\\s._:/=+@-]*$"
+  }];
+
+  // The key's value type: STRING, STRINGLIST, or NUMBER.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "STRING",
+      "STRINGLIST",
+      "NUMBER"
+    ]
+  }];
+}
+
+// AwsBedrockAgentCoreMemoryKinesisDelivery streams long-term memory
+// records to Kinesis (AWS's MEMORY_RECORDS content type - the modules
+// send that constant).
+message AwsBedrockAgentCoreMemoryKinesisDelivery {
+  // The Kinesis data stream records are delivered to. The memory's
+  // execution role must be allowed to write to it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef data_stream_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKinesisStream,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.stream_arn"
+  ];
+
+  // How much of each record is delivered: METADATA_ONLY or FULL_CONTENT.
+  // Omitted = AWS default.
+  string content_level = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "METADATA_ONLY",
+        "FULL_CONTENT"
+      ]
+    }
+  ];
+}
+
+// AwsBedrockAgentCoreMemoryStrategy is one long-term extraction
+// pipeline.
+message AwsBedrockAgentCoreMemoryStrategy {
+  // Strategy name in AWS (1-48 characters; letter first, then letters,
+  // digits, underscore). The for_each key on both engines and the key in
+  // the `strategy_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,47}$"
+  }];
+
+  // What AWS extracts: SEMANTIC (facts), SUMMARIZATION (session
+  // summaries), USER_PREFERENCE (preferences), EPISODIC (experience
+  // episodes; supports `reflection_namespace_templates`), or CUSTOM
+  // (your own prompts/models via `custom`). Changing the type replaces
+  // the strategy.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "SEMANTIC",
+      "SUMMARIZATION",
+      "USER_PREFERENCE",
+      "EPISODIC",
+      "CUSTOM"
+    ]
+  }];
+
+  // Human-readable description.
+  string description = 3;
+
+  // Namespace templates that partition extracted records (e.g.
+  // "/facts/{actorId}" -- at least one). The provider REQUIRES an
+  // explicit set: its deprecated `namespaces` twin and this field are an
+  // exactly-one pair, and the living surface is this one.
+  repeated string namespace_templates = 4 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {string: {min_len: 1}}
+  }];
+
+  // Prompt/model overrides - required when type is CUSTOM, forbidden
+  // otherwise.
+  AwsBedrockAgentCoreMemoryCustomStrategy custom = 5;
+
+  // Namespace templates for EPISODIC reflection records - only legal on
+  // EPISODIC strategies. AWS requires each reflection namespace to be
+  // "the same as or a hierarchical prefix of the episodic namespace" in
+  // `namespace_templates` (UpdateMemory rejects unrelated roots like
+  // "/reflections/..." server-side; live-caught 2026-08-14). Leave unset
+  // to let the provider mirror the episodic namespaces exactly.
+  repeated string reflection_namespace_templates = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // AWS pairs the override configuration with the CUSTOM type exactly.
+  option (buf.validate.message).cel = {
+    id: "custom_type_pairs_with_custom"
+    message: "custom is required when type is CUSTOM and forbidden otherwise"
+    expression: "(this.type == 'CUSTOM') == has(this.custom)"
+  };
+
+  // AWS accepts reflection namespaces only on EPISODIC strategies.
+  option (buf.validate.message).cel = {
+    id: "reflection_requires_episodic"
+    message: "reflection_namespace_templates requires type EPISODIC"
+    expression: "this.reflection_namespace_templates.size() == 0 || this.type == 'EPISODIC'"
+  };
+
+  // AWS requires each reflection namespace to be "the same as or a
+  // hierarchical prefix of the episodic namespace" (UpdateMemory 400,
+  // live-caught 2026-08-14: '/reflections/{actorId}' rejected against
+  // '/episodes/{actorId}'). Hierarchical means whole path segments:
+  // '/episodes' prefixes '/episodes/{actorId}'; '/epi' does not.
+  option (buf.validate.message).cel = {
+    id: "reflection_prefixes_episodic_namespace"
+    message: "each reflection_namespace_templates entry must equal, or be a hierarchical (whole-segment) prefix of, a namespace_templates entry"
+    expression: "this.reflection_namespace_templates.all(r, this.namespace_templates.exists(n, n == r || n.startsWith(r + '/')))"
+  };
+}
+
+// AwsBedrockAgentCoreMemoryCustomStrategy overrides the prompts and
+// models of one built-in pipeline shape.
+message AwsBedrockAgentCoreMemoryCustomStrategy {
+  // Which built-in shape is being overridden: SEMANTIC_OVERRIDE,
+  // SUMMARY_OVERRIDE, USER_PREFERENCE_OVERRIDE, EPISODIC_OVERRIDE
+  // (requires `reflection`), or SELF_MANAGED. Changing it replaces the
+  // strategy.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "SEMANTIC_OVERRIDE",
+      "SUMMARY_OVERRIDE",
+      "USER_PREFERENCE_OVERRIDE",
+      "EPISODIC_OVERRIDE",
+      "SELF_MANAGED"
+    ]
+  }];
+
+  // Override the extraction step (how raw events become candidate
+  // records). AWS rejects it on SUMMARY_OVERRIDE (summaries have no
+  // extraction step).
+  AwsBedrockAgentCoreMemoryPromptOverride extraction = 2;
+
+  // Override the consolidation step (how candidates merge into stored
+  // records).
+  AwsBedrockAgentCoreMemoryPromptOverride consolidation = 3;
+
+  // Override the EPISODIC reflection step - required exactly when type
+  // is EPISODIC_OVERRIDE.
+  AwsBedrockAgentCoreMemoryReflectionOverride reflection = 4;
+
+  // AWS pairs reflection with EPISODIC_OVERRIDE exactly.
+  option (buf.validate.message).cel = {
+    id: "reflection_pairs_with_episodic_override"
+    message: "reflection is required when type is EPISODIC_OVERRIDE and forbidden otherwise"
+    expression: "(this.type == 'EPISODIC_OVERRIDE') == has(this.reflection)"
+  };
+
+  // Summaries have no extraction step.
+  option (buf.validate.message).cel = {
+    id: "summary_override_forbids_extraction"
+    message: "extraction cannot be set when type is SUMMARY_OVERRIDE"
+    expression: "this.type != 'SUMMARY_OVERRIDE' || !has(this.extraction)"
+  };
+}
+
+// AwsBedrockAgentCoreMemoryPromptOverride overrides one pipeline step's
+// prompt and model.
+message AwsBedrockAgentCoreMemoryPromptOverride {
+  // Text appended to AWS's built-in prompt for this step.
+  string append_to_prompt = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Bedrock model that runs this step (a foundation-model ID like
+  // "anthropic.claude-3-5-sonnet-20241022-v2:0").
+  string model_id = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentCoreMemoryReflectionOverride overrides the EPISODIC
+// reflection step.
+message AwsBedrockAgentCoreMemoryReflectionOverride {
+  // Text appended to AWS's built-in reflection prompt.
+  string append_to_prompt = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Bedrock model that runs reflection.
+  string model_id = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Namespace templates reflection records land in (at least one).
+  repeated string namespace_templates = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {string: {min_len: 1}}
+  }];
+}

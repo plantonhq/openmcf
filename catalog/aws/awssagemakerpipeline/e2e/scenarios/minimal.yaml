@@ -1,0 +1,35 @@
+# AwsSagemakerPipeline minimal scenario: the smallest valid inline
+# definition (one Fail step - AWS validates the DAG server-side at
+# create; a Fail step is a legal single-node graph). Pipelines are free
+# to create; only executions bill and the lane never starts one.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerPipeline
+metadata:
+  name: planton-oss-e2e-awssgmpl-min
+  id: planton-oss-e2e-awssgmpl-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerpipeline
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  definition:
+    Version: "2020-12-01"
+    Metadata: {}
+    Parameters: []
+    Steps:
+      - Name: NeverRun
+        Type: Fail
+        Arguments:
+          ErrorMessage: e2e placeholder pipeline - executions are never started

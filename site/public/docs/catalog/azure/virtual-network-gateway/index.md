@@ -31,13 +31,13 @@ Connections are NOT created here -- each AzureVirtualNetworkGatewayConnection is
 
 - **A "GatewaySubnet"** -- ARM requires the gateway's subnet to be named EXACTLY `GatewaySubnet` (/27 or larger recommended, no other workloads, no NSG). Create it as an AzureSubnet and reference its id.
 - **A Standard static public IP** per ip configuration for VPN gateways (ExpressRoute gateways must NOT carry one -- Azure manages their addressing). A gateway binds its address exclusively.
-- **Time and cost awareness** -- gateways take 25-45 minutes to create, 10-20 to delete, and bill hourly per SKU from the moment they provision (VpnGw1 ≈ $0.19/hour).
+- **Time and cost awareness** -- gateways take 25-45 minutes to create, 10-20 to delete, and bill hourly per SKU from the moment they provision (VpnGw1AZ is in the ~$0.2-0.4/hour class).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Network Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site VPN** preset in the [Presets](#presets) tab to pre-populate a route-based VpnGw1 gateway.
+Open the deployment store, find **Azure Virtual Network Gateway**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Site-to-Site VPN** preset in the [Presets](#presets) tab to pre-populate a route-based VpnGw1AZ gateway.
 
 ### CLI
 
@@ -55,7 +55,7 @@ spec:
   resourceGroup:
     value: "network-rg"
   name: hub-vpn-gateway
-  sku: VPN_GW_1
+  sku: VPN_GW_1_AZ
   ipConfigurations:
     - subnetId:
         value: "/subscriptions/.../virtualNetworks/hub-vnet/subnets/GatewaySubnet"
@@ -70,7 +70,7 @@ spec:
 planton apply -f azure-virtual-network-gateway.yaml
 ```
 
-This creates a route-based VpnGw1 VPN gateway with BGP enabled. A Stack Job tracks the 25-45 minute provisioning in real time.
+This creates a route-based VpnGw1AZ VPN gateway with BGP enabled. A Stack Job tracks the 25-45 minute provisioning in real time.
 
 ### InfraChart
 
@@ -108,7 +108,7 @@ These are the most important decisions when configuring a gateway. Explore the f
 
 **Type** -- `type` unset deploys VPN (IPsec tunnels, the site-to-site shape); EXPRESS_ROUTE terminates a circuit's private peering instead. Fixed at creation, and it flips the public-IP contract: VPN requires one per ip configuration, ExpressRoute forbids them.
 
-**SKU and generation** -- `sku` is required. VPN_GW_1 is the production entry point (~650 Mbps aggregate); the `_AZ` variants add zone redundancy; GENERATION2 doubles throughput ceilings but starts at VPN_GW_2. BASIC is dev/test only and cannot resize in place. The spec enforces every type/vpn-type/generation/SKU pairing upfront -- a wrong combination fails validation in seconds, not deployment at minute 30.
+**SKU and generation** -- `sku` is required. VPN_GW_1_AZ is the production entry point (~650 Mbps aggregate); Azure retired new non-AZ VpnGw creates, and the AZ tiers deploy in every region (zone-redundant where the region has availability zones, regional elsewhere); GENERATION2 doubles throughput ceilings but starts at VPN_GW_2_AZ. BASIC is dev/test only and cannot resize in place. The spec enforces every type/vpn-type/generation/SKU pairing upfront -- a wrong combination fails validation in seconds, not deployment at minute 30.
 
 **Active-active** -- `activeActive` runs the gateway as a two-instance pair (two ip configurations, each with its own public IP): no failover gap, at double the tunnel capacity cost.
 
@@ -141,7 +141,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Site-to-site VPN gateway** -- A route-based VpnGw1 gateway with BGP: the standard datacenter-to-Azure anchor. Start from the **Site-to-Site VPN** preset.
+**Site-to-site VPN gateway** -- A route-based VpnGw1AZ gateway with BGP: the standard datacenter-to-Azure anchor. Start from the **Site-to-Site VPN** preset.
 
 **Active-active zone-redundant gateway** -- Two instances on VpnGw2AZ with per-instance addresses and APIPA BGP: the high-availability posture. Start from the **Active-Active Zone-Redundant** preset.
 

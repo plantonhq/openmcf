@@ -97,7 +97,12 @@ func (h *Harness) VerifyDeployed(ctx context.Context, component string, outputs 
 	}
 
 	id := stringOutput(outputs, v.IDOutputKey())
-	if id == "" {
+	ov, isOutputsVerifier := v.(verify.OutputsVerifier)
+	// Bundle kinds verify through the full output map, and their ID key can
+	// be legitimately empty (an arm the scenario omits) or map-shaped -- the
+	// verifier itself fails when the outputs carry no arm to verify, so only
+	// the single-id path demands a non-empty id here.
+	if id == "" && !isOutputsVerifier {
 		return errors.Errorf("no %q in outputs for %s -- cannot verify", v.IDOutputKey(), component)
 	}
 	region := stringOutput(outputs, "region")
@@ -109,7 +114,7 @@ func (h *Harness) VerifyDeployed(ctx context.Context, component string, outputs 
 	h.deployed[componentKey(ctx, component)] = deployedResource{id: id, region: region, outputs: outputs}
 	h.mu.Unlock()
 
-	if ov, ok := v.(verify.OutputsVerifier); ok {
+	if isOutputsVerifier {
 		return ov.VerifyExistsFromOutputs(ctx, h.cfg, outputs, region)
 	}
 

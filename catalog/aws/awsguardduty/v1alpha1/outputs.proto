@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsguardduty.v1alpha1;
+
+// AwsGuardDutyStackOutputs captures the observable state of the
+// region's GuardDuty posture after apply.
+message AwsGuardDutyStackOutputs {
+  // The detector's AWS-assigned ID (also the provider's import ID and
+  // the key every satellite composes its import ID from).
+  string detector_id = 1;
+
+  // The detector's ARN.
+  string detector_arn = 2;
+
+  // The AWS account ID the detector belongs to.
+  string account_id = 3;
+
+  // Trusted IP list IDs keyed exactly like spec.ip_sets entries (by
+  // name) - the import path for folded satellites.
+  map<string, string> ip_set_ids = 4;
+
+  // Threat intel list IDs keyed exactly like spec.threat_intel_sets
+  // entries (by name).
+  map<string, string> threat_intel_set_ids = 5;
+
+  // The findings-export destination ID (set only when
+  // spec.publishing_destination is configured).
+  string publishing_destination_id = 6;
+}

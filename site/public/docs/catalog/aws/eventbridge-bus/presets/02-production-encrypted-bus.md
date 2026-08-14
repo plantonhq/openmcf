@@ -28,6 +28,7 @@ This preset creates a production-grade EventBridge custom event bus with custome
 - **Dead letter queue** (`deadLetterConfig`) — routes events that fail delivery to any rule target to an SQS queue for investigation and reprocessing
 - **Error logging** (`logConfig.level: ERROR`) — logs delivery failures to CloudWatch Logs without the volume overhead of logging all events
 - **Exclude event detail** (`logConfig.includeDetail: NONE`) — reduces log volume by excluding full event payloads from log entries
+- **Event archive** (`archives`) — 90-day replay-able history of every event on the bus; replay via EventBridge StartReplay is the recovery lever after a consumer bug or outage (scope with `eventPattern` or shorten `retentionDays` to control storage cost)
 
 ## Placeholders to Replace
 

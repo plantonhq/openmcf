@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "GitHub Code Source (Node.js)"
     excerpt: "This preset creates an App Runner service that deploys directly from a GitHub repository using the Node.js 22 managed runtime. App Runner clones the repository, runs the build command, and starts the..."
+  - slug: "04-private-vpc-ingress"
+    rank: "04"
+    title: "Private Internal Service (VPC Ingress)"
+    excerpt: "This preset creates an App Runner service with NO public endpoint: incoming traffic is disabled on the internet side, and the service is published into a VPC through an interface VPC endpoint (AWS..."
 ---
 
 # App Runner Service Presets

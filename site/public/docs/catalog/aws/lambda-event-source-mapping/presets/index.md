@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Kinesis Stream Consumer"
     excerpt: "A Kinesis-to-Lambda mapping that processes the backlog from the oldest available record with partial-batch failure reporting."
+  - slug: "03-msk-shared-pollers"
+    rank: "03"
+    title: "MSK Consumer with Shared Provisioned Pollers"
+    excerpt: "This preset consumes an Amazon MSK topic with a pinned poller fleet that is SHARED across mappings: every mapping naming the same `pollerGroupName` draws from (and is jointly capped by) one..."
 ---
 
 # Lambda Event Source Mapping Presets

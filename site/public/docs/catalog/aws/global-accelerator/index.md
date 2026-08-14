@@ -101,7 +101,7 @@ These are the most important decisions when configuring a Global Accelerator. Ex
 
 **Cross-account endpoints** -- An endpoint that lives in another AWS account needs a Global Accelerator cross-account attachment: create the attachment in the endpoint-owning account (naming this accelerator's account as a principal) and supply its ARN in the endpoint's `attachmentArn`. Same-account endpoints -- the common case -- leave it empty.
 
-**Optional dials stay AWS-owned when unset** -- Fields like endpoint `weight` (default 128), `trafficDialPercentage` (default 100), and the health-check port (defaults to the listener's port) are only written to the spec when you take a position. For `weight` and `trafficDialPercentage`, 0 is a real value that drains the endpoint or region -- distinct from leaving the field unset.
+**Optional dials stay AWS-owned when unset** -- Fields like `trafficDialPercentage` (default 100) and the health-check port (defaults to the listener's port) are only written when you take a position. Endpoint `weight` is the one exception: AWS documents 128 as the default but the provider would transmit 0 (the "route no traffic" value) for an omitted weight, so the modules materialize 128 themselves. For `weight` and `trafficDialPercentage`, 0 is a real value that drains the endpoint or region -- distinct from leaving the field unset.
 
 ## Outputs and Dependencies
 

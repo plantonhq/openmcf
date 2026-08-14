@@ -4,7 +4,7 @@ metadata:
   name: my-read-only-user
 spec:
   region: <aws-region>
-  userName: <service-user-name>
+  userName: datadog-readonly
   managedPolicyArns:
     # AWS-managed policies attach by literal ARN; reference an AwsIamPolicy's
     # policy_arn output via valueFrom for policies defined in Planton.

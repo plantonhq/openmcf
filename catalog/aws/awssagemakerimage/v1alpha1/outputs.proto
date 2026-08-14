@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerimage.v1alpha1;
+
+// AwsSagemakerImageStackOutputs captures observable identifiers from a
+// provisioned SageMaker image and its versions.
+message AwsSagemakerImageStackOutputs {
+  // The image name (the AWS identity Studio configurations reference).
+  string image_name = 1;
+
+  // The Amazon Resource Name of the image.
+  string image_arn = 2;
+
+  // AWS-assigned version numbers keyed by each `versions` entry's
+  // POSITION (as a string: "0", "1", ...) - the modules' for_each keys.
+  map<string, string> version_numbers = 3;
+}

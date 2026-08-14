@@ -1,0 +1,30 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockprovisionedthroughput
+spec:
+  # Bedrock Provisioned Throughput under E2E: the create IS a capacity
+  # purchase billing at Provisioned-Throughput rates from second one --
+  # the provider's own source annotates the resource "Testing is
+  # cost-prohibitive" and skips its acceptance tests. The minimal
+  # (no-commitment, 1 model unit) scenario stands offline-proven
+  # arm-for-arm on both engines; committed purchases additionally CANNOT
+  # be destroyed until the term lapses, so a committed live lane would
+  # strand a month-long bill.
+  #
+  # Verification design for the future live lane: GetProvisionedModel-
+  # Throughput keyed on provisioned_model_arn (status InService, model
+  # units echoed) with an immediate delete -- and the account's default
+  # no-commitment model-unit quota (often 0) must be raised first.
+  tier: 1
+  status: deferred
+  deferred_reason: >-
+    Deferred by recorded decision (session plan, owner-approved): a
+    provisioned-capacity purchase bills at Provisioned-Throughput hourly
+    rates from creation (hundreds of dollars even for a brief
+    no-commitment window on any provisionable model) and the upstream
+    provider itself records testing as cost-prohibitive. Artifacts are
+    complete and offline-proven (tofu plan + pulumi preview arm-for-arm).
+    Unblock: an owner-approved spend window plus a raised no-commitment
+    model-unit quota in the test account.
+  timeout_minutes: 60

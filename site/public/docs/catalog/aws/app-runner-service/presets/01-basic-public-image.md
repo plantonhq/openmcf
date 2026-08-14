@@ -35,7 +35,7 @@ This preset creates an App Runner service from a public ECR image with all defau
 
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
-| `<ecr-public-image-uri>` | Full ECR Public image URI (e.g., `public.ecr.aws/nginx/nginx:latest`) | [ECR Public Gallery](https://gallery.ecr.aws/) |
+| `imageIdentifier` | Full ECR Public image URI -- the preset ships a runnable example (`public.ecr.aws/aws-containers/hello-app-runner:latest`); replace it with your own | [ECR Public Gallery](https://gallery.ecr.aws/) |
 | `<application-port>` | Port your application listens on (e.g., `80`, `3000`, `8080`) | Your application's documentation or Dockerfile `EXPOSE` directive |
 
 ## Related Presets

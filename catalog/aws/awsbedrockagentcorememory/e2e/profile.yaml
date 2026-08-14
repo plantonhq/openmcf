@@ -1,0 +1,49 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbedrockagentcorememory
+spec:
+  # An AgentCore memory under live E2E: two lanes (memories bill per
+  # stored event and retrieval -- an empty memory costs ~nothing; record
+  # the first live at-rest datapoint in this profile). The minimal lane
+  # proves the create -> ACTIVE lifecycle. The full-surface lane adds
+  # indexed keys and all four built-in strategy types incl. EPISODIC with
+  # reflection namespaces -- proving the strategy satellites' serialized
+  # attach through the parent memory (AWS serializes strategy writes per
+  # memory; strategy operations can take tens of minutes, hence the
+  # raised timeout). Verification is GetMemory keyed on memory_id (status
+  # ACTIVE) plus the per-strategy echoes.
+  #
+  # Deliberately not exercised live: the CUSTOM strategy override arm
+  # (its extraction/consolidation models must be strategy-capable models
+  # the account can invoke -- an unverified vocabulary at the pin;
+  # offline-proven arm-for-arm via e2e/manifest.yaml -- unblock: a $0
+  # probe of CreateMemoryStrategy with a nova/claude model settles the
+  # vocabulary, then extend the full-surface scenario), Kinesis stream
+  # delivery (needs a Kinesis fixture and the execution role's write
+  # grant -- unblock: compose the AwsKinesisStream install profile via
+  # the e2e-prerequisites annotation), and the KMS encryption arm
+  # (ForceNew; offline-proven).
+  #
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate; the
+  # Terraform blind round-trip re-imported memory + all four strategies
+  # (the {memory_id},{memory_strategy_id} composite via the keyed
+  # strategy_ids map) at zero real change with exactly the declared
+  # reflection_configuration tolerance. First live timings: full-surface
+  # deploy ~13m / destroy ~13m per engine (four strategies serialized
+  # through the provider's per-memory lock; individual attaches
+  # 2-7.5m) -- well inside the 60m budget. At-rest cost datapoint: $0
+  # visible for an empty memory. TWO live catches fixed at the full
+  # bar: AWS requires reflection namespaces to be a HIERARCHICAL
+  # (whole-segment) prefix of an episodic namespace (front-loaded as a
+  # segment-boundary CEL; the strict-prefix send then echoed clean),
+  # and the provider's import does not round-trip
+  # reflection_configuration (write-normalized in the import catalog;
+  # upstream note filed; GUIDE teaches the one-time reconcile).
+  tier: 1
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
+  timeout_minutes: 60

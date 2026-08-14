@@ -1,0 +1,90 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagent_prompt:
+    mappings:
+      # The provider's singular repeated block; the spec pluralizes.
+      - arg: variant
+        spec: spec.variants
+      # The agent execution target rides a two-level single-member wrapper
+      # (gen_ai_resource.agent.agent_identifier); the spec carries the
+      # alias ARN leaf directly.
+      - arg: variant.gen_ai_resource
+        spec: spec.variants.agent_alias_arn
+      - arg: variant.gen_ai_resource.agent.agent_identifier
+        spec: spec.variants.agent_alias_arn
+      # Inference settings ride a one-element text wrapper; the spec
+      # carries the leaves directly.
+      - arg: variant.inference_configuration.text
+        spec: spec.variants.inference_configuration
+      # The provider's repeated {key, value} entries; the spec is a map.
+      - arg: variant.metadata.key
+        spec: spec.variants.metadata
+      - arg: variant.metadata.value
+        spec: spec.variants.metadata
+      # The template rides a template_configuration wrapper; the spec
+      # carries the text/chat arms directly (template_type is derived --
+      # see exclusions).
+      - arg: variant.template_configuration.text
+        spec: spec.variants.text
+      - arg: variant.template_configuration.chat
+        spec: spec.variants.chat
+      # Repeated singular blocks pluralize in the spec.
+      - arg: variant.template_configuration.chat.message
+        spec: spec.variants.chat.messages
+      # Message content is a one-element block with text XOR cache_point;
+      # the spec flattens both onto the message.
+      - arg: variant.template_configuration.chat.message.content.text
+        spec: spec.variants.chat.messages.text
+      # cache_point.type has exactly one legal value ("default") -- the
+      # spec models the checkpoint as a bool and the modules own the
+      # constant.
+      - arg: variant.template_configuration.chat.message.content.cache_point.type
+        spec: spec.variants.chat.messages.cache_point
+      - arg: variant.template_configuration.chat.system.cache_point.type
+        spec: spec.variants.chat.system.cache_point
+      # input_variable entries carry a single name leaf; the spec is a
+      # repeated string.
+      - arg: variant.template_configuration.chat.input_variable.name
+        spec: spec.variants.chat.input_variables
+      - arg: variant.template_configuration.chat.tool_configuration.tool
+        spec: spec.variants.chat.tool_configuration.tools
+      - arg: variant.template_configuration.chat.tool_configuration.tool.tool_spec
+        spec: spec.variants.chat.tool_configuration.tools.spec
+      - arg: variant.template_configuration.chat.tool_configuration.tool.cache_point.type
+        spec: spec.variants.chat.tool_configuration.tools.cache_point
+      # The provider carries the JSON Schema as a one-field json wrapper;
+      # the spec is a Struct the modules marshal.
+      - arg: variant.template_configuration.chat.tool_configuration.tool.tool_spec.input_schema.json
+        spec: spec.variants.chat.tool_configuration.tools.spec.input_schema
+      # Forcing a named tool rides a one-field block; the spec carries the
+      # name leaf (any/auto are EMPTY provider blocks -- see
+      # specExclusions).
+      - arg: variant.template_configuration.chat.tool_configuration.tool_choice.tool.name
+        spec: spec.variants.chat.tool_configuration.tool_choice.tool_name
+      - arg: variant.template_configuration.text.cache_point.type
+        spec: spec.variants.text.cache_point
+      - arg: variant.template_configuration.text.input_variable.name
+        spec: spec.variants.text.input_variables
+    exclusions:
+      - arg: name
+        reason: wired by the module from metadata.name -- the prompt name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: variant.template_type
+        reason: wired by the module -- derived from which template arm (text/chat) the entry sets; a leaf that must agree with structure is drift surface, not configuration
+
+specExclusions:
+  # The model's tool-choice modes ANY and AUTO are EMPTY provider blocks
+  # (no argument leaves to map); the spec models each as a bool and the
+  # modules render the matching empty block.
+  - field: spec.variants.chat.tool_configuration.tool_choice.any
+    reason: renders the provider's empty tool_choice.any block -- block presence IS the value; no argument leaf exists to map
+  - field: spec.variants.chat.tool_configuration.tool_choice.auto
+    reason: renders the provider's empty tool_choice.auto block -- block presence IS the value; no argument leaf exists to map

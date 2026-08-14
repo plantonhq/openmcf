@@ -1,0 +1,288 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockprompt.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockPromptSpec defines the desired configuration for an Amazon
+// Bedrock prompt - a reusable, versionable prompt definition in Bedrock
+// Prompt Management. A prompt carries one or more VARIANTS (candidate
+// formulations, e.g. for A/B comparison); each variant targets a model (or
+// an agent) with a text or chat template plus inference settings.
+//
+// The prompt's name is taken from `metadata.name` (letters, digits,
+// hyphen, underscore; AWS rejects spaces and dots).
+//
+// This resource manages the prompt's mutable working draft (version
+// "DRAFT"). Prompts are free to create - model invocations bill when the
+// prompt is executed.
+message AwsBedrockPromptSpec {
+  // The AWS region where the prompt will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the Bedrock console. Updates in
+  // place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // Customer-managed KMS key ARN for encrypting the prompt at rest.
+  // Without it, AWS uses a Bedrock-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef customer_encryption_key_arn = 3 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // Which variant executes when the prompt is invoked without naming one.
+  // Must match a `variants` entry's name.
+  string default_variant = 4;
+
+  // The prompt's candidate formulations (at least one; AWS caps a prompt
+  // at 3 variants).
+  repeated AwsBedrockPromptVariant variants = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  // Variant names are for_each identity on both engines and the target of
+  // default_variant.
+  option (buf.validate.message).cel = {
+    id: "variant_names_unique"
+    message: "variants entries must have unique names"
+    expression: "this.variants.map(v, v.name).unique()"
+  };
+
+  // A default that names a missing variant would fail server-side.
+  option (buf.validate.message).cel = {
+    id: "default_variant_exists"
+    message: "default_variant must match one of the variants' names"
+    expression: "this.default_variant == '' || this.variants.exists(v, v.name == this.default_variant)"
+  };
+}
+
+// AwsBedrockPromptVariant is one candidate formulation of the prompt.
+// Exactly one template shape (`text` or `chat` - the modules derive AWS's
+// template_type from which one is set) and exactly one execution target
+// (`model_id` or `agent_alias_arn`).
+message AwsBedrockPromptVariant {
+  // Variant name (1-100 characters; letters, digits, hyphen, underscore).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // The model that executes this variant: a foundation-model ID
+  // ("amazon.nova-micro-v1:0"), model ARN, or inference-profile ID/ARN.
+  string model_id = 2;
+
+  // OR: execute this variant through a Bedrock agent - the ARN of one of
+  // the agent's aliases. Reference an AwsBedrockAgent's `alias_arns`
+  // output map entry, e.g. valueFrom: {kind: AwsBedrockAgent,
+  // name: <agent>, fieldPath: "status.outputs.alias_arns.<alias-name>"}.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef agent_alias_arn = 3;
+
+  // Single-string template with {{variable}} placeholders.
+  AwsBedrockPromptTextTemplate text = 4;
+
+  // Multi-turn chat template (messages, system context, tools).
+  AwsBedrockPromptChatTemplate chat = 5;
+
+  // Model sampling parameters for this variant.
+  AwsBedrockPromptInferenceConfiguration inference_configuration = 6;
+
+  // Model-specific request parameters outside the standard inference set,
+  // as a JSON document (e.g. {"top_k": 200} for Anthropic models).
+  google.protobuf.Struct additional_model_request_fields = 7;
+
+  // Arbitrary key-value annotations stored on the variant (at most 50;
+  // keys 1-128 characters, values up to 1024).
+  map<string, string> metadata = 8 [(buf.validate.field).map = {
+    max_pairs: 50
+    keys: {
+      string: {
+        min_len: 1
+        max_len: 128
+      }
+    }
+    values: {
+      string: {max_len: 1024}
+    }
+  }];
+
+  // Exactly one execution target.
+  option (buf.validate.message).cel = {
+    id: "variant_target_exactly_one"
+    message: "set exactly one of model_id or agent_alias_arn"
+    expression: "(this.model_id != '') != has(this.agent_alias_arn)"
+  };
+
+  // Exactly one template shape.
+  option (buf.validate.message).cel = {
+    id: "variant_template_exactly_one"
+    message: "set exactly one of text or chat"
+    expression: "has(this.text) != has(this.chat)"
+  };
+}
+
+// AwsBedrockPromptTextTemplate is a single-string prompt template.
+message AwsBedrockPromptTextTemplate {
+  // The template body. Reference variables as {{name}} and declare them
+  // in input_variables.
+  string text = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Names of the {{variables}} the template expects.
+  repeated string input_variables = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Cache everything up to this point of the prompt across invocations
+  // (prompt caching; the model must support it).
+  bool cache_point = 3;
+}
+
+// AwsBedrockPromptChatTemplate is a multi-turn chat prompt template.
+message AwsBedrockPromptChatTemplate {
+  // The conversation turns (at least one).
+  repeated AwsBedrockPromptMessage messages = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // System-level context blocks prepended to the conversation.
+  repeated AwsBedrockPromptSystemBlock system = 2;
+
+  // Names of the {{variables}} used across the messages (at most 20).
+  repeated string input_variables = 3 [(buf.validate.field).repeated = {
+    max_items: 20
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+
+  // Tools the model may call while executing this prompt.
+  AwsBedrockPromptToolConfiguration tool_configuration = 4;
+}
+
+// AwsBedrockPromptMessage is one conversation turn - text content or a
+// cache checkpoint.
+message AwsBedrockPromptMessage {
+  // Who speaks this turn.
+  string role = 1 [(buf.validate.field).string = {
+    in: [
+      "user",
+      "assistant"
+    ]
+  }];
+
+  // The turn's text (may contain {{variables}}).
+  string text = 2;
+
+  // OR: mark a prompt-caching checkpoint at this turn instead of text.
+  bool cache_point = 3;
+
+  // Exactly one content shape.
+  option (buf.validate.message).cel = {
+    id: "message_content_exactly_one"
+    message: "set exactly one of text or cache_point"
+    expression: "(this.text != '') != this.cache_point"
+  };
+}
+
+// AwsBedrockPromptSystemBlock is one system-context block - text or a
+// cache checkpoint.
+message AwsBedrockPromptSystemBlock {
+  // System instruction text.
+  string text = 1;
+
+  // OR: mark a prompt-caching checkpoint.
+  bool cache_point = 2;
+
+  // Exactly one content shape.
+  option (buf.validate.message).cel = {
+    id: "system_content_exactly_one"
+    message: "set exactly one of text or cache_point"
+    expression: "(this.text != '') != this.cache_point"
+  };
+}
+
+// AwsBedrockPromptToolConfiguration exposes tools to the model.
+message AwsBedrockPromptToolConfiguration {
+  // The tool catalog (at least one entry).
+  repeated AwsBedrockPromptTool tools = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // How the model chooses among the tools. Omitted = the model decides
+  // freely.
+  AwsBedrockPromptToolChoice tool_choice = 2;
+}
+
+// AwsBedrockPromptTool is one tool catalog entry - a tool specification or
+// a cache checkpoint.
+message AwsBedrockPromptTool {
+  // The tool's callable specification.
+  AwsBedrockPromptToolSpec spec = 1;
+
+  // OR: mark a prompt-caching checkpoint in the tool list.
+  bool cache_point = 2;
+
+  // Exactly one entry shape.
+  option (buf.validate.message).cel = {
+    id: "tool_entry_exactly_one"
+    message: "set exactly one of spec or cache_point"
+    expression: "has(this.spec) != this.cache_point"
+  };
+}
+
+// AwsBedrockPromptToolSpec describes one callable tool.
+message AwsBedrockPromptToolSpec {
+  // Tool name the model calls.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What the tool does, shown to the model.
+  string description = 2;
+
+  // The tool's input parameters as a JSON Schema document.
+  google.protobuf.Struct input_schema = 3;
+}
+
+// AwsBedrockPromptToolChoice forces or frees the model's tool selection -
+// exactly one arm.
+message AwsBedrockPromptToolChoice {
+  // The model decides whether and which tool to call.
+  bool auto = 1;
+
+  // The model MUST call some tool (its choice which).
+  bool any = 2;
+
+  // The model MUST call this named tool.
+  string tool_name = 3;
+
+  // Exactly one selection mode.
+  option (buf.validate.message).cel = {
+    id: "tool_choice_exactly_one"
+    message: "set exactly one of auto, any, or tool_name"
+    expression: "[this.auto, this.any, this.tool_name != ''].filter(x, x).size() == 1"
+  };
+}
+
+// AwsBedrockPromptInferenceConfiguration tunes model sampling for a
+// variant. Every field is optional; explicit zeros are sent (0 is a
+// meaningful temperature).
+message AwsBedrockPromptInferenceConfiguration {
+  // Maximum number of tokens in the model response.
+  optional int32 max_tokens = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Sequences that stop generation when the model emits them.
+  repeated string stop_sequences = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Sampling temperature (0 = deterministic, 1 = most random). Bedrock
+  // stores it as a 32-bit float: a value that is not float32-exact (0.9,
+  // 0.7) reads back slightly widened (0.8999999761581421) from the API -
+  // harmless for deploys (state keeps your value), visible only when
+  // importing a pre-existing prompt.
+  optional double temperature = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Nucleus sampling - consider tokens covering the top P probability
+  // mass (0-1). Stored by Bedrock as a 32-bit float; see temperature for
+  // the read-back precision note.
+  optional double top_p = 4 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}

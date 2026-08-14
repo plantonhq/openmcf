@@ -244,6 +244,25 @@ message AwsSagemakerDomainSpec {
     message: "spaces names must be unique — each name keys one space"
     expression: "this.spaces.map(s, s.space_name).unique()"
   };
+
+  // A space's idle timeout is legal only where idle shutdown resolves ENABLED
+  // through the inheritance chain — CreateSpace rejects it otherwise
+  // ("Idle Shutdown is disabled for this space", live-verified 2026-08-13).
+  // These rules enforce the directly expressible half: a space must not set
+  // an idle timeout when its owner profile in THIS manifest explicitly
+  // disables that app plane's lifecycle management. (Enablement inherited
+  // from default_user_settings or from profiles managed outside the manifest
+  // resolves server-side and cannot be checked here.)
+  option (buf.validate.message).cel = {
+    id: "space_idle_requires_owner_lifecycle_jupyterlab"
+    message: "a space may not set jupyter_lab_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for JupyterLab — AWS rejects SpaceIdleSettings on a disabled plane"
+    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.jupyter_lab_app_settings) || !has(s.space_settings.jupyter_lab_app_settings.idle_settings) || !has(s.ownership_settings) || !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.jupyter_lab_app_settings) && has(p.user_settings.jupyter_lab_app_settings.idle_settings) && p.user_settings.jupyter_lab_app_settings.idle_settings.lifecycle_management == 'DISABLED'))"
+  };
+  option (buf.validate.message).cel = {
+    id: "space_idle_requires_owner_lifecycle_codeeditor"
+    message: "a space may not set code_editor_app_settings.idle_settings when its owner profile sets lifecycle_management 'DISABLED' for Code Editor — AWS rejects SpaceIdleSettings on a disabled plane"
+    expression: "this.spaces.all(s, !has(s.space_settings) || !has(s.space_settings.code_editor_app_settings) || !has(s.space_settings.code_editor_app_settings.idle_settings) || !has(s.ownership_settings) || !this.user_profiles.exists(p, p.user_profile_name == s.ownership_settings.owner_user_profile_name && has(p.user_settings) && has(p.user_settings.code_editor_app_settings) && has(p.user_settings.code_editor_app_settings.idle_settings) && p.user_settings.code_editor_app_settings.idle_settings.lifecycle_management == 'DISABLED'))"
+  };
 }
 
 // AwsSagemakerDomainUserSettings is the per-user configuration tree — the same shape
@@ -606,6 +625,17 @@ message AwsSagemakerDomainSpaceCodeEditorAppSettings {
 // AwsSagemakerDomainSpaceIdleSettings is the space-scoped idle-shutdown dial.
 // Spaces carry only the timeout — the min/max user-override guardrails and the
 // lifecycle_management switch exist only on the domain/user plane.
+//
+// Because the enable switch lives on that other plane, a space may set this
+// timeout ONLY when idle shutdown resolves ENABLED for the space through the
+// inheritance chain (domain default_user_settings, then the owner profile's
+// user_settings override). CreateSpace validates this server-side and rejects
+// the request otherwise ("Idle Shutdown is disabled for this space,
+// SpaceIdleSettings cannot be set for this space" — live-verified, both
+// engines, 2026-08-13). In particular, a space owned by a profile whose
+// idle_settings carry lifecycle_management "DISABLED" must leave this block
+// unset; the directly expressible half of that contract is enforced by the
+// spec-level space_idle_requires_owner_lifecycle_* rules.
 message AwsSagemakerDomainSpaceIdleSettings {
   // Minutes of inactivity before the space's app shuts down. Range: 60-525600.
   optional int32 idle_timeout_in_minutes = 1 [

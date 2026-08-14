@@ -4,7 +4,8 @@ metadata:
   name: my-development-ecr-repo
 spec:
   region: <aws-region>
-  repositoryName: <repository-name>
+  # Replace with your repository's registry path.
+  repositoryName: team-blue/checkout-service
   imageTagMutability: MUTABLE  # allow tag overwriting for fast iteration
   encryptionType: AES256  # default from spec
   forceDelete: true  # easy cleanup for disposable dev repositories

@@ -1,0 +1,17 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiGateway
+metadata:
+  name: my-orders-api
+spec:
+  region: <aws-region>
+  routes:
+    - path: /orders
+      method: POST
+      apiKeyRequired: true
+      integration:
+        type: AWS_PROXY
+        uri:
+          valueFrom:
+            kind: AwsLambda
+            name: <lambda-function>
+            fieldPath: status.outputs.invoke_arn

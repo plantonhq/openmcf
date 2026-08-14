@@ -1,0 +1,589 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockguardrail.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockGuardrailSpec defines the desired configuration for an Amazon
+// Bedrock guardrail - a set of content-safety policies evaluated on model
+// inputs and outputs (content filters, denied topics, word filters,
+// sensitive-information handling, and contextual grounding checks) that
+// applies uniformly across foundation models, agents, and knowledge bases.
+//
+// The guardrail's name is taken from `metadata.name` (1-50 characters,
+// letters/digits/hyphen/underscore only - AWS rejects spaces and dots).
+//
+// A guardrail always has a mutable working draft (version "DRAFT"). Editing
+// the spec updates the draft in place; production consumers should pin a
+// numbered version published through `versions` so draft edits never change
+// live behavior. Guardrails are free to create - AWS charges per text unit
+// evaluated at invocation time.
+//
+// At least one policy family (content_policy, topic_policy, word_policy,
+// sensitive_information_policy, contextual_grounding_policy) should be
+// configured - a guardrail that evaluates nothing still intercepts nothing;
+// AWS validates policy shapes server-side at CreateGuardrail.
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsBedrockGuardrailSpec {
+  // The AWS region where the guardrail will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the Bedrock console and
+  // GetGuardrail responses (up to 200 characters). Updates in place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // ---------------------------------------------------------------------------
+  // Blocked Messaging (what the caller sees when the guardrail intervenes)
+  // ---------------------------------------------------------------------------
+
+  // Message returned to the application when the guardrail BLOCKS a model
+  // INPUT (1-500 characters). Required by AWS for every guardrail.
+  // Example: "Sorry, I can't help with that request."
+  string blocked_input_messaging = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // Message returned to the application when the guardrail BLOCKS a model
+  // OUTPUT (1-500 characters). Required by AWS for every guardrail.
+  string blocked_outputs_messaging = 4 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 500
+  }];
+
+  // ---------------------------------------------------------------------------
+  // Encryption
+  // ---------------------------------------------------------------------------
+
+  // Customer-managed KMS key ARN for encrypting the guardrail at rest.
+  // Without it, AWS uses a Bedrock-managed key. Updates in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Policy Families
+  // ---------------------------------------------------------------------------
+
+  // Content filters - strength-tiered detection of harmful content
+  // categories (sexual, violence, hate, insults, misconduct, prompt
+  // attacks) on model inputs and outputs.
+  AwsBedrockGuardrailContentPolicy content_policy = 6;
+
+  // Denied topics - natural-language topic definitions the model must not
+  // engage with, each with optional example phrases.
+  AwsBedrockGuardrailTopicPolicy topic_policy = 7;
+
+  // Word filters - the AWS-managed profanity list and/or exact custom
+  // words/phrases to intercept.
+  AwsBedrockGuardrailWordPolicy word_policy = 8;
+
+  // Sensitive-information handling - PII entity types and custom regex
+  // patterns, each blocked or anonymized (masked) in model I/O.
+  AwsBedrockGuardrailSensitiveInformationPolicy sensitive_information_policy = 9;
+
+  // Contextual grounding - thresholds that reject model responses that are
+  // not grounded in the provided source material (GROUNDING) or not
+  // relevant to the user's query (RELEVANCE). Applies to RAG and
+  // summarization flows that supply grounding sources at invocation.
+  AwsBedrockGuardrailContextualGroundingPolicy contextual_grounding_policy = 10;
+
+  // ---------------------------------------------------------------------------
+  // Cross-Region Inference
+  // ---------------------------------------------------------------------------
+
+  // The AWS system-defined guardrail profile that lets this guardrail
+  // evaluate traffic routed through cross-region inference. Accepts the
+  // geography-qualified profile identifier (e.g. "us.guardrail.v1:0" -
+  // the portable shape; both modules compose it into the deploying
+  // account's profile ARN at deploy time, live-verified 2026-08-13) or
+  // the full profile ARN
+  // (arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>). AWS
+  // defines the available profiles per geography; this cannot reference
+  // a customer resource. REQUIRED whenever any policy family sets the
+  // STANDARD tier - AWS rejects STANDARD without cross-region inference
+  // ("Can't configure guardrail policy tier. Enable cross-Region
+  // inference for your guardrail to use Standard tier.").
+  string cross_region_profile = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([a-z]{2,4}\\.guardrail\\.v[0-9]+:[0-9]+|arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+)$"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Published Versions
+  // ---------------------------------------------------------------------------
+
+  // Immutable numbered versions published from the guardrail's current
+  // draft definition. Each entry publishes ONE version; AWS assigns the
+  // version number sequentially (1, 2, ...) - the entry's `name` is a
+  // stable local key only, never sent to AWS. The published number for
+  // each entry is exported in the `version_numbers` output map keyed by
+  // that name. Entries publish AFTER the draft update in the same deploy,
+  // so a spec edit plus a new entry captures the edited definition.
+  // Removing an entry deletes that published version (unless
+  // `keep_on_delete` is set); versions in use by agents fail deletion
+  // server-side.
+  repeated AwsBedrockGuardrailVersion versions = 12;
+
+  // Version entry names are for_each keys on both engines - duplicates
+  // would silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "version_names_unique"
+    message: "versions entries must have unique names"
+    expression: "this.versions.map(v, v.name).unique()"
+  };
+
+  // The STANDARD tier requires cross-region inference - AWS rejects
+  // CreateGuardrail otherwise (live-caught 2026-08-13: ValidationException
+  // "Can't configure guardrail policy tier. Enable cross-Region inference
+  // for your guardrail to use Standard tier."). One rule per tier-bearing
+  // policy family; both are true-positive-only (CLASSIC/omitted tiers
+  // never require the profile).
+  option (buf.validate.message).cel = {
+    id: "content_standard_tier_requires_cross_region"
+    message: "content_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)"
+    expression: "!has(this.content_policy) || this.content_policy.tier != 'STANDARD' || this.cross_region_profile != ''"
+  };
+  option (buf.validate.message).cel = {
+    id: "topic_standard_tier_requires_cross_region"
+    message: "topic_policy.tier STANDARD requires cross_region_profile (AWS rejects the Standard tier without cross-region inference)"
+    expression: "!has(this.topic_policy) || this.topic_policy.tier != 'STANDARD' || this.cross_region_profile != ''"
+  };
+}
+
+// AwsBedrockGuardrailContentPolicy configures strength-tiered content
+// filters for harmful-content categories.
+message AwsBedrockGuardrailContentPolicy {
+  // Safeguard tier for content filters. STANDARD enables the 2025
+  // cross-lingual tier (more languages, robustness levels); CLASSIC is the
+  // original English-centric tier. Omitted = AWS default (CLASSIC).
+  string tier = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["CLASSIC", "STANDARD"]}
+  ];
+
+  // One filter per harmful-content category. AWS evaluates each configured
+  // category at the configured strengths.
+  repeated AwsBedrockGuardrailContentFilter filters = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Each category may be configured at most once.
+  option (buf.validate.message).cel = {
+    id: "content_filter_types_unique"
+    message: "each content filter type may appear at most once"
+    expression: "this.filters.map(f, f.type).unique()"
+  };
+}
+
+// AwsBedrockGuardrailContentFilter is one harmful-content category filter.
+message AwsBedrockGuardrailContentFilter {
+  // The harmful-content category this filter detects. PROMPT_ATTACK
+  // detects jailbreak/prompt-injection attempts (input side only in
+  // practice - AWS requires its output strength to be NONE).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "SEXUAL",
+      "VIOLENCE",
+      "HATE",
+      "INSULTS",
+      "MISCONDUCT",
+      "PROMPT_ATTACK"
+    ]
+  }];
+
+  // Detection strength for model INPUTS: NONE, LOW, MEDIUM, or HIGH.
+  // Higher strengths block more aggressively.
+  string input_strength = 2 [(buf.validate.field).string = {
+    in: [
+      "NONE",
+      "LOW",
+      "MEDIUM",
+      "HIGH"
+    ]
+  }];
+
+  // Detection strength for model OUTPUTS: NONE, LOW, MEDIUM, or HIGH.
+  string output_strength = 3 [(buf.validate.field).string = {
+    in: [
+      "NONE",
+      "LOW",
+      "MEDIUM",
+      "HIGH"
+    ]
+  }];
+
+  // What to do when the filter matches an INPUT: BLOCK (default) rejects
+  // the request with blocked_input_messaging; NONE detects and reports
+  // (visible in trace/observability) without intervening. Sent only when
+  // set - omitted lets AWS default to BLOCK.
+  string input_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // What to do when the filter matches an OUTPUT: BLOCK (default) or NONE
+  // (detect-only). Sent only when set.
+  string output_action = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // Evaluate this filter on inputs. AWS defaults to true; set false
+  // explicitly to skip input evaluation while keeping output evaluation
+  // (both engines send the explicit value whenever this field is set).
+  optional bool input_enabled = 6;
+
+  // Evaluate this filter on outputs. AWS defaults to true; set false
+  // explicitly to skip output evaluation.
+  optional bool output_enabled = 7;
+
+  // Input modalities the filter evaluates: TEXT and/or IMAGE. Omitted =
+  // AWS default (TEXT). IMAGE requires a model with image understanding.
+  repeated string input_modalities = 8 [(buf.validate.field).repeated.items.string = {in: ["TEXT", "IMAGE"]}];
+
+  // Output modalities the filter evaluates: TEXT and/or IMAGE. Omitted =
+  // AWS default (TEXT).
+  repeated string output_modalities = 9 [(buf.validate.field).repeated.items.string = {in: ["TEXT", "IMAGE"]}];
+}
+
+// AwsBedrockGuardrailTopicPolicy configures denied topics.
+message AwsBedrockGuardrailTopicPolicy {
+  // Safeguard tier for topic evaluation. STANDARD enables the 2025
+  // cross-lingual tier; CLASSIC is the original tier. Omitted = AWS
+  // default (CLASSIC).
+  string tier = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["CLASSIC", "STANDARD"]}
+  ];
+
+  // Topics the model must not engage with (at least one). All topics are
+  // DENY topics - AWS defines no other topic type; the modules send the
+  // type constant.
+  repeated AwsBedrockGuardrailTopic topics = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Topic names are identity within the guardrail.
+  option (buf.validate.message).cel = {
+    id: "topic_names_unique"
+    message: "topic names must be unique"
+    expression: "this.topics.map(t, t.name).unique()"
+  };
+}
+
+// AwsBedrockGuardrailTopic is one denied topic.
+message AwsBedrockGuardrailTopic {
+  // Topic name shown in the console and in guardrail traces (1-100
+  // characters; letters, digits, space, hyphen, underscore, !?.).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[0-9a-zA-Z-_ !?.]+$"
+  }];
+
+  // Natural-language definition of the topic (1-1000 characters). Write it
+  // the way you would brief a human reviewer - AWS classifies against this
+  // definition. Example: "Providing investment advice or recommending
+  // specific financial products."
+  string definition = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 1000
+  }];
+
+  // Optional example phrases that belong to the topic (each 1-100
+  // characters) - they sharpen classification near the boundary.
+  repeated string examples = 3 [(buf.validate.field).repeated.items.string = {
+    min_len: 1
+    max_len: 100
+  }];
+}
+
+// AwsBedrockGuardrailWordPolicy configures exact-match word filtering.
+message AwsBedrockGuardrailWordPolicy {
+  // Enable the AWS-managed profanity list (the only managed list AWS
+  // defines; the modules send its PROFANITY type constant). Presence of
+  // this message enables the list; the action/enabled arms tune it.
+  AwsBedrockGuardrailManagedWordList profanity_filter = 1;
+
+  // Custom words and phrases to intercept (each up to 3 words long per
+  // AWS's matching model; at most 10,000 entries).
+  repeated AwsBedrockGuardrailCustomWord custom_words = 2 [(buf.validate.field).repeated.max_items = 10000];
+
+  // Custom word texts are identity within the policy.
+  option (buf.validate.message).cel = {
+    id: "custom_word_texts_unique"
+    message: "custom_words entries must have unique text"
+    expression: "this.custom_words.map(w, w.text).unique()"
+  };
+
+  // An empty word policy configures nothing.
+  option (buf.validate.message).cel = {
+    id: "word_policy_not_empty"
+    message: "word_policy must enable profanity_filter and/or define custom_words"
+    expression: "has(this.profanity_filter) || this.custom_words.size() > 0"
+  };
+}
+
+// AwsBedrockGuardrailManagedWordList tunes the AWS-managed profanity list.
+message AwsBedrockGuardrailManagedWordList {
+  // What to do on an INPUT match: BLOCK (default) or NONE (detect-only).
+  // Sent only when set.
+  string input_action = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // What to do on an OUTPUT match: BLOCK (default) or NONE (detect-only).
+  // Sent only when set.
+  string output_action = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // Evaluate the list on inputs. AWS defaults to true; explicit false
+  // skips input evaluation (sent whenever set, both engines).
+  optional bool input_enabled = 3;
+
+  // Evaluate the list on outputs. AWS defaults to true.
+  optional bool output_enabled = 4;
+}
+
+// AwsBedrockGuardrailCustomWord is one custom word or phrase filter.
+message AwsBedrockGuardrailCustomWord {
+  // The exact word or phrase to match (case-insensitive; up to three
+  // words).
+  string text = 1 [(buf.validate.field).string.min_len = 1];
+
+  // What to do on an INPUT match: BLOCK (default) or NONE (detect-only).
+  // Sent only when set.
+  string input_action = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // What to do on an OUTPUT match: BLOCK (default) or NONE (detect-only).
+  // Sent only when set.
+  string output_action = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "NONE"]}
+  ];
+
+  // Evaluate this word on inputs. AWS defaults to true.
+  optional bool input_enabled = 4;
+
+  // Evaluate this word on outputs. AWS defaults to true.
+  optional bool output_enabled = 5;
+}
+
+// AwsBedrockGuardrailSensitiveInformationPolicy configures PII and custom
+// regex handling.
+message AwsBedrockGuardrailSensitiveInformationPolicy {
+  // PII entity types to detect, each with its own action.
+  repeated AwsBedrockGuardrailPiiEntity pii_entities = 1;
+
+  // Custom regex patterns for organization-specific identifiers (employee
+  // IDs, ticket numbers, ...), each with its own action.
+  repeated AwsBedrockGuardrailRegex regexes = 2;
+
+  // PII entity types are identity within the policy.
+  option (buf.validate.message).cel = {
+    id: "pii_entity_types_unique"
+    message: "each PII entity type may appear at most once"
+    expression: "this.pii_entities.map(e, e.type).unique()"
+  };
+
+  // Regex names are identity within the policy.
+  option (buf.validate.message).cel = {
+    id: "regex_names_unique"
+    message: "regex names must be unique"
+    expression: "this.regexes.map(r, r.name).unique()"
+  };
+
+  // An empty policy configures nothing.
+  option (buf.validate.message).cel = {
+    id: "sensitive_information_policy_not_empty"
+    message: "sensitive_information_policy must define pii_entities and/or regexes"
+    expression: "this.pii_entities.size() > 0 || this.regexes.size() > 0"
+  };
+}
+
+// AwsBedrockGuardrailPiiEntity is one PII entity type filter.
+message AwsBedrockGuardrailPiiEntity {
+  // The PII entity type to detect (AWS's closed catalog of general,
+  // finance, IT, US-, CA-, and UK-specific identifiers).
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "ADDRESS",
+      "AGE",
+      "AWS_ACCESS_KEY",
+      "AWS_SECRET_KEY",
+      "CA_HEALTH_NUMBER",
+      "CA_SOCIAL_INSURANCE_NUMBER",
+      "CREDIT_DEBIT_CARD_CVV",
+      "CREDIT_DEBIT_CARD_EXPIRY",
+      "CREDIT_DEBIT_CARD_NUMBER",
+      "DRIVER_ID",
+      "EMAIL",
+      "INTERNATIONAL_BANK_ACCOUNT_NUMBER",
+      "IP_ADDRESS",
+      "LICENSE_PLATE",
+      "MAC_ADDRESS",
+      "NAME",
+      "PASSWORD",
+      "PHONE",
+      "PIN",
+      "SWIFT_CODE",
+      "UK_NATIONAL_HEALTH_SERVICE_NUMBER",
+      "UK_NATIONAL_INSURANCE_NUMBER",
+      "UK_UNIQUE_TAXPAYER_REFERENCE_NUMBER",
+      "URL",
+      "USERNAME",
+      "US_BANK_ACCOUNT_NUMBER",
+      "US_BANK_ROUTING_NUMBER",
+      "US_INDIVIDUAL_TAX_IDENTIFICATION_NUMBER",
+      "US_PASSPORT_NUMBER",
+      "US_SOCIAL_SECURITY_NUMBER",
+      "VEHICLE_IDENTIFICATION_NUMBER"
+    ]
+  }];
+
+  // Base action when this entity is detected: BLOCK rejects the request/
+  // response; ANONYMIZE masks the entity (e.g. {NAME}) and lets the
+  // request through; NONE detects and reports without intervening.
+  string action = 2 [(buf.validate.field).string = {
+    in: [
+      "BLOCK",
+      "ANONYMIZE",
+      "NONE"
+    ]
+  }];
+
+  // Override the action for INPUTS only. AWS materializes a default from
+  // `action` when omitted; once set on a created guardrail this cannot be
+  // reverted to "AWS-derived" - only to another explicit value.
+  string input_action = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+  ];
+
+  // Override the action for OUTPUTS only. Same materialize-once semantics
+  // as input_action.
+  string output_action = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+  ];
+
+  // Evaluate this entity on inputs. AWS defaults to true.
+  optional bool input_enabled = 5;
+
+  // Evaluate this entity on outputs. AWS defaults to true.
+  optional bool output_enabled = 6;
+}
+
+// AwsBedrockGuardrailRegex is one custom sensitive-information pattern.
+message AwsBedrockGuardrailRegex {
+  // Pattern name shown in traces and anonymization masks (1-100
+  // characters).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+  }];
+
+  // The regular expression (RE2-compatible; AWS validates server-side).
+  string pattern = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Optional description of what the pattern captures (1-1000 characters
+  // when set).
+  string description = 3 [(buf.validate.field).string.max_len = 1000];
+
+  // Base action on a match: BLOCK, ANONYMIZE (mask), or NONE
+  // (detect-only).
+  string action = 4 [(buf.validate.field).string = {
+    in: [
+      "BLOCK",
+      "ANONYMIZE",
+      "NONE"
+    ]
+  }];
+
+  // Override the action for INPUTS only (materialize-once, like PII
+  // entities).
+  string input_action = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+  ];
+
+  // Override the action for OUTPUTS only.
+  string output_action = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["BLOCK", "ANONYMIZE", "NONE"]}
+  ];
+
+  // Evaluate this pattern on inputs. AWS defaults to true.
+  optional bool input_enabled = 7;
+
+  // Evaluate this pattern on outputs. AWS defaults to true.
+  optional bool output_enabled = 8;
+}
+
+// AwsBedrockGuardrailContextualGroundingPolicy configures grounding and
+// relevance thresholds.
+message AwsBedrockGuardrailContextualGroundingPolicy {
+  // One filter per check type (at least one).
+  repeated AwsBedrockGuardrailContextualGroundingFilter filters = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Each check type may be configured at most once.
+  option (buf.validate.message).cel = {
+    id: "grounding_filter_types_unique"
+    message: "each contextual grounding filter type may appear at most once"
+    expression: "this.filters.map(f, f.type).unique()"
+  };
+}
+
+// AwsBedrockGuardrailContextualGroundingFilter is one grounding check.
+message AwsBedrockGuardrailContextualGroundingFilter {
+  // The check type: GROUNDING scores whether the response is supported by
+  // the source material supplied at invocation; RELEVANCE scores whether
+  // the response addresses the user's query.
+  string type = 1 [(buf.validate.field).string = {
+    in: [
+      "GROUNDING",
+      "RELEVANCE"
+    ]
+  }];
+
+  // Confidence threshold in [0, 1]. Responses scoring BELOW the threshold
+  // are blocked. 0 blocks nothing; values near 1 block aggressively
+  // (0.99 is the practical maximum AWS documents).
+  double threshold = 2 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// AwsBedrockGuardrailVersion publishes one immutable numbered version of
+// the guardrail.
+message AwsBedrockGuardrailVersion {
+  // Stable local key for this entry (1-100 characters; letters, digits,
+  // hyphen, underscore). Used as the for_each key on both engines and as
+  // the key in the `version_numbers` output map - NEVER sent to AWS.
+  // Renaming an entry destroys and republishes its version under the new
+  // key.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^[0-9a-zA-Z-_]+$"
+  }];
+
+  // Optional description recorded on the published version (up to 200
+  // characters). Changing it destroys and republishes the version - AWS
+  // version descriptions are create-time-immutable.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // Keep the published version in AWS when this entry is removed (or the
+  // guardrail destroyed) instead of deleting it. The version then lives
+  // outside this manifest's management.
+  bool keep_on_delete = 3;
+}

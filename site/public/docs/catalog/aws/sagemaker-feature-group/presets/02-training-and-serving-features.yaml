@@ -1,0 +1,28 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerFeatureGroup
+metadata:
+  name: training-and-serving-features
+spec:
+  region: us-west-2
+  recordIdentifierFeatureName: customer_id
+  eventTimeFeatureName: event_time
+  description: Customer features served online and landed in S3 for training
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-execution
+  featureDefinitions:
+    - name: customer_id
+      type: String
+    - name: event_time
+      type: Fractional
+    - name: lifetime_value
+      type: Fractional
+    - name: churn_score
+      type: Fractional
+  onlineStore:
+    enabled: true
+    ttl:
+      unit: Days
+      value: 30
+  offlineStore:
+    s3Uri: s3://my-feature-store/customers/
+    tableFormat: Glue

@@ -1,0 +1,49 @@
+# AwsOpenSearchServerlessCollection full-surface scenario: a SEARCH
+# collection with standby replicas DISABLED (the 0.5+0.5 OCU dev floor --
+# the cheapest honest lane) and all four collection-scoped policies live:
+# encryption (AWS-owned key), network (public posture -- reachability only;
+# every request still needs SigV4 auth plus a data-access rule), data
+# access (a full grant to the composed IAM-role fixture -- proving the
+# principals reference seam live), and a 24h retention rule.
+#
+# Deliberately not exercised here: customer-managed KMS (offline-proven
+# KmsARN arm), VPC-endpoint network access (needs the OpenSearch
+# Serverless VPC endpoint -- a future kind), collection groups (future
+# kind), vector acceleration (GPU capacity cost) -- see the profile.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsOpenSearchServerlessCollection
+metadata:
+  name: planton-oss-e2e-awsoss-full
+  id: planton-oss-e2e-awsoss-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsopensearchserverlesscollection
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E full-surface serverless collection
+  type: SEARCH
+  standbyReplicas: DISABLED
+  network:
+    allowFromPublic: true
+    includeDashboards: true
+  dataAccess:
+    - principals:
+        - valueFrom:
+            kind: AwsIamRole
+            name: planton-oss-e2e-awsiamrole-prereq
+            fieldPath: status.outputs.role_arn
+      collectionPermissions:
+        - "aoss:*"
+      indexPermissions:
+        - "aoss:*"
+  retentionRules:
+    - indexPatterns:
+        - "*"
+      minIndexRetention: 24h

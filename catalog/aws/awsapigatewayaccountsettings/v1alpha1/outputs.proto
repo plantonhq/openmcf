@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsapigatewayaccountsettings.v1alpha1;
+
+// AwsApiGatewayAccountSettingsStackOutputs captures the observable
+// state of the region's API Gateway account object after apply.
+message AwsApiGatewayAccountSettingsStackOutputs {
+  // The 12-digit AWS account ID the settings belong to (also the
+  // provider's import ID for this singleton).
+  string account_id = 1;
+
+  // The API key version the account is on (AWS-managed).
+  string api_key_version = 2;
+
+  // Feature flags AWS reports enabled on the account (for example
+  // "UsagePlans"). Informational - AWS manages the set.
+  repeated string features = 3;
+
+  // The account-level throttle ceiling AWS reports: maximum burst of
+  // concurrent requests any stage may serve before 429s.
+  int32 throttle_burst_limit = 4;
+
+  // The account-level steady-state request rate ceiling (requests per
+  // second) AWS reports.
+  double throttle_rate_limit = 5;
+}

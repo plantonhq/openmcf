@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Scheduled Scale with Warm Pool"
     excerpt: "This preset shapes capacity around a business calendar: four instances minimum during weekday business hours, scale-to-zero overnight, and a warm pool of stopped, pre-initialized instances so the..."
+  - slug: "04-reserved-fleet"
+    rank: "04"
+    title: "Reserved Fleet with Guaranteed Capacity"
+    excerpt: "This preset runs a fleet on capacity you have already paid for. The group fills the targeted On-Demand Capacity Reservations first (`capacity-reservations-first`) and falls back to regular On-Demand..."
 ---
 
 # Auto Scaling Group Presets

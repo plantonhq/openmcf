@@ -1,0 +1,3 @@
+name: awssagemakerimage
+runtime:
+  name: go

@@ -10,11 +10,11 @@ spec:
   # Serverless with one db.serverless instance scaling 1-2 NCUs (1 NCU is
   # Neptune's floor -- it does not pause to zero): the cheapest possible
   # footprint, proving the folded per-name instance materialization and the
-  # serverless scaling block. Instance provisioning dominates the runtime
-  # at roughly ten minutes each way per engine.
+  # serverless scaling block. Instance provisioning dominates the runtime:
+  # observed live 2026-08-13 at 15-18 minutes per direction per engine (a
+  # full dual-engine run is ~70-75 minutes) -- budget on that.
   tier: 1
-  # pending_proof: the session-043 depth closure changed the live send surface (instance port pinning, apply-immediately/skip-final-snapshot forwards, folded custom endpoints, the managed instance parameter group, storage encryption default-on) -- Q29 proves it
-  status: pending_proof
+  status: green
   validated_provisioners:
     - pulumi
     - terraform

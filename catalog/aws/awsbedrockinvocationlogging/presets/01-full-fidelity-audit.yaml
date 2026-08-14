@@ -1,0 +1,31 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInvocationLogging
+metadata:
+  name: bedrock-invocation-logging
+spec:
+  region: <aws-region>
+  cloudwatch:
+    logGroupName:
+      valueFrom:
+        kind: AwsCloudwatchLogGroup
+        name: <bedrock-log-group>
+        fieldPath: status.outputs.log_group_name
+    roleArn:
+      valueFrom:
+        kind: AwsIamRole
+        name: <bedrock-logging-role>
+        fieldPath: status.outputs.role_arn
+    largeDataDeliveryS3:
+      bucketName:
+        valueFrom:
+          kind: AwsS3Bucket
+          name: <bedrock-log-bucket>
+          fieldPath: status.outputs.bucket_id
+      keyPrefix: spillover
+  s3:
+    bucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <bedrock-log-bucket>
+        fieldPath: status.outputs.bucket_id
+    keyPrefix: invocations

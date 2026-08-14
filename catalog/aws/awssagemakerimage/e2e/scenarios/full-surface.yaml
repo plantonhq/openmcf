@@ -1,0 +1,30 @@
+# AwsSagemakerImage full-surface scenario: the display metadata arms
+# (the image's only in-place-updateable surface). Deliberately not
+# live: the versions fold - CreateImageVersion requires a real
+# container image in the SAME account's ECR, and even upstream's own
+# acceptance tests skip unless an env var supplies one (unblock: a
+# seeded ECR image fixture) - offline-proven via e2e/manifest.yaml.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerImage
+metadata:
+  name: planton-oss-e2e-awssgmim-full
+  id: planton-oss-e2e-awssgmim-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakerimage
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn
+  displayName: Planton E2E Kernels
+  description: e2e full-surface image registry entry

@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTools
+metadata:
+  name: my-research-tools
+spec:
+  region: us-west-2
+  browsers:
+    - name: research_browser
+      description: Web research with a full audit trail
+      executionRoleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: my-tools-role
+          fieldPath: status.outputs.role_arn
+      network:
+        mode: PUBLIC
+      signingEnabled: true
+      recording:
+        enabled: true
+        s3Location:
+          bucket:
+            valueFrom:
+              kind: AwsS3Bucket
+              name: my-agent-recordings
+              fieldPath: status.outputs.bucket_id
+          prefix: browser-sessions/
+  browserProfiles:
+    - name: docs_login
+      description: Saved session state for the docs portal

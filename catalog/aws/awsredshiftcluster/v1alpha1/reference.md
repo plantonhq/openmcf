@@ -1004,6 +1004,14 @@ Fields that can point at another resource's outputs:
 | `spec.endpointAccesses[].vpcSecurityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 | `spec.endpointAuthorizations[].vpcIds` | AwsVpc | `status.outputs.vpc_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockKnowledgeBase | `spec.sql.provisioned.clusterIdentifier` | `status.outputs.cluster_identifier` |
+
 ## See Also
 
 - [Overview](../README.md)

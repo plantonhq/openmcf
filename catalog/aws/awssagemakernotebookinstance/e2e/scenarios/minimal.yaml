@@ -1,0 +1,27 @@
+# AwsSagemakerNotebookInstance minimal scenario: the cheapest
+# current-generation instance (ml.t3.medium, ~$0.05/hour) on the
+# family's shared execution role. Proves the create -> InService
+# lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerNotebookInstance
+metadata:
+  name: planton-oss-e2e-awssgmnb-min
+  id: planton-oss-e2e-awssgmnb-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssagemakernotebookinstance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  instanceType: ml.t3.medium
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-sagemaker-execution-role
+      fieldPath: status.outputs.role_arn

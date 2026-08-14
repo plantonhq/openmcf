@@ -1,0 +1,172 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagent_agent:
+    mappings:
+      # The spec spells the unit out.
+      - arg: idle_session_ttl_in_seconds
+        spec: spec.idle_session_ttl_seconds
+      # Single-entry list ATTRIBUTES (not blocks) -- the provider schema
+      # carries each as ONE argument, so each fans in to every spec leaf
+      # it realizes.
+      - arg: guardrail_configuration
+        spec: spec.guardrail.guardrail_id
+      - arg: guardrail_configuration
+        spec: spec.guardrail.version
+      - arg: memory_configuration
+        spec: spec.memory.storage_days
+      - arg: memory_configuration
+        spec: spec.memory.max_recent_sessions
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.override_lambda
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.prompt_type
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.base_prompt_template
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.parser_mode
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.prompt_state
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.inference_configuration.max_length
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.inference_configuration.stop_sequences
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.inference_configuration.temperature
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.inference_configuration.top_k
+      - arg: prompt_override_configuration
+        spec: spec.prompt_override.prompt_configurations.inference_configuration.top_p
+    exclusions:
+      - arg: agent_name
+        reason: wired by the module from metadata.name -- the agent name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: prepare_agent
+        reason: apply-behavior knob, not desired state -- the module keeps the provider default (always prepare after changes); a declarative platform never ships an un-served draft deliberately
+      - arg: skip_resource_in_use_check
+        reason: delete-behavior knob, not desired state -- the module keeps the provider default (in-use check ON) so an agent serving traffic is never deleted silently
+      # Inside the attribute containers above, two members are module
+      # constants (the schema carries no per-member argument to exclude):
+      # memory_configuration's enabled_memory_types (SESSION_SUMMARY is
+      # the only memory type AWS defines -- presence of spec.memory IS the
+      # enablement) and prompt_configurations' prompt_creation_mode
+      # (always OVERRIDDEN -- authoring an entry IS the override; the
+      # provider strips non-overridden defaults from state, so DEFAULT
+      # would drift forever).
+
+  aws_bedrockagent_agent_action_group:
+    specRoot: spec.action_groups
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: action_group_name
+        spec: spec.action_groups.name
+      - arg: action_group_state
+        spec: spec.action_groups.state
+      - arg: action_group_executor
+        spec: spec.action_groups.executor
+      # RETURN_CONTROL is the only custom-control method AWS defines --
+      # the spec models it as a bool and the modules own the constant.
+      - arg: action_group_executor.custom_control
+        spec: spec.action_groups.executor.return_control
+      # The provider prefixes the S3 leaves.
+      - arg: api_schema.s3.s3_bucket_name
+        spec: spec.action_groups.api_schema.s3.bucket_name
+      - arg: api_schema.s3.s3_object_key
+        spec: spec.action_groups.api_schema.s3.object_key
+      # The functions list rides a one-element member_functions wrapper;
+      # the spec carries the list directly.
+      - arg: function_schema.member_functions
+        spec: spec.action_groups.function_schema
+      - arg: function_schema.member_functions.functions
+        spec: spec.action_groups.function_schema.functions
+      # The provider calls the parameter name map_block_key for its own
+      # compatibility reasons; the spec calls it what it is.
+      - arg: function_schema.member_functions.functions.parameters.map_block_key
+        spec: spec.action_groups.function_schema.functions.parameters.name
+    exclusions:
+      - arg: agent_id
+        reason: wired by the module to the agent it creates -- parent linkage, never user surface
+      - arg: agent_version
+        reason: wired by the module (always DRAFT) -- satellites attach to the draft; numbered versions are immutable snapshots aliases create
+      - arg: prepare_agent
+        reason: apply-behavior knob, not desired state -- the module keeps the provider default
+      - arg: skip_resource_in_use_check
+        reason: delete-behavior knob, not desired state -- the module keeps the provider default
+
+  aws_bedrockagent_agent_alias:
+    specRoot: spec.aliases
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: agent_alias_name
+        spec: spec.aliases.name
+      # A single-entry list ATTRIBUTE -- one schema argument fanning in to
+      # the spec leaves it realizes.
+      - arg: routing_configuration
+        spec: spec.aliases.routing.agent_version
+      - arg: routing_configuration
+        spec: spec.aliases.routing.provisioned_throughput
+    exclusions:
+      - arg: agent_id
+        reason: wired by the module to the agent it creates -- parent linkage, never user surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagent_agent_collaborator:
+    specRoot: spec.collaborators
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      - arg: collaborator_name
+        spec: spec.collaborators.name
+      # The collaborating agent's alias ARN rides a one-field descriptor
+      # block; the spec carries the ARN leaf directly.
+      - arg: agent_descriptor
+        spec: spec.collaborators.collaborator_alias_arn
+      - arg: agent_descriptor.alias_arn
+        spec: spec.collaborators.collaborator_alias_arn
+    exclusions:
+      - arg: agent_id
+        reason: wired by the module to the agent it creates -- parent linkage, never user surface
+      - arg: agent_version
+        reason: wired by the module (always DRAFT) -- collaborators attach to the draft
+      - arg: prepare_agent
+        reason: apply-behavior knob, not desired state -- the module keeps the provider default
+
+  aws_bedrockagent_agent_knowledge_base_association:
+    specRoot: spec.knowledge_base_associations
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider frames the switch as association state; the spec
+      # drops the redundant prefix.
+      - arg: knowledge_base_state
+        spec: spec.knowledge_base_associations.state
+    exclusions:
+      - arg: agent_id
+        reason: wired by the module to the agent it creates -- parent linkage, never user surface
+      - arg: agent_version
+        reason: wired by the module (always DRAFT -- the provider only manages draft associations)
+
+specExclusions:
+  # The association entry's name is the stable local for_each key on both
+  # engines and the associated_knowledge_base_ids output key -- never sent
+  # to AWS (the association is identified by its knowledge base).
+  - field: spec.knowledge_base_associations.name
+    reason: local instance key (for_each identity and the associated_knowledge_base_ids output key) -- AWS identifies the association by agent, version, and knowledge base

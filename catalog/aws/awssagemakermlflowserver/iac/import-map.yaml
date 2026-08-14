@@ -1,0 +1,14 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssagemakermlflowserver
+spec:
+  # The tracking server imports by its bare name.
+  values:
+    - name: tracking_server_name
+      derivations:
+        - from_stack_output: tracking_server_name
+      where_to_find: >-
+        SageMaker console -> MLflow (the server name), or
+        `aws sagemaker list-mlflow-tracking-servers`
+        (TrackingServerName).

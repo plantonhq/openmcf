@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockprovisionedthroughput.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockProvisionedThroughputSpec defines the desired configuration
+// for Amazon Bedrock Provisioned Throughput - dedicated, guaranteed model
+// serving capacity purchased in model units. Provisioned Throughput is the
+// REQUIRED serving path for fine-tuned custom models and an option for
+// high-volume foundation-model workloads.
+//
+// The provisioned model's name is taken from `metadata.name` (1-63
+// characters).
+//
+// COST WARNING: this resource bills from the moment it is created -
+// per-hour without a commitment, or for the full term with a 1-month or
+// 6-month commitment (committed purchases CANNOT be canceled early; the
+// provider will not even destroy them until the term lapses). Model units
+// for large models run to thousands of dollars per month - size the
+// purchase deliberately.
+//
+// EVERY spec field is create-time-immutable: changing one destroys and
+// recreates the purchase (a committed purchase blocks that destroy until
+// its term ends).
+//
+// Credentials, region, and deployment workflow live outside this spec in
+// stack inputs.
+message AwsBedrockProvisionedThroughputSpec {
+  // The AWS region of the provisioned capacity.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // ARN of the model to provision capacity for - typically a custom
+  // model's output ARN (the default reference wiring), or a
+  // foundation-model ARN for models AWS allows provisioning directly.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef model_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockCustomModel,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.custom_model_arn"
+  ];
+
+  // Number of model units to purchase (at least 1). A model unit's
+  // throughput (tokens per minute) is model-specific - AWS quotes it per
+  // model in the console/docs. Account quotas for no-commitment model
+  // units default LOW (often 0-2); larger purchases need a quota increase
+  // or a commitment.
+  int32 model_units = 3 [(buf.validate.field).int32.gte = 1];
+
+  // Commitment term: omit for NO commitment (hourly billing, delete any
+  // time), or "OneMonth"/"SixMonths" for committed terms with discounted
+  // rates. Committed purchases bill for the full term and CANNOT be
+  // deleted until the term ends.
+  string commitment_duration = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "OneMonth",
+        "SixMonths"
+      ]
+    }
+  ];
+}

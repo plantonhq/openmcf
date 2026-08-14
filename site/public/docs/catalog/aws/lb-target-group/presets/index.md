@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Lambda Function Target"
     excerpt: "This preset creates a Lambda target group: the ALB invokes the function directly for each request, so there is no port, protocol, or VPC to configure. The function is the group's single target,..."
+  - slug: "04-quic-passthrough"
+    rank: "04"
+    title: "QUIC / HTTP/3 Pass-Through"
+    excerpt: "This preset creates a `TCP_QUIC` target group for a Network Load Balancer serving HTTP/3 traffic: QUIC connections pass through natively while the same group serves clients that fall back to TCP on..."
 ---
 
 # LB Target Group Presets

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "EC2-Backed Cluster"
     excerpt: "This preset adds EC2 capacity to an ECS cluster by wrapping a referenced auto-scaling group as a capacity provider. ECS's managed scaling drives the group's instance count from task demand -- you..."
+  - slug: "04-managed-instances"
+    rank: "04"
+    title: "Managed Instances Cluster"
+    excerpt: "This preset adds ECS Managed Instances capacity: ECS launches, patches, and retires the EC2 instances itself from attribute-based requirements -- no auto-scaling group, no AMI selection, no user..."
 ---
 
 # ECS Cluster Presets

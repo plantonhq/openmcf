@@ -1,0 +1,26 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: config-recording
+spec:
+  region: <aws-region>
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: <config-recorder-role>
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+      - AWS::EC2::SecurityGroup
+      - AWS::IAM::Role
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: <config-history-bucket>
+        fieldPath: status.outputs.bucket_id
+    snapshotDeliveryFrequency: TwentyFour_Hours
+  retentionPeriodInDays: 365

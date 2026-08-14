@@ -1,0 +1,32 @@
+# Consumer-scoped AwsS3Bucket install profile for the
+# invocation-logging singleton. The bucket policy grants Bedrock's
+# SERVICE PRINCIPAL s3:PutObject -- Bedrock writes invocation logs as
+# bedrock.amazonaws.com, not through an IAM role, so the CloudWatch
+# arm's role does nothing for S3 delivery. (Production deployments add
+# an aws:SourceAccount condition; the fixture's fixed bucket name in
+# the dedicated test account keeps this minimal.)
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3Bucket
+metadata:
+  name: planton-oss-e2e-bedil-logs
+  id: planton-oss-e2e-bedil-logs
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowBedrockInvocationLogDelivery
+        Effect: Allow
+        Principal:
+          Service: bedrock.amazonaws.com
+        Action: s3:PutObject
+        Resource: arn:aws:s3:::planton-oss-e2e-bedil-logs/*

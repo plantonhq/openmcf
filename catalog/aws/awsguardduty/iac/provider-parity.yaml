@@ -1,0 +1,178 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_guardduty_detector:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+    # The deprecated datasources block ("use aws_guardduty_detector_feature
+    # resources instead") is excluded from the audit's configurable set at
+    # the pin; the features list is its complete replacement here.
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_guardduty_detector_feature:
+    specRoot: spec.features
+    mappings:
+      - arg: region
+        spec: spec.region
+      # The binary FeatureStatus vocabulary models as a presence-typed
+      # bool (unset = ENABLED: listing a feature means you want it).
+      - arg: status
+        spec: spec.features.enabled
+      - arg: additional_configuration.status
+        spec: spec.features.additional_configuration.enabled
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+
+  aws_guardduty_filter:
+    specRoot: spec.filters
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: finding_criteria.criterion.field
+        spec: spec.filters.criteria.field
+      - arg: finding_criteria.criterion.equals
+        spec: spec.filters.criteria.equals
+      - arg: finding_criteria.criterion.not_equals
+        spec: spec.filters.criteria.not_equals
+      - arg: finding_criteria.criterion.matches
+        spec: spec.filters.criteria.matches
+      - arg: finding_criteria.criterion.not_matches
+        spec: spec.filters.criteria.not_matches
+      - arg: finding_criteria.criterion.greater_than
+        spec: spec.filters.criteria.greater_than
+      - arg: finding_criteria.criterion.greater_than_or_equal
+        spec: spec.filters.criteria.greater_than_or_equal
+      - arg: finding_criteria.criterion.less_than
+        spec: spec.filters.criteria.less_than
+      - arg: finding_criteria.criterion.less_than_or_equal
+        spec: spec.filters.criteria.less_than_or_equal
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_guardduty_ipset:
+    specRoot: spec.ip_sets
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_guardduty_threatintelset:
+    specRoot: spec.threat_intel_sets
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_guardduty_publishing_destination:
+    specRoot: spec.publishing_destination
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: destination_arn
+        spec: spec.publishing_destination.bucket_arn
+      - arg: kms_key_arn
+        spec: spec.publishing_destination.kms_key_arn
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+      - arg: destination_type
+        reason: the only destination type AWS supports is S3 -- both engines always send it, never user-facing
+      - arg: tags
+        reason: tags are ForceNew on this resource (a tag edit REPLACES findings export) -- deliberately untagged so identity-tag sweeps never replace it, recorded in both modules and the GUIDE
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  aws_guardduty_organization_admin_account:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: admin_account_id
+        spec: spec.organization.admin_account_id
+
+  aws_guardduty_organization_configuration:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: auto_enable_organization_members
+        spec: spec.organization.auto_enable_organization_members
+    # The deprecated datasources block ("use
+    # aws_guardduty_organization_configuration_feature resources instead")
+    # is excluded from the audit's configurable set at the pin; the
+    # organization features list is its complete replacement here.
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+
+  aws_guardduty_organization_configuration_feature:
+    specRoot: spec.organization.features
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+
+  aws_guardduty_member:
+    specRoot: spec.members
+    mappings:
+      - arg: region
+        spec: spec.region
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+
+  aws_guardduty_member_detector_feature:
+    specRoot: spec.members.features
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: account_id
+        spec: spec.members.account_id
+      - arg: status
+        spec: spec.members.features.enabled
+      - arg: additional_configuration.status
+        spec: spec.members.features.additional_configuration.enabled
+    exclusions:
+      - arg: detector_id
+        reason: module-wired parent linkage to the detector created in the same plan
+
+  aws_guardduty_invite_accepter:
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: master_account_id
+        spec: spec.accept_invitation_from_account_id
+    exclusions:
+      - arg: detector_id
+        reason: module-wired to this component's own detector (the member-side posture accepts into the detector created in the same plan)

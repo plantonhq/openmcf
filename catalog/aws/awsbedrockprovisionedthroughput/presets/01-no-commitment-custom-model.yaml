@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockProvisionedThroughput
+metadata:
+  name: support-model-capacity
+spec:
+  region: us-east-1
+  modelArn:
+    valueFrom:
+      kind: AwsBedrockCustomModel
+      name: support-titan-ft
+  modelUnits: 1

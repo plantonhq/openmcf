@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Preset: BYOIP Pool Elastic IP"
     excerpt: "**Use case:** Allocate a static public IPv4 address from your own registered IP address range."
+  - slug: "03-instance-attached"
+    rank: "03"
+    title: "Preset: Instance-Attached Elastic IP"
+    excerpt: "**Use case:** Give an EC2 instance a public IP that survives stop/start cycles."
 ---
 
 # Elastic IP Presets

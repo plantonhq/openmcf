@@ -1,0 +1,27 @@
+# The region's API Gateway account settings with the CloudWatch
+# logging role set -- the full surface of this settings singleton.
+# The role fixture is consumer-scoped (e2e/prerequisites/awsiamrole.yaml):
+# apigateway.amazonaws.com trust + CloudWatch Logs write, one role
+# instead of the shared 16-role profile.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsApiGatewayAccountSettings
+metadata:
+  name: planton-oss-e2e-awsapias
+  id: planton-oss-e2e-awsapias
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsapigatewayaccountsettings
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsIamRole"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  cloudwatchRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-apigw-account-role
+      fieldPath: status.outputs.role_arn

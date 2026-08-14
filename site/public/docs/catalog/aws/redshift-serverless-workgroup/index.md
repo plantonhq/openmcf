@@ -95,6 +95,10 @@ These are the most important decisions when configuring a serverless workgroup. 
 
 **Query guardrails** -- parameters apply directly to the workgroup from the exact list the API accepts: `require_ssl` and `max_query_execution_time` are the production classics; the `max_*` family implements query monitoring rules that cancel runaway work. `enable_user_activity_logging` pairs with the namespace's `useractivitylog` export — the workgroup produces the trail, the namespace delivers it.
 
+**Spend caps** -- `usageLimits` bound consumption per day, week, or month: `serverless-compute` limits are RPU-hours, `cross-region-datasharing` limits are terabytes transferred. Breach actions escalate from `log` through `emit-metric` to `deactivate`, which stops queries until the period resets (data is untouched). Note the serverless vocabulary: `deactivate`, where provisioned clusters say `disable`.
+
+**Cross-VPC access and identity** -- `endpointAccesses` create VPC endpoints into consuming VPCs' subnets (or reuse the workgroup's own); each endpoint's private address is exported in `endpoint_access_addresses` keyed by name. `customDomain` fronts the endpoint with a branded DNS name and an ACM certificate -- one per workgroup, the certificate must live in the workgroup's region and cover the domain, and the CNAME pointing the domain at the workgroup endpoint stays yours to manage. AWS serializes management operations on a workgroup, so these satellites apply in a fixed order (custom domain, then endpoint accesses, then usage limits) rather than concurrently -- declaring several simply extends the apply a little.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -104,6 +108,9 @@ These are the most important decisions when configuring a serverless workgroup. 
 | `namespaceName` | [AwsRedshiftServerlessNamespace](/cloud-catalog/aws-redshift-serverless-namespace) | The data plane this compute serves (required) |
 | `subnetIds[]` | [AwsSubnet](/cloud-catalog/aws-subnet) | Compute and endpoint placement (three AZs minimum) |
 | `securityGroupIds[]` | [AwsSecurityGroup](/cloud-catalog/aws-security-group) | Who can reach the endpoint |
+| `endpointAccesses[].subnetIds[]` | [AwsSubnet](/cloud-catalog/aws-subnet) | Consuming-VPC placement for cross-VPC endpoints |
+| `endpointAccesses[].vpcSecurityGroupIds[]` | [AwsSecurityGroup](/cloud-catalog/aws-security-group) | Access control on each endpoint |
+| `customDomain.certificateArn` | [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) | TLS for the custom domain |
 
 ### What This Component Provides
 
@@ -116,6 +123,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `workgroup_name` | The workgroup name (the resource name) | GetCredentials, custom domain associations |
 | `workgroup_id` | The unique identifier AWS assigns | Account-level automation and audits |
 | `arn` | Amazon Resource Name of the workgroup | IAM policies and usage limits |
+| `endpoint_access_addresses` | Private DNS addresses of VPC endpoints, keyed by endpoint name | Connection strings for consumers in other VPCs |
+| `usage_limit_ids` | AWS-generated usage-limit IDs, keyed by usage-type/period | Out-of-band CLI operations, state import |
+| `custom_domain_certificate_expiry_time` | When the custom domain's certificate expires (RFC 3339) | Renewal monitoring |
 
 ## Common Patterns
 
@@ -125,9 +135,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Price-performance production workgroup** -- AWS owns the baseline at the balanced level, a 512-RPU cap bounds spend, enhanced VPC routing governs data movement, TLS is required, and a four-hour query limit guards runaway work. Start from the **Price-Performance Production** preset.
 
+**Governed workgroup with private endpoints** -- a fixed baseline with daily RPU-hour deactivation, datasharing transfer logging, a VPC endpoint for a BI-tooling VPC, and a branded TLS domain. Start from the **Private Endpoint Domain** preset.
+
 ## Works With
 
 - [**AWS Redshift Serverless Namespace**](/cloud-catalog/aws-redshift-serverless-namespace) -- the data plane this workgroup computes for (references `namespace_name`)
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- placement for the compute and its managed VPC endpoint
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- carries the warehouse's ingress rules
+- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- provides the TLS certificate for the custom domain
 - [**AWS Redshift Cluster**](/cloud-catalog/aws-redshift-cluster) -- the provisioned alternative when steady, predictable load makes reserved capacity cheaper

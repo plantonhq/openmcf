@@ -74,7 +74,16 @@ func routes(
 			args.Description = pulumi.String(route.Description)
 		}
 
-		opts := []pulumi.ResourceOption{pulumi.Provider(provider), pulumi.Parent(createdEndpoint)}
+		// AWS deletes a route through the endpoint's associated target
+		// network slowly -- observed live 'deleting' past the provider's
+		// 4-minute default delete timeout (twice, 2026-08-13); the delete
+		// does complete, just late. Both timeouts are pinned above the
+		// observed worst case (mirrors the Terraform module's timeouts).
+		opts := []pulumi.ResourceOption{
+			pulumi.Provider(provider),
+			pulumi.Parent(createdEndpoint),
+			pulumi.Timeouts(&pulumi.CustomTimeouts{Create: "10m", Delete: "10m"}),
+		}
 		if createdAssociation, ok := createdAssociations[subnetId]; ok {
 			opts = append(opts, pulumi.DependsOn([]pulumi.Resource{createdAssociation}))
 		}

@@ -1,0 +1,16 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreEvaluation
+metadata:
+  name: my-code-eval
+spec:
+  region: <aws-region>
+  evaluators:
+    - name: custom_score
+      description: Lambda scorer
+      level: TRACE
+      codeBased:
+        lambdaArn:
+          valueFrom:
+            kind: AwsLambda
+            name: <scorer-function>
+            fieldPath: status.outputs.function_arn

@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockmodelaccess.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/aws/awsbedrockmodelaccess/v1alpha1/outputs.proto";
+import "catalog/aws/awsbedrockmodelaccess/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AwsBedrockModelAccess is a component for managing Amazon Bedrock model
+// access - the marketplace agreement (and, where required, the account
+// use-case form) that entitles an AWS account to invoke a specific
+// foundation model in a region.
+message AwsBedrockModelAccess {
+  // api_version specifies the API version for this resource.
+  string api_version = 1 [(buf.validate.field).string.const = 'aws.planton.dev/v1alpha1'];
+
+  // kind identifies this resource type.
+  string kind = 2 [(buf.validate.field).string.const = 'AwsBedrockModelAccess'];
+
+  // metadata contains standard resource metadata including name, labels, and annotations.
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec defines the desired state of the model access.
+  AwsBedrockModelAccessSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status contains the observed state and outputs from the deployment.
+  AwsBedrockModelAccessStatus status = 5;
+}
+
+// AwsBedrockModelAccessStatus contains the status and outputs for the
+// model access.
+message AwsBedrockModelAccessStatus {
+  // outputs contains the values exported from the IaC stack after deployment.
+  AwsBedrockModelAccessStackOutputs outputs = 1;
+}

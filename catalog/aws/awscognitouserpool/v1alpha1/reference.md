@@ -1593,6 +1593,7 @@ Fields on other kinds that can point at this resource:
 | AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolArn` | `status.outputs.user_pool_arn` |
 | AwsLbListenerRule | `spec.actions[].authenticateCognito.userPoolDomain` | `status.outputs.user_pool_domain` |
 | AwsOpenSearchDomain | `spec.cognitoOptions.userPoolId` | `status.outputs.user_pool_id` |
+| AwsRestApiGateway | `spec.authorizers[].providerArns` | `status.outputs.user_pool_arn` |
 
 ## See Also
 

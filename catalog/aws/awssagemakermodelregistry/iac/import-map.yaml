@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awssagemakermodelregistry
+spec:
+  # Both the group and its folded policy import by the group's bare name
+  # (the policy resource's ID IS the group name upstream).
+  values:
+    - name: model_package_group_name
+      derivations:
+        - from_stack_output: model_package_group_name
+      where_to_find: >-
+        SageMaker console -> Model registry -> Model groups (the name),
+        or `aws sagemaker list-model-package-groups`
+        (ModelPackageGroupName).

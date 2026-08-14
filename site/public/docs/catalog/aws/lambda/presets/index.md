@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Container-Based Lambda Function"
     excerpt: "This preset creates a Lambda function from a container image in ECR. The function name comes from `metadata.name`. Runtime and entrypoint are defined by the image — leave `runtime` and `handler`..."
+  - slug: "03-durable-workflow"
+    rank: "03"
+    title: "Durable Workflow"
+    excerpt: "This preset creates a durable Lambda function: AWS checkpoints the function's progress so a long-running workflow — here, a week-long order-fulfillment saga — survives interruption and resumes where..."
 ---
 
 # Lambda Presets

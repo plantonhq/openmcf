@@ -457,16 +457,20 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].notificationTargetArn` | `status.outputs.topic_arn` |
 | AwsAutoScalingGroup | `spec.notifications.topic` | `status.outputs.topic_arn` |
+| AwsCloudTrail | `spec.snsTopicName` | `status.outputs.topic_name` |
 | AwsCloudwatchAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchAlarm | `spec.okActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchAlarm | `spec.insufficientDataActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchCompositeAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchCompositeAlarm | `spec.okActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchCompositeAlarm | `spec.insufficientDataActions` | `status.outputs.topic_arn` |
+| AwsConfigRecorder | `spec.deliveryChannel.snsTopicArn` | `status.outputs.topic_arn` |
 | AwsMemcachedElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
 | AwsMemorydbCluster | `spec.snsTopicArn` | `status.outputs.topic_arn` |
 | AwsRedisElasticache | `spec.notificationTopicArn` | `status.outputs.topic_arn` |
 | AwsS3Bucket | `spec.notification.topics[].topicArn` | `status.outputs.topic_arn` |
+| AwsSagemakerEndpoint | `spec.asyncInference.successTopicArn` | `status.outputs.topic_arn` |
+| AwsSagemakerEndpoint | `spec.asyncInference.errorTopicArn` | `status.outputs.topic_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].snsTopic` | `status.outputs.topic_arn` |
 | AwsSnsSubscription | `spec.topicArn` | `status.outputs.topic_arn` |
 

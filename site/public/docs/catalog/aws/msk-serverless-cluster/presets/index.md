@@ -16,6 +16,10 @@ presets:
     rank: "02"
     title: "Composed Serverless Kafka (Full References)"
     excerpt: "An MSK Serverless cluster where every cross-resource input resolves from Planton-managed resources: subnets from `AwsSubnet` nodes and the attached security group from an `AwsSecurityGroup` node. The..."
+  - slug: "03-multi-vpc-access"
+    rank: "03"
+    title: "Multi-VPC Serverless Kafka"
+    excerpt: "An MSK Serverless cluster reachable from TWO VPCs at once: AWS provisions client-facing network interfaces in every declared placement, so producers in the application VPC and consumers in the..."
 ---
 
 # MSK Serverless Cluster Presets

@@ -1,0 +1,23 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrail
+metadata:
+  name: s3-data-events-trail
+spec:
+  region: <aws-region>
+  s3BucketName:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: <audit-logs-bucket>
+      fieldPath: status.outputs.bucket_id
+  s3KeyPrefix: data-events
+  advancedEventSelectors:
+    - name: S3 object writes in the data lake
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Data"]
+        - field: resources.type
+          equals: ["AWS::S3::Object"]
+        - field: resources.ARN
+          startsWith: ["arn:aws:s3:::<data-lake-bucket>/"]
+        - field: readOnly
+          equals: ["false"]

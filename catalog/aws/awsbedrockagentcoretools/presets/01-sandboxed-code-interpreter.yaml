@@ -1,0 +1,11 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTools
+metadata:
+  name: my-agent-sandbox
+spec:
+  region: us-west-2
+  codeInterpreters:
+    - name: python_sandbox
+      description: Runs model-written analysis code with no network access
+      network:
+        mode: SANDBOX

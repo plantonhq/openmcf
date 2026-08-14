@@ -18,7 +18,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **FIFO Configuration** -- created only when `fifoQueue` is `true`; enables content-based deduplication, per-message-group deduplication scope, and high-throughput mode. FIFO queue names automatically receive the `.fifo` suffix
 - **Dead Letter Queue Redrive Policy** -- configured only when `deadLetterConfig` is provided; routes messages that exceed `maxReceiveCount` receive attempts to a target DLQ
 - **Redrive Allow Policy** -- attached only when `redriveAllowPolicy` is provided; restricts which source queues may use this queue as their dead letter queue (`allowAll`, `denyAll`, or `byQueue` with an explicit list of up to 10 source queue ARNs)
-- **Server-Side Encryption** -- SSE-SQS when `sqsManagedSseEnabled` is `true`, or SSE-KMS when `kmsKeyId` is provided (mutually exclusive)
+- **Server-Side Encryption** -- AWS encrypts new queues with SSE-SQS by default; `sqsManagedSseEnabled` pins that on (`true`) or explicitly opts out (`false`), or provide `kmsKeyId` for SSE-KMS (mutually exclusive with setting `sqsManagedSseEnabled` at all)
 - **IAM Access Policy** -- attached only when `policy` is provided; controls which AWS principals can send, receive, or manage messages
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
@@ -92,7 +92,7 @@ These are the most important decisions when configuring an SQS queue. Explore th
 
 **Standard vs. FIFO** -- Standard queues offer maximum throughput with best-effort ordering and at-least-once delivery. FIFO queues guarantee exactly-once processing and strict message ordering within each message group, at the cost of lower throughput. Set `fifoQueue: true` for FIFO. This cannot be changed after creation.
 
-**Encryption method** -- Choose `sqsManagedSseEnabled: true` for zero-cost SQS-managed encryption, or provide `kmsKeyId` for customer-managed KMS encryption with CloudTrail audit trails and key rotation control. The two are mutually exclusive.
+**Encryption method** -- Leave `sqsManagedSseEnabled` unset to keep AWS's default (new queues come up SSE-SQS encrypted), set it `true` to pin zero-cost SQS-managed encryption explicitly, set it `false` to opt out of default encryption entirely, or provide `kmsKeyId` for customer-managed KMS encryption with CloudTrail audit trails and key rotation control. Setting `sqsManagedSseEnabled` (either value) and `kmsKeyId` are mutually exclusive.
 
 **Dead letter queue** -- Configure `deadLetterConfig` with a `targetArn` and `maxReceiveCount` to route poison messages to a separate queue for investigation. Both queues must be the same type (Standard or FIFO) and in the same account and region.
 

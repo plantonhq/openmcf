@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "ARM64 Background Worker"
     excerpt: "This preset defines a queue-consuming background worker on Graviton (ARM64) Fargate: no ports, no load balancer, the smallest Fargate task size, and a long stop timeout so in-flight work drains..."
+  - slug: "04-launch-time-ebs-volume"
+    rank: "04"
+    title: "Launch-Time EBS Volume Task"
+    excerpt: "This preset declares a task whose volume is configured at launch time: the task definition names the volume slot, and the ECS service that runs it attaches a fresh, service-owned EBS volume per task..."
 ---
 
 # ECS Task Definition Presets

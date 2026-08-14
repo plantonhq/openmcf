@@ -17,8 +17,7 @@ spec:
   # has none) -- both paths are proven by CEL spec tests and the
   # offline gate.
   tier: 1
-  # pending_proof: the session-043 depth closure changed the live send surface (the capacity-autoscaling fold with autoscaler-owned capacity in both modes, the typed resource policy with the confirm flag) -- Q29 proves it
-  status: pending_proof
+  status: green
   validated_provisioners:
     - pulumi
     - terraform

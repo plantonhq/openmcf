@@ -1,0 +1,30 @@
+# Canonical AwsBedrockInvocationLogging example (hack/dev manifest and
+# refgen Example source): full-fidelity delivery -- CloudWatch for
+# querying with S3 spillover for oversized payloads, plus the S3
+# archive arm. Literal names/ARNs stand in for the composed references
+# so the offline `tofu plan` renders the resource.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockInvocationLogging
+metadata:
+  name: bedrock-logging-us-west-2
+  id: bedrock-logging-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  # Video payloads excluded: keeps CloudWatch volume manageable for
+  # text-first workloads while keeping the invocation records.
+  videoDataDeliveryEnabled: false
+  cloudwatch:
+    logGroupName:
+      value: /bedrock/invocations
+    roleArn:
+      value: arn:aws:iam::123456789012:role/bedrock-invocation-logging
+    largeDataDeliveryS3:
+      bucketName:
+        value: bedrock-invocation-large-payloads
+      keyPrefix: spillover
+  s3:
+    bucketName:
+      value: bedrock-invocation-archive
+    keyPrefix: invocations

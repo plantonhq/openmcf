@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockinvocationlogging.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockInvocationLoggingSpec defines the desired Bedrock model
+// invocation logging configuration for one AWS region.
+//
+// This is a SETTINGS SINGLETON: AWS keeps exactly one invocation
+// logging configuration per account+region (the resource identity IS
+// the region), and this component manages it. Deploy at most one
+// instance per region; two instances targeting the same region fight
+// over the same configuration object. metadata.name never reaches
+// AWS - it is Planton-side identity only.
+//
+// Invocation logging captures every model call in the region - the
+// full request/response bodies per enabled data type - and delivers
+// them to CloudWatch Logs, S3, or both. It is the observability
+// backbone for Bedrock workloads: without it there is no audit trail
+// of what prompts were sent or what the models returned.
+//
+// Destroying this component DELETES the logging configuration (the
+// region reverts to no invocation logging).
+message AwsBedrockInvocationLoggingSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.delivery_destination_required"
+    message: "configure at least one delivery destination (cloudwatch and/or s3) - a logging configuration with no destination delivers nothing"
+    expression: "has(this.cloudwatch) || has(this.s3)"
+  };
+
+  // The AWS region whose Bedrock invocation logging this instance
+  // manages. The region IS the resource identity - one instance per
+  // region, and it is also the provider's import ID.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Log the text prompts/completions of model invocations. Unset
+  // means AWS's default: enabled. Set false to exclude text bodies
+  // while keeping the invocation records themselves.
+  optional bool text_data_delivery_enabled = 2;
+
+  // Log image inputs/outputs of model invocations. Unset means AWS's
+  // default: enabled.
+  optional bool image_data_delivery_enabled = 3;
+
+  // Log embedding vectors of model invocations. Unset means AWS's
+  // default: enabled.
+  optional bool embedding_data_delivery_enabled = 4;
+
+  // Log video inputs/outputs of model invocations. Unset means AWS's
+  // default: enabled.
+  optional bool video_data_delivery_enabled = 5;
+
+  // Deliver invocation logs to a CloudWatch Logs log group. At least
+  // one of cloudwatch / s3 must be configured; both together are the
+  // full-fidelity posture (CloudWatch for querying, S3 for retention).
+  AwsBedrockInvocationLoggingCloudwatch cloudwatch = 6;
+
+  // Deliver invocation logs to an S3 bucket. At least one of
+  // cloudwatch / s3 must be configured.
+  AwsBedrockInvocationLoggingS3 s3 = 7;
+}
+
+// AwsBedrockInvocationLoggingCloudwatch is the CloudWatch Logs
+// delivery arm of the invocation logging configuration.
+message AwsBedrockInvocationLoggingCloudwatch {
+  // The CloudWatch Logs log group invocation logs are written to. The
+  // log group must already exist in the same region - Bedrock does
+  // not create it.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
+  ];
+
+  // The IAM role Bedrock assumes to write to the log group. The role
+  // must trust "bedrock.amazonaws.com" and carry logs:CreateLogStream
+  // + logs:PutLogEvents on the log group - AWS validates the
+  // permission chain at apply ("Failed to validate permissions for
+  // log group") and both engines' providers retry through IAM
+  // propagation lag.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Where CloudWatch delivery spills over for payloads too large for
+  // a log event (CloudWatch caps events at 256 KB; model inputs and
+  // outputs routinely exceed it). Without this, oversized payloads
+  // are truncated out of the CloudWatch stream.
+  AwsBedrockInvocationLoggingS3 large_data_delivery_s3 = 3;
+}
+
+// AwsBedrockInvocationLoggingS3 names an S3 delivery destination
+// (used both as the standalone S3 arm and as CloudWatch's large-data
+// spillover).
+message AwsBedrockInvocationLoggingS3 {
+  // The S3 bucket invocation logs are written to. The bucket must
+  // already exist in the same region, and its bucket policy must
+  // allow "bedrock.amazonaws.com" to s3:PutObject (scope it with an
+  // aws:SourceAccount condition) - Bedrock writes as its own service
+  // principal, not as an IAM role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix for delivered objects (for example
+  // "bedrock/invocations"). Empty writes at the bucket root.
+  string key_prefix = 2 [(buf.validate.field).string.max_len = 1024];
+}

@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockknowledgebase.v1alpha1;
+
+// AwsBedrockKnowledgeBaseStackOutputs captures observable identifiers from
+// a provisioned Bedrock knowledge base. These outputs are used by
+// downstream resources (agents, flows) to wire dependencies via
+// StringValueOrRef.
+message AwsBedrockKnowledgeBaseStackOutputs {
+  // The unique knowledge base identifier (e.g. "EMDPPAYPZI") - the join
+  // key agents and flows use.
+  string knowledge_base_id = 1;
+
+  // The Amazon Resource Name of the knowledge base - the canonical key
+  // for IAM policies.
+  string knowledge_base_arn = 2;
+
+  // Data source IDs keyed by each `data_sources` entry's name.
+  // Example: {"docs": "GWCMFMQF6T"}.
+  map<string, string> data_source_ids = 3;
+}

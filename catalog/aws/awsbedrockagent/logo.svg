@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock Agent</title>
+    <defs>
+        <linearGradient id="bragtGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#4C1D95"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#bragtGradient)"/>
+    <rect x="22" y="24" width="36" height="28" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+    <line x1="40" y1="14" x2="40" y2="24" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="40" cy="12" r="3" fill="#FFFFFF"/>
+    <circle cx="33" cy="36" r="3.5" fill="#FFFFFF"/>
+    <circle cx="47" cy="36" r="3.5" fill="#FFFFFF"/>
+    <path d="M32 45 Q40 50 48 45" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+    <line x1="22" y1="60" x2="34" y2="60" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+    <line x1="46" y1="60" x2="58" y2="60" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>

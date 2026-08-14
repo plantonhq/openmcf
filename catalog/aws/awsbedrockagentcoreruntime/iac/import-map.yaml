@@ -1,0 +1,32 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsbedrockagentcoreruntime
+spec:
+  # The runtime imports by its bare id. Endpoints compose the runtime id
+  # with the endpoint NAME (its AWS identity -- there is no separate
+  # endpoint id), which is exactly the module's for_each address key. The
+  # resource policy imports by the runtime's own ARN (this kind scopes the
+  # policy to the runtime it deploys).
+  values:
+    - name: agent_runtime_id
+      derivations:
+        - from_stack_output: agent_runtime_id
+      where_to_find: >-
+        Bedrock AgentCore console -> Agent runtimes -> <runtime> (the ID),
+        or `aws bedrock-agentcore-control list-agent-runtimes`
+        (agentRuntimeId).
+    - name: endpoint_name
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        The endpoint name IS its AWS identity -- each spec.endpoints
+        entry's name (`aws bedrock-agentcore-control
+        list-agent-runtime-endpoints --agent-runtime-id <id>` shows name).
+    - name: resource_arn
+      derivations:
+        - from_stack_output: agent_runtime_arn
+      where_to_find: >-
+        The runtime's ARN -- `aws bedrock-agentcore-control
+        list-agent-runtimes` (agentRuntimeArn); the module attaches the
+        resource policy to the runtime it deploys.

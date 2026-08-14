@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoretokenvault.v1alpha1;
+
+// AwsBedrockAgentCoreTokenVaultStackOutputs captures the observable
+// state of the configured token vault.
+message AwsBedrockAgentCoreTokenVaultStackOutputs {
+  // The vault the setting was applied to ("default" unless the spec
+  // targeted another vault) - also the provider's import ID.
+  string token_vault_id = 1;
+
+  // The key ownership in effect: "CustomerManagedKey" or
+  // "ServiceManagedKey".
+  string key_type = 2;
+
+  // The customer-managed KMS key ARN in effect (empty under
+  // ServiceManagedKey). Charts read this to align other AgentCore
+  // components onto the same key.
+  string kms_key_arn = 3;
+}

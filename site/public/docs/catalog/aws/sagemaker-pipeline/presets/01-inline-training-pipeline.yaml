@@ -1,0 +1,21 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerPipeline
+metadata:
+  name: inline-training-pipeline
+spec:
+  region: us-west-2
+  description: Training pipeline with its definition inline in the manifest
+  roleArn:
+    value: arn:aws:iam::123456789012:role/sagemaker-pipeline-execution
+  # Placeholder graph (a Fail step is a legal single-node DAG). Real
+  # definitions come from the SageMaker Python SDK's
+  # pipeline.definition() - paste its output here.
+  definition:
+    Version: "2020-12-01"
+    Metadata: {}
+    Parameters: []
+    Steps:
+      - Name: ReplaceMe
+        Type: Fail
+        Arguments:
+          ErrorMessage: placeholder definition - replace with pipeline.definition() output

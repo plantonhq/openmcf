@@ -1,0 +1,16 @@
+# Canonical AwsRestApiVpcLink example (hack/dev manifest and refgen
+# Example source): a REST API VPC link fronting an internal Network
+# Load Balancer. Literal ARN stands in for the composed NLB reference
+# so the offline `tofu plan` renders the resource.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiVpcLink
+metadata:
+  name: orders-nlb-link
+  id: orders-nlb-link
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Orders service NLB
+  targetArn:
+    value: arn:aws:elasticloadbalancing:us-west-2:123456789012:loadbalancer/net/orders/abcdef

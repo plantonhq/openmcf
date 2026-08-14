@@ -1,0 +1,28 @@
+# Full surface: the default vault encrypted with a customer-managed
+# KMS key (consumer-scoped fixture at e2e/prerequisites/awskmskey.yaml).
+# Run BEFORE the service-managed scenario -- that one doubles as the
+# revert that returns the vault to AWS-owned encryption (destroy alone
+# is a no-op at AWS).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTokenVault
+metadata:
+  name: planton-oss-e2e-awsacetv-cmk
+  id: planton-oss-e2e-awsacetv-cmk
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoretokenvault
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsKmsKey"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  keyType: CustomerManagedKey
+  kmsKeyArn:
+    valueFrom:
+      kind: AwsKmsKey
+      name: planton-oss-e2e-acetv-key
+      fieldPath: status.outputs.key_arn

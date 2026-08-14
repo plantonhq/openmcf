@@ -1,0 +1,7 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTokenVault
+metadata:
+  name: agentcore-vault-service-managed
+spec:
+  region: <aws-region>
+  keyType: ServiceManagedKey

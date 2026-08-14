@@ -1,0 +1,7 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModelRegistry
+metadata:
+  name: team-model-registry
+spec:
+  region: us-west-2
+  description: Registered model versions for the recommendations team

@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package dev.planton.aws.awssagemakerpipeline.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsSagemakerPipelineSpec defines the desired configuration for an
+// Amazon SageMaker AI pipeline - the ML workflow DAG (processing,
+// training, evaluation, registration steps) that executions run
+// against. The pipeline's AWS name derives from metadata.name.
+//
+// The definition itself is SageMaker's pipeline-definition JSON schema
+// (normally produced by the SageMaker Python SDK's pipeline.definition()).
+// Provide it inline (`definition`) or point at an S3 object
+// (`definition_s3_location`) - exactly one. Creating a pipeline is
+// free; only executions bill.
+message AwsSagemakerPipelineSpec {
+  // The AWS region where the pipeline will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Display name shown in Studio (1-256 characters; letters, digits,
+  // hyphens). Omitted = the modules reuse the pipeline name.
+  string display_name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 256
+      pattern: "^[0-9A-Za-z]([0-9A-Za-z-])*$"
+    }
+  ];
+
+  // Free-form description (max 3072 characters).
+  string description = 3 [(buf.validate.field).string.max_len = 3072];
+
+  // IAM role pipeline executions assume to run their steps (training
+  // jobs, processing jobs, model registration). Must trust
+  // sagemaker.amazonaws.com.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // The pipeline-definition JSON inline, as structured data (the
+  // SageMaker SDK's pipeline.definition() output). Exactly one of
+  // `definition` and `definition_s3_location`.
+  google.protobuf.Struct definition = 5;
+
+  // Read the definition JSON from S3 instead of inlining it. Exactly
+  // one of `definition` and `definition_s3_location`. NOTE: AWS's
+  // describe API returns only the RESOLVED definition, never this
+  // location - drift on the S3 object is invisible to refresh.
+  AwsSagemakerPipelineDefinitionS3Location definition_s3_location = 6;
+
+  // Default cap on steps executed in parallel across this pipeline's
+  // executions (>= 1). Omitted = no pipeline-level cap.
+  optional int32 parallelism_max_steps = 7 [(buf.validate.field).int32.gte = 1];
+
+  // AWS's CreatePipeline contract: the definition comes from exactly
+  // one place.
+  option (buf.validate.message).cel = {
+    id: "definition_exactly_one"
+    message: "exactly one of definition and definition_s3_location must be set"
+    expression: "has(this.definition) != has(this.definition_s3_location)"
+  };
+}
+
+// AwsSagemakerPipelineDefinitionS3Location points at the definition
+// JSON object in S3.
+message AwsSagemakerPipelineDefinitionS3Location {
+  // The bucket holding the definition object.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // The object key of the definition JSON.
+  string object_key = 2 [(buf.validate.field).string.min_len = 1];
+
+  // Pin a specific object version. Omitted = latest.
+  string version_id = 3 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
+}

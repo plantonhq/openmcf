@@ -1,0 +1,25 @@
+# Canonical AwsSagemakerModelRegistry example (hack/dev manifest and
+# refgen Example source): a described group with a cross-account
+# sharing policy. Literal account IDs stand in for real principals so
+# the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSagemakerModelRegistry
+metadata:
+  name: churn-models
+  id: churn-models
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  description: Registered churn-scoring model versions
+  resourcePolicy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowCrossAccountDescribe
+        Effect: Allow
+        Principal:
+          AWS: arn:aws:iam::210987654321:root
+        Action:
+          - sagemaker:DescribeModelPackage
+          - sagemaker:ListModelPackages
+        Resource: "*"

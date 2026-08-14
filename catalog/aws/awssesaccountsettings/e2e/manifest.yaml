@@ -1,0 +1,19 @@
+# Canonical AwsSesAccountSettings example (hack/dev manifest and
+# refgen Example source): the recommended reputation posture -- both
+# suppression reasons on, VDM enabled with engagement metrics.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSesAccountSettings
+metadata:
+  name: ses-account-us-west-2
+  id: ses-account-us-west-2
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  suppression:
+    reasons:
+      - BOUNCE
+      - COMPLAINT
+  vdm:
+    enabled: true
+    engagementMetrics: true

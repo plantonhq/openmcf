@@ -1,0 +1,71 @@
+# Full single-account surface: the detector with two protection plans
+# (one carrying a sub-toggle send of false), a noise filter, an ACTIVE
+# trusted list + threat list (real TEST-NET list files from the
+# object-set fixture), and findings export to S3 under the fixture KMS
+# key. GuardDuty bills by processed events; an idle e2e account rounds
+# to zero, and the 30-day free trial covers new detectors regardless.
+#
+# SINGLETON COLLISION CLASS: AWS allows ONE detector per account per
+# region -- both engines' lanes and any concurrent session target the
+# same regional slot; lanes run sequentially within a session, and a
+# pre-existing detector in the test account (hand-enabled or
+# org-auto-enabled) fails create (the watch-list flags it).
+#
+# The org/member/invite arms are deliberately not exercised live
+# (single-account wall) -- see the profile.
+#
+# Destroy is a REAL delete: removing the detector removes findings and
+# every satellite.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsGuardDuty
+metadata:
+  name: planton-oss-e2e-awsgd-full
+  id: planton-oss-e2e-awsgd-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsguardduty
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsS3Bucket,AwsKmsKey,AwsS3ObjectSet"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  findingPublishingFrequency: FIFTEEN_MINUTES
+  features:
+    - name: S3_DATA_EVENTS
+    - name: RUNTIME_MONITORING
+      additionalConfiguration:
+        - name: EC2_AGENT_MANAGEMENT
+          enabled: false
+  filters:
+    - name: planton-e2e-archive-low
+      description: Planton E2E filter - archive low-severity findings
+      action: ARCHIVE
+      rank: 1
+      criteria:
+        - field: severity
+          lessThan: "4"
+  ipSets:
+    - name: planton-e2e-trusted
+      format: TXT
+      location: https://s3.amazonaws.com/planton-oss-e2e-awsgd-bucket/lists/trusted.txt
+      activate: true
+  threatIntelSets:
+    - name: planton-e2e-known-bad
+      format: TXT
+      location: https://s3.amazonaws.com/planton-oss-e2e-awsgd-bucket/lists/bad.txt
+      activate: true
+  publishingDestination:
+    bucketArn:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awsgd-bucket
+        fieldPath: status.outputs.bucket_arn
+    kmsKeyArn:
+      valueFrom:
+        kind: AwsKmsKey
+        name: planton-oss-e2e-awsgd-key
+        fieldPath: status.outputs.key_arn

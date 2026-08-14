@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>AWS Bedrock Guardrail</title>
+    <defs>
+        <linearGradient id="brgrdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7C3AED"/>
+            <stop offset="100%" stop-color="#4C1D95"/>
+        </linearGradient>
+    </defs>
+    <rect width="80" height="80" rx="16" fill="url(#brgrdGradient)"/>
+    <path d="M40 14 L62 22 V40 C62 53 53 62 40 66 C27 62 18 53 18 40 V22 Z"
+          fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M30 40 L37 47 L51 32" fill="none" stroke="#FFFFFF" stroke-width="4"
+          stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,610 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagent.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockAgentSpec defines the desired configuration for an Amazon
+// Bedrock agent - a foundation-model-powered assistant that reasons over a
+// user request, calls the tools exposed through its action groups, retrieves
+// context from associated knowledge bases, and (in multi-agent mode)
+// delegates to collaborator agents.
+//
+// The agent's name is taken from `metadata.name` (letters, digits, hyphen,
+// underscore; AWS caps it at 100 characters and rejects spaces/dots).
+//
+// An agent always has a mutable working version, the literal "DRAFT".
+// Action groups, collaborators, and knowledge-base associations attach to
+// the draft; each `aliases` entry snapshots the draft into an immutable
+// numbered version and points at it. Editing the spec changes only the
+// draft - live traffic through an alias is unaffected until the alias is
+// re-pointed or recreated. Agents are free to create; AWS bills per model
+// invocation at runtime.
+//
+// After every change the modules let AWS "prepare" the agent (compile the
+// draft for serving) and wait until it reaches PREPARED - the deploy is not
+// done while the agent is still compiling.
+message AwsBedrockAgentSpec {
+  // The AWS region where the agent will be created.
+  // Example: "us-west-2", "us-east-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Human-readable description shown in the Bedrock console (1-200
+  // characters when set). Updates in place.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // ---------------------------------------------------------------------------
+  // Model and Instructions
+  // ---------------------------------------------------------------------------
+
+  // The model that powers the agent. Accepts a foundation-model ID
+  // ("amazon.nova-micro-v1:0"), a foundation-model ARN, or an inference
+  // profile ID/ARN (per-application cost attribution or cross-region
+  // routing). The account must have access to the model in this region -
+  // auto-enabled AWS models (Amazon, Mistral, Meta) work immediately;
+  // marketplace models need an AwsBedrockModelAccess agreement first.
+  string foundation_model = 3 [(buf.validate.field).string.min_len = 1];
+
+  // IAM role the Bedrock service assumes to operate the agent (invoke the
+  // model, call action-group Lambdas, query knowledge bases). The role
+  // must trust bedrock.amazonaws.com. Changing the role replaces the
+  // agent.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef agent_resource_role_arn = 4 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Natural-language instructions that tell the agent what it does and how
+  // to behave (40-20000 characters). This is the agent's system-level
+  // briefing - write it the way you would onboard a new team member.
+  string instruction = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 40
+      max_len: 20000
+    }
+  ];
+
+  // How long (seconds) AWS keeps an idle conversation session alive before
+  // discarding its context (60-5400). Omitted = AWS default (600).
+  int32 idle_session_ttl_seconds = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 60
+      lte: 5400
+    }
+  ];
+
+  // Customer-managed KMS key ARN for encrypting the agent's resources at
+  // rest. Without it, AWS uses a Bedrock-managed key.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef customer_encryption_key_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Multi-Agent Collaboration
+  // ---------------------------------------------------------------------------
+
+  // Multi-agent collaboration mode. SUPERVISOR lets this agent plan and
+  // delegate to its `collaborators`; SUPERVISOR_ROUTER routes each request
+  // to exactly one collaborator without a planning step; DISABLED (the AWS
+  // default when omitted) makes this a standalone agent.
+  string agent_collaboration = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "SUPERVISOR",
+        "SUPERVISOR_ROUTER",
+        "DISABLED"
+      ]
+    }
+  ];
+
+  // ---------------------------------------------------------------------------
+  // Guardrail, Memory, Prompt Overrides
+  // ---------------------------------------------------------------------------
+
+  // Attach a Bedrock guardrail so every model input/output the agent
+  // produces is evaluated against its content-safety policies.
+  AwsBedrockAgentGuardrail guardrail = 9;
+
+  // Enable conversation memory - AWS summarizes each session and carries
+  // the summaries into later sessions with the same memory id.
+  AwsBedrockAgentMemory memory = 10;
+
+  // Override the prompt templates the agent uses at specific steps of its
+  // orchestration (advanced tuning; most agents never need this).
+  AwsBedrockAgentPromptOverride prompt_override = 11;
+
+  // ---------------------------------------------------------------------------
+  // Satellites (attached to the DRAFT version)
+  // ---------------------------------------------------------------------------
+
+  // Tools the agent can call, grouped by purpose. Each group exposes either
+  // a Lambda-backed API (OpenAPI or function schema) or a reserved AWS
+  // capability (user-input elicitation, code interpreter).
+  repeated AwsBedrockAgentActionGroup action_groups = 12;
+
+  // Immutable serving endpoints. Each entry snapshots the current draft
+  // into a new numbered agent version at create time (or pins an explicit
+  // version through `routing`) and exposes it under a stable alias ID.
+  repeated AwsBedrockAgentAlias aliases = 13;
+
+  // Agents this supervisor delegates to. Requires `agent_collaboration` to
+  // be SUPERVISOR or SUPERVISOR_ROUTER. Each collaborator is another
+  // Bedrock agent, referenced through one of ITS alias ARNs.
+  repeated AwsBedrockAgentCollaborator collaborators = 14;
+
+  // Knowledge bases the agent queries for retrieval-augmented answers.
+  repeated AwsBedrockAgentKnowledgeBaseAssociation knowledge_base_associations = 15;
+
+  // Entry names are for_each keys on both engines - duplicates would
+  // silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "action_group_names_unique"
+    message: "action_groups entries must have unique names"
+    expression: "this.action_groups.map(g, g.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "alias_names_unique"
+    message: "aliases entries must have unique names"
+    expression: "this.aliases.map(a, a.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "collaborator_names_unique"
+    message: "collaborators entries must have unique names"
+    expression: "this.collaborators.map(c, c.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "kb_association_names_unique"
+    message: "knowledge_base_associations entries must have unique names"
+    expression: "this.knowledge_base_associations.map(k, k.name).unique()"
+  };
+
+  // AWS rejects AssociateAgentCollaborator on an agent whose collaboration
+  // mode is DISABLED.
+  option (buf.validate.message).cel = {
+    id: "collaborators_require_supervisor_mode"
+    message: "collaborators require agent_collaboration to be SUPERVISOR or SUPERVISOR_ROUTER"
+    expression: "this.collaborators.size() == 0 || (this.agent_collaboration == 'SUPERVISOR' || this.agent_collaboration == 'SUPERVISOR_ROUTER')"
+  };
+}
+
+// AwsBedrockAgentGuardrail attaches one guardrail (at a specific version)
+// to the agent.
+message AwsBedrockAgentGuardrail {
+  // The guardrail to apply to every model input/output of this agent.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef guardrail_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockGuardrail,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.guardrail_id"
+  ];
+
+  // The guardrail version to pin: "DRAFT" or a published number ("1",
+  // "2", ...). Production agents should pin a published version so
+  // guardrail draft edits never change live behavior.
+  string version = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentMemory enables session-summary memory. AWS supports one
+// memory type (SESSION_SUMMARY) - the modules send that constant; presence
+// of this message is the enablement.
+message AwsBedrockAgentMemory {
+  // How many days AWS retains session summaries (AWS documents 0-365;
+  // omitted = AWS default, 30).
+  int32 storage_days = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 365
+    }
+  ];
+
+  // How many of the most recent sessions AWS summarizes into the memory
+  // context. Omitted = AWS default.
+  int32 max_recent_sessions = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32.gte = 1
+  ];
+}
+
+// AwsBedrockAgentPromptOverride replaces the prompt templates the agent
+// uses at specific orchestration steps.
+message AwsBedrockAgentPromptOverride {
+  // Lambda that parses the raw model output for every step whose
+  // `parser_mode` is OVERRIDDEN. Required when any configuration overrides
+  // its parser.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef override_lambda = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // One override per orchestration step (at least one). Only steps listed
+  // here are overridden; the agent keeps AWS defaults for the rest (the
+  // modules mark each entry as an OVERRIDDEN template - authoring an entry
+  // IS the override).
+  repeated AwsBedrockAgentPromptConfiguration prompt_configurations = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // Each orchestration step may be overridden at most once.
+  option (buf.validate.message).cel = {
+    id: "prompt_types_unique"
+    message: "each prompt_type may be overridden at most once"
+    expression: "this.prompt_configurations.map(p, p.prompt_type).unique()"
+  };
+
+  // AWS requires the parser Lambda whenever a step overrides its parser.
+  option (buf.validate.message).cel = {
+    id: "overridden_parser_requires_lambda"
+    message: "override_lambda is required when any prompt configuration sets parser_mode = OVERRIDDEN"
+    expression: "!this.prompt_configurations.exists(p, p.parser_mode == 'OVERRIDDEN') || has(this.override_lambda)"
+  };
+}
+
+// AwsBedrockAgentPromptConfiguration overrides one orchestration step's
+// prompt template.
+message AwsBedrockAgentPromptConfiguration {
+  // The orchestration step to override.
+  string prompt_type = 1 [(buf.validate.field).string = {
+    in: [
+      "PRE_PROCESSING",
+      "ORCHESTRATION",
+      "POST_PROCESSING",
+      "KNOWLEDGE_BASE_RESPONSE_GENERATION",
+      "MEMORY_SUMMARIZATION"
+    ]
+  }];
+
+  // The replacement prompt template. Use AWS's placeholder variables
+  // (e.g. $question$, $instruction$) - AWS validates the template
+  // server-side at prepare time.
+  string base_prompt_template = 2 [(buf.validate.field).string.min_len = 1];
+
+  // How the model's raw output for this step is parsed: DEFAULT uses
+  // AWS's parser; OVERRIDDEN routes it through `override_lambda`. Omitted
+  // = AWS default (DEFAULT).
+  string parser_mode = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["DEFAULT", "OVERRIDDEN"]}
+  ];
+
+  // Whether this step runs at all: ENABLED or DISABLED (e.g. disable
+  // PRE_PROCESSING entirely). Omitted = AWS default (ENABLED).
+  string prompt_state = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+  ];
+
+  // Model sampling parameters for this step.
+  AwsBedrockAgentInferenceConfiguration inference_configuration = 5;
+}
+
+// AwsBedrockAgentInferenceConfiguration tunes model sampling for one
+// overridden step. Every field is optional; explicit zeros are sent (0 is a
+// meaningful temperature).
+message AwsBedrockAgentInferenceConfiguration {
+  // Maximum number of tokens in the model response.
+  optional int32 max_length = 1 [(buf.validate.field).int32.gte = 1];
+
+  // Sequences that stop generation when the model emits them.
+  repeated string stop_sequences = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Sampling temperature (0 = deterministic, 1 = most random).
+  optional double temperature = 3 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+
+  // Sample only from the K most likely next tokens.
+  optional int32 top_k = 4 [(buf.validate.field).int32.gte = 0];
+
+  // Nucleus sampling - consider tokens covering the top P probability
+  // mass (0-1).
+  optional double top_p = 5 [(buf.validate.field).double = {
+    gte: 0
+    lte: 1
+  }];
+}
+
+// AwsBedrockAgentActionGroup is one group of tools the agent can call.
+// Exactly one of two shapes:
+//   - a CUSTOM group: `executor` plus exactly one of `api_schema` /
+//     `function_schema` describing the callable operations;
+//   - a RESERVED group: `parent_action_group_signature` names an
+//     AWS-defined capability (user-input elicitation, code interpreter,
+//     Anthropic computer-use tools) - no executor or schema.
+message AwsBedrockAgentActionGroup {
+  // Stable name for this action group (1-100 characters; letters, digits,
+  // hyphen, underscore). The for_each key on both engines and the key in
+  // the `action_group_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // What the group's operations do, shown to the model as tool context
+  // (1-200 characters). AWS forbids it on reserved groups.
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // ENABLED (default) or DISABLED - a disabled group stays attached but
+  // the model cannot call it. Omitted = AWS default (ENABLED).
+  string state = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+  ];
+
+  // Reserved AWS capability signature. AMAZON.UserInput lets the agent ask
+  // the user clarifying questions; AMAZON.CodeInterpreter lets it run
+  // code; the ANTHROPIC.* signatures enable Claude computer-use tools.
+  string parent_action_group_signature = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "AMAZON.UserInput",
+        "AMAZON.CodeInterpreter",
+        "ANTHROPIC.Computer",
+        "ANTHROPIC.Bash",
+        "ANTHROPIC.TextEditor"
+      ]
+    }
+  ];
+
+  // Where custom operations execute.
+  AwsBedrockAgentActionGroupExecutor executor = 5;
+
+  // Describe operations with an OpenAPI schema (inline or in S3).
+  AwsBedrockAgentApiSchema api_schema = 6;
+
+  // Describe operations as typed function signatures (simpler than
+  // OpenAPI for direct tool definitions).
+  AwsBedrockAgentFunctionSchema function_schema = 7;
+
+  // AWS rejects a description on reserved groups.
+  option (buf.validate.message).cel = {
+    id: "description_conflicts_with_signature"
+    message: "description cannot be set on a reserved group (parent_action_group_signature)"
+    expression: "this.parent_action_group_signature == '' || this.description == ''"
+  };
+
+  // A custom group needs an executor and a schema; a reserved group takes
+  // neither.
+  option (buf.validate.message).cel = {
+    id: "custom_group_shape"
+    message: "custom groups require executor plus exactly one of api_schema/function_schema; reserved groups (parent_action_group_signature) take neither"
+    expression: "this.parent_action_group_signature != '' ? (!has(this.executor) && !has(this.api_schema) && !has(this.function_schema)) : (has(this.executor) && (has(this.api_schema) != has(this.function_schema)))"
+  };
+}
+
+// AwsBedrockAgentActionGroupExecutor says where the group's operations
+// execute - exactly one arm.
+message AwsBedrockAgentActionGroupExecutor {
+  // Lambda function that fulfills the group's operations.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef lambda = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsLambda,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.function_arn"
+  ];
+
+  // Skip server-side execution entirely - the agent returns the tool call
+  // to YOUR application, which executes it and continues the conversation
+  // (AWS's RETURN_CONTROL method, the only custom-control method AWS
+  // defines; the modules send that constant).
+  bool return_control = 2;
+
+  // Exactly one execution arm.
+  option (buf.validate.message).cel = {
+    id: "executor_exactly_one"
+    message: "executor must set exactly one of lambda or return_control"
+    expression: "has(this.lambda) != this.return_control"
+  };
+}
+
+// AwsBedrockAgentApiSchema is an OpenAPI description of the group's
+// operations - exactly one source arm.
+message AwsBedrockAgentApiSchema {
+  // Inline OpenAPI 3 schema body (JSON or YAML).
+  string payload = 1;
+
+  // S3 object holding the OpenAPI schema.
+  AwsBedrockAgentApiSchemaS3 s3 = 2;
+
+  // Exactly one source.
+  option (buf.validate.message).cel = {
+    id: "api_schema_exactly_one"
+    message: "api_schema must set exactly one of payload or s3"
+    expression: "(this.payload != '') != has(this.s3)"
+  };
+}
+
+// AwsBedrockAgentApiSchemaS3 locates an OpenAPI schema object in S3.
+message AwsBedrockAgentApiSchemaS3 {
+  // Bucket holding the schema object.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Object key of the schema document.
+  string object_key = 2 [(buf.validate.field).string.min_len = 1];
+}
+
+// AwsBedrockAgentFunctionSchema describes operations as typed function
+// signatures.
+message AwsBedrockAgentFunctionSchema {
+  // The callable functions (at least one).
+  repeated AwsBedrockAgentFunction functions = 1 [(buf.validate.field).repeated.min_items = 1];
+
+  // Function names are identity within the group.
+  option (buf.validate.message).cel = {
+    id: "function_names_unique"
+    message: "function names must be unique"
+    expression: "this.functions.map(f, f.name).unique()"
+  };
+}
+
+// AwsBedrockAgentFunction is one callable function signature.
+message AwsBedrockAgentFunction {
+  // Function name the model calls (1-100 characters; letters, digits,
+  // hyphen, underscore).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // What the function does, shown to the model (1-1200 characters when
+  // set) - the better the description, the better the model's tool use.
+  string description = 2 [(buf.validate.field).string.max_len = 1200];
+
+  // The function's parameters.
+  repeated AwsBedrockAgentFunctionParameter parameters = 3;
+
+  // Parameter names are identity within the function.
+  option (buf.validate.message).cel = {
+    id: "parameter_names_unique"
+    message: "parameter names must be unique"
+    expression: "this.parameters.map(p, p.name).unique()"
+  };
+}
+
+// AwsBedrockAgentFunctionParameter is one typed function parameter.
+message AwsBedrockAgentFunctionParameter {
+  // Parameter name (1-100 characters; letters, digits, hyphen,
+  // underscore).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // Parameter type.
+  string type = 2 [(buf.validate.field).string = {
+    in: [
+      "string",
+      "number",
+      "integer",
+      "boolean",
+      "array"
+    ]
+  }];
+
+  // What the parameter means, shown to the model (1-500 characters when
+  // set).
+  string description = 3 [(buf.validate.field).string.max_len = 500];
+
+  // Whether the model must supply this parameter.
+  bool required = 4;
+}
+
+// AwsBedrockAgentAlias is one immutable serving endpoint for the agent.
+message AwsBedrockAgentAlias {
+  // Stable name for this alias (1-100 characters; letters, digits, hyphen,
+  // underscore). The for_each key on both engines and the key in the
+  // `alias_ids`/`alias_arns` output maps; also the alias name in AWS.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // Human-readable description (1-200 characters when set).
+  string description = 2 [(buf.validate.field).string.max_len = 200];
+
+  // Pin the alias to an existing agent version and/or provisioned
+  // throughput. Omitted = AWS snapshots the current DRAFT into a NEW
+  // numbered version at alias creation (the common case).
+  AwsBedrockAgentAliasRouting routing = 3;
+}
+
+// AwsBedrockAgentAliasRouting pins an alias to a version and/or capacity.
+message AwsBedrockAgentAliasRouting {
+  // The numbered agent version this alias serves ("1", "2", ...).
+  string agent_version = 1;
+
+  // Provisioned-throughput capacity the alias serves traffic through
+  // (reserved model units bought for this agent's model).
+  dev.planton.shared.foreignkey.v1.StringValueOrRef provisioned_throughput = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockProvisionedThroughput,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.provisioned_model_arn"
+  ];
+
+  // An empty routing entry configures nothing.
+  option (buf.validate.message).cel = {
+    id: "routing_not_empty"
+    message: "routing must set agent_version and/or provisioned_throughput"
+    expression: "this.agent_version != '' || has(this.provisioned_throughput)"
+  };
+}
+
+// AwsBedrockAgentCollaborator delegates work to another Bedrock agent.
+// The supervisor (this agent) plans and hands sub-tasks to collaborators
+// based on each one's collaboration_instruction.
+message AwsBedrockAgentCollaborator {
+  // Collaborator name the supervisor uses in its plans (1-100 characters;
+  // letters, digits, hyphen, underscore). The for_each key on both engines
+  // and the key in the `collaborator_ids` output map.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // When the supervisor should delegate to this collaborator (1-4000
+  // characters) - describe its specialty the way you would brief a
+  // dispatcher.
+  string collaboration_instruction = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 4000
+  }];
+
+  // ARN of the collaborating agent's ALIAS (not the agent itself) - the
+  // published endpoint this supervisor calls. Reference another
+  // AwsBedrockAgent's `alias_arns` output map entry, e.g.
+  // valueFrom: {kind: AwsBedrockAgent, name: <agent>,
+  // fieldPath: "status.outputs.alias_arns.<alias-name>"}.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef collaborator_alias_arn = 3 [(buf.validate.field).required = true];
+
+  // Whether the conversation history is relayed to the collaborator:
+  // TO_COLLABORATOR or DISABLED. Omitted = AWS default (DISABLED).
+  string relay_conversation_history = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["TO_COLLABORATOR", "DISABLED"]}
+  ];
+}
+
+// AwsBedrockAgentKnowledgeBaseAssociation attaches one knowledge base to
+// the agent for retrieval-augmented answers.
+message AwsBedrockAgentKnowledgeBaseAssociation {
+  // Stable local key for this entry (1-100 characters; letters, digits,
+  // hyphen, underscore). The for_each key on both engines and the key in
+  // the `associated_knowledge_base_ids` output map - never sent to AWS.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 100
+    pattern: "^([0-9a-zA-Z][_-]?){1,100}$"
+  }];
+
+  // The knowledge base to associate.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef knowledge_base_id = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsBedrockKnowledgeBase,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.knowledge_base_id"
+  ];
+
+  // When the agent should query this knowledge base (1-200 characters,
+  // REQUIRED by AWS) - the model reads this to decide when to retrieve.
+  string description = 3 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 200
+  }];
+
+  // ENABLED (default) or DISABLED - a disabled association stays attached
+  // but is never queried. Omitted = AWS default (ENABLED).
+  string state = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {in: ["ENABLED", "DISABLED"]}
+  ];
+}

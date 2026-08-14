@@ -1,0 +1,401 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrockagentcore_evaluator:
+    specRoot: spec.evaluators
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # AWS's name field; the spec's entry name is the for_each key.
+      - arg: evaluator_name
+        spec: spec.evaluators.name
+      # The evaluator_config wrapper; the spec names the two scoring arms
+      # directly.
+      - arg: evaluator_config
+        spec: spec.evaluators
+      - arg: evaluator_config.llm_as_a_judge
+        spec: spec.evaluators.llm_as_a_judge
+      - arg: evaluator_config.llm_as_a_judge.instructions
+        spec: spec.evaluators.llm_as_a_judge.instructions
+      # The single-vendor model_config wrapper collapses to the model.
+      - arg: evaluator_config.llm_as_a_judge.model_config
+        spec: spec.evaluators.llm_as_a_judge.model
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config
+        spec: spec.evaluators.llm_as_a_judge.model
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.model_id
+        spec: spec.evaluators.llm_as_a_judge.model.model_id
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.additional_model_request_fields
+        spec: spec.evaluators.llm_as_a_judge.model.additional_model_request_fields
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.inference_config
+        spec: spec.evaluators.llm_as_a_judge.model.inference
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.inference_config.max_tokens
+        spec: spec.evaluators.llm_as_a_judge.model.inference.max_tokens
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.inference_config.stop_sequences
+        spec: spec.evaluators.llm_as_a_judge.model.inference.stop_sequences
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.inference_config.temperature
+        spec: spec.evaluators.llm_as_a_judge.model.inference.temperature
+      - arg: evaluator_config.llm_as_a_judge.model_config.bedrock_evaluator_model_config.inference_config.top_p
+        spec: spec.evaluators.llm_as_a_judge.model.inference.top_p
+      - arg: evaluator_config.llm_as_a_judge.rating_scale
+        spec: spec.evaluators.llm_as_a_judge.rating_scale
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.categorical
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.categorical
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.categorical.label
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.categorical.label
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.categorical.definition
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.categorical.definition
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.numerical
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.numerical
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.numerical.label
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.numerical.label
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.numerical.definition
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.numerical.definition
+      - arg: evaluator_config.llm_as_a_judge.rating_scale.numerical.value
+        spec: spec.evaluators.llm_as_a_judge.rating_scale.numerical.value
+      # The code arm's single-member lambda_config wrapper collapses.
+      - arg: evaluator_config.code_based
+        spec: spec.evaluators.code_based
+      - arg: evaluator_config.code_based.lambda_config
+        spec: spec.evaluators.code_based
+      - arg: evaluator_config.code_based.lambda_config.lambda_arn
+        spec: spec.evaluators.code_based.lambda_arn
+      - arg: evaluator_config.code_based.lambda_config.lambda_timeout_in_seconds
+        spec: spec.evaluators.code_based.timeout_seconds
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagentcore_harness:
+    specRoot: spec.harnesses
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: harness_name
+        spec: spec.harnesses.name
+      # Vendor arms: the provider suffixes _model_config; the spec names
+      # the vendors directly.
+      - arg: model.bedrock_model_config
+        spec: spec.harnesses.model.bedrock
+      - arg: model.bedrock_model_config.model_id
+        spec: spec.harnesses.model.bedrock.model_id
+      - arg: model.bedrock_model_config.max_tokens
+        spec: spec.harnesses.model.bedrock.max_tokens
+      - arg: model.bedrock_model_config.temperature
+        spec: spec.harnesses.model.bedrock.temperature
+      - arg: model.bedrock_model_config.top_p
+        spec: spec.harnesses.model.bedrock.top_p
+      - arg: model.gemini_model_config
+        spec: spec.harnesses.model.gemini
+      - arg: model.gemini_model_config.api_key_arn
+        spec: spec.harnesses.model.gemini.api_key_arn
+      - arg: model.gemini_model_config.model_id
+        spec: spec.harnesses.model.gemini.model_id
+      - arg: model.gemini_model_config.max_tokens
+        spec: spec.harnesses.model.gemini.max_tokens
+      - arg: model.gemini_model_config.temperature
+        spec: spec.harnesses.model.gemini.temperature
+      - arg: model.gemini_model_config.top_p
+        spec: spec.harnesses.model.gemini.top_p
+      - arg: model.gemini_model_config.top_k
+        spec: spec.harnesses.model.gemini.top_k
+      - arg: model.openai_model_config
+        spec: spec.harnesses.model.openai
+      - arg: model.openai_model_config.api_key_arn
+        spec: spec.harnesses.model.openai.api_key_arn
+      - arg: model.openai_model_config.model_id
+        spec: spec.harnesses.model.openai.model_id
+      - arg: model.openai_model_config.max_tokens
+        spec: spec.harnesses.model.openai.max_tokens
+      - arg: model.openai_model_config.temperature
+        spec: spec.harnesses.model.openai.temperature
+      - arg: model.openai_model_config.top_p
+        spec: spec.harnesses.model.openai.top_p
+      # Repeated singular blocks pluralize descriptively in the spec.
+      - arg: system_prompt
+        spec: spec.harnesses.system_prompts
+      - arg: system_prompt.text
+        spec: spec.harnesses.system_prompts.text
+      - arg: tool
+        spec: spec.harnesses.tools
+      - arg: tool.name
+        spec: spec.harnesses.tools.name
+      - arg: tool.type
+        spec: spec.harnesses.tools.type
+      # The tool config wrapper; the spec names the per-type arms
+      # directly on the tool entry.
+      - arg: tool.config
+        spec: spec.harnesses.tools
+      - arg: tool.config.remote_mcp
+        spec: spec.harnesses.tools.remote_mcp
+      - arg: tool.config.remote_mcp.url
+        spec: spec.harnesses.tools.remote_mcp.url
+      - arg: tool.config.remote_mcp.headers
+        spec: spec.harnesses.tools.remote_mcp.headers
+      - arg: tool.config.agentcore_browser
+        spec: spec.harnesses.tools.agentcore_browser
+      - arg: tool.config.agentcore_browser.browser_arn
+        spec: spec.harnesses.tools.agentcore_browser.browser_arn
+      - arg: tool.config.agentcore_code_interpreter
+        spec: spec.harnesses.tools.agentcore_code_interpreter
+      - arg: tool.config.agentcore_code_interpreter.code_interpreter_arn
+        spec: spec.harnesses.tools.agentcore_code_interpreter.code_interpreter_arn
+      - arg: tool.config.agentcore_gateway
+        spec: spec.harnesses.tools.agentcore_gateway
+      - arg: tool.config.agentcore_gateway.gateway_arn
+        spec: spec.harnesses.tools.agentcore_gateway.gateway_arn
+      - arg: tool.config.agentcore_gateway.outbound_auth
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth
+      - arg: tool.config.agentcore_gateway.outbound_auth.aws_iam
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.aws_iam
+      # "none" is a Go/proto reserved-feeling name; the spec calls the
+      # unauthenticated arm no_auth.
+      - arg: tool.config.agentcore_gateway.outbound_auth.none
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.no_auth
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth.provider_arn
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth.provider_arn
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth.scopes
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth.scopes
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth.custom_parameters
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth.custom_parameters
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth.default_return_url
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth.default_return_url
+      - arg: tool.config.agentcore_gateway.outbound_auth.oauth.grant_type
+        spec: spec.harnesses.tools.agentcore_gateway.outbound_auth.oauth.grant_type
+      - arg: tool.config.inline_function
+        spec: spec.harnesses.tools.inline_function
+      - arg: tool.config.inline_function.description
+        spec: spec.harnesses.tools.inline_function.description
+      - arg: tool.config.inline_function.input_schema
+        spec: spec.harnesses.tools.inline_function.input_schema
+      # The single-field skill block flattens to a path list.
+      - arg: skill
+        spec: spec.harnesses.skill_paths
+      - arg: skill.path
+        spec: spec.harnesses.skill_paths
+      # The memory wrapper collapses; map_block_key is the retrieval
+      # NAMESPACE (the provider's generic name for the keyed block).
+      - arg: memory
+        spec: spec.harnesses.memory
+      - arg: memory.agentcore_memory_configuration
+        spec: spec.harnesses.memory
+      - arg: memory.agentcore_memory_configuration.arn
+        spec: spec.harnesses.memory.memory_arn
+      - arg: memory.agentcore_memory_configuration.actor_id
+        spec: spec.harnesses.memory.actor_id
+      - arg: memory.agentcore_memory_configuration.messages_count
+        spec: spec.harnesses.memory.messages_count
+      - arg: memory.agentcore_memory_configuration.retrieval_config
+        spec: spec.harnesses.memory.retrieval
+      - arg: memory.agentcore_memory_configuration.retrieval_config.map_block_key
+        spec: spec.harnesses.memory.retrieval.namespace
+      - arg: memory.agentcore_memory_configuration.retrieval_config.relevance_score
+        spec: spec.harnesses.memory.retrieval.relevance_score
+      - arg: memory.agentcore_memory_configuration.retrieval_config.strategy_id
+        spec: spec.harnesses.memory.retrieval.strategy_id
+      - arg: memory.agentcore_memory_configuration.retrieval_config.top_k
+        spec: spec.harnesses.memory.retrieval.top_k
+      # The provider models the runtime environment as ONE opaque
+      # reflection-generated attribute; the spec types the whole subtree.
+      # Every spec leaf below rides that single argument.
+      - arg: environment
+        spec: spec.harnesses.runtime_environment
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.agent_runtime_arn
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.filesystems.mount_path
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.filesystems.efs_access_point_arn
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.filesystems.s3_access_point_arn
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.filesystems.session_storage
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.lifecycle.idle_runtime_session_timeout_seconds
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.lifecycle.max_lifetime_seconds
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.network.mode
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.network.vpc_config.subnets
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.network.vpc_config.security_groups
+      - arg: environment
+        spec: spec.harnesses.runtime_environment.network.vpc_config.require_service_s3_endpoint
+      # The container-configuration wrapper flattens to its one leaf.
+      - arg: environment_artifact
+        spec: spec.harnesses.container_image_uri
+      - arg: environment_artifact.container_configuration
+        spec: spec.harnesses.container_image_uri
+      - arg: environment_artifact.container_configuration.container_uri
+        spec: spec.harnesses.container_image_uri
+      # The shared AgentCore JWT authorizer tree (the runtime kind's
+      # naming, mirrored here).
+      - arg: authorizer_configuration
+        spec: spec.harnesses.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer
+        spec: spec.harnesses.custom_jwt_authorizer
+      - arg: authorizer_configuration.custom_jwt_authorizer.discovery_url
+        spec: spec.harnesses.custom_jwt_authorizer.discovery_url
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_audience
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_audience
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_clients
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_clients
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_scopes
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_scopes
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_workloads
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.workload_identities
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_workloads.workload_identities
+      # The single-field hosting_environment block flattens to an ARN
+      # list.
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      - arg: authorizer_configuration.custom_jwt_authorizer.allowed_workload_configuration.hosting_environment.arn
+        spec: spec.harnesses.custom_jwt_authorizer.allowed_workloads.hosting_environment_arns
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_name
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims.claim_name
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.inbound_token_claim_value_type
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims.value_type
+      # The two-level match-value wrapper flattens onto the claim entry.
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_operator
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims.match_operator
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims.match_value
+      - arg: authorizer_configuration.custom_jwt_authorizer.custom_claim.authorizing_claim_match_value.claim_match_value.match_value_string_list
+        spec: spec.harnesses.custom_jwt_authorizer.custom_claims.match_values
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.subnet_ids
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.subnet_ids
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.security_group_ids
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.security_group_ids
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.endpoint_ip_address_type
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.endpoint_ip_address_type
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.routing_domain
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.routing_domain
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.managed_vpc_resource.tags
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.managed_vpc.tags
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint.self_managed_lattice.resource_configuration_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.domain
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.domain
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.vpc_identifier
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.vpc_id
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.subnet_ids
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.subnet_ids
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.security_group_ids
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.security_group_ids
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.endpoint_ip_address_type
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.endpoint_ip_address_type
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.routing_domain
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.routing_domain
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc_resource.tags
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.managed_vpc.tags
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice
+      - arg: authorizer_configuration.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice_resource.resource_configuration_identifier
+        spec: spec.harnesses.custom_jwt_authorizer.private_endpoint_overrides.private_endpoint.self_managed_lattice.resource_configuration_id
+      # Truncation is likewise ONE opaque reflection-generated attribute
+      # carrying the spec's typed subtree.
+      - arg: truncation
+        spec: spec.harnesses.truncation
+      - arg: truncation
+        spec: spec.harnesses.truncation.strategy
+      - arg: truncation
+        spec: spec.harnesses.truncation.sliding_window.messages_count
+      - arg: truncation
+        spec: spec.harnesses.truncation.summarization.summary_ratio
+      - arg: truncation
+        spec: spec.harnesses.truncation.summarization.preserve_recent_messages
+      - arg: truncation
+        spec: spec.harnesses.truncation.summarization.summarization_system_prompt
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+
+  aws_bedrockagentcore_online_evaluation_config:
+    specRoot: spec.online_evaluation_configs
+    mappings:
+      - arg: region
+        spec: spec.region
+      - arg: online_evaluation_config_name
+        spec: spec.online_evaluation_configs.name
+      - arg: evaluation_execution_role_arn
+        spec: spec.online_evaluation_configs.execution_role_arn
+      # The spec's single enabled knob fans out to the provider's TWO
+      # lifecycle fields (create-time intent + post-create status).
+      - arg: enable_on_create
+        spec: spec.online_evaluation_configs.enabled
+      - arg: execution_status
+        spec: spec.online_evaluation_configs.enabled
+      # The data-source wrapper's cloudwatch_logs member collapses.
+      - arg: data_source_config
+        spec: spec.online_evaluation_configs.data_source
+      - arg: data_source_config.cloudwatch_logs
+        spec: spec.online_evaluation_configs.data_source
+      - arg: data_source_config.cloudwatch_logs.log_group_names
+        spec: spec.online_evaluation_configs.data_source.log_group_names
+      - arg: data_source_config.cloudwatch_logs.service_names
+        spec: spec.online_evaluation_configs.data_source.service_names
+      # The single-field evaluator block flattens to an ID list.
+      - arg: evaluator
+        spec: spec.online_evaluation_configs.evaluator_ids
+      - arg: evaluator.evaluator_id
+        spec: spec.online_evaluation_configs.evaluator_ids
+      - arg: rule
+        spec: spec.online_evaluation_configs.rule
+      # The sampling and session wrappers flatten to their one leaf each.
+      - arg: rule.sampling_config
+        spec: spec.online_evaluation_configs.rule.sampling_percentage
+      - arg: rule.sampling_config.sampling_percentage
+        spec: spec.online_evaluation_configs.rule.sampling_percentage
+      - arg: rule.session_config
+        spec: spec.online_evaluation_configs.rule.session_timeout_minutes
+      - arg: rule.session_config.session_timeout_minutes
+        spec: spec.online_evaluation_configs.rule.session_timeout_minutes
+      - arg: rule.filter
+        spec: spec.online_evaluation_configs.rule.filters
+      - arg: rule.filter.key
+        spec: spec.online_evaluation_configs.rule.filters.key
+      - arg: rule.filter.operator
+        spec: spec.online_evaluation_configs.rule.filters.operator
+      # The typed-value wrapper flattens onto the filter entry.
+      - arg: rule.filter.value
+        spec: spec.online_evaluation_configs.rule.filters
+      - arg: rule.filter.value.string_value
+        spec: spec.online_evaluation_configs.rule.filters.string_value
+      - arg: rule.filter.value.boolean_value
+        spec: spec.online_evaluation_configs.rule.filters.boolean_value
+      - arg: rule.filter.value.double_value
+        spec: spec.online_evaluation_configs.rule.filters.double_value
+    exclusions:
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface

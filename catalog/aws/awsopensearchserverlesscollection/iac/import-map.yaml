@@ -1,0 +1,42 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsopensearchserverlesscollection
+spec:
+  # The collection imports by its service-generated id; all four policy
+  # objects share the collection's name (the module names every policy
+  # after the Planton resource) and import as "{name}/{type}", where the
+  # type is a config-time fact of each logical resource -- pinned by
+  # scoped literals below (the security-policy pair splits by the
+  # module's own resource names).
+  values:
+    - name: collection_id
+      derivations:
+        - from_stack_output: collection_id
+      where_to_find: >-
+        OpenSearch console -> Serverless -> Collections -> <collection>
+        (the Collection ID), or `aws opensearchserverless list-collections`
+        (id). It is also the leading label of the collection endpoint.
+    - name: policy_name
+      derivations:
+        - from_metadata_name: true
+        - from_stack_output: collection_name
+      where_to_find: >-
+        The collection's name -- every policy this module owns carries it
+        (`aws opensearchserverless list-security-policies --type encryption`
+        / `--type network`, `list-access-policies --type data`,
+        `list-lifecycle-policies --type retention` show the names).
+    - name: security_policy_type
+      tofu_resource_name: encryption
+      derivations:
+        - literal: encryption
+    - name: security_policy_type
+      tofu_resource_name: network
+      derivations:
+        - literal: network
+    - name: access_policy_type
+      derivations:
+        - literal: data
+    - name: lifecycle_policy_type
+      derivations:
+        - literal: retention

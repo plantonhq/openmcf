@@ -1,0 +1,523 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsguardduty.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsGuardDutySpec defines this account+region's GuardDuty threat-
+// detection posture: the detector, its protection-plan features, the
+// finding filters and trusted/threat IP lists, findings export, and -
+// for organization administrators - member-account management.
+//
+// This is a REGION SINGLETON: AWS allows exactly ONE detector per
+// account per region, and the detector has no name - its AWS-assigned
+// ID is the identity, so metadata.name never reaches AWS. Deploy at
+// most one instance per region; a second instance (or a detector
+// enabled by hand or by AWS Organizations auto-enable) makes creation
+// fail with "detector already exists".
+//
+// The component serves one of two postures per account:
+//   - ADMIN side: set `organization` (and optionally `members`) from
+//     the organization's delegated GuardDuty administrator account.
+//   - MEMBER side: set `accept_invitation_from_account_id` to join an
+//     administrator by invitation (the legacy non-Organizations flow).
+//
+// Destroying this component deletes the detector - a REAL delete that
+// removes all findings and disassociates members. Feature and
+// organization-configuration arms are patches onto the detector (AWS
+// has no delete for them); removing an arm from the spec reverts
+// nothing on its own, which both engines' modules document and the
+// GUIDE teaches.
+message AwsGuardDutySpec {
+  // The AWS region whose GuardDuty posture this instance manages. The
+  // region IS the resource identity - one instance per region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Whether the detector is actively monitoring. Unset = enabled.
+  // Set false to suspend monitoring (and billing) without losing the
+  // detector, its findings, or its configuration.
+  optional bool enable = 2;
+
+  // How often UPDATED findings re-export to EventBridge/S3 (new
+  // findings always publish within minutes). Unset = SIX_HOURS (the
+  // AWS default). Members inherit the administrator's value - AWS
+  // overwrites a member-side setting on the next org sync.
+  string finding_publishing_frequency = 3 [(buf.validate.field).string = {
+    in: [
+      "",
+      "FIFTEEN_MINUTES",
+      "ONE_HOUR",
+      "SIX_HOURS"
+    ]
+  }];
+
+  // Protection plans on this detector (S3 data events, EKS audit
+  // logs, runtime monitoring, ...). Features NOT listed here are left
+  // exactly as AWS has them (the foundational data sources are always
+  // on) - AWS has no "delete" for a feature, so both engines patch
+  // only the listed ones.
+  repeated AwsGuardDutyFeature features = 4;
+
+  // Finding filters: match criteria that auto-archive (or simply
+  // organize) findings - the noise-control surface.
+  repeated AwsGuardDutyFilter filters = 5;
+
+  // Trusted IP lists: traffic from these CIDRs/IPs never generates
+  // findings. AWS allows ONE ACTIVE trusted list per detector.
+  repeated AwsGuardDutyIpSet ip_sets = 6;
+
+  // Threat intel lists: known-malicious IPs that always generate
+  // findings when seen.
+  repeated AwsGuardDutyThreatIntelSet threat_intel_sets = 7;
+
+  // Export findings to an S3 bucket (long-term retention beyond
+  // GuardDuty's 90 days). AWS allows one publishing destination per
+  // detector.
+  AwsGuardDutyPublishingDestination publishing_destination = 8;
+
+  // ADMIN side: organization-wide GuardDuty administration - run from
+  // the delegated administrator account (or delegate it here first
+  // via admin_account_id from the management account).
+  AwsGuardDutyOrganization organization = 9;
+
+  // ADMIN side: member accounts monitored by this detector. With
+  // organization.auto_enable_organization_members, new org accounts
+  // join automatically and this list is only for exceptions or
+  // non-Organizations members.
+  repeated AwsGuardDutyMember members = 10;
+
+  // MEMBER side: accept a pending GuardDuty invitation from this
+  // administrator account (the legacy invitation flow; Organizations
+  // members never need it). Mutually exclusive with the admin-side
+  // arms.
+  string accept_invitation_from_account_id = 11 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+
+  // Feature names are patch keys on the detector.
+  option (buf.validate.message).cel = {
+    id: "feature_names_unique"
+    message: "features entries must have unique names"
+    expression: "this.features.map(f, f.name).unique()"
+  };
+
+  // Filter names are for_each keys on both engines and unique in AWS.
+  option (buf.validate.message).cel = {
+    id: "filter_names_unique"
+    message: "filters entries must have unique names"
+    expression: "this.filters.map(f, f.name).unique()"
+  };
+
+  // Set names are for_each keys on both engines.
+  option (buf.validate.message).cel = {
+    id: "ip_set_names_unique"
+    message: "ip_sets entries must have unique names"
+    expression: "this.ip_sets.map(s, s.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "threat_intel_set_names_unique"
+    message: "threat_intel_sets entries must have unique names"
+    expression: "this.threat_intel_sets.map(s, s.name).unique()"
+  };
+
+  // Member accounts attach once each.
+  option (buf.validate.message).cel = {
+    id: "member_accounts_unique"
+    message: "members entries must have unique account_id values"
+    expression: "this.members.map(m, m.account_id).unique()"
+  };
+
+  // One account is an administrator or a member, never both.
+  option (buf.validate.message).cel = {
+    id: "member_xor_admin_posture"
+    message: "accept_invitation_from_account_id is mutually exclusive with organization and members (an account is either a member or an administrator)"
+    expression: "this.accept_invitation_from_account_id == '' || (!has(this.organization) && size(this.members) == 0)"
+  };
+}
+
+// AwsGuardDutyFeature is one protection plan on the detector. Both
+// Create and Update are the same UpdateDetector patch; AWS never
+// reverts a feature you stop listing.
+message AwsGuardDutyFeature {
+  // The protection plan.
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "S3_DATA_EVENTS",
+      "EKS_AUDIT_LOGS",
+      "EBS_MALWARE_PROTECTION",
+      "RDS_LOGIN_EVENTS",
+      "LAMBDA_NETWORK_LOGS",
+      "EKS_RUNTIME_MONITORING",
+      "RUNTIME_MONITORING",
+      "AI_PROTECTION",
+      "AI_ANALYST"
+    ]
+  }];
+
+  // Whether the plan is on. Unset = enabled (listing a feature means
+  // you want it); set false to explicitly turn a plan off.
+  optional bool enabled = 2;
+
+  // Sub-toggles within the plan (agent management for RUNTIME_
+  // MONITORING and friends).
+  repeated AwsGuardDutyFeatureAdditionalConfiguration additional_configuration = 3;
+
+  // Sub-toggle names are patch keys within the feature.
+  option (buf.validate.message).cel = {
+    id: "additional_configuration_names_unique"
+    message: "additional_configuration entries must have unique names"
+    expression: "this.additional_configuration.map(c, c.name).unique()"
+  };
+}
+
+// AwsGuardDutyFeatureAdditionalConfiguration is one sub-toggle inside
+// a protection plan (e.g. automatic security-agent management).
+message AwsGuardDutyFeatureAdditionalConfiguration {
+  // The sub-toggle.
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "EKS_ADDON_MANAGEMENT",
+      "ECS_FARGATE_AGENT_MANAGEMENT",
+      "EC2_AGENT_MANAGEMENT"
+    ]
+  }];
+
+  // Whether the sub-toggle is on. Unset = enabled.
+  optional bool enabled = 2;
+}
+
+// AwsGuardDutyFilter auto-archives (or organizes) findings matching
+// its criteria. All criteria AND together; values within one
+// condition OR together.
+message AwsGuardDutyFilter {
+  // Filter name (3-64 characters: letters, digits, '.', '_', '-').
+  // The for_each key on both engines.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 64
+    pattern: "^[a-zA-Z0-9_.-]+$"
+  }];
+
+  // What this filter is for (shown in the console).
+  string description = 2 [(buf.validate.field).string.max_len = 512];
+
+  // NOOP keeps matching findings visible (organizational filter);
+  // ARCHIVE suppresses them - the noise-control action.
+  string action = 3 [(buf.validate.field).string = {
+    in: [
+      "NOOP",
+      "ARCHIVE"
+    ]
+  }];
+
+  // Evaluation order across filters (lower = earlier). AWS accepts
+  // 1-100.
+  int32 rank = 4 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 100
+  }];
+
+  // The AND-set of match conditions.
+  repeated AwsGuardDutyFilterCriterion criteria = 5 [(buf.validate.field).repeated.min_items = 1];
+
+  // One condition per finding field.
+  option (buf.validate.message).cel = {
+    id: "criterion_fields_unique"
+    message: "criteria entries must have unique field values"
+    expression: "this.criteria.map(c, c.field).unique()"
+  };
+}
+
+// AwsGuardDutyFilterCriterion is one condition over a finding field
+// (e.g. "severity", "region", "resource.instanceDetails.tags.value").
+message AwsGuardDutyFilterCriterion {
+  // The finding attribute to match (the GuardDuty filter-attribute
+  // vocabulary, e.g. "severity", "type", "accountId",
+  // "resource.s3BucketDetails.name").
+  string field = 1 [(buf.validate.field).string.min_len = 1];
+
+  // Exact-match values (OR within the list).
+  repeated string equals = 2;
+
+  // Exact-mismatch values.
+  repeated string not_equals = 3;
+
+  // Pattern-match values (at most 5).
+  repeated string matches = 4 [(buf.validate.field).repeated.max_items = 5];
+
+  // Pattern-mismatch values (at most 5).
+  repeated string not_matches = 5 [(buf.validate.field).repeated.max_items = 5];
+
+  // Numeric/date lower bound (exclusive). A number ("7") or an ISO
+  // timestamp.
+  string greater_than = 6;
+
+  // Numeric/date lower bound (inclusive).
+  string greater_than_or_equal = 7;
+
+  // Numeric/date upper bound (exclusive).
+  string less_than = 8;
+
+  // Numeric/date upper bound (inclusive).
+  string less_than_or_equal = 9;
+
+  // An empty condition matches nothing - AWS rejects it.
+  option (buf.validate.message).cel = {
+    id: "criterion_has_condition"
+    message: "set at least one condition (equals, not_equals, matches, not_matches, or a bound)"
+    expression: "size(this.equals) + size(this.not_equals) + size(this.matches) + size(this.not_matches) > 0 || this.greater_than != '' || this.greater_than_or_equal != '' || this.less_than != '' || this.less_than_or_equal != ''"
+  };
+}
+
+// AwsGuardDutyIpSet is one trusted IP list: traffic from these
+// addresses never generates findings. AWS activates at most ONE
+// trusted list per detector.
+message AwsGuardDutyIpSet {
+  // List name (the for_each key on both engines).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 300
+  }];
+
+  // The list file's format.
+  string format = 2 [(buf.validate.field).string = {
+    in: [
+      "TXT",
+      "STIX",
+      "OTX_CSV",
+      "ALIEN_VAULT",
+      "PROOF_POINT",
+      "FIRE_EYE"
+    ]
+  }];
+
+  // S3 URI of the list file (e.g.
+  // "https://s3.amazonaws.com/my-bucket/trusted.txt" or
+  // "s3://my-bucket/trusted.txt"). GuardDuty must be able to read it.
+  string location = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Whether GuardDuty uses the list. Only one trusted list can be
+  // active per detector - keep inactive spares false.
+  bool activate = 4;
+}
+
+// AwsGuardDutyThreatIntelSet is one threat intel list: known-
+// malicious addresses that always generate findings.
+message AwsGuardDutyThreatIntelSet {
+  // List name (the for_each key on both engines).
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 300
+  }];
+
+  // The list file's format.
+  string format = 2 [(buf.validate.field).string = {
+    in: [
+      "TXT",
+      "STIX",
+      "OTX_CSV",
+      "ALIEN_VAULT",
+      "PROOF_POINT",
+      "FIRE_EYE"
+    ]
+  }];
+
+  // S3 URI of the list file. GuardDuty must be able to read it.
+  string location = 3 [(buf.validate.field).string.min_len = 1];
+
+  // Whether GuardDuty uses the list.
+  bool activate = 4;
+}
+
+// AwsGuardDutyPublishingDestination exports findings to S3. The
+// bucket POLICY must allow guardduty.amazonaws.com s3:PutObject and
+// s3:GetBucketLocation, and the KMS key policy must allow it
+// kms:GenerateDataKey - AWS rejects the destination without both.
+// Note: changing tags on this resource forces replacement in the
+// provider, one reason the component keeps tags off this satellite.
+message AwsGuardDutyPublishingDestination {
+  // The destination bucket's ARN.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket_arn = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_arn"
+  ];
+
+  // The KMS key GuardDuty encrypts exported findings with. REQUIRED
+  // by AWS for findings export.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 2 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}
+
+// AwsGuardDutyOrganization is the ADMIN side of organization-wide
+// GuardDuty. Applying it is a patch (AWS keeps org configuration
+// alive after destroy - the provider's own delete is a no-op, taught
+// in the GUIDE).
+message AwsGuardDutyOrganization {
+  // Delegate this account as the organization's GuardDuty
+  // administrator - an ACCOUNT-GLOBAL act performed from the
+  // MANAGEMENT account (one delegation per organization). Unset when
+  // the delegation already exists (the common case: it is done once,
+  // centrally). Deregistered on destroy.
+  string admin_account_id = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^[0-9]{12}$"
+  ];
+
+  // Whether NEW organization accounts (or ALL accounts, or NONE) get
+  // GuardDuty automatically.
+  string auto_enable_organization_members = 2 [(buf.validate.field).string = {
+    in: [
+      "NEW",
+      "ALL",
+      "NONE"
+    ]
+  }];
+
+  // Organization-wide feature auto-enablement, patch-keyed by name
+  // like detector features.
+  repeated AwsGuardDutyOrganizationFeature features = 3;
+
+  // Feature names are patch keys on the organization configuration.
+  option (buf.validate.message).cel = {
+    id: "org_feature_names_unique"
+    message: "features entries must have unique names"
+    expression: "this.features.map(f, f.name).unique()"
+  };
+}
+
+// AwsGuardDutyOrganizationFeature auto-enables one protection plan
+// across the organization. The value vocabulary is NEW/ALL/NONE (not
+// a binary toggle) - which members get the plan.
+message AwsGuardDutyOrganizationFeature {
+  // The protection plan (the organization vocabulary has no
+  // AI_ANALYST).
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "S3_DATA_EVENTS",
+      "EKS_AUDIT_LOGS",
+      "EBS_MALWARE_PROTECTION",
+      "RDS_LOGIN_EVENTS",
+      "LAMBDA_NETWORK_LOGS",
+      "EKS_RUNTIME_MONITORING",
+      "RUNTIME_MONITORING",
+      "AI_PROTECTION"
+    ]
+  }];
+
+  // Which member accounts get the plan: NEW members only, ALL
+  // members, or NONE.
+  string auto_enable = 2 [(buf.validate.field).string = {
+    in: [
+      "NEW",
+      "ALL",
+      "NONE"
+    ]
+  }];
+
+  // Sub-toggles, same NEW/ALL/NONE vocabulary.
+  repeated AwsGuardDutyOrganizationFeatureAdditionalConfiguration additional_configuration = 3;
+
+  // Sub-toggle names are patch keys within the feature.
+  option (buf.validate.message).cel = {
+    id: "org_additional_configuration_names_unique"
+    message: "additional_configuration entries must have unique names"
+    expression: "this.additional_configuration.map(c, c.name).unique()"
+  };
+}
+
+// AwsGuardDutyOrganizationFeatureAdditionalConfiguration is one
+// organization-level sub-toggle.
+message AwsGuardDutyOrganizationFeatureAdditionalConfiguration {
+  // The sub-toggle.
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "EKS_ADDON_MANAGEMENT",
+      "ECS_FARGATE_AGENT_MANAGEMENT",
+      "EC2_AGENT_MANAGEMENT"
+    ]
+  }];
+
+  // Which member accounts get the sub-toggle.
+  string auto_enable = 2 [(buf.validate.field).string = {
+    in: [
+      "NEW",
+      "ALL",
+      "NONE"
+    ]
+  }];
+}
+
+// AwsGuardDutyMember is one monitored member account (ADMIN side).
+// Organizations members associate directly; non-Organizations members
+// need invite = true and must accept from their side.
+message AwsGuardDutyMember {
+  // The member's AWS account ID.
+  string account_id = 1 [(buf.validate.field).string.pattern = "^[0-9]{12}$"];
+
+  // The member account's root email address (AWS requires it to
+  // create the member record).
+  string email = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 64
+  }];
+
+  // Send an invitation (the non-Organizations flow; Organizations
+  // members associate without one). The only member field AWS can
+  // update in place.
+  optional bool invite = 3;
+
+  // Text of the invitation email.
+  string invitation_message = 4;
+
+  // Skip the invitation email (invite via the API relationship only).
+  bool disable_email_notification = 5;
+
+  // Per-member protection-plan overrides (the org feature vocabulary,
+  // binary per member).
+  repeated AwsGuardDutyMemberFeature features = 6;
+
+  // Feature names are patch keys on the member's detector.
+  option (buf.validate.message).cel = {
+    id: "member_feature_names_unique"
+    message: "features entries must have unique names"
+    expression: "this.features.map(f, f.name).unique()"
+  };
+}
+
+// AwsGuardDutyMemberFeature toggles one protection plan on one
+// member's detector (a patch, like detector features - no delete).
+message AwsGuardDutyMemberFeature {
+  // The protection plan (the organization vocabulary).
+  string name = 1 [(buf.validate.field).string = {
+    in: [
+      "S3_DATA_EVENTS",
+      "EKS_AUDIT_LOGS",
+      "EBS_MALWARE_PROTECTION",
+      "RDS_LOGIN_EVENTS",
+      "LAMBDA_NETWORK_LOGS",
+      "EKS_RUNTIME_MONITORING",
+      "RUNTIME_MONITORING",
+      "AI_PROTECTION"
+    ]
+  }];
+
+  // Whether the plan is on for this member. Unset = enabled.
+  optional bool enabled = 2;
+
+  // Sub-toggles for this member's plan.
+  repeated AwsGuardDutyFeatureAdditionalConfiguration additional_configuration = 3;
+
+  // Sub-toggle names are patch keys within the feature.
+  option (buf.validate.message).cel = {
+    id: "member_additional_configuration_names_unique"
+    message: "additional_configuration entries must have unique names"
+    expression: "this.additional_configuration.map(c, c.name).unique()"
+  };
+}

@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzurePrivateLinkService
+metadata:
+  name: my-private-link-service
+spec:
+  region: <azure-region>
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-service
+  natIpConfigurations:
+    - name: nat-1
+      subnetId:
+        value: "<your-pls-subnet-arm-id>" # a subnet with privateLinkServiceNetworkPoliciesEnabled: false
+      primary: true
+  loadBalancerFrontendIpConfigurationIds:
+    - value: "<your-lb-frontend-arm-id>" # a STANDARD internal load balancer's frontend

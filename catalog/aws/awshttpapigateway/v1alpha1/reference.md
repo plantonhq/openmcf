@@ -29,8 +29,8 @@ Key design choices:
 - Custom domains are the AwsHttpApiDomain component (a domain outlives any one API
   and maps many APIs); VPC links are the AwsHttpApiVpcLink component (one link is
   shared by many APIs and owns its own network attachment).
-- API keys and usage plans are deliberately not modeled: HTTP APIs do not support
-  them (they are a REST API feature); use JWT/IAM/Lambda authorizers instead.
+- API keys and usage plans are a REST API feature (the AwsRestApiUsagePlan
+  component); HTTP APIs do not support them -- use JWT/IAM/Lambda authorizers.
 
 Credentials, region, and deployment workflow live outside this spec in stack inputs.
 

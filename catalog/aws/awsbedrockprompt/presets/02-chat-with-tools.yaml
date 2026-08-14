@@ -1,0 +1,44 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockPrompt
+metadata:
+  name: support-answer
+spec:
+  region: us-west-2
+  description: Tool-assisted support chat prompt with an A/B text variant
+  defaultVariant: chat
+  variants:
+    - name: text
+      modelId: amazon.nova-micro-v1:0
+      text:
+        text: "Answer the customer question concisely: {{question}}"
+        inputVariables:
+          - question
+      inferenceConfiguration:
+        maxTokens: 512
+        temperature: 0
+    - name: chat
+      modelId: amazon.nova-lite-v1:0
+      chat:
+        system:
+          - text: You are a concise support assistant.
+        messages:
+          - role: user
+            text: "Answer the question: {{question}}"
+        inputVariables:
+          - question
+        toolConfiguration:
+          tools:
+            - spec:
+                name: lookup_order
+                description: Look up an order by its ID.
+                inputSchema:
+                  type: object
+                  properties:
+                    order_id:
+                      type: string
+                  required:
+                    - order_id
+          toolChoice:
+            auto: true
+      metadata:
+        team: support

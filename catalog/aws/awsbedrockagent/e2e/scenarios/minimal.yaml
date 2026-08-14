@@ -1,0 +1,29 @@
+# AwsBedrockAgent minimal scenario: the smallest useful agent -- an
+# auto-enabled foundation model (no marketplace agreement needed), the
+# shared bedrock-agents role fixture, and instructions. Proves the
+# create -> prepare -> PREPARED lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgent
+metadata:
+  name: planton-oss-e2e-awsbragt-min
+  id: planton-oss-e2e-awsbragt-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagent
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  foundationModel: amazon.nova-micro-v1:0
+  agentResourceRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-bedrock-agents-role
+      fieldPath: status.outputs.role_arn
+  instruction: >-
+    You are a minimal E2E test agent. Reply to every message with a short
+    confirmation that you received it.

@@ -1,0 +1,38 @@
+# AwsBedrockAgentCoreRuntime minimal scenario: the smallest useful
+# runtime -- the harness-seeded code bundle (a tiny main.py the standing
+# fixture ensures via SDK) on the managed Python runtime, public
+# networking, and the shared AgentCore role fixture. Proves the
+# create -> READY lifecycle both engines share.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreRuntime
+metadata:
+  name: planton-oss-e2e-awsacrt-min
+  id: planton-oss-e2e-awsacrt-min
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoreruntime
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  runtimeName: planton_e2e_acrt_min
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-agentcore-role
+      fieldPath: status.outputs.role_arn
+  artifact:
+    code:
+      runtime: PYTHON_3_13
+      entryPoint:
+        - main.py
+      s3:
+        bucket:
+          value: ${E2E_ENV:PLANTON_E2E_AGENTCORE_CODE_BUCKET}
+        prefix: bundles/e2e-agent.zip
+  network:
+    mode: PUBLIC

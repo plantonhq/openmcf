@@ -1,0 +1,65 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_cloudtrail:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The CloudWatch mirroring pair travels as one presence-typed message
+      # (AWS requires group and role together).
+      - arg: cloud_watch_logs_group_arn
+        spec: spec.cloudwatch_logs.log_group_arn
+      - arg: cloud_watch_logs_role_arn
+        spec: spec.cloudwatch_logs.role_arn
+      # The provider's one-field insight_selector block flattens to a
+      # repeated string (the wrapper carries no identity).
+      - arg: insight_selector.insight_type
+        spec: spec.insight_types
+      - arg: event_selector.read_write_type
+        spec: spec.event_selectors.read_write_type
+      - arg: event_selector.include_management_events
+        spec: spec.event_selectors.include_management_events
+      - arg: event_selector.exclude_management_event_sources
+        spec: spec.event_selectors.exclude_management_event_sources
+      - arg: event_selector.data_resource.type
+        spec: spec.event_selectors.data_resources.type
+      - arg: event_selector.data_resource.values
+        spec: spec.event_selectors.data_resources.values
+      - arg: advanced_event_selector.name
+        spec: spec.advanced_event_selectors.name
+      - arg: advanced_event_selector.field_selector.field
+        spec: spec.advanced_event_selectors.field_selectors.field
+      - arg: advanced_event_selector.field_selector.equals
+        spec: spec.advanced_event_selectors.field_selectors.equals
+      - arg: advanced_event_selector.field_selector.not_equals
+        spec: spec.advanced_event_selectors.field_selectors.not_equals
+      - arg: advanced_event_selector.field_selector.starts_with
+        spec: spec.advanced_event_selectors.field_selectors.starts_with
+      - arg: advanced_event_selector.field_selector.not_starts_with
+        spec: spec.advanced_event_selectors.field_selectors.not_starts_with
+      - arg: advanced_event_selector.field_selector.ends_with
+        spec: spec.advanced_event_selectors.field_selectors.ends_with
+      - arg: advanced_event_selector.field_selector.not_ends_with
+        spec: spec.advanced_event_selectors.field_selectors.not_ends_with
+    exclusions:
+      - arg: name
+        reason: metadata.name is the trail name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+
+  # The delegation is account-global (the provider annotates the resource
+  # region-less), so no region mapping exists.
+  aws_cloudtrail_organization_delegated_admin_account:
+    mappings:
+      - arg: account_id
+        spec: spec.organization_delegated_admin_account_id

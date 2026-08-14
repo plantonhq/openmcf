@@ -1,0 +1,41 @@
+# Usage plan covering the REST API prerequisite's prod stage, with a
+# daily quota and one generated API key. The plan itself is free; the
+# key identifies the consumer for metering (it is not authentication).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsRestApiUsagePlan
+metadata:
+  name: planton-oss-e2e-awsrestup
+  id: planton-oss-e2e-awsrestup
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsrestapiusageplan
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AwsRestApiGateway"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  description: Planton E2E usage plan over the REST API fixture
+  apiStages:
+    - restApiId:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: planton-oss-e2e-awsrestgw-prereq
+          fieldPath: status.outputs.rest_api_id
+      stageName:
+        valueFrom:
+          kind: AwsRestApiGateway
+          name: planton-oss-e2e-awsrestgw-prereq
+          fieldPath: status.outputs.stage_name
+  quota:
+    limit: 1000
+    period: DAY
+  throttle:
+    burstLimit: 50
+    rateLimit: 25
+  apiKeys:
+    - name: planton-e2e-key
+      description: Planton E2E consumer key

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockcustommodel.v1alpha1;
+
+import "catalog/aws/awsbedrockcustommodel/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsBedrockCustomModelStackInput is the input for the IaC modules that
+// deploy the Bedrock custom model.
+message AwsBedrockCustomModelStackInput {
+  // target is the AwsBedrockCustomModel resource to deploy.
+  AwsBedrockCustomModel target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

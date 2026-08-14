@@ -438,6 +438,13 @@ Fields on other kinds that can point at this resource:
 | Kind | Field | Reads |
 |---|---|---|
 | AwsAppRunnerService | `spec.vpcIngressConnections[].vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreGateway | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreGateway | `spec.targets[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
+| AwsBedrockAgentCoreRuntime | `spec.customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.vpcId` | `status.outputs.vpc_id` |
 | AwsClientVpn | `spec.vpcId` | `status.outputs.vpc_id` |
 | AwsCodeBuildProject | `spec.vpcConfig.vpcId` | `status.outputs.vpc_id` |
 | AwsEgressOnlyInternetGateway | `spec.vpcId` | `status.outputs.vpc_id` |

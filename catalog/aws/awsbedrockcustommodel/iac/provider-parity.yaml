@@ -1,0 +1,41 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrock_custom_model:
+    mappings:
+      # The provider says "identifier"; the spec says what the value IS --
+      # a foundation-model ARN.
+      - arg: base_model_identifier
+        spec: spec.base_model_arn
+      # The provider abbreviates the key id; the value is an ARN.
+      - arg: custom_model_kms_key_id
+        spec: spec.custom_model_kms_key_arn
+      # The provider nests each S3 location under a one-element block; the
+      # spec carries the URI leaves directly.
+      - arg: training_data_config
+        spec: spec.training_data_s3_uri
+      - arg: training_data_config.s3_uri
+        spec: spec.training_data_s3_uri
+      - arg: output_data_config
+        spec: spec.output_data_s3_uri
+      - arg: output_data_config.s3_uri
+        spec: spec.output_data_s3_uri
+      # The provider nests up to ten validator blocks two levels deep; the
+      # spec carries the URI list directly.
+      - arg: validation_data_config
+        spec: spec.validation_data_s3_uris
+      - arg: validation_data_config.validator
+        spec: spec.validation_data_s3_uris
+      - arg: validation_data_config.validator.s3_uri
+        spec: spec.validation_data_s3_uris
+    exclusions:
+      - arg: custom_model_name
+        reason: wired by the module from metadata.name -- the model name is platform naming, never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface

@@ -20,6 +20,10 @@ presets:
     rank: "03"
     title: "Launch-Template Pool"
     excerpt: "This preset composes the node group onto a first-class `AwsLaunchTemplate`: the template owns the launch mechanics (instance type, IMDSv2 enforcement, encrypted volumes, instance tags), and promoting..."
+  - slug: "04-warm-pool"
+    rank: "04"
+    title: "Warm Pool Node Group"
+    excerpt: "This preset keeps pre-initialized nodes on standby so scale-out serves pods in seconds instead of the minutes a cold boot takes (instance launch + AMI boot + kubelet registration + image pulls)...."
 ---
 
 # EKS Node Group Presets
