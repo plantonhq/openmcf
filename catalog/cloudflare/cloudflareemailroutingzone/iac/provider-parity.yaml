@@ -1,0 +1,49 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The kind folds the zone's three email-routing singletons: settings (the
+# enable/disable toggle -- its only argument is zone_id, which matches),
+# the catch-all rule, and the managed DNS records. The catch-all's generic
+# {type, value[]} action list is restructured into typed actions with real
+# foreign keys (forward_to -> CloudflareEmailRoutingAddress, worker ->
+# CloudflareWorker); the module maps each typed action back.
+
+resources:
+  cloudflare_email_routing_catch_all:
+    mappings:
+      # The catch-all's fields live under spec.catch_all (the fold), so none
+      # match by exact name; each maps to its argument here.
+      - spec: spec.catch_all.enabled
+        arg: enabled
+      - spec: spec.catch_all.name
+        arg: name
+      # The actions list is ONE argument; the typed per-action leaves fan in.
+      - spec: spec.catch_all.actions.type
+        arg: actions
+      - spec: spec.catch_all.actions.forward_to
+        arg: actions
+      - spec: spec.catch_all.actions.worker
+        arg: actions
+    exclusions:
+      - arg: matchers
+        reason: the provider accepts exactly one matcher shape on the catch-all ({type = "all"} -- its schema validator permits no other value), so the module supplies it; a spec field would be a knob with one legal position
+      - arg: owner_worker_tag
+        reason: wrangler rule-ownership bookkeeping -- meaningful only with source=wrangler, which an IaC-managed rule never is
+      - arg: source
+        reason: declares who manages the rule (api vs wrangler); an IaC-managed rule is by definition source=api (the provider default) -- claiming wrangler ownership from IaC would misrepresent management and break wrangler round-tripping
+  cloudflare_email_routing_dns:
+    mappings:
+      # The managed-DNS domain: empty routes the zone apex; a subdomain routes
+      # that subdomain. Named dns_name in the spec because a bare `name` beside
+      # zone_id would read as the rule name.
+      - spec: spec.dns_name
+        arg: name
+
+specExclusions:
+  - field: spec.lock_dns_records
+    reason: instantiation gate with no provider counterpart -- the dns resource's existence IS the explicit record management; the module creates it only when locking is requested

@@ -1,8 +1,15 @@
 locals {
   resource_name = coalesce(try(var.metadata.name, null), "cloudflare-email-routing-rule")
 
-  # Map the typed action onto the provider's generic {type, value[]}.
-  action_values = var.spec.action.type == "forward" ? var.spec.action.forward_to : (
-    var.spec.action.type == "worker" ? [var.spec.action.worker] : []
-  )
+  # Map each typed action onto the provider's generic {type, value[]}:
+  # forward -> the destination addresses; worker -> the single script name;
+  # drop -> no values.
+  actions = [
+    for a in var.spec.actions : {
+      type = a.type
+      value = a.type == "forward" ? a.forward_to : (
+        a.type == "worker" ? [a.worker] : []
+      )
+    }
+  ]
 }

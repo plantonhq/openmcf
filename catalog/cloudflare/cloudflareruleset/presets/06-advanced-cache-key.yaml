@@ -31,6 +31,13 @@ spec:
                 list:
                   - "locale"
                   - "currency"
+            header:
+              check_presence:
+                - "x-preview-token"
+              contains:
+                accept:
+                  values:
+                    - "application/json"
             cookie:
               include:
                 - "cart_id"

@@ -154,6 +154,36 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"pool_id"},
 		accountScoped: true,
 	},
+	// Email Routing is a zone singleton: the GET returns the zone's routing
+	// settings object rather than 404ing for a zone that never enabled it, so
+	// the absent-check may need a value-aware probe (read `enabled`) once
+	// measured live -- the existence probe is the honest starting point.
+	"cloudflareemailroutingzone": &apiPathVerifier{
+		component:  "cloudflareemailroutingzone",
+		pathFormat: "zones/%s/email/routing",
+		outputKeys: []string{"zone_id"},
+	},
+	"cloudflareemailroutingrule": &apiPathVerifier{
+		component:  "cloudflareemailroutingrule",
+		pathFormat: "zones/%s/email/routing/rules/%s",
+		outputKeys: []string{"zone_id", "rule_id"},
+	},
+	// Destination addresses are account-scoped (shared across zones).
+	"cloudflareemailroutingaddress": &apiPathVerifier{
+		component:     "cloudflareemailroutingaddress",
+		pathFormat:    "accounts/%s/email/routing/addresses/%s",
+		outputKeys:    []string{"address_id"},
+		accountScoped: true,
+	},
+	// Rulesets are dual-scope; the live scenarios are zone-scoped, and the
+	// outputs carry zone_id only for zone-scoped rulesets (an account-scoped
+	// arm would need an accounts/%s/rulesets/%s variant reading the harness
+	// account).
+	"cloudflareruleset": &apiPathVerifier{
+		component:  "cloudflareruleset",
+		pathFormat: "zones/%s/rulesets/%s",
+		outputKeys: []string{"zone_id", "ruleset_id"},
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is

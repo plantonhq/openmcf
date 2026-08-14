@@ -93,6 +93,10 @@ resource "cloudflare_ruleset" "main" {
         products = length(r.action_parameters.products) > 0 ? r.action_parameters.products : null
         ruleset  = r.action_parameters.ruleset != "" ? r.action_parameters.ruleset : null
         rulesets = length(r.action_parameters.rulesets) > 0 ? r.action_parameters.rulesets : null
+        # Unwrap the {values = [...]} wrapper into the provider's map-of-lists.
+        rules = length(r.action_parameters.rules) > 0 ? {
+          for target_ruleset_id, rule_ids in r.action_parameters.rules : target_ruleset_id => rule_ids.values
+        } : null
 
         # Execute
         id = r.action_parameters.id != "" ? r.action_parameters.id : null
@@ -207,7 +211,10 @@ resource "cloudflare_ruleset" "main" {
             }
             header = r.action_parameters.cache_key.custom_key.header == null ? null : {
               check_presence = length(r.action_parameters.cache_key.custom_key.header.check_presence) > 0 ? r.action_parameters.cache_key.custom_key.header.check_presence : null
-              contains       = length(r.action_parameters.cache_key.custom_key.header.contains) > 0 ? r.action_parameters.cache_key.custom_key.header.contains : null
+              # Unwrap the {values = [...]} wrapper into the provider's map-of-lists.
+              contains = length(r.action_parameters.cache_key.custom_key.header.contains) > 0 ? {
+                for header_name, substrings in r.action_parameters.cache_key.custom_key.header.contains : header_name => substrings.values
+              } : null
               exclude_origin = r.action_parameters.cache_key.custom_key.header.exclude_origin
               include        = length(r.action_parameters.cache_key.custom_key.header.include) > 0 ? r.action_parameters.cache_key.custom_key.header.include : null
             }

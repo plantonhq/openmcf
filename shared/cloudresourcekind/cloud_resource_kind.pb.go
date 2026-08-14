@@ -1557,7 +1557,11 @@ const (
 	// zone -- the spec's zone_id reference must resolve before the record can
 	// be created.
 	CloudResourceKind_CloudflareDnsRecord CloudResourceKind = 7007
-	CloudResourceKind_CloudflareRuleset   CloudResourceKind = 7008
+	// CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the
+	// common case; the spec's zone_id reference defaults to the zone kind) must
+	// resolve their zone first. Account-scoped rulesets simply leave the
+	// reference unused.
+	CloudResourceKind_CloudflareRuleset CloudResourceKind = 7008
 	// CloudflareKvNamespace is a prerequisite because a KV pair is written into
 	// a namespace -- the spec's namespace_id reference must resolve first.
 	CloudResourceKind_CloudflareWorkersKvPair                 CloudResourceKind = 7009
@@ -1585,8 +1589,10 @@ const (
 	CloudResourceKind_CloudflareEmailRoutingZone CloudResourceKind = 7023
 	// CloudflareDnsZone is a prerequisite because a routing rule lives in a
 	// zone's email routing configuration -- the spec's zone_id reference must
-	// resolve first. (Forward destinations reference CloudflareEmailRoutingAddress
-	// only for forward-type rules, so that edge is scenario-declared.)
+	// resolve first. CloudflareEmailRoutingZone is a prerequisite because the
+	// zone's Email Routing must be ENABLED before the API accepts rules.
+	// (Forward destinations reference CloudflareEmailRoutingAddress only for
+	// forward-type rules, so that edge is scenario-declared.)
 	CloudResourceKind_CloudflareEmailRoutingRule    CloudResourceKind = 7024
 	CloudResourceKind_CloudflareEmailRoutingAddress CloudResourceKind = 7025
 	CloudResourceKind_CloudflareOriginCaCertificate CloudResourceKind = 7026
@@ -3540,7 +3546,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb9\xbe\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xbf\xbe\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4137,8 +4143,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x16CloudflareLoadBalancer\x10\xdc6\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x04cflb:\x04\xd86\xe36\x123\n" +
 	"\x14CloudflareD1Database\x10\xdd6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfd1db\x12B\n" +
 	"$CloudflareZeroTrustAccessApplication\x10\xde6\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfzta\x125\n" +
-	"\x13CloudflareDnsRecord\x10\xdf6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfrec:\x02\xd86\x12.\n" +
-	"\x11CloudflareRuleset\x10\xe06\x1a\x16\xa2\xf7\x04\x12\b\x0f\x12\bv1alpha1\"\x04cfrs\x129\n" +
+	"\x13CloudflareDnsRecord\x10\xdf6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfrec:\x02\xd86\x122\n" +
+	"\x11CloudflareRuleset\x10\xe06\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfrs:\x02\xd86\x129\n" +
 	"\x17CloudflareWorkersKvPair\x10\xe16\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cfkvp:\x02\xd96\x128\n" +
 	"\x1aCloudflareHyperdriveConfig\x10\xe26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfhyp\x128\n" +
 	"\x1aCloudflareLoadBalancerPool\x10\xe36\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cflbp\x12;\n" +
@@ -4153,8 +4159,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x0eCloudflareList\x10\xec6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cflist\x123\n" +
 	"\x12CloudflareListItem\x10\xed6\x1a\x1a\xa2\xf7\x04\x16\b\x0f\x12\bv1alpha1\"\x04cfli:\x02\xec6\x128\n" +
 	"\x19CloudflareTurnstileWidget\x10\xee6\x1a\x18\xa2\xf7\x04\x14\b\x0f\x12\bv1alpha1\"\x06cfturn\x12<\n" +
-	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cferz:\x02\xd86\x12<\n" +
-	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cferr:\x02\xd86\x12;\n" +
+	"\x1aCloudflareEmailRoutingZone\x10\xef6\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cferz:\x02\xd86\x12>\n" +
+	"\x1aCloudflareEmailRoutingRule\x10\xf06\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\x05cferr:\x04\xd86\xef6\x12;\n" +
 	"\x1dCloudflareEmailRoutingAddress\x10\xf16\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfera\x12;\n" +
 	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfoca\x12=\n" +
 	"\x19CloudflareCertificatePack\x10\xf36\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcertp:\x02\xd86\x12<\n" +

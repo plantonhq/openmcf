@@ -215,6 +215,14 @@ func buildActionParameters(ap *cloudflarerulesetv1alpha1.CloudflareRulesetAction
 	if len(ap.Rulesets) > 0 {
 		args.Rulesets = pulumi.ToStringArray(ap.Rulesets)
 	}
+	if len(ap.Rules) > 0 {
+		// Skip specific rules inside other rulesets: map of ruleset ID -> rule IDs.
+		m := pulumi.StringArrayMap{}
+		for targetRulesetId, ruleIds := range ap.Rules {
+			m[targetRulesetId] = pulumi.ToStringArray(ruleIds.Values)
+		}
+		args.Rules = m
+	}
 
 	// Execute
 	if ap.Id != "" {

@@ -6,6 +6,8 @@
 
 **apiVersion**: `cloudflare.planton.dev/v1alpha1`
 
+**Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
+
 CloudflareEmailRoutingRuleSpec declares a single Email Routing rule for a zone:
 match incoming mail (by recipient or all) and drop it, forward it to verified
 destinations, or hand it to an Email Worker. Requires Email Routing to be
@@ -28,10 +30,13 @@ spec:
     - type: literal
       field: to
       value: support@example.com
-  action:
-    type: forward
-    forwardTo:
-      - value: ops@example.com
+  actions:
+    - type: forward
+      forwardTo:
+        - value: ops@example.com
+    - type: worker
+      worker:
+        value: email-processor
 ```
 
 ## Spec Fields
@@ -46,10 +51,10 @@ spec:
 | `spec.matchers[].type` | `enum` |  |  |  |
 | `spec.matchers[].field` | `string` |  |  |  |
 | `spec.matchers[].value` | `string` |  |  |  |
-| `spec.action` | `CloudflareEmailRoutingRuleAction` | yes |  |  |
-| `spec.action.type` | `enum` |  |  |  |
-| `spec.action.forwardTo` | `[]string \| valueFrom` |  |  | CloudflareEmailRoutingAddress (`status.outputs.email`) |
-| `spec.action.worker` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
+| `spec.actions` | `[]CloudflareEmailRoutingRuleAction` | yes |  |  |
+| `spec.actions[].type` | `enum` |  |  |  |
+| `spec.actions[].forwardTo` | `[]string \| valueFrom` |  |  | CloudflareEmailRoutingAddress (`status.outputs.email`) |
+| `spec.actions[].worker` | `string \| valueFrom` |  |  | CloudflareWorker (`status.outputs.script_name`) |
 
 ## Field Details
 
@@ -128,17 +133,19 @@ matchers; must be empty for all matchers.
 The value to match (the recipient address for a literal "to" matcher).
 Required for literal matchers; must be empty for all matchers.
 
-### spec.action
+### spec.actions
 
-`CloudflareEmailRoutingRuleAction` · required
+`[]CloudflareEmailRoutingRuleAction` · required
 
-The action taken on matched messages.
+The actions taken on matched messages, applied in order (at least one).
+Multiple actions are legitimate — e.g. forward to an address AND invoke an
+Email Worker in the same rule.
 
-- rule: {"required":true}
+- rule: {"repeated":{"minItems":"1"}}
 - rule: forward_to is required when action type is forward
 - rule: worker is required when action type is worker
 
-### spec.action.type
+### spec.actions[].type
 
 `enum`
 
@@ -154,7 +161,7 @@ Allowed values (use exactly as shown):
 - `forward`
 - `worker`
 
-### spec.action.forwardTo
+### spec.actions[].forwardTo
 
 `[]string | valueFrom`
 
@@ -164,7 +171,7 @@ a verified destination email or a reference to a CloudflareEmailRoutingAddress.
 - references: CloudflareEmailRoutingAddress (`status.outputs.email`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: CloudflareEmailRoutingAddress, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
 
-### spec.action.worker
+### spec.actions[].worker
 
 `string | valueFrom`
 
@@ -190,8 +197,8 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.zoneId` | CloudflareDnsZone | `status.outputs.zone_id` |
-| `spec.action.forwardTo` | CloudflareEmailRoutingAddress | `status.outputs.email` |
-| `spec.action.worker` | CloudflareWorker | `status.outputs.script_name` |
+| `spec.actions[].forwardTo` | CloudflareEmailRoutingAddress | `status.outputs.email` |
+| `spec.actions[].worker` | CloudflareWorker | `status.outputs.script_name` |
 
 ## See Also
 

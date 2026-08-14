@@ -25,6 +25,10 @@ func validZone() *CloudflareEmailRoutingZone {
 	}
 }
 
+func dropAction() *CloudflareEmailRoutingCatchAllAction {
+	return &CloudflareEmailRoutingCatchAllAction{Type: CloudflareEmailRoutingCatchAllActionType_drop}
+}
+
 func TestCloudflareEmailRoutingZoneSpec(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "CloudflareEmailRoutingZoneSpec Custom Validation Tests")
@@ -40,27 +44,46 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingZoneSpec Custom Validation Tests"
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
 				Enabled: true,
-				Type:    CloudflareEmailRoutingCatchAllActionType_drop,
+				Actions: []*CloudflareEmailRoutingCatchAllAction{dropAction()},
 			}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a forward catch-all with forward_to", func() {
+		ginkgo.It("accepts a named forward catch-all with forward_to", func() {
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
-				Enabled:   true,
-				Type:      CloudflareEmailRoutingCatchAllActionType_forward,
-				ForwardTo: []*foreignkeyv1.StringValueOrRef{value("ops@example.com")},
+				Enabled: true,
+				Name:    "fallback-forward",
+				Actions: []*CloudflareEmailRoutingCatchAllAction{{
+					Type:      CloudflareEmailRoutingCatchAllActionType_forward,
+					ForwardTo: []*foreignkeyv1.StringValueOrRef{value("ops@example.com")},
+				}},
 			}
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 
-		ginkgo.It("accepts a worker catch-all with worker", func() {
+		ginkgo.It("accepts a multi-action catch-all (forward AND worker)", func() {
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
-				Type:   CloudflareEmailRoutingCatchAllActionType_worker,
-				Worker: value("email-router"),
+				Enabled: true,
+				Actions: []*CloudflareEmailRoutingCatchAllAction{
+					{
+						Type:      CloudflareEmailRoutingCatchAllActionType_forward,
+						ForwardTo: []*foreignkeyv1.StringValueOrRef{value("ops@example.com")},
+					},
+					{
+						Type:   CloudflareEmailRoutingCatchAllActionType_worker,
+						Worker: value("email-router"),
+					},
+				},
 			}
+			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("accepts a subdomain dns_name when lock_dns_records is true", func() {
+			in := validZone()
+			in.Spec.LockDnsRecords = true
+			in.Spec.DnsName = "mail.example.com"
 			gomega.Expect(protovalidate.Validate(in)).To(gomega.BeNil())
 		})
 	})
@@ -72,25 +95,44 @@ var _ = ginkgo.Describe("CloudflareEmailRoutingZoneSpec Custom Validation Tests"
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects a catch-all with unspecified type", func() {
+		ginkgo.It("rejects a catch-all with no actions", func() {
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{Enabled: true}
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects a forward catch-all without forward_to", func() {
+		ginkgo.It("rejects a catch-all action with unspecified type", func() {
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
-				Type: CloudflareEmailRoutingCatchAllActionType_forward,
+				Enabled: true,
+				Actions: []*CloudflareEmailRoutingCatchAllAction{{}},
 			}
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 
-		ginkgo.It("rejects a worker catch-all without worker", func() {
+		ginkgo.It("rejects a forward catch-all action without forward_to", func() {
 			in := validZone()
 			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
-				Type: CloudflareEmailRoutingCatchAllActionType_worker,
+				Actions: []*CloudflareEmailRoutingCatchAllAction{{
+					Type: CloudflareEmailRoutingCatchAllActionType_forward,
+				}},
 			}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a worker catch-all action without worker", func() {
+			in := validZone()
+			in.Spec.CatchAll = &CloudflareEmailRoutingZoneCatchAll{
+				Actions: []*CloudflareEmailRoutingCatchAllAction{{
+					Type: CloudflareEmailRoutingCatchAllActionType_worker,
+				}},
+			}
+			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects dns_name without lock_dns_records", func() {
+			in := validZone()
+			in.Spec.DnsName = "mail.example.com"
 			gomega.Expect(protovalidate.Validate(in)).ToNot(gomega.BeNil())
 		})
 	})

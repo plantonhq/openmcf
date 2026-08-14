@@ -9,7 +9,7 @@ webhooks, storage, auto-responses).
 
 ## Key choices
 
-- `action.type: worker` with `worker` referencing a `CloudflareWorker` (an Email
+- `actions`: one `worker` action with `worker` referencing a `CloudflareWorker` (an Email
   Worker).
 - Combine with a `literal` matcher to scope which mail the Worker receives.
 

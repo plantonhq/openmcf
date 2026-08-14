@@ -10,4 +10,6 @@ spec:
       fieldPath: status.outputs.zone_id
   catchAll:
     enabled: true
-    type: drop
+    name: fallback-drop
+    actions:
+      - type: drop

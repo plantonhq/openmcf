@@ -119,6 +119,9 @@ variable "spec" {
         products = optional(list(string), [])
         ruleset  = optional(string, "")
         rulesets = optional(list(string), [])
+        # Map of ruleset ID -> rule IDs in that ruleset to skip. The converter
+        # emits the proto's list-wrapper message as {values = [...]}.
+        rules = optional(map(object({ values = list(string) })), {})
 
         # Execute
         id = optional(string, "")
@@ -218,7 +221,9 @@ variable "spec" {
             }))
             header = optional(object({
               check_presence = optional(list(string), [])
-              contains       = optional(map(list(string)), {})
+              # Map of header name -> substring list. The converter emits the
+              # proto's list-wrapper message as {values = [...]}.
+              contains       = optional(map(object({ values = list(string) })), {})
               exclude_origin = optional(bool)
               include        = optional(list(string), [])
             }))

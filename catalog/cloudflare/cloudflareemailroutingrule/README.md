@@ -1,8 +1,9 @@
 # CloudflareEmailRoutingRule
 
 Declare a single Email Routing rule for a zone: match incoming mail and drop it,
-forward it to verified destinations, or hand it to an Email Worker. Requires Email
-Routing to be enabled on the zone (`CloudflareEmailRoutingZone`).
+forward it to verified destinations, and/or hand it to an Email Worker — one rule
+carries a LIST of actions, so it can forward AND process in the same match.
+Requires Email Routing to be enabled on the zone (`CloudflareEmailRoutingZone`).
 
 ## When to use
 
@@ -26,13 +27,13 @@ spec:
     - type: literal
       field: to
       value: support@example.com
-  action:
-    type: forward
-    forwardTo:
-      - valueFrom:
-          kind: CloudflareEmailRoutingAddress
-          name: ops-mailbox
-          fieldPath: status.outputs.email
+  actions:
+    - type: forward
+      forwardTo:
+        - valueFrom:
+            kind: CloudflareEmailRoutingAddress
+            name: ops-mailbox
+            fieldPath: status.outputs.email
 ```
 
 ## Configuration reference
@@ -44,7 +45,7 @@ spec:
 | `enabled` | no | Whether the rule is active (default true) |
 | `priority` | no | Evaluation order, lower first (default 0) |
 | `matchers` | yes | One or more: `{ type: all\|literal, field: "to", value }` |
-| `action` | yes | `{ type: drop\|forward\|worker, forwardTo[], worker }` |
+| `actions` | yes | One or more, applied in order: `{ type: drop\|forward\|worker, forwardTo[], worker }` |
 
 `forward` requires `forwardTo`; `worker` requires `worker`. A `literal` matcher
 requires `field` and `value`; an `all` matcher requires neither.

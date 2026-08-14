@@ -31,7 +31,7 @@ that has progressed.
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
 | Kinds in the catalog | 30 |
 | Distinct provider resources consumed | 51 |
-| Spec fields authored across all kinds | 1262 |
+| Spec fields authored across all kinds | 1266 |
 | Module pins on `aws` | `~> 5.0` × 1 |
 | Module pins on `cloudflare` | `~> 5.23` × 30 |
 | Module pins on `tls` | `~> 4.0` × 1 |
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**26 of 30 kinds are at total accounting; 0 proven live.**
+**30 of 30 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -58,9 +58,9 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | — |
 | CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | — |
 | CloudflareDnsZone | 38 | 21 | 12 | 5 | 0 | ✅ | — |
-| CloudflareEmailRoutingAddress | 3 | 2 | 0 | 0 | 1 | ❌ | — |
-| CloudflareEmailRoutingRule | 8 | 4 | 0 | 0 | 10 | ❌ | — |
-| CloudflareEmailRoutingZone | 10 | 3 | 0 | 0 | 12 | ❌ | — |
+| CloudflareEmailRoutingAddress | 3 | 3 | 0 | 0 | 0 | ✅ | — |
+| CloudflareEmailRoutingRule | 8 | 4 | 2 | 2 | 0 | ✅ | — |
+| CloudflareEmailRoutingZone | 10 | 3 | 4 | 3 | 0 | ✅ | — |
 | CloudflareHyperdriveConfig | 6 | 3 | 3 | 0 | 0 | ✅ | — |
 | CloudflareKvNamespace | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | CloudflareList | 5 | 4 | 0 | 1 | 0 | ✅ | — |
@@ -72,7 +72,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflarePagesProject | 9 | 4 | 5 | 0 | 0 | ✅ | — |
 | CloudflareQueue | 9 | 5 | 2 | 2 | 0 | ✅ | — |
 | CloudflareR2Bucket | 34 | 22 | 12 | 0 | 0 | ✅ | — |
-| CloudflareRuleset | 7 | 5 | 0 | 0 | 169 | ❌ | — |
+| CloudflareRuleset | 7 | 5 | 2 | 0 | 0 | ✅ | — |
 | CloudflareTurnstileWidget | 9 | 9 | 0 | 0 | 0 | ✅ | — |
 | CloudflareWorker | 40 | 10 | 20 | 10 | 0 | ✅ | — |
 | CloudflareWorkersKvPair | 5 | 5 | 0 | 0 | 0 | ✅ | — |

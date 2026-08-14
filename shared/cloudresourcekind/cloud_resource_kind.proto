@@ -4756,10 +4756,15 @@ enum CloudResourceKind {
     id_prefix: "cfrec"
     prerequisites: [CloudflareDnsZone]
   }];
+  // CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the
+  // common case; the spec's zone_id reference defaults to the zone kind) must
+  // resolve their zone first. Account-scoped rulesets simply leave the
+  // reference unused.
   CloudflareRuleset = 7008 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfrs"
+    prerequisites: [CloudflareDnsZone]
   }];
   // CloudflareKvNamespace is a prerequisite because a KV pair is written into
   // a namespace -- the spec's namespace_id reference must resolve first.
@@ -4853,13 +4858,15 @@ enum CloudResourceKind {
   }];
   // CloudflareDnsZone is a prerequisite because a routing rule lives in a
   // zone's email routing configuration -- the spec's zone_id reference must
-  // resolve first. (Forward destinations reference CloudflareEmailRoutingAddress
-  // only for forward-type rules, so that edge is scenario-declared.)
+  // resolve first. CloudflareEmailRoutingZone is a prerequisite because the
+  // zone's Email Routing must be ENABLED before the API accepts rules.
+  // (Forward destinations reference CloudflareEmailRoutingAddress only for
+  // forward-type rules, so that edge is scenario-declared.)
   CloudflareEmailRoutingRule = 7024 [(kind_meta) = {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cferr"
-    prerequisites: [CloudflareDnsZone]
+    prerequisites: [CloudflareDnsZone, CloudflareEmailRoutingZone]
   }];
   CloudflareEmailRoutingAddress = 7025 [(kind_meta) = {
     provider: cloudflare

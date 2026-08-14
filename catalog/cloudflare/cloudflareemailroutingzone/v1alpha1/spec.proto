@@ -13,47 +13,62 @@ enum CloudflareEmailRoutingCatchAllActionType {
   worker = 3; // Hand the message to an Email Worker.
 }
 
-// CloudflareEmailRoutingZoneCatchAll configures the single catch-all rule that
-// applies to mail addressed to the zone that no other routing rule matched.
-message CloudflareEmailRoutingZoneCatchAll {
-  // Whether the catch-all rule is active.
-  bool enabled = 1;
-
-  // What to do with unmatched mail.
-  CloudflareEmailRoutingCatchAllActionType type = 2 [
+// CloudflareEmailRoutingCatchAllAction is one action the catch-all rule takes
+// on unmatched mail. The catch-all carries a LIST of actions (matching the
+// Cloudflare API), so it can, for example, forward to addresses AND invoke an
+// Email Worker. The provider models each action as a generic {type, value[]};
+// this typed shape exposes real foreign keys and the module maps it back.
+message CloudflareEmailRoutingCatchAllAction {
+  // The action type.
+  CloudflareEmailRoutingCatchAllActionType type = 1 [
     (buf.validate.field).enum.defined_only = true,
     (buf.validate.field).cel = {
-      id: "catch_all.type_not_unspecified"
-      message: "catch-all type must be one of drop, forward, worker"
+      id: "catch_all_action.type_not_unspecified"
+      message: "catch-all action type must be one of drop, forward, worker"
       expression: "this != 0"
     }
   ];
 
   // Destination addresses to forward to (required when type is forward). Each is
   // a verified destination email, or a reference to a CloudflareEmailRoutingAddress.
-  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef forward_to = 3 [
+  repeated dev.planton.shared.foreignkey.v1.StringValueOrRef forward_to = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareEmailRoutingAddress,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.email"
   ];
 
   // The Email Worker script to invoke (required when type is worker). A script
   // name or a reference to a CloudflareWorker.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef worker = 4 [
+  dev.planton.shared.foreignkey.v1.StringValueOrRef worker = 3 [
     (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareWorker,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.script_name"
   ];
 
   // forward requires forward_to; worker requires worker.
   option (buf.validate.message).cel = {
-    id: "catch_all.forward_requires_forward_to"
-    message: "forward_to is required when catch-all type is forward"
+    id: "catch_all_action.forward_requires_forward_to"
+    message: "forward_to is required when catch-all action type is forward"
     expression: "this.type != 2 || size(this.forward_to) > 0"
   };
   option (buf.validate.message).cel = {
-    id: "catch_all.worker_requires_worker"
-    message: "worker is required when catch-all type is worker"
+    id: "catch_all_action.worker_requires_worker"
+    message: "worker is required when catch-all action type is worker"
     expression: "this.type != 3 || has(this.worker)"
   };
+}
+
+// CloudflareEmailRoutingZoneCatchAll configures the single catch-all rule that
+// applies to mail addressed to the zone that no other routing rule matched.
+// (The rule's matcher is always the fixed "all" matcher — Cloudflare permits no
+// other matcher type on the catch-all, so the module supplies it.)
+message CloudflareEmailRoutingZoneCatchAll {
+  // Whether the catch-all rule is active.
+  bool enabled = 1;
+
+  // The actions taken on unmatched mail, applied in order (at least one).
+  repeated CloudflareEmailRoutingCatchAllAction actions = 2 [(buf.validate.field).repeated.min_items = 1];
+
+  // An optional descriptive name for the catch-all rule.
+  string name = 3;
 }
 
 // CloudflareEmailRoutingZoneSpec enables Email Routing on a zone — the anchor for
@@ -79,4 +94,18 @@ message CloudflareEmailRoutingZoneSpec {
   // The records are created automatically on enable regardless; locking manages
   // them explicitly. Defaults to false.
   bool lock_dns_records = 3;
+
+  // The domain to create the managed Email Routing DNS records for. Leave empty
+  // for the zone apex (the common case). Set a subdomain of the zone (e.g.
+  // "mail.example.com" on zone "example.com") to route email addressed to that
+  // subdomain. Applies only when lock_dns_records is true (that is what
+  // instantiates the managed DNS records).
+  string dns_name = 4;
+
+  // dns_name only has effect through the managed DNS records.
+  option (buf.validate.message).cel = {
+    id: "spec.dns_name_requires_lock"
+    message: "dns_name requires lock_dns_records to be true"
+    expression: "this.dns_name == '' || this.lock_dns_records"
+  };
 }

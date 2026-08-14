@@ -13,7 +13,7 @@ spec:
     - type: literal
       field: to
       value: <matched-address>
-  action:
-    type: forward
-    forwardTo:
-      - value: <destination-email>
+  actions:
+    - type: forward
+      forwardTo:
+        - value: <destination-email>

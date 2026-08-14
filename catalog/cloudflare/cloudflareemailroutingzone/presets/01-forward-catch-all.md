@@ -9,7 +9,7 @@ verified destination address. The simplest "catch everything → my inbox" setup
 
 ## Key choices
 
-- `catchAll.type: forward` with `forwardTo` listing verified destination
+- `catchAll.actions`: one `forward` action with `forwardTo` listing verified destination
   addresses (each must be a verified `CloudflareEmailRoutingAddress`).
 - Add `CloudflareEmailRoutingRule`s for per-address routing that should take
   precedence over the catch-all.

@@ -69,3 +69,30 @@ spec:
     - terraform_type: cloudflare_load_balancer
       pulumi_type: cloudflare:index/loadBalancer:LoadBalancer
       id_format: "zones/{zone_id}/{load_balancer_id}"
+    # --- Email Routing ----------------------------------------------------------
+    # Settings, the managed DNS records, and the catch-all rule are zone
+    # singletons -- their import identity is the bare zone id. Rules are
+    # zone-scoped objects; destination addresses are account-scoped objects.
+    - terraform_type: cloudflare_email_routing_settings
+      pulumi_type: cloudflare:index/emailRoutingSettings:EmailRoutingSettings
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_dns
+      pulumi_type: cloudflare:index/emailRoutingDns:EmailRoutingDns
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_catch_all
+      pulumi_type: cloudflare:index/emailRoutingCatchAll:EmailRoutingCatchAll
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_email_routing_rule
+      pulumi_type: cloudflare:index/emailRoutingRule:EmailRoutingRule
+      id_format: "{zone_id}/{rule_id}"
+    - terraform_type: cloudflare_email_routing_address
+      pulumi_type: cloudflare:index/emailRoutingAddress:EmailRoutingAddress
+      id_format: "{account_id}/{address_id}"
+    # --- Rulesets -----------------------------------------------------------------
+    # The ruleset's documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{account_id|zone_id}/{ruleset_id}"); the catalog
+    # kind's live scenarios are zone-scoped, so the zones/ arm is the one
+    # recorded here (an account-scoped ruleset imports via the accounts/ arm).
+    - terraform_type: cloudflare_ruleset
+      pulumi_type: cloudflare:index/ruleset:Ruleset
+      id_format: "zones/{zone_id}/{ruleset_id}"

@@ -57,6 +57,8 @@ These are the most important decisions when configuring a destination address. E
 
 **Account (`accountId`)** -- The owning Cloudflare account. Immutable, and must match the account of the rules and zones that forward here.
 
+**Verification Override (`status`)** -- Normally leave empty: verification happens through the emailed link. Cloudflare permits non-admin callers only to flip a verified address back to `unverified` (setting `verified` requires account admin privileges).
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes

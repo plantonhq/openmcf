@@ -33,12 +33,13 @@ variable "spec" {
       value = optional(string, "")
     }))
 
-    # (Required) The action taken on matched messages. forward_to and worker are
-    # StringValueOrRef lists/values flattened to plain strings.
-    action = object({
+    # (Required) The actions taken on matched messages, applied in order (at
+    # least one). forward_to and worker are StringValueOrRef lists/values
+    # flattened to plain strings.
+    actions = list(object({
       type       = string
       forward_to = optional(list(string), [])
       worker     = optional(string, "")
-    })
+    }))
   })
 }

@@ -1741,7 +1741,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -1757,7 +1757,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
@@ -2614,7 +2614,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -2630,7 +2630,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
@@ -4638,7 +4638,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -4654,7 +4654,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
@@ -5511,7 +5511,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -5527,7 +5527,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
@@ -7573,7 +7573,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -7589,7 +7589,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.
@@ -8446,7 +8446,7 @@ Allowed values (use exactly as shown):
 - `CloudflareD1Database`
 - `CloudflareZeroTrustAccessApplication`
 - `CloudflareDnsRecord` -- CloudflareDnsZone is a prerequisite because every record lives inside a zone -- the spec's zone_id reference must resolve before the record can be created.
-- `CloudflareRuleset`
+- `CloudflareRuleset` -- CloudflareDnsZone is a prerequisite because zone-scoped rulesets (the common case; the spec's zone_id reference defaults to the zone kind) must resolve their zone first. Account-scoped rulesets simply leave the reference unused.
 - `CloudflareWorkersKvPair` -- CloudflareKvNamespace is a prerequisite because a KV pair is written into a namespace -- the spec's namespace_id reference must resolve first.
 - `CloudflareHyperdriveConfig`
 - `CloudflareLoadBalancerPool`
@@ -8462,7 +8462,7 @@ Allowed values (use exactly as shown):
 - `CloudflareListItem` -- CloudflareList is a prerequisite because an item exists only inside a list -- the spec's list_id reference must resolve first.
 - `CloudflareTurnstileWidget`
 - `CloudflareEmailRoutingZone` -- CloudflareDnsZone is a prerequisite because email routing is enabled ON a zone -- the spec's zone_id reference must resolve first.
-- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
+- `CloudflareEmailRoutingRule` -- CloudflareDnsZone is a prerequisite because a routing rule lives in a zone's email routing configuration -- the spec's zone_id reference must resolve first. CloudflareEmailRoutingZone is a prerequisite because the zone's Email Routing must be ENABLED before the API accepts rules. (Forward destinations reference CloudflareEmailRoutingAddress only for forward-type rules, so that edge is scenario-declared.)
 - `CloudflareEmailRoutingAddress`
 - `CloudflareOriginCaCertificate`
 - `CloudflareCertificatePack` -- CloudflareDnsZone is a prerequisite because a certificate pack is ordered for a zone's hostnames -- the spec's zone_id reference must resolve first.

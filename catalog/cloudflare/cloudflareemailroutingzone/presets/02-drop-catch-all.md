@@ -11,7 +11,7 @@ care about; everything else is silently discarded.
 
 ## Key choices
 
-- `catchAll.type: drop` — unmatched mail is discarded.
+- `catchAll.actions`: one `drop` action — unmatched mail is discarded.
 - Add `CloudflareEmailRoutingRule`s for each address you want delivered.
 
 ## Placeholders

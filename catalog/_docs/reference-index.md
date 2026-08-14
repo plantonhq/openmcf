@@ -29,7 +29,7 @@ Start with:
 | [aws](../aws/reference-index.md) | 112 | 112 | 0 |
 | [azure](../azure/reference-index.md) | 184 | 184 | 75 |
 | [civo](../civo/reference-index.md) | 12 | 2 | 0 |
-| [cloudflare](../cloudflare/reference-index.md) | 30 | 30 | 3 |
+| [cloudflare](../cloudflare/reference-index.md) | 30 | 30 | 7 |
 | [confluent](../confluent/reference-index.md) | 1 | 1 | 0 |
 | [digitalocean](../digitalocean/reference-index.md) | 15 | 14 | 0 |
 | [gcp](../gcp/reference-index.md) | 98 | 98 | 96 |

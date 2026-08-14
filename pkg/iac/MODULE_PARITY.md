@@ -271,10 +271,13 @@ tree — `set_config` (SSL/security-level/Polish/Rocket Loader/autominify/…), 
 (`cache_key.custom_key` cookie/header/host/query_string/user, `cache_reserve`, `edge_ttl`/`browser_ttl`,
 `additional_cacheable_ports`, strip/respect toggles), the `set_cache_control` directives (modeled with
 three reusable shapes), `set_cache_tags`, `log_custom_field` lists, `from_list`, `algorithms`,
-`matched_data`, `increment`, and `serve_error`. Value-set fields (modes, operations, sensitivity levels,
-content types, SSL/security-level/Polish/body-buffering) are CEL-validated. `exposed_credential_check.
-password_expression` is a wirefilter expression locating the password, not a secret, so it carries
-`sensitive_exempt_reason`.
+`matched_data`, `increment`, `serve_error`, and all five skip surfaces (`phases`, `products`, `ruleset`,
+`rulesets`, and the per-rule `rules` map of ruleset ID → rule IDs — both engines unwrap the proto's
+list-wrapper map values onto the provider's map-of-lists, CEL-validated as 32-hex IDs and incompatible
+with the single `ruleset` option, mirroring the provider's own validators). Value-set fields (modes,
+operations, sensitivity levels, content types, SSL/security-level/Polish/body-buffering) are
+CEL-validated. `exposed_credential_check.password_expression` is a wirefilter expression locating the
+password, not a secret, so it carries `sensitive_exempt_reason`.
 
 **One tofu↔Pulumi parity gap (documented):** `action_parameters.vary` (variant caching keyed on response
 headers) exists in the Terraform provider (v5.21.1) but **not in the pulumi-cloudflare SDK (v6.17.0)** —
@@ -282,6 +285,22 @@ there is no `vary` field on `RulesetRuleActionParametersArgs`. The proto models 
 truth) and the Terraform module provisions it; the Pulumi module omits it with an inline note. When a newer
 Pulumi SDK exposes `RulesetRuleActionParameters.Vary`, wire it in and remove the note (see the ruleset
 Pulumi `README.md`). Every other ruleset field is at full parity.
+
+The Email Routing family (`CloudflareEmailRoutingZone`, `CloudflareEmailRoutingRule`,
+`CloudflareEmailRoutingAddress`) pins the Cloudflare provider to v5 on both engines. The zone kind folds
+three zone singletons: `cloudflare_email_routing_settings` (create IS enable, destroy IS disable),
+`cloudflare_email_routing_catch_all` (whose provider Delete is a genuine no-op — both modules carry the
+note), and `cloudflare_email_routing_dns` (instantiated by `lock_dns_records`; `dns_name` targets a
+subdomain). Rules and the catch-all model the provider's generic `{type, value[]}` action LIST as typed
+actions with FKs (`forward_to` → address, `worker` → Worker); both engines map each typed action back,
+so one rule can forward AND invoke a Worker. The catch-all's `matchers` argument is module-supplied
+(`[{type = "all"}]` — the only value the provider's validator accepts). **PARITY-EXCEPTION**: the
+address's `status` (explicit verification-state override, `unverified`/`verified`) exists in the
+Terraform provider (v5.23.0) but **not in the pulumi-cloudflare SDK (v6.17.0)** — `EmailRoutingAddressArgs`
+carries only `AccountId` and `Email`; tofu honors it, Pulumi omits it with an inline note. Every other
+field is at full parity. Stack outputs: zone `{zone_id, enabled, status, name}` (the zone id is the
+import identity of all three singletons), rule `{rule_id, zone_id}`, address
+`{address_id, email, verified, created}`.
 
 The `CloudflareQueue` component models the queue plus its single (folded) consumer; the Pulumi SDK
 (v6.17.0) and Terraform provider (v5.21.1) are at **full parity** (`cloudflare_queue` +

@@ -161,7 +161,7 @@ spec:
 | `block` | `response { statusCode, content, contentType }` |
 | `rewrite` | `uri { path, query }`, `headers` (map) |
 | `redirect` | `fromValue { targetUrl, statusCode, preserveQueryString }` |
-| `skip` | `phases`, `products`, `ruleset`, `rulesets` |
+| `skip` | `phases`, `products`, `ruleset`, `rulesets`, `rules` (map of ruleset ID → rule IDs to skip inside it; incompatible with `ruleset`) |
 | `execute` | `id`, `overrides { action, enabled, categories, rules }`, `matchedData { publicKey }` |
 | `redirect` (from list) | `fromList { name (literal list name or a reference to a CloudflareList), key }` |
 | `score` | `increment` |

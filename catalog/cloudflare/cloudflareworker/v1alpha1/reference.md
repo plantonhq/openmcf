@@ -1756,8 +1756,8 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
-| CloudflareEmailRoutingRule | `spec.action.worker` | `status.outputs.script_name` |
-| CloudflareEmailRoutingZone | `spec.catchAll.worker` | `status.outputs.script_name` |
+| CloudflareEmailRoutingRule | `spec.actions[].worker` | `status.outputs.script_name` |
+| CloudflareEmailRoutingZone | `spec.catchAll.actions[].worker` | `status.outputs.script_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.preview.services[].service` | `status.outputs.script_name` |
 | CloudflarePagesProject | `spec.deploymentConfigs.production.services[].service` | `status.outputs.script_name` |
 | CloudflareQueue | `spec.consumer.scriptName` | `status.outputs.script_name` |
