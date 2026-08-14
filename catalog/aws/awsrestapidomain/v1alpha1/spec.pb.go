@@ -89,6 +89,8 @@ type AwsRestApiDomainSpec struct {
 	// ROUTING_RULE_THEN_BASE_PATH_MAPPING. Routing rules themselves are
 	// the AwsHttpApiDomain component's surface; set a ROUTING_RULE mode
 	// here only when that component manages rules on this same domain.
+	// Uppercase canonical spellings only (the provider accepts any case;
+	// the spec pins the canonical form).
 	RoutingMode string `protobuf:"bytes,11,opt,name=routing_mode,json=routingMode,proto3" json:"routing_mode,omitempty"`
 	// Base-path mappings fanning the domain's paths out across REST APIs
 	// and stages ("/orders" -> the orders API's prod stage).
@@ -534,7 +536,7 @@ var File_catalog_aws_awsrestapidomain_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_aws_awsrestapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/aws/awsrestapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awsrestapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xc1\x11\n" +
+	"0catalog/aws/awsrestapidomain/v1alpha1/spec.proto\x12)dev.planton.aws.awsrestapidomain.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfb\x16\n" +
 	"\x14AwsRestApiDomainSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12+\n" +
 	"\vdomain_name\x18\x02 \x01(\tB\n" +
@@ -552,10 +554,13 @@ const file_catalog_aws_awsrestapidomain_v1alpha1_spec_proto_rawDesc = "" +
 	" \x01(\v2\x17.google.protobuf.StructR\x06policy\x12{\n" +
 	"\frouting_mode\x18\v \x01(\tBX\xbaHU\xd8\x01\x01rPR\x16BASE_PATH_MAPPING_ONLYR\x11ROUTING_RULE_ONLYR#ROUTING_RULE_THEN_BASE_PATH_MAPPINGR\vroutingMode\x12x\n" +
 	"\x12base_path_mappings\x18\f \x03(\v2J.dev.planton.aws.awsrestapidomain.v1alpha1.AwsRestApiDomainBasePathMappingR\x10basePathMappings\x12}\n" +
-	"\x13access_associations\x18\r \x03(\v2L.dev.planton.aws.awsrestapidomain.v1alpha1.AwsRestApiDomainAccessAssociationR\x12accessAssociations:\x8c\x04\xbaH\x88\x04\x1a\x9f\x01\n" +
+	"\x13access_associations\x18\r \x03(\v2L.dev.planton.aws.awsrestapidomain.v1alpha1.AwsRestApiDomainAccessAssociationR\x12accessAssociations:\xc6\t\xbaH\xc2\t\x1a\x9f\x01\n" +
 	"\x1ecertificate_exactly_one_source\x12@set exactly one of certificate_arn (ACM) or uploaded_certificate\x1a;has(this.certificate_arn) != has(this.uploaded_certificate)\x1a\x87\x01\n" +
 	"\x11base_paths_unique\x12<base_path_mappings entries must have unique base_path values\x1a4this.base_path_mappings.map(m, m.base_path).unique()\x1a\xd9\x01\n" +
-	" access_associations_private_only\x128access_associations apply only to PRIVATE endpoint types\x1a{this.access_associations.size() == 0 || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')\"\xa2\x01\n" +
+	" access_associations_private_only\x128access_associations apply only to PRIVATE endpoint types\x1a{this.access_associations.size() == 0 || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')\x1a\xad\x02\n" +
+	"#access_association_endpoints_unique\x12?access_associations entries must reference unique VPC endpoints\x1a\xc4\x01this.access_associations.map(a, a.vpc_endpoint_id.value + '|' + a.vpc_endpoint_id.value_from.env + '|' + a.vpc_endpoint_id.value_from.name + '|' + a.vpc_endpoint_id.value_from.field_path).unique()\x1a\xae\x01\n" +
+	"\x13policy_private_only\x12-policy applies only to PRIVATE endpoint types\x1ah!has(this.policy) || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')\x1a\xd6\x01\n" +
+	"+access_mode_requires_modern_security_policy\x12Pendpoint_access_mode requires a security_policy from the SecurityPolicy_* family\x1aUthis.endpoint_access_mode == '' || this.security_policy.startsWith('SecurityPolicy_')\"\xa2\x01\n" +
 	"#AwsRestApiDomainUploadedCertificate\x12\x1b\n" +
 	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12\x1b\n" +
 	"\x04body\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04body\x12\x14\n" +

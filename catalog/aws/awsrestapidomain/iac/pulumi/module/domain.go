@@ -13,14 +13,15 @@ import (
 // private access associations, and exports outputs.
 //
 // Lifecycle facts the renders below depend on:
-//   - the certificate reference fans in by endpoint type: EDGE domains
-//     take certificate_arn (the us-east-1 cert), REGIONAL and PRIVATE
-//     domains take regional_certificate_arn -- one spec field, wired to
-//     the right provider argument here (the same fan-in in both
-//     engines);
+//   - the certificate reference fans in by endpoint type: EDGE and
+//     PRIVATE domains take certificate_arn (the AWS SDK documents that
+//     argument as "edge-optimized endpoint or private endpoint"; EDGE
+//     certs live in us-east-1), REGIONAL domains take
+//     regional_certificate_arn -- one spec field, wired to the right
+//     provider argument here (the same fan-in in both engines);
 //   - uploaded certificate material follows the same fan-in
-//     (certificate_name for EDGE, regional_certificate_name for
-//     REGIONAL);
+//     (certificate_name for EDGE/PRIVATE, regional_certificate_name
+//     for REGIONAL);
 //   - domain create/update waits on DomainNameStatus AVAILABLE (up to
 //     60 minutes upstream -- enhanced security policies trigger a
 //     post-create update);
@@ -46,19 +47,21 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 	}
 	args.EndpointConfiguration = endpointConfig
 
-	// Certificate fan-in by endpoint type (see the header comment).
+	// Certificate fan-in by endpoint type (see the header comment):
+	// certificate_arn serves EDGE and PRIVATE, regional_certificate_arn
+	// serves REGIONAL only.
 	if spec.CertificateArn.GetValue() != "" {
-		if locals.EndpointType == "EDGE" {
-			args.CertificateArn = pulumi.String(spec.CertificateArn.GetValue())
-		} else {
+		if locals.EndpointType == "REGIONAL" {
 			args.RegionalCertificateArn = pulumi.String(spec.CertificateArn.GetValue())
+		} else {
+			args.CertificateArn = pulumi.String(spec.CertificateArn.GetValue())
 		}
 	}
 	if spec.UploadedCertificate != nil {
-		if locals.EndpointType == "EDGE" {
-			args.CertificateName = pulumi.String(spec.UploadedCertificate.Name)
-		} else {
+		if locals.EndpointType == "REGIONAL" {
 			args.RegionalCertificateName = pulumi.String(spec.UploadedCertificate.Name)
+		} else {
+			args.CertificateName = pulumi.String(spec.UploadedCertificate.Name)
 		}
 		args.CertificateBody = pulumi.String(spec.UploadedCertificate.Body)
 		if spec.UploadedCertificate.Chain != "" {
@@ -101,18 +104,26 @@ func domain(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
 		return errors.Wrap(err, "create domain name")
 	}
 
-	// Base-path mappings. Keyed by base path ("(root)" for the empty
-	// path) -- the same keys as the Terraform for_each and the output
-	// map.
+	// Base-path mappings. Keyed by base path -- the same keys as the
+	// Terraform for_each and the output map. The empty (root) path keys
+	// as "(none)", AWS's own empty-base-path sentinel, so the blind
+	// import derivation composes "{domain}/(none)" -- exactly what the
+	// provider's import parser accepts for a root mapping. PRIVATE
+	// domains additionally pass domain_name_id: AWS permits many
+	// private domains sharing one hostname account-wide, so the name
+	// alone is ambiguous there.
 	mappingIds := pulumi.StringMap{}
 	for _, m := range spec.BasePathMappings {
 		key := m.BasePath
 		if key == "" {
-			key = "(root)"
+			key = "(none)"
 		}
 		mappingArgs := &apigateway.BasePathMappingArgs{
 			DomainName: created.DomainName,
 			RestApi:    pulumi.String(m.RestApiId.GetValue()),
+		}
+		if locals.EndpointType == "PRIVATE" {
+			mappingArgs.DomainNameId = created.DomainNameId
 		}
 		if m.BasePath != "" {
 			mappingArgs.BasePath = pulumi.String(m.BasePath)

@@ -23,7 +23,7 @@ func Resources(ctx *pulumi.Context, stackInput *awsrestapigatewayv1alpha1.AwsRes
 		return errors.Wrap(err, "failed to create AWS provider")
 	}
 
-	api, err := restApi(ctx, locals, provider)
+	api, apiExtras, err := restApi(ctx, locals, provider)
 	if err != nil {
 		return errors.Wrap(err, "rest api")
 	}
@@ -38,7 +38,7 @@ func Resources(ctx *pulumi.Context, stackInput *awsrestapigatewayv1alpha1.AwsRes
 		return errors.Wrap(err, "route tree")
 	}
 
-	if err := stage(ctx, locals, provider, api, tree); err != nil {
+	if err := stage(ctx, locals, provider, api, tree, satellites, apiExtras); err != nil {
 		return errors.Wrap(err, "stage")
 	}
 

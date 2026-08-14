@@ -13,21 +13,33 @@ spec:
       where_to_find: >-
         API Gateway console -> APIs -> the REST API (the ID), or
         `aws apigateway get-rest-apis` (id).
+    # The route and route-response instance keys are COMPOSITE
+    # ("GET /orders/{id}", "GET /orders/{id}|200"), so their placeholder
+    # values resolve through echo maps the modules export keyed exactly
+    # like the instances. Derivations are ordered first-resolves-wins: a
+    # tree-node address (path-keyed) hits resource_ids, a route address
+    # hits route_resource_ids, a response address hits
+    # response_resource_ids -- the key shapes never collide (paths start
+    # with "/", route keys with the HTTP method).
     - name: resource_id
       derivations:
         - from_stack_output_keyed_by_address: resource_ids
+        - from_stack_output_keyed_by_address: route_resource_ids
+        - from_stack_output_keyed_by_address: response_resource_ids
       where_to_find: >-
         `aws apigateway get-resources --rest-api-id <id>` lists resource
-        ids keyed by path; match each to the derived tree node.
+        ids keyed by path; match each to the derived tree node (or to
+        the route's path for method/integration/response addresses).
     - name: http_method
       derivations:
-        - from_address_key_segment: 0
+        - from_stack_output_keyed_by_address: route_methods
+        - from_stack_output_keyed_by_address: response_methods
       where_to_find: >-
         The HTTP method is the first token of each route's for_each key
         ("GET /orders/{id}").
     - name: status_code
       derivations:
-        - from_address_key_segment: 1
+        - from_stack_output_keyed_by_address: response_status_codes
       where_to_find: >-
         The status code is the token after "|" on each route-response
         for_each key ("GET /orders/{id}|200").
@@ -73,9 +85,12 @@ spec:
         `aws apigateway get-documentation-parts --rest-api-id <id>`
         (id), matched to each spec.documentation.parts entry by
         declaration position.
+    # The documentation version resource is count-based (its address
+    # key is "0"), so the version string derives from the spec field,
+    # never from the address.
     - name: version
       derivations:
-        - from_address_key: true
+        - from_spec_field: documentation.published_version.version
       where_to_find: >-
         The published documentation version string
         (spec.documentation.published_version.version).

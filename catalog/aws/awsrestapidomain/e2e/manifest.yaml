@@ -20,8 +20,10 @@ spec:
   endpointConfiguration:
     type: REGIONAL
     ipAddressType: ipv4
+  # endpoint_access_mode pairs only with the SecurityPolicy_* family
+  # (AWS rejects it with legacy policy names -- the CEL enforces it).
   endpointAccessMode: BASIC
-  securityPolicy: TLS_1_2
+  securityPolicy: SecurityPolicy_TLS13_1_2_2021_06
   routingMode: BASE_PATH_MAPPING_ONLY
   basePathMappings:
     - basePath: orders

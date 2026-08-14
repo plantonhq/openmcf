@@ -19,6 +19,13 @@ type createdSatellites struct {
 	// documentationParts orders the documentation version behind the
 	// parts it publishes.
 	documentationParts []pulumi.Resource
+	// gatewayResponses orders the deployment behind the response
+	// customizations - they take effect only in a deployed snapshot.
+	gatewayResponses []pulumi.Resource
+	// documentationVersion orders the stage behind the published
+	// version it references (AWS rejects a stage naming a version that
+	// does not exist yet).
+	documentationVersion pulumi.Resource
 }
 
 // apiSatellites creates the API-scoped named satellites: models,
@@ -45,8 +52,10 @@ func apiSatellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 		models:      map[string]*apigateway.Model{},
 	}
 
-	// JSON Schema payload models. Iteration is name-sorted for
-	// deterministic previews (same for every satellite loop below).
+	// JSON Schema payload models. Iteration is identity-sorted for
+	// deterministic previews (names here, response types for gateway
+	// responses; documentation parts keep declaration order - position
+	// IS their identity).
 	modelIds := pulumi.StringMap{}
 	sortedModels := append([]int{}, indexRange(len(spec.Models))...)
 	sort.Slice(sortedModels, func(i, j int) bool { return spec.Models[sortedModels[i]].Name < spec.Models[sortedModels[j]].Name })
@@ -137,7 +146,12 @@ func apiSatellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 	ctx.Export(OpAuthorizerIds, authorizerIds)
 
 	// Gateway-generated response customizations, keyed by type.
-	for _, g := range spec.GatewayResponses {
+	sortedResponses := append([]int{}, indexRange(len(spec.GatewayResponses))...)
+	sort.Slice(sortedResponses, func(i, j int) bool {
+		return spec.GatewayResponses[sortedResponses[i]].ResponseType < spec.GatewayResponses[sortedResponses[j]].ResponseType
+	})
+	for _, i := range sortedResponses {
+		g := spec.GatewayResponses[i]
 		args := &apigateway.ResponseArgs{
 			RestApiId:    api.ID(),
 			ResponseType: pulumi.String(g.ResponseType),
@@ -151,15 +165,19 @@ func apiSatellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 		if len(g.ResponseTemplates) > 0 {
 			args.ResponseTemplates = pulumi.ToStringMap(g.ResponseTemplates)
 		}
-		if _, err := apigateway.NewResponse(ctx, "gateway-response-"+g.ResponseType, args, pulumi.Provider(provider)); err != nil {
+		response, err := apigateway.NewResponse(ctx, "gateway-response-"+g.ResponseType, args, pulumi.Provider(provider))
+		if err != nil {
 			return nil, errors.Wrapf(err, "create gateway response %q", g.ResponseType)
 		}
+		created.gatewayResponses = append(created.gatewayResponses, response)
 	}
 
 	// Documentation parts, keyed by declaration position (locations are
-	// composite; position is the stable cross-engine key).
+	// composite; position is the stable cross-engine key). The part-ID
+	// map exports unconditionally (empty without documentation) so both
+	// engines emit the same output set.
+	documentationPartIds := pulumi.StringMap{}
 	if spec.Documentation != nil {
-		documentationPartIds := pulumi.StringMap{}
 		for i, p := range spec.Documentation.Parts {
 			key := strconv.Itoa(i)
 			location := &apigateway.DocumentationPartLocationArgs{
@@ -188,7 +206,6 @@ func apiSatellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 			created.documentationParts = append(created.documentationParts, part)
 			documentationPartIds[key] = part.ID().ToStringOutput()
 		}
-		ctx.Export(OpDocumentationPartIds, documentationPartIds)
 
 		// Publishing snapshots the parts - it must run after them.
 		if spec.Documentation.PublishedVersion != nil {
@@ -199,12 +216,15 @@ func apiSatellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, 
 			if spec.Documentation.PublishedVersion.Description != "" {
 				versionArgs.Description = pulumi.String(spec.Documentation.PublishedVersion.Description)
 			}
-			if _, err := apigateway.NewDocumentationVersion(ctx, "documentation-version", versionArgs,
-				pulumi.Provider(provider), pulumi.DependsOn(created.documentationParts)); err != nil {
+			version, err := apigateway.NewDocumentationVersion(ctx, "documentation-version", versionArgs,
+				pulumi.Provider(provider), pulumi.DependsOn(created.documentationParts))
+			if err != nil {
 				return nil, errors.Wrap(err, "create documentation version")
 			}
+			created.documentationVersion = version
 		}
 	}
+	ctx.Export(OpDocumentationPartIds, documentationPartIds)
 
 	return created, nil
 }

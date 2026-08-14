@@ -277,7 +277,7 @@ spec:
 
 `int32` · optional (explicit presence)
 
-- rule: {"int32":{"lte":10485760,"gte":0}}
+- rule: {"int32":{"lte":10485760,"gte":-1}}
 
 ### spec.disableExecuteApiEndpoint
 
@@ -904,6 +904,11 @@ Reference an output from another manifest as `valueFrom: {kind: AwsRestApiGatewa
 | `status.outputs.model_ids` | `map<string, string>` |  |
 | `status.outputs.request_validator_ids` | `map<string, string>` |  |
 | `status.outputs.documentation_part_ids` | `map<string, string>` |  |
+| `status.outputs.route_resource_ids` | `map<string, string>` |  |
+| `status.outputs.route_methods` | `map<string, string>` |  |
+| `status.outputs.response_resource_ids` | `map<string, string>` |  |
+| `status.outputs.response_methods` | `map<string, string>` |  |
+| `status.outputs.response_status_codes` | `map<string, string>` |  |
 
 ## References
 

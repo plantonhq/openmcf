@@ -33,8 +33,10 @@ spec:
   endpointConfiguration:
     type: REGIONAL
     ipAddressType: ipv4
+  # endpoint_access_mode pairs only with the SecurityPolicy_* family
+  # (AWS rejects it with legacy policy names -- the CEL enforces it).
   endpointAccessMode: BASIC
-  securityPolicy: TLS_1_2
+  securityPolicy: SecurityPolicy_TLS13_1_2_2021_06
   routingMode: BASE_PATH_MAPPING_ONLY
   basePathMappings:
     - basePath: orders
@@ -228,6 +230,9 @@ spec:
 - `certificate_exactly_one_source`: set exactly one of certificate_arn (ACM) or uploaded_certificate
 - `base_paths_unique`: base_path_mappings entries must have unique base_path values
 - `access_associations_private_only`: access_associations apply only to PRIVATE endpoint types
+- `access_association_endpoints_unique`: access_associations entries must reference unique VPC endpoints
+- `policy_private_only`: policy applies only to PRIVATE endpoint types
+- `access_mode_requires_modern_security_policy`: endpoint_access_mode requires a security_policy from the SecurityPolicy_* family
 
 ## Outputs
 

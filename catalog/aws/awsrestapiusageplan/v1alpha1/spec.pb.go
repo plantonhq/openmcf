@@ -515,12 +515,12 @@ const file_catalog_aws_awsrestapiusageplan_v1alpha1_spec_proto_rawDesc = "" +
 	"\vburst_limit\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
 	"burstLimit\x12-\n" +
 	"\n" +
-	"rate_limit\x18\x03 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00R\trateLimit\"\xfa\x02\n" +
+	"rate_limit\x18\x03 \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00R\trateLimit\"\xa8\x03\n" +
 	"\x18AwsRestApiUsagePlanQuota\x12\x1d\n" +
 	"\x05limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x01R\x05limit\x12/\n" +
 	"\x06period\x18\x02 \x01(\tB\x17\xbaH\x14r\x12R\x03DAYR\x04WEEKR\x05MONTHR\x06period\x12\x1f\n" +
-	"\x06offset\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06offset:\xec\x01\xbaH\xe8\x01\x1a\xe5\x01\n" +
-	"\x14offset_within_period\x12@quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH\x1a\x8a\x01(this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)\"\xa9\x02\n" +
+	"\x06offset\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06offset:\x9a\x02\xbaH\x96\x02\x1a\x93\x02\n" +
+	"\x14offset_within_period\x12@quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH\x1a\xb8\x01!(this.period in ['DAY', 'WEEK', 'MONTH']) || (this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)\"\xa9\x02\n" +
 	"\x1bAwsRestApiUsagePlanThrottle\x12(\n" +
 	"\vburst_limit\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\n" +
 	"burstLimit\x12-\n" +

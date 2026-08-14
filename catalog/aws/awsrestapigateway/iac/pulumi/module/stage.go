@@ -23,8 +23,17 @@ import (
 //   - method settings are PATCHes on the stage (a view, not a real
 //     object): create and update both PATCH, delete PATCHes the
 //     overrides away.
-func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *apigateway.RestApi, tree *createdTree) error {
+func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *apigateway.RestApi, tree *createdTree,
+	satellites *createdSatellites, apiExtras []pulumi.Resource) error {
 	spec := locals.Spec
+
+	// The snapshot must capture the complete definition: the route
+	// tree, the gateway-response customizations, and the resource
+	// policy all take effect only in a deployed snapshot (the same
+	// edges the Terraform module's depends_on declares).
+	definitionResources := append([]pulumi.Resource{}, tree.definitionResources...)
+	definitionResources = append(definitionResources, satellites.gatewayResponses...)
+	definitionResources = append(definitionResources, apiExtras...)
 
 	deploymentArgs := &apigateway.DeploymentArgs{
 		RestApi: api.ID(),
@@ -34,8 +43,7 @@ func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *api
 	}
 	deployment, err := apigateway.NewDeployment(ctx, "deployment", deploymentArgs,
 		pulumi.Provider(provider),
-		// The snapshot must capture the complete definition.
-		pulumi.DependsOn(tree.definitionResources),
+		pulumi.DependsOn(definitionResources),
 		// Replacement order: create the new deployment, repoint the
 		// stage, then delete the old one.
 		pulumi.DeleteBeforeReplace(false))
@@ -70,7 +78,10 @@ func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *api
 	}
 
 	// The TLS client certificate presented to HTTP backends: generated
-	// with this API, or an existing one by ID.
+	// with this API, or an existing one by ID. The certificate outputs
+	// export unconditionally (empty unless generated) so both engines
+	// emit the same output set.
+	certificateExported := false
 	if stageConfig.ClientCertificate != nil {
 		if stageConfig.ClientCertificate.Generate {
 			certificateArgs := &apigateway.ClientCertificateArgs{
@@ -86,9 +97,14 @@ func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *api
 			args.ClientCertificateId = certificate.ID()
 			ctx.Export(OpClientCertificateId, certificate.ID())
 			ctx.Export(OpClientCertificatePem, certificate.PemEncodedCertificate)
+			certificateExported = true
 		} else {
 			args.ClientCertificateId = pulumi.String(stageConfig.ClientCertificate.ExistingCertificateId)
 		}
+	}
+	if !certificateExported {
+		ctx.Export(OpClientCertificateId, pulumi.String(""))
+		ctx.Export(OpClientCertificatePem, pulumi.String(""))
 	}
 
 	if stageConfig.AccessLog != nil {
@@ -101,7 +117,14 @@ func stage(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api *api
 		args.DocumentationVersion = pulumi.String(stageConfig.DocumentationVersion)
 	}
 
-	created, err := apigateway.NewStage(ctx, "stage", args, pulumi.Provider(provider))
+	// AWS rejects a stage referencing a documentation version that does
+	// not exist yet - the explicit edge mirrors the Terraform module's
+	// depends_on (program order alone creates no Pulumi dependency).
+	stageOpts := []pulumi.ResourceOption{pulumi.Provider(provider)}
+	if satellites.documentationVersion != nil {
+		stageOpts = append(stageOpts, pulumi.DependsOn([]pulumi.Resource{satellites.documentationVersion}))
+	}
+	created, err := apigateway.NewStage(ctx, "stage", args, stageOpts...)
 	if err != nil {
 		return errors.Wrap(err, "create stage")
 	}

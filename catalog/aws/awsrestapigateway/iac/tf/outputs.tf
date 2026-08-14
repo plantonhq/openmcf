@@ -72,3 +72,28 @@ output "documentation_part_ids" {
   description = "Documentation part IDs keyed by declaration position"
   value       = { for k, p in aws_api_gateway_documentation_part.this : k => p.id }
 }
+
+output "route_resource_ids" {
+  description = "API Gateway resource IDs keyed by route key (the method/integration instance keys)"
+  value       = local.route_resource_ids
+}
+
+output "route_methods" {
+  description = "Each route's HTTP method keyed by route key (import-derivation echo)"
+  value       = local.route_methods
+}
+
+output "response_resource_ids" {
+  description = "API Gateway resource IDs keyed by route-response key (the response instance keys)"
+  value       = local.response_resource_ids
+}
+
+output "response_methods" {
+  description = "Each route-response's HTTP method keyed by route-response key (import-derivation echo)"
+  value       = local.response_methods
+}
+
+output "response_status_codes" {
+  description = "Each route-response's status code keyed by route-response key (import-derivation echo)"
+  value       = local.response_status_codes
+}

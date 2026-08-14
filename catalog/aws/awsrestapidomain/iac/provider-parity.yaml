@@ -13,15 +13,17 @@ resources:
       # to spec.region.
       - arg: region
         spec: spec.region
-      # The certificate reference fans in by endpoint type: EDGE domains
-      # take certificate_arn (matched by exact name), REGIONAL/PRIVATE
-      # domains take regional_certificate_arn -- ONE spec field, wired to
-      # the right argument by the modules.
+      # The certificate reference fans in by endpoint type: EDGE and
+      # PRIVATE domains take certificate_arn (matched by exact name; the
+      # SDK documents that argument as "edge-optimized endpoint or
+      # private endpoint"), REGIONAL domains take
+      # regional_certificate_arn -- ONE spec field, wired to the right
+      # argument by the modules.
       - arg: regional_certificate_arn
         spec: spec.certificate_arn
       # Uploaded certificate material follows the same fan-in
-      # (certificate_name for EDGE, regional_certificate_name for
-      # REGIONAL).
+      # (certificate_name for EDGE/PRIVATE, regional_certificate_name
+      # for REGIONAL).
       - arg: certificate_name
         spec: spec.uploaded_certificate.name
       - arg: regional_certificate_name
@@ -58,7 +60,7 @@ resources:
       - arg: domain_name
         reason: module-wired parent linkage to the domain created in the same plan
       - arg: domain_name_id
-        reason: the private-domain disambiguator for referencing a domain by NAME across owners -- this module wires its own domain directly, so the name is never ambiguous
+        reason: wired by the module from its own created domain on PRIVATE endpoints (AWS permits many private domains sharing one hostname account-wide, so the name alone is ambiguous there) -- never free-form user surface
 
   aws_api_gateway_domain_name_access_association:
     specRoot: spec.access_associations

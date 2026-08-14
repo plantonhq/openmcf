@@ -75,6 +75,33 @@ var _ = ginkgo.Describe("AwsRestApiGatewaySpec validations", func() {
 			})
 		})
 
+		ginkgo.Context("with a STREAM timeout up to 900 seconds", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGateway()
+				route := lambdaRoute()
+				route.Integration.TimeoutMilliseconds = 900000
+				route.Integration.ResponseTransferMode = "STREAM"
+				spec.Routes = []*AwsRestApiGatewayRoute{route}
+				gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with the AWS built-in models referenced but not defined", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGateway()
+				spec.Routes[0].RequestModels = map[string]string{"application/json": "Empty"}
+				gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with the -1 compression clear sentinel", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGateway()
+				spec.MinimumCompressionSize = i32(-1)
+				gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with an OpenAPI definition instead of routes", func() {
 			ginkgo.It("should not return a validation error", func() {
 				spec := &AwsRestApiGatewaySpec{
@@ -324,15 +351,6 @@ var _ = ginkgo.Describe("AwsRestApiGatewaySpec validations", func() {
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("requires response_transfer_mode 'STREAM'"))
 		})
 
-		ginkgo.It("accepts a STREAM timeout up to 900 seconds", func() {
-			spec := minimalGateway()
-			route := lambdaRoute()
-			route.Integration.TimeoutMilliseconds = 900000
-			route.Integration.ResponseTransferMode = "STREAM"
-			spec.Routes = []*AwsRestApiGatewayRoute{route}
-			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
-		})
-
 		ginkgo.It("rejects a CUSTOM route without an authorizer name", func() {
 			spec := minimalGateway()
 			spec.Routes[0].Authorization = "CUSTOM"
@@ -413,12 +431,6 @@ var _ = ginkgo.Describe("AwsRestApiGatewaySpec validations", func() {
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must reference a defined model name"))
 		})
 
-		ginkgo.It("accepts the AWS built-in models without defining them", func() {
-			spec := minimalGateway()
-			spec.Routes[0].RequestModels = map[string]string{"application/json": "Empty"}
-			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
-		})
-
 		ginkgo.It("rejects a validator reference that does not resolve", func() {
 			spec := minimalGateway()
 			spec.Routes[0].RequestValidatorName = "ghost"
@@ -433,6 +445,62 @@ var _ = ginkgo.Describe("AwsRestApiGatewaySpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("unique status_code values"))
+		})
+
+		ginkgo.It("rejects a route path deeper than five segments", func() {
+			spec := minimalGateway()
+			spec.Routes[0].Path = "/a/b/c/d/e/f"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("at most five segments"))
+		})
+
+		ginkgo.It("rejects a response model referencing an undefined model", func() {
+			spec := minimalGateway()
+			spec.Routes[0].Responses[0].ResponseModels = map[string]string{"application/json": "Ghost"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("route response model values must reference"))
+		})
+
+		ginkgo.It("rejects duplicate model names", func() {
+			spec := minimalGateway()
+			spec.Models = []*AwsRestApiGatewayModel{
+				{Name: "Order", ContentType: "application/json"},
+				{Name: "Order", ContentType: "application/xml"},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("model names must be unique"))
+		})
+
+		ginkgo.It("rejects duplicate request validator names", func() {
+			spec := minimalGateway()
+			spec.RequestValidators = []*AwsRestApiGatewayRequestValidator{
+				{Name: "body-only", ValidateRequestBody: true},
+				{Name: "body-only", ValidateRequestParameters: true},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("request validator names must be unique"))
+		})
+
+		ginkgo.It("rejects duplicate authorizer names", func() {
+			spec := minimalGateway()
+			spec.Authorizers = []*AwsRestApiGatewayAuthorizer{
+				{Name: "auth", Type: "TOKEN", LambdaInvokeUri: svr(lambdaInvokeArn)},
+				{Name: "auth", Type: "COGNITO_USER_POOLS", ProviderArns: []*foreignkeyv1.StringValueOrRef{svr("arn:aws:cognito-idp:us-west-2:123456789012:userpool/us-west-2_abc")}},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("authorizer names must be unique"))
+		})
+
+		ginkgo.It("rejects a compression size below the -1 clear sentinel", func() {
+			spec := minimalGateway()
+			spec.MinimumCompressionSize = i32(-2)
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects duplicate gateway response types", func() {

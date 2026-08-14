@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestAwsRestApiDomainSpec(t *testing.T) {
@@ -77,6 +78,16 @@ var _ = ginkgo.Describe("AwsRestApiDomainSpec validations", func() {
 				spec.AccessAssociations = []*AwsRestApiDomainAccessAssociation{
 					{VpcEndpointId: svr("vpce-abc123")},
 				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a resource policy on a PRIVATE domain", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalDomain()
+				spec.EndpointConfiguration = &AwsRestApiDomainEndpointConfiguration{Type: "PRIVATE"}
+				spec.Policy = mustStruct(map[string]interface{}{"Version": "2012-10-17"})
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -186,5 +197,83 @@ var _ = ginkgo.Describe("AwsRestApiDomainSpec validations", func() {
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
+
+		ginkgo.It("rejects duplicate access-association VPC endpoints", func() {
+			spec := minimalDomain()
+			spec.EndpointConfiguration = &AwsRestApiDomainEndpointConfiguration{Type: "PRIVATE"}
+			spec.AccessAssociations = []*AwsRestApiDomainAccessAssociation{
+				{VpcEndpointId: svr("vpce-abc")},
+				{VpcEndpointId: svr("vpce-abc")},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("unique VPC endpoints"))
+		})
+
+		ginkgo.It("rejects a resource policy on a non-PRIVATE domain", func() {
+			spec := minimalDomain()
+			spec.Policy = mustStruct(map[string]interface{}{"Version": "2012-10-17"})
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("policy applies only to PRIVATE"))
+		})
+
+		ginkgo.It("rejects an access mode paired with a legacy security policy", func() {
+			spec := minimalDomain()
+			spec.EndpointAccessMode = "STRICT"
+			spec.SecurityPolicy = "TLS_1_2"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("SecurityPolicy_* family"))
+		})
+
+		ginkgo.It("rejects an access mode without any security policy", func() {
+			spec := minimalDomain()
+			spec.EndpointAccessMode = "BASIC"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("SecurityPolicy_* family"))
+		})
+
+		ginkgo.It("rejects an invalid endpoint type", func() {
+			spec := minimalDomain()
+			spec.EndpointConfiguration = &AwsRestApiDomainEndpointConfiguration{Type: "GLOBAL"}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid security policy", func() {
+			spec := minimalDomain()
+			spec.SecurityPolicy = "TLS_9_9"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an invalid endpoint access mode", func() {
+			spec := minimalDomain()
+			spec.EndpointAccessMode = "OPEN"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a domain name longer than 253 characters", func() {
+			spec := minimalDomain()
+			long := ""
+			for i := 0; i < 26; i++ {
+				long += "aaaaaaaaaa"
+			}
+			spec.DomainName = long + ".example.com"
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
 	})
 })
+
+// mustStruct builds a Struct for policy-document test cases.
+func mustStruct(m map[string]interface{}) *structpb.Struct {
+	s, err := structpb.NewStruct(m)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}

@@ -124,11 +124,12 @@ message AwsRestApiUsagePlanQuota {
   // migration knob). DAY takes 0; WEEK takes 0-6; MONTH takes 0-27.
   int32 offset = 3 [(buf.validate.field).int32.gte = 0];
 
-  // AWS bounds the offset by the period.
+  // AWS bounds the offset by the period. Guarded on the known periods
+  // so an invalid period reports only its own enum violation.
   option (buf.validate.message).cel = {
     id: "offset_within_period"
     message: "quota offset must be 0 for DAY, 0-6 for WEEK, and 0-27 for MONTH"
-    expression: "(this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)"
+    expression: "!(this.period in ['DAY', 'WEEK', 'MONTH']) || (this.period == 'DAY' && this.offset == 0) || (this.period == 'WEEK' && this.offset <= 6) || (this.period == 'MONTH' && this.offset <= 27)"
   };
 }
 

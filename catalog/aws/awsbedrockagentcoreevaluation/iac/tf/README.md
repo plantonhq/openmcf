@@ -17,8 +17,11 @@ Module facts worth knowing before editing:
 - **Harness inference floats are import-normalized** via
   `write_normalized_attributes` in the import catalog — do not round
   them in the module.
-- **Online config `enable_on_create` is config-only** (not an AWS
-  argument on create).
+- **Online config `enable_on_create` is a REQUIRED create argument
+  the API never echoes back** — it is config-only for IMPORT (the
+  round-trip tolerates its absence), not inert. The spec's single
+  `enabled` knob fans out to it plus the updatable
+  `execution_status`.
 
 Outputs mirror the Pulumi module key-for-key: name-keyed ID and ARN
 maps for evaluators, harnesses, and online configs, plus the

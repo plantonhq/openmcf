@@ -18,13 +18,28 @@ scoring agents in production.
 - **Runtime environment is optional and computed.** A harness does
   not need an agent runtime; when omitted, AWS assigns the default.
   The explicit arm is there for the day you pin one.
-- **Float inference parameters are import-normalized.** The harness
-  temperature / top-p / max-tokens class is the same float32
-  import-drift family as other AgentCore kinds — the import catalog
-  writes normalized attributes so a no-op apply stays a no-op.
+- **Float32 leaves are import-normalized.** The harness's model
+  temperature / top-p values, the summarization truncation ratio, and
+  the memory retrieval relevance score are Float32 upstream — the
+  import catalog writes normalized attributes for exactly those leaves
+  so a no-op apply stays a no-op. Integer parameters (max-tokens) and
+  the evaluator's Float64 inference values need no tolerance and carry
+  none.
 
 ## Scoring agents in production
 
+- **Harnesses finish at READY; evaluators and online configs at
+  ACTIVE.** The asymmetry is AWS's, not a bug: a harness that sits in
+  CREATING and lands READY is done, and a stuck deploy is diagnosed
+  against the right terminal word per arm.
+- **Applies can legitimately take up to 30 minutes per resource.**
+  All three resource types carry 30-minute create/update/delete
+  waiters upstream. A slow apply is AWS provisioning, not a hang.
+- **An evaluator in use by an active online config is LOCKED.**
+  Editing or destroying an evaluator that an online config references
+  waits on AWS's conflict retries and then fails. Disable or delete
+  the referencing online config first; the day-two symptom is an
+  apply that hangs on the evaluator and errors with a conflict.
 - **Start with a code evaluator.** Create does not invoke the Lambda,
   so the first evaluator is fixture-cheap and independent of Bedrock
   model access.

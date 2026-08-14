@@ -21,5 +21,5 @@ REGIONAL custom domain and a root base-path mapping.
 - Replace `api.example.com` with your hostname (it must match the
   certificate)
 - Point `certificateArn` and `restApiId` at your resources
-- Add more `mappings` entries with a `basePath` (for example `v1`)
-  when one hostname fronts several APIs
+- Add more `basePathMappings` entries with a `basePath` (for example
+  `v1`) when one hostname fronts several APIs

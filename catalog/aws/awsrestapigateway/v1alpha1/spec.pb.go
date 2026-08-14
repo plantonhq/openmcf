@@ -84,7 +84,10 @@ type AwsRestApiGatewaySpec struct {
 	// other content types are handled as UTF-8 text.
 	BinaryMediaTypes []string `protobuf:"bytes,4,rep,name=binary_media_types,json=binaryMediaTypes,proto3" json:"binary_media_types,omitempty"`
 	// Compress responses at or above this size in bytes (0-10485760).
-	// 0 compresses everything. Omitted = compression disabled.
+	// 0 compresses everything. Omitted = compression disabled on create,
+	// UNCHANGED on update (the provider attribute is Computed, so a null
+	// keeps whatever is set). Set -1 to explicitly turn compression back
+	// off after it was enabled - AWS's own clear sentinel.
 	MinimumCompressionSize *int32 `protobuf:"varint,5,opt,name=minimum_compression_size,json=minimumCompressionSize,proto3,oneof" json:"minimum_compression_size,omitempty"`
 	// Disable the default execute-api endpoint. Set to true when a custom
 	// domain (AwsRestApiDomain) fronts this API to prevent callers from
@@ -2010,14 +2013,14 @@ var File_catalog_aws_awsrestapigateway_v1alpha1_spec_proto protoreflect.FileDesc
 
 const file_catalog_aws_awsrestapigateway_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"1catalog/aws/awsrestapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf9+\n" +
+	"1catalog/aws/awsrestapigateway/v1alpha1/spec.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x82,\n" +
 	"\x15AwsRestApiGatewaySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12*\n" +
 	"\vdescription\x18\x02 \x01(\tB\b\xbaH\x05r\x03\x18\x80\bR\vdescription\x12\x97\x01\n" +
 	"\x0eapi_key_source\x18\x03 \x01(\tBq\xbaH\x19\xd8\x01\x01r\x14R\x06HEADERR\n" +
 	"AUTHORIZER\xaa\xa6\x1dQHEADER vs AUTHORIZER enum for where API Gateway reads the key, not the key itselfR\fapiKeySource\x12:\n" +
-	"\x12binary_media_types\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x10binaryMediaTypes\x12K\n" +
-	"\x18minimum_compression_size\x18\x05 \x01(\x05B\f\xbaH\t\x1a\a\x18\x80\x80\x80\x05(\x00H\x00R\x16minimumCompressionSize\x88\x01\x01\x12?\n" +
+	"\x12binary_media_types\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x10binaryMediaTypes\x12T\n" +
+	"\x18minimum_compression_size\x18\x05 \x01(\x05B\x15\xbaH\x12\x1a\x10\x18\x80\x80\x80\x05(\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01H\x00R\x16minimumCompressionSize\x88\x01\x01\x12?\n" +
 	"\x1cdisable_execute_api_endpoint\x18\x06 \x01(\bR\x19disableExecuteApiEndpoint\x12\x89\x01\n" +
 	"\x16endpoint_configuration\x18\a \x01(\v2R.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayEndpointConfigurationR\x15endpointConfiguration\x12I\n" +
 	"\x14endpoint_access_mode\x18\b \x01(\tB\x17\xbaH\x14\xd8\x01\x01r\x0fR\x05BASICR\x06STRICTR\x12endpointAccessMode\x12\xbb\x03\n" +

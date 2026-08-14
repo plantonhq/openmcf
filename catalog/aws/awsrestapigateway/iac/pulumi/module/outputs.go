@@ -20,6 +20,11 @@ const (
 	OpModelIds             = "model_ids"
 	OpRequestValidatorIds  = "request_validator_ids"
 	OpDocumentationPartIds = "documentation_part_ids"
+	OpRouteResourceIds     = "route_resource_ids"
+	OpRouteMethods         = "route_methods"
+	OpResponseResourceIds  = "response_resource_ids"
+	OpResponseMethods      = "response_methods"
+	OpResponseStatusCodes  = "response_status_codes"
 )
 
 // awsRestApiGatewayStageDefaults stands in when the spec omits the

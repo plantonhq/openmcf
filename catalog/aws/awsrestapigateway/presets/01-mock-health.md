@@ -21,4 +21,5 @@ provision — the right starting point before wiring Lambda or HTTP.
 - Add more `routes` with MOCK, HTTP, or AWS_PROXY integrations
 - Set `endpointConfiguration.type` to EDGE or PRIVATE when the callers
   need it
-- Attach an authorizer from the second preset once a Lambda exists
+- Add a TOKEN authorizer once a Lambda exists (the Lambda-proxy preset
+  shows the route shape to grow into)

@@ -3,14 +3,15 @@
 # PRIVATE domains -- VPC-endpoint access associations.
 #
 # Lifecycle facts the renders below depend on:
-#   - the certificate reference fans in by endpoint type: EDGE domains
-#     take certificate_arn (the us-east-1 cert), REGIONAL and PRIVATE
-#     domains take regional_certificate_arn -- one spec field, wired to
-#     the right provider argument here (the same fan-in in both
-#     engines);
+#   - the certificate reference fans in by endpoint type: EDGE and
+#     PRIVATE domains take certificate_arn (the AWS SDK documents that
+#     argument as "edge-optimized endpoint or private endpoint"; EDGE
+#     certs live in us-east-1), REGIONAL domains take
+#     regional_certificate_arn -- one spec field, wired to the right
+#     provider argument here (the same fan-in in both engines);
 #   - uploaded certificate material follows the same fan-in
-#     (certificate_name for EDGE, regional_certificate_name for
-#     REGIONAL);
+#     (certificate_name for EDGE/PRIVATE, regional_certificate_name
+#     for REGIONAL);
 #   - domain create/update waits on DomainNameStatus AVAILABLE (up to
 #     60 minutes upstream -- enhanced security policies trigger a
 #     post-create update);
@@ -22,12 +23,14 @@
 resource "aws_api_gateway_domain_name" "this" {
   domain_name = var.spec.domain_name
 
-  # Certificate fan-in by endpoint type (see the header comment).
-  certificate_arn          = var.spec.certificate_arn != "" && local.endpoint_type == "EDGE" ? var.spec.certificate_arn : null
-  regional_certificate_arn = var.spec.certificate_arn != "" && local.endpoint_type != "EDGE" ? var.spec.certificate_arn : null
+  # Certificate fan-in by endpoint type (see the header comment):
+  # certificate_arn serves EDGE and PRIVATE, regional_certificate_arn
+  # serves REGIONAL only.
+  certificate_arn          = var.spec.certificate_arn != "" && local.endpoint_type != "REGIONAL" ? var.spec.certificate_arn : null
+  regional_certificate_arn = var.spec.certificate_arn != "" && local.endpoint_type == "REGIONAL" ? var.spec.certificate_arn : null
 
-  certificate_name          = var.spec.uploaded_certificate != null && local.endpoint_type == "EDGE" ? var.spec.uploaded_certificate.name : null
-  regional_certificate_name = var.spec.uploaded_certificate != null && local.endpoint_type != "EDGE" ? var.spec.uploaded_certificate.name : null
+  certificate_name          = var.spec.uploaded_certificate != null && local.endpoint_type != "REGIONAL" ? var.spec.uploaded_certificate.name : null
+  regional_certificate_name = var.spec.uploaded_certificate != null && local.endpoint_type == "REGIONAL" ? var.spec.uploaded_certificate.name : null
   certificate_body          = var.spec.uploaded_certificate != null ? var.spec.uploaded_certificate.body : null
   certificate_chain         = var.spec.uploaded_certificate != null && var.spec.uploaded_certificate.chain != "" ? var.spec.uploaded_certificate.chain : null
   certificate_private_key   = var.spec.uploaded_certificate != null ? var.spec.uploaded_certificate.private_key : null
@@ -60,13 +63,17 @@ resource "aws_api_gateway_domain_name" "this" {
 }
 
 # Base-path mappings fanning the domain's paths out across REST APIs.
+# PRIVATE domains additionally pass domain_name_id: AWS permits many
+# private domains sharing one hostname account-wide, so the name alone
+# is ambiguous there.
 resource "aws_api_gateway_base_path_mapping" "this" {
   for_each = local.base_path_mappings
 
-  domain_name = aws_api_gateway_domain_name.this.domain_name
-  api_id      = each.value.rest_api_id
-  base_path   = each.value.base_path != "" ? each.value.base_path : null
-  stage_name  = each.value.stage_name != "" ? each.value.stage_name : null
+  domain_name    = aws_api_gateway_domain_name.this.domain_name
+  domain_name_id = local.endpoint_type == "PRIVATE" ? aws_api_gateway_domain_name.this.domain_name_id : null
+  api_id         = each.value.rest_api_id
+  base_path      = each.value.base_path != "" ? each.value.base_path : null
+  stage_name     = each.value.stage_name != "" ? each.value.stage_name : null
 }
 
 # VPC endpoints granted access to a PRIVATE domain.

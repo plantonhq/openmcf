@@ -34,7 +34,7 @@ output "cloudfront_zone_id" {
 }
 
 output "base_path_mapping_ids" {
-  description = "Base-path mapping IDs keyed by base path ((root) for the empty path)"
+  description = "Base-path mapping IDs keyed by base path ((none) for the empty path -- AWS's own sentinel)"
   value       = { for k, m in aws_api_gateway_base_path_mapping.this : k => m.id }
 }
 

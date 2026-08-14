@@ -19,12 +19,17 @@ import (
 //     overwrite-mode import wiped (description, endpoint settings,
 //     policy, ...) -- expected apply-log noise, not drift;
 //   - minimum_compression_size is the provider's nullable-int-as-string
-//     quirk: unset means compression disabled, "0" compresses
-//     everything;
+//     quirk: unset means compression disabled on create but UNCHANGED
+//     on update (the attribute is Computed), "0" compresses everything,
+//     and "-1" is AWS's clear sentinel - the only way to turn
+//     compression back off;
 //   - the standalone rest_api_policy resource owns the policy (clean
 //     PATCH updates; delete resets to empty instead of touching the
 //     API), so the API's own policy argument stays unset.
-func restApi(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*apigateway.RestApi, error) {
+// The second return value carries the created resource policy (when
+// one is declared) so the deployment can order behind it - the policy
+// takes effect only in a deployed snapshot.
+func restApi(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*apigateway.RestApi, []pulumi.Resource, error) {
 	spec := locals.Spec
 
 	args := &apigateway.RestApiArgs{
@@ -84,26 +89,28 @@ func restApi(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) (*apig
 
 	api, err := apigateway.NewRestApi(ctx, "rest-api", args, pulumi.Provider(provider))
 	if err != nil {
-		return nil, errors.Wrap(err, "create rest api")
+		return nil, nil, errors.Wrap(err, "create rest api")
 	}
 
+	var extras []pulumi.Resource
 	if spec.Policy != nil {
 		policyJson, err := json.Marshal(spec.Policy.AsMap())
 		if err != nil {
-			return nil, errors.Wrap(err, "marshal rest api policy")
+			return nil, nil, errors.Wrap(err, "marshal rest api policy")
 		}
-		_, err = apigateway.NewRestApiPolicy(ctx, "rest-api-policy", &apigateway.RestApiPolicyArgs{
+		policy, err := apigateway.NewRestApiPolicy(ctx, "rest-api-policy", &apigateway.RestApiPolicyArgs{
 			RestApiId: api.ID(),
 			Policy:    pulumi.String(string(policyJson)),
 		}, pulumi.Provider(provider))
 		if err != nil {
-			return nil, errors.Wrap(err, "create rest api policy")
+			return nil, nil, errors.Wrap(err, "create rest api policy")
 		}
+		extras = append(extras, policy)
 	}
 
 	ctx.Export(OpRestApiId, api.ID())
 	ctx.Export(OpRestApiArn, api.Arn)
 	ctx.Export(OpExecutionArn, api.ExecutionArn)
 	ctx.Export(OpRootResourceId, api.RootResourceId)
-	return api, nil
+	return api, extras, nil
 }

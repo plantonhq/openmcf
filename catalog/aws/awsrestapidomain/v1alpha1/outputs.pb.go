@@ -46,7 +46,7 @@ type AwsRestApiDomainStackOutputs struct {
 	// The CloudFront hosted zone ID (a fixed global value; alias records
 	// need it).
 	CloudfrontZoneId string `protobuf:"bytes,7,opt,name=cloudfront_zone_id,json=cloudfrontZoneId,proto3" json:"cloudfront_zone_id,omitempty"`
-	// Base-path mapping IDs keyed by each entry's base_path ("(root)"
+	// Base-path mapping IDs keyed by each entry's base_path ("(none)"
 	// for the empty base path).
 	BasePathMappingIds map[string]string `protobuf:"bytes,8,rep,name=base_path_mapping_ids,json=basePathMappingIds,proto3" json:"base_path_mapping_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Access-association ARNs keyed by each entry's resolved VPC

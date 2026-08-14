@@ -21,8 +21,10 @@ spec:
       derivations:
         - from_address_key: true
       where_to_find: >-
-        Each spec.base_path_mappings entry's base_path (empty maps to
-        the sentinel "(none)" / the output-map key "(root)").
+        Each spec.base_path_mappings entry's base_path. The empty
+        (root) path is keyed "(none)" -- AWS's own empty-base-path
+        sentinel, which the provider's import parser accepts verbatim
+        -- so the address key IS the placeholder for every mapping.
     - name: arn
       derivations:
         - from_stack_output_keyed_by_address: access_association_arns

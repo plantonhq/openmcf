@@ -10,7 +10,7 @@ Module facts worth knowing before editing:
   CloudFront certificate argument. The spec's single `certificate_arn`
   field is wired to the matching SDK argument.
 - **Base-path mapping IDs are composite** (`domain/basePath`). The
-  empty base path is keyed `(root)` in outputs.
+  empty base path is keyed `(none)` in outputs (AWS's own sentinel).
 - **`routing_mode` is the v1 knob** that arbitrates between base-path
   mappings and the v2 routing-rule surface (which stays on
   AwsHttpApiDomain).

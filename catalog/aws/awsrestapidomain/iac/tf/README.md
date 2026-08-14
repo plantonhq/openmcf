@@ -6,11 +6,11 @@ plus base-path mappings and optional PRIVATE access associations.
 Module facts worth knowing before editing:
 
 - **Certificate argument is endpoint-type-specific.** REGIONAL /
-  PRIVATE use `regional_certificate_arn`; EDGE uses `certificate_arn`.
+  REGIONAL uses `regional_certificate_arn`; EDGE and PRIVATE use `certificate_arn`.
   The spec's single `certificate_arn` field is wired to the matching
   provider argument.
 - **Base-path mapping IDs are composite** (`domain/basePath`). The
-  empty base path is keyed `(root)` in outputs.
+  empty base path is keyed `(none)` in outputs (AWS's own sentinel).
 - **`routing_mode` is the v1 knob** that arbitrates between base-path
   mappings and the v2 routing-rule surface (which stays on
   AwsHttpApiDomain).

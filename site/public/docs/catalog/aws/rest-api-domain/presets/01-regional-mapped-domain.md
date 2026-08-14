@@ -1,16 +1,3 @@
----
-title: "Regional Mapped Domain"
-description: "This preset fronts a REST API stage at `api.example.com` with a REGIONAL custom domain and a root base-path mapping."
-type: "preset"
-rank: "01"
-presetSlug: "01-regional-mapped-domain"
-componentSlug: "rest-api-domain"
-componentTitle: "REST API Domain"
-provider: "aws"
-icon: "package"
-order: 1
----
-
 # Regional Mapped Domain
 
 This preset fronts a REST API stage at `api.example.com` with a
@@ -34,5 +21,5 @@ REGIONAL custom domain and a root base-path mapping.
 - Replace `api.example.com` with your hostname (it must match the
   certificate)
 - Point `certificateArn` and `restApiId` at your resources
-- Add more `mappings` entries with a `basePath` (for example `v1`)
-  when one hostname fronts several APIs
+- Add more `basePathMappings` entries with a `basePath` (for example
+  `v1`) when one hostname fronts several APIs

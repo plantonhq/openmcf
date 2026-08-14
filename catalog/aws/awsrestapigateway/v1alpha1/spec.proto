@@ -82,9 +82,12 @@ message AwsRestApiGatewaySpec {
   repeated string binary_media_types = 4 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // Compress responses at or above this size in bytes (0-10485760).
-  // 0 compresses everything. Omitted = compression disabled.
+  // 0 compresses everything. Omitted = compression disabled on create,
+  // UNCHANGED on update (the provider attribute is Computed, so a null
+  // keeps whatever is set). Set -1 to explicitly turn compression back
+  // off after it was enabled - AWS's own clear sentinel.
   optional int32 minimum_compression_size = 5 [(buf.validate.field).int32 = {
-    gte: 0
+    gte: -1
     lte: 10485760
   }];
 

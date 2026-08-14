@@ -60,12 +60,18 @@ resource "aws_api_gateway_usage_plan" "this" {
 resource "aws_api_gateway_api_key" "this" {
   for_each = local.api_keys
 
-  name        = each.value.name
-  description = each.value.description != "" ? each.value.description : null
+  name = each.value.name
+
+  # Always sent explicitly (empty when unset): the two engines'
+  # providers carry different branded defaults ("Managed by
+  # Terraform" / "Managed by Pulumi") -- an explicit send keeps the
+  # created key identical across engines.
+  description = each.value.description
 
   # Rendered only on an explicit choice so the module never fights AWS's
-  # enabled-by-default.
-  enabled = each.value.enabled != null ? each.value.enabled : true
+  # enabled-by-default (null lets the provider default of true apply --
+  # the same send path as the Pulumi module).
+  enabled = each.value.enabled
 
   customer_id = each.value.customer_id != "" ? each.value.customer_id : null
 

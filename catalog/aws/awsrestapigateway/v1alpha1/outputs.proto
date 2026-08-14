@@ -60,4 +60,30 @@ message AwsRestApiGatewayStackOutputs {
   // Documentation part IDs keyed by each `documentation.parts` entry's
   // position ("0", "1", ...) - the order they are declared in the spec.
   map<string, string> documentation_part_ids = 15;
+
+  // API Gateway resource IDs keyed by ROUTE key ("GET /users/{id}") -
+  // the same keys the method and integration instances use, so import
+  // derivations (and chart wiring) can resolve each route's resource ID
+  // blind. Root-path routes map to the root resource ID.
+  map<string, string> route_resource_ids = 16;
+
+  // Each route's HTTP method keyed by route key ("GET /users/{id}" ->
+  // "GET"). A config echo: the route key is composite, so import
+  // derivations need the method as its own addressable value.
+  map<string, string> route_methods = 17;
+
+  // API Gateway resource IDs keyed by ROUTE-RESPONSE key
+  // ("GET /users/{id}|200") - the method-response and
+  // integration-response instances' keys.
+  map<string, string> response_resource_ids = 18;
+
+  // Each route-response's HTTP method keyed by route-response key
+  // ("GET /users/{id}|200" -> "GET"). A config echo for import
+  // derivations.
+  map<string, string> response_methods = 19;
+
+  // Each route-response's status code keyed by route-response key
+  // ("GET /users/{id}|200" -> "200"). A config echo for import
+  // derivations.
+  map<string, string> response_status_codes = 20;
 }

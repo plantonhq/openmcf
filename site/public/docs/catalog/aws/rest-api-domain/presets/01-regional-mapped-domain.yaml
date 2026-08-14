@@ -9,7 +9,7 @@ spec:
     valueFrom:
       kind: AwsCertManagerCert
       name: <acm-certificate>
-      fieldPath: status.outputs.certificate_arn
+      fieldPath: status.outputs.cert_arn
   endpointConfiguration:
     type: REGIONAL
   basePathMappings:

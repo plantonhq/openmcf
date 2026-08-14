@@ -149,6 +149,18 @@ var _ = ginkgo.Describe("AwsRestApiUsagePlanSpec validations", func() {
 			spec.Quota = &AwsRestApiUsagePlanQuota{Limit: 100, Period: "YEAR"}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
+			// The offset rule is guarded on known periods, so the only
+			// violation reported is the period enum itself.
+			gomega.Expect(err.Error()).NotTo(gomega.ContainSubstring("quota offset"))
+		})
+
+		ginkgo.It("rejects an api_stages entry without a stage name", func() {
+			spec := minimalPlan()
+			spec.ApiStages = []*AwsRestApiUsagePlanApiStage{
+				{RestApiId: svr("abc123")},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 })

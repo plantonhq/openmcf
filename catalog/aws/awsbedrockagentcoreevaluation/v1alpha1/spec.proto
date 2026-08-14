@@ -595,11 +595,12 @@ message AwsBedrockAgentCoreHarnessGatewayOutboundAuth {
   // Authenticate with OAuth through an AgentCore credential provider.
   AwsBedrockAgentCoreHarnessGatewayOAuth oauth = 3;
 
-  // AWS takes at most one auth arm.
+  // AWS takes exactly one auth arm - an outbound_auth block with no
+  // arm selected would be dead configuration the provider ignores.
   option (buf.validate.message).cel = {
-    id: "outbound_auth_at_most_one_arm"
-    message: "set at most one of aws_iam, no_auth, or oauth"
-    expression: "[this.aws_iam, this.no_auth, has(this.oauth)].filter(x, x).size() <= 1"
+    id: "outbound_auth_exactly_one_arm"
+    message: "set exactly one of aws_iam, no_auth, or oauth"
+    expression: "[this.aws_iam, this.no_auth, has(this.oauth)].filter(x, x).size() == 1"
   };
 }
 
@@ -1032,7 +1033,10 @@ message AwsBedrockAgentCoreManagedVpcEndpoint {
   // from the target.
   string routing_domain = 5 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
-    (buf.validate.field).string.max_len = 255
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 255
+    }
   ];
 
   // Tags applied to the AWS-managed endpoint resources (the module
@@ -1098,12 +1102,17 @@ message AwsBedrockAgentCoreOnlineEvaluationConfig {
 
   // Evaluators to run over sampled sessions (1-10). Entries are AWS
   // builtins ("Builtin.Helpfulness"), full custom evaluator IDs, or
-  // names of evaluators defined in this bundle.
-  repeated string evaluator_ids = 6 [(buf.validate.field).repeated = {
-    min_items: 1
-    max_items: 10
-    items: {string: {min_len: 1}}
-  }];
+  // names of evaluators defined in this bundle. AWS treats the list as
+  // a SET - duplicates would silently collapse and the 1-10 bound
+  // would measure the wrong count, so uniqueness is enforced here.
+  repeated string evaluator_ids = 6 [
+    (buf.validate.field).repeated = {
+      min_items: 1
+      max_items: 10
+      items: {string: {min_len: 1}}
+      unique: true
+    }
+  ];
 
   // What to sample and score.
   AwsBedrockAgentCoreOnlineEvaluationRule rule = 7 [(buf.validate.field).required = true];
@@ -1112,14 +1121,13 @@ message AwsBedrockAgentCoreOnlineEvaluationConfig {
 // AwsBedrockAgentCoreOnlineEvaluationDataSource reads agent session
 // traces from CloudWatch logs.
 message AwsBedrockAgentCoreOnlineEvaluationDataSource {
-  // CloudWatch log groups holding the session traces (1-5) - the log
-  // groups AgentCore observability writes to.
+  // CloudWatch log groups holding the session traces (at least one) -
+  // the log groups AgentCore observability writes to. Neither the
+  // provider nor the AWS API documents an upper bound, so none is
+  // imposed here.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef log_group_names = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).repeated = {
-      min_items: 1
-      max_items: 5
-    },
+    (buf.validate.field).repeated = {min_items: 1},
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_name"
   ];

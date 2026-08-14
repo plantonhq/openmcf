@@ -90,9 +90,12 @@ func usagePlan(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) erro
 		keyArgs := &apigateway.ApiKeyArgs{
 			Name: pulumi.String(k.Name),
 			Tags: pulumi.ToStringMap(locals.AwsTags),
-		}
-		if k.Description != "" {
-			keyArgs.Description = pulumi.String(k.Description)
+			// Always sent explicitly (empty when unset): the two
+			// engines' providers carry different branded defaults
+			// ("Managed by Terraform" / "Managed by Pulumi") -- an
+			// explicit send keeps the created key identical across
+			// engines.
+			Description: pulumi.String(k.Description),
 		}
 		// Rendered only on an explicit choice so the module never fights
 		// AWS's enabled-by-default.

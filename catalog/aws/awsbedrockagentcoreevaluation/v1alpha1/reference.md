@@ -215,7 +215,7 @@ spec:
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.subnetIds` | `[]string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.securityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.endpointIpAddressType` | `string` |  |  |  |
-| `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.routingDomain` | `string` |  |  |  |
+| `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.routingDomain` | `string` | yes |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.tags` | `map<string, string>` |  |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.selfManagedLattice` | `AwsBedrockAgentCoreLatticeEndpoint` |  |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpoint.selfManagedLattice.resourceConfigurationId` | `string` | yes |  |  |
@@ -227,7 +227,7 @@ spec:
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.subnetIds` | `[]string \| valueFrom` | yes |  | AwsSubnet (`status.outputs.subnet_id`) |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.securityGroupIds` | `[]string \| valueFrom` |  |  | AwsSecurityGroup (`status.outputs.security_group_id`) |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.endpointIpAddressType` | `string` |  |  |  |
-| `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.routingDomain` | `string` |  |  |  |
+| `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.routingDomain` | `string` | yes |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.tags` | `map<string, string>` |  |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.selfManagedLattice` | `AwsBedrockAgentCoreLatticeEndpoint` |  |  |  |
 | `spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.selfManagedLattice.resourceConfigurationId` | `string` | yes |  |  |
@@ -619,7 +619,7 @@ spec:
 
 `AwsBedrockAgentCoreHarnessGatewayOutboundAuth`
 
-- rule: set at most one of aws_iam, no_auth, or oauth
+- rule: set exactly one of aws_iam, no_auth, or oauth
 
 ### spec.harnesses[].tools[].agentcoreGateway.outboundAuth.awsIam
 
@@ -962,9 +962,9 @@ spec:
 
 ### spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.routingDomain
 
-`string`
+`string` · required
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"255"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"3","maxLen":"255"}}
 
 ### spec.harnesses[].customJwtAuthorizer.privateEndpoint.managedVpc.tags
 
@@ -1035,9 +1035,9 @@ spec:
 
 ### spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.routingDomain
 
-`string`
+`string` · required
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"255"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"3","maxLen":"255"}}
 
 ### spec.harnesses[].customJwtAuthorizer.privateEndpointOverrides[].privateEndpoint.managedVpc.tags
 
@@ -1158,7 +1158,7 @@ spec:
 `[]string | valueFrom` · required
 
 - references: AwsCloudwatchLogGroup (`status.outputs.log_group_name`)
-- rule: {"required":true,"repeated":{"minItems":"1","maxItems":"5"}}
+- rule: {"required":true,"repeated":{"minItems":"1"}}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsCloudwatchLogGroup, name: <that resource's name>, fieldPath: status.outputs.log_group_name}} -- a bare string does not parse
 
 ### spec.onlineEvaluationConfigs[].dataSource.serviceNames
@@ -1171,7 +1171,7 @@ spec:
 
 `[]string` · required
 
-- rule: {"repeated":{"minItems":"1","maxItems":"10","items":{"string":{"minLen":"1"}}}}
+- rule: {"repeated":{"minItems":"1","maxItems":"10","unique":true,"items":{"string":{"minLen":"1"}}}}
 
 ### spec.onlineEvaluationConfigs[].rule
 

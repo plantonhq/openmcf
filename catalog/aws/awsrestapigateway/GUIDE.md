@@ -44,6 +44,24 @@ running REST APIs in production.
 - **Client certificates are for backend trust, not caller auth.**
   Generate one when the HTTP backend must verify that traffic came
   through this API; distribute the PEM to the backend trust store.
+- **Enabling the stage cache can block an apply for up to 90 minutes.**
+  AWS provisions a dedicated cache cluster when `cache_cluster` turns
+  on or resizes, and the apply waits for it. Plan cache changes for a
+  window where a long apply is acceptable — nothing is wrong, AWS is
+  just slow.
+- **OpenAPI-body applies log a reconciliation pass — it is not drift.**
+  With an `openapi.body`, AWS's import wipes settings configured
+  outside the document (description, endpoint settings, policy), and
+  the apply re-applies them in a third pass. The extra update in the
+  apply log is expected.
+- **Many-response APIs apply serially.** AWS rejects concurrent
+  method-response writes on one API, so the engines serialize them
+  (with retries). A large route/response surface makes applies slower,
+  not flakier.
+- **Compression cannot be turned off by removing the field.** Once
+  `minimum_compression_size` is set, unsetting it keeps compression on
+  (AWS treats absent as "no change"). Set it to `-1` to explicitly
+  disable compression again.
 
 ---
 

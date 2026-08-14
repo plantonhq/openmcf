@@ -2955,7 +2955,9 @@ type AwsBedrockAgentCoreOnlineEvaluationConfig struct {
 	DataSource *AwsBedrockAgentCoreOnlineEvaluationDataSource `protobuf:"bytes,5,opt,name=data_source,json=dataSource,proto3" json:"data_source,omitempty"`
 	// Evaluators to run over sampled sessions (1-10). Entries are AWS
 	// builtins ("Builtin.Helpfulness"), full custom evaluator IDs, or
-	// names of evaluators defined in this bundle.
+	// names of evaluators defined in this bundle. AWS treats the list as
+	// a SET - duplicates would silently collapse and the 1-10 bound
+	// would measure the wrong count, so uniqueness is enforced here.
 	EvaluatorIds []string `protobuf:"bytes,6,rep,name=evaluator_ids,json=evaluatorIds,proto3" json:"evaluator_ids,omitempty"`
 	// What to sample and score.
 	Rule          *AwsBedrockAgentCoreOnlineEvaluationRule `protobuf:"bytes,7,opt,name=rule,proto3" json:"rule,omitempty"`
@@ -3046,8 +3048,10 @@ func (x *AwsBedrockAgentCoreOnlineEvaluationConfig) GetRule() *AwsBedrockAgentCo
 // traces from CloudWatch logs.
 type AwsBedrockAgentCoreOnlineEvaluationDataSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CloudWatch log groups holding the session traces (1-5) - the log
-	// groups AgentCore observability writes to.
+	// CloudWatch log groups holding the session traces (at least one) -
+	// the log groups AgentCore observability writes to. Neither the
+	// provider nor the AWS API documents an upper bound, so none is
+	// imposed here.
 	LogGroupNames []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=log_group_names,json=logGroupNames,proto3" json:"log_group_names,omitempty"`
 	// Service names (the OTel service.name resource attribute) whose
 	// traces are evaluated (at least one).
@@ -3416,7 +3420,7 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"\aaws_iam\x18\x01 \x01(\bR\x06awsIam\x12\x17\n" +
 	"\ano_auth\x18\x02 \x01(\bR\x06noAuth\x12t\n" +
 	"\x05oauth\x18\x03 \x01(\v2^.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreHarnessGatewayOAuthR\x05oauth:\x9d\x01\xbaH\x99\x01\x1a\x96\x01\n" +
-	"\x1doutbound_auth_at_most_one_arm\x12-set at most one of aws_iam, no_auth, or oauth\x1aF[this.aws_iam, this.no_auth, has(this.oauth)].filter(x, x).size() <= 1\"\xa7\x04\n" +
+	"\x1doutbound_auth_exactly_one_arm\x12-set exactly one of aws_iam, no_auth, or oauth\x1aF[this.aws_iam, this.no_auth, has(this.oauth)].filter(x, x).size() == 1\"\xa7\x04\n" +
 	"&AwsBedrockAgentCoreHarnessGatewayOAuth\x12]\n" +
 	"\fprovider_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x06\xbaH\x03\xc8\x01\x01R\vproviderArn\x12&\n" +
 	"\x06scopes\x18\x02 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x06scopes\x12\xa1\x01\n" +
@@ -3515,14 +3519,15 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"\vmanaged_vpc\x18\x01 \x01(\v2].dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreManagedVpcEndpointR\n" +
 	"managedVpc\x12\x8c\x01\n" +
 	"\x14self_managed_lattice\x18\x02 \x01(\v2Z.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreLatticeEndpointR\x12selfManagedLattice:\xac\x01\xbaH\xa8\x01\x1a\xa5\x01\n" +
-	"\x1cprivate_endpoint_exactly_one\x12Lprivate endpoint must set exactly one of managed_vpc or self_managed_lattice\x1a7has(this.managed_vpc) != has(this.self_managed_lattice)\"\xe5\x05\n" +
+	"\x1cprivate_endpoint_exactly_one\x12Lprivate endpoint must set exactly one of managed_vpc or self_managed_lattice\x1a7has(this.managed_vpc) != has(this.self_managed_lattice)\"\xe7\x05\n" +
 	"%AwsBedrockAgentCoreManagedVpcEndpoint\x12o\n" +
 	"\x06vpc_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB$\xbaH\x03\xc8\x01\x01\x88\xd4a\xf8\a\x92\xd4a\x15status.outputs.vpc_idR\x05vpcId\x12\x7f\n" +
 	"\n" +
 	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
 	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\x10\x05\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\x12J\n" +
-	"\x18endpoint_ip_address_type\x18\x04 \x01(\tB\x11\xbaH\x0er\fR\x04IPV4R\x04IPV6R\x15endpointIpAddressType\x122\n" +
-	"\x0erouting_domain\x18\x05 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xff\x01R\rroutingDomain\x12{\n" +
+	"\x18endpoint_ip_address_type\x18\x04 \x01(\tB\x11\xbaH\x0er\fR\x04IPV4R\x04IPV6R\x15endpointIpAddressType\x124\n" +
+	"\x0erouting_domain\x18\x05 \x01(\tB\r\xbaH\n" +
+	"\xd8\x01\x01r\x05\x10\x03\x18\xff\x01R\rroutingDomain\x12{\n" +
 	"\x04tags\x18\x06 \x03(\v2g.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreManagedVpcEndpoint.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -3532,23 +3537,21 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"*AwsBedrockAgentCorePrivateEndpointOverride\x12\"\n" +
 	"\x06domain\x18\x01 \x01(\tB\n" +
 	"\xbaH\ar\x05\x10\x01\x18\xfd\x01R\x06domain\x12\x8d\x01\n" +
-	"\x10private_endpoint\x18\x02 \x01(\v2Z.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCorePrivateEndpointB\x06\xbaH\x03\xc8\x01\x01R\x0fprivateEndpoint\"\x90\x05\n" +
+	"\x10private_endpoint\x18\x02 \x01(\v2Z.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCorePrivateEndpointB\x06\xbaH\x03\xc8\x01\x01R\x0fprivateEndpoint\"\x92\x05\n" +
 	")AwsBedrockAgentCoreOnlineEvaluationConfig\x129\n" +
 	"\x04name\x18\x01 \x01(\tB%\xbaH\"r \x10\x012\x1c^[a-zA-Z][a-zA-Z0-9_]{0,47}$R\x04name\x12-\n" +
 	"\vdescription\x18\x02 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xc8\x01R\vdescription\x12\x88\x01\n" +
 	"\x12execution_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12\x1d\n" +
 	"\aenabled\x18\x04 \x01(\bH\x00R\aenabled\x88\x01\x01\x12\x8e\x01\n" +
 	"\vdata_source\x18\x05 \x01(\v2e.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreOnlineEvaluationDataSourceB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"dataSource\x125\n" +
-	"\revaluator_ids\x18\x06 \x03(\tB\x10\xbaH\r\x92\x01\n" +
-	"\b\x01\x10\n" +
-	"\"\x04r\x02\x10\x01R\fevaluatorIds\x12{\n" +
+	"dataSource\x127\n" +
+	"\revaluator_ids\x18\x06 \x03(\tB\x12\xbaH\x0f\x92\x01\f\b\x01\x10\n" +
+	"\x18\x01\"\x04r\x02\x10\x01R\fevaluatorIds\x12{\n" +
 	"\x04rule\x18\a \x01(\v2_.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreOnlineEvaluationRuleB\x06\xbaH\x03\xc8\x01\x01R\x04ruleB\n" +
 	"\n" +
-	"\b_enabled\"\xf6\x01\n" +
-	"-AwsBedrockAgentCoreOnlineEvaluationDataSource\x12\x8f\x01\n" +
-	"\x0flog_group_names\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\n" +
-	"\xc8\x01\x01\x92\x01\x04\b\x01\x10\x05\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\rlogGroupNames\x123\n" +
+	"\b_enabled\"\xf4\x01\n" +
+	"-AwsBedrockAgentCoreOnlineEvaluationDataSource\x12\x8d\x01\n" +
+	"\x0flog_group_names\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\b\xc8\x01\x01\x92\x01\x02\b\x01\x88\xd4a\xd6\b\x92\xd4a\x1dstatus.outputs.log_group_nameR\rlogGroupNames\x123\n" +
 	"\rservice_names\x18\x02 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\fserviceNames\"\xc1\x02\n" +
 	"'AwsBedrockAgentCoreOnlineEvaluationRule\x12H\n" +
 	"\x13sampling_percentage\x18\x01 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00Y@){\x14\xaeG\xe1z\x84?R\x12samplingPercentage\x12\x85\x01\n" +

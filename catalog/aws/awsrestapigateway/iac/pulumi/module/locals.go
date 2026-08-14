@@ -99,15 +99,18 @@ func derivedResourcePaths(routes []*awsrestapigatewayv1alpha1.AwsRestApiGatewayR
 	return paths
 }
 
-// definitionHash fingerprints the API definition. The stage and
-// documentation are excluded: changing them must not roll a new
-// deployment. Each engine hashes its own canonical rendering - the
-// values differ across engines by design; redeploy-on-change behavior
-// is what parity requires.
+// definitionHash fingerprints the API definition. The stage,
+// documentation, description, and region are excluded: changing them
+// must not roll a new deployment (the same exclusion set the Terraform
+// module's explicit hash list encodes). Each engine hashes its own
+// canonical rendering - the values differ across engines by design;
+// redeploy-on-change behavior is what parity requires.
 func definitionHash(spec *awsrestapigatewayv1alpha1.AwsRestApiGatewaySpec) (string, error) {
 	clone := proto.Clone(spec).(*awsrestapigatewayv1alpha1.AwsRestApiGatewaySpec)
 	clone.Stage = nil
 	clone.Documentation = nil
+	clone.Description = ""
+	clone.Region = ""
 	raw, err := protojson.MarshalOptions{UseProtoNames: true}.Marshal(clone)
 	if err != nil {
 		return "", err

@@ -19,8 +19,10 @@
 #     literals the overwrite-mode import wiped - expected apply-log
 #     noise, not drift;
 #   - minimum_compression_size is the provider's nullable-int-as-string
-#     quirk: unset means compression disabled, "0" compresses
-#     everything;
+#     quirk: unset means compression disabled on create but UNCHANGED on
+#     update (the attribute is Computed), "0" compresses everything, and
+#     "-1" is AWS's clear sentinel - the only way to turn compression
+#     back off;
 #   - the standalone rest_api_policy resource owns the policy (clean
 #     PATCH updates; delete resets to empty instead of touching the
 #     API), so the API's own policy argument stays unset;

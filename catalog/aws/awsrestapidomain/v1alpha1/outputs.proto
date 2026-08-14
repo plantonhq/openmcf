@@ -33,7 +33,7 @@ message AwsRestApiDomainStackOutputs {
   // need it).
   string cloudfront_zone_id = 7;
 
-  // Base-path mapping IDs keyed by each entry's base_path ("(root)"
+  // Base-path mapping IDs keyed by each entry's base_path ("(none)"
   // for the empty base path).
   map<string, string> base_path_mapping_ids = 8;
 

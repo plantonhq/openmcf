@@ -58,6 +58,16 @@ func routeTree(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api 
 	}
 	ctx.Export(OpResourceIds, resourceIds)
 
+	// Import-derivation echo maps: the route and route-response keys are
+	// COMPOSITE, so the blind import path needs each key's resource id,
+	// method, and status code as individually addressable map entries
+	// keyed exactly like the instances (see iac/import-map.yaml).
+	routeResourceIds := pulumi.StringMap{}
+	routeMethods := pulumi.StringMap{}
+	responseResourceIds := pulumi.StringMap{}
+	responseMethods := pulumi.StringMap{}
+	responseStatusCodes := pulumi.StringMap{}
+
 	// Methods, integrations, and responses per route.
 	for _, r := range sortedRoutes(spec.Routes) {
 		key := routeKey(r)
@@ -68,6 +78,8 @@ func routeTree(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api 
 		} else {
 			resourceId = resources[r.Path].ID()
 		}
+		routeResourceIds[key] = resourceId.ToStringOutput()
+		routeMethods[key] = pulumi.String(r.Method).ToStringOutput()
 
 		authorization := "NONE"
 		if r.Authorization != "" {
@@ -115,6 +127,11 @@ func routeTree(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api 
 		// Typed responses: the method response and its integration
 		// response mapping travel as one spec entry.
 		for _, resp := range r.Responses {
+			responseKey := key + "|" + resp.StatusCode
+			responseResourceIds[responseKey] = resourceId.ToStringOutput()
+			responseMethods[responseKey] = pulumi.String(r.Method).ToStringOutput()
+			responseStatusCodes[responseKey] = pulumi.String(resp.StatusCode).ToStringOutput()
+
 			methodResponseArgs := &apigateway.MethodResponseArgs{
 				RestApi:    api.ID(),
 				ResourceId: resourceId,
@@ -161,6 +178,12 @@ func routeTree(ctx *pulumi.Context, locals *Locals, provider *aws.Provider, api 
 			tree.definitionResources = append(tree.definitionResources, integrationResponse)
 		}
 	}
+
+	ctx.Export(OpRouteResourceIds, routeResourceIds)
+	ctx.Export(OpRouteMethods, routeMethods)
+	ctx.Export(OpResponseResourceIds, responseResourceIds)
+	ctx.Export(OpResponseMethods, responseMethods)
+	ctx.Export(OpResponseStatusCodes, responseStatusCodes)
 
 	return tree, nil
 }

@@ -194,6 +194,16 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreEvaluationSpec validations", func() 
 			})
 		})
 
+		ginkgo.Context("with an in-bundle evaluator name as an online-config entry", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalEvaluator()
+				config := minimalOnlineConfig()
+				config.EvaluatorIds = []string{"tone_check"}
+				spec.OnlineEvaluationConfigs = []*AwsBedrockAgentCoreOnlineEvaluationConfig{config}
+				gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+			})
+		})
+
 		ginkgo.Context("with gemini and openai model arms", func() {
 			ginkgo.It("should accept each vendor arm alone", func() {
 				spec := minimalEvaluator()
@@ -357,7 +367,7 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreEvaluationSpec validations", func() 
 			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
-			gomega.Expect(err.Error()).To(gomega.ContainSubstring("at most one of aws_iam, no_auth, or oauth"))
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of aws_iam, no_auth, or oauth"))
 		})
 
 		ginkgo.It("rejects VPC network mode without vpc_config", func() {
@@ -436,14 +446,6 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreEvaluationSpec validations", func() 
 			gomega.Expect(err.Error()).To(gomega.ContainSubstring("AWS builtin"))
 		})
 
-		ginkgo.It("accepts an in-bundle evaluator name as an online-config entry", func() {
-			spec := minimalEvaluator()
-			config := minimalOnlineConfig()
-			config.EvaluatorIds = []string{"tone_check"}
-			spec.OnlineEvaluationConfigs = []*AwsBedrockAgentCoreOnlineEvaluationConfig{config}
-			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
-		})
-
 		ginkgo.It("rejects a sampling percentage below the AWS floor", func() {
 			spec := minimalEvaluator()
 			config := minimalOnlineConfig()
@@ -499,9 +501,163 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreEvaluationSpec validations", func() 
 			config := minimalOnlineConfig()
 			config.EvaluatorIds = nil
 			for i := 0; i < 11; i++ {
-				config.EvaluatorIds = append(config.EvaluatorIds, "Builtin.Helpfulness")
+				config.EvaluatorIds = append(config.EvaluatorIds, "Builtin.Metric"+string(rune('A'+i)))
 			}
 			spec.OnlineEvaluationConfigs = []*AwsBedrockAgentCoreOnlineEvaluationConfig{config}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate evaluator IDs on one online config", func() {
+			spec := minimalEvaluator()
+			config := minimalOnlineConfig()
+			config.EvaluatorIds = []string{"Builtin.Helpfulness", "Builtin.Helpfulness"}
+			spec.OnlineEvaluationConfigs = []*AwsBedrockAgentCoreOnlineEvaluationConfig{config}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects duplicate harness names", func() {
+			spec := minimalEvaluator()
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{minimalHarness(), minimalHarness()}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("harnesses entries must have unique names"))
+		})
+
+		ginkgo.It("rejects duplicate online config names", func() {
+			spec := minimalEvaluator()
+			spec.OnlineEvaluationConfigs = []*AwsBedrockAgentCoreOnlineEvaluationConfig{
+				minimalOnlineConfig(), minimalOnlineConfig(),
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("online_evaluation_configs entries must have unique names"))
+		})
+
+		ginkgo.It("rejects a private endpoint with both arms", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.CustomJwtAuthorizer = &AwsBedrockAgentCoreJwtAuthorizer{
+				DiscoveryUrl: "https://idp.example.com/.well-known/openid-configuration",
+				PrivateEndpoint: &AwsBedrockAgentCorePrivateEndpoint{
+					ManagedVpc: &AwsBedrockAgentCoreManagedVpcEndpoint{
+						VpcId:     svr("vpc-abc"),
+						SubnetIds: []*foreignkeyv1.StringValueOrRef{svr("subnet-abc")},
+					},
+					SelfManagedLattice: &AwsBedrockAgentCoreLatticeEndpoint{
+						ResourceConfigurationId: "rcfg-abc",
+					},
+				},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of managed_vpc or self_managed_lattice"))
+		})
+
+		ginkgo.It("rejects a private endpoint with no arm", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.CustomJwtAuthorizer = &AwsBedrockAgentCoreJwtAuthorizer{
+				DiscoveryUrl:    "https://idp.example.com/.well-known/openid-configuration",
+				PrivateEndpoint: &AwsBedrockAgentCorePrivateEndpoint{},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of managed_vpc or self_managed_lattice"))
+		})
+
+		ginkgo.It("rejects an evaluator with no scoring arm", func() {
+			spec := minimalEvaluator()
+			spec.Evaluators[0].CodeBased = nil
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a rating scale with no shape", func() {
+			spec := minimalEvaluator()
+			judge := llmJudgeEvaluator()
+			judge.LlmAsAJudge.RatingScale = &AwsBedrockAgentCoreRatingScale{}
+			spec.Evaluators = []*AwsBedrockAgentCoreEvaluator{judge}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a harness model with no vendor arm", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.Model = &AwsBedrockAgentCoreHarnessModel{}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a custom claim with no match-value shape", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.CustomJwtAuthorizer = &AwsBedrockAgentCoreJwtAuthorizer{
+				DiscoveryUrl: "https://idp.example.com/.well-known/openid-configuration",
+				CustomClaims: []*AwsBedrockAgentCoreCustomClaim{
+					{ClaimName: "org", ValueType: "STRING", MatchOperator: "EQUALS"},
+				},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects PUBLIC network mode carrying a vpc_config", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.RuntimeEnvironment = &AwsBedrockAgentCoreHarnessRuntimeEnvironment{
+				Network: &AwsBedrockAgentCoreHarnessNetwork{
+					Mode: "PUBLIC",
+					VpcConfig: &AwsBedrockAgentCoreHarnessVpcConfig{
+						Subnets:        []*foreignkeyv1.StringValueOrRef{svr("subnet-abc")},
+						SecurityGroups: []*foreignkeyv1.StringValueOrRef{svr("sg-abc")},
+					},
+				},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects an outbound auth with no arm", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.Tools = []*AwsBedrockAgentCoreHarnessTool{
+				{
+					Name: "gw",
+					Type: "agentcore_gateway",
+					AgentcoreGateway: &AwsBedrockAgentCoreHarnessGatewayTool{
+						GatewayArn:   svr("arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/gw-1"),
+						OutboundAuth: &AwsBedrockAgentCoreHarnessGatewayOutboundAuth{},
+					},
+				},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("exactly one of aws_iam, no_auth, or oauth"))
+		})
+
+		ginkgo.It("rejects a routing domain shorter than three characters", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.CustomJwtAuthorizer = &AwsBedrockAgentCoreJwtAuthorizer{
+				DiscoveryUrl: "https://idp.example.com/.well-known/openid-configuration",
+				PrivateEndpoint: &AwsBedrockAgentCorePrivateEndpoint{
+					ManagedVpc: &AwsBedrockAgentCoreManagedVpcEndpoint{
+						VpcId:         svr("vpc-abc"),
+						SubnetIds:     []*foreignkeyv1.StringValueOrRef{svr("subnet-abc")},
+						RoutingDomain: "ab",
+					},
+				},
+			}
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})

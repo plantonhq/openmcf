@@ -64,6 +64,21 @@ locals {
     }
   ]...)
 
+  # Import-derivation echo maps: the route and route-response for_each
+  # keys are COMPOSITE ("GET /orders/{id}", "GET /orders/{id}|200"), so
+  # the blind import path needs each key's resource id, method, and
+  # status code as individually addressable map entries keyed exactly
+  # like the instances (see iac/import-map.yaml).
+  route_resource_ids = {
+    for key, r in local.routes : key => r.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : local.resource_id_by_path[r.path]
+  }
+  route_methods = { for key, r in local.routes : key => r.method }
+  response_resource_ids = {
+    for key, rr in local.route_responses : key => rr.route.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : local.resource_id_by_path[rr.route.path]
+  }
+  response_methods      = { for key, rr in local.route_responses : key => rr.route.method }
+  response_status_codes = { for key, rr in local.route_responses : key => rr.response.status_code }
+
   # Documentation parts keyed by declaration position (locations are
   # composite; position is the stable cross-engine key).
   documentation_parts = var.spec.documentation != null ? { for i, p in var.spec.documentation.parts : tostring(i) => p } : {}

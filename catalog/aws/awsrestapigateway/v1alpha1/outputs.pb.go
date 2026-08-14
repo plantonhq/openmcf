@@ -66,8 +66,29 @@ type AwsRestApiGatewayStackOutputs struct {
 	// Documentation part IDs keyed by each `documentation.parts` entry's
 	// position ("0", "1", ...) - the order they are declared in the spec.
 	DocumentationPartIds map[string]string `protobuf:"bytes,15,rep,name=documentation_part_ids,json=documentationPartIds,proto3" json:"documentation_part_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// API Gateway resource IDs keyed by ROUTE key ("GET /users/{id}") -
+	// the same keys the method and integration instances use, so import
+	// derivations (and chart wiring) can resolve each route's resource ID
+	// blind. Root-path routes map to the root resource ID.
+	RouteResourceIds map[string]string `protobuf:"bytes,16,rep,name=route_resource_ids,json=routeResourceIds,proto3" json:"route_resource_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Each route's HTTP method keyed by route key ("GET /users/{id}" ->
+	// "GET"). A config echo: the route key is composite, so import
+	// derivations need the method as its own addressable value.
+	RouteMethods map[string]string `protobuf:"bytes,17,rep,name=route_methods,json=routeMethods,proto3" json:"route_methods,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// API Gateway resource IDs keyed by ROUTE-RESPONSE key
+	// ("GET /users/{id}|200") - the method-response and
+	// integration-response instances' keys.
+	ResponseResourceIds map[string]string `protobuf:"bytes,18,rep,name=response_resource_ids,json=responseResourceIds,proto3" json:"response_resource_ids,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Each route-response's HTTP method keyed by route-response key
+	// ("GET /users/{id}|200" -> "GET"). A config echo for import
+	// derivations.
+	ResponseMethods map[string]string `protobuf:"bytes,19,rep,name=response_methods,json=responseMethods,proto3" json:"response_methods,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	// Each route-response's status code keyed by route-response key
+	// ("GET /users/{id}|200" -> "200"). A config echo for import
+	// derivations.
+	ResponseStatusCodes map[string]string `protobuf:"bytes,20,rep,name=response_status_codes,json=responseStatusCodes,proto3" json:"response_status_codes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AwsRestApiGatewayStackOutputs) Reset() {
@@ -205,11 +226,46 @@ func (x *AwsRestApiGatewayStackOutputs) GetDocumentationPartIds() map[string]str
 	return nil
 }
 
+func (x *AwsRestApiGatewayStackOutputs) GetRouteResourceIds() map[string]string {
+	if x != nil {
+		return x.RouteResourceIds
+	}
+	return nil
+}
+
+func (x *AwsRestApiGatewayStackOutputs) GetRouteMethods() map[string]string {
+	if x != nil {
+		return x.RouteMethods
+	}
+	return nil
+}
+
+func (x *AwsRestApiGatewayStackOutputs) GetResponseResourceIds() map[string]string {
+	if x != nil {
+		return x.ResponseResourceIds
+	}
+	return nil
+}
+
+func (x *AwsRestApiGatewayStackOutputs) GetResponseMethods() map[string]string {
+	if x != nil {
+		return x.ResponseMethods
+	}
+	return nil
+}
+
+func (x *AwsRestApiGatewayStackOutputs) GetResponseStatusCodes() map[string]string {
+	if x != nil {
+		return x.ResponseStatusCodes
+	}
+	return nil
+}
+
 var File_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awsrestapigateway/v1alpha1/outputs.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\"\x9a\v\n" +
+	"4catalog/aws/awsrestapigateway/v1alpha1/outputs.proto\x12*dev.planton.aws.awsrestapigateway.v1alpha1\"\xc5\x13\n" +
 	"\x1dAwsRestApiGatewayStackOutputs\x12\x1e\n" +
 	"\vrest_api_id\x18\x01 \x01(\tR\trestApiId\x12 \n" +
 	"\frest_api_arn\x18\x02 \x01(\tR\n" +
@@ -229,7 +285,12 @@ const file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x0eauthorizer_ids\x18\f \x03(\v2\\.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.AuthorizerIdsEntryR\rauthorizerIds\x12t\n" +
 	"\tmodel_ids\x18\r \x03(\v2W.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ModelIdsEntryR\bmodelIds\x12\x96\x01\n" +
 	"\x15request_validator_ids\x18\x0e \x03(\v2b.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RequestValidatorIdsEntryR\x13requestValidatorIds\x12\x99\x01\n" +
-	"\x16documentation_part_ids\x18\x0f \x03(\v2c.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.DocumentationPartIdsEntryR\x14documentationPartIds\x1a>\n" +
+	"\x16documentation_part_ids\x18\x0f \x03(\v2c.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.DocumentationPartIdsEntryR\x14documentationPartIds\x12\x8d\x01\n" +
+	"\x12route_resource_ids\x18\x10 \x03(\v2_.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteResourceIdsEntryR\x10routeResourceIds\x12\x80\x01\n" +
+	"\rroute_methods\x18\x11 \x03(\v2[.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteMethodsEntryR\frouteMethods\x12\x96\x01\n" +
+	"\x15response_resource_ids\x18\x12 \x03(\v2b.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseResourceIdsEntryR\x13responseResourceIds\x12\x89\x01\n" +
+	"\x10response_methods\x18\x13 \x03(\v2^.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseMethodsEntryR\x0fresponseMethods\x12\x96\x01\n" +
+	"\x15response_status_codes\x18\x14 \x03(\v2b.dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseStatusCodesEntryR\x13responseStatusCodes\x1a>\n" +
 	"\x10ResourceIdsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a@\n" +
@@ -243,6 +304,21 @@ const file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aG\n" +
 	"\x19DocumentationPartIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aC\n" +
+	"\x15RouteResourceIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11RouteMethodsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResponseResourceIdsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aB\n" +
+	"\x14ResponseMethodsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aF\n" +
+	"\x18ResponseStatusCodesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\xea\x02\n" +
 	".com.dev.planton.aws.awsrestapigateway.v1alpha1B\fOutputsProtoP\x01Z]github.com/plantonhq/planton/catalog/aws/awsrestapigateway/v1alpha1;awsrestapigatewayv1alpha1\xa2\x02\x04DPAA\xaa\x02*Dev.Planton.Aws.Awsrestapigateway.V1alpha1\xca\x02*Dev\\Planton\\Aws\\Awsrestapigateway\\V1alpha1\xe2\x026Dev\\Planton\\Aws\\Awsrestapigateway\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Aws::Awsrestapigateway::V1alpha1b\x06proto3"
@@ -259,7 +335,7 @@ func file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDescGZIP() []b
 	return file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDescData
 }
 
-var file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_goTypes = []any{
 	(*AwsRestApiGatewayStackOutputs)(nil), // 0: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs
 	nil,                                   // 1: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResourceIdsEntry
@@ -267,18 +343,28 @@ var file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_goTypes = []any{
 	nil,                                   // 3: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ModelIdsEntry
 	nil,                                   // 4: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RequestValidatorIdsEntry
 	nil,                                   // 5: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.DocumentationPartIdsEntry
+	nil,                                   // 6: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteResourceIdsEntry
+	nil,                                   // 7: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteMethodsEntry
+	nil,                                   // 8: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseResourceIdsEntry
+	nil,                                   // 9: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseMethodsEntry
+	nil,                                   // 10: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseStatusCodesEntry
 }
 var file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_depIdxs = []int32{
-	1, // 0: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.resource_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResourceIdsEntry
-	2, // 1: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.authorizer_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.AuthorizerIdsEntry
-	3, // 2: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.model_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ModelIdsEntry
-	4, // 3: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.request_validator_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RequestValidatorIdsEntry
-	5, // 4: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.documentation_part_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.DocumentationPartIdsEntry
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	1,  // 0: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.resource_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResourceIdsEntry
+	2,  // 1: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.authorizer_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.AuthorizerIdsEntry
+	3,  // 2: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.model_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ModelIdsEntry
+	4,  // 3: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.request_validator_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RequestValidatorIdsEntry
+	5,  // 4: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.documentation_part_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.DocumentationPartIdsEntry
+	6,  // 5: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.route_resource_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteResourceIdsEntry
+	7,  // 6: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.route_methods:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.RouteMethodsEntry
+	8,  // 7: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.response_resource_ids:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseResourceIdsEntry
+	9,  // 8: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.response_methods:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseMethodsEntry
+	10, // 9: dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.response_status_codes:type_name -> dev.planton.aws.awsrestapigateway.v1alpha1.AwsRestApiGatewayStackOutputs.ResponseStatusCodesEntry
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_init() }
@@ -292,7 +378,7 @@ func file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDesc), len(file_catalog_aws_awsrestapigateway_v1alpha1_outputs_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -127,6 +127,8 @@ message AwsRestApiDomainSpec {
   // ROUTING_RULE_THEN_BASE_PATH_MAPPING. Routing rules themselves are
   // the AwsHttpApiDomain component's surface; set a ROUTING_RULE mode
   // here only when that component manages rules on this same domain.
+  // Uppercase canonical spellings only (the provider accepts any case;
+  // the spec pins the canonical form).
   string routing_mode = 11 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string = {
@@ -168,6 +170,31 @@ message AwsRestApiDomainSpec {
     id: "access_associations_private_only"
     message: "access_associations apply only to PRIVATE endpoint types"
     expression: "this.access_associations.size() == 0 || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')"
+  };
+
+  // One association per VPC endpoint - entries are for_each keys on
+  // both engines, and AWS keys the association by its source. The
+  // uniqueness key covers both the literal and the reference form.
+  option (buf.validate.message).cel = {
+    id: "access_association_endpoints_unique"
+    message: "access_associations entries must reference unique VPC endpoints"
+    expression: "this.access_associations.map(a, a.vpc_endpoint_id.value + '|' + a.vpc_endpoint_id.value_from.env + '|' + a.vpc_endpoint_id.value_from.name + '|' + a.vpc_endpoint_id.value_from.field_path).unique()"
+  };
+
+  // AWS supports the domain resource policy only on PRIVATE custom
+  // domains - on other endpoint types it is dead configuration.
+  option (buf.validate.message).cel = {
+    id: "policy_private_only"
+    message: "policy applies only to PRIVATE endpoint types"
+    expression: "!has(this.policy) || (has(this.endpoint_configuration) && this.endpoint_configuration.type == 'PRIVATE')"
+  };
+
+  // AWS supports endpoint_access_mode only with the modern
+  // SecurityPolicy_* policy family - pair them explicitly.
+  option (buf.validate.message).cel = {
+    id: "access_mode_requires_modern_security_policy"
+    message: "endpoint_access_mode requires a security_policy from the SecurityPolicy_* family"
+    expression: "this.endpoint_access_mode == '' || this.security_policy.startsWith('SecurityPolicy_')"
   };
 }
 
