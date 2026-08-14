@@ -591,6 +591,8 @@ If not specified, GCP defaults to 1.
 
 Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
 If not specified, GCP selects a default machine type.
+Mutually exclusive with instance_flexibility_policy — a flexibility
+policy replaces the single machine type (see that field).
 
 ### spec.clusterConfig.masterConfig.diskConfig
 
@@ -700,8 +702,11 @@ determined by software_config.image_version.
 
 Ranked machine-type preferences for master provisioning — keeps the
 cluster creatable when the preferred type's zonal capacity dries up.
-Masters are on-demand capacity: provisioning_model_mix does not
-apply here (secondary workers only).
+REPLACES machine_type: with a flexibility policy present the API
+provisions solely from the ranked selections and drops a paired
+machineTypeUri from the stored config. Masters are on-demand
+capacity: provisioning_model_mix does not apply here (secondary
+workers only).
 
 ### spec.clusterConfig.masterConfig.instanceFlexibilityPolicy.instanceSelectionList
 
@@ -778,6 +783,8 @@ that can be changed in place after creation (manual scaling).
 
 Compute Engine machine type (e.g., "n2-standard-4", "e2-standard-8").
 If not specified, GCP selects a default machine type.
+Mutually exclusive with instance_flexibility_policy — a flexibility
+policy replaces the single machine type (see that field).
 
 ### spec.clusterConfig.workerConfig.diskConfig
 
@@ -892,8 +899,11 @@ The autoscaler will not scale below this threshold. Updatable in place.
 
 Ranked machine-type preferences for primary-worker provisioning —
 keeps scale-ups schedulable when the preferred type's zonal capacity
-dries up. Primary workers are on-demand capacity:
-provisioning_model_mix does not apply here (secondary workers only).
+dries up. REPLACES machine_type: with a flexibility policy present
+the API provisions solely from the ranked selections and drops a
+paired machineTypeUri from the stored config. Primary workers are
+on-demand capacity: provisioning_model_mix does not apply here
+(secondary workers only).
 
 ### spec.clusterConfig.workerConfig.instanceFlexibilityPolicy.instanceSelectionList
 

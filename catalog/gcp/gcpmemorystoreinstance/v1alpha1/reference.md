@@ -432,7 +432,8 @@ Day of the week for the maintenance window.
 
 `int32`
 
-Hour of day (0-23, UTC) when the maintenance window starts.
+Hour of day (0-23, UTC) when the maintenance window starts. The window
+always starts on the hour — the API supports no finer granularity.
 
 - rule: {"int32":{"lte":23,"gte":0}}
 

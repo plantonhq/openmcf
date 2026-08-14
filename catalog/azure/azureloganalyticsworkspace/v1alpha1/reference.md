@@ -298,12 +298,11 @@ the retention window; this switch removes that grace period.
 
 `string | valueFrom`
 
-The ARM ID of an Azure Monitor Data Collection Rule to set as the
-workspace's default DCR (applied to data flowing in without an explicit
-rule). Format:
-/subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionRules/{name}
-Provide the literal ARM ID of a rule managed outside this catalog; leave
-empty for Azure's default handling.
+The Azure Monitor Data Collection Rule to set as the workspace's
+default DCR (applied to data flowing in without an explicit rule), by
+ARM resource ID. Can be a literal ARM ID or a reference to an
+AzureMonitorDataCollectionRule output. Leave unset for Azure's default
+handling.
 
 - references: AzureMonitorDataCollectionRule (`status.outputs.data_collection_rule_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureMonitorDataCollectionRule, name: <that resource's name>, fieldPath: status.outputs.data_collection_rule_id}} -- a bare string does not parse

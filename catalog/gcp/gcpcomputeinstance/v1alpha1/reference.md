@@ -465,7 +465,15 @@ Guest OS features to enable on the boot disk, e.g.
 ["UEFI_COMPATIBLE", "SECURE_BOOT", "GVNIC", "MULTI_IP_SUBNET",
 "WINDOWS"]. The accepted set evolves with GCP — see "Enabling guest
 operating system features" in the Compute Engine docs. Create-time
-only.
+only. When set, list the image's COMPLETE feature set, never just
+the additions: the API merges this list with the image's own
+features at create and the stored disk echoes the merged set, which
+the provider then compares authoritatively with replace-on-change
+semantics — a partial list plans a VM REPLACEMENT on every re-apply
+(live-verified: debian-12's ["UEFI_COMPATIBLE", "GVNIC"] echoed back
+["UEFI_COMPATIBLE", "VIRTIO_SCSI_MULTIQUEUE", "GVNIC", "SEV_CAPABLE",
+"SEV_LIVE_MIGRATABLE_V2"]). Leave unset to follow the image's own
+features cleanly.
 
 ### spec.bootDisk.replicaZones
 
@@ -474,7 +482,12 @@ only.
 Zones for a REGIONAL boot disk (exactly two, one of which must be
 the instance's own zone; short names or self links). Setting this
 converts the boot disk to a regional disk replicated across both
-zones. Ignored when booting from an existing source_disk.
+zones. Only valid with a source_snapshot boot source (enforced
+pre-deploy): GCP rejects creating a regional boot disk from an
+image (live-verified API 400: "Creating a regional disk from a
+source image is not supported yet" — the snapshot path was
+live-verified to produce a true regional boot disk), and a
+pre-created source_disk already carries its own zones.
 Create-time only.
 
 - rule: replica_zones takes exactly two zones (one must be the instance's zone)

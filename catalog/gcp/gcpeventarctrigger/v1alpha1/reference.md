@@ -195,9 +195,13 @@ services in the same project as the trigger can be addressed.
 
 `string`
 
-The region the Cloud Run service is deployed in. When empty, GCP
-resolves it from the trigger's location — set it explicitly when the
-service lives in a different region than the trigger.
+The region the Cloud Run service is deployed in. The API REQUIRES
+this on every create (live-verified: 400 "cloud_run.region is empty"
+— it never infers the region from the trigger). When empty, the
+MODULE defaults it to the trigger's location; set it explicitly when
+the service lives in a different region than the trigger, and always
+on a "global" trigger (spec-enforced — global is not a Cloud Run
+region).
 
 ### spec.destination.cloudRunService.path
 
@@ -270,7 +274,8 @@ Trigger a Cloud Workflows EXECUTION per event. The full workflow
 resource name (projects/{project}/locations/{location}/workflows/{name})
 — a literal or a reference to a GcpWorkflow resource (its workflow_id
 output is exactly this value). Must live in the same project as the
-trigger.
+trigger. This arm REQUIRES spec.service_account (spec-enforced; the
+API rejects the create without it).
 
 - references: GcpWorkflow (`status.outputs.workflow_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpWorkflow, name: <that resource's name>, fieldPath: status.outputs.workflow_id}} -- a bare string does not parse
@@ -310,9 +315,11 @@ endpoints, so this spec carries it inside the arm.
 
 The IAM service account email the trigger runs as — it must hold
 roles/eventarc.eventReceiver, plus roles/run.invoker for authenticated
-Cloud Run destinations (identity tokens are minted from this account).
-Audit-log triggers REQUIRE a service account. A literal email or a
-reference to a GcpServiceAccount resource.
+Cloud Run destinations (identity tokens are minted from this account)
+or roles/workflows.invoker for workflow destinations. Audit-log
+triggers and workflow destinations REQUIRE a service account (the
+workflow case is API-enforced at create — live-verified 400 without
+it). A literal email or a reference to a GcpServiceAccount resource.
 
 - references: GcpServiceAccount (`status.outputs.email`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: GcpServiceAccount, name: <that resource's name>, fieldPath: status.outputs.email}} -- a bare string does not parse
@@ -336,8 +343,10 @@ the trigger is destroyed (Eventarc only manages topics it created).
 
 The MIME type the CloudEvent data field is delivered as (e.g.
 application/json or application/protobuf). The API defaults to
-application/json when unset. Must be compatible with the event type —
-Pub/Sub events support application/json and application/protobuf.
+application/json when unset. NOT accepted on Pub/Sub
+(messagePublished) triggers — the API rejects any value there
+(live-verified 400; a Pub/Sub event's payload format is decided by
+the publisher). Spec-enforced above.
 
 ### spec.retryMaxAttempts
 

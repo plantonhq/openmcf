@@ -152,9 +152,13 @@ Read capacity — number of nodes in the read pool instance.
 
 `string`
 
-ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
-unset.
+ZONAL or REGIONAL placement for PRIMARY/SECONDARY instances. GCP
+defaults to REGIONAL when unset. Must stay empty on READ_POOL
+instances: read-pool availability is DERIVED from node_count (1 node =
+ZONAL, 2+ nodes = REGIONAL spread across zones) and the AlloyDB API
+does not store a sent value — the stored object omits the field, so
+any explicit value produces a perpetual re-plan diff (live-verified
+against a single-node pool at google@7.43.0).
 
 - rule: availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED
 

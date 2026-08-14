@@ -8,6 +8,24 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+**AzureEventgridEventSubscriptionSpec** defines an Azure Event Grid
+event subscription -- the delivery instruction that routes events
+from a source to a handler: "when events arrive HERE, filtered like
+THIS, deliver them THERE". The source is named by the addressing
+choice (exactly one):
+  - `scope`: any Azure resource that emits Event Grid events, by ARM
+    ID -- a custom topic (AzureEventgridTopic), a domain
+    (AzureEventgridDomain, receiving every domain topic's events), a
+    single domain topic (AzureEventgridDomainTopic, the per-tenant
+    stream), a resource group, or a subscription.
+  - `system_topic_id`: an Event Grid SYSTEM topic
+    (AzureEventgridSystemTopic) -- Azure models these subscriptions
+    as children of the system topic rather than scoped attachments,
+    and the engines create the matching resource type.
+The destination is exactly one of seven handler arms; filters narrow
+which events are delivered. A subscription is free at rest; billing
+is per operation.
+
 ## Example
 
 ```yaml
@@ -195,12 +213,29 @@ spec:
 
 `string | valueFrom`
 
+The ARM ID of the event source, for every source EXCEPT system
+topics -- defaults to referencing an AzureEventgridTopic's
+topic_id output; pass a domain's, domain topic's, resource
+group's, or subscription's ID (literal or explicit valueFrom) for
+the other sources. Set exactly one of scope / system_topic_id.
+
+**ForceNew**: changing this destroys and recreates the
+subscription.
+
 - references: AzureEventgridTopic (`status.outputs.topic_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureEventgridTopic, name: <that resource's name>, fieldPath: status.outputs.topic_id}} -- a bare string does not parse
 
 ### spec.systemTopicId
 
 `string | valueFrom`
+
+The ARM ID of the Event Grid system topic to subscribe to --
+defaults to referencing an AzureEventgridSystemTopic's
+system_topic_id output. Set exactly one of scope /
+system_topic_id.
+
+**ForceNew**: changing this destroys and recreates the
+subscription.
 
 - references: AzureEventgridSystemTopic (`status.outputs.system_topic_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureEventgridSystemTopic, name: <that resource's name>, fieldPath: status.outputs.system_topic_id}} -- a bare string does not parse
@@ -209,12 +244,20 @@ spec:
 
 `string` · required
 
+The subscription's name -- 3-64 characters; letters, numbers, and
+hyphens; unique within its source.
+
+**ForceNew**: changing this destroys and recreates the
+subscription.
+
 - rule: Event subscription names must be 3-64 characters of letters, numbers, and hyphens
 - rule: {"required":true}
 
 ### spec.destination
 
 `AzureEventgridEventSubscriptionDestination` · required
+
+Where matched events are delivered -- exactly one handler arm.
 
 - rule: {"required":true}
 - rule: Set exactly one destination arm -- azure_function, eventhub_id, hybrid_connection_id, service_bus_queue_id, service_bus_topic_id, storage_queue, or webhook
@@ -223,9 +266,18 @@ spec:
 
 `AzureEventgridEventSubscriptionAzureFunctionDestination`
 
+Deliver to an Azure Function. Set exactly one arm on this block.
+
 ### spec.destination.azureFunction.functionId
 
 `string | valueFrom` · required
+
+The FUNCTION's ARM ID -- the function app's ID plus the function
+segment:
+{function_app_id}/functions/{function_name}. This addresses one
+function INSIDE an app (an AzureFunctionApp's function_app_id
+output is the prefix), so there is no single-output default --
+pass the ID as a literal or compose it in the manifest.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
@@ -234,17 +286,27 @@ spec:
 
 `int32` · optional (explicit presence)
 
+How many events one invocation may receive at most. Leave unset
+for Azure's default -- the modules send the value only when set.
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.destination.azureFunction.preferredBatchSizeInKilobytes
 
 `int32` · optional (explicit presence)
 
+The preferred batch payload size in kilobytes. Leave unset for
+Azure's default -- the modules send the value only when set.
+
 - rule: {"int32":{"gte":1}}
 
 ### spec.destination.eventhubId
 
 `string | valueFrom`
+
+Deliver to an Event Hub, by ARM ID -- defaults to referencing an
+AzureEventHub's event_hub_id output. Set exactly one arm on this
+block.
 
 - references: AzureEventHub (`status.outputs.event_hub_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureEventHub, name: <that resource's name>, fieldPath: status.outputs.event_hub_id}} -- a bare string does not parse
@@ -253,11 +315,19 @@ spec:
 
 `string | valueFrom`
 
+Deliver to an Azure Relay hybrid connection, by ARM ID (Relay is
+not yet a catalog kind -- pass the ID as a literal or an explicit
+valueFrom). Set exactly one arm on this block.
+
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
 ### spec.destination.serviceBusQueueId
 
 `string | valueFrom`
+
+Deliver to a Service Bus queue, by ARM ID -- defaults to
+referencing an AzureServiceBusQueue's queue_id output. Set
+exactly one arm on this block.
 
 - references: AzureServiceBusQueue (`status.outputs.queue_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureServiceBusQueue, name: <that resource's name>, fieldPath: status.outputs.queue_id}} -- a bare string does not parse
@@ -266,6 +336,10 @@ spec:
 
 `string | valueFrom`
 
+Deliver to a Service Bus topic, by ARM ID -- defaults to
+referencing an AzureServiceBusTopic's topic_id output. Set
+exactly one arm on this block.
+
 - references: AzureServiceBusTopic (`status.outputs.topic_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureServiceBusTopic, name: <that resource's name>, fieldPath: status.outputs.topic_id}} -- a bare string does not parse
 
@@ -273,9 +347,15 @@ spec:
 
 `AzureEventgridEventSubscriptionStorageQueueDestination`
 
+Deliver to an Azure Storage queue. Set exactly one arm on this
+block.
+
 ### spec.destination.storageQueue.storageAccountId
 
 `string | valueFrom` · required
+
+The storage account holding the queue, by ARM ID -- defaults to
+referencing an AzureStorageAccount's storage_account_id output.
 
 - references: AzureStorageAccount (`status.outputs.storage_account_id`)
 - rule: {"required":true}
@@ -285,19 +365,32 @@ spec:
 
 `string` · required
 
+The queue's name within that account (the queue must exist --
+AzureStorageQueue manages one).
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.destination.storageQueue.queueMessageTimeToLiveInSeconds
 
 `int32` · optional (explicit presence)
 
+How long a delivered queue message lives before the queue expires
+it, in seconds (-1 = never expires). Leave unset for the
+service's default (7 days) -- the modules send the value only
+when set.
+
 ### spec.destination.webhook
 
 `AzureEventgridEventSubscriptionWebhookDestination`
 
+Deliver to an HTTPS webhook. Set exactly one arm on this block.
+
 ### spec.destination.webhook.url
 
 `string` · required
+
+The HTTPS endpoint events are POSTed to. HTTP is rejected --
+Azure only delivers over TLS.
 
 - rule: The webhook url must be an https:// URL
 - rule: {"required":true}
@@ -306,11 +399,18 @@ spec:
 
 `int32` · optional (explicit presence)
 
+How many events one POST may carry at most (1-5000). Leave unset
+for Azure's default -- the modules send the value only when set.
+
 - rule: {"int32":{"lte":5000,"gte":1}}
 
 ### spec.destination.webhook.preferredBatchSizeInKilobytes
 
 `int32` · optional (explicit presence)
+
+The preferred batch payload size in kilobytes (1-1024). Leave
+unset for Azure's default -- the modules send the value only when
+set.
 
 - rule: {"int32":{"lte":1024,"gte":1}}
 
@@ -318,13 +418,26 @@ spec:
 
 `string`
 
+For Entra-ID-protected webhooks: the tenant the destination app
+lives in. Sent only when set.
+
 ### spec.destination.webhook.activeDirectoryAppIdOrUri
 
 `string`
 
+For Entra-ID-protected webhooks: the application ID or URI Event
+Grid acquires a token for. Sent only when set.
+
 ### spec.deliveryIdentity
 
 `AzureEventgridEventSubscriptionIdentity`
+
+Deliver AS the source topic's managed identity instead of the
+Event Grid service principal -- required for identity-based
+access on the destination (e.g. a storage queue with shared keys
+disabled). The identity named here must exist ON the source topic
+(its identity block), and needs data-plane write access on the
+destination.
 
 - rule: user_assigned_identity is required for USER_ASSIGNED and must be unset for SYSTEM_ASSIGNED
 
@@ -332,17 +445,23 @@ spec:
 
 `enum` · required
 
+Identity flavor: the source topic's system-assigned identity, or
+one of its user-assigned identities.
+
 - rule: {"required":true}
 
 Allowed values (use exactly as shown):
 
-- `azure_eventgrid_event_subscription_identity_type_unspecified`
-- `SYSTEM_ASSIGNED`
-- `USER_ASSIGNED`
+- `azure_eventgrid_event_subscription_identity_type_unspecified` -- Not specified: rejected -- an identity block requires a flavor.
+- `SYSTEM_ASSIGNED` -- The source topic's system-assigned identity. Wire value: "SystemAssigned".
+- `USER_ASSIGNED` -- One of the source topic's user-assigned identities. Wire value: "UserAssigned".
 
 ### spec.deliveryIdentity.userAssignedIdentity
 
 `string | valueFrom`
+
+For USER_ASSIGNED: which of the source topic's user-assigned
+identities to deliver as, by ARM ID.
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -351,11 +470,21 @@ Allowed values (use exactly as shown):
 
 `[]AzureEventgridEventSubscriptionDeliveryProperty`
 
+Extra headers/properties stamped onto every delivered event --
+static values (e.g. an API key the handler expects) or values
+lifted from the event by JSON path. Azure applies these on every
+destination type EXCEPT storage queues (queue messages carry no
+custom properties -- entries are ignored there).
+
 - rule: Static entries require value (and may set secret); Dynamic entries require source_field and must not set value or secret
 
 ### spec.deliveryProperties[].headerName
 
 `string` · required
+
+The header/property name the destination sees (e.g.
+"x-api-key" on a webhook, an application property on Service
+Bus/Event Hub messages).
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -363,11 +492,18 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+"Static" stamps a fixed value; "Dynamic" lifts the value from
+each event by JSON path.
+
 - rule: {"required":true,"string":{"in":["Static","Dynamic"]}}
 
 ### spec.deliveryProperties[].value
 
 `string | valueFrom` · sensitive
+
+For "Static": the value to stamp. Often a credential the handler
+expects -- reference a managed secret or another resource's
+output rather than embedding plaintext in manifests.
 
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse
 
@@ -375,17 +511,32 @@ Allowed values (use exactly as shown):
 
 `string`
 
+For "Dynamic": the JSON path into the event the value is lifted
+from (e.g. "data.system", "subject").
+
 ### spec.deliveryProperties[].secret
 
 `bool`
+
+For "Static": hide the value from Azure's own read APIs (they
+return "Hidden" instead). Set true for credentials.
 
 ### spec.deadLetter
 
 `AzureEventgridEventSubscriptionDeadLetter`
 
+Where events that exhaust their retries are parked (a storage
+blob container) instead of being dropped. Strongly recommended
+for at-least-once processing: without it, undeliverable events
+vanish after the retry policy gives up.
+
 ### spec.deadLetter.storageAccountId
 
 `string | valueFrom` · required
+
+The storage account holding the dead-letter container, by ARM ID
+-- defaults to referencing an AzureStorageAccount's
+storage_account_id output.
 
 - references: AzureStorageAccount (`status.outputs.storage_account_id`)
 - rule: {"required":true}
@@ -395,11 +546,18 @@ Allowed values (use exactly as shown):
 
 `string` · required
 
+The blob container dead-lettered events are written into (the
+container must exist -- AzureStorageContainer manages one).
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.deadLetterIdentity
 
 `AzureEventgridEventSubscriptionIdentity`
+
+Dead-letter AS the source topic's managed identity (the
+delivery_identity contract, applied to the dead-letter write).
+Requires dead_letter to be configured.
 
 - rule: user_assigned_identity is required for USER_ASSIGNED and must be unset for SYSTEM_ASSIGNED
 
@@ -407,17 +565,23 @@ Allowed values (use exactly as shown):
 
 `enum` · required
 
+Identity flavor: the source topic's system-assigned identity, or
+one of its user-assigned identities.
+
 - rule: {"required":true}
 
 Allowed values (use exactly as shown):
 
-- `azure_eventgrid_event_subscription_identity_type_unspecified`
-- `SYSTEM_ASSIGNED`
-- `USER_ASSIGNED`
+- `azure_eventgrid_event_subscription_identity_type_unspecified` -- Not specified: rejected -- an identity block requires a flavor.
+- `SYSTEM_ASSIGNED` -- The source topic's system-assigned identity. Wire value: "SystemAssigned".
+- `USER_ASSIGNED` -- One of the source topic's user-assigned identities. Wire value: "UserAssigned".
 
 ### spec.deadLetterIdentity.userAssignedIdentity
 
 `string | valueFrom`
+
+For USER_ASSIGNED: which of the source topic's user-assigned
+identities to deliver as, by ARM ID.
 
 - references: AzureUserAssignedIdentity (`status.outputs.identity_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureUserAssignedIdentity, name: <that resource's name>, fieldPath: status.outputs.identity_id}} -- a bare string does not parse
@@ -426,6 +590,15 @@ Allowed values (use exactly as shown):
 
 `string` · optional (explicit presence)
 
+The envelope events are DELIVERED in. "EventGridSchema" (Azure's
+native envelope) is the default; "CloudEventSchemaV1_0" is the
+CNCF standard; "CustomInputSchema" passes a custom-schema topic's
+events through unmapped. Defaults to "EventGridSchema" -- the
+platform sends the default explicitly.
+
+**ForceNew**: changing the schema destroys and recreates the
+subscription.
+
 - default: `EventGridSchema`
 - rule: {"string":{"in":["EventGridSchema","CloudEventSchemaV1_0","CustomInputSchema"]}}
 
@@ -433,11 +606,18 @@ Allowed values (use exactly as shown):
 
 `[]string`
 
+Only deliver events of these types (e.g.
+"Microsoft.Storage.BlobCreated"). An empty list delivers ALL
+event types the source emits.
+
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.subjectFilter
 
 `AzureEventgridEventSubscriptionSubjectFilter`
+
+Only deliver events whose subject matches a prefix/suffix. Leave
+unset to deliver regardless of subject.
 
 - rule: Set at least one of subject_begins_with, subject_ends_with, or case_sensitive
 
@@ -445,17 +625,34 @@ Allowed values (use exactly as shown):
 
 `string`
 
+Deliver events whose subject starts with this prefix (e.g.
+"/blobServices/default/containers/invoices/").
+
 ### spec.subjectFilter.subjectEndsWith
 
 `string`
+
+Deliver events whose subject ends with this suffix (e.g. ".pdf").
 
 ### spec.subjectFilter.caseSensitive
 
 `bool` · optional (explicit presence)
 
+Whether prefix/suffix matching is case sensitive. Default: false
+(Azure's default).
+
 ### spec.advancedFilter
 
 `AzureEventgridEventSubscriptionAdvancedFilter`
+
+Field-level filters over the event payload -- every configured
+condition must match for an event to be delivered (conditions are
+ANDed; values within one condition are ORed). Azure caps the
+TOTAL number of values across all conditions of one subscription
+at 25 -- the Terraform engine rejects an overflow at plan time on
+scope-addressed subscriptions; system-topic-addressed
+subscriptions and the Pulumi engine surface Azure's own deploy-
+time rejection.
 
 - rule: An advanced_filter block must carry at least one condition
 
@@ -463,9 +660,13 @@ Allowed values (use exactly as shown):
 
 `[]AzureEventgridEventSubscriptionBoolEqualsFilter`
 
+The key's value equals the given boolean.
+
 ### spec.advancedFilter.boolEquals[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -473,13 +674,19 @@ Allowed values (use exactly as shown):
 
 `bool`
 
+The boolean the key's value must equal.
+
 ### spec.advancedFilter.numberGreaterThan
 
 `[]AzureEventgridEventSubscriptionNumberFilter`
 
+The key's numeric value is strictly greater than the given value.
+
 ### spec.advancedFilter.numberGreaterThan[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -487,13 +694,20 @@ Allowed values (use exactly as shown):
 
 `double`
 
+The number the key's value is compared against.
+
 ### spec.advancedFilter.numberGreaterThanOrEquals
 
 `[]AzureEventgridEventSubscriptionNumberFilter`
 
+The key's numeric value is greater than or equal to the given
+value.
+
 ### spec.advancedFilter.numberGreaterThanOrEquals[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -501,13 +715,19 @@ Allowed values (use exactly as shown):
 
 `double`
 
+The number the key's value is compared against.
+
 ### spec.advancedFilter.numberLessThan
 
 `[]AzureEventgridEventSubscriptionNumberFilter`
 
+The key's numeric value is strictly less than the given value.
+
 ### spec.advancedFilter.numberLessThan[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -515,13 +735,19 @@ Allowed values (use exactly as shown):
 
 `double`
 
+The number the key's value is compared against.
+
 ### spec.advancedFilter.numberLessThanOrEquals
 
 `[]AzureEventgridEventSubscriptionNumberFilter`
 
+The key's numeric value is less than or equal to the given value.
+
 ### spec.advancedFilter.numberLessThanOrEquals[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -529,13 +755,19 @@ Allowed values (use exactly as shown):
 
 `double`
 
+The number the key's value is compared against.
+
 ### spec.advancedFilter.numberIn
 
 `[]AzureEventgridEventSubscriptionNumberListFilter`
 
+The key's numeric value is one of the listed values.
+
 ### spec.advancedFilter.numberIn[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -543,15 +775,21 @@ Allowed values (use exactly as shown):
 
 `[]double` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25"}}
 
 ### spec.advancedFilter.numberNotIn
 
 `[]AzureEventgridEventSubscriptionNumberListFilter`
 
+The key's numeric value is none of the listed values.
+
 ### spec.advancedFilter.numberNotIn[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -559,15 +797,21 @@ Allowed values (use exactly as shown):
 
 `[]double` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25"}}
 
 ### spec.advancedFilter.numberInRange
 
 `[]AzureEventgridEventSubscriptionNumberRangeFilter`
 
+The key's numeric value falls inside one of the listed ranges.
+
 ### spec.advancedFilter.numberInRange[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -575,23 +819,34 @@ Allowed values (use exactly as shown):
 
 `[]AzureEventgridEventSubscriptionNumberRange` · required
 
+The alternative ranges (OR semantics), each an inclusive
+[from, to] pair.
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25"}}
 
 ### spec.advancedFilter.numberInRange[].ranges[].from
 
 `double`
 
+The range's inclusive lower bound.
+
 ### spec.advancedFilter.numberInRange[].ranges[].to
 
 `double`
+
+The range's inclusive upper bound.
 
 ### spec.advancedFilter.numberNotInRange
 
 `[]AzureEventgridEventSubscriptionNumberRangeFilter`
 
+The key's numeric value falls outside every listed range.
+
 ### spec.advancedFilter.numberNotInRange[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -599,23 +854,34 @@ Allowed values (use exactly as shown):
 
 `[]AzureEventgridEventSubscriptionNumberRange` · required
 
+The alternative ranges (OR semantics), each an inclusive
+[from, to] pair.
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25"}}
 
 ### spec.advancedFilter.numberNotInRange[].ranges[].from
 
 `double`
 
+The range's inclusive lower bound.
+
 ### spec.advancedFilter.numberNotInRange[].ranges[].to
 
 `double`
+
+The range's inclusive upper bound.
 
 ### spec.advancedFilter.stringBeginsWith
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value starts with one of the listed prefixes.
+
 ### spec.advancedFilter.stringBeginsWith[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -623,15 +889,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringNotBeginsWith
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value starts with none of the listed prefixes.
+
 ### spec.advancedFilter.stringNotBeginsWith[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -639,15 +911,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringEndsWith
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value ends with one of the listed suffixes.
+
 ### spec.advancedFilter.stringEndsWith[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -655,15 +933,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringNotEndsWith
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value ends with none of the listed suffixes.
+
 ### spec.advancedFilter.stringNotEndsWith[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -671,15 +955,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringContains
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value contains one of the listed substrings.
+
 ### spec.advancedFilter.stringContains[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -687,15 +977,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringNotContains
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value contains none of the listed substrings.
+
 ### spec.advancedFilter.stringNotContains[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -703,15 +999,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringIn
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value is one of the listed values.
+
 ### spec.advancedFilter.stringIn[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -719,15 +1021,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.stringNotIn
 
 `[]AzureEventgridEventSubscriptionStringListFilter`
 
+The key's string value is none of the listed values.
+
 ### spec.advancedFilter.stringNotIn[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -735,15 +1043,21 @@ Allowed values (use exactly as shown):
 
 `[]string` · required
 
+The alternative values (OR semantics).
+
 - rule: {"repeated":{"minItems":"1","maxItems":"25","items":{"string":{"minLen":"1"}}}}
 
 ### spec.advancedFilter.isNotNull
 
 `[]AzureEventgridEventSubscriptionKeyFilter`
 
+The key is present with a non-null value.
+
 ### spec.advancedFilter.isNotNull[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -751,9 +1065,13 @@ Allowed values (use exactly as shown):
 
 `[]AzureEventgridEventSubscriptionKeyFilter`
 
+The key is absent, null, or undefined.
+
 ### spec.advancedFilter.isNullOrUndefined[].key
 
 `string` · required
+
+The JSON path into the event the condition reads.
 
 - rule: {"required":true,"string":{"minLen":"1"}}
 
@@ -761,11 +1079,18 @@ Allowed values (use exactly as shown):
 
 `bool` · optional (explicit presence)
 
+Whether a filter key may resolve to an ARRAY in the payload
+(matching if any element matches) instead of a single value.
+Default: false (Azure's default).
+
 - default: `false`
 
 ### spec.labels
 
 `[]string`
+
+Free-form labels stored on the subscription (Event Grid metadata,
+not ARM tags).
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -773,21 +1098,37 @@ Allowed values (use exactly as shown):
 
 `string` · optional (explicit presence)
 
+When the subscription expires and stops delivering, as an RFC
+3339 UTC timestamp (e.g. "2027-01-01T00:00:00Z"). Leave unset for
+a subscription that never expires. Useful for temporary
+integrations and trials.
+
 - rule: expiration_time_utc must be an RFC 3339 UTC timestamp like 2027-01-01T00:00:00Z
 
 ### spec.retryPolicy
 
 `AzureEventgridEventSubscriptionRetryPolicy`
 
+How Event Grid retries failed deliveries before dead-lettering or
+dropping. Leave unset to accept Azure's defaults (30 attempts,
+1440-minute time-to-live) -- the service owns those defaults, so
+the modules send the block only when set.
+
 ### spec.retryPolicy.maxDeliveryAttempts
 
 `int32`
+
+How many delivery attempts Event Grid makes before giving up
+(1-30).
 
 - rule: {"int32":{"lte":30,"gte":1}}
 
 ### spec.retryPolicy.eventTimeToLive
 
 `int32`
+
+How long an undelivered event stays eligible for retry, in
+minutes (1-1440).
 
 - rule: {"int32":{"lte":1440,"gte":1}}
 
@@ -802,8 +1143,8 @@ Reference an output from another manifest as `valueFrom: {kind: AzureEventgridEv
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.event_subscription_id` | `string` |  |
-| `status.outputs.event_subscription_name` | `string` |  |
+| `status.outputs.event_subscription_id` | `string` | The subscription's Azure Resource Manager ID. The shape follows the addressing choice: scope-addressed subscriptions extend the source's ID ({scope}/providers/Microsoft.EventGrid/eventSubscriptions/{name}); system-topic subscriptions live under the topic ({system_topic_id}/eventSubscriptions/{name}). |
+| `status.outputs.event_subscription_name` | `string` | The subscription's name. |
 
 ## References
 

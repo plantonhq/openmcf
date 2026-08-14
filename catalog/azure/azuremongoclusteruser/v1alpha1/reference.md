@@ -8,6 +8,25 @@
 
 **Guide**: [GUIDE.md](../GUIDE.md) -- authored operational judgment for this component: conventions, trade-offs, and what pairs well with it.
 
+**AzureMongoClusterUserSpec** grants a Microsoft Entra ID principal
+access to an Azure Cosmos DB for MongoDB vCore cluster
+(AzureMongoCluster). This is an ACCESS GRANT, not a password user:
+the principal (a user, a service principal, or a managed identity's
+service principal) authenticates to MongoDB with its Entra token
+and receives the granted database roles. Native username/password
+administration lives on the cluster itself
+(administrator_username/administrator_password).
+
+The target cluster must list "MicrosoftEntraID" in its
+authentication_methods -- Azure rejects the grant at deploy time
+otherwise. Azure pins the identity provider to "MicrosoftEntraID"
+(the only value the service accepts today); both engines send it
+explicitly.
+
+EVERY field is create-only: the provider ships no update path --
+changing anything replaces the grant (a harmless replace: dropping
+and re-adding an access binding).
+
 ## Example
 
 ```yaml
@@ -50,6 +69,11 @@ spec:
 
 `string | valueFrom` · required
 
+The cluster the principal is granted access to, by ARM ID.
+Reference an AzureMongoCluster output or pass a literal ID.
+
+**ForceNew**: changing this destroys and recreates the grant.
+
 - references: AzureMongoCluster (`status.outputs.mongo_cluster_id`)
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: AzureMongoCluster, name: <that resource's name>, fieldPath: status.outputs.mongo_cluster_id}} -- a bare string does not parse
@@ -57,6 +81,14 @@ spec:
 ### spec.objectId
 
 `string | valueFrom` · required
+
+The Entra principal being granted access, by OBJECT ID (a UUID).
+No single kind dominates -- reference an
+AzureUserAssignedIdentity's principal id output with an explicit
+valueFrom for workload identities, or pass a human user's or
+service principal's object id as a literal.
+
+**ForceNew**: changing this destroys and recreates the grant.
 
 - rule: object_id must be the principal's object id -- a UUID like 00000000-0000-0000-0000-000000000000
 - rule: {"required":true}
@@ -66,11 +98,26 @@ spec:
 
 `string` · required
 
+What kind of Entra principal the object id names: "user" (a
+person) or "servicePrincipal" (an application or a managed
+identity). Managed identities are granted through their service
+principal -- use "servicePrincipal" for them.
+
+**ForceNew**: changing this destroys and recreates the grant.
+
 - rule: {"required":true,"string":{"in":["user","servicePrincipal"]}}
 
 ### spec.roles
 
 `[]AzureMongoClusterUserRole` · required
+
+The database roles granted to the principal, at least one. Azure
+currently accepts exactly one role name, "root" (full access),
+scoped to a database -- grant it on "admin" for cluster-wide
+access. Azure owns the role vocabulary and will widen it over
+time.
+
+**ForceNew**: changing the roles destroys and recreates the grant.
 
 - rule: {"repeated":{"minItems":"1"}}
 
@@ -78,11 +125,16 @@ spec:
 
 `string` · required
 
+The database the role is scoped to, e.g. "admin".
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.roles[].role
 
 `string` · required
+
+The role's name. Azure's Mongo vCore service accepts "root"
+today (the provider rejects anything else).
 
 - rule: {"required":true,"string":{"in":["root"]}}
 
@@ -92,8 +144,8 @@ Reference an output from another manifest as `valueFrom: {kind: AzureMongoCluste
 
 | Output | Type | Description |
 |---|---|---|
-| `status.outputs.mongo_cluster_user_id` | `string` |  |
-| `status.outputs.mongo_cluster_user_name` | `string` |  |
+| `status.outputs.mongo_cluster_user_id` | `string` | The grant's Azure Resource Manager ID ({cluster_id}/users/{object_id}). |
+| `status.outputs.mongo_cluster_user_name` | `string` | The grant's ARM name -- the granted principal's object id. |
 
 ## References
 
