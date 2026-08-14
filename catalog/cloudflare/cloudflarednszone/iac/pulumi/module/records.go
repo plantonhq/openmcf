@@ -20,17 +20,26 @@ func records(
 		// Include index to ensure uniqueness when multiple records have same name and type
 		resourceName := fmt.Sprintf("%s-%s-%d", record.Name, record.Type.String(), idx)
 
+		// The provider requires ttl >= 1 (1 = automatic); the proto's unset 0
+		// maps to automatic.
 		ttl := float64(1)
 		if record.Ttl > 0 {
 			ttl = float64(record.Ttl)
 		}
 
 		recordArgs := &cloudflare.DnsRecordArgs{
-			ZoneId:  zone.ID(),
-			Name:    pulumi.String(record.Name),
-			Type:    pulumi.String(record.Type.String()),
-			Content: pulumi.String(record.Content),
-			Ttl:     pulumi.Float64(ttl),
+			ZoneId: zone.ID(),
+			Name:   pulumi.String(record.Name),
+			Type:   pulumi.String(record.Type.String()),
+			Ttl:    pulumi.Float64(ttl),
+		}
+
+		// Simple record types carry their value in content; structured types use data.
+		if record.Content != "" {
+			recordArgs.Content = pulumi.String(record.Content)
+		}
+		if data := buildRecordData(record); data != nil {
+			recordArgs.Data = data
 		}
 
 		// proxied is only applicable to A, AAAA, and CNAME records
@@ -40,15 +49,35 @@ func records(
 			recordArgs.Proxied = pulumi.Bool(record.Proxied)
 		}
 
-		// priority is only used for MX and SRV records
-		if record.Type == cloudflarednszonev1alpha1.CloudflareDnsZoneRecord_MX ||
-			record.Type == cloudflarednszonev1alpha1.CloudflareDnsZoneRecord_SRV {
+		// Priority is only used for MX records (SRV/URI/HTTPS/SVCB carry theirs
+		// inside their structured data).
+		if record.Type == cloudflarednszonev1alpha1.CloudflareDnsZoneRecord_MX {
 			recordArgs.Priority = pulumi.Float64Ptr(float64(record.Priority))
 		}
 
 		// comment for the DNS record
 		if record.Comment != "" {
 			recordArgs.Comment = pulumi.String(record.Comment)
+		}
+
+		if len(record.Tags) > 0 {
+			tags := make(pulumi.StringArray, 0, len(record.Tags))
+			for _, t := range record.Tags {
+				tags = append(tags, pulumi.String(t))
+			}
+			recordArgs.Tags = tags
+		}
+
+		if s := record.Settings; s != nil {
+			recordArgs.Settings = cloudflare.DnsRecordSettingsArgs{
+				Ipv4Only:     pulumi.Bool(s.Ipv4Only),
+				Ipv6Only:     pulumi.Bool(s.Ipv6Only),
+				FlattenCname: pulumi.Bool(s.FlattenCname),
+			}
+		}
+
+		if record.PrivateRouting {
+			recordArgs.PrivateRouting = pulumi.Bool(true)
 		}
 
 		_, err := cloudflare.NewDnsRecord(
@@ -60,6 +89,125 @@ func records(
 		)
 		if err != nil {
 			return errors.Wrapf(err, "failed to create dns record %s", resourceName)
+		}
+	}
+	return nil
+}
+
+// buildRecordData translates the typed `data` oneof into the provider's flat
+// data object, returning nil when the record is a simple (content) record.
+func buildRecordData(record *cloudflarednszonev1alpha1.CloudflareDnsZoneRecord) cloudflare.DnsRecordDataPtrInput {
+	f64 := func(v uint32) pulumi.Float64PtrInput { return pulumi.Float64Ptr(float64(v)) }
+
+	switch {
+	case record.GetCaa() != nil:
+		d := record.GetCaa()
+		return cloudflare.DnsRecordDataArgs{
+			Flags: pulumi.Float64(float64(d.Flags)),
+			Tag:   pulumi.String(d.Tag),
+			Value: pulumi.String(d.Value),
+		}
+	case record.GetCert() != nil:
+		d := record.GetCert()
+		return cloudflare.DnsRecordDataArgs{
+			Type:        f64(d.Type),
+			KeyTag:      f64(d.KeyTag),
+			Algorithm:   f64(d.Algorithm),
+			Certificate: pulumi.String(d.Certificate),
+		}
+	case record.GetDnskey() != nil:
+		d := record.GetDnskey()
+		return cloudflare.DnsRecordDataArgs{
+			Flags:     pulumi.Float64(float64(d.Flags)),
+			Protocol:  f64(d.Protocol),
+			Algorithm: f64(d.Algorithm),
+			PublicKey: pulumi.String(d.PublicKey),
+		}
+	case record.GetDs() != nil:
+		d := record.GetDs()
+		return cloudflare.DnsRecordDataArgs{
+			KeyTag:     f64(d.KeyTag),
+			Algorithm:  f64(d.Algorithm),
+			DigestType: f64(d.DigestType),
+			Digest:     pulumi.String(d.Digest),
+		}
+	case record.GetHttps() != nil:
+		d := record.GetHttps()
+		return cloudflare.DnsRecordDataArgs{
+			Priority: f64(d.Priority),
+			Target:   pulumi.String(d.Target),
+			Value:    pulumi.String(d.Value),
+		}
+	case record.GetLoc() != nil:
+		d := record.GetLoc()
+		return cloudflare.DnsRecordDataArgs{
+			LatDirection:  pulumi.String(d.LatDirection),
+			LatDegrees:    f64(d.LatDegrees),
+			LatMinutes:    f64(d.LatMinutes),
+			LatSeconds:    pulumi.Float64Ptr(d.LatSeconds),
+			LongDirection: pulumi.String(d.LongDirection),
+			LongDegrees:   f64(d.LongDegrees),
+			LongMinutes:   f64(d.LongMinutes),
+			LongSeconds:   pulumi.Float64Ptr(d.LongSeconds),
+			Altitude:      pulumi.Float64Ptr(d.Altitude),
+			Size:          pulumi.Float64Ptr(d.Size),
+			PrecisionHorz: pulumi.Float64Ptr(d.PrecisionHorz),
+			PrecisionVert: pulumi.Float64Ptr(d.PrecisionVert),
+		}
+	case record.GetNaptr() != nil:
+		d := record.GetNaptr()
+		return cloudflare.DnsRecordDataArgs{
+			Flags:       pulumi.String(d.Flags),
+			Order:       f64(d.Order),
+			Preference:  f64(d.Preference),
+			Service:     pulumi.String(d.Service),
+			Regex:       pulumi.String(d.Regex),
+			Replacement: pulumi.String(d.Replacement),
+		}
+	case record.GetSmimea() != nil:
+		d := record.GetSmimea()
+		return cloudflare.DnsRecordDataArgs{
+			Usage:        f64(d.Usage),
+			Selector:     f64(d.Selector),
+			MatchingType: f64(d.MatchingType),
+			Certificate:  pulumi.String(d.Certificate),
+		}
+	case record.GetSrv() != nil:
+		d := record.GetSrv()
+		return cloudflare.DnsRecordDataArgs{
+			Priority: f64(d.Priority),
+			Weight:   f64(d.Weight),
+			Port:     f64(d.Port),
+			Target:   pulumi.String(d.Target),
+		}
+	case record.GetSshfp() != nil:
+		d := record.GetSshfp()
+		return cloudflare.DnsRecordDataArgs{
+			Algorithm:   f64(d.Algorithm),
+			Type:        f64(d.Type),
+			Fingerprint: pulumi.String(d.Fingerprint),
+		}
+	case record.GetSvcb() != nil:
+		d := record.GetSvcb()
+		return cloudflare.DnsRecordDataArgs{
+			Priority: f64(d.Priority),
+			Target:   pulumi.String(d.Target),
+			Value:    pulumi.String(d.Value),
+		}
+	case record.GetTlsa() != nil:
+		d := record.GetTlsa()
+		return cloudflare.DnsRecordDataArgs{
+			Usage:        f64(d.Usage),
+			Selector:     f64(d.Selector),
+			MatchingType: f64(d.MatchingType),
+			Certificate:  pulumi.String(d.Certificate),
+		}
+	case record.GetUri() != nil:
+		d := record.GetUri()
+		return cloudflare.DnsRecordDataArgs{
+			Priority: f64(d.Priority),
+			Weight:   f64(d.Weight),
+			Target:   pulumi.String(d.Target),
 		}
 	}
 	return nil

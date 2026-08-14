@@ -1,0 +1,232 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The kind composes the zone with its zone-singleton satellites (dns settings,
+# dnssec, hold, subscription) and an inline records list. Each satellite's
+# zone_id is wired by the module from the zone it just created, never user
+# surface. The v5 Stainless provider nests exclusively via nested attributes,
+# which distill to single flat args -- so the record's `data` and `settings`,
+# the dns-settings' `soa`/`nameservers`/`internal_dns`, and the subscription's
+# `rate_plan` are each ONE provider argument covered by fan-in mappings (one
+# entry per spec leaf the argument realizes).
+
+resources:
+  cloudflare_zone:
+    mappings:
+      # The provider's `name` IS the zone's fully qualified domain name; the
+      # spec names it what it means.
+      - spec: spec.zone_name
+        arg: name
+      # The provider wraps the owning account in a one-field nested object
+      # (account.id); the spec keeps the flat identifier.
+      - spec: spec.account_id
+        arg: account
+
+  cloudflare_zone_dns_settings:
+    specRoot: spec.dns_settings
+    mappings:
+      - spec: spec.dns_settings.soa.expire
+        arg: soa
+      - spec: spec.dns_settings.soa.min_ttl
+        arg: soa
+      - spec: spec.dns_settings.soa.mname
+        arg: soa
+      - spec: spec.dns_settings.soa.refresh
+        arg: soa
+      - spec: spec.dns_settings.soa.retry
+        arg: soa
+      - spec: spec.dns_settings.soa.rname
+        arg: soa
+      - spec: spec.dns_settings.soa.ttl
+        arg: soa
+      - spec: spec.dns_settings.nameservers.ns_set
+        arg: nameservers
+      - spec: spec.dns_settings.nameservers.type
+        arg: nameservers
+      - spec: spec.dns_settings.internal_dns.reference_zone_id
+        arg: internal_dns
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone this kind just created -- the settings resource has no independent target
+
+  cloudflare_zone_dnssec:
+    specRoot: spec.dnssec
+    mappings:
+      # The provider's status string ("active"/"disabled") is the resource's
+      # enable lever; the spec models it as the bool it means, and the module
+      # sends "active" (the resource is only instantiated when enabled).
+      - spec: spec.dnssec.enabled
+        arg: status
+      # The provider prefixes each lever with dnssec_; the spec drops the
+      # redundant prefix (the fields already live under dnssec).
+      - spec: spec.dnssec.multi_signer
+        arg: dnssec_multi_signer
+      - spec: spec.dnssec.presigned
+        arg: dnssec_presigned
+      - spec: spec.dnssec.use_nsec3
+        arg: dnssec_use_nsec3
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone this kind just created -- the dnssec resource has no independent target
+
+  cloudflare_dns_record:
+    specRoot: spec.records
+    mappings:
+      # The provider's `data` is one union-of-everything nested argument (36
+      # leaves where CAA's tag sits next to LOC's lat_degrees); the spec
+      # models it as 13 typed per-record-type messages in a oneof, mirroring
+      # the standalone CloudflareDnsRecord kind. Fan-in mappings record every
+      # spec leaf the argument realizes.
+      - spec: spec.records.caa.flags
+        arg: data
+      - spec: spec.records.caa.tag
+        arg: data
+      - spec: spec.records.caa.value
+        arg: data
+      - spec: spec.records.cert.type
+        arg: data
+      - spec: spec.records.cert.key_tag
+        arg: data
+      - spec: spec.records.cert.algorithm
+        arg: data
+      - spec: spec.records.cert.certificate
+        arg: data
+      - spec: spec.records.dnskey.flags
+        arg: data
+      - spec: spec.records.dnskey.protocol
+        arg: data
+      - spec: spec.records.dnskey.algorithm
+        arg: data
+      - spec: spec.records.dnskey.public_key
+        arg: data
+      - spec: spec.records.ds.key_tag
+        arg: data
+      - spec: spec.records.ds.algorithm
+        arg: data
+      - spec: spec.records.ds.digest_type
+        arg: data
+      - spec: spec.records.ds.digest
+        arg: data
+      - spec: spec.records.https.priority
+        arg: data
+      - spec: spec.records.https.target
+        arg: data
+      - spec: spec.records.https.value
+        arg: data
+      - spec: spec.records.loc.lat_direction
+        arg: data
+      - spec: spec.records.loc.lat_degrees
+        arg: data
+      - spec: spec.records.loc.lat_minutes
+        arg: data
+      - spec: spec.records.loc.lat_seconds
+        arg: data
+      - spec: spec.records.loc.long_direction
+        arg: data
+      - spec: spec.records.loc.long_degrees
+        arg: data
+      - spec: spec.records.loc.long_minutes
+        arg: data
+      - spec: spec.records.loc.long_seconds
+        arg: data
+      - spec: spec.records.loc.altitude
+        arg: data
+      - spec: spec.records.loc.size
+        arg: data
+      - spec: spec.records.loc.precision_horz
+        arg: data
+      - spec: spec.records.loc.precision_vert
+        arg: data
+      - spec: spec.records.naptr.order
+        arg: data
+      - spec: spec.records.naptr.preference
+        arg: data
+      - spec: spec.records.naptr.flags
+        arg: data
+      - spec: spec.records.naptr.service
+        arg: data
+      - spec: spec.records.naptr.regex
+        arg: data
+      - spec: spec.records.naptr.replacement
+        arg: data
+      - spec: spec.records.smimea.usage
+        arg: data
+      - spec: spec.records.smimea.selector
+        arg: data
+      - spec: spec.records.smimea.matching_type
+        arg: data
+      - spec: spec.records.smimea.certificate
+        arg: data
+      - spec: spec.records.srv.priority
+        arg: data
+      - spec: spec.records.srv.weight
+        arg: data
+      - spec: spec.records.srv.port
+        arg: data
+      - spec: spec.records.srv.target
+        arg: data
+      - spec: spec.records.sshfp.algorithm
+        arg: data
+      - spec: spec.records.sshfp.type
+        arg: data
+      - spec: spec.records.sshfp.fingerprint
+        arg: data
+      - spec: spec.records.svcb.priority
+        arg: data
+      - spec: spec.records.svcb.target
+        arg: data
+      - spec: spec.records.svcb.value
+        arg: data
+      - spec: spec.records.tlsa.usage
+        arg: data
+      - spec: spec.records.tlsa.selector
+        arg: data
+      - spec: spec.records.tlsa.matching_type
+        arg: data
+      - spec: spec.records.tlsa.certificate
+        arg: data
+      - spec: spec.records.uri.priority
+        arg: data
+      - spec: spec.records.uri.weight
+        arg: data
+      - spec: spec.records.uri.target
+        arg: data
+      # The provider's settings is one nested object attribute; the spec
+      # models its contents as a typed message under the same nested names.
+      - spec: spec.records.settings.ipv4_only
+        arg: settings
+      - spec: spec.records.settings.ipv6_only
+        arg: settings
+      - spec: spec.records.settings.flatten_cname
+        arg: settings
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone this kind just created -- inline records live in that zone by definition
+
+  cloudflare_zone_hold:
+    specRoot: spec.hold
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone this kind just created -- the hold resource has no independent target
+
+  cloudflare_zone_subscription:
+    specRoot: spec.subscription
+    mappings:
+      # The provider wraps the plan choice in a nested rate_plan object whose
+      # only settable leaves are id and scope; the spec keeps them flat.
+      - spec: spec.subscription.rate_plan
+        arg: rate_plan
+      - spec: spec.subscription.scope
+        arg: rate_plan
+    exclusions:
+      - arg: zone_id
+        reason: wired by the module to the zone this kind just created -- the subscription resource has no independent target
+
+specExclusions:
+  - field: spec.hold.enabled
+    reason: instantiation gate with no provider counterpart -- the hold resource's existence IS the hold; the module creates it only when enabled

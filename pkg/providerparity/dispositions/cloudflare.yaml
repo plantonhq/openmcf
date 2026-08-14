@@ -23,12 +23,6 @@
 provider: cloudflare
 resources:
   # ---- DNS & zone lifecycle -------------------------------------------------
-  - resource: cloudflare_zone_hold
-    disposition: model-planned
-    reason: "folds into the existing CloudflareDnsZone kind's planned depth expansion (a hold is a boolean guard on the zone itself)"
-  - resource: cloudflare_zone_subscription
-    disposition: model-planned
-    reason: "folds into the existing CloudflareDnsZone kind's planned depth expansion (the plan level is an attribute of the zone)"
   - resource: cloudflare_dns_firewall
     disposition: model-planned
     reason: "judged as a planned CloudflareDnsFirewall kind (standalone DNS firewall clusters with their own nameserver IPs and lifecycle)"

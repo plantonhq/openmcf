@@ -1,0 +1,31 @@
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareDnsZone
+metadata:
+  name: my-dns-zone
+spec:
+  zoneName: <your-domain.com>
+  accountId: <cloudflare-account-id>
+  records:
+    - name: www
+      type: A
+      content: <web-server-ipv4>
+      proxied: true
+    - name: "@"
+      type: MX
+      content: <mail-host.your-domain.com>
+      priority: 10
+    - name: "@"
+      type: TXT
+      content: "v=spf1 include:_spf.<mail-provider.com> ~all"
+    - name: _sip._tcp
+      type: SRV
+      srv:
+        priority: 10
+        weight: 5
+        port: 5060
+        target: <sip-host.your-domain.com>
+    - name: "@"
+      type: CAA
+      caa:
+        tag: issue
+        value: <ca-domain.org>

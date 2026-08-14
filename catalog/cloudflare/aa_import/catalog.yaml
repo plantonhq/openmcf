@@ -18,6 +18,31 @@ spec:
   # concept); account discovery happens through the Cloudflare API itself.
   resource_types:
     # --- DNS ------------------------------------------------------------------
+    # The zone and its zone-singleton satellites (dns settings, dnssec, hold,
+    # subscription) all carry the bare zone id as their identity.
+    - terraform_type: cloudflare_zone
+      pulumi_type: cloudflare:index/zone:Zone
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_dns_settings
+      pulumi_type: cloudflare:index/zoneDnsSettings:ZoneDnsSettings
+      id_format: "{zone_id}"
+      notes: >-
+        The v5.23.0 terraform provider ships NO importer for this resource
+        (docs: "This resource does not currently support terraform import";
+        the package has no ImportState). The id_format records the API
+        identity (GET /zones/{zone_id}/dns_settings). A blind round-trip must
+        expect the import step to fail for this address and instead re-assert
+        the settings from configuration -- safe, because the resource is a
+        zone-singleton PUT whose create is idempotent for identical values.
+    - terraform_type: cloudflare_zone_dnssec
+      pulumi_type: cloudflare:index/zoneDnssec:ZoneDnssec
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_hold
+      pulumi_type: cloudflare:index/zoneHold:ZoneHold
+      id_format: "{zone_id}"
+    - terraform_type: cloudflare_zone_subscription
+      pulumi_type: cloudflare:index/zoneSubscription:ZoneSubscription
+      id_format: "{zone_id}"
     - terraform_type: cloudflare_dns_record
       pulumi_type: cloudflare:index/dnsRecord:DnsRecord
       id_format: "{zone_id}/{dns_record_id}"

@@ -30,8 +30,8 @@ that has progressed.
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
 | Kinds in the catalog | 30 |
-| Distinct provider resources consumed | 49 |
-| Spec fields authored across all kinds | 1194 |
+| Distinct provider resources consumed | 51 |
+| Spec fields authored across all kinds | 1262 |
 | Module pins on `aws` | `~> 5.0` × 1 |
 | Module pins on `cloudflare` | `~> 5.23` × 30 |
 | Module pins on `tls` | `~> 4.0` × 1 |
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**25 of 30 kinds are at total accounting; 0 proven live.**
+**26 of 30 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | — |
 | CloudflareD1Database | 5 | 2 | 3 | 0 | 0 | ✅ | — |
 | CloudflareDnsRecord | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| CloudflareDnsZone | 32 | 4 | 0 | 0 | 57 | ❌ | — |
+| CloudflareDnsZone | 38 | 21 | 12 | 5 | 0 | ✅ | — |
 | CloudflareEmailRoutingAddress | 3 | 2 | 0 | 0 | 1 | ❌ | — |
 | CloudflareEmailRoutingRule | 8 | 4 | 0 | 0 | 10 | ❌ | — |
 | CloudflareEmailRoutingZone | 10 | 3 | 0 | 0 | 12 | ❌ | — |
@@ -89,10 +89,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 47 | consumed by a kind's Terraform module today |
+| Modeled | 49 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 158 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 156 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -102,7 +102,7 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (47)
+### Modeled (49)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -153,8 +153,10 @@ rather than trusted.
 | `cloudflare_zone` | consumed by CloudflareDnsZone |
 | `cloudflare_zone_dns_settings` | consumed by CloudflareDnsZone |
 | `cloudflare_zone_dnssec` | consumed by CloudflareDnsZone |
+| `cloudflare_zone_hold` | consumed by CloudflareDnsZone |
+| `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (158)
+### Planned (156)
 
 | Resource | Recorded reason |
 |---|---|
@@ -312,10 +314,8 @@ rather than trusted.
 | `cloudflare_zone_auto_origin_tls_kex` | folds into the planned CloudflareZoneTlsSettings kind (one boolean) |
 | `cloudflare_zone_cache_reserve` | folds into the planned CloudflareCacheSettings kind (single cache-reserve toggle) |
 | `cloudflare_zone_cache_variants` | folds into the planned CloudflareCacheSettings kind (variant list is cache configuration) |
-| `cloudflare_zone_hold` | folds into the existing CloudflareDnsZone kind's planned depth expansion (a hold is a boolean guard on the zone itself) |
 | `cloudflare_zone_lockdown` | judged as a planned CloudflareZoneLockdown kind (URL lockdown rules, many per zone with independent lifecycle) |
 | `cloudflare_zone_setting` | judged as a planned CloudflareZoneSettings kind (the zone's setting map: SSL mode, minimum TLS, HTTP/3, and kin) |
-| `cloudflare_zone_subscription` | folds into the existing CloudflareDnsZone kind's planned depth expansion (the plan level is an attribute of the zone) |
 
 ### Deferred (45)
 

@@ -12,7 +12,6 @@
 # Entry format: kind:<Kind> | resource:<terraform resource type>
 # Regenerate with:  PLANTON_REGEN_PROVIDERPARITY_BASELINE=1 go test ./pkg/providerparity/
 entries:
-  - kind:CloudflareDnsZone
   - kind:CloudflareEmailRoutingAddress
   - kind:CloudflareEmailRoutingRule
   - kind:CloudflareEmailRoutingZone
