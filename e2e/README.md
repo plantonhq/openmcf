@@ -1853,18 +1853,9 @@ scenario is as simple as dropping a YAML file into the component's
    `pkg/e2e/profile/discover.go` so the CI matrix regex matches it
 6. The CI workflow picks up the new component automatically from the profile
 
-> **A prerequisite-only kind still needs steps 3 and 5 to be provable.** A
-> kind consumed by other kinds' chains gets deployed and verified as a
-> FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it
-> easy to believe it is covered -- but fixture duty proves another kind's
-> lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/`
-> (`DiscoverTestScenarios` returns nil when the directory is absent, and the
-> runner then skips), the canonical `e2e/manifest.yaml` is a documented
-> example and offline-plan fixture that never runs live, and a missing
-> `Test{Kind}_{Provisioner}` pair means a `-run` filter silently matches
-> zero tests. First caught on a kind whose only live exercise for weeks was
-> as a chained VIP fixture: its profile claimed testability while no lane
-> could ever run it.
+> **A kind with scenarios, a verifier, and a `pending_proof` profile is still unrunnable without step 5.** Shipping `e2e/scenarios/`, a registered verifier, and an import map is not enough: `go test -run 'Test{Kind}_...'` matches zero tests until the two `Test{Kind}_{Pulumi,Terraform}` wrappers exist in the provider's `e2e/{provider}/{provider}_test.go`. First caught on a kind whose only live exercise for weeks was as a chained VIP fixture; caught again on a wave-closing kind that shipped the full offline bar (scenarios, verifier, profile) and omitted only the two wrappers -- `discover` listed it `pending_proof` while no `-run` filter could ever start a lane. A BUILD.bazel `srcs` miss on a new verifier file is the sibling class (gazelle-managed -- run `make gazelle`, never hand-edit). The cheap structural fix is an offline gate that diffs each provider's tier-1 profiles against its test-entry list the same way `TestCatalogFixtureIntegrity` guards prerequisite chains; that spans every provider harness, so it is a framework proposal, not a mid-proof edit. Until it exists, the authoring checklist's step 5 is load-bearing: grep the test file for the kind name before enqueueing.
+>
+> A prerequisite-only kind still needs steps 3 and 5 to be provable. A kind consumed by other kinds' chains gets deployed and verified as a FIXTURE (its `prerequisite.yaml` + registered verifier), which makes it easy to believe it is covered -- but fixture duty proves another kind's lane, not this one's. Scenario discovery reads ONLY `e2e/scenarios/` (`DiscoverTestScenarios` returns nil when the directory is absent, and the runner then skips), and the canonical `e2e/manifest.yaml` is a documented example and offline-plan fixture that never runs live.
 
 ## Adding a New Provider
 

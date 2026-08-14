@@ -1713,6 +1713,15 @@ func TestAzureContainerInstance_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "azurecontainerinstance", "terraform")
 }
 
+// --- Function App Flex Consumption (two scenarios, each chaining its OWN scenario-local FC1 plan + storage account + blob container by annotation -- the shared plan fixture's B1 SKU is illegal for flex; `minimal` proves connection-string deployment-storage auth with the scale dials and one always-ready warm instance, `identity-auth` proves system-assigned-identity storage auth with no key anywhere; both effectively $0) ---
+
+func TestAzureFunctionAppFlexConsumption_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionappflexconsumption", "pulumi")
+}
+func TestAzureFunctionAppFlexConsumption_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "azurefunctionappflexconsumption", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an Azure component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

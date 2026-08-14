@@ -16,7 +16,7 @@ The provider has NO update path: resizing, re-tagging, changing SSH -- everythin
 
 ## Names are reserved region-wide -- pick personal, specific names
 
-Instance names are unique per Azure REGION per subscription, not per workspace -- `dev-instance` will collide with a colleague's in another workspace. Name instances after their owner (`alice-dev`). A just-deleted name can also stay reserved briefly; if a recreate fails on the name, wait a few minutes before suspecting anything else.
+Instance names are unique per Azure REGION per subscription, not per workspace -- `dev-instance` will collide with a colleague's in another workspace. Name instances after their owner (`alice-dev`). A just-deleted name can also stay reserved briefly; if a recreate fails on the name, wait a few minutes before suspecting anything else. Live-proven: a `${E2E_RUN_ID}` token in the cloud-side name expands on both engines (shape `ci-<8-hex>-<p|t>`, 13 characters) and the verifier reads the expanded ARM id -- use a unique suffix whenever two engines or two reruns share a subscription.
 
 ## Provision FOR people, not AS people
 
@@ -28,4 +28,4 @@ With `nodePublicIpEnabled: false`, the provider demands a `subnetId` UNLESS the 
 
 ## SSH stays off unless someone actually needs a terminal
 
-Absent `ssh` block = port closed (the default worth keeping; the studio and VS Code remote cover most needs). When enabled, the SERVICE assigns the username and port -- read `ssh_username` / `ssh_port` from the outputs rather than assuming 22/azureuser.
+Absent `ssh` block = port closed (the default worth keeping; the studio and VS Code remote cover most needs). When enabled, the SERVICE assigns the username and port -- read `ssh_username` / `ssh_port` from the outputs rather than assuming 22/azureuser. Live-proven without an ssh block: both engines emit empty username and port 0 (Terraform via `try(..., "")` / `try(..., 0)`; Pulumi must `Elem()` the optional SSH fields -- a raw nil export fails the stack-output int32 parse). The identity principal output populates on both engines when `identity.type` is system-assigned.
