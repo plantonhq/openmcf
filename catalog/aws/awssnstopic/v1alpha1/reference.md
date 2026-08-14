@@ -457,6 +457,7 @@ Fields on other kinds that can point at this resource:
 |---|---|---|
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].notificationTargetArn` | `status.outputs.topic_arn` |
 | AwsAutoScalingGroup | `spec.notifications.topic` | `status.outputs.topic_arn` |
+| AwsBackupVault | `spec.standard.notifications.snsTopicArn` | `status.outputs.topic_arn` |
 | AwsCloudTrail | `spec.snsTopicName` | `status.outputs.topic_name` |
 | AwsCloudwatchAlarm | `spec.alarmActions` | `status.outputs.topic_arn` |
 | AwsCloudwatchAlarm | `spec.okActions` | `status.outputs.topic_arn` |

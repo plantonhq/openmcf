@@ -1,0 +1,103 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_backup_plan:
+    mappings:
+      # v6 per-resource region override -- the module wires every resource
+      # to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider's singular "rule" block is the spec's plural rules
+      # list; leaf names that differ carry the unit or the AWS noun.
+      - arg: rule.rule_name
+        spec: spec.rules.name
+      - arg: rule.target_vault_name
+        spec: spec.rules.target_vault_name
+      - arg: rule.schedule
+        spec: spec.rules.schedule
+      - arg: rule.schedule_expression_timezone
+        spec: spec.rules.schedule_expression_timezone
+      - arg: rule.start_window
+        spec: spec.rules.start_window_minutes
+      - arg: rule.completion_window
+        spec: spec.rules.completion_window_minutes
+      - arg: rule.enable_continuous_backup
+        spec: spec.rules.enable_continuous_backup
+      - arg: rule.recovery_point_tags
+        spec: spec.rules.recovery_point_tags
+      - arg: rule.target_logically_air_gapped_backup_vault_arn
+        spec: spec.rules.target_logically_air_gapped_backup_vault_arn
+      - arg: rule.lifecycle.cold_storage_after
+        spec: spec.rules.lifecycle.cold_storage_after_days
+      - arg: rule.lifecycle.delete_after
+        spec: spec.rules.lifecycle.delete_after_days
+      - arg: rule.lifecycle.opt_in_to_archive_for_supported_resources
+        spec: spec.rules.lifecycle.opt_in_to_archive_for_supported_resources
+      - arg: rule.copy_action.destination_vault_arn
+        spec: spec.rules.copy_actions.destination_vault_arn
+      - arg: rule.copy_action.lifecycle.cold_storage_after
+        spec: spec.rules.copy_actions.lifecycle.cold_storage_after_days
+      - arg: rule.copy_action.lifecycle.delete_after
+        spec: spec.rules.copy_actions.lifecycle.delete_after_days
+      - arg: rule.copy_action.lifecycle.opt_in_to_archive_for_supported_resources
+        spec: spec.rules.copy_actions.lifecycle.opt_in_to_archive_for_supported_resources
+      - arg: rule.scan_action.malware_scanner
+        spec: spec.rules.scan_actions.malware_scanner
+      - arg: rule.scan_action.scan_mode
+        spec: spec.rules.scan_actions.scan_mode
+      # The provider's singular block is the spec's plural list.
+      - arg: advanced_backup_setting.resource_type
+        spec: spec.advanced_backup_settings.resource_type
+      - arg: advanced_backup_setting.backup_options
+        spec: spec.advanced_backup_settings.backup_options
+    exclusions:
+      - arg: name
+        reason: metadata.name is the plan name on both engines -- never free-form spec surface
+      - arg: tags
+        reason: wired by the module from metadata (the canonical identity tag map) -- never free-form user surface
+      - arg: tags_all
+        reason: provider-side merge of resource and provider-default tags -- reflects tags, carries no configuration of its own
+  aws_backup_selection:
+    mappings:
+      - arg: region
+        spec: spec.region
+      # Selections fold into the plan as the name-keyed selections list.
+      - arg: name
+        spec: spec.selections.name
+      - arg: iam_role_arn
+        spec: spec.selections.iam_role_arn
+      - arg: resources
+        spec: spec.selections.resources
+      - arg: not_resources
+        spec: spec.selections.not_resources
+      - arg: selection_tag.type
+        spec: spec.selections.selection_tags.type
+      - arg: selection_tag.key
+        spec: spec.selections.selection_tags.key
+      - arg: selection_tag.value
+        spec: spec.selections.selection_tags.value
+      - arg: condition.string_equals.key
+        spec: spec.selections.conditions.string_equals.key
+      - arg: condition.string_equals.value
+        spec: spec.selections.conditions.string_equals.value
+      - arg: condition.string_not_equals.key
+        spec: spec.selections.conditions.string_not_equals.key
+      - arg: condition.string_not_equals.value
+        spec: spec.selections.conditions.string_not_equals.value
+      - arg: condition.string_like.key
+        spec: spec.selections.conditions.string_like.key
+      - arg: condition.string_like.value
+        spec: spec.selections.conditions.string_like.value
+      - arg: condition.string_not_like.key
+        spec: spec.selections.conditions.string_not_like.key
+      - arg: condition.string_not_like.value
+        spec: spec.selections.conditions.string_not_like.value
+    exclusions:
+      - arg: plan_id
+        reason: wired by the module to the folded plan's own AWS-generated ID -- a selection always assigns to THIS plan, never a foreign one

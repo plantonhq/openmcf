@@ -167,6 +167,15 @@ var verifiers = map[string]Verifier{
 	"awsconfigconformancepack":          &conformancePackVerifier{},
 	"awsguarddutymalwareprotectionplan": &malwareProtectionPlanVerifier{},
 
+	// The AWS Backup family (data-protection posture; per-kind
+	// contracts in backup.go).
+	"awsbackupvault":              &backupVaultVerifier{},
+	"awsbackupplan":               &backupPlanVerifier{},
+	"awsbackupframework":          &backupFrameworkVerifier{},
+	"awsbackupreportplan":         &backupReportPlanVerifier{},
+	"awsbackuprestoretestingplan": &restoreTestingPlanVerifier{},
+	"awsbackupsettings":           &backupSettingsVerifier{},
+
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
 	"awstransitgatewayroutetable":    &transitGatewayRouteTableVerifier{},

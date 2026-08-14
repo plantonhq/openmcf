@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 154 |
-| Distinct provider resources consumed | 381 |
-| Spec fields authored across all kinds | 6008 |
-| Module pins on `aws` | `~> 6.58` × 154 |
+| Kinds in the catalog | 160 |
+| Distinct provider resources consumed | 394 |
+| Spec fields authored across all kinds | 6104 |
+| Module pins on `aws` | `~> 6.58` × 160 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**154 of 154 kinds are at total accounting; 113 proven live.**
+**160 of 160 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -58,6 +58,12 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupFramework | 11 | 1 | 8 | 2 | 0 | ✅ | — |
+| AwsBackupPlan | 44 | 3 | 37 | 4 | 0 | ✅ | — |
+| AwsBackupReportPlan | 14 | 7 | 5 | 2 | 0 | ✅ | — |
+| AwsBackupRestoreTestingPlan | 23 | 8 | 13 | 2 | 0 | ✅ | — |
+| AwsBackupSettings | 4 | 0 | 4 | 0 | 0 | ✅ | — |
+| AwsBackupVault | 24 | 0 | 16 | 8 | 0 | ✅ | — |
 | AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
@@ -211,10 +217,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 380 | consumed by a kind's Terraform module today |
+| Modeled | 393 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 28 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 613 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 600 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -224,7 +230,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (380)
+### Modeled (393)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -280,6 +286,19 @@ rather than trusted.
 | `aws_autoscaling_notification` | consumed by AwsAutoScalingGroup |
 | `aws_autoscaling_policy` | consumed by AwsAutoScalingGroup |
 | `aws_autoscaling_schedule` | consumed by AwsAutoScalingGroup |
+| `aws_backup_framework` | consumed by AwsBackupFramework |
+| `aws_backup_global_settings` | consumed by AwsBackupSettings |
+| `aws_backup_logically_air_gapped_vault` | consumed by AwsBackupVault |
+| `aws_backup_plan` | consumed by AwsBackupPlan |
+| `aws_backup_region_settings` | consumed by AwsBackupSettings |
+| `aws_backup_report_plan` | consumed by AwsBackupReportPlan |
+| `aws_backup_restore_testing_plan` | consumed by AwsBackupRestoreTestingPlan |
+| `aws_backup_restore_testing_selection` | consumed by AwsBackupRestoreTestingPlan |
+| `aws_backup_selection` | consumed by AwsBackupPlan |
+| `aws_backup_vault` | consumed by AwsBackupVault |
+| `aws_backup_vault_lock_configuration` | consumed by AwsBackupVault |
+| `aws_backup_vault_notifications` | consumed by AwsBackupVault |
+| `aws_backup_vault_policy` | consumed by AwsBackupVault |
 | `aws_batch_compute_environment` | consumed by AwsBatchComputeEnvironment |
 | `aws_batch_job_definition` | consumed by AwsBatchJobDefinition |
 | `aws_batch_job_queue` | consumed by AwsBatchJobQueue |
@@ -642,7 +661,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (613)
+### Planned (600)
 
 | Resource | Recorded reason |
 |---|---|
@@ -691,19 +710,6 @@ rather than trusted.
 | `aws_appsync_source_api_association` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_appsync_type` | judged as a planned AwsAppSyncApi kind (GraphQL and Events APIs: data sources, resolvers, functions, types, channel namespaces, caches, keys, domains) |
 | `aws_athena_data_catalog` | judged as a planned AwsAthenaDataCatalog kind -- a federated catalog is a standalone peer registration queried from any workgroup, not a workgroup satellite |
-| `aws_backup_framework` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_global_settings` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_logically_air_gapped_vault` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_plan` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_region_settings` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_report_plan` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_restore_testing_plan` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_restore_testing_selection` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_selection` | judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans) |
-| `aws_backup_vault` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_vault_lock_configuration` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_vault_notifications` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
-| `aws_backup_vault_policy` | judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in) |
 | `aws_bcmdataexports_export` | billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition) |
 | `aws_budgets_budget` | judged as a planned AwsBudget kind (budgets with actions) |
 | `aws_budgets_budget_action` | judged as a planned AwsBudget kind (budgets with actions) |

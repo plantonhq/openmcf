@@ -400,6 +400,8 @@ Fields on other kinds that can point at this resource:
 | AwsAthenaWorkgroup | `spec.customerContentEncryptionKmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.managedLogging.kmsKey` | `status.outputs.key_arn` |
 | AwsAthenaWorkgroup | `spec.monitoring.s3Logging.kmsKey` | `status.outputs.key_arn` |
+| AwsBackupVault | `spec.standard.kmsKeyArn` | `status.outputs.key_arn` |
+| AwsBackupVault | `spec.airGapped.encryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgent | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreEvaluation | `spec.evaluators[].kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreGateway | `spec.kmsKeyArn` | `status.outputs.key_arn` |

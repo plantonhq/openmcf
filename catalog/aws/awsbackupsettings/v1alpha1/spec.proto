@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbackupsettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsBackupSettingsSpec defines AWS Backup account and region
+// settings as two independent arms.
+//
+// This is a SETTINGS SINGLETON: the region arm's identity is the
+// account+region pair (AWS keeps exactly one set of Backup
+// preferences per region), and the global arm's identity is the
+// ACCOUNT (one set of global settings account-wide). Deploy at most
+// one instance per region, and set the global arm in exactly ONE
+// instance across all regions - two instances carrying the same arm
+// fight over the same settings object. metadata.name never reaches
+// AWS - it is Planton-side identity only. These settings are
+// deliberately NOT fields on AwsBackupVault or AwsBackupPlan -
+// multiple vaults/plans would fight over the one settings object.
+//
+// Destroy is a NO-OP on BOTH arms (the provider registers no delete
+// call): whatever was last applied stays in effect indefinitely. To
+// revert a setting, apply the desired value - never rely on destroy.
+message AwsBackupSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_arm"
+    message: "configure at least one of global / region_settings - an instance managing neither is dead configuration"
+    expression: "has(this.global) || has(this.region_settings)"
+  };
+
+  // The AWS region this instance manages Backup settings in. For the
+  // region arm, the region IS the resource identity - one instance
+  // per region. The global arm is account-wide regardless of region.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The account-wide global settings arm. Omit to leave the account's
+  // global settings untouched. Set it in exactly one instance
+  // account-wide.
+  AwsBackupSettingsGlobal global = 2;
+
+  // The per-region preferences arm. Omit to leave the region's
+  // preferences untouched.
+  AwsBackupSettingsRegion region_settings = 3;
+}
+
+// AwsBackupSettingsGlobal manages the account's global AWS Backup
+// settings.
+message AwsBackupSettingsGlobal {
+  // The global settings map. AWS's one documented key is
+  // "isCrossAccountBackupEnabled" ("true"/"false" as strings) -
+  // cross-account backup copies for organizations. AWS returns EVERY
+  // supported key on read, so list every key you intend to manage or
+  // the apply plans show perpetual differences.
+  //
+  // Applying overwrites what was previously set, and the values
+  // PERSIST after this component is destroyed (destroy is a no-op) -
+  // to turn a setting off, apply it as "false" before destroying.
+  map<string, string> settings = 1 [(buf.validate.field).map.min_pairs = 1];
+}
+
+// AwsBackupSettingsRegion manages one region's AWS Backup
+// preferences.
+message AwsBackupSettingsRegion {
+  // Which resource types AWS Backup protects in this region, keyed by
+  // AWS's type names ("EBS", "EC2", "RDS", "S3", "DynamoDB", ...).
+  // AWS returns EVERY supported type on read, so list every type
+  // deliberately - a type missing here shows as a perpetual
+  // difference in plans (the provider requires the full map).
+  //
+  // Values persist after destroy (no-op delete) - to opt a type out,
+  // apply it as false before destroying.
+  map<string, bool> resource_type_opt_in_preference = 1 [(buf.validate.field).map.min_pairs = 1];
+
+  // Which resource types AWS Backup MANAGES fully (e.g. lets Backup
+  // own DynamoDB's advanced features). Once set at AWS, the
+  // preference cannot be cleared back to unset - only flipped per
+  // type. Omit to leave management preferences untouched.
+  map<string, bool> resource_type_management_preference = 2;
+}

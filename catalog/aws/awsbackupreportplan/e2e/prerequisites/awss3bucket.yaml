@@ -1,0 +1,32 @@
+# Consumer-scoped AwsS3Bucket install profile for the report plan's
+# delivery channel: the bucket policy must allow the AWS Backup report
+# service to write or report JOBS fail after deploy (the deploy itself
+# succeeds -- the grant is job-time).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3Bucket
+metadata:
+  name: planton-oss-e2e-awsbkrp-reports
+  id: planton-oss-e2e-awsbkrp-reports
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3bucket
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  policy:
+    Version: "2012-10-17"
+    Statement:
+      - Sid: AllowBackupReportDelivery
+        Effect: Allow
+        Principal:
+          Service: reports.backup.amazonaws.com
+        Action: s3:PutObject
+        Resource: arn:aws:s3:::planton-oss-e2e-awsbkrp-reports/*
+        Condition:
+          StringEquals:
+            s3:x-amz-acl: bucket-owner-full-control

@@ -1,0 +1,38 @@
+# Consumer-scoped AwsConfigRecorder install profile: framework
+# evaluations run on AWS Config and land FAILED without an ACTIVE
+# recorder in the region. Scoped to the cheapest possible recording
+# surface, and placed in us-east-1 so it can never collide with the
+# us-west-2 (Q39) or us-east-2 (Q40 conformance pack) recorder
+# singletons.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigRecorder
+metadata:
+  name: planton-oss-e2e-awsbkf-recorder
+  id: planton-oss-e2e-awsbkf-recorder
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsconfigrecorder
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  roleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: planton-oss-e2e-awsbkf-role
+      fieldPath: status.outputs.role_arn
+  recordingGroup:
+    allSupported: false
+    resourceTypes:
+      - AWS::S3::Bucket
+    recordingStrategy: INCLUSION_BY_RESOURCE_TYPES
+  deliveryChannel:
+    s3BucketName:
+      valueFrom:
+        kind: AwsS3Bucket
+        name: planton-oss-e2e-awsbkf-history
+        fieldPath: status.outputs.bucket_id

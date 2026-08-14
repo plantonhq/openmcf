@@ -311,45 +311,6 @@ resources:
   - resource: aws_autoscalingplans_scaling_plan
     disposition: excluded-deprecated
     reason: "AutoScaling Plans is the legacy predictive-scaling path, superseded by ASG predictive scaling policies"
-  - resource: aws_backup_framework
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_global_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_logically_air_gapped_vault
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_region_settings
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_report_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_restore_testing_plan
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_restore_testing_selection
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_selection
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupPlan kind (plans, selections, frameworks, report and restore-testing plans)"
-  - resource: aws_backup_vault
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_lock_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_notifications
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
-  - resource: aws_backup_vault_policy
-    disposition: model-planned
-    reason: "judged as a planned AwsBackupVault kind (vaults incl. air-gapped, lock, policy, notifications; account-wide backup settings fold in)"
   - resource: aws_bcmdataexports_export
     disposition: model-planned
     reason: "billing data exports fold into the planned cost-reporting kinds (with aws_cur_report_definition)"

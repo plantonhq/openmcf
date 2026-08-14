@@ -1,0 +1,21 @@
+# Consumer-scoped AwsBackupVault install profile: every plan rule
+# requires a target vault (the registry-level prerequisite). The
+# cheapest possible surface -- a bare standard vault; empty vaults cost
+# nothing and delete cleanly.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBackupVault
+metadata:
+  name: planton-oss-e2e-awsbkp-vault
+  id: planton-oss-e2e-awsbkp-vault
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbackupvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  standard: {}

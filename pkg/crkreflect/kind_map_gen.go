@@ -56,6 +56,12 @@ import (
 	awsapprunnervpcconnectorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnervpcconnector/v1alpha1"
 	awsathenaworkgroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsathenaworkgroup/v1alpha1"
 	awsautoscalinggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsautoscalinggroup/v1alpha1"
+	awsbackupframeworkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupframework/v1alpha1"
+	awsbackupplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupplan/v1alpha1"
+	awsbackupreportplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupreportplan/v1alpha1"
+	awsbackuprestoretestingplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackuprestoretestingplan/v1alpha1"
+	awsbackupsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupsettings/v1alpha1"
+	awsbackupvaultv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbackupvault/v1alpha1"
 	awsbatchcomputeenvironmentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchcomputeenvironment/v1alpha1"
 	awsbatchjobdefinitionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobdefinition/v1alpha1"
 	awsbatchjobqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbatchjobqueue/v1alpha1"
@@ -832,6 +838,12 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerVpcConnector:               &awsapprunnervpcconnectorv1alpha1.AwsAppRunnerVpcConnector{},
 	cloudresourcekind.CloudResourceKind_AwsAthenaWorkgroup:                     &awsathenaworkgroupv1alpha1.AwsAthenaWorkgroup{},
 	cloudresourcekind.CloudResourceKind_AwsAutoScalingGroup:                    &awsautoscalinggroupv1alpha1.AwsAutoScalingGroup{},
+	cloudresourcekind.CloudResourceKind_AwsBackupFramework:                     &awsbackupframeworkv1alpha1.AwsBackupFramework{},
+	cloudresourcekind.CloudResourceKind_AwsBackupPlan:                          &awsbackupplanv1alpha1.AwsBackupPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupReportPlan:                    &awsbackupreportplanv1alpha1.AwsBackupReportPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupRestoreTestingPlan:            &awsbackuprestoretestingplanv1alpha1.AwsBackupRestoreTestingPlan{},
+	cloudresourcekind.CloudResourceKind_AwsBackupSettings:                      &awsbackupsettingsv1alpha1.AwsBackupSettings{},
+	cloudresourcekind.CloudResourceKind_AwsBackupVault:                         &awsbackupvaultv1alpha1.AwsBackupVault{},
 	cloudresourcekind.CloudResourceKind_AwsBatchComputeEnvironment:             &awsbatchcomputeenvironmentv1alpha1.AwsBatchComputeEnvironment{},
 	cloudresourcekind.CloudResourceKind_AwsBatchJobDefinition:                  &awsbatchjobdefinitionv1alpha1.AwsBatchJobDefinition{},
 	cloudresourcekind.CloudResourceKind_AwsBatchJobQueue:                       &awsbatchjobqueuev1alpha1.AwsBatchJobQueue{},

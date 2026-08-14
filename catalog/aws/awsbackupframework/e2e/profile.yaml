@@ -1,0 +1,29 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awsbackupframework
+spec:
+  # A Backup Audit Manager framework under live E2E: the coverage +
+  # retention control pair, evaluated on the consumer-scoped Config
+  # recorder chain in us-east-1 (region-isolated from the Q39/Q40
+  # recorder singletons BY DESIGN -- see the scenario header). The
+  # verifier holds the honest bar the provider does not: a FAILED
+  # deployment is a completed apply upstream, and the verifier rejects
+  # it.
+  #
+  # Deliberately not exercised live:
+  #   - per-control scopes (resource IDs / types / the one tag pair) --
+  #     scope changes only alter which resources evaluate, invisible
+  #     without recorded resources. Unblock: a scoped control over the
+  #     recorder fixture's own bucket type when the proof lane wants
+  #     the arm.
+  #   - control evaluation RESULTS -- evaluations take hours to first
+  #     findings. Unblock: none needed; deployment status COMPLETED is
+  #     the create-path proof, results are AWS's async pipeline.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q41
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 25

@@ -1161,3 +1161,100 @@ spec:
         The plan's generated id -- NOT a detector satellite (`aws
         guardduty list-malware-protection-plans` shows
         MalwareProtectionPlanId).
+    # --- AWS Backup ------------------------------------------------------------
+    # The vault NAME is the import identity for both vault types and all
+    # three standard-vault satellites (they attach by name). Plans are the
+    # one UUID-identified surface; restore testing is name-identified with
+    # a REVERSED composite on its selections.
+    - terraform_type: aws_backup_vault
+      pulumi_type: aws:backup/vault:Vault
+      id_format: "{vault_name}"
+      # force_destroy is deploy-side delete behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported vault
+      # always shows it false.
+      config_only_attributes:
+        - force_destroy
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_logically_air_gapped_vault
+      pulumi_type: aws:backup/logicallyAirGappedVault:LogicallyAirGappedVault
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup list-backup-vaults
+        --by-vault-type LOGICALLY_AIR_GAPPED_BACKUP_VAULT` shows
+        BackupVaultName).
+    - terraform_type: aws_backup_vault_lock_configuration
+      pulumi_type: aws:backup/vaultLockConfiguration:VaultLockConfiguration
+      id_format: "{vault_name}"
+      # changeable_for_days (the compliance-mode opt-in) is write-only at
+      # AWS -- never returned, never set during Read; a freshly imported
+      # lock shows it unset and the first apply re-asserts it.
+      config_only_attributes:
+        - changeable_for_days
+      notes: >-
+        The locked vault's name (`aws backup describe-backup-vault`
+        shows Locked/MinRetentionDays/MaxRetentionDays).
+    - terraform_type: aws_backup_vault_policy
+      pulumi_type: aws:backup/vaultPolicy:VaultPolicy
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-access-policy`
+        shows the policy).
+    - terraform_type: aws_backup_vault_notifications
+      pulumi_type: aws:backup/vaultNotifications:VaultNotifications
+      id_format: "{vault_name}"
+      notes: >-
+        The vault's name (`aws backup get-backup-vault-notifications`
+        shows SNSTopicArn/BackupVaultEvents).
+    - terraform_type: aws_backup_plan
+      pulumi_type: aws:backup/plan:Plan
+      id_format: "{plan_id}"
+      notes: >-
+        The plan's AWS-generated UUID, not its name (`aws backup
+        list-backup-plans` shows BackupPlanId).
+    - terraform_type: aws_backup_selection
+      pulumi_type: aws:backup/selection:Selection
+      id_format: "{plan_id}|{selection_id}"
+      notes: >-
+        Pipe-separated plan id and selection id (`aws backup
+        list-backup-selections --backup-plan-id <id>` shows
+        SelectionId).
+    - terraform_type: aws_backup_framework
+      pulumi_type: aws:backup/framework:Framework
+      id_format: "{framework_name}"
+      notes: >-
+        The framework's name (`aws backup list-frameworks` shows
+        FrameworkName).
+    - terraform_type: aws_backup_report_plan
+      pulumi_type: aws:backup/reportPlan:ReportPlan
+      id_format: "{report_plan_name}"
+      notes: >-
+        The report plan's name (`aws backup list-report-plans` shows
+        ReportPlanName).
+    - terraform_type: aws_backup_restore_testing_plan
+      pulumi_type: aws:backup/restoreTestingPlan:RestoreTestingPlan
+      id_format: "{restore_testing_plan_name}"
+      notes: >-
+        The plan's name (`aws backup list-restore-testing-plans` shows
+        RestoreTestingPlanName).
+    - terraform_type: aws_backup_restore_testing_selection
+      pulumi_type: aws:backup/restoreTestingSelection:RestoreTestingSelection
+      id_format: "{selection_name}:{restore_testing_plan_name}"
+      notes: >-
+        Colon-separated selection name and plan name -- REVERSED
+        relative to the parent (`aws backup
+        list-restore-testing-selections` shows
+        RestoreTestingSelectionName).
+    - terraform_type: aws_backup_global_settings
+      pulumi_type: aws:backup/globalSettings:GlobalSettings
+      id_format: "{account_id}"
+      notes: >-
+        The AWS account ID -- the account-wide singleton's identity
+        (`aws sts get-caller-identity` shows Account).
+    - terraform_type: aws_backup_region_settings
+      pulumi_type: aws:backup/regionSettings:RegionSettings
+      id_format: "{region}"
+      notes: >-
+        The region string (e.g. us-west-2) -- the regional singleton's
+        identity.

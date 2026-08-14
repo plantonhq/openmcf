@@ -319,6 +319,9 @@ Fields on other kinds that can point at this resource:
 | AwsAppRunnerService | `spec.instanceRoleArn` | `status.outputs.role_arn` |
 | AwsAthenaWorkgroup | `spec.executionRole` | `status.outputs.role_arn` |
 | AwsAutoScalingGroup | `spec.lifecycleHooks[].roleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.scanSetting.scannerRoleArn` | `status.outputs.role_arn` |
+| AwsBackupPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
+| AwsBackupRestoreTestingPlan | `spec.selections[].iamRoleArn` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.serviceRole` | `status.outputs.role_arn` |
 | AwsBatchComputeEnvironment | `spec.computeResources.spotIamFleetRole` | `status.outputs.role_arn` |
 | AwsBatchJobDefinition | `spec.container.jobRole` | `status.outputs.role_arn` |

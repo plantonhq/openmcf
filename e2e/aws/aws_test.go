@@ -1385,6 +1385,54 @@ func TestAwsGuardDutyMalwareProtectionPlan_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "terraform")
 }
 
+func TestAwsBackupVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "pulumi")
+}
+
+func TestAwsBackupVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupvault", "terraform")
+}
+
+func TestAwsBackupPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "pulumi")
+}
+
+func TestAwsBackupPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupplan", "terraform")
+}
+
+func TestAwsBackupFramework_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "pulumi")
+}
+
+func TestAwsBackupFramework_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupframework", "terraform")
+}
+
+func TestAwsBackupReportPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "pulumi")
+}
+
+func TestAwsBackupReportPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupreportplan", "terraform")
+}
+
+func TestAwsBackupRestoreTestingPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "pulumi")
+}
+
+func TestAwsBackupRestoreTestingPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackuprestoretestingplan", "terraform")
+}
+
+func TestAwsBackupSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "pulumi")
+}
+
+func TestAwsBackupSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbackupsettings", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

@@ -524,6 +524,38 @@ const (
 	// satellite (its schema carries no detector reference). The
 	// execution role and the protected bucket are required references.
 	CloudResourceKind_AwsGuardDutyMalwareProtectionPlan CloudResourceKind = 1247
+	// An AWS Backup vault - the encrypted container recovery points
+	// live in, as either a standard vault (with its lock, access
+	// policy, and notification satellites) or a logically air-gapped
+	// vault (AWS's own VaultType discriminator). The KMS and SNS
+	// references are conditional, so E2E fixtures ride scenario
+	// annotations. 1250 opens the backup sub-band (1250-1259).
+	CloudResourceKind_AwsBackupVault CloudResourceKind = 1250
+	// An AWS Backup plan: scheduled backup rules plus the resource
+	// selections that assign resources to them. AwsBackupVault is a
+	// prerequisite because every rule requires a target vault; the
+	// selections' IAM role is conditional and rides scenario
+	// annotations.
+	CloudResourceKind_AwsBackupPlan CloudResourceKind = 1251
+	// A Backup Audit Manager framework: compliance controls evaluating
+	// backup posture. No schema-required references (the Config
+	// recorder its evaluations need is a lane fixture, not a spec
+	// reference).
+	CloudResourceKind_AwsBackupFramework CloudResourceKind = 1252
+	// A Backup Audit Manager report plan: scheduled compliance/job
+	// reports delivered to S3. AwsS3Bucket is a prerequisite because
+	// the delivery channel's bucket is required.
+	CloudResourceKind_AwsBackupReportPlan CloudResourceKind = 1253
+	// An AWS Backup restore testing plan with its folded selections:
+	// scheduled restore tests proving recovery points actually restore.
+	// Vault targeting accepts the "*" wildcard, so fixtures are
+	// conditional and ride scenario annotations.
+	CloudResourceKind_AwsBackupRestoreTestingPlan CloudResourceKind = 1254
+	// Account/region settings singleton for AWS Backup: the account's
+	// global settings (cross-account backup) and the region's
+	// resource-type opt-in/management preferences. Both provider
+	// deletes are no-ops - settings persist after destroy.
+	CloudResourceKind_AwsBackupSettings CloudResourceKind = 1255
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2081,6 +2113,12 @@ var (
 		1245:  "AwsConfigAggregator",
 		1246:  "AwsConfigConformancePack",
 		1247:  "AwsGuardDutyMalwareProtectionPlan",
+		1250:  "AwsBackupVault",
+		1251:  "AwsBackupPlan",
+		1252:  "AwsBackupFramework",
+		1253:  "AwsBackupReportPlan",
+		1254:  "AwsBackupRestoreTestingPlan",
+		1255:  "AwsBackupSettings",
 		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
@@ -2833,6 +2871,12 @@ var (
 		"AwsConfigAggregator":                            1245,
 		"AwsConfigConformancePack":                       1246,
 		"AwsGuardDutyMalwareProtectionPlan":              1247,
+		"AwsBackupVault":                                 1250,
+		"AwsBackupPlan":                                  1251,
+		"AwsBackupFramework":                             1252,
+		"AwsBackupReportPlan":                            1253,
+		"AwsBackupRestoreTestingPlan":                    1254,
+		"AwsBackupSettings":                              1255,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3804,7 +3848,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xaa\xd1\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe6\xd3\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3970,7 +4014,13 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1bAwsCloudTrailEventDataStore\x10\xdc\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awseds\x125\n" +
 	"\x13AwsConfigAggregator\x10\xdd\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawscfgagg\x129\n" +
 	"\x18AwsConfigConformancePack\x10\xde\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscfgcp\x12H\n" +
-	"!AwsGuardDutyMalwareProtectionPlan\x10\xdf\t\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\bawsgdmpp:\x04\xf0\a\xf5\a\x126\n" +
+	"!AwsGuardDutyMalwareProtectionPlan\x10\xdf\t\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\bawsgdmpp:\x04\xf0\a\xf5\a\x12-\n" +
+	"\x0eAwsBackupVault\x10\xe2\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbkv\x120\n" +
+	"\rAwsBackupPlan\x10\xe3\t\x1a\x1c\xa2\xf7\x04\x18\b\f\x12\bv1alpha1\"\x06awsbkp:\x02\xe2\t\x121\n" +
+	"\x12AwsBackupFramework\x10\xe4\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbkf\x127\n" +
+	"\x13AwsBackupReportPlan\x10\xe5\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbkrp:\x02\xf5\a\x12;\n" +
+	"\x1bAwsBackupRestoreTestingPlan\x10\xe6\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbkrt\x120\n" +
+	"\x11AwsBackupSettings\x10\xe7\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbks\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
