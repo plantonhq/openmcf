@@ -19,6 +19,7 @@ hosting agents in production.
   The provider resource accepts any AgentCore ARN; this kind applies it
   to the runtime it deploys (the secret-policy fold precedent). Sibling
   kinds gain their own policy arms on demand signals.
+- **Never author a `Resource` member in policy statements.** AWS requires each statement's Resource to be exactly the runtime's own ARN — an AWS-suffixed value that does not exist until create (`PutResourcePolicy` rejects anything else, wildcards included; live-verified 2026-08-14). Both modules inject the deployed runtime's ARN into every statement, so authors write only Effect/Principal/Action/conditions.
 - **Endpoints are name-keyed satellites with no separate ID.** An
   endpoint's AWS identity IS its name — the `endpoint_arns` output map
   and the import composite (`{agent_runtime_id},{name}`) both key on it.

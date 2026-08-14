@@ -571,6 +571,13 @@ spec:
       id_format: "{resource_arn}"
       notes: >-
         The ARN of the AgentCore resource the policy is attached to.
+      # The provider does not normalize the policy JSON during attribute
+      # comparison (its own import test ignores "policy" for exactly this
+      # reason), so a blind re-import diffs on formatting-only rewrites of
+      # the same document. Post-APPLY state keeps the config value
+      # (idempotency holds); the wart is import-only. Live-proven by the
+      # AwsBedrockAgentCoreRuntime blind round-trip (2026-08-14).
+      write_normalized_attributes: [policy]
     - terraform_type: aws_bedrockagentcore_gateway
       pulumi_type: aws:bedrock/agentcoreGateway:AgentcoreGateway
       id_format: "{gateway_id}"
@@ -601,6 +608,14 @@ spec:
         (`aws bedrock-agentcore-control get-memory --memory-id <id>` lists
         strategies with strategyId).
       config_only_attributes: [timeouts]
+      # The provider's import/read does not round-trip an EPISODIC
+      # strategy's reflection_configuration: a freshly imported state
+      # lacks the block and the first plan re-ADDS it (live-caught
+      # 2026-08-14 by the blind round-trip; post-APPLY state keeps the
+      # config value, so idempotency holds -- the wart is import-only,
+      # and the reconcile apply is a server-side no-op). Upstream note
+      # filed; nothing to revert when it fixes.
+      write_normalized_attributes: [reflection_configuration]
     - terraform_type: aws_bedrockagentcore_workload_identity
       pulumi_type: aws:bedrock/agentcoreWorkloadIdentity:AgentcoreWorkloadIdentity
       id_format: "{name}"

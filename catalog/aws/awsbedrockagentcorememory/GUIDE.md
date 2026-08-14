@@ -36,7 +36,9 @@ running agent memory in production.
   changing them later strands existing records under old paths.
 - **Batch strategy edits.** Each change serializes through the parent
   memory (provider timeout 45m per strategy operation); five separate
-  applies take five serialized waits.
+  applies take five serialized waits. Live timing datapoint (2026-08-14): a four-strategy attach ran ~13 minutes per direction per engine, individual attaches 2–7.5 minutes.
+- **Reflection namespaces must stay inside the episodic namespace.** AWS requires each reflection namespace to equal, or be a hierarchical (whole-segment) prefix of, an episodic namespace — the spec rejects the contradiction at manifest time, and the server enforces the rest.
+- **After importing an EPISODIC strategy, expect a one-time reconcile.** The provider's import does not read back `reflection_configuration`, so the first plan after import re-adds it — applying is a server-side no-op that only heals the state (upstream gap recorded 2026-08-14; the platform's import round-trips tolerate exactly this path).
 - **Indexed keys replace the memory.** They are create-time structure
   (ForceNew at the provider) — choose filter keys up front.
 - **CUSTOM strategies need the execution role** with invoke access to

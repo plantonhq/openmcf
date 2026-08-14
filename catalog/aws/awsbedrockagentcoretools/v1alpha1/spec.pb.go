@@ -114,8 +114,10 @@ func (x *AwsBedrockAgentCoreToolsSpec) GetCodeInterpreters() []*AwsBedrockAgentC
 // change recreates it (AWS exposes no update).
 type AwsBedrockAgentCoreBrowser struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Browser name in AWS. The for_each key on both engines and the key in
-	// the `browser_ids` output map.
+	// Browser name in AWS (1-48 characters; letter first, then letters,
+	// digits, underscore - CreateBrowser rejects hyphens server-side,
+	// live-caught 2026-08-14). The for_each key on both engines and the
+	// key in the `browser_ids` output map.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Human-readable description.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
@@ -837,9 +839,9 @@ const file_catalog_aws_awsbedrockagentcoretools_v1alpha1_spec_proto_rawDesc = ""
 	"\x11at_least_one_tool\x12Dset at least one of browsers, browser_profiles, or code_interpreters\x1aathis.browsers.size() > 0 || this.browser_profiles.size() > 0 || this.code_interpreters.size() > 0\x1af\n" +
 	"\x14browser_names_unique\x12'browsers entries must have unique names\x1a%this.browsers.map(b, b.name).unique()\x1a~\n" +
 	"\x1cbrowser_profile_names_unique\x12/browser_profiles entries must have unique names\x1a-this.browser_profiles.map(p, p.name).unique()\x1a\x81\x01\n" +
-	"\x1dcode_interpreter_names_unique\x120code_interpreters entries must have unique names\x1a.this.code_interpreters.map(c, c.name).unique()\"\xb2\x06\n" +
-	"\x1aAwsBedrockAgentCoreBrowser\x12\x1b\n" +
-	"\x04name\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12 \n" +
+	"\x1dcode_interpreter_names_unique\x120code_interpreters entries must have unique names\x1a.this.code_interpreters.map(c, c.name).unique()\"\xd0\x06\n" +
+	"\x1aAwsBedrockAgentCoreBrowser\x129\n" +
+	"\x04name\x18\x01 \x01(\tB%\xbaH\"r \x10\x012\x1c^[a-zA-Z][a-zA-Z0-9_]{0,47}$R\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x82\x01\n" +
 	"\x12execution_role_arn\x18\x03 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12v\n" +
 	"\anetwork\x18\x04 \x01(\v2T.dev.planton.aws.awsbedrockagentcoretools.v1alpha1.AwsBedrockAgentCoreBrowserNetworkB\x06\xbaH\x03\xc8\x01\x01R\anetwork\x12,\n" +

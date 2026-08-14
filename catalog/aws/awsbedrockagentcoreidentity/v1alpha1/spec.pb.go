@@ -134,7 +134,11 @@ type AwsBedrockAgentCoreWorkloadIdentity struct {
 	// identity.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// OAuth2 redirect URLs this workload may use in user-delegated token
-	// flows (the browser must land on an allow-listed URL).
+	// flows (the browser must land on an allow-listed URL). AWS validates
+	// each URL server-side at CreateWorkloadIdentity and rejects
+	// reserved/documentation TLDs ("Invalid redirect url" -- .test
+	// rejected, live-caught 2026-08-14); real-TLD https URLs and
+	// http://localhost URLs are accepted.
 	AllowedResourceOauth2ReturnUrls []string `protobuf:"bytes,2,rep,name=allowed_resource_oauth2_return_urls,json=allowedResourceOauth2ReturnUrls,proto3" json:"allowed_resource_oauth2_return_urls,omitempty"`
 	unknownFields                   protoimpl.UnknownFields
 	sizeCache                       protoimpl.SizeCache
@@ -556,7 +560,11 @@ type AwsBedrockAgentCoreCedarPolicy struct {
 	// Human-readable description (1-4096 characters when set).
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
 	// The Cedar policy statement (permit/forbid rules over principals,
-	// actions, and resources).
+	// actions, and resources). AWS rejects a fully-wildcard resource at
+	// CreatePolicy ("a wildcard resource was detected", live-caught
+	// 2026-08-14): constrain the resource to a specific
+	// AgentCore::Gateway entity or to the type, e.g.
+	// `permit(principal, action, resource is AgentCore::Gateway);`.
 	CedarStatement string `protobuf:"bytes,3,opt,name=cedar_statement,json=cedarStatement,proto3" json:"cedar_statement,omitempty"`
 	// What AWS does with static-analysis findings on the statement:
 	// FAIL_ON_ANY_FINDINGS rejects a policy with findings (the safe

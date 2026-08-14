@@ -27,9 +27,21 @@ spec:
   # chain; the PUBLIC/SANDBOX arms prove the mode unions -- all
   # offline-proven arm-for-arm via e2e/manifest.yaml).
   #
-  # pending_proof: forged this session to the full offline bar -- Q35
-  # proves it live.
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate; the
+  # Terraform blind round-trip re-imported all four full-surface tools
+  # (browser, profile, both interpreters) blind through the id-keyed
+  # output maps at zero real change, zero tolerances. ONE live catch
+  # fixed at the full bar: browser NAMES forbid hyphens -- CreateBrowser
+  # enforces [a-zA-Z][a-zA-Z0-9_]{0,47} server-side, and the spec's
+  # browser name field was missing the pattern its profile/interpreter
+  # siblings carried (now added, with the hyphen case CEL-tested and
+  # every example swept to underscores). The bundle verifies through the
+  # OutputsVerifier path (map-shaped ID key -- the harness dispatch fix
+  # this session). Lanes ride the consumer-scoped one-role IAM override.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30

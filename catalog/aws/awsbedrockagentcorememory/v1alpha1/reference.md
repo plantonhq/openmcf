@@ -74,8 +74,12 @@ spec:
       type: EPISODIC
       namespaceTemplates:
         - /episodes/{actorId}
+      # AWS requires each reflection namespace to equal, or be a
+      # hierarchical prefix of, an episodic namespace above; unrelated
+      # roots are rejected at UpdateMemory. Leave unset to mirror the
+      # episodic namespaces exactly.
       reflectionNamespaceTemplates:
-        - /reflections/{actorId}
+        - /episodes
     - name: tuned_prefs
       type: CUSTOM
       namespaceTemplates:
@@ -248,6 +252,7 @@ Long-term extraction pipelines.
 
 - rule: custom is required when type is CUSTOM and forbidden otherwise
 - rule: reflection_namespace_templates requires type EPISODIC
+- rule: each reflection_namespace_templates entry must equal, or be a hierarchical (whole-segment) prefix of, a namespace_templates entry
 
 ### spec.strategies[].name
 
@@ -394,7 +399,11 @@ Namespace templates reflection records land in (at least one).
 `[]string`
 
 Namespace templates for EPISODIC reflection records - only legal on
-EPISODIC strategies.
+EPISODIC strategies. AWS requires each reflection namespace to be
+"the same as or a hierarchical prefix of the episodic namespace" in
+`namespace_templates` (UpdateMemory rejects unrelated roots like
+"/reflections/..." server-side; live-caught 2026-08-14). Leave unset
+to let the provider mirror the episodic namespaces exactly.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -422,6 +431,14 @@ Fields that can point at another resource's outputs:
 | `spec.encryptionKeyArn` | AwsKmsKey | `status.outputs.key_arn` |
 | `spec.executionRoleArn` | AwsIamRole | `status.outputs.role_arn` |
 | `spec.kinesisDelivery.dataStreamArn` | AwsKinesisStream | `status.outputs.stream_arn` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].memory.memoryArn` | `status.outputs.memory_arn` |
 
 ## See Also
 

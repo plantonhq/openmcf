@@ -85,6 +85,11 @@ type AwsBedrockAgentCoreRuntimeSpec struct {
 	// Resource-based policy applied to the runtime's own ARN (an IAM policy
 	// document as structured JSON) - grant other accounts or services
 	// permission to invoke this runtime. Omitted = no resource policy.
+	// Author statements WITHOUT a Resource member: AWS requires each
+	// statement's Resource to be exactly the runtime's own ARN (an
+	// AWS-suffixed value no author can know before create; PutResourcePolicy
+	// 400 otherwise, live-caught 2026-08-14), so both modules set Resource
+	// on every statement to the runtime ARN they deploy.
 	ResourcePolicy *structpb.Struct `protobuf:"bytes,14,opt,name=resource_policy,json=resourcePolicy,proto3" json:"resource_policy,omitempty"`
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache

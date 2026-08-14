@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreToolsSpec validations", func() {
 				spec := minimalTools()
 				spec.Browsers = []*AwsBedrockAgentCoreBrowser{
 					{
-						Name:             "research-browser",
+						Name:             "research_browser",
 						Description:      "web research sessions",
 						ExecutionRoleArn: svr("arn:aws:iam::123456789012:role/agentcore-browser"),
 						Network:          &AwsBedrockAgentCoreBrowserNetwork{Mode: "PUBLIC"},
@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreToolsSpec validations", func() {
 						},
 					},
 					{
-						Name: "vpc-browser",
+						Name: "vpc_browser",
 						Network: &AwsBedrockAgentCoreBrowserNetwork{
 							Mode: "VPC",
 							VpcConfig: &AwsBedrockAgentCoreToolVpcConfig{
@@ -155,6 +155,17 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreToolsSpec validations", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalTools()
 				spec.BrowserProfiles = []*AwsBedrockAgentCoreBrowserProfile{{Name: "logged-in"}}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a hyphenated browser name", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalTools()
+				// CreateBrowser rejects hyphens server-side (live-caught
+				// 2026-08-14); the spec pattern front-loads the contract.
+				spec.Browsers = []*AwsBedrockAgentCoreBrowser{{Name: "research-browser"}}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

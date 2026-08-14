@@ -29,9 +29,22 @@ spec:
   # and the JWT private-endpoint arms (VPC Lattice / managed-VPC
   # plumbing; offline-proven).
   #
-  # pending_proof: forged this session to the full offline bar -- Q35
-  # proves it live.
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate; the
+  # Terraform blind round-trip re-imported gateway + target (the
+  # {gateway_id},{target_id} composite via the keyed target_ids map) at
+  # zero real change, and the target-before-gateway destroy drain is
+  # explicit in the engine's own destroy log (target destruction
+  # complete BEFORE the gateway's destroy began -- no conflict). ONE
+  # live catch fixed at the full bar: AWS validates inline OpenAPI
+  # content at target create and requires a non-empty `servers` array
+  # with an HTTPS URL (target lands FAILED otherwise; nothing calls the
+  # URL at create) -- taught on the spec field, scenario/manifest
+  # examples, and GUIDE.md. Lanes ride the consumer-scoped one-role IAM
+  # override (session-056 pattern).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30

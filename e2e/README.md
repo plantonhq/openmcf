@@ -1136,6 +1136,43 @@ duplicate execution while the first was already running the lanes; the
 truth is always the process table + the log file, never the launcher's
 printed verdict).
 
+**A re-executed launch can TRUNCATE its own log, making the first
+execution invisible — anchor forensics on cloud-side timestamps, not the
+log.** The duplicate-execution class above (one launch, two runs) has a
+harder grain when the lane command pipes through `tee` WITHOUT `-a`: the
+re-execution truncates the shared log file, so the trailer count reads ONE
+and the log looks like a single clean run — while the first execution's
+fixtures are live in the cloud, colliding 409 with the second's and
+stranding orphans when the first dies teardown-less (live hit 2026-08-13:
+a Bedrock flow lane's first execution created the fixed-name MANAGED-KB
+prerequisite six minutes before the reported execution's own start, which
+then failed 409 against it; the stranded KB outlived both). The signature
+is a cloud resource whose `createdAt` PRECEDES the reported command's
+possible start window. Defenses: pipe lane logs through `tee -a` with a
+per-launch header line (echo a timestamped RUN marker before `go test`) so
+a truncation-invisible predecessor cannot exist, and treat any
+fixture-collision 409 as unattributed until the resource's create time is
+checked against the launch window.
+
+**When an authoring session holds the checkout, run proof lanes from a
+dedicated detached worktree at the proven HEAD — and never sync edits
+into it while a lane runs.** A live authoring session's in-flight edits
+to shared packages (the verify package, `go.mod`) can leave the main
+tree uncompilable for `go test` at any moment; `git worktree add
+--detach <path> HEAD` gives the lanes the last committed (proven) tree,
+with the proof session's own files copied in. Two hard rules from the
+first live use (2026-08-14): (1) copy files into the worktree ONLY
+between lanes — a stub synced mid-run broke the running lane's own
+DESTROY, because `pulumi destroy` recompiles the module program against
+the tree as it stands and a new CEL rejected the in-flight stack-input
+(the never-edit-what-a-lane-reads class via the sync side door); and
+(2) the main tree stays the record tree — profile flips and spec/module
+fixes land there first and copy over, so the wrap commit never depends
+on worktree state. Expect a sibling's commit to overwrite YOUR
+uncommitted edits to shared files (import catalog, verifier map) —
+re-apply on top after their commit lands; the worktree copy keeps the
+lanes honest meanwhile.
+
 **A stale AWS CLI silently DROPS new API surface from its output — verify
 the CLI's model before diagnosing a missing field.** The CLI parses
 responses against its bundled service model and discards members it does

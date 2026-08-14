@@ -103,6 +103,9 @@ spec:
       description: Production traffic (tracks the latest version)
     - name: pinned
       agentRuntimeVersion: "1"
+  # Statements carry no Resource member: AWS requires it to be exactly
+  # the runtime's own ARN (unknowable pre-create), so the modules inject
+  # it into every statement.
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
@@ -110,7 +113,6 @@ spec:
         Principal:
           AWS: arn:aws:iam::210987654321:root
         Action: bedrock-agentcore:InvokeAgentRuntime
-        Resource: "*"
 ```
 
 ## Spec Fields
@@ -797,6 +799,11 @@ Omitted = the endpoint tracks the runtime's latest version.
 Resource-based policy applied to the runtime's own ARN (an IAM policy
 document as structured JSON) - grant other accounts or services
 permission to invoke this runtime. Omitted = no resource policy.
+Author statements WITHOUT a Resource member: AWS requires each
+statement's Resource to be exactly the runtime's own ARN (an
+AWS-suffixed value no author can know before create; PutResourcePolicy
+400 otherwise, live-caught 2026-08-14), so both modules set Resource
+on every statement to the runtime ARN they deploy.
 
 ## Validation Rules
 
@@ -839,6 +846,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].runtimeEnvironment.agentRuntimeArn` | `status.outputs.agent_runtime_arn` |
 | AwsBedrockAgentCoreGateway | `spec.targets[].backend.agentcoreRuntime.agentRuntimeArn` | `status.outputs.agent_runtime_arn` |
 
 ## See Also

@@ -5,7 +5,7 @@ metadata:
 spec:
   region: us-west-2
   browsers:
-    - name: research-browser
+    - name: research_browser
       description: Web research with a full audit trail
       executionRoleArn:
         valueFrom:

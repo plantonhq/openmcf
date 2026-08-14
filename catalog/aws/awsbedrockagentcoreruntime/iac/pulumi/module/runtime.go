@@ -244,16 +244,33 @@ func runtime(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error 
 	}
 	ctx.Export(OpEndpointArns, endpointArns)
 
-	// Resource-based policy on the runtime's own ARN.
+	// Resource-based policy on the runtime's own ARN. AWS requires every
+	// statement's Resource to be exactly the attached runtime's ARN
+	// (PutResourcePolicy 400 "must contain exactly one resource ARN that
+	// matches the provided resource ARN", live-caught 2026-08-14) -- an
+	// ARN no author can know before create, so the module owns the
+	// Resource member on every statement (standard IAM JSON casing
+	// assumed).
 	if spec.ResourcePolicy != nil {
-		policyBytes, err := json.Marshal(spec.ResourcePolicy.AsMap())
-		if err != nil {
-			return errors.Wrap(err, "marshal resource policy")
-		}
+		policyDoc := spec.ResourcePolicy.AsMap()
+		policyJson := createdRuntime.AgentRuntimeArn.ApplyT(func(arn string) (string, error) {
+			if statements, ok := policyDoc["Statement"].([]interface{}); ok {
+				for _, statement := range statements {
+					if m, ok := statement.(map[string]interface{}); ok {
+						m["Resource"] = arn
+					}
+				}
+			}
+			policyBytes, err := json.Marshal(policyDoc)
+			if err != nil {
+				return "", errors.Wrap(err, "marshal resource policy")
+			}
+			return string(policyBytes), nil
+		}).(pulumi.StringOutput)
 		if _, err := bedrock.NewAgentcoreResourcePolicy(ctx, spec.RuntimeName+"-policy",
 			&bedrock.AgentcoreResourcePolicyArgs{
 				ResourceArn: createdRuntime.AgentRuntimeArn,
-				Policy:      pulumi.String(string(policyBytes)),
+				Policy:      policyJson,
 			},
 			pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{createdRuntime})); err != nil {
 			return errors.Wrap(err, "create resource policy")

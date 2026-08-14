@@ -47,8 +47,12 @@ spec:
       type: EPISODIC
       namespaceTemplates:
         - /episodes/{actorId}
+      # AWS requires each reflection namespace to equal, or be a
+      # hierarchical prefix of, an episodic namespace above; unrelated
+      # roots are rejected at UpdateMemory. Leave unset to mirror the
+      # episodic namespaces exactly.
       reflectionNamespaceTemplates:
-        - /reflections/{actorId}
+        - /episodes
     - name: tuned_prefs
       type: CUSTOM
       namespaceTemplates:

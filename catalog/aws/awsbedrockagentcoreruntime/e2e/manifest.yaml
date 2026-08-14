@@ -77,6 +77,9 @@ spec:
       description: Production traffic (tracks the latest version)
     - name: pinned
       agentRuntimeVersion: "1"
+  # Statements carry no Resource member: AWS requires it to be exactly
+  # the runtime's own ARN (unknowable pre-create), so the modules inject
+  # it into every statement.
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
@@ -84,4 +87,3 @@ spec:
         Principal:
           AWS: arn:aws:iam::210987654321:root
         Action: bedrock-agentcore:InvokeAgentRuntime
-        Resource: "*"

@@ -79,7 +79,7 @@ spec:
     policies:
       - name: allow_order_reads
         description: Let every principal call the order lookup tool
-        cedarStatement: 'permit(principal, action == Action::"get_order", resource);'
+        cedarStatement: 'permit(principal, action == Action::"get_order", resource is AgentCore::Gateway);'
         validationMode: FAIL_ON_ANY_FINDINGS
 ```
 
@@ -150,7 +150,11 @@ identity.
 `[]string`
 
 OAuth2 redirect URLs this workload may use in user-delegated token
-flows (the browser must land on an allow-listed URL).
+flows (the browser must land on an allow-listed URL). AWS validates
+each URL server-side at CreateWorkloadIdentity and rejects
+reserved/documentation TLDs ("Invalid redirect url" -- .test
+rejected, live-caught 2026-08-14); real-TLD https URLs and
+http://localhost URLs are accepted.
 
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
@@ -351,7 +355,11 @@ Human-readable description (1-4096 characters when set).
 `string` · required
 
 The Cedar policy statement (permit/forbid rules over principals,
-actions, and resources).
+actions, and resources). AWS rejects a fully-wildcard resource at
+CreatePolicy ("a wildcard resource was detected", live-caught
+2026-08-14): constrain the resource to a specific
+AgentCore::Gateway entity or to the type, e.g.
+`permit(principal, action, resource is AgentCore::Gateway);`.
 
 - rule: {"string":{"minLen":"1"}}
 

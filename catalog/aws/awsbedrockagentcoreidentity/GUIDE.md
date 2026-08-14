@@ -42,6 +42,7 @@ running agent credentials in production.
 - **Prefer FAIL_ON_ANY_FINDINGS.** Cedar's static analysis catches
   policies that can never match; IGNORE_ALL_FINDINGS is for deliberate
   forward-references, not a default.
+- **Always constrain the Cedar `resource`.** AWS rejects a fully-wildcard resource at CreatePolicy ("a wildcard resource was detected" — live-verified 2026-08-14) regardless of validation mode: scope every statement to a specific `AgentCore::Gateway` entity or at least the type (`resource is AgentCore::Gateway`).
 
 ---
 

@@ -22,7 +22,9 @@ metadata:
 spec:
   region: us-west-2
   browsers:
-    - name: planton-e2e-browser
+    # Browser names forbid hyphens (letter first, then letters/digits/
+    # underscore) -- CreateBrowser rejects them server-side.
+    - name: planton_e2e_browser
       description: Planton E2E public browser
       executionRoleArn:
         valueFrom:

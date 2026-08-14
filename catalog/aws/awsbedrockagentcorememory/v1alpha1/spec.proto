@@ -175,7 +175,11 @@ message AwsBedrockAgentCoreMemoryStrategy {
   AwsBedrockAgentCoreMemoryCustomStrategy custom = 5;
 
   // Namespace templates for EPISODIC reflection records - only legal on
-  // EPISODIC strategies.
+  // EPISODIC strategies. AWS requires each reflection namespace to be
+  // "the same as or a hierarchical prefix of the episodic namespace" in
+  // `namespace_templates` (UpdateMemory rejects unrelated roots like
+  // "/reflections/..." server-side; live-caught 2026-08-14). Leave unset
+  // to let the provider mirror the episodic namespaces exactly.
   repeated string reflection_namespace_templates = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 
   // AWS pairs the override configuration with the CUSTOM type exactly.
@@ -190,6 +194,17 @@ message AwsBedrockAgentCoreMemoryStrategy {
     id: "reflection_requires_episodic"
     message: "reflection_namespace_templates requires type EPISODIC"
     expression: "this.reflection_namespace_templates.size() == 0 || this.type == 'EPISODIC'"
+  };
+
+  // AWS requires each reflection namespace to be "the same as or a
+  // hierarchical prefix of the episodic namespace" (UpdateMemory 400,
+  // live-caught 2026-08-14: '/reflections/{actorId}' rejected against
+  // '/episodes/{actorId}'). Hierarchical means whole path segments:
+  // '/episodes' prefixes '/episodes/{actorId}'; '/epi' does not.
+  option (buf.validate.message).cel = {
+    id: "reflection_prefixes_episodic_namespace"
+    message: "each reflection_namespace_templates entry must equal, or be a hierarchical (whole-segment) prefix of, a namespace_templates entry"
+    expression: "this.reflection_namespace_templates.all(r, this.namespace_templates.exists(n, n == r || n.startsWith(r + '/')))"
   };
 }
 

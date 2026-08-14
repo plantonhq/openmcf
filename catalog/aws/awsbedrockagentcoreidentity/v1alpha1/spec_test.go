@@ -86,7 +86,7 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreIdentitySpec validations", func() {
 					Policies: []*AwsBedrockAgentCoreCedarPolicy{
 						{
 							Name:           "allow_reads",
-							CedarStatement: `permit(principal, action == Action::"get_order", resource);`,
+							CedarStatement: `permit(principal, action == Action::"get_order", resource is AgentCore::Gateway);`,
 							ValidationMode: "FAIL_ON_ANY_FINDINGS",
 						},
 					},
@@ -241,8 +241,8 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreIdentitySpec validations", func() {
 				spec.PolicyEngine = &AwsBedrockAgentCorePolicyEngine{
 					EngineName: "authz",
 					Policies: []*AwsBedrockAgentCoreCedarPolicy{
-						{Name: "p1", CedarStatement: "permit(principal, action, resource);"},
-						{Name: "p1", CedarStatement: "forbid(principal, action, resource);"},
+						{Name: "p1", CedarStatement: "permit(principal, action, resource is AgentCore::Gateway);"},
+						{Name: "p1", CedarStatement: "forbid(principal, action, resource is AgentCore::Gateway);"},
 					},
 				}
 				err := protovalidate.Validate(spec)
@@ -256,7 +256,7 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreIdentitySpec validations", func() {
 				spec.PolicyEngine = &AwsBedrockAgentCorePolicyEngine{
 					EngineName: "authz",
 					Policies: []*AwsBedrockAgentCoreCedarPolicy{
-						{Name: "p1", CedarStatement: "permit(principal, action, resource);", ValidationMode: "WARN"},
+						{Name: "p1", CedarStatement: "permit(principal, action, resource is AgentCore::Gateway);", ValidationMode: "WARN"},
 					},
 				}
 				err := protovalidate.Validate(spec)

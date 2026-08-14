@@ -25,9 +25,25 @@ spec:
   # the e2e-prerequisites annotation), and the KMS encryption arm
   # (ForceNew; offline-proven).
   #
-  # pending_proof: forged this session to the full offline bar -- Q35
-  # proves it live.
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate; the
+  # Terraform blind round-trip re-imported memory + all four strategies
+  # (the {memory_id},{memory_strategy_id} composite via the keyed
+  # strategy_ids map) at zero real change with exactly the declared
+  # reflection_configuration tolerance. First live timings: full-surface
+  # deploy ~13m / destroy ~13m per engine (four strategies serialized
+  # through the provider's per-memory lock; individual attaches
+  # 2-7.5m) -- well inside the 60m budget. At-rest cost datapoint: $0
+  # visible for an empty memory. TWO live catches fixed at the full
+  # bar: AWS requires reflection namespaces to be a HIERARCHICAL
+  # (whole-segment) prefix of an episodic namespace (front-loaded as a
+  # segment-boundary CEL; the strict-prefix send then echoed clean),
+  # and the provider's import does not round-trip
+  # reflection_configuration (write-normalized in the import catalog;
+  # upstream note filed; GUIDE teaches the one-time reconcile).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 60

@@ -46,5 +46,12 @@ spec:
       type: EPISODIC
       namespaceTemplates:
         - /episodes/{actorId}
+      # AWS requires each reflection namespace to be "the same as or a
+      # hierarchical prefix of the episodic namespace" -- an unrelated
+      # root like /reflections/... is rejected at UpdateMemory
+      # (live-caught 2026-08-14). The strict hierarchical prefix below
+      # keeps the arm's proof value: it differs from the provider's
+      # unset-case auto-fill (which mirrors the episodic namespace
+      # exactly), so the echo proves OUR value landed.
       reflectionNamespaceTemplates:
-        - /reflections/{actorId}
+        - /episodes

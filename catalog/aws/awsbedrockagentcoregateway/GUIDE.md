@@ -17,6 +17,7 @@ fronting production tools.
   where AWS's own configuration surface stops unrolling its recursion.
   Never deepen or flatten one side alone; the parity manifest records
   the `property` → `properties` renames at every level.
+- **OpenAPI targets need a `servers` array with an HTTPS URL.** AWS validates the schema document's content when the target creates — a document without a non-empty `servers` entry, or with a non-HTTPS URL, lands the target FAILED with named validation errors (live-verified 2026-08-14). Nothing calls the URL at create; it just has to be present and HTTPS.
 - **One-value vocabularies are module constants**: protocol type (MCP),
   search type (SEMANTIC → `enable_semantic_search`), exception level
   (DEBUG → `expose_debug_exceptions`).

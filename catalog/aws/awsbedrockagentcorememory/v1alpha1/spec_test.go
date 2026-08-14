@@ -62,8 +62,10 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreMemorySpec validations", func() {
 						Name:               "episodes",
 						Type:               "EPISODIC",
 						NamespaceTemplates: []string{"/episodes/{actorId}"},
+						// A strict prefix of the episodic namespace -- the
+						// server-side shape AWS accepts.
 						ReflectionNamespaceTemplates: []string{
-							"/reflections/{actorId}",
+							"/episodes",
 						},
 					},
 					{
@@ -229,7 +231,45 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreMemorySpec validations", func() {
 						Name:                         "facts",
 						Type:                         "SEMANTIC",
 						NamespaceTemplates:           []string{"/facts/{actorId}"},
+						ReflectionNamespaceTemplates: []string{"/facts/{actorId}"},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a reflection namespace unrelated to every episodic namespace", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalMemory()
+				spec.Strategies = []*AwsBedrockAgentCoreMemoryStrategy{
+					{
+						Name:               "episodes",
+						Type:               "EPISODIC",
+						NamespaceTemplates: []string{"/episodes/{actorId}"},
+						// AWS requires equal-or-hierarchical-prefix; an
+						// unrelated root is rejected server-side, so the
+						// spec front-loads it.
 						ReflectionNamespaceTemplates: []string{"/reflections/{actorId}"},
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with a reflection namespace that is a string prefix but not a hierarchical prefix", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalMemory()
+				spec.Strategies = []*AwsBedrockAgentCoreMemoryStrategy{
+					{
+						Name:               "episodes",
+						Type:               "EPISODIC",
+						NamespaceTemplates: []string{"/episodes/{actorId}"},
+						// "/epi" starts the episodic namespace string but
+						// breaks mid-segment -- AWS's rule is hierarchical
+						// (whole path segments), so this is invalid.
+						ReflectionNamespaceTemplates: []string{"/epi"},
 					},
 				}
 				err := protovalidate.Validate(spec)

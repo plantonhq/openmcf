@@ -228,10 +228,20 @@ resource "aws_bedrockagentcore_agent_runtime_endpoint" "this" {
 }
 
 # Resource-based policy on the runtime's own ARN -- grant other accounts
-# or services permission to invoke this runtime.
+# or services permission to invoke this runtime. AWS requires every
+# statement's Resource to be exactly the attached runtime's ARN
+# (PutResourcePolicy 400 "must contain exactly one resource ARN that
+# matches the provided resource ARN", live-caught 2026-08-14) -- an ARN
+# no author can know before create, so the module owns the Resource
+# member on every statement (standard IAM JSON casing assumed).
 resource "aws_bedrockagentcore_resource_policy" "this" {
   count = var.spec.resource_policy != null ? 1 : 0
 
   resource_arn = aws_bedrockagentcore_agent_runtime.this.agent_runtime_arn
-  policy       = jsonencode(var.spec.resource_policy)
+  policy = jsonencode(merge(var.spec.resource_policy, {
+    Statement = [
+      for s in try(var.spec.resource_policy.Statement, []) :
+      merge(s, { Resource = aws_bedrockagentcore_agent_runtime.this.agent_runtime_arn })
+    ]
+  }))
 }

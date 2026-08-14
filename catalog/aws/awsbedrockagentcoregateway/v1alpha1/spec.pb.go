@@ -1978,7 +1978,11 @@ func (x *AwsBedrockAgentCoreGatewayMcpServerTarget) GetListingMode() string {
 type AwsBedrockAgentCoreGatewaySchemaTarget struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The schema document inline (JSON or YAML for OpenAPI; Smithy IDL or
-	// JSON AST for Smithy).
+	// JSON AST for Smithy). AWS validates OpenAPI content server-side when
+	// the target creates: the document must carry a non-empty `servers`
+	// array whose URL uses HTTPS, or the target lands FAILED with named
+	// validation errors (live-caught 2026-08-14; nothing calls the URL at
+	// create).
 	InlinePayload string `protobuf:"bytes,1,opt,name=inline_payload,json=inlinePayload,proto3" json:"inline_payload,omitempty"`
 	// Or point at an S3 object holding the schema document.
 	S3            *AwsBedrockAgentCoreGatewaySchemaS3 `protobuf:"bytes,2,opt,name=s3,proto3" json:"s3,omitempty"`

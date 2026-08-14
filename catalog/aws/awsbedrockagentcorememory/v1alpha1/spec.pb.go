@@ -306,7 +306,11 @@ type AwsBedrockAgentCoreMemoryStrategy struct {
 	// otherwise.
 	Custom *AwsBedrockAgentCoreMemoryCustomStrategy `protobuf:"bytes,5,opt,name=custom,proto3" json:"custom,omitempty"`
 	// Namespace templates for EPISODIC reflection records - only legal on
-	// EPISODIC strategies.
+	// EPISODIC strategies. AWS requires each reflection namespace to be
+	// "the same as or a hierarchical prefix of the episodic namespace" in
+	// `namespace_templates` (UpdateMemory rejects unrelated roots like
+	// "/reflections/..." server-side; live-caught 2026-08-14). Leave unset
+	// to let the provider mirror the episodic namespaces exactly.
 	ReflectionNamespaceTemplates []string `protobuf:"bytes,6,rep,name=reflection_namespace_templates,json=reflectionNamespaceTemplates,proto3" json:"reflection_namespace_templates,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
@@ -615,16 +619,17 @@ const file_catalog_aws_awsbedrockagentcorememory_v1alpha1_spec_proto_rawDesc = "
 	"STRINGLISTR\x06NUMBERR\x04type\"\xfd\x01\n" +
 	"(AwsBedrockAgentCoreMemoryKinesisDelivery\x12\x84\x01\n" +
 	"\x0fdata_stream_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xa4\b\x92\xd4a\x19status.outputs.stream_arnR\rdataStreamArn\x12J\n" +
-	"\rcontent_level\x18\x02 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1dR\rMETADATA_ONLYR\fFULL_CONTENTR\fcontentLevel\"\x9b\x06\n" +
+	"\rcontent_level\x18\x02 \x01(\tB%\xbaH\"\xd8\x01\x01r\x1dR\rMETADATA_ONLYR\fFULL_CONTENTR\fcontentLevel\"\xbb\b\n" +
 	"!AwsBedrockAgentCoreMemoryStrategy\x129\n" +
 	"\x04name\x18\x01 \x01(\tB%\xbaH\"r \x10\x012\x1c^[a-zA-Z][a-zA-Z0-9_]{0,47}$R\x04name\x12U\n" +
 	"\x04type\x18\x02 \x01(\tBA\xbaH>r<R\bSEMANTICR\rSUMMARIZATIONR\x0fUSER_PREFERENCER\bEPISODICR\x06CUSTOMR\x04type\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12?\n" +
 	"\x13namespace_templates\x18\x04 \x03(\tB\x0e\xbaH\v\x92\x01\b\b\x01\"\x04r\x02\x10\x01R\x12namespaceTemplates\x12s\n" +
 	"\x06custom\x18\x05 \x01(\v2[.dev.planton.aws.awsbedrockagentcorememory.v1alpha1.AwsBedrockAgentCoreMemoryCustomStrategyR\x06custom\x12R\n" +
-	"\x1ereflection_namespace_templates\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x1creflectionNamespaceTemplates:\xb7\x02\xbaH\xb3\x02\x1a\x8c\x01\n" +
+	"\x1ereflection_namespace_templates\x18\x06 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x1creflectionNamespaceTemplates:\xd7\x04\xbaH\xd3\x04\x1a\x8c\x01\n" +
 	"\x1dcustom_type_pairs_with_custom\x12>custom is required when type is CUSTOM and forbidden otherwise\x1a+(this.type == 'CUSTOM') == has(this.custom)\x1a\xa1\x01\n" +
-	"\x1creflection_requires_episodic\x125reflection_namespace_templates requires type EPISODIC\x1aJthis.reflection_namespace_templates.size() == 0 || this.type == 'EPISODIC'\"\xfe\x06\n" +
+	"\x1creflection_requires_episodic\x125reflection_namespace_templates requires type EPISODIC\x1aJthis.reflection_namespace_templates.size() == 0 || this.type == 'EPISODIC'\x1a\x9d\x02\n" +
+	"&reflection_prefixes_episodic_namespace\x12\x81\x01each reflection_namespace_templates entry must equal, or be a hierarchical (whole-segment) prefix of, a namespace_templates entry\x1aothis.reflection_namespace_templates.all(r, this.namespace_templates.exists(n, n == r || n.startsWith(r + '/')))\"\xfe\x06\n" +
 	"'AwsBedrockAgentCoreMemoryCustomStrategy\x12y\n" +
 	"\x04type\x18\x01 \x01(\tBe\xbaHbr`R\x11SEMANTIC_OVERRIDER\x10SUMMARY_OVERRIDER\x18USER_PREFERENCE_OVERRIDER\x11EPISODIC_OVERRIDER\fSELF_MANAGEDR\x04type\x12{\n" +
 	"\n" +

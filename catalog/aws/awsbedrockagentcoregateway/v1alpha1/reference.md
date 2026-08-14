@@ -2129,6 +2129,14 @@ Fields that can point at another resource's outputs:
 | `spec.targets[].privateEndpoint.managedVpc.subnetIds` | AwsSubnet | `status.outputs.subnet_id` |
 | `spec.targets[].privateEndpoint.managedVpc.securityGroupIds` | AwsSecurityGroup | `status.outputs.security_group_id` |
 
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AwsBedrockAgentCoreEvaluation | `spec.harnesses[].tools[].agentcoreGateway.gatewayArn` | `status.outputs.gateway_arn` |
+
 ## See Also
 
 - [Overview](../README.md)

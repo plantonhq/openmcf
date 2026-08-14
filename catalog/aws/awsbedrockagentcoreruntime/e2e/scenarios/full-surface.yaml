@@ -63,6 +63,9 @@ spec:
   endpoints:
     - name: live
       description: Tracks the latest runtime version
+  # Statements carry no Resource member: AWS requires it to be exactly
+  # the runtime's own ARN (unknowable pre-create; PutResourcePolicy 400
+  # otherwise, live-caught 2026-08-14), so the modules inject it.
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
@@ -70,4 +73,3 @@ spec:
         Principal:
           Service: bedrock-agentcore.amazonaws.com
         Action: bedrock-agentcore:InvokeAgentRuntime
-        Resource: "*"

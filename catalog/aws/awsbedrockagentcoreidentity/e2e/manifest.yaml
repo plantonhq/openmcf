@@ -48,5 +48,5 @@ spec:
     policies:
       - name: allow_order_reads
         description: Let every principal call the order lookup tool
-        cedarStatement: 'permit(principal, action == Action::"get_order", resource);'
+        cedarStatement: 'permit(principal, action == Action::"get_order", resource is AgentCore::Gateway);'
         validationMode: FAIL_ON_ANY_FINDINGS

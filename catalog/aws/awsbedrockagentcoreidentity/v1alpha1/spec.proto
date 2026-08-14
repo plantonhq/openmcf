@@ -81,7 +81,11 @@ message AwsBedrockAgentCoreWorkloadIdentity {
   }];
 
   // OAuth2 redirect URLs this workload may use in user-delegated token
-  // flows (the browser must land on an allow-listed URL).
+  // flows (the browser must land on an allow-listed URL). AWS validates
+  // each URL server-side at CreateWorkloadIdentity and rejects
+  // reserved/documentation TLDs ("Invalid redirect url" -- .test
+  // rejected, live-caught 2026-08-14); real-TLD https URLs and
+  // http://localhost URLs are accepted.
   repeated string allowed_resource_oauth2_return_urls = 2 [(buf.validate.field).repeated.items.string.min_len = 1];
 }
 
@@ -249,7 +253,11 @@ message AwsBedrockAgentCoreCedarPolicy {
   string description = 2 [(buf.validate.field).string.max_len = 4096];
 
   // The Cedar policy statement (permit/forbid rules over principals,
-  // actions, and resources).
+  // actions, and resources). AWS rejects a fully-wildcard resource at
+  // CreatePolicy ("a wildcard resource was detected", live-caught
+  // 2026-08-14): constrain the resource to a specific
+  // AgentCore::Gateway entity or to the type, e.g.
+  // `permit(principal, action, resource is AgentCore::Gateway);`.
   string cedar_statement = 3 [(buf.validate.field).string.min_len = 1];
 
   // What AWS does with static-analysis findings on the statement:

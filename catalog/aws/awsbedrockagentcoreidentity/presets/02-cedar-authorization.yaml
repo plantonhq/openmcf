@@ -10,9 +10,9 @@ spec:
     policies:
       - name: allow_read_tools
         description: Every principal may call the read-only tools
-        cedarStatement: 'permit(principal, action in [Action::"get_order", Action::"list_invoices"], resource);'
+        cedarStatement: 'permit(principal, action in [Action::"get_order", Action::"list_invoices"], resource is AgentCore::Gateway);'
         validationMode: FAIL_ON_ANY_FINDINGS
       - name: forbid_writes_offhours
         description: Deny mutating tools outside business hours
-        cedarStatement: 'forbid(principal, action == Action::"update_order", resource) when { context.hour < 9 || context.hour > 17 };'
+        cedarStatement: 'forbid(principal, action == Action::"update_order", resource is AgentCore::Gateway) when { context.hour < 9 || context.hour > 17 };'
         validationMode: FAIL_ON_ANY_FINDINGS

@@ -47,7 +47,11 @@ spec:
       description: Inline OpenAPI schema target
       backend:
         openApiSchema:
-          inlinePayload: '{"openapi":"3.0.0","info":{"title":"planton-e2e-billing","version":"1"},"paths":{"/invoices":{"get":{"operationId":"listInvoices","responses":{"200":{"description":"ok"}}}}}}'
+          # AWS validates the document content at target create: it
+          # requires a non-empty `servers` array whose URL uses HTTPS
+          # (the target lands FAILED otherwise; live-caught 2026-08-14).
+          # No call is made to the URL at create.
+          inlinePayload: '{"openapi":"3.0.0","info":{"title":"planton-e2e-billing","version":"1"},"servers":[{"url":"https://billing.e2e.planton.ai"}],"paths":{"/invoices":{"get":{"operationId":"listInvoices","responses":{"200":{"description":"ok"}}}}}}'
       credentials:
         gatewayIamRole:
           service: execute-api

@@ -24,9 +24,24 @@ spec:
   # uses IGNORE_ALL_FINDINGS so Cedar analysis findings never flake the
   # lane; the strict mode is a pass-through enum).
   #
-  # pending_proof: forged this session to the full offline bar -- Q35
-  # proves it live.
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate, with
+  # the Terraform blind import round-trip re-importing all five
+  # full-surface resources (workload identity / api-key provider /
+  # oauth2 provider by NAME via the from_address_key arm's first live
+  # use; policy engine by id; policy by the {engine_id},{policy_id}
+  # composite) at zero real change -- only the three DECLARED config-only
+  # attributes tolerated (api_key, oauth2_provider_config,
+  # validation_mode). TWO live catches fixed at the full bar: AWS
+  # rejects reserved/documentation TLDs in OAuth return URLs ("Invalid
+  # redirect url" -- .test rejected, real TLDs and localhost accepted,
+  # CLI-probed), and CreatePolicy rejects fully-wildcard Cedar resources
+  # (statements must constrain to AgentCore::Gateway -- type constraint
+  # probed accepted). Both truths live on the spec field comments, the
+  # scenario/manifest/preset examples, and GUIDE.md.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30

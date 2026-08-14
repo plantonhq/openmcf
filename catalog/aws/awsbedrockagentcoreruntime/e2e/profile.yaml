@@ -28,9 +28,25 @@ spec:
   # mid-lane; the floating endpoint proves the satellite -- unblock: a
   # two-apply choreography in the proof lane).
   #
-  # pending_proof: forged this session to the full offline bar -- Q35
-  # proves it live.
+  # PROVEN live 2026-08-14 (Q35 proof session): minimal + full-surface
+  # green on BOTH engines under the armed apply-idempotency gate; the
+  # harness-seeded code-bundle fixture's FIRST live run created
+  # bucket+object idempotently and CreateAgentRuntime accepted the
+  # minimal zip on PYTHON_3_13 (runtime READY ~25s; no bundle-content
+  # validation at create). The Terraform blind round-trip re-imported
+  # runtime + endpoint (the {agent_runtime_id},{name} composite -- the
+  # from_address_key arm) + resource policy at zero real change, with
+  # exactly the declared policy write-normalization tolerated (the
+  # provider does not normalize policy JSON; importIgnore upstream).
+  # ONE live catch fixed at the full bar: PutResourcePolicy requires
+  # every statement's Resource to be exactly the runtime's own ARN
+  # (unknowable pre-create), so both modules now inject it and authors
+  # never write a Resource member -- taught on the spec field, both
+  # modules, scenario/manifest, and GUIDE.md. Lanes ride the
+  # consumer-scoped one-role IAM override (session-056 pattern).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 30
