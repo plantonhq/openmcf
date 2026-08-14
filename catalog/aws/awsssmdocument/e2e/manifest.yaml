@@ -1,0 +1,45 @@
+# Canonical AwsSsmDocument example (hack/dev manifest and refgen
+# Example source): a JSON Command document with a version label,
+# target-type restriction, an attachment, and account sharing. Literal
+# values stand in so the offline `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmDocument
+metadata:
+  name: install-app-agent
+  id: install-app-agent
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  documentType: Command
+  documentFormat: JSON
+  content: |
+    {
+      "schemaVersion": "2.2",
+      "description": "Install the app agent on managed nodes",
+      "parameters": {
+        "AgentVersion": {
+          "type": "String",
+          "description": "Agent version to install",
+          "default": "latest"
+        }
+      },
+      "mainSteps": [
+        {
+          "action": "aws:runShellScript",
+          "name": "installAgent",
+          "inputs": {
+            "runCommand": ["curl -fsSL https://example.com/agent-{{AgentVersion}}.sh | bash"]
+          }
+        }
+      ]
+    }
+  targetType: /AWS::EC2::Instance
+  versionName: release-1.0.0
+  attachmentSources:
+    - key: S3FileUrl
+      name: agent-config.json
+      values:
+        - https://s3.amazonaws.com/example-artifacts/agent-config.json
+  shareWithAccountIds:
+    - "123456789012"

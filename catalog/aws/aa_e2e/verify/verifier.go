@@ -175,6 +175,11 @@ var verifiers = map[string]Verifier{
 	"awsbackupreportplan":         &backupReportPlanVerifier{},
 	"awsbackuprestoretestingplan": &restoreTestingPlanVerifier{},
 	"awsbackupsettings":           &backupSettingsVerifier{},
+	"awsssmparameter":             &ssmParameterVerifier{},
+	"awsssmdocument":              &ssmDocumentVerifier{},
+	"awsssmassociation":           &ssmAssociationVerifier{},
+	"awsssmmaintenancewindow":     &ssmMaintenanceWindowVerifier{},
+	"awsssmpatchbaseline":         &ssmPatchBaselineVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},

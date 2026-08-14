@@ -1,0 +1,20 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmAssociation
+metadata:
+  name: weekly-agent-install
+spec:
+  region: <aws-region>
+  documentName:
+    valueFrom:
+      kind: AwsSsmDocument
+      name: <install-document>
+      fieldPath: status.outputs.document_name
+  documentVersion: $DEFAULT
+  parameters:
+    AgentVersion: latest
+  targets:
+    - key: tag:managed-by
+      values:
+        - platform
+  scheduleExpression: rate(7 days)
+  complianceSeverity: MEDIUM

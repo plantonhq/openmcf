@@ -474,6 +474,7 @@ Fields on other kinds that can point at this resource:
 | AwsSagemakerEndpoint | `spec.asyncInference.errorTopicArn` | `status.outputs.topic_arn` |
 | AwsSesConfigurationSet | `spec.eventDestinations[].snsTopic` | `status.outputs.topic_arn` |
 | AwsSnsSubscription | `spec.topicArn` | `status.outputs.topic_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].invocation.runCommand.notificationConfig.notificationArn` | `status.outputs.topic_arn` |
 
 ## See Also
 

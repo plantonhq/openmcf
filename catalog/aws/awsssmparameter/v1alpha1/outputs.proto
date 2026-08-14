@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmparameter.v1alpha1;
+
+// AwsSsmParameterStackOutputs captures the observable state of the
+// parameter after apply.
+message AwsSsmParameterStackOutputs {
+  // The parameter's name (also the provider's import ID; ARNs import
+  // too).
+  string parameter_name = 1;
+
+  // The parameter's ARN.
+  string parameter_arn = 2;
+
+  // The parameter's version number (increments on every value write).
+  string version = 3;
+
+  // The tier AWS resolved for the parameter (Standard or Advanced -
+  // Intelligent-Tiering never persists; AWS resolves it per write).
+  string tier = 4;
+}

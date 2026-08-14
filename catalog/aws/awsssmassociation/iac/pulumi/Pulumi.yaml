@@ -1,0 +1,3 @@
+name: awsssmassociation
+runtime: go
+description: Pulumi module to manage an AWS SSM State Manager association

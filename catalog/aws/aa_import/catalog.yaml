@@ -1258,3 +1258,83 @@ spec:
       notes: >-
         The region string (e.g. us-west-2) -- the regional singleton's
         identity.
+    # --- SSM ---------------------------------------------------------------------
+    - terraform_type: aws_ssm_parameter
+      pulumi_type: aws:ssm/parameter:Parameter
+      id_format: "{parameter_name}"
+      # overwrite is deploy-side first-create behavior, never returned by
+      # AWS or set during the provider's Read -- a freshly imported
+      # parameter always shows it false.
+      config_only_attributes:
+        - overwrite
+      notes: >-
+        The parameter's name including any hierarchical path (`aws ssm
+        describe-parameters` shows Name); a full parameter ARN imports
+        too.
+    - terraform_type: aws_ssm_document
+      pulumi_type: aws:ssm/document:Document
+      id_format: "{document_name}"
+      # No SSM API returns attachment metadata -- a freshly imported
+      # document shows no attachments_source and the first apply
+      # re-asserts it (the provider's own import test ignores it).
+      config_only_attributes:
+        - attachments_source
+      notes: >-
+        The document's name (`aws ssm list-documents` shows Name).
+    - terraform_type: aws_ssm_association
+      pulumi_type: aws:ssm/association:Association
+      id_format: "{association_id}"
+      # wait_for_success_timeout_seconds is a create-time wait never read
+      # back. AWS materializes the document's declared parameter defaults
+      # into the stored parameters map, so a faithful import plans a
+      # semantically identical parameters reconcile (the provider's own
+      # import test ignores both).
+      config_only_attributes:
+        - wait_for_success_timeout_seconds
+      write_normalized_attributes:
+        - parameters
+      notes: >-
+        The association's AWS-generated UUID (`aws ssm
+        list-associations` shows AssociationId) -- the document name is
+        NOT the identity.
+    - terraform_type: aws_ssm_maintenance_window
+      pulumi_type: aws:ssm/maintenanceWindow:MaintenanceWindow
+      id_format: "{window_id}"
+      notes: >-
+        The window's AWS-generated ID (`aws ssm
+        describe-maintenance-windows` shows WindowId, "mw-...").
+    - terraform_type: aws_ssm_maintenance_window_target
+      pulumi_type: aws:ssm/maintenanceWindowTarget:MaintenanceWindowTarget
+      id_format: "{window_id}/{target_id}"
+      notes: >-
+        Slash-separated window id and target registration id (`aws ssm
+        describe-maintenance-window-targets --window-id <id>` shows
+        WindowTargetId).
+    - terraform_type: aws_ssm_maintenance_window_task
+      pulumi_type: aws:ssm/maintenanceWindowTask:MaintenanceWindowTask
+      id_format: "{window_id}/{task_id}"
+      notes: >-
+        Slash-separated window id and task registration id (`aws ssm
+        describe-maintenance-window-tasks --window-id <id>` shows
+        WindowTaskId).
+    - terraform_type: aws_ssm_patch_baseline
+      pulumi_type: aws:ssm/patchBaseline:PatchBaseline
+      id_format: "{baseline_id}"
+      notes: >-
+        The baseline's AWS-generated ID (`aws ssm
+        describe-patch-baselines` shows BaselineId, "pb-...").
+    - terraform_type: aws_ssm_patch_group
+      pulumi_type: aws:ssm/patchGroup:PatchGroup
+      id_format: "{patch_group},{baseline_id}"
+      notes: >-
+        Comma-separated patch-group name and baseline id -- the GROUP
+        comes first (`aws ssm describe-patch-groups` shows PatchGroup +
+        BaselineIdentity).
+    - terraform_type: aws_ssm_default_patch_baseline
+      pulumi_type: aws:ssm/defaultPatchBaseline:DefaultPatchBaseline
+      id_format: "{operating_system}"
+      notes: >-
+        The operating-system string (e.g. AMAZON_LINUX_2023) -- the
+        designation's stable identity (a baseline id or ARN imports
+        too; `aws ssm get-default-patch-baseline
+        --operating-system <os>` shows the holder).

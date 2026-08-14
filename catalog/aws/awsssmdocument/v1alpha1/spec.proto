@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmdocument.v1alpha1;
+
+import "buf/validate/validate.proto";
+
+// AwsSsmDocumentSpec defines the desired configuration for one
+// customer-owned AWS Systems Manager document: a reusable definition
+// of the actions Systems Manager performs (run a command, drive an
+// automation, open a session, ...), authored as JSON or YAML content.
+//
+// The document's name is metadata.name (3-128 characters of letters,
+// digits, underscores, hyphens, and periods - hyphenated names fit)
+// and changing it forces replacement. Updating the CONTENT creates a
+// new document version and promotes it to the default version;
+// documents at schema version 1.x can only be updated when the
+// content itself changes (an AWS rule for legacy command documents).
+//
+// Associations (State Manager bindings of a document to targets on a
+// schedule) are their own AwsSsmAssociation component - an association
+// binds ANY document, AWS-managed or customer-owned, so it is not this
+// document's satellite.
+message AwsSsmDocumentSpec {
+  // The AWS region the document lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The document body, in the format document_format declares. For
+  // Command documents this is the schema-versioned action definition
+  // ("schemaVersion", "mainSteps", ...); Automation documents define
+  // their steps and parameters the same way.
+  string content = 2 [(buf.validate.field).string.min_len = 1];
+
+  // What kind of document this is. Command documents run on managed
+  // nodes, Automation documents drive AWS-API workflows, Session
+  // documents configure Session Manager, Policy documents gather
+  // inventory - the rest are specialty types AWS accepts on the same
+  // API.
+  string document_type = 3 [(buf.validate.field).string = {
+    in: [
+      "Command",
+      "Policy",
+      "Automation",
+      "Session",
+      "Package",
+      "ApplicationConfiguration",
+      "ApplicationConfigurationSchema",
+      "DeploymentStrategy",
+      "ChangeCalendar",
+      "Automation.ChangeTemplate",
+      "ProblemAnalysis",
+      "ProblemAnalysisTemplate",
+      "CloudFormation",
+      "ConformancePackTemplate",
+      "QuickSetup",
+      "ManualApprovalPolicy",
+      "AutoApprovalPolicy"
+    ]
+  }];
+
+  // The format the content is written in. Unset = JSON (the provider
+  // default).
+  string document_format = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "JSON",
+        "YAML",
+        "TEXT"
+      ]
+    }
+  ];
+
+  // Restricts the AWS resource types the document can run against
+  // (e.g. "/AWS::EC2::Instance"; "/" alone means all types).
+  string target_type = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 200
+      pattern: "^\\/[\\w\\.\\-\\:\\/]*$"
+    }
+  ];
+
+  // An artifact-style version label for the document version created
+  // by this content (e.g. "release-1.0.0"). Immutable per version -
+  // reusing a label on changed content is rejected by AWS.
+  string version_name = 6 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 128
+      pattern: "^[0-9A-Za-z_.-]{3,128}$"
+    }
+  ];
+
+  // Attachments for document types that carry artifacts (e.g. Package
+  // documents' installers), each naming where the artifact lives. AWS
+  // never reads attachment metadata back, so a freshly imported
+  // document shows none - the first apply re-asserts them.
+  repeated AwsSsmDocumentAttachmentSource attachment_sources = 7 [(buf.validate.field).repeated.max_items = 20];
+
+  // AWS account IDs this document is shared with, or the single entry
+  // "All" to share it publicly. AWS applies changes in batches of 20
+  // behind the scenes.
+  repeated string share_with_account_ids = 8 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {pattern: "^(\\d{12}|All)$"}
+    }
+  }];
+}
+
+// AwsSsmDocumentAttachmentSource names one artifact attached to the
+// document.
+message AwsSsmDocumentAttachmentSource {
+  // How the values locate the artifact: a public URL, an S3 file URL,
+  // or a reference to another document's attachment.
+  string key = 1 [(buf.validate.field).string = {
+    in: [
+      "SourceUrl",
+      "S3FileUrl",
+      "AttachmentReference"
+    ]
+  }];
+
+  // The attachment's file name inside the document. Unset = derived
+  // from the location.
+  string name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 128
+      pattern: "^[0-9A-Za-z_.-]{3,128}$"
+    }
+  ];
+
+  // The location values for the key (e.g. the S3 URL). One entry for
+  // SourceUrl/S3FileUrl; AttachmentReference entries name
+  // "documentName/attachmentName" pairs.
+  repeated string values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        min_len: 1
+        max_len: 1024
+      }
+    }
+  }];
+}

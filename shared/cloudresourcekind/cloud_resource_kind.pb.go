@@ -556,6 +556,37 @@ const (
 	// resource-type opt-in/management preferences. Both provider
 	// deletes are no-ops - settings persist after destroy.
 	CloudResourceKind_AwsBackupSettings CloudResourceKind = 1255
+	// An SSM Parameter Store entry (String/StringList/SecureString).
+	// The parameter's name is an explicit spec field - names are
+	// hierarchical paths ("/prod/db/url") metadata.name cannot carry.
+	// The KMS reference is conditional (SecureString only), so E2E
+	// fixtures ride scenario annotations. 1260 opens the SSM sub-band
+	// (1260-1269).
+	CloudResourceKind_AwsSsmParameter CloudResourceKind = 1260
+	// A customer-owned SSM document (Command/Automation/Session/...):
+	// reusable action definitions managed nodes and automations execute.
+	// State Manager associations are their own AwsSsmAssociation kind -
+	// an association binds ANY document (AWS-managed included), so it is
+	// not this document's satellite.
+	CloudResourceKind_AwsSsmDocument CloudResourceKind = 1261
+	// An SSM maintenance window with its folded target registrations and
+	// tasks (Run Command / Automation / Lambda / Step Functions) - the
+	// targets and tasks are true window satellites (ForceNew window_id
+	// edges). Identity is the AWS-generated "mw-..." id.
+	CloudResourceKind_AwsSsmMaintenanceWindow CloudResourceKind = 1262
+	// An SSM patch baseline with its folded patch-group registrations
+	// and the account/region default-baseline designation (delete
+	// RESTORES AWS's own predefined default for the OS). Identity is the
+	// AWS-generated "pb-..." id.
+	CloudResourceKind_AwsSsmPatchBaseline CloudResourceKind = 1263
+	// A State Manager association: the binding of an SSM document to
+	// targets on a schedule. Split from the document kind because the
+	// document reference is a free string with no structural edge -
+	// associations routinely bind AWS-managed documents
+	// (AWS-RunShellScript, ...) with no user document anywhere, so no
+	// registry prerequisite either. Identity is the AWS-generated
+	// association UUID.
+	CloudResourceKind_AwsSsmAssociation CloudResourceKind = 1264
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2119,6 +2150,11 @@ var (
 		1253:  "AwsBackupReportPlan",
 		1254:  "AwsBackupRestoreTestingPlan",
 		1255:  "AwsBackupSettings",
+		1260:  "AwsSsmParameter",
+		1261:  "AwsSsmDocument",
+		1262:  "AwsSsmMaintenanceWindow",
+		1263:  "AwsSsmPatchBaseline",
+		1264:  "AwsSsmAssociation",
 		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
@@ -2877,6 +2913,11 @@ var (
 		"AwsBackupReportPlan":                            1253,
 		"AwsBackupRestoreTestingPlan":                    1254,
 		"AwsBackupSettings":                              1255,
+		"AwsSsmParameter":                                1260,
+		"AwsSsmDocument":                                 1261,
+		"AwsSsmMaintenanceWindow":                        1262,
+		"AwsSsmPatchBaseline":                            1263,
+		"AwsSsmAssociation":                              1264,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3848,7 +3889,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe6\xd3\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xea\xd5\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4020,7 +4061,12 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x12AwsBackupFramework\x10\xe4\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbkf\x127\n" +
 	"\x13AwsBackupReportPlan\x10\xe5\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbkrp:\x02\xf5\a\x12;\n" +
 	"\x1bAwsBackupRestoreTestingPlan\x10\xe6\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbkrt\x120\n" +
-	"\x11AwsBackupSettings\x10\xe7\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbks\x126\n" +
+	"\x11AwsBackupSettings\x10\xe7\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awsbks\x12/\n" +
+	"\x0fAwsSsmParameter\x10\xec\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssmp\x12.\n" +
+	"\x0eAwsSsmDocument\x10\xed\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssmd\x128\n" +
+	"\x17AwsSsmMaintenanceWindow\x10\xee\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmmw\x124\n" +
+	"\x13AwsSsmPatchBaseline\x10\xef\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsssmpb\x121\n" +
+	"\x11AwsSsmAssociation\x10\xf0\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsssma\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

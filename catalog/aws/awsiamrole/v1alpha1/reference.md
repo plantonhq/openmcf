@@ -468,6 +468,8 @@ Fields on other kinds that can point at this resource:
 | AwsSnsTopic | `spec.deliveryFeedback.lambda.failureFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.successFeedbackRole` | `status.outputs.role_arn` |
 | AwsSnsTopic | `spec.deliveryFeedback.sqs.failureFeedbackRole` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].serviceRoleArn` | `status.outputs.role_arn` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].invocation.runCommand.serviceRoleArn` | `status.outputs.role_arn` |
 | AwsStepFunction | `spec.roleArn` | `status.outputs.role_arn` |
 | KubernetesCertManager | `spec.workloadIdentity.eks.roleArn` | `status.outputs.role_arn` |
 | KubernetesClusterSecretStore | `spec.config.aws.role` | `status.outputs.role_arn` |

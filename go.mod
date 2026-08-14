@@ -71,6 +71,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sfn v1.44.0
 	github.com/aws/aws-sdk-go-v2/service/sns v1.40.3
 	github.com/aws/aws-sdk-go-v2/service/sqs v1.37.1
+	github.com/aws/aws-sdk-go-v2/service/ssm v1.73.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/aws-sdk-go-v2/service/wafv2 v1.75.0
 	github.com/aws/smithy-go v1.27.7

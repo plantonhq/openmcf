@@ -1775,6 +1775,8 @@ Fields on other kinds that can point at this resource:
 | AwsS3ObjectSet | `spec.bucket` | `status.outputs.bucket_id` |
 | AwsS3ObjectSet | `spec.objects[].copyFrom.sourceBucket` | `status.outputs.bucket_id` |
 | AwsSagemakerPipeline | `spec.definitionS3Location.bucket` | `status.outputs.bucket_id` |
+| AwsSsmAssociation | `spec.outputLocation.s3BucketName` | `status.outputs.bucket_id` |
+| AwsSsmMaintenanceWindow | `spec.tasks[].invocation.runCommand.outputS3Bucket` | `status.outputs.bucket_id` |
 
 ## See Also
 

@@ -3271,40 +3271,13 @@ resources:
     reason: "out-of-band delivery of the queue's RedrivePolicy attribute, which AwsSqsQueue.spec.dead_letter_config models inline (chart-wired deadLetterTargetArn + maxReceiveCount) -- same single-attribute upsert, same mixing conflict (the attribute-splitter class)"
   - resource: aws_ssm_activation
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
-  - resource: aws_ssm_association
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmDocument kind (documents with associations)"
-  - resource: aws_ssm_default_patch_baseline
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
-  - resource: aws_ssm_document
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmDocument kind (documents with associations)"
-  - resource: aws_ssm_maintenance_window
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_maintenance_window_target
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_maintenance_window_task
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks)"
-  - resource: aws_ssm_parameter
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmParameter kind"
-  - resource: aws_ssm_patch_baseline
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
-  - resource: aws_ssm_patch_group
-    disposition: model-planned
-    reason: "judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults)"
+    reason: "judged as a planned AwsSsmActivation kind (hybrid managed-node activation with its own registration lifecycle and tags; no edge to any SSM quartet kind)"
   - resource: aws_ssm_resource_data_sync
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
+    reason: "judged as a planned AwsSsmResourceDataSync kind (inventory/compliance sync to S3; standalone S3-destination lifecycle, no edge to any SSM quartet kind)"
   - resource: aws_ssm_service_setting
     disposition: model-planned
-    reason: "SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument"
+    reason: "judged as a planned AwsSsmAccountSettings kind (account/region SSM feature settings - the settings-singleton class; no edge to any SSM quartet kind)"
   - resource: aws_ssmcontacts_contact
     disposition: deferred
     reason: "incident-management and quick-setup surface; deferred pending demand"

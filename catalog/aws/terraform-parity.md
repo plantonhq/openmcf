@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 160 |
-| Distinct provider resources consumed | 394 |
-| Spec fields authored across all kinds | 6104 |
-| Module pins on `aws` | `~> 6.58` × 160 |
+| Kinds in the catalog | 165 |
+| Distinct provider resources consumed | 403 |
+| Spec fields authored across all kinds | 6217 |
+| Module pins on `aws` | `~> 6.58` × 165 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**160 of 160 kinds are at total accounting; 113 proven live.**
+**165 of 165 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -200,6 +200,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSsmAssociation | 21 | 17 | 2 | 2 | 0 | ✅ | — |
+| AwsSsmDocument | 13 | 5 | 5 | 3 | 0 | ✅ | — |
+| AwsSsmMaintenanceWindow | 58 | 10 | 43 | 5 | 0 | ✅ | — |
+| AwsSsmParameter | 16 | 7 | 4 | 5 | 0 | ✅ | — |
+| AwsSsmPatchBaseline | 29 | 8 | 17 | 4 | 0 | ✅ | — |
 | AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
@@ -217,10 +222,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 393 | consumed by a kind's Terraform module today |
+| Modeled | 402 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 28 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 600 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 591 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -230,7 +235,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (393)
+### Modeled (402)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -615,6 +620,15 @@ rather than trusted.
 | `aws_sns_topic_data_protection_policy` | consumed by AwsSnsTopic |
 | `aws_sns_topic_subscription` | consumed by AwsSnsSubscription |
 | `aws_sqs_queue` | consumed by AwsSqsQueue |
+| `aws_ssm_association` | consumed by AwsSsmAssociation |
+| `aws_ssm_default_patch_baseline` | consumed by AwsSsmPatchBaseline |
+| `aws_ssm_document` | consumed by AwsSsmDocument |
+| `aws_ssm_maintenance_window` | consumed by AwsSsmMaintenanceWindow |
+| `aws_ssm_maintenance_window_target` | consumed by AwsSsmMaintenanceWindow |
+| `aws_ssm_maintenance_window_task` | consumed by AwsSsmMaintenanceWindow |
+| `aws_ssm_parameter` | consumed by AwsSsmParameter |
+| `aws_ssm_patch_baseline` | consumed by AwsSsmPatchBaseline |
+| `aws_ssm_patch_group` | consumed by AwsSsmPatchBaseline |
 | `aws_subnet` | consumed by AwsSubnet |
 | `aws_vpc` | consumed by AwsVpc |
 | `aws_vpc_encryption_control` | consumed by AwsVpc |
@@ -661,7 +675,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (600)
+### Planned (591)
 
 | Resource | Recorded reason |
 |---|---|
@@ -1155,18 +1169,9 @@ rather than trusted.
 | `aws_shield_subscription` | judged as a planned AwsShieldAdvanced kind (subscription, protections, protection groups, DRT access, proactive engagement) |
 | `aws_snapshot_create_volume_permission` | judged as a planned AwsEbsSnapshot kind (snapshots, copies, imports, fast restore, volume permissions) |
 | `aws_spot_datafeed_subscription` | account-wide EC2 toggles fold into the planned AwsEc2AccountSettings kind |
-| `aws_ssm_activation` | SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument |
-| `aws_ssm_association` | judged as a planned AwsSsmDocument kind (documents with associations) |
-| `aws_ssm_default_patch_baseline` | judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults) |
-| `aws_ssm_document` | judged as a planned AwsSsmDocument kind (documents with associations) |
-| `aws_ssm_maintenance_window` | judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks) |
-| `aws_ssm_maintenance_window_target` | judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks) |
-| `aws_ssm_maintenance_window_task` | judged as a planned AwsSsmMaintenanceWindow kind (windows, targets, tasks) |
-| `aws_ssm_parameter` | judged as a planned AwsSsmParameter kind |
-| `aws_ssm_patch_baseline` | judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults) |
-| `aws_ssm_patch_group` | judged as a planned AwsSsmPatchBaseline kind (baselines, groups, defaults) |
-| `aws_ssm_resource_data_sync` | SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument |
-| `aws_ssm_service_setting` | SSM account-level plumbing (hybrid activations, resource data syncs, service settings); folds into the planned SSM kind family led by AwsSsmDocument |
+| `aws_ssm_activation` | judged as a planned AwsSsmActivation kind (hybrid managed-node activation with its own registration lifecycle and tags; no edge to any SSM quartet kind) |
+| `aws_ssm_resource_data_sync` | judged as a planned AwsSsmResourceDataSync kind (inventory/compliance sync to S3; standalone S3-destination lifecycle, no edge to any SSM quartet kind) |
+| `aws_ssm_service_setting` | judged as a planned AwsSsmAccountSettings kind (account/region SSM feature settings - the settings-singleton class; no edge to any SSM quartet kind) |
 | `aws_ssoadmin_account_assignment` | judged as a planned AwsIdentityCenterAssignment kind |
 | `aws_ssoadmin_application` | judged as a planned AwsIdentityCenterApplication kind (applications, access scopes, assignments, trusted token issuers) |
 | `aws_ssoadmin_application_access_scope` | judged as a planned AwsIdentityCenterApplication kind (applications, access scopes, assignments, trusted token issuers) |

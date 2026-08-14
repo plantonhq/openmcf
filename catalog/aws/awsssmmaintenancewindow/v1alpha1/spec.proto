@@ -1,0 +1,510 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmmaintenancewindow.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// AwsSsmMaintenanceWindowSpec defines the desired configuration for
+// one AWS Systems Manager maintenance window: a recurring window of
+// time plus the folded targets registered with it and the tasks (Run
+// Command, Automation, Lambda, Step Functions) that execute inside it.
+//
+// The window's name is metadata.name. Targets and tasks are true
+// window satellites (their window binding forces replacement at the
+// provider), folded here as name-keyed collections - both modules
+// create and destroy them with the window so ordering is never the
+// author's problem. AWS identifies the window as "mw-..." and each
+// satellite by its own generated ID (echoed in the target_ids/task_ids
+// output maps for imports).
+message AwsSsmMaintenanceWindowSpec {
+  // Target/task names are for_each keys on both engines - duplicates
+  // would silently collapse entries.
+  option (buf.validate.message).cel = {
+    id: "spec.target_names_unique"
+    message: "targets entries must have unique names"
+    expression: "this.targets.map(t, t.name).unique()"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.task_names_unique"
+    message: "tasks entries must have unique names"
+    expression: "this.tasks.map(t, t.name).unique()"
+  };
+  // AWS's window arithmetic: the cutoff (hours before the end when new
+  // task starts stop) must be less than the window's total duration.
+  option (buf.validate.message).cel = {
+    id: "spec.cutoff_below_duration"
+    message: "cutoff must be less than duration (AWS's window arithmetic)"
+    expression: "this.cutoff < this.duration"
+  };
+
+  // The AWS region the maintenance window lives in.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // When the window opens, as a cron or rate expression evaluated in
+  // schedule_timezone (e.g. "cron(0 2 ? * SUN *)" for Sundays 02:00).
+  string schedule = 2 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 256
+  }];
+
+  // How long the window stays open, in hours (1-24).
+  int32 duration = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 24
+  }];
+
+  // Hours before the window closes when Systems Manager stops
+  // STARTING new tasks (0-23; running tasks keep going or stop per
+  // each task's cutoff_behavior). Must be less than duration.
+  int32 cutoff = 4 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 23
+  }];
+
+  // Human description of the window (1-128 characters).
+  string description = 5 [(buf.validate.field).string.max_len = 128];
+
+  // Whether the window is enabled. Unset = enabled (the provider
+  // default is true) - set an explicit false to create the window
+  // paused.
+  optional bool enabled = 6;
+
+  // Allow tasks to run on targets that were never registered with the
+  // window (register-less task targeting). Unset = false: every task
+  // target must be a registered window target.
+  bool allow_unassociated_targets = 7;
+
+  // IANA timezone the schedule is evaluated in (e.g.
+  // "America/Los_Angeles"). Unset = UTC.
+  string schedule_timezone = 8;
+
+  // Days to wait after the scheduled cron time before opening the
+  // window (1-6) - e.g. offset 2 on "every Tuesday" opens Thursdays.
+  // Cron schedules only.
+  int32 schedule_offset = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 6
+    }
+  ];
+
+  // ISO 8601 timestamp when the window becomes active (e.g.
+  // "2026-09-01T00:00:00-07:00"). Unset = active immediately.
+  string start_date = 10;
+
+  // ISO 8601 timestamp when the window stops occurring. Unset = never
+  // expires.
+  string end_date = 11;
+
+  // The targets registered with this window, keyed by name. Tasks
+  // reference registered targets by ID (via the target_ids output) or
+  // with the "WindowTargetIds" key.
+  repeated AwsSsmMaintenanceWindowTargetEntry targets = 12;
+
+  // The tasks registered with this window, keyed by name.
+  repeated AwsSsmMaintenanceWindowTaskEntry tasks = 13;
+}
+
+// AwsSsmMaintenanceWindowTargetEntry registers one target set with the
+// window. Name, description, and resource_type force replacement of
+// the registration at the provider.
+message AwsSsmMaintenanceWindowTargetEntry {
+  // Target name, 3-128 characters of letters, digits, hyphens,
+  // underscores, and periods. The for_each key on both engines and
+  // the target_ids output key.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 128
+    pattern: "^[0-9A-Za-z_.-]{3,128}$"
+  }];
+
+  // What kind of resources the selectors below name: managed instances
+  // or resource groups.
+  string resource_type = 2 [(buf.validate.field).string = {
+    in: [
+      "INSTANCE",
+      "RESOURCE_GROUP"
+    ]
+  }];
+
+  // The selectors (up to 5): instance IDs, tag matches, or
+  // resource-group filters per the SSM targeting grammar.
+  repeated AwsSsmMaintenanceWindowTargetSelector targets = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 5
+  }];
+
+  // Human description of the target set (3-128 characters). Changing
+  // it replaces the registration.
+  string description = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 3
+      max_len: 128
+    }
+  ];
+
+  // Free-form information the window owner records about the target
+  // (surfaced in task run details).
+  string owner_information = 5 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+}
+
+// AwsSsmMaintenanceWindowTargetSelector is one selector on a target
+// registration.
+message AwsSsmMaintenanceWindowTargetSelector {
+  // The selector key: "InstanceIds", "tag:<key>",
+  // "resource-groups:Name", or "resource-groups:ResourceTypeFilters".
+  string key = 1 [(buf.validate.field).string = {
+    min_len: 1
+    max_len: 163
+  }];
+
+  // The values for the key (instance IDs, the tag value, the resource
+  // group name).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 50
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// AwsSsmMaintenanceWindowTaskEntry registers one task with the window.
+// The window binding and task_type force replacement at the provider;
+// everything else updates in place.
+message AwsSsmMaintenanceWindowTaskEntry {
+  // Exactly one invocation arm may be set, and it must match
+  // task_type - the provider sends whatever arms are present without
+  // checking, and AWS rejects mismatches server-side.
+  option (buf.validate.message).cel = {
+    id: "task.invocation_exactly_one_arm"
+    message: "invocation must set exactly one of run_command, automation, lambda, and step_functions"
+    expression: "!has(this.invocation) || ((has(this.invocation.run_command) ? 1 : 0) + (has(this.invocation.automation) ? 1 : 0) + (has(this.invocation.lambda) ? 1 : 0) + (has(this.invocation.step_functions) ? 1 : 0)) == 1"
+  };
+  option (buf.validate.message).cel = {
+    id: "task.run_command_arm_matches_type"
+    message: "invocation.run_command requires task_type RUN_COMMAND"
+    expression: "!has(this.invocation) || !has(this.invocation.run_command) || this.task_type == 'RUN_COMMAND'"
+  };
+  option (buf.validate.message).cel = {
+    id: "task.automation_arm_matches_type"
+    message: "invocation.automation requires task_type AUTOMATION"
+    expression: "!has(this.invocation) || !has(this.invocation.automation) || this.task_type == 'AUTOMATION'"
+  };
+  option (buf.validate.message).cel = {
+    id: "task.lambda_arm_matches_type"
+    message: "invocation.lambda requires task_type LAMBDA"
+    expression: "!has(this.invocation) || !has(this.invocation.lambda) || this.task_type == 'LAMBDA'"
+  };
+  option (buf.validate.message).cel = {
+    id: "task.step_functions_arm_matches_type"
+    message: "invocation.step_functions requires task_type STEP_FUNCTIONS"
+    expression: "!has(this.invocation) || !has(this.invocation.step_functions) || this.task_type == 'STEP_FUNCTIONS'"
+  };
+
+  // Task name, 3-128 characters of letters, digits, hyphens,
+  // underscores, and periods. The for_each key on both engines and
+  // the task_ids output key.
+  string name = 1 [(buf.validate.field).string = {
+    min_len: 3
+    max_len: 128
+    pattern: "^[0-9A-Za-z_.-]{3,128}$"
+  }];
+
+  // What the task runs. Changing it replaces the task registration.
+  string task_type = 2 [(buf.validate.field).string = {
+    in: [
+      "RUN_COMMAND",
+      "AUTOMATION",
+      "LAMBDA",
+      "STEP_FUNCTIONS"
+    ]
+  }];
+
+  // What executes: the document name for RUN_COMMAND/AUTOMATION (an
+  // AWS-managed name as a literal, or an AwsSsmDocument's
+  // status.outputs.document_name by reference), the function ARN for
+  // LAMBDA (an AwsLambda's status.outputs.function_arn), or the state
+  // machine ARN for STEP_FUNCTIONS (an AwsStepFunction's
+  // status.outputs.state_machine_arn). No default kind - the target
+  // kind follows task_type.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef task_arn = 3 [(buf.validate.field).required = true];
+
+  // Human description of the task (1-128 characters).
+  string description = 4 [(buf.validate.field).string.max_len = 128];
+
+  // IAM role Systems Manager assumes to run the task. Unset = AWS's
+  // service-linked role for Systems Manager.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_role_arn = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Execution priority inside the window: 0 is the highest and also
+  // AWS's default; tasks sharing a priority run in parallel.
+  int32 priority = 6 [(buf.validate.field).int32.gte = 0];
+
+  // Maximum targets the task runs on concurrently: an absolute count
+  // ("10") or a percentage ("10%"). Only meaningful on a task WITH
+  // targets - AWS rejects rate controls on untargeted tasks, and both
+  // engines omit them when targets are absent.
+  string max_concurrency = 7 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([1-9][0-9]*|[1-9][0-9]%|[1-9]%|100%)$"
+  ];
+
+  // Failures after which the task stops scheduling new target runs:
+  // an absolute count ("1", "0") or a percentage ("10%"). Same
+  // targets-required contract as max_concurrency.
+  string max_errors = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([1-9][0-9]*|[0]|[1-9][0-9]%|[0-9]%|100%)$"
+  ];
+
+  // What happens to a RUNNING task instance when the window's cutoff
+  // arrives: keep going (CONTINUE_TASK) or attempt cancellation
+  // (CANCEL_TASK). Unset = CONTINUE_TASK (AWS's default).
+  string cutoff_behavior = 9 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "CONTINUE_TASK",
+        "CANCEL_TASK"
+      ]
+    }
+  ];
+
+  // What the task runs on: registered window targets (key
+  // "WindowTargetIds" with target IDs from the target_ids output) or
+  // ad-hoc selectors when the window allows unassociated targets.
+  // Unset = an untargeted task (no rate controls).
+  repeated AwsSsmMaintenanceWindowTargetSelector targets = 10 [(buf.validate.field).repeated.max_items = 5];
+
+  // Type-specific invocation parameters. Unset = the task runs with
+  // the document's/function's own defaults.
+  AwsSsmMaintenanceWindowTaskInvocation invocation = 11;
+}
+
+// AwsSsmMaintenanceWindowTaskInvocation carries the type-specific
+// parameters for one task - exactly one arm, matching the task's
+// task_type.
+message AwsSsmMaintenanceWindowTaskInvocation {
+  // RUN_COMMAND parameters.
+  AwsSsmMaintenanceWindowRunCommandInvocation run_command = 1;
+
+  // AUTOMATION parameters.
+  AwsSsmMaintenanceWindowAutomationInvocation automation = 2;
+
+  // LAMBDA parameters.
+  AwsSsmMaintenanceWindowLambdaInvocation lambda = 3;
+
+  // STEP_FUNCTIONS parameters.
+  AwsSsmMaintenanceWindowStepFunctionsInvocation step_functions = 4;
+}
+
+// AwsSsmMaintenanceWindowRunCommandInvocation configures a Run Command
+// task run.
+message AwsSsmMaintenanceWindowRunCommandInvocation {
+  // Operator comment attached to every command (up to 100 characters).
+  string comment = 1 [(buf.validate.field).string.max_len = 100];
+
+  // Pin the document to a content hash so a changed document is
+  // rejected instead of silently run.
+  string document_hash = 2 [(buf.validate.field).string.max_len = 256];
+
+  // The hash algorithm document_hash uses. Sha1 exists for legacy
+  // documents only - AWS deprecates SHA-1.
+  string document_hash_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Sha256",
+        "Sha1"
+      ]
+    }
+  ];
+
+  // The document version to run: "$LATEST", "$DEFAULT", or a concrete
+  // version number.
+  string document_version = 4 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([$]LATEST|[$]DEFAULT|[1-9][0-9]*)$"
+  ];
+
+  // S3 bucket receiving command output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef output_s3_bucket = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
+  ];
+
+  // Key prefix inside the output bucket.
+  string output_s3_key_prefix = 6 [(buf.validate.field).string.max_len = 500];
+
+  // IAM role for the Run Command service interactions (distinct from
+  // the task-level role). Unset = the task-level role or AWS's
+  // service-linked role.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_role_arn = 7 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.role_arn"
+  ];
+
+  // Seconds each target has to report the command started before AWS
+  // marks it failed (30-2592000).
+  int32 timeout_seconds = 8 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).int32 = {
+      gte: 30
+      lte: 2592000
+    }
+  ];
+
+  // Values for the document's input parameters.
+  repeated AwsSsmMaintenanceWindowTaskParameter parameters = 9;
+
+  // CloudWatch Logs delivery for command output.
+  AwsSsmMaintenanceWindowCloudwatchConfig cloudwatch_config = 10;
+
+  // SNS notifications about command lifecycle events.
+  AwsSsmMaintenanceWindowNotificationConfig notification_config = 11;
+}
+
+// AwsSsmMaintenanceWindowAutomationInvocation configures an Automation
+// task run.
+message AwsSsmMaintenanceWindowAutomationInvocation {
+  // The runbook version to run: "$LATEST", "$DEFAULT", or a concrete
+  // version number.
+  string document_version = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string.pattern = "^([$]LATEST|[$]DEFAULT|[1-9][0-9]*)$"
+  ];
+
+  // Values for the runbook's input parameters.
+  repeated AwsSsmMaintenanceWindowTaskParameter parameters = 2;
+}
+
+// AwsSsmMaintenanceWindowLambdaInvocation configures a Lambda task
+// run.
+message AwsSsmMaintenanceWindowLambdaInvocation {
+  // Base64-encoded client context passed to the function.
+  string client_context = 1 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 8000
+    }
+  ];
+
+  // JSON payload the function is invoked with (up to 4096 bytes).
+  // Sensitive at the provider - payloads routinely carry credentials
+  // or tokens; supply a managed-secret reference when this one does.
+  string payload = 2 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).string.max_len = 4096
+  ];
+
+  // Function alias or version qualifier to invoke.
+  string qualifier = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 128
+    }
+  ];
+}
+
+// AwsSsmMaintenanceWindowStepFunctionsInvocation configures a Step
+// Functions task run.
+message AwsSsmMaintenanceWindowStepFunctionsInvocation {
+  // JSON input for the execution (up to 4096 bytes). Sensitive at the
+  // provider - inputs routinely carry credentials or tokens; supply a
+  // managed-secret reference when this one does.
+  string input = 1 [
+    (dev.planton.shared.options.sensitive) = true,
+    (buf.validate.field).string.max_len = 4096
+  ];
+
+  // Name for the execution.
+  string name = 2 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      min_len: 1
+      max_len: 80
+    }
+  ];
+}
+
+// AwsSsmMaintenanceWindowTaskParameter is one document/runbook
+// parameter's values.
+message AwsSsmMaintenanceWindowTaskParameter {
+  // The parameter's name as the document declares it.
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The parameter's values (list-typed parameters take several).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// AwsSsmMaintenanceWindowCloudwatchConfig delivers command output to
+// CloudWatch Logs.
+message AwsSsmMaintenanceWindowCloudwatchConfig {
+  // The log group receiving output. Unset with output enabled = AWS's
+  // default group for the document.
+  string cloudwatch_log_group_name = 1;
+
+  // Whether CloudWatch output delivery is on.
+  bool cloudwatch_output_enabled = 2;
+}
+
+// AwsSsmMaintenanceWindowNotificationConfig sends SNS notifications
+// about command lifecycle events.
+message AwsSsmMaintenanceWindowNotificationConfig {
+  // The SNS topic notified.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef notification_arn = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsSnsTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_arn"
+  ];
+
+  // Which lifecycle events notify.
+  repeated string notification_events = 2 [(buf.validate.field).repeated = {
+    unique: true
+    items: {
+      string: {
+        in: [
+          "All",
+          "InProgress",
+          "Success",
+          "TimedOut",
+          "Cancelled",
+          "Failed"
+        ]
+      }
+    }
+  }];
+
+  // Notification granularity: one per command, or one per target
+  // invocation.
+  string notification_type = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      in: [
+        "Command",
+        "Invocation"
+      ]
+    }
+  ];
+}

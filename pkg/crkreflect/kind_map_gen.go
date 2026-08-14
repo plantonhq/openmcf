@@ -198,6 +198,11 @@ import (
 	awssnssubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssnssubscription/v1alpha1"
 	awssnstopicv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssnstopic/v1alpha1"
 	awssqsqueuev1alpha1 "github.com/plantonhq/planton/catalog/aws/awssqsqueue/v1alpha1"
+	awsssmassociationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmassociation/v1alpha1"
+	awsssmdocumentv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmdocument/v1alpha1"
+	awsssmmaintenancewindowv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmmaintenancewindow/v1alpha1"
+	awsssmparameterv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmparameter/v1alpha1"
+	awsssmpatchbaselinev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsssmpatchbaseline/v1alpha1"
 	awsstepfunctionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsstepfunction/v1alpha1"
 	awssubnetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssubnet/v1alpha1"
 	awstransitgatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awstransitgateway/v1alpha1"
@@ -980,6 +985,11 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:                     &awssnssubscriptionv1alpha1.AwsSnsSubscription{},
 	cloudresourcekind.CloudResourceKind_AwsSnsTopic:                            &awssnstopicv1alpha1.AwsSnsTopic{},
 	cloudresourcekind.CloudResourceKind_AwsSqsQueue:                            &awssqsqueuev1alpha1.AwsSqsQueue{},
+	cloudresourcekind.CloudResourceKind_AwsSsmAssociation:                      &awsssmassociationv1alpha1.AwsSsmAssociation{},
+	cloudresourcekind.CloudResourceKind_AwsSsmDocument:                         &awsssmdocumentv1alpha1.AwsSsmDocument{},
+	cloudresourcekind.CloudResourceKind_AwsSsmMaintenanceWindow:                &awsssmmaintenancewindowv1alpha1.AwsSsmMaintenanceWindow{},
+	cloudresourcekind.CloudResourceKind_AwsSsmParameter:                        &awsssmparameterv1alpha1.AwsSsmParameter{},
+	cloudresourcekind.CloudResourceKind_AwsSsmPatchBaseline:                    &awsssmpatchbaselinev1alpha1.AwsSsmPatchBaseline{},
 	cloudresourcekind.CloudResourceKind_AwsStepFunction:                        &awsstepfunctionv1alpha1.AwsStepFunction{},
 	cloudresourcekind.CloudResourceKind_AwsSubnet:                              &awssubnetv1alpha1.AwsSubnet{},
 	cloudresourcekind.CloudResourceKind_AwsTransitGateway:                      &awstransitgatewayv1alpha1.AwsTransitGateway{},

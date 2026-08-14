@@ -1433,6 +1433,46 @@ func TestAwsBackupSettings_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbackupsettings", "terraform")
 }
 
+func TestAwsSsmParameter_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "pulumi")
+}
+
+func TestAwsSsmParameter_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmparameter", "terraform")
+}
+
+func TestAwsSsmDocument_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "pulumi")
+}
+
+func TestAwsSsmDocument_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmdocument", "terraform")
+}
+
+func TestAwsSsmAssociation_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "pulumi")
+}
+
+func TestAwsSsmAssociation_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmassociation", "terraform")
+}
+
+func TestAwsSsmMaintenanceWindow_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "pulumi")
+}
+
+func TestAwsSsmMaintenanceWindow_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmmaintenancewindow", "terraform")
+}
+
+func TestAwsSsmPatchBaseline_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "pulumi")
+}
+
+func TestAwsSsmPatchBaseline_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsssmpatchbaseline", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

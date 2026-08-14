@@ -503,6 +503,7 @@ Fields on other kinds that can point at this resource:
 | AwsServerlessElasticache | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSnsTopic | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsSqsQueue | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsSsmParameter | `spec.keyId` | `status.outputs.key_arn` |
 | AwsStepFunction | `spec.encryption.kmsKeyId` | `status.outputs.key_arn` |
 
 ## See Also

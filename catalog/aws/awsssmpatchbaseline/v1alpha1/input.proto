@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsssmpatchbaseline.v1alpha1;
+
+import "catalog/aws/awsssmpatchbaseline/v1alpha1/api.proto";
+import "catalog/aws/provider.proto";
+
+// AwsSsmPatchBaselineStackInput is the input for the IaC modules that
+// manage a patch baseline with its folded patch groups and default
+// designation.
+message AwsSsmPatchBaselineStackInput {
+  // target is the AwsSsmPatchBaseline resource to deploy.
+  AwsSsmPatchBaseline target = 1;
+  // provider_config contains the AWS provider credentials and configuration.
+  dev.planton.aws.AwsProviderConfig provider_config = 2;
+}

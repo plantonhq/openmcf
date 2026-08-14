@@ -1,0 +1,37 @@
+# An AWS-managed document bound live with ZERO fixtures: the
+# association references AWS-RunPatchBaseline (no user document
+# anywhere - the reason this kind exists), targets a tag that matches
+# nothing, and schedules a nightly cron - so no command ever runs and
+# the lane bills nothing. NO wait_for_success (with no matching
+# targets the wait would always time out).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSsmAssociation
+metadata:
+  name: planton-oss-e2e-awsssma
+  id: planton-oss-e2e-awsssma
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsssmassociation
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  documentName:
+    value: AWS-RunPatchBaseline
+  associationName: planton-e2e-patch-scan
+  parameters:
+    Operation: Scan
+  targets:
+    - key: tag:planton-e2e-ssm
+      values:
+        - never-matches
+  scheduleExpression: cron(0 2 ? * * *)
+  applyOnlyAtCronInterval: true
+  complianceSeverity: HIGH
+  syncCompliance: AUTO
+  maxConcurrency: 10%
+  maxErrors: "0"
