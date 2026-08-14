@@ -439,6 +439,13 @@ spec:
       notes: >-
         The 12-digit AWS account id -- the form is an account-global
         singleton.
+    - terraform_type: aws_bedrock_model_invocation_logging_configuration
+      pulumi_type: aws:bedrockmodel/invocationLoggingConfiguration:InvocationLoggingConfiguration
+      id_format: "{region}"
+      notes: >-
+        The region name itself -- the configuration is a region
+        singleton (one per account+region; the provider's identity IS
+        the region).
     # --- Bedrock Agents --------------------------------------------------------
     # The agent-family composites join parts with a comma; satellites of the
     # agent all address the DRAFT version. None of the bedrockagent
@@ -697,6 +704,12 @@ spec:
         Import is by id, not ARN. enable_on_create is create-time intent
         the API never echoes.
       config_only_attributes: [enable_on_create, timeouts]
+    - terraform_type: aws_bedrockagentcore_token_vault_cmk
+      pulumi_type: aws:bedrock/agentcoreTokenVaultCmk:AgentcoreTokenVaultCmk
+      id_format: "{token_vault_id}"
+      notes: >-
+        The vault id ("default" -- AWS provisions exactly one vault per
+        account+region under that name).
 
     # --- API Gateway v1 (REST) ---------------------------------------------------
     # Composite ids join with "/" (formats read from the provider's
@@ -833,6 +846,13 @@ spec:
       id_format: "{vpc_link_id}"
       notes: >-
         The VPC-link id (`aws apigateway get-vpc-links` shows id).
+    - terraform_type: aws_api_gateway_account
+      pulumi_type: aws:apigateway/account:Account
+      id_format: "{account_id}"
+      notes: >-
+        The 12-digit AWS account id -- the account object is a region
+        singleton (top-right account menu, or `aws sts
+        get-caller-identity`).
 
     # --- SageMaker (models, serving, MLOps) --------------------------------------
     # Every SDKv2 SageMaker resource here imports by plain name
@@ -926,3 +946,21 @@ spec:
         list-mlflow-apps` shows Arn); names are mutable and never the
         import key.
       config_only_attributes: [timeouts]
+
+    # --- SES (SESv2 account-level settings) --------------------------------------
+    # Both account-attribute resources are account/region singletons; the
+    # suppression form imports by the account id, the VDM form by the
+    # provider's documented literal word.
+    - terraform_type: aws_sesv2_account_suppression_attributes
+      pulumi_type: aws:sesv2/accountSuppressionAttributes:AccountSuppressionAttributes
+      id_format: "{account_id}"
+      notes: >-
+        The 12-digit AWS account id (top-right account menu, or `aws
+        sts get-caller-identity`).
+    - terraform_type: aws_sesv2_account_vdm_attributes
+      pulumi_type: aws:sesv2/accountVdmAttributes:AccountVdmAttributes
+      id_format: "ses-account-vdm-attributes"
+      notes: >-
+        The literal word "ses-account-vdm-attributes" -- the provider's
+        documented import id for this singleton; no placeholder to
+        resolve.

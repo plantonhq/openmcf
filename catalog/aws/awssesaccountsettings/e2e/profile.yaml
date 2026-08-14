@@ -1,0 +1,26 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: awssesaccountsettings
+spec:
+  # A settings singleton under live E2E with the class's ASYMMETRIC
+  # destroy contract: the scenario applies both arms (suppression
+  # BOUNCE+COMPLAINT, VDM enabled), GetAccount verifies the echoes,
+  # then destroy -- VDM resets to DISABLED (a real revert) while
+  # suppression PERSISTS (upstream delete is a no-op; the last-applied
+  # reasons stay in effect). Verify-absent asserts exactly that
+  # asymmetry, and the retained suppression posture is this kind's
+  # recorded settings-retention class (the SES feedback-forwarding
+  # precedent), not an orphan. VDM billing prorates to minutes -- ~$0.
+  #
+  # Singleton collision class: one SES account object per
+  # account+region -- lanes run sequentially within a session, and
+  # concurrent sessions must not run this kind's lanes in the same
+  # region simultaneously.
+  #
+  # pending_proof: forged this session to the full offline bar -- Q38
+  # proves it live.
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 15

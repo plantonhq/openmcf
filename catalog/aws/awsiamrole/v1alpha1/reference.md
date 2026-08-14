@@ -314,6 +314,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| AwsApiGatewayAccountSettings | `spec.cloudwatchRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.imageSource.accessRoleArn` | `status.outputs.role_arn` |
 | AwsAppRunnerService | `spec.instanceRoleArn` | `status.outputs.role_arn` |
 | AwsAthenaWorkgroup | `spec.executionRole` | `status.outputs.role_arn` |
@@ -332,6 +333,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreTools | `spec.codeInterpreters[].executionRoleArn` | `status.outputs.role_arn` |
 | AwsBedrockCustomModel | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockFlow | `spec.executionRoleArn` | `status.outputs.role_arn` |
+| AwsBedrockInvocationLogging | `spec.cloudwatch.roleArn` | `status.outputs.role_arn` |
 | AwsBedrockKnowledgeBase | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsCloudwatchLogGroup | `spec.subscriptionFilters[].roleArn` | `status.outputs.role_arn` |
 | AwsCodeBuildProject | `spec.serviceRole` | `status.outputs.role_arn` |

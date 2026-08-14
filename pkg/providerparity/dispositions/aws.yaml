@@ -95,9 +95,6 @@ resources:
   - resource: aws_amplify_webhook
     disposition: model-planned
     reason: "judged as a planned AwsAmplifyApp kind (app with branches, domain associations, webhooks, backend environments)"
-  - resource: aws_api_gateway_account
-    disposition: model-planned
-    reason: "judged as a planned AwsApiGatewayAccountSettings kind (region settings singleton: sets the account's CloudWatch-logging role and delete merely resets the field -- re-judged 2026-08-14 out of the founding AwsRestApiGateway fold, citing the AwsBedrockInvocationLogging / SES account-settings / AgentCore token-vault precedent: multiple gateway instances would fight over the ONE account object)"
   - resource: aws_api_gateway_rest_api_put
     disposition: composed
     reason: "the aws_api_gateway_rest_api resource already owns this capability through its body argument (Create -> PutRestApi -> reconcile choreography in the provider source); AwsRestApiGateway's OpenAPI arm is the surface -- re-judged 2026-08-14 from model-planned: a second one-shot put resource would be duplicate machinery over the same API call"
@@ -359,12 +356,6 @@ resources:
   - resource: aws_bedrock_evaluation_job
     disposition: deferred
     reason: "model evaluation jobs are imperative run-once workloads, a poor declarative fit; deferred"
-  - resource: aws_bedrock_model_invocation_logging_configuration
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockInvocationLogging kind (region singleton: PutModelInvocationLoggingConfiguration, identity = the region) -- folding a region-wide observability singleton into the per-model AwsBedrockModelAccess would make multiple access instances fight over one logging object"
-  - resource: aws_bedrockagentcore_token_vault_cmk
-    disposition: model-planned
-    reason: "judged as a planned AwsBedrockAgentCoreTokenVault kind (account/region settings singleton: sets the CMK on the ONE default token vault, delete is a no-op -- re-judged 2026-08-13 out of the founding AwsBedrockAgentCoreIdentity fold, citing the AwsBedrockInvocationLogging precedent: multiple Identity instances would fight over one vault object)"
   - resource: aws_billing_view
     disposition: deferred
     reason: "billing views are console/reporting configuration; deferred pending demand"
@@ -3323,12 +3314,6 @@ resources:
   - resource: aws_ses_template
     disposition: excluded-deprecated
     reason: "SES v1 identity/configuration surface is superseded by the SESv2 resources consumed by the SES kinds"
-  - resource: aws_sesv2_account_suppression_attributes
-    disposition: model-planned
-    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
-  - resource: aws_sesv2_account_vdm_attributes
-    disposition: model-planned
-    reason: "judged as a planned AwsSesAccountSettings kind (account/region singletons: suppression + VDM attributes) -- folding a singleton into the per-set AwsSesConfigurationSet would make multiple sets fight over one account object"
   - resource: aws_sesv2_contact_list
     disposition: deferred
     reason: "SES tenants and contact lists; deferred pending demand"

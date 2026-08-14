@@ -1289,6 +1289,38 @@ func TestAwsBedrockAgentCoreEvaluation_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsbedrockagentcoreevaluation", "terraform")
 }
 
+func TestAwsApiGatewayAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapigatewayaccountsettings", "pulumi")
+}
+
+func TestAwsApiGatewayAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsapigatewayaccountsettings", "terraform")
+}
+
+func TestAwsBedrockInvocationLogging_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinvocationlogging", "pulumi")
+}
+
+func TestAwsBedrockInvocationLogging_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockinvocationlogging", "terraform")
+}
+
+func TestAwsBedrockAgentCoreTokenVault_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "pulumi")
+}
+
+func TestAwsBedrockAgentCoreTokenVault_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsbedrockagentcoretokenvault", "terraform")
+}
+
+func TestAwsSesAccountSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesaccountsettings", "pulumi")
+}
+
+func TestAwsSesAccountSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awssesaccountsettings", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

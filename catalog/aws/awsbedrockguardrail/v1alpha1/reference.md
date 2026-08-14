@@ -657,6 +657,19 @@ are blocked. 0 blocks nothing; values near 1 block aggressively
 
 `string`
 
+The AWS system-defined guardrail profile that lets this guardrail
+evaluate traffic routed through cross-region inference. Accepts the
+geography-qualified profile identifier (e.g. "us.guardrail.v1:0" -
+the portable shape; both modules compose it into the deploying
+account's profile ARN at deploy time, live-verified 2026-08-13) or
+the full profile ARN
+(arn:aws:bedrock:<region>:<account>:guardrail-profile/<id>). AWS
+defines the available profiles per geography; this cannot reference
+a customer resource. REQUIRED whenever any policy family sets the
+STANDARD tier - AWS rejects STANDARD without cross-region inference
+("Can't configure guardrail policy tier. Enable cross-Region
+inference for your guardrail to use Standard tier.").
+
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^([a-z]{2,4}\\.guardrail\\.v[0-9]+:[0-9]+|arn:aws[a-z-]*:bedrock:[a-z0-9-]+:[0-9]{12}:guardrail-profile/.+)$"}}
 
 ### spec.versions

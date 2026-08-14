@@ -108,7 +108,6 @@ spec:
 | `spec.vector.supplementalDataS3Uri` | `string` |  |  |  |
 | `spec.managed` | `AwsBedrockKnowledgeBaseManagedConfig` |  |  |  |
 | `spec.managed.embeddingModelArn` | `string` |  |  |  |
-| `spec.managed.embeddingModelType` | `string` |  |  |  |
 | `spec.managed.embeddingModel` | `AwsBedrockKnowledgeBaseEmbeddingModelConfig` |  |  |  |
 | `spec.managed.embeddingModel.dimensions` | `int32` |  |  |  |
 | `spec.managed.embeddingModel.embeddingDataType` | `string` |  |  |  |
@@ -397,17 +396,12 @@ AWS - no `storage` block.
 
 `string`
 
-ARN of the embedding foundation model. Omitted = AWS picks its
-default embedding model.
-
-### spec.managed.embeddingModelType
-
-`string`
-
-Whether the embedding model is AWS-MANAGED or a CUSTOM model you
-brought. Omitted = AWS derives it from the model ARN.
-
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["MANAGED","CUSTOM"]}}
+ARN of the embedding foundation model. Omitted = AWS uses its
+service-managed embedding model. Setting an ARN switches the
+embedding-model type to CUSTOM; the modules derive and always send
+that discriminator (AWS's embeddingModelType is CUSTOM exactly when
+an ARN is brought, MANAGED otherwise - a leaf that must agree with
+structure is drift surface, not configuration).
 
 ### spec.managed.embeddingModel
 

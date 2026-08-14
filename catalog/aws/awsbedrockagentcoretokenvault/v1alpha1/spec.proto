@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package dev.planton.aws.awsbedrockagentcoretokenvault.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// AwsBedrockAgentCoreTokenVaultSpec defines the encryption posture of
+// an AgentCore token vault - the store AgentCore Identity keeps OAuth
+// tokens and API keys in.
+//
+// This is a SETTINGS SINGLETON: AWS provisions ONE default token
+// vault per account+region and this component sets which KMS key
+// encrypts it. Deploy at most one instance per vault (in practice:
+// per region); two instances targeting the same vault fight over one
+// setting. metadata.name never reaches AWS - it is Planton-side
+// identity only.
+//
+// Destroying this component is a NO-OP at AWS (the provider has no
+// delete API for the vault's key setting): whatever key type was last
+// applied REMAINS in effect after destroy. To return to AWS-managed
+// encryption, apply an instance with key_type "ServiceManagedKey"
+// BEFORE destroying - destroy alone does not revert it.
+message AwsBedrockAgentCoreTokenVaultSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.customer_key_requires_arn"
+    message: "kms_key_arn is required when key_type is CustomerManagedKey - name the KMS key the vault should use"
+    expression: "this.key_type != 'CustomerManagedKey' || has(this.kms_key_arn)"
+  };
+  option (buf.validate.message).cel = {
+    id: "spec.service_key_forbids_arn"
+    message: "kms_key_arn must be unset when key_type is ServiceManagedKey - AWS owns and rotates the service-managed key"
+    expression: "this.key_type != 'ServiceManagedKey' || !has(this.kms_key_arn)"
+  };
+
+  // The AWS region whose default token vault this instance manages.
+  // Example: "us-west-2", "eu-west-1"
+  string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The token vault to configure. AWS provisions exactly one vault
+  // per account+region named "default"; leave unset to target it
+  // (the modules send "default"). Changing this value replaces the
+  // configuration onto the other vault. This is also the provider's
+  // import ID.
+  string token_vault_id = 2 [(buf.validate.field).string.max_len = 128];
+
+  // Who owns the vault's encryption key:
+  //   - "CustomerManagedKey": encrypt with YOUR KMS key (named in
+  //     kms_key_arn). You control rotation, policy, and revocation -
+  //     revoking the key's grant locks AgentCore out of every stored
+  //     credential.
+  //   - "ServiceManagedKey": AWS owns and rotates the key (the
+  //     default posture every new account starts in).
+  string key_type = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "CustomerManagedKey",
+        "ServiceManagedKey"
+      ]
+    }
+  ];
+
+  // The customer-managed KMS key that encrypts the vault. Required
+  // with key_type "CustomerManagedKey", forbidden with
+  // "ServiceManagedKey". The key must be symmetric and live in the
+  // same region; AgentCore's grants on it are created by AWS when the
+  // setting is applied.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"
+  ];
+}

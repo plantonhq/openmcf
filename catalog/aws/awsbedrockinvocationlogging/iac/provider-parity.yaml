@@ -1,0 +1,46 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# aws provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  aws_bedrock_model_invocation_logging_configuration:
+    mappings:
+      # v6 per-resource region override -- the region singleton's whole
+      # identity; the modules wire the provider to spec.region.
+      - arg: region
+        spec: spec.region
+      # The provider's required-single logging_config wrapper carries no
+      # identity of its own -- the spec flattens it to the root.
+      - arg: logging_config
+        spec: spec
+      - arg: logging_config.text_data_delivery_enabled
+        spec: spec.text_data_delivery_enabled
+      - arg: logging_config.image_data_delivery_enabled
+        spec: spec.image_data_delivery_enabled
+      - arg: logging_config.embedding_data_delivery_enabled
+        spec: spec.embedding_data_delivery_enabled
+      - arg: logging_config.video_data_delivery_enabled
+        spec: spec.video_data_delivery_enabled
+      # The delivery arms drop the provider's _config suffixes.
+      - arg: logging_config.cloudwatch_config
+        spec: spec.cloudwatch
+      - arg: logging_config.cloudwatch_config.log_group_name
+        spec: spec.cloudwatch.log_group_name
+      - arg: logging_config.cloudwatch_config.role_arn
+        spec: spec.cloudwatch.role_arn
+      - arg: logging_config.cloudwatch_config.large_data_delivery_s3_config
+        spec: spec.cloudwatch.large_data_delivery_s3
+      - arg: logging_config.cloudwatch_config.large_data_delivery_s3_config.bucket_name
+        spec: spec.cloudwatch.large_data_delivery_s3.bucket_name
+      - arg: logging_config.cloudwatch_config.large_data_delivery_s3_config.key_prefix
+        spec: spec.cloudwatch.large_data_delivery_s3.key_prefix
+      - arg: logging_config.s3_config
+        spec: spec.s3
+      - arg: logging_config.s3_config.bucket_name
+        spec: spec.s3.bucket_name
+      - arg: logging_config.s3_config.key_prefix
+        spec: spec.s3.key_prefix

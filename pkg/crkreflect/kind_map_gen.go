@@ -49,6 +49,7 @@ import (
 	auth0resourceserverv1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0resourceserver/v1alpha1"
 	auth0rolev1alpha1 "github.com/plantonhq/planton/catalog/auth0/auth0role/v1alpha1"
 	awsalbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsalb/v1alpha1"
+	awsapigatewayaccountsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapigatewayaccountsettings/v1alpha1"
 	awsapprunnerautoscalingconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerautoscalingconfiguration/v1alpha1"
 	awsapprunnerobservabilityconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerobservabilityconfiguration/v1alpha1"
 	awsapprunnerservicev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsapprunnerservice/v1alpha1"
@@ -65,11 +66,13 @@ import (
 	awsbedrockagentcoreidentityv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreidentity/v1alpha1"
 	awsbedrockagentcorememoryv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcorememory/v1alpha1"
 	awsbedrockagentcoreruntimev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoreruntime/v1alpha1"
+	awsbedrockagentcoretokenvaultv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoretokenvault/v1alpha1"
 	awsbedrockagentcoretoolsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockagentcoretools/v1alpha1"
 	awsbedrockcustommodelv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockcustommodel/v1alpha1"
 	awsbedrockflowv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockflow/v1alpha1"
 	awsbedrockguardrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockguardrail/v1alpha1"
 	awsbedrockinferenceprofilev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockinferenceprofile/v1alpha1"
+	awsbedrockinvocationloggingv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockinvocationlogging/v1alpha1"
 	awsbedrockknowledgebasev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockknowledgebase/v1alpha1"
 	awsbedrockmodelaccessv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockmodelaccess/v1alpha1"
 	awsbedrockpromptv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsbedrockprompt/v1alpha1"
@@ -175,6 +178,7 @@ import (
 	awssecretsmanagersecretv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecretsmanagersecret/v1alpha1"
 	awssecuritygroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssecuritygroup/v1alpha1"
 	awsserverlesselasticachev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsserverlesselasticache/v1alpha1"
+	awssesaccountsettingsv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssesaccountsettings/v1alpha1"
 	awssesconfigurationsetv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssesconfigurationset/v1alpha1"
 	awssesemailidentityv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssesemailidentity/v1alpha1"
 	awssnssubscriptionv1alpha1 "github.com/plantonhq/planton/catalog/aws/awssnssubscription/v1alpha1"
@@ -784,6 +788,7 @@ var ProviderAuth0Map = map[cloudresourcekind.CloudResourceKind]proto.Message{
 
 var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsAlb:                                 &awsalbv1alpha1.AwsAlb{},
+	cloudresourcekind.CloudResourceKind_AwsApiGatewayAccountSettings:           &awsapigatewayaccountsettingsv1alpha1.AwsApiGatewayAccountSettings{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerAutoScalingConfiguration:   &awsapprunnerautoscalingconfigurationv1alpha1.AwsAppRunnerAutoScalingConfiguration{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerObservabilityConfiguration: &awsapprunnerobservabilityconfigurationv1alpha1.AwsAppRunnerObservabilityConfiguration{},
 	cloudresourcekind.CloudResourceKind_AwsAppRunnerService:                    &awsapprunnerservicev1alpha1.AwsAppRunnerService{},
@@ -800,11 +805,13 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreIdentity:            &awsbedrockagentcoreidentityv1alpha1.AwsBedrockAgentCoreIdentity{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreMemory:              &awsbedrockagentcorememoryv1alpha1.AwsBedrockAgentCoreMemory{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreRuntime:             &awsbedrockagentcoreruntimev1alpha1.AwsBedrockAgentCoreRuntime{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreTokenVault:          &awsbedrockagentcoretokenvaultv1alpha1.AwsBedrockAgentCoreTokenVault{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockAgentCoreTools:               &awsbedrockagentcoretoolsv1alpha1.AwsBedrockAgentCoreTools{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockCustomModel:                  &awsbedrockcustommodelv1alpha1.AwsBedrockCustomModel{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockFlow:                         &awsbedrockflowv1alpha1.AwsBedrockFlow{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockGuardrail:                    &awsbedrockguardrailv1alpha1.AwsBedrockGuardrail{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockInferenceProfile:             &awsbedrockinferenceprofilev1alpha1.AwsBedrockInferenceProfile{},
+	cloudresourcekind.CloudResourceKind_AwsBedrockInvocationLogging:            &awsbedrockinvocationloggingv1alpha1.AwsBedrockInvocationLogging{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockKnowledgeBase:                &awsbedrockknowledgebasev1alpha1.AwsBedrockKnowledgeBase{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockModelAccess:                  &awsbedrockmodelaccessv1alpha1.AwsBedrockModelAccess{},
 	cloudresourcekind.CloudResourceKind_AwsBedrockPrompt:                       &awsbedrockpromptv1alpha1.AwsBedrockPrompt{},
@@ -910,6 +917,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsSecretsManagerSecret:                &awssecretsmanagersecretv1alpha1.AwsSecretsManagerSecret{},
 	cloudresourcekind.CloudResourceKind_AwsSecurityGroup:                       &awssecuritygroupv1alpha1.AwsSecurityGroup{},
 	cloudresourcekind.CloudResourceKind_AwsServerlessElasticache:               &awsserverlesselasticachev1alpha1.AwsServerlessElasticache{},
+	cloudresourcekind.CloudResourceKind_AwsSesAccountSettings:                  &awssesaccountsettingsv1alpha1.AwsSesAccountSettings{},
 	cloudresourcekind.CloudResourceKind_AwsSesConfigurationSet:                 &awssesconfigurationsetv1alpha1.AwsSesConfigurationSet{},
 	cloudresourcekind.CloudResourceKind_AwsSesEmailIdentity:                    &awssesemailidentityv1alpha1.AwsSesEmailIdentity{},
 	cloudresourcekind.CloudResourceKind_AwsSnsSubscription:                     &awssnssubscriptionv1alpha1.AwsSnsSubscription{},

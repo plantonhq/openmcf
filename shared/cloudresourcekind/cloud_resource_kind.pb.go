@@ -347,6 +347,11 @@ const (
 	// A dependency-free leaf: the agreement covers an AWS-listed foundation
 	// model, never a customer resource.
 	CloudResourceKind_AwsBedrockModelAccess CloudResourceKind = 1194
+	// Region settings singleton (one invocation-logging configuration per
+	// account+region; identity = the region). Delivery destinations are
+	// optional references (at least one of CloudWatch/S3, enforced by CEL),
+	// so prerequisites stay empty and E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsBedrockInvocationLogging CloudResourceKind = 1195
 	// AwsIamRole is a prerequisite because the Bedrock service assumes the
 	// agent resource role to invoke models, action-group Lambdas, and
 	// knowledge bases; the guardrail, KMS key, provisioned throughput, and
@@ -412,6 +417,11 @@ const (
 	// optional, so no dependency is required for the kind to function
 	// (scenarios compose IAM roles via annotations).
 	CloudResourceKind_AwsBedrockAgentCoreEvaluation CloudResourceKind = 1215
+	// Account/region settings singleton: sets the KMS key on the ONE
+	// default AgentCore token vault. The KMS reference is conditional on
+	// key_type (CEL-enforced), so prerequisites stay empty and E2E
+	// fixtures ride scenario annotations.
+	CloudResourceKind_AwsBedrockAgentCoreTokenVault CloudResourceKind = 1216
 	// The immutable serving definition (container image + artifacts +
 	// execution role) that endpoints deploy - one container or an
 	// inference pipeline.
@@ -466,6 +476,15 @@ const (
 	// REST integrations reach private services. AwsNlb is a prerequisite
 	// because AWS rejects link creation without the target balancer.
 	CloudResourceKind_AwsRestApiVpcLink CloudResourceKind = 1233
+	// Region settings singleton (one API Gateway account object per
+	// account+region; identity = the region). The CloudWatch role is an
+	// optional reference (unset = the explicit no-logging posture), so
+	// prerequisites stay empty and E2E fixtures ride scenario annotations.
+	CloudResourceKind_AwsApiGatewayAccountSettings CloudResourceKind = 1234
+	// Account/region settings singleton (one SES account object per
+	// account+region): the suppression list and VDM posture. 1360 opens
+	// the SES P1 sub-band (1360-1369).
+	CloudResourceKind_AwsSesAccountSettings CloudResourceKind = 1360
 	// 2000–2999: Azure resources
 	CloudResourceKind_AzureResourceGroup CloudResourceKind = 2000
 	// AzureResourceGroup is the only required parent: the cluster is created
@@ -1791,6 +1810,7 @@ var (
 		1192:  "AwsBedrockInferenceProfile",
 		1193:  "AwsBedrockProvisionedThroughput",
 		1194:  "AwsBedrockModelAccess",
+		1195:  "AwsBedrockInvocationLogging",
 		1200:  "AwsBedrockAgent",
 		1201:  "AwsBedrockKnowledgeBase",
 		1202:  "AwsBedrockFlow",
@@ -1801,6 +1821,7 @@ var (
 		1213:  "AwsBedrockAgentCoreIdentity",
 		1214:  "AwsBedrockAgentCoreTools",
 		1215:  "AwsBedrockAgentCoreEvaluation",
+		1216:  "AwsBedrockAgentCoreTokenVault",
 		1220:  "AwsSagemakerModel",
 		1221:  "AwsSagemakerEndpoint",
 		1222:  "AwsSagemakerNotebookInstance",
@@ -1814,6 +1835,8 @@ var (
 		1231:  "AwsRestApiDomain",
 		1232:  "AwsRestApiUsagePlan",
 		1233:  "AwsRestApiVpcLink",
+		1234:  "AwsApiGatewayAccountSettings",
+		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
 		2002:  "AzureAksNodePool",
@@ -2502,6 +2525,7 @@ var (
 		"AwsBedrockInferenceProfile":                     1192,
 		"AwsBedrockProvisionedThroughput":                1193,
 		"AwsBedrockModelAccess":                          1194,
+		"AwsBedrockInvocationLogging":                    1195,
 		"AwsBedrockAgent":                                1200,
 		"AwsBedrockKnowledgeBase":                        1201,
 		"AwsBedrockFlow":                                 1202,
@@ -2512,6 +2536,7 @@ var (
 		"AwsBedrockAgentCoreIdentity":                    1213,
 		"AwsBedrockAgentCoreTools":                       1214,
 		"AwsBedrockAgentCoreEvaluation":                  1215,
+		"AwsBedrockAgentCoreTokenVault":                  1216,
 		"AwsSagemakerModel":                              1220,
 		"AwsSagemakerEndpoint":                           1221,
 		"AwsSagemakerNotebookInstance":                   1222,
@@ -2525,6 +2550,8 @@ var (
 		"AwsRestApiDomain":                               1231,
 		"AwsRestApiUsagePlan":                            1232,
 		"AwsRestApiVpcLink":                              1233,
+		"AwsApiGatewayAccountSettings":                   1234,
+		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
 		"AzureAksNodePool":                               2002,
@@ -3466,7 +3493,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xe5\xbd\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*ڿ\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3598,7 +3625,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x15AwsBedrockCustomModel\x10\xa7\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrcm:\x02\xf0\a\x12:\n" +
 	"\x1aAwsBedrockInferenceProfile\x10\xa8\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrip\x12?\n" +
 	"\x1fAwsBedrockProvisionedThroughput\x10\xa9\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrpt\x125\n" +
-	"\x15AwsBedrockModelAccess\x10\xaa\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrma\x124\n" +
+	"\x15AwsBedrockModelAccess\x10\xaa\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsbrma\x12<\n" +
+	"\x1bAwsBedrockInvocationLogging\x10\xab\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsbedil\x124\n" +
 	"\x0fAwsBedrockAgent\x10\xb0\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbragt:\x02\xf0\a\x12;\n" +
 	"\x17AwsBedrockKnowledgeBase\x10\xb1\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawsbrkb:\x02\xf0\a\x123\n" +
 	"\x0eAwsBedrockFlow\x10\xb2\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawsbrflw:\x02\xf0\a\x121\n" +
@@ -3608,7 +3636,8 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x19AwsBedrockAgentCoreMemory\x10\xbc\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacmem\x12;\n" +
 	"\x1bAwsBedrockAgentCoreIdentity\x10\xbd\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacid\x128\n" +
 	"\x18AwsBedrockAgentCoreTools\x10\xbe\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsactl\x12=\n" +
-	"\x1dAwsBedrockAgentCoreEvaluation\x10\xbf\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacev\x126\n" +
+	"\x1dAwsBedrockAgentCoreEvaluation\x10\xbf\t\x1a\x19\xa2\xf7\x04\x15\b\f\x12\bv1alpha1\"\aawsacev\x12>\n" +
+	"\x1dAwsBedrockAgentCoreTokenVault\x10\xc0\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsacetv\x126\n" +
 	"\x11AwsSagemakerModel\x10\xc4\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmmd:\x02\xf0\a\x129\n" +
 	"\x14AwsSagemakerEndpoint\x10\xc5\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmep:\x02\xc4\t\x12A\n" +
 	"\x1cAwsSagemakerNotebookInstance\x10\xc6\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawssgmnb:\x02\xf0\a\x12=\n" +
@@ -3621,7 +3650,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x11AwsRestApiGateway\x10\xce\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestgw\x126\n" +
 	"\x10AwsRestApiDomain\x10\xcf\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestdm:\x02\xe9\a\x125\n" +
 	"\x13AwsRestApiUsagePlan\x10\xd0\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawsrestup\x127\n" +
-	"\x11AwsRestApiVpcLink\x10\xd1\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestvl:\x02\xb8\b\x121\n" +
+	"\x11AwsRestApiVpcLink\x10\xd1\t\x1a\x1f\xa2\xf7\x04\x1b\b\f\x12\bv1alpha1\"\tawsrestvl:\x02\xb8\b\x12=\n" +
+	"\x1cAwsApiGatewayAccountSettings\x10\xd2\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawsapias\x126\n" +
+	"\x15AwsSesAccountSettings\x10\xd0\n" +
+	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +
 	"\x0fAzureAksCluster\x10\xd1\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x03aks0\x01:\x02\xd0\x0f\x122\n" +
 	"\x10AzureAksNodePool\x10\xd2\x0f\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05aksnp:\x02\xd1\x0f\x126\n" +

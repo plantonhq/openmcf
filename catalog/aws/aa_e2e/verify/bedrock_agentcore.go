@@ -321,34 +321,12 @@ func (*agentCoreToolsVerifier) VerifyAbsentFromOutputs(ctx context.Context, cfg 
 	return nil
 }
 
-// outputKeys returns a stack output's map entries as key -> string value
-// (empty when the output is absent or not a map).
-func outputKeys(outputs map[string]interface{}, key string) map[string]string {
-	result := map[string]string{}
-	raw, ok := outputs[key]
-	if !ok || raw == nil {
-		return result
-	}
-	switch m := raw.(type) {
-	case map[string]interface{}:
-		for k, v := range m {
-			if s, ok := v.(string); ok {
-				result[k] = s
-			}
-		}
-	case map[string]string:
-		for k, v := range m {
-			result[k] = v
-		}
-	}
-	return result
-}
-
 // agentCoreEvaluationVerifier verifies AwsBedrockAgentCoreEvaluation
 // components -- a bundle whose arms are all id-keyed output maps, so
 // verification walks the full outputs (the OutputsVerifier path).
-// Evaluators and online configs land ACTIVE; harnesses land READY.
-// Absence accepts DELETING alongside not-found.
+// Evaluators and online configs land ACTIVE; harnesses land READY
+// (the harness vocabulary differs from the other two). Absence is
+// not-found (or DELETING on the harness).
 type agentCoreEvaluationVerifier struct{}
 
 func (*agentCoreEvaluationVerifier) IDOutputKey() string { return "evaluator_ids" }
@@ -379,17 +357,17 @@ func (*agentCoreEvaluationVerifier) VerifyExistsFromOutputs(ctx context.Context,
 		if err != nil {
 			return errors.Wrapf(err, "GetHarness(%s)", harnessId)
 		}
-		if out.Harness == nil || out.Harness.Status != awstypes.HarnessStatusReady {
-			status := awstypes.HarnessStatus("")
-			if out.Harness != nil {
-				status = out.Harness.Status
-			}
-			return errors.Errorf("harness %s is %s, expected READY", harnessId, status)
+		// GetHarnessOutput wraps the harness (unlike the evaluator and
+		// online-config outputs, which carry Status at the top level).
+		if out.Harness.Status != awstypes.HarnessStatusReady {
+			return errors.Errorf("harness %s is %s, expected READY", harnessId, out.Harness.Status)
 		}
 		verified++
 	}
 	for _, configId := range outputKeys(outputs, "online_evaluation_config_ids") {
-		out, err := client.GetOnlineEvaluationConfig(ctx, &bedrockagentcorecontrol.GetOnlineEvaluationConfigInput{OnlineEvaluationConfigId: aws.String(configId)})
+		out, err := client.GetOnlineEvaluationConfig(ctx, &bedrockagentcorecontrol.GetOnlineEvaluationConfigInput{
+			OnlineEvaluationConfigId: aws.String(configId),
+		})
 		if err != nil {
 			return errors.Wrapf(err, "GetOnlineEvaluationConfig(%s)", configId)
 		}
@@ -407,17 +385,15 @@ func (*agentCoreEvaluationVerifier) VerifyExistsFromOutputs(ctx context.Context,
 func (*agentCoreEvaluationVerifier) VerifyAbsentFromOutputs(ctx context.Context, cfg aws.Config, outputs map[string]interface{}, region string) error {
 	client := agentCoreClient(cfg, region)
 	for _, evaluatorId := range outputKeys(outputs, "evaluator_ids") {
-		if out, err := client.GetEvaluator(ctx, &bedrockagentcorecontrol.GetEvaluatorInput{EvaluatorId: aws.String(evaluatorId)}); err == nil {
-			if out.Status != awstypes.EvaluatorStatusDeleting {
-				return errors.Errorf("evaluator %s still exists (status %s)", evaluatorId, out.Status)
-			}
+		if _, err := client.GetEvaluator(ctx, &bedrockagentcorecontrol.GetEvaluatorInput{EvaluatorId: aws.String(evaluatorId)}); err == nil {
+			return errors.Errorf("evaluator %s still exists", evaluatorId)
 		} else if !isAgentCoreNotFound(err) {
 			return errors.Wrapf(err, "GetEvaluator(%s) during absence check", evaluatorId)
 		}
 	}
 	for _, harnessId := range outputKeys(outputs, "harness_ids") {
 		if out, err := client.GetHarness(ctx, &bedrockagentcorecontrol.GetHarnessInput{HarnessId: aws.String(harnessId)}); err == nil {
-			if out.Harness != nil && out.Harness.Status != awstypes.HarnessStatusDeleting {
+			if out.Harness.Status != awstypes.HarnessStatusDeleting {
 				return errors.Errorf("harness %s still exists (status %s)", harnessId, out.Harness.Status)
 			}
 		} else if !isAgentCoreNotFound(err) {
@@ -425,13 +401,36 @@ func (*agentCoreEvaluationVerifier) VerifyAbsentFromOutputs(ctx context.Context,
 		}
 	}
 	for _, configId := range outputKeys(outputs, "online_evaluation_config_ids") {
-		if out, err := client.GetOnlineEvaluationConfig(ctx, &bedrockagentcorecontrol.GetOnlineEvaluationConfigInput{OnlineEvaluationConfigId: aws.String(configId)}); err == nil {
-			if out.Status != awstypes.OnlineEvaluationConfigStatusDeleting {
-				return errors.Errorf("online evaluation config %s still exists (status %s)", configId, out.Status)
-			}
+		if _, err := client.GetOnlineEvaluationConfig(ctx, &bedrockagentcorecontrol.GetOnlineEvaluationConfigInput{
+			OnlineEvaluationConfigId: aws.String(configId),
+		}); err == nil {
+			return errors.Errorf("online evaluation config %s still exists", configId)
 		} else if !isAgentCoreNotFound(err) {
 			return errors.Wrapf(err, "GetOnlineEvaluationConfig(%s) during absence check", configId)
 		}
 	}
 	return nil
+}
+
+// outputKeys returns a stack output's map entries as key -> string value
+// (empty when the output is absent or not a map).
+func outputKeys(outputs map[string]interface{}, key string) map[string]string {
+	result := map[string]string{}
+	raw, ok := outputs[key]
+	if !ok || raw == nil {
+		return result
+	}
+	switch m := raw.(type) {
+	case map[string]interface{}:
+		for k, v := range m {
+			if s, ok := v.(string); ok {
+				result[k] = s
+			}
+		}
+	case map[string]string:
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
 }

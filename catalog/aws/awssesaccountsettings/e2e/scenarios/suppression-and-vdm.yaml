@@ -1,0 +1,29 @@
+# Full surface: both arms of the SES account object -- the
+# recommended suppression posture and VDM with both sub-toggles
+# exercised (metrics on, shared-delivery optimization explicitly
+# false, proving the presence-typed toggle sends DISABLED).
+# No prerequisites: the settings target the account object itself.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSesAccountSettings
+metadata:
+  name: planton-oss-e2e-awssesas
+  id: planton-oss-e2e-awssesas
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awssesaccountsettings
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  suppression:
+    reasons:
+      - BOUNCE
+      - COMPLAINT
+  vdm:
+    enabled: true
+    engagementMetrics: true
+    optimizedSharedDelivery: false

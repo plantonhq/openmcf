@@ -662,7 +662,11 @@ Sequences that stop generation when the model emits them.
 
 `double` · optional (explicit presence)
 
-Sampling temperature (0 = deterministic, 1 = most random).
+Sampling temperature (0 = deterministic, 1 = most random). Bedrock
+stores it as a 32-bit float: a value that is not float32-exact (0.2,
+0.9) reads back slightly widened (0.20000000298023224) from the API -
+harmless for deploys (state keeps your value), visible only when
+importing a pre-existing flow.
 
 - rule: {"double":{"lte":1,"gte":0}}
 
@@ -671,7 +675,7 @@ Sampling temperature (0 = deterministic, 1 = most random).
 `double` · optional (explicit presence)
 
 Nucleus sampling - consider tokens covering the top P probability
-mass (0-1).
+mass (0-1). Same float32 storage as temperature.
 
 - rule: {"double":{"lte":1,"gte":0}}
 
@@ -787,7 +791,11 @@ Sequences that stop generation when the model emits them.
 
 `double` · optional (explicit presence)
 
-Sampling temperature (0 = deterministic, 1 = most random).
+Sampling temperature (0 = deterministic, 1 = most random). Bedrock
+stores it as a 32-bit float: a value that is not float32-exact (0.2,
+0.9) reads back slightly widened (0.20000000298023224) from the API -
+harmless for deploys (state keeps your value), visible only when
+importing a pre-existing flow.
 
 - rule: {"double":{"lte":1,"gte":0}}
 
@@ -796,7 +804,7 @@ Sampling temperature (0 = deterministic, 1 = most random).
 `double` · optional (explicit presence)
 
 Nucleus sampling - consider tokens covering the top P probability
-mass (0-1).
+mass (0-1). Same float32 storage as temperature.
 
 - rule: {"double":{"lte":1,"gte":0}}
 

@@ -340,10 +340,9 @@ Glob pattern the header value must match (max 128 characters), e.g.
 `string | valueFrom` · required
 
 The REST API that matching requests are routed to. Pass the REST API's
-ID literally -- API Gateway rejects HTTP/WebSocket API targets here, so
-referencing an AwsHttpApiGateway would always fail the apply (the
-catalog does not yet model REST APIs; this becomes referenceable when a
-REST API kind ships).
+ID (AwsRestApiGateway status.outputs.rest_api_id). API Gateway rejects
+HTTP/WebSocket API targets here, so referencing an AwsHttpApiGateway
+would always fail the apply.
 
 - rule: {"required":true}
 - rule: write as {value: <literal>} or {valueFrom: {kind: <Kind>, name: <that resource's name>, fieldPath: status.outputs.<output>}} -- a bare string does not parse

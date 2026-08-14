@@ -110,6 +110,10 @@ var verifiers = map[string]Verifier{
 	"awshttpapigateway":              &httpApiGatewayVerifier{},
 	"awshttpapivpclink":              &httpApiVpcLinkVerifier{},
 	"awshttpapidomain":               &httpApiDomainVerifier{},
+	"awsrestapigateway":              &restApiGatewayVerifier{},
+	"awsrestapidomain":               &restApiDomainVerifier{},
+	"awsrestapiusageplan":            &restApiUsagePlanVerifier{},
+	"awsrestapivpclink":              &restApiVpcLinkVerifier{},
 	"awscognitouserpool":             &cognitoUserPoolVerifier{},
 	"awscognitouserpoolclient":       &cognitoUserPoolClientVerifier{},
 	"awscognitoidentityprovider":     &cognitoIdentityProviderVerifier{},
@@ -145,10 +149,12 @@ var verifiers = map[string]Verifier{
 	"awsbedrockagentcoretools":        &agentCoreToolsVerifier{},
 	"awsbedrockagentcoreevaluation":   &agentCoreEvaluationVerifier{},
 
-	"awsrestapigateway":   &restApiGatewayVerifier{},
-	"awsrestapidomain":    &restApiDomainVerifier{},
-	"awsrestapiusageplan": &restApiUsagePlanVerifier{},
-	"awsrestapivpclink":   &restApiVpcLinkVerifier{},
+	// The settings-singleton class (region/account-scoped settings
+	// objects; per-kind destroy contracts in settings_singletons.go).
+	"awsapigatewayaccountsettings":  &apiGatewayAccountSettingsVerifier{},
+	"awsbedrockinvocationlogging":   &bedrockInvocationLoggingVerifier{},
+	"awsbedrockagentcoretokenvault": &agentCoreTokenVaultVerifier{},
+	"awssesaccountsettings":         &sesAccountSettingsVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},

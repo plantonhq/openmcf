@@ -1,0 +1,6 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsApiGatewayAccountSettings
+metadata:
+  name: apigw-account-no-logging
+spec:
+  region: <aws-region>

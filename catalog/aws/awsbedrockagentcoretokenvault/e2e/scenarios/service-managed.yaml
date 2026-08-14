@@ -1,0 +1,22 @@
+# Minimal posture AND the revert: ServiceManagedKey returns the vault
+# to AWS-owned encryption. Because destroy is a no-op for this
+# singleton, running this scenario AFTER the customer-managed one is
+# what leaves the test account in its default posture -- the ordering
+# IS the zero-orphan sweep for this kind.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsBedrockAgentCoreTokenVault
+metadata:
+  name: planton-oss-e2e-awsacetv-svc
+  id: planton-oss-e2e-awsacetv-svc
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsbedrockagentcoretokenvault
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  keyType: ServiceManagedKey

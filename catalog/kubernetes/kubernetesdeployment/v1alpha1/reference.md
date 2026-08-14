@@ -1332,6 +1332,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -1341,20 +1342,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -2206,6 +2210,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -2215,20 +2220,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -4228,6 +4236,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -4237,20 +4246,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -5102,6 +5114,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -5111,20 +5124,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -7165,6 +7181,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -7174,20 +7191,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.
@@ -8039,6 +8059,7 @@ Allowed values (use exactly as shown):
 - `AwsBedrockInferenceProfile` -- A dependency-free leaf: the model source is a foundation model or an AWS system-defined cross-region profile, never a customer resource.
 - `AwsBedrockProvisionedThroughput` -- A dependency-free leaf in the registry: capacity is typically bought for an AwsBedrockCustomModel (the default reference), but foundation model ARNs are equally legal, so the edge is optional composition.
 - `AwsBedrockModelAccess` -- A dependency-free leaf: the agreement covers an AWS-listed foundation model, never a customer resource.
+- `AwsBedrockInvocationLogging` -- Region settings singleton (one invocation-logging configuration per account+region; identity = the region). Delivery destinations are optional references (at least one of CloudWatch/S3, enforced by CEL), so prerequisites stay empty and E2E fixtures ride scenario annotations.
 - `AwsBedrockAgent` -- AwsIamRole is a prerequisite because the Bedrock service assumes the agent resource role to invoke models, action-group Lambdas, and knowledge bases; the guardrail, KMS key, provisioned throughput, and collaborator/knowledge-base edges are optional composition (e2e-prerequisites annotation). Action groups, aliases, collaborators, and knowledge-base associations are folded satellites of the agent.
 - `AwsBedrockKnowledgeBase` -- AwsIamRole is a prerequisite because the Bedrock service assumes the knowledge-base role to read data sources, call the embedding model, and read/write the vector store; the vector-store and data-source reference edges (OpenSearch, S3, Secrets Manager, ...) are optional composition (e2e-prerequisites annotation). Data sources are folded satellites of the knowledge base.
 - `AwsBedrockFlow` -- AwsIamRole is a prerequisite because the Bedrock service assumes the flow execution role to invoke the models, agents, knowledge bases, and Lambdas its nodes reference; the node-level reference edges are optional composition (e2e-prerequisites annotation).
@@ -8048,20 +8069,23 @@ Allowed values (use exactly as shown):
 - `AwsBedrockAgentCoreMemory` -- A dependency-free leaf for built-in strategies: the execution role (custom strategies, Kinesis delivery), KMS key, and Kinesis stream edges are optional composition (e2e-prerequisites annotation). Strategies are folded satellites of the memory - AWS serializes their changes through the parent.
 - `AwsBedrockAgentCoreIdentity` -- A dependency-free leaf: workload identities, credential providers, and the Cedar policy engine with its policies are all name-keyed arms of one identity-and-access bundle; the KMS key edge is optional composition (e2e-prerequisites annotation). The account/region token-vault CMK is deliberately NOT modeled here (settings singleton).
 - `AwsBedrockAgentCoreTools` -- A dependency-free leaf in the SANDBOX/PUBLIC postures: the execution role (recordings, certificates), S3, Secrets Manager, and VPC edges are optional composition (e2e-prerequisites annotation). Browsers, profiles, and code interpreters are name-keyed arms of one tools bundle; AWS exposes no update - every field change recreates the tool.
-- `AwsBedrockAgentCoreEvaluation`
-- `AwsSagemakerModel`
-- `AwsSagemakerEndpoint`
-- `AwsSagemakerNotebookInstance`
-- `AwsSagemakerFeatureGroup`
-- `AwsSagemakerModelRegistry`
-- `AwsSagemakerPipeline`
-- `AwsSagemakerImage`
-- `AwsSagemakerMlflowServer`
-- `AwsSagemakerMlflowApp`
-- `AwsRestApiGateway`
-- `AwsRestApiDomain`
-- `AwsRestApiUsagePlan`
-- `AwsRestApiVpcLink`
+- `AwsBedrockAgentCoreEvaluation` -- The AgentCore Evaluations bundle - evaluators (LLM-judge or Lambda scorers), harnesses (repeatable agent test benches), and online evaluation configs (continuous scoring of sampled production sessions). Deploys standalone - no arm requires an agent runtime to exist. No registry prerequisite: every arm is optional, so no dependency is required for the kind to function (scenarios compose IAM roles via annotations).
+- `AwsBedrockAgentCoreTokenVault` -- Account/region settings singleton: sets the KMS key on the ONE default AgentCore token vault. The KMS reference is conditional on key_type (CEL-enforced), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSagemakerModel` -- The immutable serving definition (container image + artifacts + execution role) that endpoints deploy - one container or an inference pipeline.
+- `AwsSagemakerEndpoint` -- A real-time inference endpoint WITH its folded endpoint configuration - the configuration is immutable upstream, so the modules roll name-suffixed configurations create-before-destroy and repoint the endpoint.
+- `AwsSagemakerNotebookInstance` -- A managed Jupyter notebook EC2 instance with its folded lifecycle configuration (bootstrap scripts).
+- `AwsSagemakerFeatureGroup` -- A Feature Store feature group - online and/or offline stores over a declared feature schema.
+- `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
+- `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
+- `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
+- `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
+- `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
+- `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
+- `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
+- `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
+- `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
 - `AzureAksNodePool` -- AzureAksCluster is a prerequisite because a node pool attaches to an existing cluster by ARM ID; the resource group chains transitively.

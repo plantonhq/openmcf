@@ -1736,6 +1736,8 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreTools | `spec.browsers[].enterprisePolicies[].s3.bucket` | `status.outputs.bucket_id` |
 | AwsBedrockFlow | `spec.definition.nodes[].retrieval.bucketName` | `status.outputs.bucket_id` |
 | AwsBedrockFlow | `spec.definition.nodes[].storage.bucketName` | `status.outputs.bucket_id` |
+| AwsBedrockInvocationLogging | `spec.cloudwatch.largeDataDeliveryS3.bucketName` | `status.outputs.bucket_id` |
+| AwsBedrockInvocationLogging | `spec.s3.bucketName` | `status.outputs.bucket_id` |
 | AwsBedrockKnowledgeBase | `spec.dataSources[].s3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |

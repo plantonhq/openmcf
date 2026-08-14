@@ -83,6 +83,7 @@ go_library(
         "secretsmanager_secret.go",
         "security_group.go",
         "ses.go",
+        "settings_singletons.go",
         "sns_subscription.go",
         "sns_topic.go",
         "sqs_queue.go",

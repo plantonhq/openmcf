@@ -405,6 +405,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockAgentCoreGateway | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreIdentity | `spec.policyEngine.encryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockAgentCoreMemory | `spec.encryptionKeyArn` | `status.outputs.key_arn` |
+| AwsBedrockAgentCoreTokenVault | `spec.kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockCustomModel | `spec.customModelKmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockFlow | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockGuardrail | `spec.kmsKeyArn` | `status.outputs.key_arn` |

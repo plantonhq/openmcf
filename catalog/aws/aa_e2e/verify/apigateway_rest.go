@@ -9,20 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func apigatewayClient(cfg aws.Config, region string) *apigateway.Client {
-	return apigateway.NewFromConfig(cfg, func(o *apigateway.Options) {
-		if region != "" {
-			o.Region = region
-		}
-	})
-}
-
-func isAPIGatewayNotFound(err error) bool {
-	var nf *types.NotFoundException
-	return errors.As(err, &nf)
-}
-
-// restApiGatewayVerifier verifies an AwsRestApiGateway via GetRestApi,
+// restApiGatewayVerifier verifies AwsRestApiGateway via GetRestApi,
 // keyed on the rest_api_id output. REST API deletion is synchronous.
 type restApiGatewayVerifier struct{}
 
@@ -51,11 +38,10 @@ func (v *restApiGatewayVerifier) VerifyAbsent(ctx context.Context, cfg aws.Confi
 }
 
 func restApiExists(ctx context.Context, cfg aws.Config, restApiId, region string) (bool, error) {
-	_, err := apigatewayClient(cfg, region).GetRestApi(ctx, &apigateway.GetRestApiInput{
-		RestApiId: aws.String(restApiId),
-	})
+	_, err := apigatewayClient(cfg, region).GetRestApi(ctx, &apigateway.GetRestApiInput{RestApiId: aws.String(restApiId)})
 	if err != nil {
-		if isAPIGatewayNotFound(err) {
+		var notFound *types.NotFoundException
+		if errors.As(err, &notFound) {
 			return false, nil
 		}
 		return false, err
@@ -63,8 +49,9 @@ func restApiExists(ctx context.Context, cfg aws.Config, restApiId, region string
 	return true, nil
 }
 
-// restApiDomainVerifier verifies an AwsRestApiDomain via GetDomainName,
-// keyed on the domain_name output (the hostname is the v1 identifier).
+// restApiDomainVerifier verifies AwsRestApiDomain via GetDomainName,
+// keyed on the domain_name output (the domain name IS the v1 identifier
+// for REGIONAL/EDGE domains).
 type restApiDomainVerifier struct{}
 
 func (*restApiDomainVerifier) IDOutputKey() string { return "domain_name" }
@@ -92,11 +79,10 @@ func (v *restApiDomainVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config
 }
 
 func restApiDomainExists(ctx context.Context, cfg aws.Config, domainName, region string) (bool, error) {
-	_, err := apigatewayClient(cfg, region).GetDomainName(ctx, &apigateway.GetDomainNameInput{
-		DomainName: aws.String(domainName),
-	})
+	_, err := apigatewayClient(cfg, region).GetDomainName(ctx, &apigateway.GetDomainNameInput{DomainName: aws.String(domainName)})
 	if err != nil {
-		if isAPIGatewayNotFound(err) {
+		var notFound *types.NotFoundException
+		if errors.As(err, &notFound) {
 			return false, nil
 		}
 		return false, err
@@ -104,9 +90,8 @@ func restApiDomainExists(ctx context.Context, cfg aws.Config, domainName, region
 	return true, nil
 }
 
-// restApiUsagePlanVerifier verifies an AwsRestApiUsagePlan via
-// GetUsagePlan, keyed on the usage_plan_id output. Attached API keys
-// are folded satellites the lane's output map covers.
+// restApiUsagePlanVerifier verifies AwsRestApiUsagePlan via GetUsagePlan,
+// keyed on the usage_plan_id output. Plan deletion is synchronous.
 type restApiUsagePlanVerifier struct{}
 
 func (*restApiUsagePlanVerifier) IDOutputKey() string { return "usage_plan_id" }
@@ -134,11 +119,10 @@ func (v *restApiUsagePlanVerifier) VerifyAbsent(ctx context.Context, cfg aws.Con
 }
 
 func restApiUsagePlanExists(ctx context.Context, cfg aws.Config, usagePlanId, region string) (bool, error) {
-	_, err := apigatewayClient(cfg, region).GetUsagePlan(ctx, &apigateway.GetUsagePlanInput{
-		UsagePlanId: aws.String(usagePlanId),
-	})
+	_, err := apigatewayClient(cfg, region).GetUsagePlan(ctx, &apigateway.GetUsagePlanInput{UsagePlanId: aws.String(usagePlanId)})
 	if err != nil {
-		if isAPIGatewayNotFound(err) {
+		var notFound *types.NotFoundException
+		if errors.As(err, &notFound) {
 			return false, nil
 		}
 		return false, err
@@ -146,10 +130,10 @@ func restApiUsagePlanExists(ctx context.Context, cfg aws.Config, usagePlanId, re
 	return true, nil
 }
 
-// restApiVpcLinkVerifier verifies an AwsRestApiVpcLink via GetVpcLink,
-// keyed on the vpc_link_id output. VPC link deletion is asynchronous
-// (AWS reclaims the NLB attachment): a link in DELETING status is
-// treated as absent, the NAT-gateway lifecycle class.
+// restApiVpcLinkVerifier verifies AwsRestApiVpcLink via GetVpcLink,
+// keyed on the vpc_link_id output. Link deletion is asynchronous (AWS
+// reclaims the network attachment): DELETING is treated as absent, the
+// HTTP-API VPC-link class.
 type restApiVpcLinkVerifier struct{}
 
 func (*restApiVpcLinkVerifier) IDOutputKey() string { return "vpc_link_id" }
@@ -177,14 +161,21 @@ func (v *restApiVpcLinkVerifier) VerifyAbsent(ctx context.Context, cfg aws.Confi
 }
 
 func restApiVpcLinkStatus(ctx context.Context, cfg aws.Config, vpcLinkId, region string) (types.VpcLinkStatus, bool, error) {
-	out, err := apigatewayClient(cfg, region).GetVpcLink(ctx, &apigateway.GetVpcLinkInput{
-		VpcLinkId: aws.String(vpcLinkId),
-	})
+	out, err := apigatewayClient(cfg, region).GetVpcLink(ctx, &apigateway.GetVpcLinkInput{VpcLinkId: aws.String(vpcLinkId)})
 	if err != nil {
-		if isAPIGatewayNotFound(err) {
+		var notFound *types.NotFoundException
+		if errors.As(err, &notFound) {
 			return "", false, nil
 		}
 		return "", false, err
 	}
 	return out.Status, true, nil
+}
+
+func apigatewayClient(cfg aws.Config, region string) *apigateway.Client {
+	return apigateway.NewFromConfig(cfg, func(o *apigateway.Options) {
+		if region != "" {
+			o.Region = region
+		}
+	})
 }
