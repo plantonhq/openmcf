@@ -10,4 +10,8 @@ message CloudflareLoadBalancerStackOutputs {
   string load_balancer_dns_record_name = 2;
   // The canonical CNAME target that the hostname resolves to (Cloudflare endpoint).
   string load_balancer_cname_target = 3;
+  // The Cloudflare zone that owns the load balancer. A zone-scoped resource
+  // publishes its parent scope: the load balancer's API identity (and its
+  // Terraform import ID) is compound -- zones/{zone_id}/load_balancers/{id}.
+  string zone_id = 4;
 }

@@ -43,4 +43,58 @@ locals {
     default_weight = try(var.spec.random_steering.default_weight, 0) > 0 ? var.spec.random_steering.default_weight : null
     pool_weights   = length(try(var.spec.random_steering.pool_weights, {})) > 0 ? var.spec.random_steering.pool_weights : null
   }
+
+  # Traffic rules: the spec's typed list -> the provider's rules[] shape.
+  # Override semantics need real presence: an unset override inherits the load
+  # balancer's setting, while an explicit value -- INCLUDING "none"/"off"/0 --
+  # overrides it. The spec carries presence on priority, session_affinity, and
+  # steering_policy (proto optional), so those pass through as-is (null when
+  # unset). terminates/disabled are sent only when true: false is the provider
+  # default, and a fixed_response rule is auto-marked terminating server-side,
+  # so an explicit false would fight the API's answer.
+  rules = length(try(var.spec.rules, [])) == 0 ? null : [
+    for r in var.spec.rules : {
+      name       = try(r.name, "") != "" ? r.name : null
+      condition  = try(r.condition, "") != "" ? r.condition : null
+      priority   = try(r.priority, null)
+      disabled   = try(r.disabled, false) ? true : null
+      terminates = try(r.terminates, false) ? true : null
+      fixed_response = try(r.fixed_response, null) == null ? null : {
+        content_type = try(r.fixed_response.content_type, "") != "" ? r.fixed_response.content_type : null
+        location     = try(r.fixed_response.location, "") != "" ? r.fixed_response.location : null
+        message_body = try(r.fixed_response.message_body, "") != "" ? r.fixed_response.message_body : null
+        status_code  = try(r.fixed_response.status_code, 0) != 0 ? r.fixed_response.status_code : null
+      }
+      overrides = try(r.overrides, null) == null ? null : {
+        adaptive_routing = try(r.overrides.adaptive_routing, null) == null ? null : {
+          failover_across_pools = try(r.overrides.adaptive_routing.failover_across_pools, false)
+        }
+        country_pools = length(try(r.overrides.country_pools, [])) > 0 ? { for e in r.overrides.country_pools : e.code => e.pool_ids } : null
+        default_pools = length(try(r.overrides.default_pools, [])) > 0 ? r.overrides.default_pools : null
+        fallback_pool = try(r.overrides.fallback_pool, "") != "" ? r.overrides.fallback_pool : null
+        location_strategy = try(r.overrides.location_strategy, null) == null ? null : {
+          mode       = try(r.overrides.location_strategy.mode, "") != "" ? r.overrides.location_strategy.mode : null
+          prefer_ecs = try(r.overrides.location_strategy.prefer_ecs, "") != "" ? r.overrides.location_strategy.prefer_ecs : null
+        }
+        pop_pools = length(try(r.overrides.pop_pools, [])) > 0 ? { for e in r.overrides.pop_pools : e.code => e.pool_ids } : null
+        random_steering = try(r.overrides.random_steering, null) == null ? null : {
+          default_weight = try(r.overrides.random_steering.default_weight, 0) > 0 ? r.overrides.random_steering.default_weight : null
+          pool_weights   = length(try(r.overrides.random_steering.pool_weights, {})) > 0 ? r.overrides.random_steering.pool_weights : null
+        }
+        region_pools     = length(try(r.overrides.region_pools, [])) > 0 ? { for e in r.overrides.region_pools : e.code => e.pool_ids } : null
+        session_affinity = try(r.overrides.session_affinity, null)
+        session_affinity_attributes = try(r.overrides.session_affinity_attributes, null) == null ? null : {
+          drain_duration         = try(r.overrides.session_affinity_attributes.drain_duration, 0) > 0 ? r.overrides.session_affinity_attributes.drain_duration : null
+          headers                = length(try(r.overrides.session_affinity_attributes.headers, [])) > 0 ? r.overrides.session_affinity_attributes.headers : null
+          require_all_headers    = try(r.overrides.session_affinity_attributes.require_all_headers, false)
+          samesite               = try(r.overrides.session_affinity_attributes.samesite, "") != "" ? r.overrides.session_affinity_attributes.samesite : null
+          secure                 = try(r.overrides.session_affinity_attributes.secure, "") != "" ? r.overrides.session_affinity_attributes.secure : null
+          zero_downtime_failover = try(r.overrides.session_affinity_attributes.zero_downtime_failover, "") != "" ? r.overrides.session_affinity_attributes.zero_downtime_failover : null
+        }
+        session_affinity_ttl = try(r.overrides.session_affinity_ttl, 0) > 0 ? r.overrides.session_affinity_ttl : null
+        steering_policy      = try(r.overrides.steering_policy, null)
+        ttl                  = try(r.overrides.ttl, 0) > 0 ? r.overrides.ttl : null
+      }
+    }
+  ]
 }

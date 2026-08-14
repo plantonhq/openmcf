@@ -16,5 +16,4 @@ entries:
   - kind:CloudflareEmailRoutingAddress
   - kind:CloudflareEmailRoutingRule
   - kind:CloudflareEmailRoutingZone
-  - kind:CloudflareLoadBalancer
   - kind:CloudflareRuleset

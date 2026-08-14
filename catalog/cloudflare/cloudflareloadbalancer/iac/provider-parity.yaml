@@ -1,0 +1,126 @@
+# Provider-parity manifest: this kind's recorded judgment against the pinned
+# cloudflare provider (checked by `planton provider-parity --check` and the
+# lint.provider-parity CI lane; format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+#
+# The v5 Stainless provider nests exclusively via nested attributes, which
+# distill to single flat args -- so adaptive_routing, location_strategy,
+# random_steering, session_affinity_attributes, the three geo-pool maps, and
+# rules are each ONE provider argument. The spec models those trees as typed
+# messages (geo-pool maps as typed {code, pool_ids} lists; rules as a typed
+# list whose overrides reuse the top-level steering messages). Fan-in
+# mappings record every spec leaf each argument realizes.
+
+resources:
+  cloudflare_load_balancer:
+    mappings:
+      # The provider's `name` IS the DNS hostname the load balancer serves on;
+      # the spec names it what it means.
+      - spec: spec.hostname
+        arg: name
+      - spec: spec.adaptive_routing.failover_across_pools
+        arg: adaptive_routing
+      # Geo-pool maps: the provider's map[code] -> pool-ID list is modeled as
+      # a typed list of {code, pool_ids} entries so pool references stay
+      # StringValueOrRef (chart-wirable); the modules rebuild the map shape.
+      - spec: spec.country_pools.code
+        arg: country_pools
+      - spec: spec.country_pools.pool_ids
+        arg: country_pools
+      - spec: spec.region_pools.code
+        arg: region_pools
+      - spec: spec.region_pools.pool_ids
+        arg: region_pools
+      - spec: spec.pop_pools.code
+        arg: pop_pools
+      - spec: spec.pop_pools.pool_ids
+        arg: pop_pools
+      - spec: spec.location_strategy.mode
+        arg: location_strategy
+      - spec: spec.location_strategy.prefer_ecs
+        arg: location_strategy
+      - spec: spec.random_steering.default_weight
+        arg: random_steering
+      - spec: spec.random_steering.pool_weights
+        arg: random_steering
+      - spec: spec.session_affinity_attributes.drain_duration
+        arg: session_affinity_attributes
+      - spec: spec.session_affinity_attributes.headers
+        arg: session_affinity_attributes
+      - spec: spec.session_affinity_attributes.require_all_headers
+        arg: session_affinity_attributes
+      - spec: spec.session_affinity_attributes.samesite
+        arg: session_affinity_attributes
+      - spec: spec.session_affinity_attributes.secure
+        arg: session_affinity_attributes
+      - spec: spec.session_affinity_attributes.zero_downtime_failover
+        arg: session_affinity_attributes
+      # rules[] is one nested-attribute argument; the spec models it as a
+      # typed list whose overrides reuse the top-level steering messages.
+      - spec: spec.rules.name
+        arg: rules
+      - spec: spec.rules.condition
+        arg: rules
+      - spec: spec.rules.priority
+        arg: rules
+      - spec: spec.rules.disabled
+        arg: rules
+      - spec: spec.rules.terminates
+        arg: rules
+      - spec: spec.rules.fixed_response.content_type
+        arg: rules
+      - spec: spec.rules.fixed_response.location
+        arg: rules
+      - spec: spec.rules.fixed_response.message_body
+        arg: rules
+      - spec: spec.rules.fixed_response.status_code
+        arg: rules
+      - spec: spec.rules.overrides.adaptive_routing.failover_across_pools
+        arg: rules
+      - spec: spec.rules.overrides.country_pools.code
+        arg: rules
+      - spec: spec.rules.overrides.country_pools.pool_ids
+        arg: rules
+      - spec: spec.rules.overrides.default_pools
+        arg: rules
+      - spec: spec.rules.overrides.fallback_pool
+        arg: rules
+      - spec: spec.rules.overrides.location_strategy.mode
+        arg: rules
+      - spec: spec.rules.overrides.location_strategy.prefer_ecs
+        arg: rules
+      - spec: spec.rules.overrides.pop_pools.code
+        arg: rules
+      - spec: spec.rules.overrides.pop_pools.pool_ids
+        arg: rules
+      - spec: spec.rules.overrides.random_steering.default_weight
+        arg: rules
+      - spec: spec.rules.overrides.random_steering.pool_weights
+        arg: rules
+      - spec: spec.rules.overrides.region_pools.code
+        arg: rules
+      - spec: spec.rules.overrides.region_pools.pool_ids
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.drain_duration
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.headers
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.require_all_headers
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.samesite
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.secure
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_attributes.zero_downtime_failover
+        arg: rules
+      - spec: spec.rules.overrides.session_affinity_ttl
+        arg: rules
+      - spec: spec.rules.overrides.steering_policy
+        arg: rules
+      - spec: spec.rules.overrides.ttl
+        arg: rules

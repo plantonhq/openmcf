@@ -31,7 +31,7 @@ that has progressed.
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
 | Kinds in the catalog | 30 |
 | Distinct provider resources consumed | 49 |
-| Spec fields authored across all kinds | 1161 |
+| Spec fields authored across all kinds | 1194 |
 | Module pins on `aws` | `~> 5.0` × 1 |
 | Module pins on `cloudflare` | `~> 5.23` × 30 |
 | Module pins on `tls` | `~> 4.0` × 1 |
@@ -48,7 +48,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**24 of 30 kinds are at total accounting; 0 proven live.**
+**25 of 30 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -65,7 +65,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareKvNamespace | 2 | 1 | 1 | 0 | 0 | ✅ | — |
 | CloudflareList | 5 | 4 | 0 | 1 | 0 | ✅ | — |
 | CloudflareListItem | 7 | 5 | 2 | 0 | 0 | ✅ | — |
-| CloudflareLoadBalancer | 20 | 10 | 0 | 0 | 28 | ❌ | — |
+| CloudflareLoadBalancer | 20 | 11 | 9 | 0 | 0 | ✅ | — |
 | CloudflareLoadBalancerMonitor | 17 | 16 | 1 | 0 | 0 | ✅ | — |
 | CloudflareLoadBalancerPool | 15 | 9 | 4 | 2 | 0 | ✅ | — |
 | CloudflareOriginCaCertificate | 4 | 4 | 0 | 0 | 0 | ✅ | — |

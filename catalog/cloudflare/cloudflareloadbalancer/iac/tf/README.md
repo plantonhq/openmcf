@@ -8,7 +8,8 @@ account-scoped pools. Pools and monitors are separate modules
 
 - `cloudflare_load_balancer` (zone-scoped) — attaches the hostname to the given
   `default_pools` / `fallback_pool` and applies steering, session affinity,
-  geo-pool maps, adaptive routing, location strategy, and random steering.
+  geo-pool maps, adaptive routing, location strategy, random steering, traffic
+  rules, and private networks.
 
 ## Inputs
 
@@ -16,7 +17,14 @@ account-scoped pools. Pools and monitors are separate modules
 - `spec` — see [variables.tf](./variables.tf). Required: `hostname`, `zone_id`,
   `default_pools`, `fallback_pool`. Pool references flatten from `StringValueOrRef`
   to plain strings (and lists to `list(string)`); enums flatten to their string
-  names (`none`/`off` are omitted so the provider applies its default).
+  names (top-level `none`/`off` are omitted so the provider applies its default).
+- `spec.rules[]` — the typed rules list is rebuilt into the provider's `rules`
+  shape in [locals.tf](./locals.tf). Rule OVERRIDES keep real presence: an
+  unset override inherits the load balancer's setting, while an explicit value
+  — including `none`/`off`/`0` for the presence-carrying `session_affinity`,
+  `steering_policy`, and `priority` fields — is sent as a real override.
+  `terminates`/`disabled` are sent only when true (a `fixed_response` rule is
+  auto-marked terminating server-side).
 
 ## Outputs
 
@@ -25,6 +33,7 @@ account-scoped pools. Pools and monitors are separate modules
 | `load_balancer_id` | The load balancer ID |
 | `load_balancer_dns_record_name` | The hostname |
 | `load_balancer_cname_target` | The hostname clients point their DNS at |
+| `zone_id` | The owning zone (the API identity is `zones/{zone_id}/load_balancers/{id}`) |
 
 ## Requirements
 

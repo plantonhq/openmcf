@@ -28,4 +28,7 @@ resource "cloudflare_load_balancer" "main" {
   adaptive_routing  = local.adaptive_routing
   location_strategy = local.location_strategy
   random_steering   = local.random_steering
+
+  rules    = local.rules
+  networks = length(try(var.spec.networks, [])) > 0 ? var.spec.networks : null
 }

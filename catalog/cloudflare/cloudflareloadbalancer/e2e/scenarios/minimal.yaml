@@ -1,0 +1,38 @@
+# Minimal CloudflareLoadBalancer scenario: static failover (steering off) over
+# one prerequisite pool, gray-clouded, in the prerequisite zone. The zone_id
+# and pool references resolve from the prerequisites' outputs (the kind's
+# registry prerequisites). The hostname is relative to the fixture zone, whose
+# name is already run-scoped -- no run-scoping needed here.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareLoadBalancer
+metadata:
+  name: planton-oss-e2e-cloudflareloadbalancer-minimal
+  id: planton-oss-e2e-cloudflareloadbalancer-minimal
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: cloudflareloadbalancer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  hostname: e2e-lb-minimal
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  defaultPools:
+    - valueFrom:
+        kind: CloudflareLoadBalancerPool
+        name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+        fieldPath: status.outputs.pool_id
+  fallbackPool:
+    valueFrom:
+      kind: CloudflareLoadBalancerPool
+      name: planton-oss-e2e-cloudflareloadbalancerpool-prereq
+      fieldPath: status.outputs.pool_id
+  proxied: false
+  ttl: 30

@@ -37,3 +37,10 @@ spec:
     - terraform_type: cloudflare_workers_cron_trigger
       pulumi_type: cloudflare:index/workersCronTrigger:WorkersCronTrigger
       id_format: "{account_id}/{script_name}"
+    # --- Load Balancing ---------------------------------------------------------
+    # The load balancer's documented import ID carries a literal scope prefix
+    # ("{accounts|zones}/{scope_id}/{lb_id}"); the catalog kind is zone-scoped,
+    # so the zones/ arm is the one recorded here.
+    - terraform_type: cloudflare_load_balancer
+      pulumi_type: cloudflare:index/loadBalancer:LoadBalancer
+      id_format: "zones/{zone_id}/{load_balancer_id}"

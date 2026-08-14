@@ -21,7 +21,7 @@
 | [CloudflareKvNamespace](cloudflarekvnamespace/v1alpha1/reference.md) | CloudflareKvNamespaceSpec provisions a Workers KV namespace: a low-latency, eventually-consistent key-value store readable from Workers at the edge. | yes |  |
 | [CloudflareList](cloudflarelist/v1alpha1/reference.md) | CloudflareListSpec provisions an account-scoped Cloudflare List: a reusable, named collection referenced from rule expressions (e.g. | yes |  |
 | [CloudflareListItem](cloudflarelistitem/v1alpha1/reference.md) | CloudflareListItemSpec declares a single entry inside a Cloudflare List. | yes |  |
-| [CloudflareLoadBalancer](cloudflareloadbalancer/v1alpha1/reference.md) | CloudflareLoadBalancerSpec defines a zone-scoped Cloudflare Load Balancer. | yes |  |
+| [CloudflareLoadBalancer](cloudflareloadbalancer/v1alpha1/reference.md) | CloudflareLoadBalancerSpec defines a zone-scoped Cloudflare Load Balancer. | yes | yes |
 | [CloudflareLoadBalancerMonitor](cloudflareloadbalancermonitor/v1alpha1/reference.md) | CloudflareLoadBalancerMonitorSpec defines an account-scoped health monitor for Cloudflare Load Balancing. | yes |  |
 | [CloudflareLoadBalancerPool](cloudflareloadbalancerpool/v1alpha1/reference.md) | CloudflareLoadBalancerPoolSpec defines an account-scoped pool of origin servers for Cloudflare Load Balancing. | yes |  |
 | [CloudflareOriginCaCertificate](cloudflareorigincacertificate/v1alpha1/reference.md) | CloudflareOriginCaCertificateSpec provisions a Cloudflare Origin CA certificate: a free TLS certificate that Cloudflare's edge trusts, installed on an origin server so the Cloudflare-to-origin hop can run encrypted end-to-end (the "Full (Strict)" SSL mode). | yes |  |

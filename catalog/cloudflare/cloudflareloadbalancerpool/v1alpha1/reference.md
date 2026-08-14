@@ -392,6 +392,11 @@ Fields on other kinds that can point at this resource:
 | CloudflareLoadBalancer | `spec.regionPools[].poolIds` | `status.outputs.pool_id` |
 | CloudflareLoadBalancer | `spec.countryPools[].poolIds` | `status.outputs.pool_id` |
 | CloudflareLoadBalancer | `spec.popPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.countryPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.defaultPools` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.fallbackPool` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.popPools[].poolIds` | `status.outputs.pool_id` |
+| CloudflareLoadBalancer | `spec.rules[].overrides.regionPools[].poolIds` | `status.outputs.pool_id` |
 
 ## See Also
 

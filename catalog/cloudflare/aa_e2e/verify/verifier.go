@@ -141,6 +141,19 @@ var verifiers = map[string]Verifier{
 		outputKeys:    []string{"script_name"},
 		accountScoped: true,
 	},
+	"cloudflareloadbalancer": &apiPathVerifier{
+		component:  "cloudflareloadbalancer",
+		pathFormat: "zones/%s/load_balancers/%s",
+		outputKeys: []string{"zone_id", "load_balancer_id"},
+	},
+	// The pool is account-scoped (it is the load balancer's registry
+	// prerequisite, so its fixture is verified right after install).
+	"cloudflareloadbalancerpool": &apiPathVerifier{
+		component:     "cloudflareloadbalancerpool",
+		pathFormat:    "accounts/%s/load_balancers/pools/%s",
+		outputKeys:    []string{"pool_id"},
+		accountScoped: true,
+	},
 }
 
 // GetVerifier returns the verifier for a component, or an error if none is
