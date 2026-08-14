@@ -1,0 +1,68 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: awsroute53zone
+spec:
+  presets:
+    - preset: 01-public-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: hosted zones
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one hosted zone, billed monthly at the first-25-zones tier rate
+          list_unit_price: "0.5"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - DNS queries bill per million answered and follow traffic
+        - records, health checks, and routing policies are separate components
+    - preset: 02-private-vpc-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: hosted zones
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one hosted zone, billed monthly at the first-25-zones tier rate -- private zones pay the same fee
+          list_unit_price: "0.5"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - records and resolver-side monitoring are separate components
+      notes: In-VPC queries against a private zone are free, so the zone fee is this preset's whole bill.
+    - preset: 03-dnssec-signed-zone
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Amazon Route 53
+          sku_meter: hosted zones
+          pricing_unit: zone-months
+          pricing_quantity: "1"
+          quantity_basis: one hosted zone, billed monthly at the first-25-zones tier rate -- DNSSEC signing adds no Route 53 charge
+          list_unit_price: "0.5"
+          price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRoute53/20260527092459/index.json
+          retrieved_on: "2026-08-14"
+          list_cost: "0.5000"
+      total_list_cost: "0.5000"
+      exclusions:
+        - DNS queries bill per million answered and follow traffic
+        - the DNSSEC signing key bills on its referenced AwsKmsKey component (monthly key fee plus per-request signing)
+        - records, health checks, and routing policies are separate components

@@ -71,8 +71,15 @@ type regionalOffer struct {
 	versionedURL string
 }
 
+// globalRegionCode in a selector means the SKU is priced globally. Globally
+// priced SKUs (Route 53 hosted zones) appear only in the offer-level price
+// document, never in the regional slices, so the fetcher reads the whole
+// offer for them.
+const globalRegionCode = "global"
+
 // fetchOffer resolves an offer's current version and downloads its
-// regional document.
+// versioned price document -- the regional slice for regional SKUs, the
+// offer-level document for globally priced ones.
 func fetchOffer(client *http.Client, offerCode, regionCode string) (*regionalOffer, error) {
 	indexURL := fmt.Sprintf("%s/offers/v1.0/aws/%s/index.json", priceListBaseURL, offerCode)
 	var index offerIndex
@@ -85,6 +92,10 @@ func fetchOffer(client *http.Client, offerCode, regionCode string) (*regionalOff
 
 	versionedURL := fmt.Sprintf("%s/offers/v1.0/aws/%s/%s/%s/index.json",
 		priceListBaseURL, offerCode, index.CurrentVersion, regionCode)
+	if regionCode == globalRegionCode {
+		versionedURL = fmt.Sprintf("%s/offers/v1.0/aws/%s/%s/index.json",
+			priceListBaseURL, offerCode, index.CurrentVersion)
+	}
 	var file offerFile
 	if err := getJSON(client, versionedURL, &file); err != nil {
 		return nil, errors.Wrapf(err, "downloading offer %s %s for %s", offerCode, index.CurrentVersion, regionCode)

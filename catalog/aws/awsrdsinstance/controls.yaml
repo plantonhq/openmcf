@@ -1,0 +1,113 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: awsrdsinstance
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: configurable
+      field_path: storage_encrypted
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true; a create-time-only decision -- an unencrypted instance can never be encrypted in place, and every preset sets it true.
+      notes: Encryption covers the volume, automated backups, snapshots, and read replicas derived from the instance.
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: kms_key_id
+      evidence:
+        type: spec_default
+        reference: Unset means the AWS-managed RDS key; setting kms_key_id encrypts storage under the referenced customer-managed key, with separate keys available for the managed master password and Performance Insights.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every RDS instance presents TLS endpoints with AWS-managed certificates; clients can always connect encrypted.
+      notes: Requiring TLS (rejecting plaintext clients) is an engine-side setting (e.g. rds.force_ssl for PostgreSQL) carried through the parameters field when wanted.
+    - control_id: no-public-access
+      status: configurable
+      field_path: publicly_accessible
+      evidence:
+        type: spec_default
+        reference: Defaults to false -- the instance gets no public IP and resolves only inside the VPC; true attaches a public address for internet-reachable clients.
+      notes: All five presets keep it false; the spec doc says keep it that way for anything production-shaped.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: security_group_ids
+      evidence:
+        type: spec_default
+        reference: The attached security groups are the complete inbound surface -- database ports open only to the sources those groups declare.
+      notes: Every preset attaches an explicit database security group placeholder.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: A database endpoint has no WAF attachment point; request filtering belongs to the application tier in front of it.
+    - control_id: rbac
+      status: configurable
+      field_path: iam_database_authentication_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to false (password-based database accounts only); true lets database users authenticate with short-lived IAM tokens, putting database access under IAM policy control.
+      notes: Engine-side users and grants remain the fine-grained layer either way.
+    - control_id: workload-identity
+      status: configurable
+      field_path: manage_master_user_password
+      evidence:
+        type: spec_default
+        reference: Carries recommended_default=true -- AWS generates, stores, and rotates the master password in Secrets Manager, so no human ever handles it; the alternative password field is marked sensitive and mutually exclusive.
+      notes: Combined with IAM database authentication, applications can reach the database without any long-lived secret of their own.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: The engines' authentication surfaces (password policies, legacy cipher handshakes) are engine-internal settings carried through parameters, not a first-class spec control.
+    - control_id: audit-logging
+      status: configurable
+      field_path: enabled_cloudwatch_logs_exports
+      evidence:
+        type: spec_default
+        reference: Empty exports nothing; listing engine log types (audit, error, slowquery, postgresql...) streams them to CloudWatch Logs for retention and alerting.
+      notes: Presets export postgresql/upgrade and error/slowquery respectively; engine-side audit plugins ride the parameters field.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: performance_insights_enabled
+      evidence:
+        type: spec_default
+        reference: Defaults to off; true enables Performance Insights (free at 7-day retention) for query-level load analysis, and monitoring_interval adds OS-level Enhanced Monitoring streams.
+      notes: Basic CloudWatch instance metrics flow automatically either way; four of five presets enable Performance Insights.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: backup_retention_period
+      evidence:
+        type: spec_default
+        reference: 0 disables automated backups and point-in-time recovery entirely; any positive value enables daily snapshots plus continuous PITR within the window.
+      notes: Production presets set 7 or 14 days; skip_final_snapshot=false with a named final snapshot additionally protects teardown (CEL forces the name when not skipping).
+    - control_id: backup-retention-policy
+      status: configurable
+      field_path: backup_retention_period
+      evidence:
+        type: spec_validation
+        reference: The retention window is a first-class dial validated to 0-35 days, so organizational retention policy is expressed directly in the manifest.
+      notes: delete_automated_backups and final snapshots govern what survives instance deletion.
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: multi_az
+      evidence:
+        type: spec_default
+        reference: Defaults to false (single-AZ); true runs a synchronous standby in a second AZ with automatic failover -- at double the instance and storage cost.
+      notes: Four of five presets enable it; the read replica inherits its own layout.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: deletion_protection
+      evidence:
+        type: spec_default
+        reference: Defaults to false; when true, RDS refuses to delete the instance until protection is explicitly lifted.
+      notes: The production presets enable it alongside final-snapshot protection.
+    - control_id: managed-patching
+      status: configurable
+      field_path: auto_minor_version_upgrade
+      evidence:
+        type: spec_default
+        reference: Defaults to true (mirroring AWS) -- minor engine versions patch automatically in the maintenance window; major upgrades remain deliberate manifest changes.
+      notes: engine_lifecycle_support bounds how long an unupgraded major version may live before paid extended support begins.

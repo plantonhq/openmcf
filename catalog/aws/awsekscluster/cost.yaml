@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: awsekscluster
+spec:
+  billing_model: hybrid
+  baseline_charges:
+    - service_name: Amazon Elastic Kubernetes Service
+      sku_meter: cluster management fee
+      pricing_unit: hours
+      description: Flat per-cluster fee for the managed control plane, accruing from creation regardless of workloads. It cannot be turned off.
+  cost_drivers:
+    - field_path: upgrade_support_type
+      sku_meter: extended support cluster management fee
+      pricing_unit: hours
+      impact: The AWS default is EXTENDED, which adds a per-cluster extended-support surcharge -- six times the base fee in total -- once the Kubernetes version leaves standard support. STANDARD caps the fee and forces timely upgrades instead.
+    - field_path: control_plane_scaling_tier
+      sku_meter: provisioned control plane tier
+      pricing_unit: hours
+      impact: Selecting a provisioned tier (tier-xl through tier-8xl) bills an hourly tier charge on top of the cluster fee; empty means free reactive scaling.
+    - field_path: enabled_cluster_log_types
+      sku_meter: control plane log ingestion
+      pricing_unit: GB
+      impact: Each enabled log type streams control-plane logs into CloudWatch Logs, billed per GB ingested -- all five types on a busy cluster carry real cost.
+    - field_path: auto_mode
+      sku_meter: Auto Mode compute
+      pricing_unit: instance-hours
+      impact: Auto Mode lets EKS provision EC2 instances, EBS volumes, and load balancers itself, billed per instance-hour with an Auto Mode management premium -- the cluster resource becomes the compute bill's front door.
+    - field_path: remote_networks
+      sku_meter: hybrid node vCPUs
+      pricing_unit: vCPU-hours
+      impact: Declaring on-prem node and pod CIDRs is free; billing starts per vCPU only when hybrid nodes actually register.
+    - field_path: version
+      sku_meter: extended support cluster management fee
+      impact: An aging pinned version is the extended-support trigger -- when it leaves standard support, the EXTENDED surcharge starts on clusters that allow it.
+  estimate_exclusions:
+    - node compute for standard node groups -- AwsEksNodeGroup components with their own cost profiles
+    - Auto Mode instance-hours depend on what workloads request
+    - control plane log volume depends on cluster chatter
+    - hybrid node vCPU-hours depend on what registers from on-prem
+  notes: "The cluster resource itself is deliberately thin on cost: the management fee is the only certainty at manifest time. The real money follows the compute -- AwsEksNodeGroup resources for standard clusters, Auto Mode instance-hours when it is enabled."

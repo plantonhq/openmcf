@@ -1,0 +1,52 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: awsnatgateway
+spec:
+  presets:
+    - preset: 01-public-nat-gateway
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: NAT gateway hours
+          price: nat-gateway-hours-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one zonal gateway, billed every hour of the month
+      exclusions:
+        - data processing bills per GB in both directions -- the dominant real-world cost, entirely traffic-dependent
+        - the attached Elastic IP bills as a public IPv4 address on its own AwsElasticIp component
+        - cross-AZ transfer applies for traffic reaching the gateway from other zones
+      notes: The hourly charge is the committed floor; a chatty private subnet can multiply it through data processing.
+    - preset: 02-private-nat-gateway
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: NAT gateway hours
+          price: nat-gateway-hours-us-west-2
+          pricing_quantity: "730"
+          quantity_basis: one zonal private gateway, billed every hour of the month at the same NAT rate as public
+      exclusions:
+        - data processing bills per GB in both directions, entirely traffic-dependent
+        - cross-AZ transfer applies for traffic reaching the gateway from other zones
+      notes: Private connectivity holds no public IPv4 addresses, removing that charge entirely -- the NAT rates are unchanged.
+    - preset: 03-regional-nat-gateway
+      region_assumption: us-west-2
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: NAT gateway hours
+          price: nat-gateway-hours-us-west-2
+          pricing_quantity: "1460"
+          quantity_basis: a regional gateway bills NAT hours once per Availability Zone it spans; priced at the two-AZ minimum of a multi-AZ VPC, 2 x 730 hours
+      exclusions:
+        - each additional Availability Zone in the VPC adds another 730 gateway-hours per month
+        - the AWS-managed public IPv4 addresses (one per zone) bill per address
+        - data processing bills per GB in both directions, entirely traffic-dependent
+      notes: Estimated at the smallest multi-AZ layout; a three-AZ VPC raises the gateway-hours line by half again.
