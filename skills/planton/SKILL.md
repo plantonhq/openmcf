@@ -101,6 +101,21 @@ postures:
   from git, a scaffold, a folder the user picked: compose in place at its
   root, exactly as the anatomy above shows.
 
+**Will this turn write files? Then declare the span in the same breath as
+the check.** The identity check just told you where files go; when the turn
+will write any (the prime directive's build-it decision), your very next
+shell command is the declaration:
+
+```
+mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml
+```
+
+Run it at the root of the folder you were given, BEFORE grounding lookups
+and scaffolding -- it is how the user's canvas presents your work honestly
+(Phase 2's step 1 says why; Phase 4 rewrites it to `state: done` at the
+finish). A declaration written after your first chart file defeats it: the
+user watches error flashes from half-written work you meant to spare them.
+
 ## Know your instruments (check once, first)
 
 The craft is the same everywhere; only the instruments differ by where you
@@ -258,35 +273,52 @@ Write PROGRESSIVELY: the studio renders the architecture live from the
 folder, so author in an order where **every finished file leaves the folder
 buildable** -- producers before consumers (network before cluster before
 workloads), one complete resource file at a time. Each write then grows the
-user's canvas by a node instead of flashing errors at them. Never invent a
-build-suppression mechanism (a marker file, batched writes) -- the live
-canvas absorbing each finished write IS the experience. Narrate in the
+user's canvas by a node. Never batch or delay writes to polish the picture
+-- the live canvas absorbing each finished write IS the experience, and the
+composing declaration (step 1) is the only status channel there is; never
+invent another. Narrate in the
 person's register as the canvas grows: a learning profile gets each node's
 one-line why as it lands ("adding the NAT gateway -- the one-way door your
 workers use to reach the internet"); an expert gets the resource name and
 moves on (`references/personalization.md`).
 
-1. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
+1. **Declare the authoring span -- ALWAYS your first write.** Write
+   `.planton/composing.yaml` at the root of the folder you were given,
+   containing exactly:
+
+   ```yaml
+   state: composing
+   ```
+
+   This is your charter's live-screen declaration: the canvas keeps its
+   composition animation alive across your thinking gaps and holds your
+   iteration loop's interim build errors out of the user's face until you
+   declare the finish (Phase 4 rewrites this file to `state: done`).
+   Rewrite, never delete, never mention it in prose. It applies to EVERY
+   turn that writes files -- the first composition, refinements, loose
+   manifests alike -- and suppresses nothing on your side: builds run on
+   every write exactly as below.
+2. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
    `references/chart-format.md` -- at the folder's root when the folder IS
    the chart, inside a fresh chart-named subfolder when the folder is your
    workspace (the identity check above decides).
-2. Group templates into subfolders by concern with ONE resource per file
+3. Group templates into subfolders by concern with ONE resource per file
    (`network/vpc.yaml`, `network/subnets-public.yaml`, `cluster/eks.yaml`,
    `cluster/node-group.yaml`, `kubernetes/addons/cert-manager.yaml`): the
    file tree reads as the architecture, diffs stay reviewable, and clicking
    a canvas node lands on exactly its file. A resource that only exists as a
    `---` sibling inside a grab-bag file has none of that.
-3. Name resources with the environment prefix so deployments never collide:
+4. Name resources with the environment prefix so deployments never collide:
    `name: "{{ values.env }}-vpc"`. The variables `values.env` and
    `values.org` are always available -- users never define them.
-4. Wire dependencies with `valueFrom` references -- never paste literal IDs
+5. Wire dependencies with `valueFrom` references -- never paste literal IDs
    between resources, and never expose a param for a value another resource
    produces. References cross chart boundaries: a producer in a sibling
    chart of this workspace, or already deployed in the org, is wired with
    the same block. Read `references/dependencies.md` for the reference
    syntax, the cross-boundary check, how to find valid output field paths,
    and when to use `metadata.relationships` instead.
-5. **Chart contains any `Kubernetes*` kind?** Read
+6. **Chart contains any `Kubernetes*` kind?** Read
    `references/kubernetes-on-cluster.md` BEFORE writing those manifests --
    the one decision is whether the cluster is IN this chart. Same chart:
    every workload needs the provider-connection annotation and an ordering
@@ -294,11 +326,11 @@ moves on (`references/personalization.md`).
    deployed cluster's connection is the platform's default binding. The
    build cannot catch connection mistakes either way (the failure only
    appears at deploy).
-6. Make optional resources conditional with `{% if values.flag | bool %}` …
+7. Make optional resources conditional with `{% if values.flag | bool %}` …
    `{% endif %}` around the whole document. Read
    `references/templating.md` for the template language subset and its
    context variables.
-7. Never delete or rename existing files while composing -- deletions freeze
+8. Never delete or rename existing files while composing -- deletions freeze
    the whole session for a human approval while the canvas sits mid-thought
    (see "Rules that prevent whole failure classes"). Scaffolding keep-files
    (`.gitkeep`) stay exactly where they are.
@@ -354,6 +386,10 @@ file. Check it against the Phase 1 plan:
 
 **Done means:** exit code 0, the resources array matches the intended
 architecture, and every param has a description and a sensible default.
+Then declare it: rewrite `.planton/composing.yaml` to `state: done` (the
+Phase 2 declaration) -- the canvas shows the final verdict only when you
+say the work is finished, so forgetting this leaves the user watching an
+animation for work that already ended.
 
 ### Phase 4a — Explain, then refine (the collaboration begins HERE)
 
