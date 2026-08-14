@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactory
+spec:
+  # PROVEN live on both engines (proof session, 2026-08-13): `minimal`
+  # (identity + global parameter + managed VNet + one managed private
+  # endpoint on the fixture storage account) -- Pulumi 9m59s (deploy
+  # 4m19s), Terraform 10m11s incl. a 30s blind import round-trip that
+  # re-imported BOTH the factory and the composed managed-private-
+  # endpoint child from the address key with a no-differences re-plan.
+  # The endpoint provisioned to Succeeded with its target-side
+  # connection Pending, as designed; the lane's teardown destroyed the
+  # fixture account itself and the end-of-session subscription sweep
+  # read zero resources, so nothing lingered on the target side. The
+  # git-binding, CMK, and
+  # credential arms stay offline-proven (no repo/vault/principal
+  # fixtures in the lane). Free at rest; creates in a few minutes.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 45

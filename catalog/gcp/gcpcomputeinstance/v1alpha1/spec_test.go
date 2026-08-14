@@ -256,12 +256,24 @@ var _ = Describe("GcpComputeInstanceSpec validations", func() {
 
 		It("requires exactly two replica zones when set (CEL)", func() {
 			spec := makeValidSpec()
+			// Regional boot disks are legal only from a snapshot source —
+			// GCP rejects creating one from an image (live-verified 400).
+			spec.BootDisk.Image = ""
+			spec.BootDisk.SourceSnapshot = "projects/my-project/global/snapshots/base-snap"
 			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b"}
 			Expect(protovalidate.Validate(spec)).To(BeNil())
 			spec.BootDisk.ReplicaZones = []string{"us-central1-a"}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
 			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b", "us-central1-c"}
 			Expect(protovalidate.Validate(spec)).NotTo(BeNil())
+		})
+
+		It("rejects replica zones on an image-sourced boot disk (CEL)", func() {
+			spec := makeValidSpec()
+			spec.BootDisk.ReplicaZones = []string{"us-central1-a", "us-central1-b"}
+			err := protovalidate.Validate(spec)
+			Expect(err).NotTo(BeNil())
+			Expect(err.Error()).To(ContainSubstring("replica_zones requires a source_snapshot"))
 		})
 
 		It("accepts boot-disk resource manager tags and a kms service account", func() {

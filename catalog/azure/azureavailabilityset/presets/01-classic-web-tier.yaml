@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureAvailabilitySet
+metadata:
+  name: web-avset
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: web-avset
+  region: eastus
+  # Unset domain counts and `managed` ride the provider defaults
+  # (5 update domains, 3 fault domains, managed alignment on) -- the
+  # right shape for almost every tier. Everything except tags is
+  # fixed at creation.

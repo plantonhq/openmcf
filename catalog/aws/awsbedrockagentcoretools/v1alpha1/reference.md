@@ -158,8 +158,10 @@ Managed cloud browsers.
 
 `string` · required
 
-Browser name in AWS. The for_each key on both engines and the key in
-the `browser_ids` output map.
+Browser name in AWS (1-48 characters; letter first, then letters,
+digits, underscore - CreateBrowser rejects hyphens server-side,
+live-caught 2026-08-14). The for_each key on both engines and the
+key in the `browser_ids` output map.
 
 - rule: {"string":{"minLen":"1","pattern":"^[a-zA-Z][a-zA-Z0-9_]{0,47}$"}}
 

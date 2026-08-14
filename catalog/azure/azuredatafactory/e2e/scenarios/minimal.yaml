@@ -1,0 +1,49 @@
+# Minimal AzureDataFactory scenario: a factory with a system-assigned
+# identity, one global parameter, the managed virtual network, and one
+# managed private endpoint reaching the fixture storage account's blob
+# service. Factory names are GLOBALLY unique across Azure, so the
+# cloud-side name carries ${E2E_RUN_ID} (metadata names stay stable);
+# a crashed run's leftover can then never block the next run. The
+# storage-account chain is scenario-declared (a factory does not
+# universally need one). Free at rest; creates in a few minutes. The
+# endpoint's target-side connection stays Pending (nobody approves it
+# in the lane) -- the verifier asserts the endpoint's ARM object,
+# never the connection state.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactory
+metadata:
+  name: planton-oss-e2e-azuredatafactory-smoke
+  id: planton-oss-e2e-azuredatafactory-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactory
+  annotations:
+    planton.dev/e2e: "true"
+    # The managed private endpoint targets the fixture storage account
+    # -- a scenario-level chain, not a kind-level requirement.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azdf-${E2E_RUN_ID}
+  region: eastus
+  identity:
+    type: SYSTEM_ASSIGNED
+  globalParameters:
+    - name: environment
+      type: String
+      value: e2e
+  managedVirtualNetworkEnabled: true
+  managedPrivateEndpoints:
+    - name: fixture-blob
+      targetResourceId:
+        valueFrom:
+          kind: AzureStorageAccount
+          name: planton-oss-e2e-azure-fixture-sa
+          fieldPath: status.outputs.storage_account_id
+      subresourceName: blob

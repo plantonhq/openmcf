@@ -48,9 +48,13 @@ locals {
   available_cpu    = try(local.service_config.available_cpu, "") != "" ? local.service_config.available_cpu : null
 
   vpc_connector = try(local.service_config.vpc_connector, "") != "" ? local.service_config.vpc_connector : null
-  # Egress settings only make sense with a connector attached; sending them
-  # without one is an API error.
-  vpc_egress = local.vpc_connector != null && try(local.service_config.vpc_connector_egress_settings, "") != "" ? local.service_config.vpc_connector_egress_settings : null
+  # Egress settings only make sense with a connector attached (sending them
+  # without one is an API error) — but WITH a connector they are sent
+  # explicitly on every apply, defaulting PRIVATE_RANGES_ONLY: the API
+  # materializes that default server-side and echoes it into state, so an
+  # omitted value re-plans as a perpetual remove-diff (live-caught by the
+  # idempotency gate). Same explicit-send grain as direct_vpc_egress below.
+  vpc_egress = local.vpc_connector != null ? (try(local.service_config.vpc_connector_egress_settings, "") != "" ? local.service_config.vpc_connector_egress_settings : "PRIVATE_RANGES_ONLY") : null
 
   ingress_settings = try(local.service_config.ingress_settings, "") != "" ? local.service_config.ingress_settings : null
 

@@ -1,0 +1,25 @@
+# Deep-shape example for docs and offline validation: a
+# Community-shared gallery exercising the whole sharing tree.
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGallery
+metadata:
+  name: test-compute-gallery
+  id: test-compute-gallery
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: platform.images
+  region: eastus
+  description: The platform team's approved golden images
+  sharing:
+    permission: Community
+    communityGallery:
+      eula: https://example.com/image-eula
+      prefix: acmeimages
+      publisherEmail: images@acme.example
+      publisherUri: https://acme.example
+  tags:
+    costCenter: platform

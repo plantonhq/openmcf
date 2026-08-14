@@ -323,11 +323,14 @@ func serviceConfig(spec *gcpcloudfunctionv1alpha1.GcpCloudFunctionSpec, effectiv
 
 	if sc.VpcConnector.GetValue() != "" {
 		serviceArgs.VpcConnector = pulumi.String(sc.VpcConnector.GetValue())
-		// Egress settings only make sense with a connector attached;
-		// sending them without one is an API error.
-		if sc.VpcConnectorEgressSettings != gcpcloudfunctionv1alpha1.GcpCloudFunctionVpcEgressSetting_PRIVATE_RANGES_ONLY {
-			serviceArgs.VpcConnectorEgressSettings = pulumi.String(sc.VpcConnectorEgressSettings.String())
-		}
+		// Egress settings only make sense with a connector attached (sending
+		// them without one is an API error) — but WITH a connector they are
+		// sent explicitly on every apply, PRIVATE_RANGES_ONLY included: the
+		// API materializes that default server-side and echoes it into state,
+		// so an omitted value re-plans as a perpetual remove-diff (live-caught
+		// by the idempotency gate). Same explicit-send grain as
+		// direct_vpc_egress below.
+		serviceArgs.VpcConnectorEgressSettings = pulumi.String(sc.VpcConnectorEgressSettings.String())
 	}
 
 	// Direct VPC egress: the connectorless path (mutually exclusive with

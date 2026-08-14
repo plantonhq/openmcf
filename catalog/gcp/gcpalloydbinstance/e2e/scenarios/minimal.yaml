@@ -22,6 +22,7 @@ spec:
       fieldPath: status.outputs.cluster_id
   instanceId: rp-${E2E_RUN_ID}
   cpuCount: 2
+  # availability_type stays empty: read-pool availability is derived from
+  # nodeCount (1 = ZONAL) and the API does not store a sent value.
   readPoolConfig:
     nodeCount: 1
-  availabilityType: ZONAL

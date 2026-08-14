@@ -1119,6 +1119,160 @@ const (
 	// resource group and network chain transitively through the
 	// resolver's own prerequisite declarations.)
 	CloudResourceKind_AzurePrivateDnsResolverForwardingRuleset CloudResourceKind = 2187
+	// AzurePrivateDnsZone is a prerequisite because every record set is
+	// created inside a referenced private DNS zone (the resource group
+	// chains transitively through the zone's own prerequisite).
+	CloudResourceKind_AzurePrivateDnsRecord CloudResourceKind = 2188
+	// AzureResourceGroup is a prerequisite because a Traffic Manager
+	// profile is created inside a referenced resource group (the profile
+	// itself is a global service -- the group only holds its metadata
+	// record).
+	CloudResourceKind_AzureTrafficManagerProfile CloudResourceKind = 2189
+	// AzureTrafficManagerProfile is a prerequisite because every
+	// endpoint is created inside a referenced profile -- it is the
+	// destination a profile steers traffic to (the resource group chains
+	// transitively through the profile's own prerequisite).
+	CloudResourceKind_AzureTrafficManagerEndpoint CloudResourceKind = 2190
+	// AzureResourceGroup is a prerequisite because an autoscale setting
+	// is created inside a referenced resource group. The scalable TARGET
+	// it controls is a no-default reference (many kinds can be scaled),
+	// so no target kind is declared here -- scenarios declare their own
+	// target fixture.
+	CloudResourceKind_AzureMonitorAutoscaleSetting CloudResourceKind = 2191
+	// The Azure Monitor data collection rule (DCR) -- the routing table
+	// declaring what telemetry the Azure Monitor Agent collects and
+	// where it lands. AzureResourceGroup is a prerequisite because a
+	// rule is created inside a referenced resource group;
+	// AzureLogAnalyticsWorkspace because a workspace is the canonical
+	// destination a rule routes to (the smoke scenario's shape).
+	// Machines attach to a rule with
+	// AzureMonitorDataCollectionRuleAssociation resources.
+	CloudResourceKind_AzureMonitorDataCollectionRule CloudResourceKind = 2192
+	// The Azure Event Grid custom topic -- the HTTPS endpoint an
+	// application publishes its own events to, fanned out to handlers by
+	// event subscriptions. One topic is one event stream with its own
+	// endpoint and access keys; for many streams behind one endpoint see
+	// AzureEventgridDomain.
+	CloudResourceKind_AzureEventgridTopic CloudResourceKind = 2193
+	// The Azure Event Grid domain -- ONE publishing endpoint and one
+	// pair of access keys serving many event streams (domain topics),
+	// the multi-tenant pattern. Topics inside the domain are
+	// auto-managed by Azure or declared explicitly as
+	// AzureEventgridDomainTopic resources.
+	CloudResourceKind_AzureEventgridDomain CloudResourceKind = 2194
+	// The Azure Event Grid system topic -- the subscription surface for
+	// events AZURE ITSELF publishes about one of your resources (a
+	// storage account's blob events, a resource group's lifecycle
+	// events). One system topic per source resource per topic type;
+	// event subscriptions attach to it to route events to handlers.
+	CloudResourceKind_AzureEventgridSystemTopic CloudResourceKind = 2195
+	// The Azure Event Grid event subscription -- the delivery
+	// instruction routing events from a source (a custom topic, domain,
+	// domain topic, system topic, resource group, or subscription) to a
+	// handler (a Function, Event Hub, Service Bus queue/topic, storage
+	// queue, hybrid connection, or webhook), with filtering, retry, and
+	// dead-letter behavior.
+	CloudResourceKind_AzureEventgridEventSubscription CloudResourceKind = 2196
+	// The Azure Event Grid namespace -- the capacity-scaled hub of the
+	// newer Event Grid: hosts CloudEvents namespace topics and an
+	// optional MQTT broker behind one set of regional endpoints, sized
+	// in throughput units.
+	CloudResourceKind_AzureEventgridNamespace CloudResourceKind = 2197
+	// The Azure Data Factory -- the workspace every other Data Factory
+	// resource lives inside: pipelines, data flows, linked services,
+	// datasets, triggers, and integration runtimes are all created
+	// against a factory's ARM ID.
+	CloudResourceKind_AzureDataFactory CloudResourceKind = 2198
+	// One unit of work inside an Azure Data Factory
+	// ({factory_id}/pipelines/{name}) -- an ordered set of activities
+	// that executes as a whole when triggered.
+	CloudResourceKind_AzureDataFactoryPipeline CloudResourceKind = 2199
+	// A Data Factory data flow ({factory_id}/dataflows/{name}) -- a
+	// visually-designed data transformation executed on managed Spark,
+	// or, as a flowlet, a reusable snippet other data flows embed. One
+	// kind covers both provider forms (they share one schema and one
+	// name namespace inside the factory).
+	CloudResourceKind_AzureDataFactoryDataFlow CloudResourceKind = 2200
+	// A Data Factory linked service
+	// ({factory_id}/linkedservices/{name}) -- a saved connection in the
+	// factory's address book: where an external system lives and how to
+	// authenticate to it. One kind covers every connection type Azure
+	// models as a first-class resource (storage, SQL family, Cosmos DB,
+	// Databricks, Key Vault, SFTP, web APIs, and more) as variants in
+	// one factory-scoped name namespace, plus the raw-JSON custom form.
+	CloudResourceKind_AzureDataFactoryLinkedService CloudResourceKind = 2201
+	// A Data Factory dataset ({factory_id}/datasets/{name}) -- a named
+	// view of data inside a system a linked service already connects
+	// to: which container and path, which table, which file format.
+	// One kind covers every data shape Azure models as a first-class
+	// dataset resource (delimited text/CSV, JSON, Parquet, binary,
+	// blob, HTTP, the SQL family, Snowflake, Cosmos DB) as variants in
+	// one factory-scoped name namespace, plus the raw-JSON custom form.
+	CloudResourceKind_AzureDataFactoryDataset CloudResourceKind = 2202
+	// A Data Factory trigger ({factory_id}/triggers/{name}) -- the
+	// instruction that starts pipelines automatically: on a clock
+	// schedule, per contiguous tumbling window, on storage blob events,
+	// or on Event Grid custom events. One kind covers all four provider
+	// trigger resources as variants (one ARM namespace, one
+	// started/stopped lifecycle).
+	CloudResourceKind_AzureDataFactoryTrigger CloudResourceKind = 2203
+	// A Data Factory integration runtime
+	// ({factory_id}/integrationRuntimes/{name}) -- the compute engine a
+	// factory's pipelines, data flows, and copy activities run on. One
+	// kind covers all three engine flavors as variants in one
+	// factory-scoped name namespace: the managed data-flow compute, the
+	// managed SSIS package runtime, and the self-hosted agent
+	// registration (which issues the authorization keys agents join
+	// with).
+	CloudResourceKind_AzureDataFactoryIntegrationRuntime CloudResourceKind = 2204
+	// The Azure Compute Gallery -- the shared library an organization
+	// keeps its approved VM images in. Image definitions
+	// (AzureComputeGalleryImage) live inside it; VMs and scale sets
+	// deploy from their published, region-replicated versions.
+	CloudResourceKind_AzureComputeGallery CloudResourceKind = 2205
+	// A gallery image ({gallery_id}/images/{name}) -- one image
+	// definition inside a Compute Gallery (marketplace-style identity,
+	// OS type, security posture) plus its published versions, each
+	// replicated to its own target regions. VMs deploy from a version's
+	// ARM ID or from the definition's ID to get the latest version.
+	CloudResourceKind_AzureComputeGalleryImage CloudResourceKind = 2206
+	// The availability set -- the classic pre-zones placement grouping
+	// that spreads VMs across separate fault and update domains so one
+	// hardware failure or maintenance window cannot take them all down.
+	// VMs join the set at creation.
+	CloudResourceKind_AzureAvailabilitySet CloudResourceKind = 2207
+	// The managed disk snapshot -- a point-in-time copy of a disk used
+	// for backup, cloning, and as the source of gallery image versions.
+	// Incremental snapshots store only the delta since the previous
+	// snapshot of the same disk.
+	CloudResourceKind_AzureDiskSnapshot CloudResourceKind = 2208
+	// The Azure Container Instance container group -- serverless
+	// containers billed per second: one or more containers sharing a
+	// lifecycle, network, and volumes (plus one-shot init containers),
+	// with no cluster or VM to manage. Public, subnet-private, or
+	// IP-less postures.
+	CloudResourceKind_AzureContainerInstance CloudResourceKind = 2209
+	// The Azure Function App on the Flex Consumption plan -- Azure's
+	// newest serverless Functions hosting model: per-instance memory
+	// selection, a configurable scale-out ceiling, always-ready instance
+	// pools, and explicit blob-container deployment storage. Requires an
+	// FC1-SKU service plan, which is deliberately NOT a registry
+	// prerequisite: the shared plan fixture serves the classic app tiers,
+	// and an FC1 plan is cheap to create per scenario (no idle compute
+	// cost), so scenarios bring their own plan fixture -- the same
+	// reasoning that keeps the globally-unique storage account
+	// scenario-local for AzureFunctionApp.
+	CloudResourceKind_AzureFunctionAppFlexConsumption CloudResourceKind = 2210
+	// The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
+	// managed MongoDB: a real MongoDB engine on dedicated vCore tiers
+	// with sharding, zone-redundant HA, and point-in-time restore.
+	CloudResourceKind_AzureMongoCluster CloudResourceKind = 2211
+	// The Microsoft Fabric capacity -- the billing and compute anchor of
+	// Microsoft Fabric: workspaces assign themselves to a capacity, and
+	// its F-SKU sets how much compute every workload on it shares.
+	// azurerm's entire Fabric surface is this one resource (workspaces
+	// and items live in Microsoft's dedicated fabric provider).
+	CloudResourceKind_AzureFabricCapacity CloudResourceKind = 2212
 	// Registers a storage account with a Recovery Services vault as a
 	// backup container (.../protectionContainers/StorageContainer;...)
 	// -- one registration per storage-account-and-vault pair, required
@@ -1144,6 +1298,46 @@ const (
 	// out-of-run number -- enum numbers are pinned by the registry
 	// snapshot; never renumber.
 	CloudResourceKind_AzurePrivateDnsResolverVirtualNetworkLink CloudResourceKind = 2215
+	// The attachment that puts ONE machine under an Azure Monitor data
+	// collection rule ({target_id}/providers/Microsoft.Insights/
+	// dataCollectionRuleAssociations/{name}) -- an extension resource on
+	// the TARGET machine, many per rule, machines joining and leaving
+	// monitoring independently (which is why the association is a
+	// standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+	// AzureVirtualMachine is a prerequisite because the smoke scenario
+	// attaches the fixture VM; the rule prerequisite chains the rule's
+	// own install manifest. Part of the Monitor family (2191-2192)
+	// despite the out-of-run number -- enum numbers are pinned by the
+	// registry snapshot; never renumber.
+	CloudResourceKind_AzureMonitorDataCollectionRuleAssociation CloudResourceKind = 2216
+	// One named event stream inside an Azure Event Grid domain
+	// ({domain_id}/topics/{name}) -- the per-tenant mailbox of the
+	// multi-tenant pattern: many per domain, each with its own
+	// subscriptions and lifecycle, tenants joining and leaving without
+	// touching the domain (which is why the domain topic is a standalone
+	// kind, exactly like AzureEventHubConsumerGroup on a shared hub).
+	// Part of the Event Grid family (2193-2194) despite the out-of-run
+	// number -- enum numbers are pinned by the registry snapshot; never
+	// renumber.
+	CloudResourceKind_AzureEventgridDomainTopic CloudResourceKind = 2217
+	// One named CloudEvents stream inside an Azure Event Grid namespace
+	// ({namespace_id}/topics/{name}) -- many per namespace, publishers
+	// and teams creating and deleting their own against the shared
+	// namespace (which is why the topic is a standalone kind, exactly
+	// like AzureEventgridDomainTopic and AzureEventHubConsumerGroup).
+	// Part of the Event Grid family (2193-2197) despite the out-of-run
+	// number -- enum numbers are pinned by the registry snapshot; never
+	// renumber.
+	CloudResourceKind_AzureEventgridNamespaceTopic CloudResourceKind = 2218
+	// Grants one Microsoft Entra principal access to an Azure Cosmos DB
+	// for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an
+	// access binding, not a password user: many per cluster, principals
+	// joining and leaving independently (which is why the grant is a
+	// standalone kind, the access-grant class of AzureRoleAssignment).
+	// Part of the Mongo vCore family (2211) despite the out-of-run
+	// number -- enum numbers are pinned by the registry snapshot; never
+	// renumber.
+	CloudResourceKind_AzureMongoClusterUser CloudResourceKind = 2219
 	// 3000–3999: GCP resources
 	CloudResourceKind_GcpArtifactRegistryRepo CloudResourceKind = 3000
 	// The URL map is the parent a proxy cannot exist without; the classic
@@ -2014,9 +2208,38 @@ var (
 		2185:  "AzureNetworkWatcherFlowLog",
 		2186:  "AzurePrivateDnsResolver",
 		2187:  "AzurePrivateDnsResolverForwardingRuleset",
+		2188:  "AzurePrivateDnsRecord",
+		2189:  "AzureTrafficManagerProfile",
+		2190:  "AzureTrafficManagerEndpoint",
+		2191:  "AzureMonitorAutoscaleSetting",
+		2192:  "AzureMonitorDataCollectionRule",
+		2193:  "AzureEventgridTopic",
+		2194:  "AzureEventgridDomain",
+		2195:  "AzureEventgridSystemTopic",
+		2196:  "AzureEventgridEventSubscription",
+		2197:  "AzureEventgridNamespace",
+		2198:  "AzureDataFactory",
+		2199:  "AzureDataFactoryPipeline",
+		2200:  "AzureDataFactoryDataFlow",
+		2201:  "AzureDataFactoryLinkedService",
+		2202:  "AzureDataFactoryDataset",
+		2203:  "AzureDataFactoryTrigger",
+		2204:  "AzureDataFactoryIntegrationRuntime",
+		2205:  "AzureComputeGallery",
+		2206:  "AzureComputeGalleryImage",
+		2207:  "AzureAvailabilitySet",
+		2208:  "AzureDiskSnapshot",
+		2209:  "AzureContainerInstance",
+		2210:  "AzureFunctionAppFlexConsumption",
+		2211:  "AzureMongoCluster",
+		2212:  "AzureFabricCapacity",
 		2213:  "AzureBackupContainerStorageAccount",
 		2214:  "AzureDataProtectionResourceGuard",
 		2215:  "AzurePrivateDnsResolverVirtualNetworkLink",
+		2216:  "AzureMonitorDataCollectionRuleAssociation",
+		2217:  "AzureEventgridDomainTopic",
+		2218:  "AzureEventgridNamespaceTopic",
+		2219:  "AzureMongoClusterUser",
 		3000:  "GcpArtifactRegistryRepo",
 		3001:  "GcpTargetHttpsProxy",
 		3002:  "GcpCloudFunction",
@@ -2733,9 +2956,38 @@ var (
 		"AzureNetworkWatcherFlowLog":                     2185,
 		"AzurePrivateDnsResolver":                        2186,
 		"AzurePrivateDnsResolverForwardingRuleset":       2187,
+		"AzurePrivateDnsRecord":                          2188,
+		"AzureTrafficManagerProfile":                     2189,
+		"AzureTrafficManagerEndpoint":                    2190,
+		"AzureMonitorAutoscaleSetting":                   2191,
+		"AzureMonitorDataCollectionRule":                 2192,
+		"AzureEventgridTopic":                            2193,
+		"AzureEventgridDomain":                           2194,
+		"AzureEventgridSystemTopic":                      2195,
+		"AzureEventgridEventSubscription":                2196,
+		"AzureEventgridNamespace":                        2197,
+		"AzureDataFactory":                               2198,
+		"AzureDataFactoryPipeline":                       2199,
+		"AzureDataFactoryDataFlow":                       2200,
+		"AzureDataFactoryLinkedService":                  2201,
+		"AzureDataFactoryDataset":                        2202,
+		"AzureDataFactoryTrigger":                        2203,
+		"AzureDataFactoryIntegrationRuntime":             2204,
+		"AzureComputeGallery":                            2205,
+		"AzureComputeGalleryImage":                       2206,
+		"AzureAvailabilitySet":                           2207,
+		"AzureDiskSnapshot":                              2208,
+		"AzureContainerInstance":                         2209,
+		"AzureFunctionAppFlexConsumption":                2210,
+		"AzureMongoCluster":                              2211,
+		"AzureFabricCapacity":                            2212,
 		"AzureBackupContainerStorageAccount":             2213,
 		"AzureDataProtectionResourceGuard":               2214,
 		"AzurePrivateDnsResolverVirtualNetworkLink":      2215,
+		"AzureMonitorDataCollectionRuleAssociation":      2216,
+		"AzureEventgridDomainTopic":                      2217,
+		"AzureEventgridNamespaceTopic":                   2218,
+		"AzureMongoClusterUser":                          2219,
 		"GcpArtifactRegistryRepo":                        3000,
 		"GcpTargetHttpsProxy":                            3001,
 		"GcpCloudFunction":                               3002,
@@ -3522,7 +3774,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xa1\xc1\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb2\xcf\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3845,10 +4097,39 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x10AzureBastionHost\x10\x88\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\tazbastion:\x04\xdb\x0f\xdd\x0f\x12@\n" +
 	"\x1aAzureNetworkWatcherFlowLog\x10\x89\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazfwlog:\x04\xd6\x0f\xd9\x0f\x12=\n" +
 	"\x17AzurePrivateDnsResolver\x10\x8a\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\aazpdnsr:\x04\xd6\x0f\xdb\x0f\x12N\n" +
-	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12G\n" +
+	"(AzurePrivateDnsResolverForwardingRuleset\x10\x8b\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsfrs:\x02\x8a\x11\x12;\n" +
+	"\x15AzurePrivateDnsRecord\x10\x8c\x11\x1a\x1f\xa2\xf7\x04\x1b\b\r\x12\bv1alpha1\"\tazpdnsrec:\x02\xdf\x0f\x12?\n" +
+	"\x1aAzureTrafficManagerProfile\x10\x8d\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\baztmprof:\x02\xd0\x0f\x12>\n" +
+	"\x1bAzureTrafficManagerEndpoint\x10\x8e\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06aztmep:\x02\x8d\x11\x12D\n" +
+	"\x1cAzureMonitorAutoscaleSetting\x10\x8f\x11\x1a!\xa2\xf7\x04\x1d\b\r\x12\bv1alpha1\"\vazautoscale:\x02\xd0\x0f\x12B\n" +
+	"\x1eAzureMonitorDataCollectionRule\x10\x90\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\x05azdcr:\x04\xd0\x0f\x82\x10\x125\n" +
+	"\x13AzureEventgridTopic\x10\x91\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegt:\x02\xd0\x0f\x126\n" +
+	"\x14AzureEventgridDomain\x10\x92\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azegd:\x02\xd0\x0f\x12>\n" +
+	"\x19AzureEventgridSystemTopic\x10\x93\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azegst:\x04\xd0\x0f\xd9\x0f\x12B\n" +
+	"\x1fAzureEventgridEventSubscription\x10\x94\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azeges:\x02\x91\x11\x12:\n" +
+	"\x17AzureEventgridNamespace\x10\x95\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegns:\x02\xd0\x0f\x121\n" +
+	"\x10AzureDataFactory\x10\x96\x11\x1a\x1a\xa2\xf7\x04\x16\b\r\x12\bv1alpha1\"\x04azdf:\x02\xd0\x0f\x12=\n" +
+	"\x18AzureDataFactoryPipeline\x10\x97\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfpipe:\x02\x96\x11\x12=\n" +
+	"\x18AzureDataFactoryDataFlow\x10\x98\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazdfflow:\x02\x96\x11\x12@\n" +
+	"\x1dAzureDataFactoryLinkedService\x10\x99\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfls:\x02\x96\x11\x12:\n" +
+	"\x17AzureDataFactoryDataset\x10\x9a\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfds:\x02\x99\x11\x12>\n" +
+	"\x17AzureDataFactoryTrigger\x10\x9b\x11\x1a \xa2\xf7\x04\x1c\b\r\x12\bv1alpha1\"\bazdftrig:\x04\x96\x11\x97\x11\x12E\n" +
+	"\"AzureDataFactoryIntegrationRuntime\x10\x9c\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdfir:\x02\x96\x11\x126\n" +
+	"\x13AzureComputeGallery\x10\x9d\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azcgal:\x02\xd0\x0f\x12<\n" +
+	"\x18AzureComputeGalleryImage\x10\x9e\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazcgimg:\x02\x9d\x11\x128\n" +
+	"\x14AzureAvailabilitySet\x10\x9f\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazavset:\x02\xd0\x0f\x125\n" +
+	"\x11AzureDiskSnapshot\x10\xa0\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazdsnap:\x02\xe7\x0f\x128\n" +
+	"\x16AzureContainerInstance\x10\xa1\x11\x1a\x1b\xa2\xf7\x04\x17\b\r\x12\bv1alpha1\"\x05azaci:\x02\xd0\x0f\x12D\n" +
+	"\x1fAzureFunctionAppFlexConsumption\x10\xa2\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfnflex:\x02\xd0\x0f\x125\n" +
+	"\x11AzureMongoCluster\x10\xa3\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazmongo:\x02\xd0\x0f\x128\n" +
+	"\x13AzureFabricCapacity\x10\xa4\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazfabcap:\x02\xd0\x0f\x12G\n" +
 	"\"AzureBackupContainerStorageAccount\x10\xa5\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azbcsa:\x04\xff\x10\xd9\x0f\x12C\n" +
 	" AzureDataProtectionResourceGuard\x10\xa6\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azdprg:\x02\xd0\x0f\x12S\n" +
-	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12:\n" +
+	")AzurePrivateDnsResolverVirtualNetworkLink\x10\xa7\x11\x1a#\xa2\xf7\x04\x1f\b\r\x12\bv1alpha1\"\vazpdnsrlink:\x04\x8b\x11\xd6\x0f\x12N\n" +
+	")AzureMonitorDataCollectionRuleAssociation\x10\xa8\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\x06azdcra:\x04\x90\x11\xd8\x0f\x12<\n" +
+	"\x19AzureEventgridDomainTopic\x10\xa9\x11\x1a\x1c\xa2\xf7\x04\x18\b\r\x12\bv1alpha1\"\x06azegdt:\x02\x92\x11\x12@\n" +
+	"\x1cAzureEventgridNamespaceTopic\x10\xaa\x11\x1a\x1d\xa2\xf7\x04\x19\b\r\x12\bv1alpha1\"\aazegnst:\x02\x95\x11\x12:\n" +
+	"\x15AzureMongoClusterUser\x10\xab\x11\x1a\x1e\xa2\xf7\x04\x1a\b\r\x12\bv1alpha1\"\bazmongou:\x02\xa3\x11\x12:\n" +
 	"\x17GcpArtifactRegistryRepo\x10\xb8\x17\x1a\x1c\xa2\xf7\x04\x18\b\x12\x12\bv1alpha1\"\x06gcpart:\x02\xc6\x17\x12=\n" +
 	"\x13GcpTargetHttpsProxy\x10\xb9\x17\x1a#\xa2\xf7\x04\x1f\b\x12\x12\bv1alpha1\"\agcpthsp:\b\xd3\x17\xd4\x17\xa7\x18\xa8\x18\x122\n" +
 	"\x10GcpCloudFunction\x10\xba\x17\x1a\x1b\xa2\xf7\x04\x17\b\x12\x12\bv1alpha1\"\x05gcpfn:\x02\xb1\x18\x12*\n" +

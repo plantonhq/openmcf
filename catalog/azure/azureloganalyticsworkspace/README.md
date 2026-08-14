@@ -56,7 +56,7 @@ Log Analytics Workspaces are the foundation of observability in Azure. They powe
 | `allow_resource_only_permissions` | bool | No | true | Resource-context query access |
 | `cmk_for_query_forced` | bool | No | false | Customer-managed storage for query artifacts |
 | `immediate_data_purge_on_30_days_enabled` | bool | No | false | No post-retention grace store |
-| `data_collection_rule_id` | string | No | - | Default DCR (literal ARM id) |
+| `data_collection_rule_id` | StringValueOrRef | No | - | Default DCR (ARM id or AzureMonitorDataCollectionRule reference) |
 | `tags` | map | No | - | User tags (merged over metadata tags) |
 
 ## Outputs

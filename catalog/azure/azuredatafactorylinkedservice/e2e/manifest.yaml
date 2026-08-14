@@ -1,0 +1,42 @@
+# Deep-shape example for docs and offline validation: a Databricks
+# connection exercising the variant's full surface -- Key-Vault-held
+# access token (the safe pattern), a fully-specified job cluster with
+# autoscaling, Spark configuration, tags, and init scripts.
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: test-linked-service
+  id: test-linked-service
+  org: test-org
+  env: test
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataFactory/factories/test-df
+  name: spark-workspace
+  description: Databricks over a Key-Vault-held token, running per-job clusters.
+  annotations:
+    - team:data
+  parameters:
+    env: test
+  azureDatabricks:
+    adbDomain: https://adb-1234567890123456.7.azuredatabricks.net
+    keyVaultPassword:
+      linkedServiceName:
+        value: secrets-vault
+      secretName: databricks-token
+    newClusterConfig:
+      nodeType: Standard_DS3_v2
+      clusterVersion: 16.4.x-scala2.12
+      minNumberOfWorkers: 2
+      maxNumberOfWorkers: 8
+      driverNodeType: Standard_DS4_v2
+      sparkConfig:
+        spark.speculation: "true"
+      sparkEnvironmentVariables:
+        PIPELINE_ENV: test
+      customTags:
+        team: data
+      initScripts:
+        - dbfs:/init/install-libs.sh
+      logDestination: dbfs:/cluster-logs

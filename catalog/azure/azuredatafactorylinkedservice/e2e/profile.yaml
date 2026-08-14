@@ -1,0 +1,31 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactorylinkedservice
+spec:
+  # PROVEN live on both engines (proof session, 2026-08-13). THREE
+  # scenarios ran -- the representative variants provable without
+  # external systems, all with ZERO secret material: web (anonymous;
+  # Pulumi 11m30s / Terraform 9m48s incl. 20s import round-trip),
+  # key-vault (the fixture vault by reference -- the cross-kind chart
+  # edge and the provider's key_vault_id -> base-URI derivation proven
+  # live; Pulumi 15m11s / Terraform 14m48s incl. 39s round-trip), and
+  # blob storage (the fixture account's endpoint + managed identity --
+  # the heaviest auth matrix's no-secret arm; Pulumi 9m55s / Terraform
+  # 8m55s incl. 12s round-trip). All three blind round-trips re-planned
+  # with no differences -- the masked-secret read-back watch item
+  # resolved clean, and ARM save-time-validated NO connection shape
+  # (saving is not connecting, as designed). The other 20 variants
+  # remain OFFLINE-PROVEN by design: each needs a live external system
+  # (a Snowflake account, a Databricks workspace, an SFTP server, an
+  # on-premises DSN, ...) that E2E cannot honestly stand up; their
+  # tofu plans are render-inspected instead, and Azure saves linked
+  # service definitions without dialing the target, so a live create
+  # would prove no more than the management-plane contract the three
+  # live lanes already prove.
+  # Linked services are authoring metadata -- free at rest; the lanes
+  # pay only the factory chain.
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 60

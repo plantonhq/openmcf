@@ -1,0 +1,33 @@
+# Minimal AzureTrafficManagerProfile scenario: a Performance profile
+# with an HTTPS probe -- the everyday shape. The DNS relative name
+# lives in the GLOBAL trafficmanager.net namespace, so the cloud-side
+# name carries ${E2E_RUN_ID} (metadata names stay stable); a crashed
+# run's leftover can then never block the next run. Profiles are cheap
+# at rest (queries and probes are the billing meters; no endpoints
+# exist in this lane).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerProfile
+metadata:
+  name: planton-oss-e2e-azuretrafficmanagerprofile-smoke
+  id: planton-oss-e2e-azuretrafficmanagerprofile-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuretrafficmanagerprofile
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-tmprof-smoke
+  routingMethod: Performance
+  dnsConfig:
+    relativeName: planton-oss-e2e-tmp-${E2E_RUN_ID}
+  monitorConfig:
+    protocol: HTTPS
+    port: 443
+    path: /

@@ -216,17 +216,31 @@ func Resources(ctx *pulumi.Context, stackInput *azurecognitiveaccountv1alpha1.Az
 	for _, policy := range spec.RaiPolicies {
 		contentFilters := cognitive.AccountRaiPolicyContentFilterArray{}
 		for _, filter := range policy.ContentFilters {
+			// PARITY-EXCEPTION: the classic SDK bridges the pre-v5
+			// provider, which marks severity_threshold REQUIRED on
+			// every content filter; azurerm v5 made it optional and
+			// REJECTS it on the binary filters (Jailbreak, Indirect
+			// Attack, Protected Material Text/Code). A severity-less
+			// filter is therefore inexpressible on this engine --
+			// fail loudly rather than invent a severity ARM never
+			// asked for. Unblock: a v5-bridged pulumi-azure major.
+			severity, ok := raiContentLevelWire[filter.SeverityThreshold]
+			if !ok {
+				return errors.Errorf(
+					"rai policy %s content filter %s carries no severity_threshold: "+
+						"the classic Azure SDK requires one on every content filter, so "+
+						"severity-less filters (the binary filters, or a graded filter "+
+						"relying on ARM's default) deploy through Terraform only "+
+						"(PARITY-EXCEPTION -- see the spec field comment)",
+					policy.Name, filter.Name)
+			}
 			filterArgs := &cognitive.AccountRaiPolicyContentFilterArgs{
 				Name:          pulumi.String(filter.Name),
 				FilterEnabled: pulumi.Bool(filter.FilterEnabled),
 				BlockEnabled:  pulumi.Bool(filter.BlockEnabled),
 				// Already a wire value in the spec.
-				Source: pulumi.String(filter.Source),
-			}
-			// Enum name -> wire value; unspecified omits the property
-			// (the binary filters carry no severity -- spec CEL).
-			if severity, ok := raiContentLevelWire[filter.SeverityThreshold]; ok {
-				filterArgs.SeverityThreshold = pulumi.String(severity)
+				Source:            pulumi.String(filter.Source),
+				SeverityThreshold: pulumi.String(severity),
 			}
 			contentFilters = append(contentFilters, filterArgs)
 		}

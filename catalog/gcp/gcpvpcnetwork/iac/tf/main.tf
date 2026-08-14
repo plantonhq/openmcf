@@ -17,7 +17,11 @@ resource "google_compute_network" "vpc" {
   name                    = var.spec.network_name
   project                 = local.project_id
   auto_create_subnetworks = var.spec.auto_create_subnetworks
-  routing_mode            = local.routing_mode
+  # Always sent, never conditional (Optional+Computed): omitting it on a
+  # GLOBAL→REGIONAL transition would silently keep GLOBAL on the live
+  # network, and the live API rejects a create whose routingConfig carries
+  # any BGP best-path field without routingMode.
+  routing_mode = local.routing_mode
 
   description = var.spec.description != "" ? var.spec.description : null
 

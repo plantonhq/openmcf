@@ -1,0 +1,43 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azurefunctionappflexconsumption
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plans green across the maximal
+  # every-arm shape and both lanes); live dual-engine proof has not
+  # yet run. TWO scenarios run: `minimal` (connection-string
+  # deployment-storage auth on a scenario-local FC1 plan + storage
+  # account + blob container -- proves the FC1-plan FK seam, the
+  # endpoint/key binding, the flex scale dials including an
+  # always-ready pool, the health-check app-setting seam, and the
+  # Front Door origin-lockdown wire path) and `identity-auth`
+  # (system-assigned identity deployment-storage auth, no key
+  # anywhere, basic-auth publishing closed -- proves the identity-mode
+  # wire contract and the identity outputs). Import round-trips must
+  # expect the write-only class ABSENT from reads: storage_access_key
+  # (Azure returns it only inside the AzureWebJobsStorage app setting
+  # in key mode), zip_deploy_file (never returned), app_service_logs
+  # (update-only, never read). Watch-list: (1) Flex Consumption's
+  # REGIONAL availability -- the lanes run in centralus alongside the
+  # fixture resource group; if the FC1 plan create is rejected there,
+  # move BOTH lanes' plan+account+app to an available region
+  # (eastus/eastus2) in one edit. (2) ARM may validate storage access
+  # at app create in the identity-auth lane (the RBAC grant is
+  # day-2) -- if it does, chain a role-assignment hop or flip the lane
+  # to offline-proven with the reason recorded. (3) The always-ready
+  # pool bills for its minutes of uptime -- both lanes together stay
+  # effectively $0. Offline-proven with reasons: the user-assigned
+  # storage-auth mode (rendered in the maximal manifest's plan; it
+  # differs from system-assigned only by the identity id the wire
+  # carries); auth_settings_v2 provider arms (each needs a real IdP
+  # app registration E2E cannot honestly stand up; Azure saves the
+  # configuration without dialing the provider); zip_deploy_file (needs
+  # a real package artifact; the publish path is the provider's own
+  # helper); VNet integration (needs a Microsoft.App/environments-
+  # delegated subnet -- a shared-fixture addition deferred until a
+  # flex-networking scenario earns it).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 30

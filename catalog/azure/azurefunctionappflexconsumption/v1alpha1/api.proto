@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurefunctionappflexconsumption.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurefunctionappflexconsumption/v1alpha1/outputs.proto";
+import "catalog/azure/azurefunctionappflexconsumption/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureFunctionAppFlexConsumption is the top-level API resource for an
+// Azure Function App on the Flex Consumption plan -- Azure's newest
+// serverless Functions hosting model, with per-instance memory
+// selection, a configurable scale-out ceiling, and always-ready
+// instance pools that eliminate cold starts.
+//
+// It runs on an AzureServicePlan whose SKU is FLEX_CONSUMPTION_FC1 and
+// deploys its code from a blob container the app authenticates to by
+// connection string or managed identity. Classic Consumption, Elastic
+// Premium, and Dedicated-plan function apps are AzureFunctionApp.
+message AzureFunctionAppFlexConsumption {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureFunctionAppFlexConsumption'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  AzureFunctionAppFlexConsumptionSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  AzureFunctionAppFlexConsumptionStatus status = 5;
+}
+
+// AzureFunctionAppFlexConsumptionStatus holds the deployment status and
+// outputs.
+message AzureFunctionAppFlexConsumptionStatus {
+  // stack-outputs
+  AzureFunctionAppFlexConsumptionStackOutputs outputs = 1;
+}

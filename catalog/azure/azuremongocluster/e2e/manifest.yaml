@@ -1,0 +1,40 @@
+# Deep-shape example for docs and offline validation: a Default-mode
+# production-ish cluster with zone-redundant HA, Entra + native auth,
+# and two firewall rules. The administrator password is a literal here
+# only so the manifest validates standalone -- reference a secret
+# store in real use.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoCluster
+metadata:
+  name: test-mongo-cluster
+  id: test-mongo-cluster
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: acme-orders-db
+  region: eastus
+  createMode: Default
+  administratorUsername: mongoadmin
+  administratorPassword:
+    value: Test-Passw0rd-Change-Me
+  version: "8.0"
+  computeTier: M30
+  storageSizeInGb: 128
+  storageType: PremiumSSD
+  shardCount: 1
+  highAvailabilityMode: ZoneRedundantPreferred
+  authenticationMethods:
+    - NativeAuth
+    - MicrosoftEntraID
+  publicNetworkAccessEnabled: true
+  firewallRules:
+    - name: office
+      startIpAddress: 203.0.113.0
+      endIpAddress: 203.0.113.255
+    - name: vpn-egress
+      startIpAddress: 198.51.100.7
+      endIpAddress: 198.51.100.7
+  tags:
+    costCenter: platform

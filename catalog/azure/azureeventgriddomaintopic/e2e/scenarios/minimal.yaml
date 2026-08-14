@@ -1,0 +1,27 @@
+# Minimal AzureEventgridDomainTopic scenario: one tenant stream
+# declared inside the domain kind's own smoke instance -- the registry
+# prerequisite chains the domain's install manifest (whose auto-topic
+# flags are OFF, so this lane proves the pinned-topics posture end to
+# end: the topic exists because it is DECLARED). The topic's own name
+# is domain-scoped (no run-id needed -- the parent domain's name
+# carries it); the reference resolves the domain_id output through the
+# chain. Free; creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomainTopic
+metadata:
+  name: planton-oss-e2e-azureeventgriddomaintopic-smoke
+  id: planton-oss-e2e-azureeventgriddomaintopic-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgriddomaintopic
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  domainId:
+    valueFrom:
+      name: planton-oss-e2e-azureeventgriddomain-smoke
+  name: customer-smoke

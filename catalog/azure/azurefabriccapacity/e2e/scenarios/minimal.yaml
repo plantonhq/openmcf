@@ -1,0 +1,33 @@
+# Minimal AzureFabricCapacity scenario: the smallest capacity (F2)
+# with the shared test account as its administrator, in the shared
+# fixture resource group. Capacity names allow ONLY lowercase letters
+# and numbers -- no hyphens, no underscores -- so neither run-id token
+# variant can apply and the name is stable; a crashed run's leftover
+# holds the name and the zero-orphan sweep is the remedy (the
+# system-topic class). NOT free at rest (~$0.36/h at F2): the lane
+# creates, verifies, and destroys tightly -- a lane-length life costs
+# cents. Create and delete are polled LROs (the provider budgets 30m
+# each).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFabricCapacity
+metadata:
+  name: planton-oss-e2e-azurefabriccapacity-smoke
+  id: planton-oss-e2e-azurefabriccapacity-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurefabriccapacity
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: plantonosse2efabricsmoke
+  region: eastus
+  skuName: F2
+  administrationMembers:
+    - swarup@planton.ai

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgriddomaintopic.v1alpha1;
+
+// **AzureEventgridDomainTopicStackOutputs** captures the outputs from
+// provisioning an Azure Event Grid domain topic.
+message AzureEventgridDomainTopicStackOutputs {
+  // The domain topic's Azure Resource Manager ID
+  // ({domain_id}/topics/{name}) -- the scope event subscriptions
+  // attach to.
+  string domain_topic_id = 1;
+
+  // The topic's name -- the value publishers put in the event's topic
+  // field.
+  string domain_topic_name = 2;
+}

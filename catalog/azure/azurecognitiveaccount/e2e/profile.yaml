@@ -3,21 +3,25 @@ kind: ComponentE2EProfile
 metadata:
   name: azurecognitiveaccount
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The S0 OpenAI account carries no idle cost and
-  # provisions in one to three minutes -- only the fixture resource
-  # group rides its chain. This kind is also a fixture of the
-  # deployment and project lanes (both chain through this kind's
-  # install profile). The scenario proves the composed responsible-AI
-  # children (blocklist + policy) surfacing in the name-keyed outputs;
-  # the CMK / network-injection / user-owned-storage arms are
+  # LIVE-PROVEN 2026-08-12 on BOTH engines: full six-phase lifecycle
+  # (~5 min/engine) plus the blind import round-trip -- the account AND
+  # both composed responsible-AI children re-imported from address keys
+  # with a zero-change plan, zero tolerances consumed. The composed
+  # children surfaced in the name-keyed rai_blocklist_ids /
+  # rai_policy_ids outputs on both engines, and the sensitive access
+  # keys verified as REAL values (first live exercise of the harness's
+  # secret-scalar unmasking). The smoke policy carries GRADED filters
+  # only: severity-less (binary) filters are a recorded
+  # PARITY-EXCEPTION -- Terraform-only until a v5-bridged pulumi-azure
+  # major (the classic SDK requires a severity on every filter; v5
+  # REJECTS one on the binary names) -- caught live by the first Pulumi
+  # lane. The CMK / network-injection / user-owned-storage arms remain
   # offline-proven only (they need a Key Vault key, a delegated subnet,
   # and a storage account the minimal lane deliberately does not
   # deploy). Deletion is a SOFT delete -- the module purges the ghost
-  # on destroy, and the orphan sweep adds
-  # `az cognitiveservices account list-deleted`.
+  # on destroy (verified live: recycle bin empty after every lane), and
+  # the orphan sweep checks `az cognitiveservices account list-deleted`.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

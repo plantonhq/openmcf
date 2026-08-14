@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerprofile.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuretrafficmanagerprofile/v1alpha1/outputs.proto";
+import "catalog/azure/azuretrafficmanagerprofile/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureTrafficManagerProfile represents an Azure Traffic Manager
+// profile -- the DNS-based traffic director that answers lookups on its
+// {relative_name}.trafficmanager.net name with the address of one of
+// its endpoints, chosen by routing method and endpoint health.
+message AzureTrafficManagerProfile {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureTrafficManagerProfile'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureTrafficManagerProfileSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureTrafficManagerProfileStatus status = 5;
+}
+
+// AzureTrafficManagerProfileStatus represents the status of an Azure
+// Traffic Manager profile deployment.
+message AzureTrafficManagerProfileStatus {
+  //stack-outputs
+  //  azure-traffic-manager-profile stack-outputs
+  AzureTrafficManagerProfileStackOutputs outputs = 1;
+}

@@ -10,6 +10,6 @@ spec:
   # wiring via compute globalForwardingRules.get; destroy tears the whole
   # chain down in reverse, on both provisioners.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

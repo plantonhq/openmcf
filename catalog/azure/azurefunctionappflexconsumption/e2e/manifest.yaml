@@ -1,0 +1,193 @@
+# Maximal offline-validation manifest for
+# AzureFunctionAppFlexConsumption: every configurable arm populated
+# with literal values -- the user-assigned-identity deployment-storage
+# mode (the two live lanes prove the connection-string and
+# system-assigned modes), all scale dials with multiple always-ready
+# pools, the full site_config surface, Easy Auth v2 with EVERY identity
+# provider plus a custom OIDC entry, connection strings, sticky
+# settings, and the combined identity model. Drives validate-manifest
+# and the offline tofu plan's rendered-value inspection; never deployed
+# live.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: flex-consumption-maximal
+  org: planton-oss
+  env: e2e
+spec:
+  region: centralus
+  resourceGroup:
+    value: app-rg
+  functionAppName: acme-orders-flex
+  servicePlanId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.Web/serverFarms/flex-plan
+  storageContainerEndpoint: https://acmeordersflexsa.blob.core.windows.net/deployments
+  storageAuthenticationType: USER_ASSIGNED_IDENTITY
+  storageUserAssignedIdentityId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/orders-mi
+  runtimeName: DOTNET_ISOLATED
+  runtimeVersion: "8.0"
+  instanceMemoryInMb: 4096
+  maximumInstanceCount: 250
+  httpConcurrency: 32
+  alwaysReady:
+    - name: http
+      instanceCount: 2
+    - name: durable
+      instanceCount: 1
+    - name: function:ProcessOrders
+      instanceCount: 1
+  siteConfig:
+    apiManagementApiId: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.ApiManagement/service/acme-apim/apis/orders
+    apiDefinitionUrl: https://acme.example.com/openapi.json
+    appCommandLine: ""
+    applicationInsightsKey: 00000000-0000-0000-0000-000000000000
+    appServiceLogs:
+      diskQuotaMb: 50
+      retentionPeriodDays: 7
+    containerRegistryUseManagedIdentity: true
+    defaultDocuments:
+      - index.html
+    elasticInstanceMinimum: 1
+    http2Enabled: true
+    ipRestrictions:
+      - name: front-door-only
+        priority: 100
+        action: ALLOW
+        serviceTag: AzureFrontDoor.Backend
+        description: Only Front Door reaches the origin
+        headers:
+          xForwardedFor:
+            - 203.0.113.0/24
+          xForwardedHost:
+            - orders.acme.example.com
+          xAzureFdid:
+            - value: 11111111-2222-3333-4444-555555555555
+          xFdHealthProbe:
+            - "1"
+      - name: office
+        priority: 200
+        action: DENY
+        ipAddress: 198.51.100.0/24
+      - name: hub-subnet
+        priority: 300
+        action: ALLOW
+        virtualNetworkSubnetId:
+          value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/net-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/subnets/agents
+    ipRestrictionDefaultAction: DENY
+    scmUseMainIpRestriction: false
+    scmIpRestrictions:
+      - name: ci-runners
+        priority: 100
+        action: ALLOW
+        ipAddress: 192.0.2.0/24
+    scmIpRestrictionDefaultAction: DENY
+    loadBalancingMode: WEIGHTED_ROUND_ROBIN
+    managedPipelineMode: INTEGRATED
+    remoteDebuggingEnabled: true
+    remoteDebuggingVersion: VS2022
+    runtimeScaleMonitoringEnabled: true
+    websocketsEnabled: true
+    healthCheckPath: /api/health
+    healthCheckEvictionTimeInMin: 5
+    workerCount: 4
+    minimumTlsVersion: TLS_1_3
+    scmMinimumTlsVersion: TLS_1_2
+    cors:
+      allowedOrigins:
+        - https://orders.acme.example.com
+        - https://admin.acme.example.com
+      supportCredentials: true
+    vnetRouteAllEnabled: true
+  appSettings:
+    ENVIRONMENT: production
+    AAD_CLIENT_SECRET: set-me-via-key-vault-reference
+    GITHUB_CLIENT_SECRET: set-me-via-key-vault-reference
+  connectionStrings:
+    - name: orders-db
+      type: SQL_AZURE
+      value:
+        value: Server=tcp:orders.database.windows.net;Database=orders
+    - name: cache
+      type: REDIS_CACHE
+      value:
+        value: acme-cache.redis.cache.windows.net:6380,ssl=true
+  stickySettings:
+    appSettingNames:
+      - ENVIRONMENT
+    connectionStringNames:
+      - orders-db
+  applicationInsightsConnectionString:
+    value: InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://centralus-2.in.applicationinsights.azure.com/
+  httpsOnly: true
+  publicNetworkAccessEnabled: true
+  enabled: true
+  clientCertificateEnabled: true
+  clientCertificateMode: OPTIONAL_INTERACTIVE_USER
+  clientCertificateExclusionPaths: /api/health;/api/status
+  virtualNetworkSubnetId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/net-rg/providers/Microsoft.Network/virtualNetworks/hub-vnet/subnets/flex-integration
+  identity:
+    type: SYSTEM_AND_USER_ASSIGNED
+    identityIds:
+      - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/app-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/orders-mi
+  webdeployPublishBasicAuthenticationEnabled: false
+  authSettingsV2:
+    authEnabled: true
+    requireAuthentication: true
+    unauthenticatedAction: RETURN_401
+    defaultProvider: azureactivedirectory
+    excludedPaths:
+      - /api/health
+    requireHttps: true
+    login:
+      tokenStoreEnabled: true
+      tokenRefreshExtensionTime: 96
+      cookieExpirationConvention: FIXED_TIME
+      cookieExpirationTime: "08:00:00"
+      validateNonce: true
+      nonceExpirationTime: "00:05:00"
+      allowedExternalRedirectUrls:
+        - https://orders.acme.example.com/signed-in
+    appleV2:
+      clientId: com.acme.orders
+      clientSecretSettingName: APPLE_CLIENT_SECRET
+    activeDirectoryV2:
+      clientId: 22222222-2222-2222-2222-222222222222
+      tenantAuthEndpoint: https://login.microsoftonline.com/v2.0/33333333-3333-3333-3333-333333333333/
+      clientSecretSettingName: AAD_CLIENT_SECRET
+      allowedAudiences:
+        - api://acme-orders
+      allowedGroups:
+        - 44444444-4444-4444-4444-444444444444
+    azureStaticWebAppV2:
+      clientId: 55555555-5555-5555-5555-555555555555
+    customOidcV2:
+      - name: corp-idp
+        clientId: corp-orders-client
+        openidConfigurationEndpoint: https://idp.acme.example.com/.well-known/openid-configuration
+        nameClaimType: name
+        scopes:
+          - openid
+          - profile
+    facebookV2:
+      appId: "666666666666666"
+      appSecretSettingName: FACEBOOK_APP_SECRET
+      graphApiVersion: v17.0
+    githubV2:
+      clientId: Iv1.acmeorders
+      clientSecretSettingName: GITHUB_CLIENT_SECRET
+    googleV2:
+      clientId: acme-orders.apps.googleusercontent.com
+      clientSecretSettingName: GOOGLE_CLIENT_SECRET
+      loginScopes:
+        - openid
+    microsoftV2:
+      clientId: 77777777-7777-7777-7777-777777777777
+      clientSecretSettingName: MICROSOFT_CLIENT_SECRET
+    twitterV2:
+      consumerKey: acmeorderskey
+      consumerSecretSettingName: TWITTER_CONSUMER_SECRET
+  tags:
+    cost-center: orders
+    owner: platform-team

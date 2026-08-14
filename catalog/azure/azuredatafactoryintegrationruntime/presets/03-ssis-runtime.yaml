@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: ssis-runtime
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: ssis-runtime
+  description: The managed SSIS engine -- created stopped and unbilled; start it from Studio when packages run.
+  azureSsis:
+    region: <your-region>
+    nodeSize: Standard_D4_v3
+    # SSISDB (the catalog SSIS Studio deploys projects to) lands on
+    # your Azure SQL server, authenticated as the factory's managed
+    # identity -- grant it access on the server; no password travels.
+    catalogInfo:
+      serverEndpoint: <your-sql-server>.database.windows.net
+      pricingTier: S1

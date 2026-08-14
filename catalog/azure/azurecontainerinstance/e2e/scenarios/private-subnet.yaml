@@ -1,0 +1,41 @@
+# Private-posture scenario: the group takes an IP inside the
+# ACI-delegated fixture subnet (Microsoft.ContainerInstance/
+# containerGroups -- the fixtures' first live exercise of that
+# delegation), no public surface, no DNS label (the spec rejects the
+# combination). Azure serializes container-group operations per
+# subnet, so this lane never runs in parallel with another group in
+# the same fixture subnet. The subnet chain arrives through the
+# AzureSubnet install profile declared below.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: planton-oss-e2e-azurecontainerinstance-private
+  id: planton-oss-e2e-azurecontainerinstance-private
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerinstance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureSubnet"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-aci-priv-${E2E_RUN_ID}
+  region: eastus
+  osType: Linux
+  ipAddressType: Private
+  subnetId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-aci-subnet
+  containers:
+    - name: worker
+      image: mcr.microsoft.com/azuredocs/aci-helloworld:latest
+      cpu: 0.5
+      memory: 1
+      ports:
+        - port: 80

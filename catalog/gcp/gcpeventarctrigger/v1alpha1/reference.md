@@ -435,6 +435,9 @@ manages):
 
 - `exactly_one_destination`: set exactly one destination: cloud_run_service, gke, workflow, or http_endpoint
 - `retry_requires_cloud_run_destination`: retry_max_attempts can only be set with a cloud_run_service destination (the provider's own constraint)
+- `workflow_destination_requires_service_account`: a workflow destination requires service_account (the API rejects the create without it; the account needs roles/eventarc.eventReceiver + roles/workflows.invoker)
+- `global_trigger_cloud_run_region_required`: a cloud_run_service destination on a global trigger needs an explicit region (regional triggers default to their own location)
+- `pubsub_trigger_forbids_event_data_content_type`: event_data_content_type cannot be set on a Pub/Sub (messagePublished) trigger — the API rejects it; the payload format is decided at publish time
 
 ## Outputs
 

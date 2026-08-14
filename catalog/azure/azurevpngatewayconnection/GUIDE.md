@@ -27,6 +27,14 @@ pre-agreed one, and then REFERENCE a secret; the field is sensitive
 and reference-capable for exactly that. One key per tunnel, both ends
 identical.
 
+One caveat, proven live: the generated key is NOT readable back
+through this resource -- reads return it empty, so nothing in the
+deployment outputs (or an import) will ever carry it. If your
+workflow needs the key in hand to configure the branch device, set
+it explicitly via a secret reference; treat generate-and-omit as the
+posture for lab tunnels and for branches configured from the Azure
+side out-of-band.
+
 ## Pinned proposals fail closed
 
 With `ipsecPolicies` set, the tunnel offers EXACTLY that proposal --

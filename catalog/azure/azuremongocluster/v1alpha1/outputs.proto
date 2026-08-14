@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongocluster.v1alpha1;
+
+import "shared/options/options.proto";
+
+// **AzureMongoClusterStackOutputs** captures the outputs from
+// provisioning an Azure Cosmos DB for MongoDB vCore cluster.
+message AzureMongoClusterStackOutputs {
+  // The cluster's Azure Resource Manager ID -- the target an
+  // AzureMongoClusterUser's mongo_cluster_id (and a replica's
+  // source_server_id) references.
+  string mongo_cluster_id = 1;
+
+  // The cluster's name (also the first label of its hostname,
+  // {name}.mongocluster.cosmos.azure.com).
+  string mongo_cluster_name = 2;
+
+  // The cluster's primary MongoDB connection string, with the
+  // administrator credentials substituted in (Azure returns a
+  // <user>:<password> placeholder; the engines fill it from the
+  // spec). Empty when the cluster has no native administrator.
+  string connection_string = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // Every connection string Azure publishes for the cluster, keyed by
+  // Azure's name for it (the primary plus per-replica and per-mode
+  // variants), credentials substituted as above.
+  map<string, string> connection_strings = 4 [(dev.planton.shared.options.sensitive) = true];
+}

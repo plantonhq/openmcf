@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerprofile.v1alpha1;
+
+// **AzureTrafficManagerProfileStackOutputs** captures the outputs from
+// provisioning a Traffic Manager profile.
+message AzureTrafficManagerProfileStackOutputs {
+  // The profile's ARM resource ID
+  // (.../providers/Microsoft.Network/trafficManagerProfiles/{name}) --
+  // what AzureTrafficManagerEndpoint references, and what alias DNS
+  // records target.
+  string traffic_manager_profile_id = 1;
+
+  // The profile's resource name within its resource group.
+  string traffic_manager_profile_name = 2;
+
+  // The profile's public DNS name ({relative_name}.trafficmanager.net)
+  // -- what users resolve, and what your own domain CNAMEs to.
+  string fqdn = 3;
+}

@@ -1,0 +1,172 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers THIRTEEN provider resources as variants -- exactly
+# one of the spec's dataset blocks is set, and the module creates the
+# matching dataset resource (all 13 share one factory-scoped dataset
+# namespace, {factory_id}/datasets/{name}). Fields every shape shares
+# (name, data_factory_id, linked_service_name, description,
+# annotations, parameters, additional_properties, folder) live at the
+# spec root and match by exact name; variant-scoped arguments map into
+# their variant block below. Location and schema-column blocks map at
+# block level -- their leaves carry the provider's own names.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_factory_dataset_azure_blob:
+    mappings:
+      - spec: spec.azure_blob.path
+        arg: path
+      - spec: spec.azure_blob.filename
+        arg: filename
+      - spec: spec.azure_blob.dynamic_path_enabled
+        arg: dynamic_path_enabled
+      - spec: spec.azure_blob.dynamic_filename_enabled
+        arg: dynamic_filename_enabled
+      - spec: spec.azure_blob.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_azure_sql_table:
+    mappings:
+      - spec: spec.azure_sql_table.linked_service_id
+        arg: linked_service_id
+      - spec: spec.azure_sql_table.schema
+        arg: schema
+      - spec: spec.azure_sql_table.table
+        arg: table
+      - spec: spec.azure_sql_table.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_binary:
+    mappings:
+      - spec: spec.binary.http_server_location
+        arg: http_server_location
+      - spec: spec.binary.azure_blob_storage_location
+        arg: azure_blob_storage_location
+      - spec: spec.binary.sftp_server_location
+        arg: sftp_server_location
+      - spec: spec.binary.compression
+        arg: compression
+
+  azurerm_data_factory_dataset_cosmosdb_sqlapi:
+    mappings:
+      - spec: spec.cosmosdb_sqlapi.collection_name
+        arg: collection_name
+      - spec: spec.cosmosdb_sqlapi.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_custom_dataset:
+    mappings:
+      - spec: spec.custom.linked_service
+        arg: linked_service
+      - spec: spec.custom.type
+        arg: type
+      - spec: spec.custom.type_properties_json
+        arg: type_properties_json
+      - spec: spec.custom.schema_json
+        arg: schema_json
+
+  azurerm_data_factory_dataset_delimited_text:
+    mappings:
+      - spec: spec.delimited_text.http_server_location
+        arg: http_server_location
+      - spec: spec.delimited_text.azure_blob_storage_location
+        arg: azure_blob_storage_location
+      - spec: spec.delimited_text.azure_blob_fs_location
+        arg: azure_blob_fs_location
+      - spec: spec.delimited_text.column_delimiter
+        arg: column_delimiter
+      - spec: spec.delimited_text.row_delimiter
+        arg: row_delimiter
+      - spec: spec.delimited_text.quote_character
+        arg: quote_character
+      - spec: spec.delimited_text.escape_character
+        arg: escape_character
+      - spec: spec.delimited_text.encoding
+        arg: encoding
+      - spec: spec.delimited_text.first_row_as_header
+        arg: first_row_as_header
+      - spec: spec.delimited_text.null_value
+        arg: null_value
+      - spec: spec.delimited_text.compression_codec
+        arg: compression_codec
+      - spec: spec.delimited_text.compression_level
+        arg: compression_level
+      - spec: spec.delimited_text.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_http:
+    mappings:
+      - spec: spec.http.relative_url
+        arg: relative_url
+      - spec: spec.http.request_body
+        arg: request_body
+      - spec: spec.http.request_method
+        arg: request_method
+      - spec: spec.http.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_json:
+    mappings:
+      - spec: spec.json.http_server_location
+        arg: http_server_location
+      - spec: spec.json.azure_blob_storage_location
+        arg: azure_blob_storage_location
+      - spec: spec.json.encoding
+        arg: encoding
+      - spec: spec.json.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_mysql:
+    mappings:
+      - spec: spec.mysql.table_name
+        arg: table_name
+      - spec: spec.mysql.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_parquet:
+    mappings:
+      - spec: spec.parquet.http_server_location
+        arg: http_server_location
+      - spec: spec.parquet.azure_blob_storage_location
+        arg: azure_blob_storage_location
+      - spec: spec.parquet.azure_blob_fs_location
+        arg: azure_blob_fs_location
+      - spec: spec.parquet.compression_codec
+        arg: compression_codec
+      - spec: spec.parquet.schema_column
+        arg: schema_column
+    exclusions:
+      # The argument exists in the provider's schema for this resource
+      # but its create/update code never reads it -- a value set there
+      # silently does nothing (the delimited text form is the one that
+      # honors it). Modeling it would ship a dead switch.
+      - arg: compression_level
+        reason: dead in provider code -- schema-declared but never expanded into the ARM payload for the parquet resource; the delimited text dataset is the form whose compression level Azure honors
+
+  azurerm_data_factory_dataset_postgresql:
+    mappings:
+      - spec: spec.postgresql.table_name
+        arg: table_name
+      - spec: spec.postgresql.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_snowflake:
+    mappings:
+      - spec: spec.snowflake.table_name
+        arg: table_name
+      - spec: spec.snowflake.schema_name
+        arg: schema_name
+      - spec: spec.snowflake.schema_column
+        arg: schema_column
+
+  azurerm_data_factory_dataset_sql_server_table:
+    mappings:
+      - spec: spec.sql_server_table.table_name
+        arg: table_name
+      - spec: spec.sql_server_table.schema_column
+        arg: schema_column

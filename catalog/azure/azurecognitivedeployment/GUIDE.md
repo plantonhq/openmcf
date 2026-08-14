@@ -10,6 +10,15 @@ Judgment that saves real time when running model deployments. The field referenc
 
 Every deployment draws tokens-per-minute quota from a per-subscription, per-region pool. When ARM rejects a create or a capacity bump with an insufficient-quota error, the fix is a quota increase request (portal -> the account -> Quotas) or a smaller capacity -- nothing in the manifest is wrong. GlobalStandard usually has the most headroom.
 
+## Model names age out before they retire
+
+Azure closes models to NEW deployments while existing ones keep running: a model whose catalog lifecycle reads "Deprecating" is rejected at create with `ServiceModelDeprecating` -- months before its final retirement date. Presence in the model catalog is NOT deployability; the lifecycle field is the gate. When a create fails this way, nothing in your manifest is structurally wrong -- pick a current model:
+
+```shell
+az cognitiveservices model list -l <region> \
+  --query "[?model.lifecycleStatus=='GenerallyAvailable'].model.name" -o tsv | sort -u
+```
+
 ## The deployment name is your API contract
 
 Applications pass the DEPLOYMENT name -- not the model name -- when calling the endpoint. Renaming a deployment replaces the ARM object and breaks every caller. Name deployments after their role ("chat", "embeddings"), keep the role stable, and change the model behind it freely (model version updates in place; model name is a new deployment by design).

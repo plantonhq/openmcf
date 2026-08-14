@@ -1,0 +1,21 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataFlow
+metadata:
+  name: reusable-flowlet
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: scrub-pii
+  # The flowlet form: a reusable snippet other data flows embed via
+  # their source/sink/transformation flowlet references. Sources and
+  # sinks stay omitted -- the embedding flow supplies them.
+  flowlet: true
+  description: Standard PII-scrubbing rules, embedded at the source of every ingest flow.
+  folder: shared
+  script: |
+    input(
+      allowSchemaDrift: true) ~> flowletInput
+    flowletInput derive(
+      email = 'REDACTED') ~> scrub
+    scrub output() ~> flowletOutput

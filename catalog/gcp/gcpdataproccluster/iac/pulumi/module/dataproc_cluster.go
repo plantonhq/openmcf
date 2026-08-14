@@ -242,6 +242,10 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 		if m.NumInstances > 0 {
 			masterArgs.NumInstances = pulumi.IntPtr(int(m.NumInstances))
 		}
+		// MachineType never coexists with InstanceFlexibilityPolicy (spec
+		// CEL): the API drops a paired machineTypeUri from the stored
+		// config, and the create-only argument then re-plans as cluster
+		// replacement forever.
 		if m.MachineType != "" {
 			masterArgs.MachineType = pulumi.StringPtr(m.MachineType)
 		}
@@ -316,6 +320,8 @@ func buildClusterConfig(cfg *gcpdataprocclusterv1alpha1.GcpDataprocClusterConfig
 		if w.NumInstances > 0 {
 			workerArgs.NumInstances = pulumi.IntPtr(int(w.NumInstances))
 		}
+		// MachineType never coexists with InstanceFlexibilityPolicy (spec
+		// CEL) — see the master-config note.
 		if w.MachineType != "" {
 			workerArgs.MachineType = pulumi.StringPtr(w.MachineType)
 		}

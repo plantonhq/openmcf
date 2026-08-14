@@ -1,0 +1,36 @@
+# Offline-plan test manifest. Exercises the full surface: Performance
+# routing, the complete monitor shape (HTTPS probe with path, custom
+# status ranges, a Host header, zero-tolerance failures), an explicit
+# low DNS TTL, Traffic View, and user tags merged over the derived
+# ones. (max_return belongs to MultiValue routing -- its shape rides a
+# dedicated offline plan per the profile's record.)
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerProfile
+metadata:
+  name: test-traffic-manager-profile
+  org: test-org
+  env: dev
+spec:
+  resourceGroup:
+    value: platform-rg
+  name: app-director
+  routingMethod: Performance
+  dnsConfig:
+    relativeName: contoso-app-director
+    ttlSeconds: 30
+  monitorConfig:
+    protocol: HTTPS
+    port: 443
+    path: /healthz
+    intervalInSeconds: 30
+    timeoutInSeconds: 9
+    toleratedNumberOfFailures: 0
+    expectedStatusCodeRanges:
+      - 200-299
+      - 301-301
+    customHeaders:
+      - name: Host
+        value: app.contoso.com
+  trafficViewEnabled: true
+  tags:
+    cost-center: platform

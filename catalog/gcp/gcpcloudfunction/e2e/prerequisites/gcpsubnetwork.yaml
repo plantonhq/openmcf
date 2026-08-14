@@ -2,6 +2,10 @@
 # Satisfies the connector kind's registry prerequisite; the connector
 # prerequisite profile uses network+ipCidrRange placement, so this subnet
 # is not consumed — but the transitive resolver still installs it.
+#
+# 2026-08-11: region moved us-central1 → us-east1 with the rest of the
+# function chain (us-central1 e2 zonal stockout, audit-log verified —
+# see the connector prerequisite's note).
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpSubnetwork
 metadata:
@@ -23,6 +27,6 @@ spec:
       name: planton-oss-e2e-gcpvpcnetwork-prereq
       fieldPath: status.outputs.network_self_link
   subnetworkName: planton-oss-e2e-cldfunc-subnet-${E2E_RUN_ID}
-  region: us-central1
+  region: us-east1
   ipCidrRange: 10.9.0.0/24
   description: Ephemeral subnetwork for the GcpCloudFunction connector E2E chain; safe to delete

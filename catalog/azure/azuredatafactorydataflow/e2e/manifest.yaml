@@ -1,0 +1,63 @@
+# Deep-shape example for docs and offline validation: a mapping data
+# flow exercising the full endpoint surface -- dataset, linked service,
+# schema linked service, and flowlet bindings on the source, rejected-
+# row routing on the sink, an intermediate transformation, script
+# lines, annotations, and the Studio folder. References are literal
+# values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataFlow
+metadata:
+  name: test-data-flow
+  id: test-data-flow
+  org: test-org
+  env: test
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataFactory/factories/test-df
+  name: transform-orders
+  description: Cleans and conforms raw orders into the curated zone.
+  folder: transformations/daily
+  annotations:
+    - team:data
+    - tier:silver
+  sources:
+    - name: rawOrders
+      description: Raw landing-zone orders.
+      dataset:
+        name:
+          value: raw_orders
+        parameters:
+          path: raw/orders
+      schemaLinkedService:
+        name:
+          value: schema-store
+    - name: enrichment
+      description: Shared cleanup embedded as a flowlet.
+      flowlet:
+        name:
+          value: scrub-pii
+        parameters:
+          mode: strict
+        datasetParameters: "path: 'raw/orders'"
+  sinks:
+    - name: curatedOrders
+      description: The curated zone table.
+      linkedService:
+        name:
+          value: lakehouse
+        parameters:
+          container: curated
+      rejectedLinkedService:
+        name:
+          value: quarantine
+  transformations:
+    - name: joinReference
+      description: Joins the reference data.
+      linkedService:
+        name:
+          value: reference-store
+  scriptLines:
+    - "source(allowSchemaDrift: true, validateSchema: false) ~> rawOrders"
+    - "source(allowSchemaDrift: true) ~> enrichment"
+    - "rawOrders, enrichment join(orders.id == enrichment.id, joinType:'inner') ~> joinReference"
+    - "joinReference sink(allowSchemaDrift: true, validateSchema: false) ~> curatedOrders"

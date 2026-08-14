@@ -8,13 +8,19 @@ spec:
   # then runs deploy -> compute backendServices.get verify (incl. the
   # health-check wiring) -> destroy -> verify 404, on both provisioners.
   #
-  # Coverage note: the live scenario runs WITHOUT a backends[] entry (valid —
-  # probe first, attach capacity later) because no instance-group/NEG kind
-  # exists yet to compose against; the backends path is proven offline via
-  # the hack manifest through both engines and gains live coverage when the
-  # serverless NEG kind lands. IAP is offline-only: exercising it live needs
-  # an OAuth client, an org-level artifact the test project does not own.
+  # Coverage note: the minimal scenario runs WITHOUT a backends[] entry
+  # (valid — probe first, attach capacity later); the neg-backend scenario
+  # covers the backends[] path live against the serverless
+  # GcpRegionNetworkEndpointGroup prerequisite (EXTERNAL_MANAGED, no health
+  # check — serverless NEGs manage their own). IAP is offline-only:
+  # exercising it live needs an OAuth client, an org-level artifact the test
+  # project does not own. The signed_url_key fan-out and the widened
+  # UNSPECIFIED/IN_FLIGHT enum values stay offline-proven (key material is
+  # secret; the enum values need queue-depth backend types a smoke fixture
+  # cannot honestly exercise). params.resource_manager_tags also stays
+  # offline-proven (needs org-level tagKeys/tagValues — the standing
+  # org-fixture unblock condition).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

@@ -1,0 +1,93 @@
+# Full-shape scenario: every secret-bearing surface and the write-only
+# read-back class live in one lane -- an init container seeding a
+# shared empty_dir scratch volume, an Azure File volume on the fixture
+# share (account name + key from the fixture storage account's
+# outputs), secure environment variables, both probe forms, Log
+# Analytics diagnostics on the fixture workspace (customer GUID +
+# shared key -- both write-only against ARM), and a system-assigned
+# identity. The share and workspace chains arrive through their kinds'
+# install profiles declared below (the share transitively chains the
+# fixture storage account). Bills per second -- effectively free.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: planton-oss-e2e-azurecontainerinstance-full
+  id: planton-oss-e2e-azurecontainerinstance-full
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurecontainerinstance
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageShare, AzureLogAnalyticsWorkspace"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-aci-full-${E2E_RUN_ID}
+  region: eastus
+  osType: Linux
+  identity:
+    type: SYSTEM_ASSIGNED
+  initContainers:
+    - name: seed
+      image: mcr.microsoft.com/cbl-mariner/busybox:2.0
+      commands: ["sh", "-c", "echo ready > /work/ready"]
+      volumes:
+        - name: work
+          mountPath: /work
+          emptyDir: true
+  containers:
+    - name: web
+      image: mcr.microsoft.com/azuredocs/aci-helloworld:latest
+      cpu: 0.5
+      memory: 1
+      ports:
+        - port: 80
+      environmentVariables:
+        APP_MODE: e2e
+      # A dummy value proving the write-only wire path -- Azure never
+      # returns it on reads (the import round-trip expects its absence).
+      secureEnvironmentVariables:
+        E2E_TOKEN: planton-e2e-not-a-secret
+      volumes:
+        # The SAME empty_dir name as the init container's -- one shared
+        # scratch volume (the sharing mechanism).
+        - name: work
+          mountPath: /work
+          emptyDir: true
+        # The persistent form: the fixture share, addressed by the
+        # fixture storage account's name + key outputs (the key is
+        # write-only against ARM).
+        - name: content
+          mountPath: /content
+          azureFile:
+            shareName:
+              valueFrom:
+                name: planton-oss-e2e-azure-fixture-share
+            storageAccountName:
+              valueFrom:
+                name: planton-oss-e2e-azure-fixture-sa
+            storageAccountKey:
+              valueFrom:
+                name: planton-oss-e2e-azure-fixture-sa
+      livenessProbe:
+        httpGet:
+          path: /
+          port: 80
+        periodSeconds: 30
+        failureThreshold: 3
+      readinessProbe:
+        exec: ["ls", "/work/ready"]
+        initialDelaySeconds: 5
+  diagnosticsLogAnalytics:
+    workspaceId:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-law
+    workspaceKey:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-law
+    logType: ContainerInstanceLogs

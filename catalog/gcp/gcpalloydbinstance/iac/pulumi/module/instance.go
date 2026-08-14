@@ -52,6 +52,9 @@ func instance(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) er
 		}
 	}
 
+	// Only ever non-empty for PRIMARY/SECONDARY instances (spec CEL): read
+	// pools derive availability from node_count and the API drops a sent
+	// value, which would refresh dirty forever.
 	if spec.AvailabilityType != "" {
 		args.AvailabilityType = pulumi.StringPtr(spec.AvailabilityType)
 	}

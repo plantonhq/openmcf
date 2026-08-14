@@ -48,6 +48,16 @@ ranges. In chart teardown this ordering falls out of the dependency
 graph; in manual cleanup it is the step people miss, and the destroy
 failure ("producer still has allocations") is the system enforcing it.
 
+And ordering alone is not always enough: the producer releases its hold
+ASYNCHRONOUSLY after the last instance is deleted, and the wait is not
+the few minutes GCP's docs suggest — live-measured in 2026-08, a
+deleted private-IP Cloud SQL instance kept the connection rejecting
+deletion ("Producer services are still using this connection") for over
+40 minutes. Budget for that lag in automation that deletes an instance
+and its connection in one pass, or — when the whole VPC is being
+retired anyway — set `deletionPolicy: ABANDON` on the connection and
+let the network deletion clear the consumer-side peering (see below).
+
 `deletionPolicy` completes the picture: `PREVENT` for the connection
 under a production database fleet; `ABANDON` removes it from management
 while the peering keeps serving — the historical escape hatch for stuck

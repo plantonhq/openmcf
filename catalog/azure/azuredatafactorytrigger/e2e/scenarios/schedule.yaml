@@ -1,0 +1,48 @@
+# Schedule-variant scenario: a daily trigger with a PAST start time --
+# deployed STARTED (exercising the Start lifecycle live). LIVE-EARNED
+# (proof session): ARM rejects Start when the recurrence's next
+# execution is more than 18 months out
+# (InvalidWorkflowTriggerRecurrenceSchedule), so a far-future
+# "never-fire" start cannot be STARTED -- a past start is always
+# startable (next execution computes forward: the next daily 02:00
+# UTC). The trigger lives only minutes inside the lane, so it fires
+# only if the lane happens to span 02:00 UTC -- and that worst case is
+# one 5-second Wait pipeline run, costing effectively nothing. The
+# registry prerequisites chain the factory and the pipeline; trigger
+# names are factory-scoped (no run-id needed -- the parent factory's
+# name carries it). Free at rest.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-schedule
+  id: planton-oss-e2e-azuredatafactorytrigger-schedule
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-schedule
+  description: E2E smoke schedule trigger -- started; past start keeps it startable under ARM's 18-month next-execution rule.
+  activated: true
+  schedule:
+    frequency: Day
+    interval: 1
+    startTime: "2026-01-01T00:00:00Z"
+    timeZone: UTC
+    recurrenceSchedule:
+      hours: [2]
+      minutes: [0]
+    pipelines:
+      - name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorypipeline-smoke
+        parameters:
+          window: "@trigger().scheduledTime"

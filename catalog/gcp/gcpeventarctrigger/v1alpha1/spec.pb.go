@@ -58,9 +58,11 @@ type GcpEventarcTriggerSpec struct {
 	Destination *GcpEventarcTriggerDestination `protobuf:"bytes,5,opt,name=destination,proto3" json:"destination,omitempty"`
 	// The IAM service account email the trigger runs as — it must hold
 	// roles/eventarc.eventReceiver, plus roles/run.invoker for authenticated
-	// Cloud Run destinations (identity tokens are minted from this account).
-	// Audit-log triggers REQUIRE a service account. A literal email or a
-	// reference to a GcpServiceAccount resource.
+	// Cloud Run destinations (identity tokens are minted from this account)
+	// or roles/workflows.invoker for workflow destinations. Audit-log
+	// triggers and workflow destinations REQUIRE a service account (the
+	// workflow case is API-enforced at create — live-verified 400 without
+	// it). A literal email or a reference to a GcpServiceAccount resource.
 	ServiceAccount *v1.StringValueOrRef `protobuf:"bytes,6,opt,name=service_account,json=serviceAccount,proto3" json:"service_account,omitempty"`
 	// For google.cloud.pubsub.topic.v1.messagePublished triggers ONLY: use
 	// an EXISTING Pub/Sub topic (projects/{project}/topics/{topic} — a
@@ -70,8 +72,10 @@ type GcpEventarcTriggerSpec struct {
 	TransportPubsubTopic *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=transport_pubsub_topic,json=transportPubsubTopic,proto3" json:"transport_pubsub_topic,omitempty"`
 	// The MIME type the CloudEvent data field is delivered as (e.g.
 	// application/json or application/protobuf). The API defaults to
-	// application/json when unset. Must be compatible with the event type —
-	// Pub/Sub events support application/json and application/protobuf.
+	// application/json when unset. NOT accepted on Pub/Sub
+	// (messagePublished) triggers — the API rejects any value there
+	// (live-verified 400; a Pub/Sub event's payload format is decided by
+	// the publisher). Spec-enforced above.
 	EventDataContentType string `protobuf:"bytes,8,opt,name=event_data_content_type,json=eventDataContentType,proto3" json:"event_data_content_type,omitempty"`
 	// Delivery retry ceiling. The provider accepts only the value 1
 	// ("The only valid value is 1" — its own schema note), which DISABLES
@@ -319,7 +323,8 @@ type GcpEventarcTriggerDestination struct {
 	// resource name (projects/{project}/locations/{location}/workflows/{name})
 	// — a literal or a reference to a GcpWorkflow resource (its workflow_id
 	// output is exactly this value). Must live in the same project as the
-	// trigger.
+	// trigger. This arm REQUIRES spec.service_account (spec-enforced; the
+	// API rejects the create without it).
 	Workflow *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=workflow,proto3" json:"workflow,omitempty"`
 	// Deliver to a private HTTP endpoint reachable through a VPC network
 	// attachment (Eventarc Standard's bring-your-own-HTTP destination).
@@ -393,9 +398,13 @@ type GcpEventarcTriggerCloudRunDestination struct {
 	// reference to a GcpCloudRun resource (its service_name output). Only
 	// services in the same project as the trigger can be addressed.
 	Service *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=service,proto3" json:"service,omitempty"`
-	// The region the Cloud Run service is deployed in. When empty, GCP
-	// resolves it from the trigger's location — set it explicitly when the
-	// service lives in a different region than the trigger.
+	// The region the Cloud Run service is deployed in. The API REQUIRES
+	// this on every create (live-verified: 400 "cloud_run.region is empty"
+	// — it never infers the region from the trigger). When empty, the
+	// MODULE defaults it to the trigger's location; set it explicitly when
+	// the service lives in a different region than the trigger, and always
+	// on a "global" trigger (spec-enforced — global is not a Cloud Run
+	// region).
 	Region string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	// The relative path on the service events are POSTed to (RFC2396 path
 	// segment, e.g. "/events" or "route/subroute"). Empty means the root
@@ -682,7 +691,7 @@ var File_catalog_gcp_gcpeventarctrigger_v1alpha1_spec_proto protoreflect.FileDes
 
 const file_catalog_gcp_gcpeventarctrigger_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"2catalog/gcp/gcpeventarctrigger/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpeventarctrigger.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xbf\x13\n" +
+	"2catalog/gcp/gcpeventarctrigger/v1alpha1/spec.proto\x12+dev.planton.gcp.gcpeventarctrigger.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x81\x1c\n" +
 	"\x16GcpEventarcTriggerSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12\"\n" +
@@ -704,9 +713,12 @@ const file_catalog_gcp_gcpeventarctrigger_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xa6\x05\xbaH\xa2\x05\x1a\xa9\x03\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xe8\r\xbaH\xe4\r\x1a\xa9\x03\n" +
 	"\x17exactly_one_destination\x12Oset exactly one destination: cloud_run_service, gke, workflow, or http_endpoint\x1a\xbc\x02[has(this.destination) && has(this.destination.cloud_run_service), has(this.destination) && has(this.destination.gke), has(this.destination) && (this.destination.workflow.value != '' || has(this.destination.workflow.value_from)), has(this.destination) && has(this.destination.http_endpoint)].filter(x, x).size() == 1\x1a\xf3\x01\n" +
-	"$retry_requires_cloud_run_destination\x12gretry_max_attempts can only be set with a cloud_run_service destination (the provider's own constraint)\x1abthis.retry_max_attempts == 0 || (has(this.destination) && has(this.destination.cloud_run_service))\"\xa8\x02\n" +
+	"$retry_requires_cloud_run_destination\x12gretry_max_attempts can only be set with a cloud_run_service destination (the provider's own constraint)\x1abthis.retry_max_attempts == 0 || (has(this.destination) && has(this.destination.cloud_run_service))\x1a\x94\x03\n" +
+	"-workflow_destination_requires_service_account\x12\xa1\x01a workflow destination requires service_account (the API rejects the create without it; the account needs roles/eventarc.eventReceiver + roles/workflows.invoker)\x1a\xbe\x01!(has(this.destination) && (this.destination.workflow.value != '' || has(this.destination.workflow.value_from))) || (this.service_account.value != '' || has(this.service_account.value_from))\x1a\xc0\x02\n" +
+	"(global_trigger_cloud_run_region_required\x12~a cloud_run_service destination on a global trigger needs an explicit region (regional triggers default to their own location)\x1a\x93\x01!(this.location == 'global' && has(this.destination) && has(this.destination.cloud_run_service)) || this.destination.cloud_run_service.region != ''\x1a\xe5\x02\n" +
+	".pubsub_trigger_forbids_event_data_content_type\x12\x93\x01event_data_content_type cannot be set on a Pub/Sub (messagePublished) trigger — the API rejects it; the payload format is decided at publish time\x1a\x9c\x01this.event_data_content_type == '' || !this.matching_criteria.exists(c, c.attribute == 'type' && c.value == 'google.cloud.pubsub.topic.v1.messagePublished')\"\xa8\x02\n" +
 	"#GcpEventarcTriggerMatchingCriterion\x12$\n" +
 	"\tattribute\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\tattribute\x12\x1c\n" +
 	"\x05value\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x05value\x12\xbc\x01\n" +

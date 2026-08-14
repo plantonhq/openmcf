@@ -591,7 +591,8 @@ type GcpEventarcMessageBusPipelineDestination struct {
 	// projects/{project}/topics/{topic}). The provider documents the form
 	// projects/{project}/locations/{location}/topics/{topic} for this field;
 	// both name the same topic — the live API accepts the canonical Pub/Sub
-	// form.
+	// form (live-verified: a pipeline created with the canonical form went
+	// ACTIVE and re-planned clean on both engines).
 	Topic *v1.StringValueOrRef `protobuf:"bytes,2,opt,name=topic,proto3" json:"topic,omitempty"`
 	// Trigger a Cloud Workflows EXECUTION per message. The full workflow
 	// resource name — a literal or a reference to a GcpWorkflow resource

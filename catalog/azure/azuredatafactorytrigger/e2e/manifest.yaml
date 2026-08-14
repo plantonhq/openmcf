@@ -1,0 +1,40 @@
+# Deep-shape example for docs and offline validation: a schedule
+# trigger exercising the full recurrence surface -- weekly frequency
+# narrowed by the recurrence schedule (days, hours, minutes, monthly
+# occurrences), start/end times, a time zone, and two pipelines with
+# parameters. References are literal values so the manifest validates
+# standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: test-trigger
+  id: test-trigger
+  org: test-org
+  env: test
+spec:
+  dataFactoryId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.DataFactory/factories/test-df
+  name: weekly-loads
+  description: Fires the weekly loads Monday and Friday at 02:00 and 14:30.
+  annotations:
+    - team:data
+  activated: false
+  schedule:
+    frequency: Week
+    interval: 1
+    startTime: "2026-09-01T00:00:00Z"
+    endTime: "2027-09-01T00:00:00Z"
+    timeZone: UTC
+    recurrenceSchedule:
+      daysOfWeek:
+        - Monday
+        - Friday
+      hours: [2, 14]
+      minutes: [0, 30]
+    pipelines:
+      - name:
+          value: ingest-weekly
+        parameters:
+          window: "@trigger().scheduledTime"
+      - name:
+          value: publish-weekly

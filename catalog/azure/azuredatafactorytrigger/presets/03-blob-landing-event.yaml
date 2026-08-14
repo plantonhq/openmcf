@@ -1,0 +1,32 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: blob-landing-event
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: on-landing-file
+  description: Fires the parse pipeline when a CSV lands under the landing path.
+  # Deploy stopped, verify the pipeline's Debug run, then flip to true.
+  activated: false
+  blobEvent:
+    storageAccountId:
+      valueFrom:
+        name: <your-storage-account>
+    events:
+      - Microsoft.Storage.BlobCreated
+    # Filter to the narrowest path that works -- an over-broad filter
+    # on a busy account fires the pipeline for every blob.
+    blobPathBeginsWith: /landing/blobs/incoming/
+    blobPathEndsWith: .csv
+    # Skip the zero-byte marker blobs some tools write.
+    ignoreEmptyBlobs: true
+    pipelines:
+      - name:
+          valueFrom:
+            name: <your-pipeline>
+        parameters:
+          # The arriving blob's location, passed per firing.
+          folderPath: "@triggerBody().folderPath"
+          fileName: "@triggerBody().fileName"

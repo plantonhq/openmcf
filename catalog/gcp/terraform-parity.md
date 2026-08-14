@@ -30,7 +30,7 @@ that has progressed.
 | Provider schema (parity baseline) | `google@7.43.0` |
 | Kinds in the catalog | 98 |
 | Distinct provider resources consumed | 153 |
-| Spec fields authored across all kinds | 3677 |
+| Spec fields authored across all kinds | 3675 |
 | Module pins on `google` | `~> 7.43` × 98 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -45,108 +45,108 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**98 of 98 kinds are at total accounting; 22 proven live.**
+**98 of 98 kinds are at total accounting; 96 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
-| GcpAddress | 16 | 14 | 2 | 0 | 0 | ✅ | — |
-| GcpAlloydbCluster | 79 | 46 | 21 | 12 | 0 | ✅ | — |
-| GcpAlloydbInstance | 30 | 22 | 8 | 0 | 0 | ✅ | — |
-| GcpAlloydbUser | 8 | 6 | 0 | 2 | 0 | ✅ | — |
-| GcpArtifactRegistryRepo | 52 | 33 | 12 | 7 | 0 | ✅ | — |
-| GcpBackendBucket | 29 | 22 | 6 | 1 | 0 | ✅ | — |
-| GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | — |
-| GcpBigQueryDataset | 39 | 33 | 6 | 0 | 0 | ✅ | — |
-| GcpBigQueryTable | 98 | 86 | 12 | 0 | 0 | ✅ | — |
-| GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | — |
-| GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | — |
-| GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | — |
-| GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | — |
-| GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | — |
-| GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | — |
-| GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | — |
-| GcpCloudRun | 129 | 27 | 90 | 12 | 0 | ✅ | — |
-| GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | — |
-| GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | — |
-| GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | — |
-| GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | — |
-| GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | — |
-| GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | — |
-| GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | — |
+| GcpAddress | 16 | 14 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpAlloydbCluster | 79 | 46 | 21 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpAlloydbInstance | 30 | 22 | 8 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpAlloydbUser | 8 | 6 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpArtifactRegistryRepo | 52 | 33 | 12 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBackendBucket | 29 | 22 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBackendService | 116 | 91 | 22 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBigQueryDataset | 39 | 33 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBigQueryTable | 98 | 86 | 12 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBigtableInstance | 19 | 6 | 13 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpBigtableTable | 23 | 8 | 14 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCertManagerCert | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCertManagerDnsAuthorization | 8 | 6 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCertificateMap | 14 | 4 | 9 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudArmorPolicy | 61 | 10 | 51 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudComposerEnvironment | 81 | 3 | 66 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudComposerUserWorkloadsConfigMap | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudComposerUserWorkloadsSecret | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudFunction | 65 | 43 | 15 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudRun | 129 | 27 | 89 | 13 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudRunDomainMapping | 10 | 1 | 9 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudRunJob | 74 | 10 | 61 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSchedulerJob | 32 | 29 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSql | 147 | 40 | 97 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSqlDatabase | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudSqlUser | 14 | 10 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpCloudTasksQueue | 29 | 22 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpComputeDisk | 36 | 18 | 14 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | — |
-| GcpComputeMig | 413 | 70 | 310 | 33 | 0 | ✅ | — |
-| GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | — |
-| GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | — |
-| GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | — |
-| GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | — |
-| GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | — |
-| GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | — |
-| GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | — |
+| GcpComputeInstance | 124 | 47 | 64 | 13 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpComputeMig | 413 | 70 | 310 | 33 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpDataprocAutoscalingPolicy | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpDataprocCluster | 148 | 77 | 52 | 19 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpDnsRecord | 49 | 43 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpDnsZone | 23 | 18 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpEventarcMessageBus | 56 | 12 | 42 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpEventarcTrigger | 35 | 22 | 12 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpFilestoreInstance | 36 | 14 | 22 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreBackupSchedule | 5 | 4 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreDatabase | 15 | 11 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpFirestoreIndex | 17 | 16 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | — |
-| GcpGcsBucket | 78 | 39 | 31 | 8 | 0 | ✅ | — |
-| GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | — |
-| GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | — |
+| GcpFirewallRule | 20 | 13 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGcsBucket | 78 | 39 | 31 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGkeCluster | 537 | 61 | 137 | 339 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGkeNodePool | 184 | 127 | 51 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpGkeWorkloadIdentityBinding | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | — |
-| GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | — |
-| GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | — |
-| GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | — |
+| GcpGlobalAddress | 11 | 9 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpGlobalForwardingRule | 23 | 18 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpHealthCheck | 100 | 14 | 86 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpIamCustomRole | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpIamDenyPolicy | 13 | 11 | 2 | 0 | 0 | ✅ | — |
 | GcpIamOauthClient | 18 | 12 | 3 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpIdentityPlatformConfig | 55 | 42 | 10 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpIdentityPlatformTenant | 36 | 24 | 6 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | — |
+| GcpKmsKey | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpKmsKeyIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | — |
+| GcpKmsKeyRing | 3 | 1 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLogBucket | 59 | 38 | 17 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLogMetric | 23 | 21 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpLoggingSink | 54 | 38 | 16 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | — |
-| GcpMemorystoreInstance | 38 | 29 | 7 | 2 | 0 | ✅ | — |
+| GcpManagedSslCertificate | 6 | 2 | 3 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpMemorystoreInstance | 38 | 29 | 6 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringAlertPolicy | 70 | 68 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringDashboard | 3 | 2 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringNotificationChannel | 18 | 9 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringSlo | 53 | 9 | 44 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpMonitoringUptimeCheck | 38 | 33 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpProject | 14 | 5 | 5 | 4 | 0 | ✅ | — |
-| GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | — |
-| GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | — |
-| GcpPubSubSubscription | 44 | 41 | 3 | 0 | 0 | ✅ | — |
-| GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | — |
-| GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | — |
-| GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | — |
+| GcpProjectIamMember | 6 | 5 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpPubSubSchema | 5 | 3 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpPubSubSubscription | 44 | 41 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpPubSubTopic | 44 | 41 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpRedisInstance | 32 | 24 | 6 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpRegionNetworkEndpointGroup | 18 | 16 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpRouterNat | 54 | 28 | 21 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpSecretManagerSecret | 61 | 35 | 16 | 10 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | — |
+| GcpServerlessVpcConnector | 13 | 9 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccount | 26 | 11 | 5 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpServiceAccountIamMember | 6 | 6 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | — |
-| GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | — |
-| GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | — |
-| GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | — |
-| GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | — |
-| GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | — |
-| GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | — |
-| GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | — |
-| GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | — |
-| GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | — |
+| GcpServiceConnectionPolicy | 12 | 9 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpServiceNetworkingConnection | 5 | 5 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSpannerBackupSchedule | 10 | 7 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSpannerDatabase | 12 | 10 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSpannerInstance | 28 | 21 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSslCertificate | 19 | 9 | 4 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSslPolicy | 17 | 13 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpSubnetwork | 29 | 22 | 7 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpTargetHttpProxy | 7 | 5 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpTargetHttpsProxy | 14 | 12 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | GcpUrlMap | 333 | 74 | 259 | 0 | 0 | ✅ | ✅ pulumi, terraform |
-| GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | — |
-| GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | — |
-| GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | — |
-| GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | — |
-| GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | — |
-| GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | — |
-| GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | — |
-| GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | — |
-| GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | — |
+| GcpVertexAiDeployedIndex | 16 | 12 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiEndpoint | 19 | 8 | 9 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiIndex | 17 | 5 | 12 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiIndexEndpoint | 13 | 10 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVertexAiNotebook | 46 | 8 | 34 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpVpcNetwork | 17 | 10 | 6 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpWorkflow | 15 | 10 | 4 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpWorkloadIdentityPool | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| GcpWorkloadIdentityPoolProvider | 16 | 15 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 
 ## Breadth: every GA resource, one disposition
 

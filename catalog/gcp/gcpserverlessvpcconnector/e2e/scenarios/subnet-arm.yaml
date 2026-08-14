@@ -17,7 +17,11 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  region: us-central1
+  # us-east1 deliberately: the connector fleet's shared-core zonal pools in
+  # us-central1 stock out recurrently (ZONE_RESOURCE_POOL_EXHAUSTED, observed
+  # live 2026-08-11 for both supported machine classes); this chain is
+  # self-contained, so its region tracks capacity reliability.
+  region: us-east1
   connectorName: e2e-conns-${E2E_RUN_ID}
   subnet:
     name:

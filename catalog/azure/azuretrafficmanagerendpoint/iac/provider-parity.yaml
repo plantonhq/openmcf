@@ -1,0 +1,63 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers three provider resources as variants -- exactly one of
+# the spec's azure / external / nested blocks is set, and the module
+# creates the matching endpoint resource. Fields every type shares
+# (name, profile_id, weight, priority, enabled, geo_mappings, subnets,
+# custom_headers) live at the spec root; variant-scoped arguments map
+# into their variant block below.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_traffic_manager_azure_endpoint:
+    mappings:
+      # Variant-scoped arguments live inside the spec's azure block.
+      - spec: spec.azure.target_resource_id
+        arg: target_resource_id
+      - spec: spec.azure.always_serve_enabled
+        arg: always_serve_enabled
+      # The spec names say what the lists ARE (plural collections),
+      # where the provider uses singular block names.
+      - spec: spec.custom_headers
+        arg: custom_header
+      - spec: spec.subnets
+        arg: subnet
+
+  azurerm_traffic_manager_external_endpoint:
+    mappings:
+      # Variant-scoped arguments live inside the spec's external block.
+      - spec: spec.external.target
+        arg: target
+      - spec: spec.external.endpoint_location
+        arg: endpoint_location
+      - spec: spec.external.always_serve_enabled
+        arg: always_serve_enabled
+      - spec: spec.custom_headers
+        arg: custom_header
+      - spec: spec.subnets
+        arg: subnet
+
+  azurerm_traffic_manager_nested_endpoint:
+    mappings:
+      # Variant-scoped arguments live inside the spec's nested block.
+      # The target IS another Traffic Manager profile -- the spec names
+      # it for what it references.
+      - spec: spec.nested.target_profile_id
+        arg: target_resource_id
+      - spec: spec.nested.minimum_child_endpoints
+        arg: minimum_child_endpoints
+      - spec: spec.nested.minimum_required_child_endpoints_ipv4
+        arg: minimum_required_child_endpoints_ipv4
+      - spec: spec.nested.minimum_required_child_endpoints_ipv6
+        arg: minimum_required_child_endpoints_ipv6
+      - spec: spec.nested.endpoint_location
+        arg: endpoint_location
+      - spec: spec.custom_headers
+        arg: custom_header
+      - spec: spec.subnets
+        arg: subnet

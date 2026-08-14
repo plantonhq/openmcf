@@ -188,12 +188,18 @@ message GcpGkeNodePoolSpec {
   // How nodes drain when the POOL ITSELF is deleted or replaced: grace
   // periods and whether PodDisruptionBudgets are honored during the
   // teardown. Distinct from upgrade_settings, which paces upgrades of a
-  // pool that continues to exist.
+  // pool that continues to exist. NOTE: customized node drain requires
+  // project-level enablement from GCP support — on a project without it,
+  // the API rejects the create with "customized node drain timeout is not
+  // enabled for this project, please contact your account manager or open
+  // a support case to enable it".
   GcpGkeNodePoolNodeDrainConfig node_drain_config = 20;
 }
 
 // GcpGkeNodePoolNodeDrainConfig controls draining behavior when the pool
-// is deleted or replaced.
+// is deleted or replaced. The feature is allowlist-gated per project: GCP
+// support must enable "customized node drain timeout" before the API
+// accepts a pool carrying this block.
 message GcpGkeNodePoolNodeDrainConfig {
   // Grace period each node gets to finish draining before it is removed,
   // seconds format, e.g. "300s".
@@ -1294,25 +1300,52 @@ message GcpGkeNodePoolEvictionGracePeriods {
 }
 
 // GcpGkeNodePoolEvictionMinimumReclaim sets per-signal minimum reclaim
-// amounts (quantities like "500Mi" or percentages).
+// amounts. Unlike the soft-eviction thresholds (which accept absolute
+// quantities OR percentages), GKE accepts ONLY percentages here — the API
+// rejects quantities at create with 'invalid percentage "100Mi", must end
+// with "%"'. Values are percentage strings like "10%".
 message GcpGkeNodePoolEvictionMinimumReclaim {
-  // Minimum reclaim for memory.available.
-  string memory_available = 1;
+  // Minimum reclaim for memory.available, percentage like "10%".
+  string memory_available = 1 [(buf.validate.field).cel = {
+    id: "reclaim_memory_pct"
+    message: "eviction_minimum_reclaim.memory_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 
-  // Minimum reclaim for nodefs.available.
-  string nodefs_available = 2;
+  // Minimum reclaim for nodefs.available, percentage like "10%".
+  string nodefs_available = 2 [(buf.validate.field).cel = {
+    id: "reclaim_nodefs_pct"
+    message: "eviction_minimum_reclaim.nodefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 
-  // Minimum reclaim for nodefs.inodesFree.
-  string nodefs_inodes_free = 3;
+  // Minimum reclaim for nodefs.inodesFree, percentage like "10%".
+  string nodefs_inodes_free = 3 [(buf.validate.field).cel = {
+    id: "reclaim_nodefs_inodes_pct"
+    message: "eviction_minimum_reclaim.nodefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 
-  // Minimum reclaim for imagefs.available.
-  string imagefs_available = 4;
+  // Minimum reclaim for imagefs.available, percentage like "10%".
+  string imagefs_available = 4 [(buf.validate.field).cel = {
+    id: "reclaim_imagefs_pct"
+    message: "eviction_minimum_reclaim.imagefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 
-  // Minimum reclaim for imagefs.inodesFree.
-  string imagefs_inodes_free = 5;
+  // Minimum reclaim for imagefs.inodesFree, percentage like "10%".
+  string imagefs_inodes_free = 5 [(buf.validate.field).cel = {
+    id: "reclaim_imagefs_inodes_pct"
+    message: "eviction_minimum_reclaim.imagefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 
-  // Minimum reclaim for pid.available.
-  string pid_available = 6;
+  // Minimum reclaim for pid.available, percentage like "10%".
+  string pid_available = 6 [(buf.validate.field).cel = {
+    id: "reclaim_pid_pct"
+    message: "eviction_minimum_reclaim.pid_available must be a percentage like \"10%\" — GKE rejects absolute quantities here"
+    expression: "this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')"
+  }];
 }
 
 // GcpGkeNodePoolCrashLoopBackOff caps container-restart backoff.

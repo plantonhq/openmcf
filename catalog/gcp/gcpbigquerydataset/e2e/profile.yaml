@@ -6,7 +6,10 @@ spec:
   # Two scenarios: a minimal US dataset with default access, and an explicit
   # authoritative ACL with projectOwners/projectReaders entries. BigQuery
   # datasets delete immediately when empty (no soft-delete reservation).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (4/4 lane runs — minimal + authoritative access-entries ACL).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

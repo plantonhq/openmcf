@@ -6,14 +6,24 @@ spec:
   # Index endpoints create in ~1-5 minutes per engine (provider timeout
   # 20m). The public scenario proves ambient project, API enablement, the
   # GCP-assigned numeric ID contract (index_endpoint_name output vs live),
-  # and the public_endpoint_domain_name output. The peered and PSC arms
-  # are recorded live exclusions: both need Private Services Access /
-  # consumer wiring the test project does not carry — proven offline via
-  # converter plans (the GcpVertexAiEndpoint precedent).
+  # and the public_endpoint_domain_name output.
+  #
+  # Live-proven 2026-08-13 both engines under the apply-idempotency gate
+  # (deletion_policy DELETE round-trip included).
+  #
+  # The peered and PSC arms are recorded live exclusions: both need
+  # Private Services Access / consumer wiring the test project does not
+  # carry — proven offline via converter plans (the GcpVertexAiEndpoint
+  # precedent). psc_automation_configs is NO LONGER a live-pending arm:
+  # a live REST probe (2026-08-13) proved the API accepts an index
+  # endpoint create carrying the configs and silently drops them
+  # (stored object omits them, create operation completes clean, no
+  # consumer-side endpoint materializes) — the spec now refuses the
+  # field (CEL psc_automation_unsupported_on_index_endpoints), so no
+  # live arm exists to defer. CMEK stays offline-proven (needs a KMS
+  # key + the Vertex AI service agent's cryptoKeyEncrypterDecrypter
+  # grant — the undeletable-material class).
   tier: 1
-  # The prior green predates the current spec shape (CMEK encryption_spec,
-  # PSC automation configs, deletion_policy modeled from the spec instead
-  # of the Pulumi-side DELETE pin) — awaits live re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

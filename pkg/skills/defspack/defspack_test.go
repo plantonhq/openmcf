@@ -218,6 +218,191 @@ func TestPackageReleaseManifest(t *testing.T) {
 	}
 }
 
+// TestCatalogSkillAssemblesPack proves the catalog skill's archive is
+// self-contained: the pack is collected from catalog/ by the frozen name
+// contract (reference pages, guides, indexes, graph, commons, patterns),
+// test fixtures are excluded, unrelated files are not swept in, and the
+// assembled entries land under components/ with catalog-relative paths.
+func TestCatalogSkillAssemblesPack(t *testing.T) {
+	tree, err := LoadTree(writeTree(t, catalogFixtureTree()))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	if errs := Validate(tree); len(errs) > 0 {
+		t.Fatalf("fixture should be valid, got: %v", errs)
+	}
+
+	var catalogSkill *Skill
+	for i := range tree.Skills {
+		if tree.Skills[i].Slug == catalogPackSkillSlug {
+			catalogSkill = &tree.Skills[i]
+		}
+	}
+	if catalogSkill == nil {
+		t.Fatal("catalog skill not loaded")
+	}
+
+	wantPresent := []string{
+		"components/_docs/reference-commons.md",
+		"components/_docs/reference-index.md",
+		"components/_docs/reference-graph.yaml",
+		"components/_docs/GUIDE.md",
+		"components/_patterns/observability.md",
+		"components/aws/reference-index.md",
+		"components/aws/awsvpc/v1alpha1/reference.md",
+		"components/aws/awsvpc/GUIDE.md",
+	}
+	for _, path := range wantPresent {
+		if _, ok := catalogSkill.PackFiles[path]; !ok {
+			t.Errorf("pack is missing %s", path)
+		}
+	}
+	wantAbsent := []string{
+		"components/aws/awsvpc/v1alpha1/spec.proto", // not a pack file name
+		"components/_test/fake/v1alpha1/reference.md",
+		"components/aws/awsvpc/README.md",
+	}
+	for _, path := range wantAbsent {
+		if _, ok := catalogSkill.PackFiles[path]; ok {
+			t.Errorf("pack wrongly includes %s", path)
+		}
+	}
+
+	archive, err := BuildSkillArchive(*catalogSkill)
+	if err != nil {
+		t.Fatalf("building archive: %v", err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		t.Fatalf("reading archive back: %v", err)
+	}
+	entries := map[string]bool{}
+	for _, f := range reader.File {
+		entries[f.Name] = true
+	}
+	for _, path := range append([]string{"SKILL.md", "references/pack-layout.md"}, wantPresent...) {
+		if !entries[path] {
+			t.Errorf("archive is missing entry %s", path)
+		}
+	}
+
+	// Determinism must hold with the pack included.
+	second, err := BuildSkillArchive(*catalogSkill)
+	if err != nil {
+		t.Fatalf("second build: %v", err)
+	}
+	if !bytes.Equal(archive, second) {
+		t.Fatal("two builds of identical pack content produced different bytes")
+	}
+}
+
+// TestStripPackFilesGatesPackaging pins the shipping gate: packaging without
+// the pack (today's default -- the engines' 10MB transport cap refuses the
+// assembled artifact) produces a catalog archive with no components/
+// entries, while the assembled build carries them. Validation always sees
+// the pack either way (the strip happens after Validate).
+func TestStripPackFilesGatesPackaging(t *testing.T) {
+	tree, err := LoadTree(writeTree(t, catalogFixtureTree()))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	if errs := Validate(tree); len(errs) > 0 {
+		t.Fatalf("fixture should be valid, got: %v", errs)
+	}
+
+	StripPackFiles(tree)
+	for _, skill := range tree.Skills {
+		if len(skill.PackFiles) != 0 {
+			t.Fatalf("skill %s still carries %d pack files after the strip", skill.Slug, len(skill.PackFiles))
+		}
+	}
+	var catalogSkill *Skill
+	for i := range tree.Skills {
+		if tree.Skills[i].Slug == catalogPackSkillSlug {
+			catalogSkill = &tree.Skills[i]
+		}
+	}
+	archive, err := BuildSkillArchive(*catalogSkill)
+	if err != nil {
+		t.Fatalf("building stripped archive: %v", err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		t.Fatalf("reading archive back: %v", err)
+	}
+	for _, f := range reader.File {
+		if strings.HasPrefix(f.Name, packDirName+"/") {
+			t.Fatalf("stripped archive still carries pack entry %s", f.Name)
+		}
+	}
+}
+
+// TestValidateCatchesBrokenPacks plants one pack defect at a time in the
+// catalog fixture and asserts the violation is reported -- an assembly
+// that silently ships empty or misrooted would put a research skill with
+// nothing to research on every engine.
+func TestValidateCatchesBrokenPacks(t *testing.T) {
+	cases := []struct {
+		name    string
+		mutate  func(files map[string]string)
+		wantErr string
+	}{
+		{
+			name: "catalog tree missing entirely",
+			mutate: func(files map[string]string) {
+				for path := range files {
+					if strings.HasPrefix(path, "catalog/") {
+						delete(files, path)
+					}
+				}
+			},
+			wantErr: "catalog pack is empty",
+		},
+		{
+			name: "commons root marker missing",
+			mutate: func(files map[string]string) {
+				delete(files, "catalog/_docs/reference-commons.md")
+			},
+			wantErr: "missing its root marker",
+		},
+		{
+			name: "no component reference pages",
+			mutate: func(files map[string]string) {
+				delete(files, "catalog/aws/awsvpc/v1alpha1/reference.md")
+			},
+			wantErr: "no component reference pages",
+		},
+		{
+			name: "pack file is empty",
+			mutate: func(files map[string]string) {
+				files["catalog/aws/awsvpc/GUIDE.md"] = ""
+			},
+			wantErr: "is empty",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			files := catalogFixtureTree()
+			tc.mutate(files)
+			tree, err := LoadTree(writeTree(t, files))
+			if err != nil {
+				t.Fatalf("loading fixture tree: %v", err)
+			}
+			errs := Validate(tree)
+			if len(errs) == 0 {
+				t.Fatalf("planted pack defect was not caught")
+			}
+			for _, e := range errs {
+				if strings.Contains(e.Error(), tc.wantErr) {
+					return
+				}
+			}
+			t.Fatalf("no violation mentions %q; got: %v", tc.wantErr, errs)
+		})
+	}
+}
+
 // validFixtureTree is a minimal tree satisfying the whole structure
 // contract; broken-tree cases mutate exactly one thing at a time.
 func validFixtureTree() map[string]string {
@@ -227,6 +412,29 @@ func validFixtureTree() map[string]string {
 		"skills/compat.yaml":              "minimum_daemon_version: v0.0.0\nminimum_cli_version: v0.0.0\n",
 		"agents/helper/instructions.md":   "You are the helper.\n",
 	}
+}
+
+// catalogFixtureTree is validFixtureTree plus a minimal catalog skill and
+// a miniature catalog/ tree exercising every selection rule: the _docs
+// root files, a patterns page, a provider index, a component reference
+// page with authored wisdom, a non-pack file that must be ignored, and a
+// _test fixture that must be excluded.
+func catalogFixtureTree() map[string]string {
+	files := validFixtureTree()
+	files["skills/multi-cloud-catalog/SKILL.md"] = "---\nname: multi-cloud-catalog\ndescription: Research the catalog pack.\n---\n\n# Catalog\n\nRead `references/pack-layout.md` first.\n"
+	files["skills/multi-cloud-catalog/references/pack-layout.md"] = "The pack lives in components/.\n"
+	files["catalog/_docs/reference-commons.md"] = "The manifest grammar.\n"
+	files["catalog/_docs/reference-index.md"] = "| provider | kinds |\n"
+	files["catalog/_docs/reference-graph.yaml"] = "edges: []\n"
+	files["catalog/_docs/GUIDE.md"] = "Catalog-level wisdom.\n"
+	files["catalog/_patterns/observability.md"] = "The observability pattern.\n"
+	files["catalog/aws/reference-index.md"] = "| kind | purpose |\n"
+	files["catalog/aws/awsvpc/v1alpha1/reference.md"] = "# AwsVpc\n"
+	files["catalog/aws/awsvpc/GUIDE.md"] = "AwsVpc wisdom.\n"
+	files["catalog/aws/awsvpc/v1alpha1/spec.proto"] = "syntax = \"proto3\";\n"
+	files["catalog/aws/awsvpc/README.md"] = "Not part of the pack.\n"
+	files["catalog/_test/fake/v1alpha1/reference.md"] = "# Fake\n"
+	return files
 }
 
 func writeTree(t *testing.T, files map[string]string) string {

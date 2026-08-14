@@ -749,7 +749,6 @@ var _ = Describe("GcpCloudRunSpec validations", func() {
 			spec := makeValidSpec()
 			spec.Containers[0].ReadinessProbe = &GcpCloudRunReadinessProbe{
 				PeriodSeconds:    proto.Int32(10),
-				SuccessThreshold: proto.Int32(2),
 				FailureThreshold: proto.Int32(3),
 				Handler:          &GcpCloudRunReadinessProbe_HttpGet{HttpGet: &GcpCloudRunReadinessHttpGetAction{Path: "/ready"}},
 			}

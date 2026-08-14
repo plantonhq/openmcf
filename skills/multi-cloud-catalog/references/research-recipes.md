@@ -9,19 +9,20 @@ these patterns hold across every component.
 ## Find components by name or capability
 
 ```
-rg -il "kafka" -g 'reference*.md' -g 'GUIDE.md' -g 'patterns/*.md' .
+rg -il "kafka" -g 'reference*.md' -g 'GUIDE.md' -g '_patterns/*.md' .
 ```
 
 The `-g` globs scope the search to pack files -- in a repo checkout the same
 directories also hold protos, generated code, and IaC modules, and an
-unscoped search drowns the answer in those. Then shortlist through the
-provider's `reference-index.md` -- each row is
+unscoped search drowns the answer in those (inside a skill mount's
+`components/` the globs cost nothing and keep the recipe portable). Then
+shortlist through the provider's `reference-index.md` -- each row is
 `[Kind](path) | purpose | example? | guide?`. Full-text search matters more
 than it looks: compatible alternatives document the well-known names they
 substitute for in their own pages, so searching the name the user said finds
 the alternative even when no component carries that name. When that happens,
-follow the substitution workflow in the catalog root's `GUIDE.md` -- propose
-openly, never silently.
+follow the substitution workflow in `_docs/GUIDE.md` beside the root index --
+propose openly, never silently.
 
 ## One component's required fields
 
@@ -64,8 +65,8 @@ asymmetry is explained once in `reference-commons.md`.
 - Catalog-wide, without opening pages:
 
 ```
-rg 'to: "KubernetesValkey"' reference-graph.yaml      # every field that can target it
-rg -A 3 'from: "AwsEcsService"' reference-graph.yaml  # everything it can reference
+rg 'to: "KubernetesValkey"' _docs/reference-graph.yaml      # every field that can target it
+rg -A 3 'from: "AwsEcsService"' _docs/reference-graph.yaml  # everything it can reference
 ```
 
 ## Where judgment has been written
@@ -77,7 +78,7 @@ rg -l '^\*\*Guide\*\*:' kubernetes/            # every guided kind in a provider
 ```
 
 The per-provider index carries the same signal as its Guide column, and
-`patterns/` (its `README.md` is the list) holds the multi-component recipes
+`_patterns/` (its `README.md` is the list) holds the multi-component recipes
 -- each pattern declares the kinds it composes and embeds validated
 manifests.
 

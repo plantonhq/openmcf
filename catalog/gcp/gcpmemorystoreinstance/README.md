@@ -79,7 +79,7 @@ spec:
 | **Auth** | `authorization_mode: IAM_AUTH` for IAM-based client authentication |
 | **Networking** | `psc_auto_connections` — PSC endpoints in consumer VPCs (immutable after creation); a per-entry `project_id` omitted rides the provider's effective project |
 | **Zones** | `zone_distribution_config`: `MULTI_ZONE` (HA default) or `SINGLE_ZONE` |
-| **Maintenance** | `maintenance_policy` — weekly window (day + hour + minute UTC); `maintenance_version` — self-service patching trigger (update-only, forward-only) |
+| **Maintenance** | `maintenance_policy` — weekly window (day + hour UTC; the API accepts only whole-hour start times); `maintenance_version` — self-service patching trigger (update-only, forward-only) |
 | **Backups** | `automated_backup_config` — daily backups with configurable start hour and retention |
 | **Cross-region DR** | `cross_instance_replication_config` — PRIMARY replicating to secondaries, or SECONDARY replicating from a primary (roles exchange in place during switchover) |
 | **Seeding** | `gcs_source` (RDB files in GCS) XOR `managed_backup_source` (a managed backup) — creation-time only |
@@ -108,9 +108,11 @@ spec:
 
 ### Deliberately not modeled (recorded reasons)
 
-- **Maintenance window `seconds`/`nanos`** — sub-minute precision on a fixed
-  1-hour maintenance window is meaningless; the spec models the start to the
-  minute (recorded in `iac/provider-parity.yaml`).
+- **Maintenance window `minutes`/`seconds`/`nanos`** — the Memorystore API
+  accepts only whole-hour window start times (a minute-carrying start is
+  rejected with 400 "Invalid start time, only hours are supported" —
+  live-verified; narrower than Redis); the spec models the start hour-only
+  (recorded in `iac/provider-parity.yaml`).
 - **`allow_fewer_zones_deployment`** — a beta-only argument (not in the GA
   provider at the pinned version); GA is the parity baseline, and beta
   surface enters only through the enumerated admission list.

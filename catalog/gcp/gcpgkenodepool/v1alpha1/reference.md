@@ -61,6 +61,9 @@ spec:
     maxUnavailable: 1
     strategy: SURGE
   deletionPolicy: DELETE
+  # Customized node drain requires per-project enablement from GCP support
+  # (the API rejects it otherwise) — shown here as the documented example
+  # of drain pacing on allowlisted projects.
   nodeDrainConfig:
     graceTerminationDuration: "60s"
     pdbTimeoutDuration: "600s"
@@ -112,8 +115,10 @@ spec:
         memoryAvailable: 200Mi
       evictionSoftGracePeriod:
         memoryAvailable: "90s"
+      # Percentage-only: GKE rejects absolute quantities for minimum
+      # reclaim (the soft thresholds above accept either form).
       evictionMinimumReclaim:
-        memoryAvailable: 100Mi
+        memoryAvailable: "10%"
       crashLoopBackOff:
         maxContainerRestartPeriod: "300s"
       topologyManager:
@@ -1483,11 +1488,15 @@ each eviction free at least this much of the signal's resource.
 
 Minimum reclaim for memory.available.
 
+- rule: eviction_minimum_reclaim.memory_available must be a percentage like "10%" — GKE rejects absolute quantities here
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsAvailable
 
 `string`
 
 Minimum reclaim for nodefs.available.
+
+- rule: eviction_minimum_reclaim.nodefs_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.nodefsInodesFree
 
@@ -1495,11 +1504,15 @@ Minimum reclaim for nodefs.available.
 
 Minimum reclaim for nodefs.inodesFree.
 
+- rule: eviction_minimum_reclaim.nodefs_inodes_free must be a percentage like "10%" — GKE rejects absolute quantities here
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsAvailable
 
 `string`
 
 Minimum reclaim for imagefs.available.
+
+- rule: eviction_minimum_reclaim.imagefs_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.imagefsInodesFree
 
@@ -1507,11 +1520,15 @@ Minimum reclaim for imagefs.available.
 
 Minimum reclaim for imagefs.inodesFree.
 
+- rule: eviction_minimum_reclaim.imagefs_inodes_free must be a percentage like "10%" — GKE rejects absolute quantities here
+
 ### spec.nodeConfig.kubeletConfig.evictionMinimumReclaim.pidAvailable
 
 `string`
 
 Minimum reclaim for pid.available.
+
+- rule: eviction_minimum_reclaim.pid_available must be a percentage like "10%" — GKE rejects absolute quantities here
 
 ### spec.nodeConfig.kubeletConfig.crashLoopBackOff
 

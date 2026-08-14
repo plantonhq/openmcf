@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactory.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredatafactory/v1alpha1/outputs.proto";
+import "catalog/azure/azuredatafactory/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataFactory represents an Azure Data Factory -- the workspace
+// every other Data Factory resource lives inside: pipelines
+// (AzureDataFactoryPipeline), data flows, linked services, datasets,
+// triggers, and integration runtimes are all created against a
+// factory's ARM ID.
+message AzureDataFactory {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataFactory'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDataFactorySpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDataFactoryStatus status = 5;
+}
+
+// AzureDataFactoryStatus represents the status of an Azure Data
+// Factory deployment.
+message AzureDataFactoryStatus {
+  //stack-outputs
+  //  azure-data-factory stack-outputs
+  AzureDataFactoryStackOutputs outputs = 1;
+}

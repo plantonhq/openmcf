@@ -25,3 +25,7 @@ A Standard/GlobalStandard account and its deployments carry no idle cost -- but 
 ## Responsible-AI policies are account-level, selection is per-deployment
 
 Filters live on the account (`raiPolicies`), deployments opt in by name (`raiPolicyName`). Renaming a policy replaces the ARM child AND breaks every deployment that selected the old name -- treat policy names as an interface, not a label. A policy referencing a custom blocklist needs the blocklist on the same account; define both in one spec and the module orders them.
+
+## Binary content filters deploy through Terraform only (for now)
+
+The graded filters (Hate, Sexual, Violence, Selfharm) carry a `severityThreshold` and deploy on both engines. The severity-less BINARY filters (Jailbreak, Indirect Attack, Protected Material Text/Code) deploy through Terraform only: the classic Pulumi SDK still requires a severity on every filter while Azure rejects one on the binary names, so the Pulumi module fails loudly rather than send a value Azure never asked for. A policy that must include a binary filter pins the resource to the Terraform provisioner until a v5-bridged Pulumi SDK ships.

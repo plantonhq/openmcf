@@ -50,11 +50,18 @@ spec:
     image: debian-cloud/debian-12
     sizeGb: 10
     type: pd-balanced
-    # Explicit guest OS features are additive to what the image already
-    # declares — modern Debian images carry both of these natively.
+    # When declaring guest OS features, list the image's COMPLETE
+    # feature set: the API merges the list with the image's own features
+    # at create, and the provider then compares the stored (merged) set
+    # against the config with replace-on-change semantics — a partial
+    # list plans a VM replacement on every re-apply. This is debian-12's
+    # full set.
     guestOsFeatures:
       - UEFI_COMPATIBLE
+      - VIRTIO_SCSI_MULTIQUEUE
       - GVNIC
+      - SEV_CAPABLE
+      - SEV_LIVE_MIGRATABLE_V2
   networkInterfaces:
     - network:
         value: default
@@ -282,6 +289,7 @@ Boot disk configuration — the disk the OS boots from.
 - rule: exactly one boot source is required: image (fresh install), source_snapshot (restore), or source_disk (pre-created bootable disk)
 - rule: source_image_encryption is only valid together with image
 - rule: source_snapshot_encryption is only valid together with source_snapshot
+- rule: replica_zones requires a source_snapshot boot source — GCP cannot create a regional boot disk from an image (API 400: "Creating a regional disk from a source image is not supported yet"), and a pre-created source_disk already carries its own zones
 
 ### spec.bootDisk.image
 

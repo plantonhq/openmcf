@@ -1,0 +1,31 @@
+# Minimal AzureDataFactoryPipeline scenario: a Wait-activity pipeline
+# inside the factory kind's own smoke instance -- the registry
+# prerequisite chains the factory first, and the lane proves the typed
+# factory reference resolving through the chain plus the opaque
+# activities_json path end to end. The pipeline's own name is
+# factory-scoped (no run-id needed -- the parent factory's name
+# carries it). The pipeline adds no cost; the lane pays the factory
+# chain.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryPipeline
+metadata:
+  name: planton-oss-e2e-azuredatafactorypipeline-smoke
+  id: planton-oss-e2e-azuredatafactorypipeline-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorypipeline
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-wait
+  description: E2E smoke pipeline -- one Wait activity, never triggered.
+  concurrency: 1
+  activitiesJson: |
+    [{"name": "smoke-wait", "type": "Wait", "typeProperties": {"waitTimeInSeconds": 5}}]

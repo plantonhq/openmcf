@@ -3,13 +3,15 @@ kind: ComponentE2EProfile
 metadata:
   name: azurevpnsite
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. The site is a free, seconds-fast description object --
-  # the timeout covers the fixture WAN chain, not the site itself. This
-  # kind is also a fixture of the VPN family: the connection lane chains
-  # through its install profile.
+  # Proven live on both engines (full lifecycle + blind single-id import
+  # round-trip, zero-change plan). Measured: the site itself deploys in
+  # ~45s and destroys in ~35s; the lane totals ~4-6m per engine, all of
+  # it the fixture WAN chain. The name-keyed link_ids map populated
+  # identically on both engines (both links, real ARM child IDs) -- the
+  # wiring edge connection tunnels pin to, consumed live by the
+  # connection lane's fixture. This kind is also a fixture of the VPN
+  # family: the connection lane chains through its install profile.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

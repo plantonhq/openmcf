@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridnamespace.v1alpha1;
+
+// **AzureEventgridNamespaceStackOutputs** captures the outputs from
+// provisioning an Azure Event Grid namespace.
+message AzureEventgridNamespaceStackOutputs {
+  // The namespace's Azure Resource Manager ID -- the target an
+  // AzureEventgridNamespaceTopic's namespace_id references.
+  string namespace_id = 1;
+
+  // The namespace's name.
+  string namespace_name = 2;
+
+  // The principal ID of the namespace's system-assigned identity
+  // (empty when no system-assigned identity is configured) -- grant
+  // this on delivery targets that use identity-based access.
+  string identity_principal_id = 3;
+}

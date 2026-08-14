@@ -46,10 +46,18 @@ spec:
           blockEnabled: true
           source: Prompt
           severityThreshold: LOW
-        - name: Jailbreak
+        # Violence on Completion: the second graded filter proves a
+        # second severity level and the completion-side source. A
+        # BINARY filter (Jailbreak et al.) cannot ride this scenario:
+        # binary filters are severity-less and severity-less filters
+        # deploy through Terraform only (PARITY-EXCEPTION on the spec's
+        # severity_threshold field) -- this scenario runs on BOTH
+        # engines, so it carries graded filters exclusively.
+        - name: Violence
           filterEnabled: true
           blockEnabled: true
-          source: Prompt
+          source: Completion
+          severityThreshold: MEDIUM
       mode: BLOCKING
   tags:
     e2e-suite: azure

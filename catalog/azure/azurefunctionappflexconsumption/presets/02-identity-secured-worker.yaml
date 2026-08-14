@@ -1,0 +1,33 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFunctionAppFlexConsumption
+metadata:
+  name: events-worker
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  functionAppName: events-worker-acme
+  region: eastus
+  servicePlanId:
+    valueFrom:
+      name: <your-flex-service-plan>
+  storageContainerEndpoint: https://<your-storage-account>.blob.core.windows.net/deployments
+  # Credential-free deployment storage: the app authenticates to its
+  # container as its own system-assigned identity. Grant that identity
+  # "Storage Blob Data Contributor" on the storage account after the
+  # first deploy (the identity exists only once the app does).
+  storageAuthenticationType: SYSTEM_ASSIGNED_IDENTITY
+  runtimeName: PYTHON
+  runtimeVersion: "3.12"
+  # Bigger instances for the processing workload; no warm pool -- a
+  # queue worker tolerates the cold start and costs nothing idle.
+  instanceMemoryInMb: 4096
+  maximumInstanceCount: 50
+  identity:
+    type: SYSTEM_ASSIGNED
+  # Close the username/password publishing path: deployments happen
+  # through identity-based CI/CD only.
+  webdeployPublishBasicAuthenticationEnabled: false
+  httpsOnly: true
+  siteConfig:
+    minimumTlsVersion: TLS_1_2

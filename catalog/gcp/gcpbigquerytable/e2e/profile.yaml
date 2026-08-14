@@ -7,7 +7,11 @@ spec:
   # clustered native table and a literal-SELECT view (no base-table dependency).
   # deletionProtection is false so ephemeral DESTROY can run. CMEK and external
   # GCS arms are excluded live (org-level KMS grant / staged object data).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (4/4 lane runs — partitioned+clustered native table and literal
+  # view, chained on the dataset prerequisite).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

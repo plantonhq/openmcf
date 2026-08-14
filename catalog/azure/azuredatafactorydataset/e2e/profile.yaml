@@ -1,0 +1,34 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuredatafactorydataset
+spec:
+  # PROVEN live on both engines: all FOUR scenarios -- one per WIRE
+  # FORM plus the diff-prone seams -- through the full lifecycle
+  # (deploy / ARM verify / destroy / verify-absent) with blind import
+  # round-trips on the terraform lanes, all zero-change:
+  # delimited-text-blob (~10-12 min/engine incl. the four-fixture
+  # chain; IMPORT-RT 12s), azure-blob-flat (the always-sent
+  # expression-typed path/filename read back CLEAN -- the declared
+  # diff seam did not materialize; IMPORT-RT 12s), custom-excel-blob
+  # (the raw type_properties_json round-tripped through ARM's
+  # canonical form zero-change; IMPORT-RT 12s), and sql-table-by-id
+  # (~16-17 min/engine -- its chain deploys SEVEN fixtures including
+  # the vault, the key-vault connection, and the scenario-local SQL
+  # connection; the ARM-ID reference form and the same-factory rule
+  # proven; IMPORT-RT 12s). ARM accepted every save with the
+  # referenced connections in place (the chains deploy them first by
+  # design, so save-time existence enforcement stays unprobed -- the
+  # chain never presents a dangling reference). The other NINE
+  # variants are OFFLINE-PROVEN by design: their type-properties
+  # differences are save-time schema shapes ARM validates uniformly
+  # across one dataset namespace, several need a live external system
+  # (a Snowflake account, a MySQL server, an SFTP host) E2E cannot
+  # honestly stand up, and Azure saves dataset definitions without
+  # reading the data. Their tofu plans are render-inspected instead.
+  # Datasets are authoring metadata -- free at rest; the lanes pay
+  # only the factory chain (measured lane spend ~= $0).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 60

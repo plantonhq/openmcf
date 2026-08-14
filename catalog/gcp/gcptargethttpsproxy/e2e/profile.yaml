@@ -10,8 +10,8 @@ spec:
   # compute targetHttpsProxies.get verify (incl. url-map and TLS wiring) ->
   # destroy -> verify 404, on both provisioners.
   tier: 1
-  # The prior proof predates this spec surface (deletion_policy) — the
-  # kind awaits live re-proof at the current shape.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 20

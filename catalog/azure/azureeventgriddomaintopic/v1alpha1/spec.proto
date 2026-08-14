@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgriddomaintopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// **AzureEventgridDomainTopicSpec** defines one named event stream
+// inside an Azure Event Grid domain -- the per-tenant mailbox of the
+// multi-tenant pattern. Publishers address it by naming the topic in
+// events sent to the DOMAIN's endpoint (a domain topic has no endpoint
+// of its own), and subscribers attach event subscriptions to it.
+//
+// The domain topic is a first-class resource because it is
+// many-per-domain with its own lifecycle: each topic typically belongs
+// to one tenant, and tenants join and leave without touching the
+// domain or each other -- exactly like AzureEventHubConsumerGroup on a
+// shared Event Hub. Declare topics explicitly (with the domain's
+// auto_create/auto_delete set false) for the governance posture where
+// topics exist only by decision; leave the domain on its auto-managed
+// defaults when subscriptions should materialize topics on demand.
+message AzureEventgridDomainTopicSpec {
+  // The Event Grid domain the topic lives in, by ARM resource ID.
+  // Takes the domain's full ARM ID; defaults to referencing an
+  // AzureEventgridDomain's domain_id output so the domain and its
+  // topics compose in one manifest set.
+  //
+  // **ForceNew**: changing this destroys and recreates the topic.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef domain_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventgridDomain,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.domain_id"
+  ];
+
+  // The topic's name, unique within the domain -- 3-128 characters;
+  // letters, numbers, and hyphens. Publishers put exactly this name in
+  // the event's topic field; name it after the tenant or stream it
+  // carries ("customer-fabrikam", "orders").
+  //
+  // **ForceNew**: changing this destroys and recreates the topic (a
+  // brief gap for its subscriptions, nothing else -- the domain and
+  // sibling topics are untouched).
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "domain_topic_name_format"
+      message: "Domain topic names must be 3-128 characters of letters, numbers, and hyphens"
+      expression: "this.matches('^[-a-zA-Z0-9]{3,128}$')"
+    }
+  ];
+}

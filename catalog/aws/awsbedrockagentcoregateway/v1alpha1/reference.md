@@ -1767,7 +1767,11 @@ Derive tools from an OpenAPI 3 schema describing an HTTP API.
 `string`
 
 The schema document inline (JSON or YAML for OpenAPI; Smithy IDL or
-JSON AST for Smithy).
+JSON AST for Smithy). AWS validates OpenAPI content server-side when
+the target creates: the document must carry a non-empty `servers`
+array whose URL uses HTTPS, or the target lands FAILED with named
+validation errors (live-caught 2026-08-14; nothing calls the URL at
+create).
 
 ### spec.targets[].backend.openApiSchema.s3
 
@@ -1804,7 +1808,11 @@ Derive tools from a Smithy model describing an API.
 `string`
 
 The schema document inline (JSON or YAML for OpenAPI; Smithy IDL or
-JSON AST for Smithy).
+JSON AST for Smithy). AWS validates OpenAPI content server-side when
+the target creates: the document must carry a non-empty `servers`
+array whose URL uses HTTPS, or the target lands FAILED with named
+validation errors (live-caught 2026-08-14; nothing calls the URL at
+create).
 
 ### spec.targets[].backend.smithyModel.s3
 

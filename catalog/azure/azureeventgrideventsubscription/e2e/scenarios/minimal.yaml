@@ -1,0 +1,52 @@
+# Minimal AzureEventgridEventSubscription scenario: the SCOPE-addressed
+# wiring -- a subscription on the Event Grid topic kind's smoke
+# instance (chained by registry prerequisite), delivering to a
+# scenario-local storage queue on the fixture account. The subject and
+# advanced filters plus the retry policy render real surface at zero
+# cost. Subscription names are source-scoped (no run-id needed -- the
+# parent topic's cloud name carries it). Free at rest; creates in
+# seconds after the webhook-free destination validation.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridEventSubscription
+metadata:
+  name: planton-oss-e2e-azureeventgrideventsubscription-smoke
+  id: planton-oss-e2e-azureeventgrideventsubscription-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgrideventsubscription
+  annotations:
+    planton.dev/e2e: "true"
+    # The delivery queue is an extra instance this scenario composes --
+    # not a kind-level requirement (see the doc's own chain). The
+    # fixture storage account is named FIRST because both this
+    # scenario's destination and the queue document resolve
+    # storage_account_id against it, and a chain entry only resolves
+    # against instances deployed ahead of it.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount,catalog/azure/azureeventgrideventsubscription/e2e/queue-smoke.yaml"
+  tags:
+    - planton-e2e
+spec:
+  scope:
+    valueFrom:
+      name: planton-oss-e2e-azureeventgridtopic-smoke
+  name: eges-smoke-to-queue
+  destination:
+    storageQueue:
+      storageAccountId:
+        valueFrom:
+          name: planton-oss-e2e-azure-fixture-sa
+      # Matches queue-smoke.yaml's queueName -- both documents expand
+      # the same run-id token.
+      queueName: eges-smoke-${E2E_RUN_ID}
+  subjectFilter:
+    subjectBeginsWith: /planton-e2e/
+  advancedFilter:
+    stringIn:
+      - key: data.source
+        values:
+          - planton-e2e
+  retryPolicy:
+    maxDeliveryAttempts: 5
+    eventTimeToLive: 60

@@ -148,7 +148,12 @@ message GcpMemorystoreInstanceZoneDistributionConfig {
 }
 
 // GcpMemorystoreInstanceMaintenanceWindow defines when GCP may perform
-// maintenance on the instance. The window is fixed at 1 hour duration.
+// maintenance on the instance. The window is fixed at 1 hour duration and
+// starts on the hour: the Memorystore API accepts ONLY whole-hour start
+// times and rejects a start time carrying minutes with 400 "Invalid start
+// time, only hours are supported" (field violation on
+// weekly_maintenance_window.start_time; live-verified). This is narrower
+// than Redis, whose window start is settable to the minute.
 message GcpMemorystoreInstanceMaintenanceWindow {
   // Day of the week for the maintenance window.
   string day = 1 [
@@ -166,19 +171,11 @@ message GcpMemorystoreInstanceMaintenanceWindow {
     }
   ];
 
-  // Hour of day (0-23, UTC) when the maintenance window starts.
+  // Hour of day (0-23, UTC) when the maintenance window starts. The window
+  // always starts on the hour — the API supports no finer granularity.
   int32 hour = 2 [(buf.validate.field).int32 = {
     gte: 0
     lte: 23
-  }];
-
-  // Minute of the hour (0-59, UTC) when the maintenance window starts.
-  // Combined with hour, this pins the window start to the exact minute —
-  // useful for coordinating with maintenance windows of dependent systems
-  // (e.g. start cache maintenance 30 minutes after the database's window).
-  int32 minute = 3 [(buf.validate.field).int32 = {
-    gte: 0
-    lte: 59
   }];
 }
 

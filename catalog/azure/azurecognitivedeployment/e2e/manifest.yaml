@@ -8,7 +8,10 @@ spec:
   name: chat
   model:
     format: OpenAI
-    name: gpt-4o-mini
+    # A GenerallyAvailable model from the live catalog -- ARM rejects
+    # "Deprecating"-lifecycle models for new deployments
+    # (ServiceModelDeprecating), so examples must age with the catalog.
+    name: gpt-5.4-mini
   sku:
     name: GlobalStandard
     capacity: 10

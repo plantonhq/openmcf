@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgrideventsubscription.v1alpha1;
+
+// **AzureEventgridEventSubscriptionStackOutputs** captures the outputs
+// from provisioning an Azure Event Grid event subscription.
+message AzureEventgridEventSubscriptionStackOutputs {
+  // The subscription's Azure Resource Manager ID. The shape follows
+  // the addressing choice: scope-addressed subscriptions extend the
+  // source's ID
+  // ({scope}/providers/Microsoft.EventGrid/eventSubscriptions/{name});
+  // system-topic subscriptions live under the topic
+  // ({system_topic_id}/eventSubscriptions/{name}).
+  string event_subscription_id = 1;
+
+  // The subscription's name.
+  string event_subscription_name = 2;
+}

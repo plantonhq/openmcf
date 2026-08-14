@@ -1,0 +1,40 @@
+# Blob-storage-variant scenario: the heaviest auth matrix's SAFEST
+# arm -- the fixture storage account's blob endpoint by reference
+# plus managed identity, no secret material in the scenario. Proves
+# the endpoint-output chart edge (service_endpoint ->
+# AzureStorageAccount.primary_blob_endpoint) and the
+# exactly-one-connection-form contract live. The storage chain is
+# scenario-declared. Free at rest; creates in seconds.
+# WATCH: saving does not dial the account -- Azure accepts the
+# definition without testing reachability, so this lane proves the
+# management-plane contract (create/read/import/destroy), not data
+# movement.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  id: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorylinkedservice
+  annotations:
+    planton.dev/e2e: "true"
+    # The referenced storage account is the fixture -- a
+    # scenario-level chain, not a kind-level requirement.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-lakehouse-blob
+  description: E2E smoke blob connection -- endpoint + managed identity, no secret material.
+  azureBlobStorage:
+    serviceEndpoint:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-sa
+    useManagedIdentity: true
+    storageKind: StorageV2

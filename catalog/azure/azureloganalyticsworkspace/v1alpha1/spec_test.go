@@ -131,7 +131,11 @@ var _ = ginkgo.Describe("AzureLogAnalyticsWorkspaceSpec Validation Tests", func(
 
 		ginkgo.It("should accept a data collection rule id and workspace names at the length boundaries", func() {
 			input := buildValidWorkspace()
-			input.Spec.DataCollectionRuleId = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/dataCollectionRules/default-dcr"
+			input.Spec.DataCollectionRuleId = &foreignkeyv1.StringValueOrRef{
+				LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{
+					Value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Insights/dataCollectionRules/default-dcr",
+				},
+			}
 			input.Spec.WorkspaceName = "ab1c"
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			// 63 characters -- the upper boundary.

@@ -218,6 +218,7 @@ Fields on other kinds that can point at this resource:
 | AzureAksCluster | `spec.privateDnsZoneId` | `status.outputs.zone_id` |
 | AzureMysqlFlexibleServer | `spec.privateDnsZoneId` | `status.outputs.zone_id` |
 | AzurePostgresqlFlexibleServer | `spec.privateDnsZoneId` | `status.outputs.zone_id` |
+| AzurePrivateDnsRecord | `spec.privateDnsZoneId` | `status.outputs.zone_id` |
 | AzurePrivateDnsZoneVirtualNetworkLink | `spec.privateDnsZoneId` | `status.outputs.zone_id` |
 | AzurePrivateEndpoint | `spec.privateDnsZoneIds` | `status.outputs.zone_id` |
 

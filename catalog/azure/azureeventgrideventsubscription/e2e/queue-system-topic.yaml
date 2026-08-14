@@ -1,0 +1,25 @@
+# Scenario-local delivery target for the `system-topic` scenario: a
+# storage queue on the SHARED fixture account, distinct from the
+# minimal scenario's queue so the two lanes never share a delivery
+# target. The cloud-side name carries ${E2E_RUN_ID} (see
+# queue-smoke.yaml for the recreate-window rationale).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageQueue
+metadata:
+  name: planton-oss-e2e-eges-queue-st
+  id: planton-oss-e2e-eges-queue-st
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgrideventsubscription
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-sa
+  queueName: eges-st-${E2E_RUN_ID}

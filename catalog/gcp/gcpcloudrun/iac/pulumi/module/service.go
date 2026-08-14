@@ -648,7 +648,10 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 		// Readiness probe: pulls a failing instance from serving (and
 		// re-admits it on recovery) without restarting it. HTTP/gRPC only,
 		// no initial delay — the API's readiness shape differs from the
-		// other probes deliberately.
+		// other probes deliberately. The SDK's SuccessThreshold is never
+		// sent: the GA API's probe message carries no such field and
+		// silently drops it, leaving a perpetual re-plan diff
+		// (live-verified; the spec has no such field).
 		if container.ReadinessProbe != nil {
 			probe := container.ReadinessProbe
 			readinessProbe := &cloudrunv2.ServiceTemplateContainerReadinessProbeArgs{}
@@ -657,9 +660,6 @@ func buildContainers(spec *gcpcloudrunv1alpha1.GcpCloudRunSpec) cloudrunv2.Servi
 			}
 			if probe.PeriodSeconds != nil {
 				readinessProbe.PeriodSeconds = pulumi.Int(int(probe.GetPeriodSeconds()))
-			}
-			if probe.SuccessThreshold != nil {
-				readinessProbe.SuccessThreshold = pulumi.Int(int(probe.GetSuccessThreshold()))
 			}
 			if probe.FailureThreshold != nil {
 				readinessProbe.FailureThreshold = pulumi.Int(int(probe.GetFailureThreshold()))

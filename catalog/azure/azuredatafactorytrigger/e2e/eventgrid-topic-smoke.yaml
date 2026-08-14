@@ -1,0 +1,31 @@
+# Prerequisite doc for the custom-event scenario: a scenario-local
+# Event Grid topic on the DEFAULT "EventGridSchema" input schema.
+# LIVE-EARNED (proof session): Data Factory subscribes to the topic
+# with a webhook when the trigger STARTS, and a CloudEvents-schema
+# topic validates webhook subscribers with an HTTP OPTIONS handshake
+# Data Factory's endpoint does not answer -- Start fails with
+# "Webhook endpoint validation failed ... MethodNotAllowed". The
+# Event Grid topic kind's own smoke instance is deliberately
+# CloudEvents-shaped, so this scenario declares its own
+# consumer-compatible topic instead of chaining it. Topic names are
+# region-scoped DNS, so the cloud-side name carries the run-id token.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridTopic
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-egt
+  id: planton-oss-e2e-azuredatafactorytrigger-egt
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-dftrig-egt-${E2E_RUN_ID}
+  region: eastus

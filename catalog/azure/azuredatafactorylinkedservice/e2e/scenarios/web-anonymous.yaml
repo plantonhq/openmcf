@@ -1,0 +1,29 @@
+# Web-variant scenario: an anonymous HTTP connection to a public URL
+# -- ZERO external dependencies beyond the factory chain, proving the
+# union plumbing (shared fields, outputs, import round-trip) at the
+# lowest possible cost. Linked service names are factory-scoped (no
+# run-id needed -- the parent factory's name carries it). Free at
+# rest; creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: planton-oss-e2e-azuredatafactorylinkedservice-web
+  id: planton-oss-e2e-azuredatafactorylinkedservice-web
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorylinkedservice
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-web
+  description: E2E smoke web connection -- anonymous, no secret material.
+  web:
+    url: https://raw.githubusercontent.com/plantonhq/planton/main/README.md
+    authenticationType: Anonymous

@@ -121,3 +121,13 @@ jobs:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+
+  # ============================================================================
+  # Stigmer Skills - push the same deterministic skill archives to the hosted
+  # Stigmer engine (one job per skill; unchanged content is a no-op)
+  # ============================================================================
+  stigmer-skills:
+    needs: github-release
+    uses: ./.github/workflows/release.stigmer-skills.yaml
+    secrets:
+      STIGMER_API_KEY: ${{ secrets.STIGMER_API_KEY }}

@@ -1,0 +1,15 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerEndpoint
+metadata:
+  name: my-onprem-endpoint
+spec:
+  profileId:
+    valueFrom:
+      name: <your-azure-traffic-manager-profile-resource-name> # references the AzureTrafficManagerProfile component's traffic_manager_profile_id output
+  name: onprem-dc
+  external:
+    target:
+      value: <your-target-hostname-or-ip> # e.g. app.datacenter.example.com
+    endpointLocation: <nearest-azure-region> # e.g. eastus -- REQUIRED when the profile routes by Performance
+  priority: 20
+  weight: 50

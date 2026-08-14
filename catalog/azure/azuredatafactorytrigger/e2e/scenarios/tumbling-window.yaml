@@ -1,0 +1,43 @@
+# Tumbling-window-variant scenario: hourly windows from a FAR-FUTURE
+# start -- deployed STARTED (exercising the Start lifecycle live) but
+# no window materializes before the lane destroys it, so no pipeline
+# runs are billed. Exercises retry and max_concurrency on the wire.
+# WATCH: ARM's acceptance of a far-future start_time on a started
+# tumbling trigger -- if rejected, the fallback is activated: false
+# (the Stop path still runs at destroy).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-tumbling
+  id: planton-oss-e2e-azuredatafactorytrigger-tumbling
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-tumbling
+  description: E2E smoke tumbling window trigger -- started, no window before 2035.
+  activated: true
+  tumblingWindow:
+    frequency: Hour
+    interval: 1
+    startTime: "2035-01-01T00:00:00Z"
+    maxConcurrency: 2
+    retry:
+      count: 1
+      interval: 60
+    pipeline:
+      name:
+        valueFrom:
+          name: planton-oss-e2e-azuredatafactorypipeline-smoke
+      parameters:
+        windowStart: "@trigger().outputs.windowStartTime"
+        windowEnd: "@trigger().outputs.windowEndTime"

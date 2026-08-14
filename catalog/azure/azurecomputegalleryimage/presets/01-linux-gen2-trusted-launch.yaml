@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGalleryImage
+metadata:
+  name: ubuntu-base-image
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  galleryName:
+    valueFrom:
+      name: <your-compute-gallery>
+  name: ubuntu-base
+  region: eastus
+  # The publisher/offer/SKU triple is the image's permanent identity --
+  # unique within the gallery, matched by consumers.
+  identifier:
+    publisher: myorg
+    offer: ubuntu
+    sku: 22-04-lts-gen2
+  osType: Linux
+  # Gen2 + trusted-launch SUPPORTED is the posture that ages best:
+  # consumers CHOOSE trusted launch instead of being forced into it.
+  # All of this is fixed at creation.
+  hyperVGeneration: V2
+  trustedLaunchSupported: true
+  acceleratedNetworkSupportEnabled: true
+  minRecommendedVcpuCount: 2
+  minRecommendedMemoryInGb: 4
+  description: Hardened Ubuntu 22.04 Gen2 base image
+  # No versions yet: publish releases by adding entries to `versions`
+  # (see the Image With Version preset).

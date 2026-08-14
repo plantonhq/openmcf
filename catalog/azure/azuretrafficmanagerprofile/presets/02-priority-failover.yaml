@@ -1,0 +1,19 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerProfile
+metadata:
+  name: my-failover-director
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-failover-director
+  routingMethod: Priority
+  dnsConfig:
+    relativeName: <your-globally-unique-dns-label> # becomes <label>.trafficmanager.net -- shared namespace, prefix with your org
+    ttlSeconds: 30
+  monitorConfig:
+    protocol: HTTPS
+    port: 443
+    path: /healthz
+    intervalInSeconds: 10 # fast interval (billed extra) -- and it narrows the timeout to 5-9
+    timeoutInSeconds: 7
+    toleratedNumberOfFailures: 1

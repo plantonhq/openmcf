@@ -1,0 +1,13 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureeventgriddomain
+spec:
+  # The domain imports by its ARM resource ID.
+  values:
+    - name: domain_id
+      derivations:
+        - from_stack_output: domain_id
+      where_to_find: >-
+        `az eventgrid domain show --name <domain-name> --resource-group
+        <rg> --query id`, or the component's own domain_id stack output.

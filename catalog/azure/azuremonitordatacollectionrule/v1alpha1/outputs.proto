@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitordatacollectionrule.v1alpha1;
+
+// **AzureMonitorDataCollectionRuleStackOutputs** captures the outputs
+// from provisioning an Azure Monitor data collection rule.
+message AzureMonitorDataCollectionRuleStackOutputs {
+  // The rule's ARM resource ID
+  // (.../providers/Microsoft.Insights/dataCollectionRules/{name}) --
+  // the value associations and Log Analytics workspaces reference.
+  string data_collection_rule_id = 1;
+
+  // The rule's resource name within its resource group.
+  string data_collection_rule_name = 2;
+
+  // The rule's immutable ID -- the identifier agents and the ingestion
+  // API address the rule by (stable across moves, unlike the ARM ID's
+  // casing).
+  string immutable_id = 3;
+
+  // The principal ID of the rule's system-assigned identity, when one
+  // is configured -- grant this principal access on destinations
+  // (empty otherwise).
+  string identity_principal_id = 4;
+}

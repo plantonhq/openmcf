@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongoclusteruser.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuremongoclusteruser/v1alpha1/outputs.proto";
+import "catalog/azure/azuremongoclusteruser/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureMongoClusterUser grants one Microsoft Entra principal access
+// to an Azure Cosmos DB for MongoDB vCore cluster (AzureMongoCluster)
+// -- an access binding, not a password user: the principal
+// authenticates with its Entra token and receives the granted
+// database roles. Many grants share one cluster with independent
+// lifecycles; the cluster must allow "MicrosoftEntraID"
+// authentication.
+message AzureMongoClusterUser {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureMongoClusterUser'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureMongoClusterUserSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureMongoClusterUserStatus status = 5;
+}
+
+// AzureMongoClusterUserStatus represents the status of an Azure
+// Cosmos DB for MongoDB vCore user-grant deployment.
+message AzureMongoClusterUserStatus {
+  //stack-outputs
+  //  azure-mongo-cluster-user stack-outputs
+  AzureMongoClusterUserStackOutputs outputs = 1;
+}

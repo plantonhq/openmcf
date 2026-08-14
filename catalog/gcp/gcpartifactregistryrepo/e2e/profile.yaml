@@ -9,7 +9,12 @@ spec:
   # scenario composes the GcpServiceAccount prerequisite live (additive
   # IAM member FK resolution proof); the remote scenario proves the
   # pull-through arm against Docker Hub (no credentials needed).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate (4/4 lane runs — standard Docker repo with the additive IAM
+  # member, and the Docker Hub pull-through remote with upstream
+  # validation ON).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -212,8 +212,11 @@ type AzureExpressRouteCircuitSpec struct {
 	// 10000). May be INCREASED in place; decreasing replaces the circuit.
 	BandwidthInMbps int32 `protobuf:"varint,8,opt,name=bandwidth_in_mbps,json=bandwidthInMbps,proto3" json:"bandwidth_in_mbps,omitempty"`
 	// EXPRESSROUTE DIRECT MODE: the ExpressRoute Port the circuit rides
-	// on, by ARM id. Requires bandwidth_in_gbps. Fixed at creation.
-	ExpressRoutePortId string `protobuf:"bytes,9,opt,name=express_route_port_id,json=expressRoutePortId,proto3" json:"express_route_port_id,omitempty"`
+	// on -- defaults to referencing an AzureExpressRoutePort's
+	// express_route_port_id output; pass the ARM id as a literal for a
+	// port managed outside Planton. Requires bandwidth_in_gbps. Fixed at
+	// creation.
+	ExpressRoutePortId *v1.StringValueOrRef `protobuf:"bytes,9,opt,name=express_route_port_id,json=expressRoutePortId,proto3" json:"express_route_port_id,omitempty"`
 	// EXPRESSROUTE DIRECT MODE: the circuit bandwidth in Gbps carved from
 	// the port (fractional steps like 1, 2, 5, 10 up to the port size).
 	BandwidthInGbps float64 `protobuf:"fixed64,10,opt,name=bandwidth_in_gbps,json=bandwidthInGbps,proto3" json:"bandwidth_in_gbps,omitempty"`
@@ -330,11 +333,11 @@ func (x *AzureExpressRouteCircuitSpec) GetBandwidthInMbps() int32 {
 	return 0
 }
 
-func (x *AzureExpressRouteCircuitSpec) GetExpressRoutePortId() string {
+func (x *AzureExpressRouteCircuitSpec) GetExpressRoutePortId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.ExpressRoutePortId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureExpressRouteCircuitSpec) GetBandwidthInGbps() float64 {
@@ -434,7 +437,7 @@ var File_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto protoreflect
 
 const file_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	":catalog/azure/azureexpressroutecircuit/v1alpha1/spec.proto\x123dev.planton.azure.azureexpressroutecircuit.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa7\x17\n" +
+	":catalog/azure/azureexpressroutecircuit/v1alpha1/spec.proto\x123dev.planton.azure.azureexpressroutecircuit.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x87\x18\n" +
 	"\x1cAzureExpressRouteCircuitSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -446,8 +449,8 @@ const file_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto_rawDesc = 
 	"sku_family\x18\x05 \x01(\x0e2V.dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSkuFamilyB\b\xbaH\x05\x82\x01\x02\x10\x01R\tskuFamily\x122\n" +
 	"\x15service_provider_name\x18\x06 \x01(\tR\x13serviceProviderName\x12)\n" +
 	"\x10peering_location\x18\a \x01(\tR\x0fpeeringLocation\x123\n" +
-	"\x11bandwidth_in_mbps\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0fbandwidthInMbps\x121\n" +
-	"\x15express_route_port_id\x18\t \x01(\tR\x12expressRoutePortId\x12:\n" +
+	"\x11bandwidth_in_mbps\x18\b \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x0fbandwidthInMbps\x12\x94\x01\n" +
+	"\x15express_route_port_id\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB-\x88\xd4a\xe3\x10\x92\xd4a$status.outputs.express_route_port_idR\x12expressRoutePortId\x12:\n" +
 	"\x11bandwidth_in_gbps\x18\n" +
 	" \x01(\x01B\x0e\xbaH\v\x12\t)\x00\x00\x00\x00\x00\x00\x00\x00R\x0fbandwidthInGbps\x122\n" +
 	"\x15rate_limiting_enabled\x18\v \x01(\bR\x13rateLimitingEnabled\x128\n" +
@@ -457,14 +460,14 @@ const file_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto_rawDesc = 
 	"\x04tags\x18\x0f \x03(\v2[.dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xb0\r\xbaH\xac\r\x1a\xa6\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xac\r\xbaH\xa8\r\x1a\xa6\x01\n" +
 	"\x11sku_tier_required\x12}Choose the SKU tier explicitly -- LOCAL (metro only, no egress fees), STANDARD (geopolitical area), or PREMIUM (global reach)\x1a\x12this.sku_tier != 0\x1a\x95\x01\n" +
-	"\x13sku_family_required\x12hChoose the billing family explicitly -- METERED_DATA (pay per outbound GB) or UNLIMITED_DATA (flat rate)\x1a\x14this.sku_family != 0\x1a\xba\x02\n" +
-	"\x1dexactly_one_provisioning_mode\x12\xce\x01Provision the circuit exactly one way: through a service provider (service_provider_name + peering_location + bandwidth_in_mbps) or on an ExpressRoute Direct port (express_route_port_id + bandwidth_in_gbps)\x1aH(this.service_provider_name != '') != (this.express_route_port_id != '')\x1a\xf2\x01\n" +
+	"\x13sku_family_required\x12hChoose the billing family explicitly -- METERED_DATA (pay per outbound GB) or UNLIMITED_DATA (flat rate)\x1a\x14this.sku_family != 0\x1a\xb7\x02\n" +
+	"\x1dexactly_one_provisioning_mode\x12\xce\x01Provision the circuit exactly one way: through a service provider (service_provider_name + peering_location + bandwidth_in_mbps) or on an ExpressRoute Direct port (express_route_port_id + bandwidth_in_gbps)\x1aE(this.service_provider_name != '') != has(this.express_route_port_id)\x1a\xf2\x01\n" +
 	"&service_provider_trio_travels_together\x12gService-provider mode needs all three of service_provider_name, peering_location, and bandwidth_in_mbps\x1a_this.service_provider_name == '' || (this.peering_location != '' && this.bandwidth_in_mbps > 0)\x1a\x84\x02\n" +
 	"%provider_fields_only_in_provider_mode\x12ypeering_location and bandwidth_in_mbps belong to service-provider mode -- remove them from an ExpressRoute Direct circuit\x1a`this.service_provider_name != '' || (this.peering_location == '' && this.bandwidth_in_mbps == 0)\x1a\xb1\x01\n" +
-	"\x1cdirect_pair_travels_together\x12OExpressRoute Direct mode needs both express_route_port_id and bandwidth_in_gbps\x1a@this.express_route_port_id == '' || this.bandwidth_in_gbps > 0.0\x1a\xd0\x01\n" +
-	"\x18gbps_only_in_direct_mode\x12qbandwidth_in_gbps belongs to ExpressRoute Direct mode -- service-provider circuits size bandwidth_in_mbps instead\x1aAthis.express_route_port_id != '' || this.bandwidth_in_gbps == 0.0\x1a\xa8\x01\n" +
+	"\x1cdirect_pair_travels_together\x12OExpressRoute Direct mode needs both express_route_port_id and bandwidth_in_gbps\x1a@!has(this.express_route_port_id) || this.bandwidth_in_gbps > 0.0\x1a\xcf\x01\n" +
+	"\x18gbps_only_in_direct_mode\x12qbandwidth_in_gbps belongs to ExpressRoute Direct mode -- service-provider circuits size bandwidth_in_mbps instead\x1a@has(this.express_route_port_id) || this.bandwidth_in_gbps == 0.0\x1a\xa8\x01\n" +
 	"\x1aauthorization_names_unique\x121Authorization names must be unique on the circuit\x1aWthis.authorizations.all(a, this.authorizations.filter(o, o.name == a.name).size() == 1)\"G\n" +
 	"%AzureExpressRouteCircuitAuthorization\x12\x1e\n" +
 	"\x04name\x18\x01 \x01(\tB\n" +
@@ -507,14 +510,15 @@ var file_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto_depIdxs = []
 	5, // 0: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.sku_tier:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSkuTier
 	1, // 2: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.sku_family:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSkuFamily
-	5, // 3: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.authorization_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	3, // 4: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.authorizations:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitAuthorization
-	4, // 5: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.tags:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.TagsEntry
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 3: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.express_route_port_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 4: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.authorization_key:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	3, // 5: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.authorizations:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitAuthorization
+	4, // 6: dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.tags:type_name -> dev.planton.azure.azureexpressroutecircuit.v1alpha1.AzureExpressRouteCircuitSpec.TagsEntry
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_azure_azureexpressroutecircuit_v1alpha1_spec_proto_init() }

@@ -118,6 +118,12 @@ message GcpAlloydbInstanceSpec {
     expression: "size(this.authorized_external_networks) == 0 || this.enable_public_ip"
   };
 
+  option (buf.validate.message).cel = {
+    id: "availability_type_not_for_read_pool"
+    message: "availability_type applies to PRIMARY/SECONDARY instances only — read-pool availability is derived from node_count (1 node = ZONAL, 2+ nodes = REGIONAL) and the API does not store a sent value"
+    expression: "!(this.instance_type == 'READ_POOL' || this.instance_type == '') || this.availability_type == ''"
+  };
+
   // The GCP project that owns the AlloyDB cluster.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
@@ -164,9 +170,13 @@ message GcpAlloydbInstanceSpec {
   // Read pool sizing. Required when instance_type is READ_POOL.
   GcpAlloydbInstanceReadPoolConfig read_pool_config = 7;
 
-  // ZONAL or REGIONAL placement. Read pools of size 1 can only be ZONAL;
-  // pools with 2+ nodes can be REGIONAL. GCP defaults to REGIONAL when
-  // unset.
+  // ZONAL or REGIONAL placement for PRIMARY/SECONDARY instances. GCP
+  // defaults to REGIONAL when unset. Must stay empty on READ_POOL
+  // instances: read-pool availability is DERIVED from node_count (1 node =
+  // ZONAL, 2+ nodes = REGIONAL spread across zones) and the AlloyDB API
+  // does not store a sent value — the stored object omits the field, so
+  // any explicit value produces a perpetual re-plan diff (live-verified
+  // against a single-node pool at google@7.43.0).
   string availability_type = 8 [(buf.validate.field).cel = {
     id: "availability_type_valid"
     message: "availability_type must be ZONAL, REGIONAL, or AVAILABILITY_TYPE_UNSPECIFIED"

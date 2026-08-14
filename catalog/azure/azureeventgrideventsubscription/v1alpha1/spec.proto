@@ -1,0 +1,623 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgrideventsubscription.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureEventgridEventSubscriptionSpec** defines an Azure Event Grid
+// event subscription -- the delivery instruction that routes events
+// from a source to a handler: "when events arrive HERE, filtered like
+// THIS, deliver them THERE". The source is named by the addressing
+// choice (exactly one):
+//   - `scope`: any Azure resource that emits Event Grid events, by ARM
+//     ID -- a custom topic (AzureEventgridTopic), a domain
+//     (AzureEventgridDomain, receiving every domain topic's events), a
+//     single domain topic (AzureEventgridDomainTopic, the per-tenant
+//     stream), a resource group, or a subscription.
+//   - `system_topic_id`: an Event Grid SYSTEM topic
+//     (AzureEventgridSystemTopic) -- Azure models these subscriptions
+//     as children of the system topic rather than scoped attachments,
+//     and the engines create the matching resource type.
+// The destination is exactly one of seven handler arms; filters narrow
+// which events are delivered. A subscription is free at rest; billing
+// is per operation.
+message AzureEventgridEventSubscriptionSpec {
+  // The ARM ID of the event source, for every source EXCEPT system
+  // topics -- defaults to referencing an AzureEventgridTopic's
+  // topic_id output; pass a domain's, domain topic's, resource
+  // group's, or subscription's ID (literal or explicit valueFrom) for
+  // the other sources. Set exactly one of scope / system_topic_id.
+  //
+  // **ForceNew**: changing this destroys and recreates the
+  // subscription.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef scope = 1 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventgridTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // The ARM ID of the Event Grid system topic to subscribe to --
+  // defaults to referencing an AzureEventgridSystemTopic's
+  // system_topic_id output. Set exactly one of scope /
+  // system_topic_id.
+  //
+  // **ForceNew**: changing this destroys and recreates the
+  // subscription.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef system_topic_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventgridSystemTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.system_topic_id"
+  ];
+
+  // The subscription's name -- 3-64 characters; letters, numbers, and
+  // hyphens; unique within its source.
+  //
+  // **ForceNew**: changing this destroys and recreates the
+  // subscription.
+  string name = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "event_subscription_name_format"
+      message: "Event subscription names must be 3-64 characters of letters, numbers, and hyphens"
+      expression: "this.matches('^[-a-zA-Z0-9]{3,64}$')"
+    }
+  ];
+
+  // Where matched events are delivered -- exactly one handler arm.
+  AzureEventgridEventSubscriptionDestination destination = 4 [(buf.validate.field).required = true];
+
+  // Deliver AS the source topic's managed identity instead of the
+  // Event Grid service principal -- required for identity-based
+  // access on the destination (e.g. a storage queue with shared keys
+  // disabled). The identity named here must exist ON the source topic
+  // (its identity block), and needs data-plane write access on the
+  // destination.
+  AzureEventgridEventSubscriptionIdentity delivery_identity = 5;
+
+  // Extra headers/properties stamped onto every delivered event --
+  // static values (e.g. an API key the handler expects) or values
+  // lifted from the event by JSON path. Azure applies these on every
+  // destination type EXCEPT storage queues (queue messages carry no
+  // custom properties -- entries are ignored there).
+  repeated AzureEventgridEventSubscriptionDeliveryProperty delivery_properties = 6;
+
+  // Where events that exhaust their retries are parked (a storage
+  // blob container) instead of being dropped. Strongly recommended
+  // for at-least-once processing: without it, undeliverable events
+  // vanish after the retry policy gives up.
+  AzureEventgridEventSubscriptionDeadLetter dead_letter = 7;
+
+  // Dead-letter AS the source topic's managed identity (the
+  // delivery_identity contract, applied to the dead-letter write).
+  // Requires dead_letter to be configured.
+  AzureEventgridEventSubscriptionIdentity dead_letter_identity = 8;
+
+  // The envelope events are DELIVERED in. "EventGridSchema" (Azure's
+  // native envelope) is the default; "CloudEventSchemaV1_0" is the
+  // CNCF standard; "CustomInputSchema" passes a custom-schema topic's
+  // events through unmapped. Defaults to "EventGridSchema" -- the
+  // platform sends the default explicitly.
+  //
+  // **ForceNew**: changing the schema destroys and recreates the
+  // subscription.
+  optional string event_delivery_schema = 9 [
+    (dev.planton.shared.options.default) = "EventGridSchema",
+    (buf.validate.field).string = {
+      in: [
+        "EventGridSchema",
+        "CloudEventSchemaV1_0",
+        "CustomInputSchema"
+      ]
+    }
+  ];
+
+  // Only deliver events of these types (e.g.
+  // "Microsoft.Storage.BlobCreated"). An empty list delivers ALL
+  // event types the source emits.
+  repeated string included_event_types = 10 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // Only deliver events whose subject matches a prefix/suffix. Leave
+  // unset to deliver regardless of subject.
+  AzureEventgridEventSubscriptionSubjectFilter subject_filter = 11;
+
+  // Field-level filters over the event payload -- every configured
+  // condition must match for an event to be delivered (conditions are
+  // ANDed; values within one condition are ORed). Azure caps the
+  // TOTAL number of values across all conditions of one subscription
+  // at 25 -- the Terraform engine rejects an overflow at plan time on
+  // scope-addressed subscriptions; system-topic-addressed
+  // subscriptions and the Pulumi engine surface Azure's own deploy-
+  // time rejection.
+  AzureEventgridEventSubscriptionAdvancedFilter advanced_filter = 12;
+
+  // Whether a filter key may resolve to an ARRAY in the payload
+  // (matching if any element matches) instead of a single value.
+  // Default: false (Azure's default).
+  optional bool advanced_filtering_on_arrays_enabled = 13 [(dev.planton.shared.options.default) = "false"];
+
+  // Free-form labels stored on the subscription (Event Grid metadata,
+  // not ARM tags).
+  repeated string labels = 14 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // When the subscription expires and stops delivering, as an RFC
+  // 3339 UTC timestamp (e.g. "2027-01-01T00:00:00Z"). Leave unset for
+  // a subscription that never expires. Useful for temporary
+  // integrations and trials.
+  optional string expiration_time_utc = 15 [(buf.validate.field).cel = {
+    id: "event_subscription_expiration_format"
+    message: "expiration_time_utc must be an RFC 3339 UTC timestamp like 2027-01-01T00:00:00Z"
+    expression: "this.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$')"
+  }];
+
+  // How Event Grid retries failed deliveries before dead-lettering or
+  // dropping. Leave unset to accept Azure's defaults (30 attempts,
+  // 1440-minute time-to-live) -- the service owns those defaults, so
+  // the modules send the block only when set.
+  AzureEventgridEventSubscriptionRetryPolicy retry_policy = 16;
+
+  // The addressing choice IS the resource type -- requiring exactly
+  // one keeps a subscription from being declared against two sources
+  // or none.
+  option (buf.validate.message).cel = {
+    id: "event_subscription_addressing_exactly_one"
+    message: "Set exactly one of scope or system_topic_id -- the addressing choice determines the source"
+    expression: "(has(this.scope) ? 1 : 0) + (has(this.system_topic_id) ? 1 : 0) == 1"
+  };
+
+  // Azure accepts a dead-letter identity only alongside a dead-letter
+  // destination (the identity says HOW to write, the destination
+  // says WHERE).
+  option (buf.validate.message).cel = {
+    id: "event_subscription_dead_letter_identity_requires_dead_letter"
+    message: "dead_letter_identity requires dead_letter to be configured"
+    expression: "!has(this.dead_letter_identity) || has(this.dead_letter)"
+  };
+}
+
+// Where matched events are delivered. Set exactly one handler arm --
+// the arm determines the destination type.
+message AzureEventgridEventSubscriptionDestination {
+  // Deliver to an Azure Function. Set exactly one arm on this block.
+  AzureEventgridEventSubscriptionAzureFunctionDestination azure_function = 1;
+
+  // Deliver to an Event Hub, by ARM ID -- defaults to referencing an
+  // AzureEventHub's event_hub_id output. Set exactly one arm on this
+  // block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef eventhub_id = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureEventHub,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.event_hub_id"
+  ];
+
+  // Deliver to an Azure Relay hybrid connection, by ARM ID (Relay is
+  // not yet a catalog kind -- pass the ID as a literal or an explicit
+  // valueFrom). Set exactly one arm on this block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef hybrid_connection_id = 3;
+
+  // Deliver to a Service Bus queue, by ARM ID -- defaults to
+  // referencing an AzureServiceBusQueue's queue_id output. Set
+  // exactly one arm on this block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_bus_queue_id = 4 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureServiceBusQueue,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.queue_id"
+  ];
+
+  // Deliver to a Service Bus topic, by ARM ID -- defaults to
+  // referencing an AzureServiceBusTopic's topic_id output. Set
+  // exactly one arm on this block.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef service_bus_topic_id = 5 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureServiceBusTopic,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"
+  ];
+
+  // Deliver to an Azure Storage queue. Set exactly one arm on this
+  // block.
+  AzureEventgridEventSubscriptionStorageQueueDestination storage_queue = 6;
+
+  // Deliver to an HTTPS webhook. Set exactly one arm on this block.
+  AzureEventgridEventSubscriptionWebhookDestination webhook = 7;
+
+  option (buf.validate.message).cel = {
+    id: "event_subscription_destination_exactly_one"
+    message: "Set exactly one destination arm -- azure_function, eventhub_id, hybrid_connection_id, service_bus_queue_id, service_bus_topic_id, storage_queue, or webhook"
+    expression: "(has(this.azure_function) ? 1 : 0) + (has(this.eventhub_id) ? 1 : 0) + (has(this.hybrid_connection_id) ? 1 : 0) + (has(this.service_bus_queue_id) ? 1 : 0) + (has(this.service_bus_topic_id) ? 1 : 0) + (has(this.storage_queue) ? 1 : 0) + (has(this.webhook) ? 1 : 0) == 1"
+  };
+}
+
+// An Azure Function as the destination.
+message AzureEventgridEventSubscriptionAzureFunctionDestination {
+  // The FUNCTION's ARM ID -- the function app's ID plus the function
+  // segment:
+  // {function_app_id}/functions/{function_name}. This addresses one
+  // function INSIDE an app (an AzureFunctionApp's function_app_id
+  // output is the prefix), so there is no single-output default --
+  // pass the ID as a literal or compose it in the manifest.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef function_id = 1 [(buf.validate.field).required = true];
+
+  // How many events one invocation may receive at most. Leave unset
+  // for Azure's default -- the modules send the value only when set.
+  optional int32 max_events_per_batch = 2 [(buf.validate.field).int32.gte = 1];
+
+  // The preferred batch payload size in kilobytes. Leave unset for
+  // Azure's default -- the modules send the value only when set.
+  optional int32 preferred_batch_size_in_kilobytes = 3 [(buf.validate.field).int32.gte = 1];
+}
+
+// An Azure Storage queue as the destination. Note: Azure does not
+// apply delivery_properties to queue messages.
+message AzureEventgridEventSubscriptionStorageQueueDestination {
+  // The storage account holding the queue, by ARM ID -- defaults to
+  // referencing an AzureStorageAccount's storage_account_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The queue's name within that account (the queue must exist --
+  // AzureStorageQueue manages one).
+  string queue_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How long a delivered queue message lives before the queue expires
+  // it, in seconds (-1 = never expires). Leave unset for the
+  // service's default (7 days) -- the modules send the value only
+  // when set.
+  optional int32 queue_message_time_to_live_in_seconds = 3;
+}
+
+// An HTTPS webhook as the destination. Event Grid performs a
+// validation handshake against the URL at subscription create time --
+// the endpoint must be live and answer it (or the create fails).
+message AzureEventgridEventSubscriptionWebhookDestination {
+  // The HTTPS endpoint events are POSTed to. HTTP is rejected --
+  // Azure only delivers over TLS.
+  string url = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "event_subscription_webhook_https"
+      message: "The webhook url must be an https:// URL"
+      expression: "this.startsWith('https://')"
+    }
+  ];
+
+  // How many events one POST may carry at most (1-5000). Leave unset
+  // for Azure's default -- the modules send the value only when set.
+  optional int32 max_events_per_batch = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 5000
+  }];
+
+  // The preferred batch payload size in kilobytes (1-1024). Leave
+  // unset for Azure's default -- the modules send the value only when
+  // set.
+  optional int32 preferred_batch_size_in_kilobytes = 3 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1024
+  }];
+
+  // For Entra-ID-protected webhooks: the tenant the destination app
+  // lives in. Sent only when set.
+  string active_directory_tenant_id = 4;
+
+  // For Entra-ID-protected webhooks: the application ID or URI Event
+  // Grid acquires a token for. Sent only when set.
+  string active_directory_app_id_or_uri = 5;
+}
+
+// The managed identity a delivery (or dead-letter write) runs as.
+// The identity must exist ON the source topic -- a subscription
+// cannot mint one.
+message AzureEventgridEventSubscriptionIdentity {
+  // Identity flavor: the source topic's system-assigned identity, or
+  // one of its user-assigned identities.
+  AzureEventgridEventSubscriptionIdentityType type = 1 [(buf.validate.field).required = true];
+
+  // For USER_ASSIGNED: which of the source topic's user-assigned
+  // identities to deliver as, by ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef user_assigned_identity = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureUserAssignedIdentity,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.identity_id"
+  ];
+
+  option (buf.validate.message).cel = {
+    id: "event_subscription_identity_pairing"
+    message: "user_assigned_identity is required for USER_ASSIGNED and must be unset for SYSTEM_ASSIGNED"
+    expression: "(this.type == 2) == has(this.user_assigned_identity)"
+  };
+}
+
+// The delivery/dead-letter identity flavor.
+enum AzureEventgridEventSubscriptionIdentityType {
+  // Not specified: rejected -- an identity block requires a flavor.
+  azure_eventgrid_event_subscription_identity_type_unspecified = 0;
+
+  // The source topic's system-assigned identity. Wire value:
+  // "SystemAssigned".
+  SYSTEM_ASSIGNED = 1;
+
+  // One of the source topic's user-assigned identities. Wire value:
+  // "UserAssigned".
+  USER_ASSIGNED = 2;
+}
+
+// One header/property stamped onto delivered events.
+message AzureEventgridEventSubscriptionDeliveryProperty {
+  // The header/property name the destination sees (e.g.
+  // "x-api-key" on a webhook, an application property on Service
+  // Bus/Event Hub messages).
+  string header_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // "Static" stamps a fixed value; "Dynamic" lifts the value from
+  // each event by JSON path.
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Static",
+        "Dynamic"
+      ]
+    }
+  ];
+
+  // For "Static": the value to stamp. Often a credential the handler
+  // expects -- reference a managed secret or another resource's
+  // output rather than embedding plaintext in manifests.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef value = 3 [(dev.planton.shared.options.sensitive) = true];
+
+  // For "Dynamic": the JSON path into the event the value is lifted
+  // from (e.g. "data.system", "subject").
+  string source_field = 4;
+
+  // For "Static": hide the value from Azure's own read APIs (they
+  // return "Hidden" instead). Set true for credentials.
+  bool secret = 5;
+
+  // Azure reads exactly one value source per type -- a Static entry
+  // uses value (+ secret), a Dynamic entry uses source_field; the
+  // service silently ignores the other arm's fields, so requiring the
+  // coherent pairing up front beats a filter that silently stamps
+  // nothing.
+  option (buf.validate.message).cel = {
+    id: "event_subscription_delivery_property_pairing"
+    message: "Static entries require value (and may set secret); Dynamic entries require source_field and must not set value or secret"
+    expression: "(this.type == 'Static') ? (has(this.value) && this.source_field == '') : (this.source_field != '' && !has(this.value) && !this.secret)"
+  };
+}
+
+// Where undeliverable events are parked: a blob container in a
+// storage account.
+message AzureEventgridEventSubscriptionDeadLetter {
+  // The storage account holding the dead-letter container, by ARM ID
+  // -- defaults to referencing an AzureStorageAccount's
+  // storage_account_id output.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef storage_account_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureStorageAccount,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.storage_account_id"
+  ];
+
+  // The blob container dead-lettered events are written into (the
+  // container must exist -- AzureStorageContainer manages one).
+  string storage_blob_container_name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// Deliver only events whose subject matches. At least one condition
+// must be set for the block to mean anything -- Azure drops an empty
+// block on read.
+message AzureEventgridEventSubscriptionSubjectFilter {
+  // Deliver events whose subject starts with this prefix (e.g.
+  // "/blobServices/default/containers/invoices/").
+  string subject_begins_with = 1;
+
+  // Deliver events whose subject ends with this suffix (e.g. ".pdf").
+  string subject_ends_with = 2;
+
+  // Whether prefix/suffix matching is case sensitive. Default: false
+  // (Azure's default).
+  optional bool case_sensitive = 3;
+
+  option (buf.validate.message).cel = {
+    id: "event_subscription_subject_filter_not_empty"
+    message: "Set at least one of subject_begins_with, subject_ends_with, or case_sensitive"
+    expression: "this.subject_begins_with != '' || this.subject_ends_with != '' || has(this.case_sensitive)"
+  };
+}
+
+// Field-level filters over the event payload. Each entry names a key
+// (a JSON path into the event, e.g. "data.api" or "subject") and the
+// condition its value must meet. All configured conditions must match
+// (AND); within one condition the listed values are alternatives
+// (OR). Azure caps the TOTAL number of values across every condition
+// at 25 per subscription (key-only conditions count 0, single-value
+// conditions count 1, each listed value or range counts 1) -- an
+// overflow is rejected at plan time on scope-addressed subscriptions
+// via the Terraform engine, and at deploy time by Azure otherwise.
+message AzureEventgridEventSubscriptionAdvancedFilter {
+  // The key's value equals the given boolean.
+  repeated AzureEventgridEventSubscriptionBoolEqualsFilter bool_equals = 1;
+
+  // The key's numeric value is strictly greater than the given value.
+  repeated AzureEventgridEventSubscriptionNumberFilter number_greater_than = 2;
+
+  // The key's numeric value is greater than or equal to the given
+  // value.
+  repeated AzureEventgridEventSubscriptionNumberFilter number_greater_than_or_equals = 3;
+
+  // The key's numeric value is strictly less than the given value.
+  repeated AzureEventgridEventSubscriptionNumberFilter number_less_than = 4;
+
+  // The key's numeric value is less than or equal to the given value.
+  repeated AzureEventgridEventSubscriptionNumberFilter number_less_than_or_equals = 5;
+
+  // The key's numeric value is one of the listed values.
+  repeated AzureEventgridEventSubscriptionNumberListFilter number_in = 6;
+
+  // The key's numeric value is none of the listed values.
+  repeated AzureEventgridEventSubscriptionNumberListFilter number_not_in = 7;
+
+  // The key's numeric value falls inside one of the listed ranges.
+  repeated AzureEventgridEventSubscriptionNumberRangeFilter number_in_range = 8;
+
+  // The key's numeric value falls outside every listed range.
+  repeated AzureEventgridEventSubscriptionNumberRangeFilter number_not_in_range = 9;
+
+  // The key's string value starts with one of the listed prefixes.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_begins_with = 10;
+
+  // The key's string value starts with none of the listed prefixes.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_not_begins_with = 11;
+
+  // The key's string value ends with one of the listed suffixes.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_ends_with = 12;
+
+  // The key's string value ends with none of the listed suffixes.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_not_ends_with = 13;
+
+  // The key's string value contains one of the listed substrings.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_contains = 14;
+
+  // The key's string value contains none of the listed substrings.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_not_contains = 15;
+
+  // The key's string value is one of the listed values.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_in = 16;
+
+  // The key's string value is none of the listed values.
+  repeated AzureEventgridEventSubscriptionStringListFilter string_not_in = 17;
+
+  // The key is present with a non-null value.
+  repeated AzureEventgridEventSubscriptionKeyFilter is_not_null = 18;
+
+  // The key is absent, null, or undefined.
+  repeated AzureEventgridEventSubscriptionKeyFilter is_null_or_undefined = 19;
+
+  option (buf.validate.message).cel = {
+    id: "event_subscription_advanced_filter_not_empty"
+    message: "An advanced_filter block must carry at least one condition"
+    expression: "(this.bool_equals.size() + this.number_greater_than.size() + this.number_greater_than_or_equals.size() + this.number_less_than.size() + this.number_less_than_or_equals.size() + this.number_in.size() + this.number_not_in.size() + this.number_in_range.size() + this.number_not_in_range.size() + this.string_begins_with.size() + this.string_not_begins_with.size() + this.string_ends_with.size() + this.string_not_ends_with.size() + this.string_contains.size() + this.string_not_contains.size() + this.string_in.size() + this.string_not_in.size() + this.is_not_null.size() + this.is_null_or_undefined.size()) > 0"
+  };
+}
+
+// A boolean-equality condition.
+message AzureEventgridEventSubscriptionBoolEqualsFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The boolean the key's value must equal.
+  bool value = 2;
+}
+
+// A single-value numeric condition.
+message AzureEventgridEventSubscriptionNumberFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The number the key's value is compared against.
+  double value = 2;
+}
+
+// A numeric list condition. An empty list would match nothing and
+// silently starve the subscription, so at least one value is
+// required; Azure caps values per condition (and 25 in total across
+// the whole filter).
+message AzureEventgridEventSubscriptionNumberListFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The alternative values (OR semantics).
+  repeated double values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+  }];
+}
+
+// A numeric range condition.
+message AzureEventgridEventSubscriptionNumberRangeFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The alternative ranges (OR semantics), each an inclusive
+  // [from, to] pair.
+  repeated AzureEventgridEventSubscriptionNumberRange ranges = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+  }];
+}
+
+// One inclusive numeric range.
+message AzureEventgridEventSubscriptionNumberRange {
+  // The range's inclusive lower bound.
+  double from = 1;
+
+  // The range's inclusive upper bound.
+  double to = 2;
+}
+
+// A string list condition. An empty list would match nothing and
+// silently starve the subscription, so at least one value is
+// required; Azure caps values per condition (and 25 in total across
+// the whole filter).
+message AzureEventgridEventSubscriptionStringListFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The alternative values (OR semantics).
+  repeated string values = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 25
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// A key-presence condition (no values).
+message AzureEventgridEventSubscriptionKeyFilter {
+  // The JSON path into the event the condition reads.
+  string key = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}
+
+// How failed deliveries are retried. Both knobs are required when the
+// block is set; leave the block unset for Azure's defaults (30
+// attempts, 1440 minutes).
+message AzureEventgridEventSubscriptionRetryPolicy {
+  // How many delivery attempts Event Grid makes before giving up
+  // (1-30).
+  int32 max_delivery_attempts = 1 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 30
+  }];
+
+  // How long an undelivered event stays eligible for retry, in
+  // minutes (1-1440).
+  int32 event_time_to_live = 2 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1440
+  }];
+}

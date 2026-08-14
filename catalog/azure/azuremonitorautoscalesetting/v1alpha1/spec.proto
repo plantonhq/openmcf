@@ -1,0 +1,779 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremonitorautoscalesetting.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureMonitorAutoscaleSettingSpec** defines an Azure Monitor autoscale
+// setting -- the rule book that automatically adds and removes instances
+// of ONE scalable target (a Virtual Machine Scale Set, an App Service
+// plan, and other capacity-bearing resources) based on metrics and
+// schedules.
+//
+// A setting holds up to 20 **profiles**. Exactly one profile is in effect
+// at any moment, chosen by Azure in this precedence order: a fixed_date
+// profile whose window covers "now" wins, then a recurrence profile whose
+// schedule matches, then the default profile (the one with neither).
+// Each profile carries a capacity envelope (minimum/maximum/default
+// instance counts) and up to 10 metric-driven rules ("CPU average over
+// 10 minutes > 75% -> add 2 instances, then cool down 5 minutes").
+//
+// **One setting per target**: Azure allows a single autoscale setting per
+// target resource; a second setting on the same target fails at deploy
+// time. The setting must live in the same region as its target.
+//
+// **Capacity is bounded by quota**: the maximum instance count is also
+// limited by the subscription's core quota at deploy time -- the 0-1000
+// bounds here mirror the provider's static validation only.
+message AzureMonitorAutoscaleSettingSpec {
+  // The Azure Resource Group the autoscale setting lives in. Can be a
+  // literal string or a reference to an AzureResourceGroup output.
+  //
+  // **ForceNew**: changing this destroys and recreates the setting.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef resource_group = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureResourceGroup,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.resource_group_name"
+  ];
+
+  // The name of the autoscale setting, unique within the resource group.
+  //
+  // **ForceNew**: changing this destroys and recreates the setting.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The Azure region the setting is created in, e.g. "eastus". Must match
+  // the region of the target resource (Azure evaluates autoscale in the
+  // target's region).
+  //
+  // **ForceNew**: changing this destroys and recreates the setting.
+  string region = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The scalable resource this setting controls, by ARM resource ID --
+  // a Virtual Machine Scale Set, an App Service plan (Standard tier or
+  // above), or any other resource type Azure Monitor autoscale supports.
+  // There is no default kind because many kinds can be the target:
+  // reference the resource's `*_id` output explicitly with valueFrom
+  // (kind + fieldPath), or pass a literal ARM ID. Azure allows ONE
+  // autoscale setting per target.
+  //
+  // **ForceNew**: changing this destroys and recreates the setting.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 4 [(buf.validate.field).required = true];
+
+  // Whether autoscale actively evaluates and acts. Unspecified applies
+  // true -- a setting exists to scale; set false to freeze the instance
+  // count while keeping the whole rule book in place.
+  optional bool enabled = 5 [(dev.planton.shared.options.default) = "true"];
+
+  // Predictive autoscale (VM Scale Sets only): Azure forecasts CPU load
+  // from history and scales out AHEAD of the predicted demand. OMIT this
+  // block to leave predictive autoscale disabled -- there is no explicit
+  // "Disabled" mode; absence is how the API expresses it.
+  AzureMonitorAutoscaleSettingPredictive predictive = 6;
+
+  // The scaling profiles (1-20). Exactly one is in effect at any moment:
+  // a matching fixed_date profile wins over a matching recurrence
+  // profile, which wins over the default profile (no schedule). Ship at
+  // least the default profile; add scheduled profiles for known load
+  // patterns (business hours, weekends, launch events).
+  repeated AzureMonitorAutoscaleSettingProfile profiles = 7 [(buf.validate.field).repeated = {
+    min_items: 1
+    max_items: 20
+  }];
+
+  // Scale-event notifications: email to administrators/addresses and/or
+  // webhooks fired on every scale action. Omit when no notification is
+  // wanted.
+  AzureMonitorAutoscaleSettingNotification notification = 8;
+
+  // Tags to apply to the autoscale setting, merged over the
+  // Planton-derived metadata tags (user values win on key conflicts).
+  map<string, string> tags = 9;
+}
+
+// Predictive autoscale configuration (VM Scale Set targets only).
+message AzureMonitorAutoscaleSettingPredictive {
+  // The predictive mode: "ForecastOnly" produces the forecast for charts
+  // without acting on it (the safe first step); "Enabled" also scales on
+  // the forecast. There is no "Disabled" value -- omit the whole
+  // predictive block to disable.
+  string scale_mode = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Enabled",
+        "ForecastOnly"
+      ]
+    }
+  ];
+
+  // How far ahead of the forecast instances are launched, as an ISO 8601
+  // duration between PT1M and PT1H (for example "PT10M" to have capacity
+  // ready ten minutes early). Omit to scale exactly at the predicted
+  // time.
+  string look_ahead_time = 2 [(buf.validate.field).cel = {
+    id: "autoscale_look_ahead_iso8601"
+    message: "look_ahead_time must be an ISO 8601 duration between PT1M and PT1H, e.g. PT10M"
+    expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+  }];
+}
+
+// One scaling profile: a capacity envelope, the metric rules that move
+// the instance count inside it, and optionally the schedule that makes
+// the profile active.
+message AzureMonitorAutoscaleSettingProfile {
+  // The profile's name (shown in the portal's autoscale history --
+  // choose something an operator recognizes, e.g. "weekday-business-hours").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The instance-count envelope this profile scales within.
+  AzureMonitorAutoscaleSettingCapacity capacity = 2 [(buf.validate.field).required = true];
+
+  // The metric-driven rules (0-10) that move the instance count inside
+  // the capacity envelope. A profile with no rules pins the count to the
+  // capacity default -- the standard shape for scheduled profiles that
+  // simply set a fixed size for a time window.
+  repeated AzureMonitorAutoscaleSettingRule rules = 3 [(buf.validate.field).repeated.max_items = 10];
+
+  // Makes this profile active for ONE fixed calendar window (e.g. a
+  // launch day). At most one of fixed_date and recurrence may be set;
+  // a profile with neither is the default profile.
+  AzureMonitorAutoscaleSettingFixedDate fixed_date = 4;
+
+  // Makes this profile active on a weekly schedule (e.g. weekdays at
+  // 08:00). The profile stays in effect until another profile's schedule
+  // starts -- schedule the "return to normal" profile explicitly. At
+  // most one of fixed_date and recurrence may be set.
+  AzureMonitorAutoscaleSettingRecurrence recurrence = 5;
+
+  // The provider documents fixed_date and recurrence as mutually
+  // exclusive (ARM ignores fixedDate when recurrence is present, so a
+  // both-set profile would silently misbehave) -- front-loaded here so
+  // the error lands in seconds.
+  option (buf.validate.message).cel = {
+    id: "autoscale_profile_one_schedule"
+    message: "a profile is default (no schedule), fixed-date, or recurring -- set at most one of fixed_date and recurrence"
+    expression: "!(has(this.fixed_date) && has(this.recurrence))"
+  };
+}
+
+// The instance-count envelope of one profile. All three values are
+// bounded 0-1000 by the provider; the subscription's core quota bounds
+// them further at deploy time. minimum must not exceed maximum (Azure
+// validates at deploy time).
+message AzureMonitorAutoscaleSettingCapacity {
+  // The floor: autoscale never goes below this many instances.
+  optional int32 minimum = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 1000
+    }
+  ];
+
+  // The ceiling: autoscale never goes above this many instances.
+  optional int32 maximum = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 1000
+    }
+  ];
+
+  // The fallback instance count Azure applies when metrics are
+  // unavailable for evaluation -- and only if the current count is
+  // BELOW it (metrics loss never scales you down).
+  optional int32 default = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 1000
+    }
+  ];
+}
+
+// One scaling rule: a metric condition and the action taken when it
+// holds.
+message AzureMonitorAutoscaleSettingRule {
+  // The metric condition that triggers the rule.
+  AzureMonitorAutoscaleSettingMetricTrigger metric_trigger = 1 [(buf.validate.field).required = true];
+
+  // The scale action taken when the condition holds.
+  AzureMonitorAutoscaleSettingScaleAction scale_action = 2 [(buf.validate.field).required = true];
+}
+
+// The metric condition of one rule: which metric, on which resource,
+// aggregated how, compared against what.
+message AzureMonitorAutoscaleSettingMetricTrigger {
+  // The metric to evaluate (for example "Percentage CPU" on a VM Scale
+  // Set, "CpuPercentage" on an App Service plan). Metric names are
+  // defined per resource type by Azure Monitor.
+  string metric_name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The resource whose metric is evaluated, by ARM resource ID --
+  // usually the scale target itself (reference the same output as
+  // target_resource_id), but any metric-emitting resource works (e.g.
+  // scale a worker scale set on a Service Bus queue's depth). No
+  // default kind for the same reason as target_resource_id: reference
+  // the resource's `*_id` output explicitly with valueFrom, or pass a
+  // literal ARM ID.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef metric_resource_id = 2 [(buf.validate.field).required = true];
+
+  // The granularity the metric is sampled at, as an ISO 8601 duration
+  // (commonly "PT1M"). Must be one of the granularities the metric
+  // supports -- Azure rejects unsupported values at deploy time.
+  string time_grain = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_time_grain_iso8601"
+      message: "time_grain must be an ISO 8601 duration, e.g. PT1M"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // How samples within one time grain combine: "Average", "Max", "Min",
+  // or "Sum".
+  string statistic = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Average",
+        "Max",
+        "Min",
+        "Sum"
+      ]
+    }
+  ];
+
+  // The rolling window the rule looks back over, as an ISO 8601 duration
+  // (commonly "PT5M" to "PT30M"). Longer windows smooth spikes; shorter
+  // windows react faster.
+  string time_window = 5 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_time_window_iso8601"
+      message: "time_window must be an ISO 8601 duration, e.g. PT10M"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+
+  // How the per-grain statistics aggregate across the whole window
+  // before comparison: "Average", "Count", "Maximum", "Minimum",
+  // "Total", or "Last".
+  string time_aggregation = 6 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Average",
+        "Count",
+        "Maximum",
+        "Minimum",
+        "Total",
+        "Last"
+      ]
+    }
+  ];
+
+  // The comparison between the aggregated value and the threshold:
+  // "Equals", "NotEquals", "GreaterThan", "GreaterThanOrEqual",
+  // "LessThan", or "LessThanOrEqual".
+  string operator = 7 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Equals",
+        "NotEquals",
+        "GreaterThan",
+        "GreaterThanOrEqual",
+        "LessThan",
+        "LessThanOrEqual"
+      ]
+    }
+  ];
+
+  // The threshold the aggregated metric is compared against. Zero is a
+  // meaningful threshold (for example "queue depth greater than 0").
+  double threshold = 8;
+
+  // The metric namespace, when the metric lives outside the resource
+  // type's default namespace (custom metrics; e.g.
+  // "microsoft.compute/virtualmachinescalesets" is implied for a scale
+  // set's own platform metrics and can be omitted).
+  string metric_namespace = 9;
+
+  // Whether the metric is divided by the current instance count before
+  // comparison -- useful for per-instance semantics on aggregate metrics
+  // (e.g. total requests per instance).
+  bool divide_by_instance_count = 10;
+
+  // Dimension filters -- restrict the evaluation to specific dimension
+  // values (for example only one storage queue's depth, only one
+  // node type's CPU).
+  repeated AzureMonitorAutoscaleSettingDimension dimensions = 11;
+}
+
+// A dimension filter on a metric trigger.
+message AzureMonitorAutoscaleSettingDimension {
+  // The dimension name (for example "AppName", "Instance"). Dimensions
+  // are defined per metric by Azure Monitor.
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // How the values list applies: "Equals" evaluates only matching
+  // values, "NotEquals" evaluates everything else.
+  string operator = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Equals",
+        "NotEquals"
+      ]
+    }
+  ];
+
+  // The dimension values the operator applies to.
+  repeated string values = 3 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {min_len: 1}
+    }
+  }];
+}
+
+// The action one rule takes when its metric condition holds.
+message AzureMonitorAutoscaleSettingScaleAction {
+  // Which way the instance count moves: "Increase" or "Decrease".
+  string direction = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "Increase",
+        "Decrease"
+      ]
+    }
+  ];
+
+  // How `value` is interpreted: "ChangeCount" adds/removes that many
+  // instances, "PercentChangeCount" changes by that percentage of the
+  // current count, "ExactCount" jumps straight to that count, and
+  // "ServiceAllowedNextValue" steps to the next value the target service
+  // allows (for services with discrete capacity steps).
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "ChangeCount",
+        "ExactCount",
+        "PercentChangeCount",
+        "ServiceAllowedNextValue"
+      ]
+    }
+  ];
+
+  // The magnitude of the action, interpreted per `type`. Zero is legal
+  // (a rule that intentionally holds the count).
+  optional int32 value = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 0
+  ];
+
+  // How long autoscale waits after this action before evaluating rules
+  // again, as an ISO 8601 duration between one minute and one week
+  // (commonly "PT5M"). Cooldowns prevent flapping -- scale-in rules
+  // usually carry longer ones than scale-out rules.
+  string cooldown = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_cooldown_iso8601"
+      message: "cooldown must be an ISO 8601 duration, e.g. PT5M"
+      expression: "this == '' || this.matches('^P((\\\\d+Y)?(\\\\d+M)?(\\\\d+W)?(\\\\d+D)?)(T(\\\\d+H)?(\\\\d+M)?(\\\\d+S)?)?$')"
+    }
+  ];
+}
+
+// A fixed calendar window during which the owning profile is in effect
+// (a one-off event: launch day, migration window, sale weekend).
+message AzureMonitorAutoscaleSettingFixedDate {
+  // The IANA-style Azure time zone `start` and `end` are expressed in,
+  // from Azure's fixed vocabulary (e.g. "Pacific Standard Time").
+  // Unspecified applies "UTC".
+  optional string timezone = 1 [
+    (dev.planton.shared.options.default) = "UTC",
+    (buf.validate.field).string = {
+      in: [
+        "Dateline Standard Time",
+        "UTC-11",
+        "Hawaiian Standard Time",
+        "Alaskan Standard Time",
+        "Pacific Standard Time (Mexico)",
+        "Pacific Standard Time",
+        "US Mountain Standard Time",
+        "Mountain Standard Time (Mexico)",
+        "Mountain Standard Time",
+        "Central America Standard Time",
+        "Central Standard Time",
+        "Central Standard Time (Mexico)",
+        "Canada Central Standard Time",
+        "SA Pacific Standard Time",
+        "Eastern Standard Time",
+        "US Eastern Standard Time",
+        "Venezuela Standard Time",
+        "Paraguay Standard Time",
+        "Atlantic Standard Time",
+        "Central Brazilian Standard Time",
+        "SA Western Standard Time",
+        "Pacific SA Standard Time",
+        "Newfoundland Standard Time",
+        "E. South America Standard Time",
+        "Argentina Standard Time",
+        "SA Eastern Standard Time",
+        "Greenland Standard Time",
+        "Montevideo Standard Time",
+        "Bahia Standard Time",
+        "UTC-02",
+        "Mid-Atlantic Standard Time",
+        "Azores Standard Time",
+        "Cape Verde Standard Time",
+        "Morocco Standard Time",
+        "UTC",
+        "GMT Standard Time",
+        "Greenwich Standard Time",
+        "W. Europe Standard Time",
+        "Central Europe Standard Time",
+        "Romance Standard Time",
+        "Central European Standard Time",
+        "W. Central Africa Standard Time",
+        "Namibia Standard Time",
+        "Jordan Standard Time",
+        "GTB Standard Time",
+        "Middle East Standard Time",
+        "Egypt Standard Time",
+        "Syria Standard Time",
+        "E. Europe Standard Time",
+        "South Africa Standard Time",
+        "FLE Standard Time",
+        "Turkey Standard Time",
+        "Israel Standard Time",
+        "Kaliningrad Standard Time",
+        "Libya Standard Time",
+        "Arabic Standard Time",
+        "Arab Standard Time",
+        "Belarus Standard Time",
+        "Russian Standard Time",
+        "E. Africa Standard Time",
+        "Iran Standard Time",
+        "Arabian Standard Time",
+        "Azerbaijan Standard Time",
+        "Russia Time Zone 3",
+        "Mauritius Standard Time",
+        "Georgian Standard Time",
+        "Caucasus Standard Time",
+        "Afghanistan Standard Time",
+        "West Asia Standard Time",
+        "Ekaterinburg Standard Time",
+        "Pakistan Standard Time",
+        "India Standard Time",
+        "Sri Lanka Standard Time",
+        "Nepal Standard Time",
+        "Central Asia Standard Time",
+        "Bangladesh Standard Time",
+        "N. Central Asia Standard Time",
+        "Myanmar Standard Time",
+        "SE Asia Standard Time",
+        "North Asia Standard Time",
+        "China Standard Time",
+        "North Asia East Standard Time",
+        "Singapore Standard Time",
+        "W. Australia Standard Time",
+        "Taipei Standard Time",
+        "Ulaanbaatar Standard Time",
+        "Tokyo Standard Time",
+        "Korea Standard Time",
+        "Yakutsk Standard Time",
+        "Cen. Australia Standard Time",
+        "AUS Central Standard Time",
+        "E. Australia Standard Time",
+        "AUS Eastern Standard Time",
+        "West Pacific Standard Time",
+        "Tasmania Standard Time",
+        "Magadan Standard Time",
+        "Vladivostok Standard Time",
+        "Russia Time Zone 10",
+        "Central Pacific Standard Time",
+        "Russia Time Zone 11",
+        "New Zealand Standard Time",
+        "UTC+12",
+        "Fiji Standard Time",
+        "Kamchatka Standard Time",
+        "Tonga Standard Time",
+        "Samoa Standard Time",
+        "Line Islands Standard Time"
+      ]
+    }
+  ];
+
+  // When the profile starts, as an RFC 3339 timestamp
+  // (e.g. "2026-11-27T00:00:00Z").
+  string start = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_fixed_date_start_rfc3339"
+      message: "start must be an RFC 3339 timestamp, e.g. 2026-11-27T00:00:00Z"
+      expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+    }
+  ];
+
+  // When the profile ends, as an RFC 3339 timestamp. After the end time
+  // the default (or recurring) profile takes over again.
+  string end = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_fixed_date_end_rfc3339"
+      message: "end must be an RFC 3339 timestamp, e.g. 2026-11-30T00:00:00Z"
+      expression: "this == '' || this.matches('^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}(\\\\.\\\\d+)?(Z|[+-]\\\\d{2}:\\\\d{2})$')"
+    }
+  ];
+}
+
+// A weekly schedule during which the owning profile is in effect. The
+// schedule marks the profile's START; it stays in effect until another
+// profile's schedule begins -- pair every scale-up profile with a
+// return-to-normal profile.
+message AzureMonitorAutoscaleSettingRecurrence {
+  // The IANA-style Azure time zone the schedule is evaluated in, from
+  // Azure's fixed vocabulary (e.g. "Eastern Standard Time").
+  // Unspecified applies "UTC".
+  optional string timezone = 1 [
+    (dev.planton.shared.options.default) = "UTC",
+    (buf.validate.field).string = {
+      in: [
+        "Dateline Standard Time",
+        "UTC-11",
+        "Hawaiian Standard Time",
+        "Alaskan Standard Time",
+        "Pacific Standard Time (Mexico)",
+        "Pacific Standard Time",
+        "US Mountain Standard Time",
+        "Mountain Standard Time (Mexico)",
+        "Mountain Standard Time",
+        "Central America Standard Time",
+        "Central Standard Time",
+        "Central Standard Time (Mexico)",
+        "Canada Central Standard Time",
+        "SA Pacific Standard Time",
+        "Eastern Standard Time",
+        "US Eastern Standard Time",
+        "Venezuela Standard Time",
+        "Paraguay Standard Time",
+        "Atlantic Standard Time",
+        "Central Brazilian Standard Time",
+        "SA Western Standard Time",
+        "Pacific SA Standard Time",
+        "Newfoundland Standard Time",
+        "E. South America Standard Time",
+        "Argentina Standard Time",
+        "SA Eastern Standard Time",
+        "Greenland Standard Time",
+        "Montevideo Standard Time",
+        "Bahia Standard Time",
+        "UTC-02",
+        "Mid-Atlantic Standard Time",
+        "Azores Standard Time",
+        "Cape Verde Standard Time",
+        "Morocco Standard Time",
+        "UTC",
+        "GMT Standard Time",
+        "Greenwich Standard Time",
+        "W. Europe Standard Time",
+        "Central Europe Standard Time",
+        "Romance Standard Time",
+        "Central European Standard Time",
+        "W. Central Africa Standard Time",
+        "Namibia Standard Time",
+        "Jordan Standard Time",
+        "GTB Standard Time",
+        "Middle East Standard Time",
+        "Egypt Standard Time",
+        "Syria Standard Time",
+        "E. Europe Standard Time",
+        "South Africa Standard Time",
+        "FLE Standard Time",
+        "Turkey Standard Time",
+        "Israel Standard Time",
+        "Kaliningrad Standard Time",
+        "Libya Standard Time",
+        "Arabic Standard Time",
+        "Arab Standard Time",
+        "Belarus Standard Time",
+        "Russian Standard Time",
+        "E. Africa Standard Time",
+        "Iran Standard Time",
+        "Arabian Standard Time",
+        "Azerbaijan Standard Time",
+        "Russia Time Zone 3",
+        "Mauritius Standard Time",
+        "Georgian Standard Time",
+        "Caucasus Standard Time",
+        "Afghanistan Standard Time",
+        "West Asia Standard Time",
+        "Ekaterinburg Standard Time",
+        "Pakistan Standard Time",
+        "India Standard Time",
+        "Sri Lanka Standard Time",
+        "Nepal Standard Time",
+        "Central Asia Standard Time",
+        "Bangladesh Standard Time",
+        "N. Central Asia Standard Time",
+        "Myanmar Standard Time",
+        "SE Asia Standard Time",
+        "North Asia Standard Time",
+        "China Standard Time",
+        "North Asia East Standard Time",
+        "Singapore Standard Time",
+        "W. Australia Standard Time",
+        "Taipei Standard Time",
+        "Ulaanbaatar Standard Time",
+        "Tokyo Standard Time",
+        "Korea Standard Time",
+        "Yakutsk Standard Time",
+        "Cen. Australia Standard Time",
+        "AUS Central Standard Time",
+        "E. Australia Standard Time",
+        "AUS Eastern Standard Time",
+        "West Pacific Standard Time",
+        "Tasmania Standard Time",
+        "Magadan Standard Time",
+        "Vladivostok Standard Time",
+        "Russia Time Zone 10",
+        "Central Pacific Standard Time",
+        "Russia Time Zone 11",
+        "New Zealand Standard Time",
+        "UTC+12",
+        "Fiji Standard Time",
+        "Kamchatka Standard Time",
+        "Tonga Standard Time",
+        "Samoa Standard Time",
+        "Line Islands Standard Time"
+      ]
+    }
+  ];
+
+  // The days of the week the profile starts on.
+  repeated string days = 2 [(buf.validate.field).repeated = {
+    min_items: 1
+    items: {
+      string: {
+        in: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"
+        ]
+      }
+    }
+  }];
+
+  // The hour of day (0-23) the profile starts at, in the schedule's
+  // timezone.
+  optional int32 hour = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 23
+    }
+  ];
+
+  // The minute past the hour (0-59) the profile starts at.
+  optional int32 minute = 4 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32 = {
+      gte: 0
+      lte: 59
+    }
+  ];
+}
+
+// Scale-event notifications: who hears about every scale action.
+message AzureMonitorAutoscaleSettingNotification {
+  // Email notification settings. At least one of email and webhooks must
+  // be configured.
+  AzureMonitorAutoscaleSettingNotificationEmail email = 1;
+
+  // Webhooks fired on every scale action (wire these to chat, paging,
+  // or automation endpoints).
+  repeated AzureMonitorAutoscaleSettingNotificationWebhook webhooks = 2;
+
+  // The provider requires at least one channel on the block -- an empty
+  // notification block configures nothing and is rejected at plan time.
+  option (buf.validate.message).cel = {
+    id: "autoscale_notification_at_least_one_channel"
+    message: "configure at least one notification channel: email and/or webhooks"
+    expression: "has(this.email) || this.webhooks.size() > 0"
+  };
+}
+
+// Email notification settings for scale events. The channel IS its
+// recipient list: ARM retired the classic subscription-administrator
+// and co-administrator email flags in April 2024
+// (SendEmailsToAdminCoAdminsNotSupported -- ARM rejects any request
+// that sets them), so explicit recipient addresses are the only email
+// wiring Azure still delivers.
+message AzureMonitorAutoscaleSettingNotificationEmail {
+  // Field numbers 1-2 carried the retired subscription-administrator /
+  // co-administrator flags; ARM rejects them since the April 2024
+  // classic-administrator retirement, so the catalog does not model
+  // them (recorded in the provider-parity manifest).
+  reserved 1, 2;
+  reserved "send_to_subscription_administrator", "send_to_subscription_co_administrator";
+
+  // Email addresses notified on every scale action.
+  repeated string custom_emails = 3 [(buf.validate.field).repeated.items = {
+    string: {min_len: 1}
+  }];
+
+  // An email block without recipients configures nothing: the retired
+  // admin flags were the only other wiring, and ARM no longer accepts
+  // them.
+  option (buf.validate.message).cel = {
+    id: "autoscale_notification_email_recipients_required"
+    message: "email notifications need at least one address in custom_emails (Azure retired the subscription-administrator email flags in April 2024)"
+    expression: "this.custom_emails.size() > 0"
+  };
+}
+
+// A webhook fired on every scale action.
+message AzureMonitorAutoscaleSettingNotificationWebhook {
+  // The URI Azure POSTs the scale-event payload to.
+  string service_uri = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).cel = {
+      id: "autoscale_webhook_uri_scheme"
+      message: "the webhook service_uri must be an http:// or https:// URL"
+      expression: "this == '' || this.startsWith('http://') || this.startsWith('https://')"
+    }
+  ];
+
+  // Extra properties merged into the webhook payload (e.g. a routing
+  // key your receiver dispatches on). Azure's read API omits a webhook's
+  // empty properties map -- provide at least one property when a
+  // round-trip-stable configuration matters.
+  map<string, string> properties = 2;
+}

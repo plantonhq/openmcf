@@ -13,11 +13,13 @@ spec:
   # EGRESS direction with destination ranges, and firewall logging. Firewall
   # rules are free objects with no deleted-name reservation, so cloud-side
   # names stay fixed.
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency gate
+  # at the total-accounting surface (deletionPolicy DELETE re-planned clean
+  # on both scenarios; the TF module's dead ambient-credentials wiring is
+  # gone). Offline-proven-only arm: resource_manager_tags (needs an
+  # org-level tagKeys/tagValues fixture — the standing item).
   tier: 1
-  # pending_proof: the spec grew resource_manager_tags and deletion_policy
-  # (and the dead ambient-credentials wiring left the TF module) — the
-  # prior green described code that no longer exists. Offline-proven-only
-  # arm: resource_manager_tags (needs an org-level tagKeys/tagValues
-  # fixture — the standing item).
-  status: pending_proof
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

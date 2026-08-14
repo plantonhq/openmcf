@@ -3006,6 +3006,294 @@ enum CloudResourceKind {
     id_prefix: "azpdnsfrs"
     prerequisites: [AzurePrivateDnsResolver]
   }];
+  // AzurePrivateDnsZone is a prerequisite because every record set is
+  // created inside a referenced private DNS zone (the resource group
+  // chains transitively through the zone's own prerequisite).
+  AzurePrivateDnsRecord = 2188 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azpdnsrec"
+    prerequisites: [AzurePrivateDnsZone]
+  }];
+  // AzureResourceGroup is a prerequisite because a Traffic Manager
+  // profile is created inside a referenced resource group (the profile
+  // itself is a global service -- the group only holds its metadata
+  // record).
+  AzureTrafficManagerProfile = 2189 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "aztmprof"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // AzureTrafficManagerProfile is a prerequisite because every
+  // endpoint is created inside a referenced profile -- it is the
+  // destination a profile steers traffic to (the resource group chains
+  // transitively through the profile's own prerequisite).
+  AzureTrafficManagerEndpoint = 2190 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "aztmep"
+    prerequisites: [AzureTrafficManagerProfile]
+  }];
+  // AzureResourceGroup is a prerequisite because an autoscale setting
+  // is created inside a referenced resource group. The scalable TARGET
+  // it controls is a no-default reference (many kinds can be scaled),
+  // so no target kind is declared here -- scenarios declare their own
+  // target fixture.
+  AzureMonitorAutoscaleSetting = 2191 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azautoscale"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Monitor data collection rule (DCR) -- the routing table
+  // declaring what telemetry the Azure Monitor Agent collects and
+  // where it lands. AzureResourceGroup is a prerequisite because a
+  // rule is created inside a referenced resource group;
+  // AzureLogAnalyticsWorkspace because a workspace is the canonical
+  // destination a rule routes to (the smoke scenario's shape).
+  // Machines attach to a rule with
+  // AzureMonitorDataCollectionRuleAssociation resources.
+  AzureMonitorDataCollectionRule = 2192 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdcr"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureLogAnalyticsWorkspace
+    ]
+  }];
+  // The Azure Event Grid custom topic -- the HTTPS endpoint an
+  // application publishes its own events to, fanned out to handlers by
+  // event subscriptions. One topic is one event stream with its own
+  // endpoint and access keys; for many streams behind one endpoint see
+  // AzureEventgridDomain.
+  AzureEventgridTopic = 2193 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegt"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Event Grid domain -- ONE publishing endpoint and one
+  // pair of access keys serving many event streams (domain topics),
+  // the multi-tenant pattern. Topics inside the domain are
+  // auto-managed by Azure or declared explicitly as
+  // AzureEventgridDomainTopic resources.
+  AzureEventgridDomain = 2194 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegd"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Event Grid system topic -- the subscription surface for
+  // events AZURE ITSELF publishes about one of your resources (a
+  // storage account's blob events, a resource group's lifecycle
+  // events). One system topic per source resource per topic type;
+  // event subscriptions attach to it to route events to handlers.
+  AzureEventgridSystemTopic = 2195 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegst"
+    prerequisites: [
+      AzureResourceGroup,
+      AzureStorageAccount
+    ]
+  }];
+  // The Azure Event Grid event subscription -- the delivery
+  // instruction routing events from a source (a custom topic, domain,
+  // domain topic, system topic, resource group, or subscription) to a
+  // handler (a Function, Event Hub, Service Bus queue/topic, storage
+  // queue, hybrid connection, or webhook), with filtering, retry, and
+  // dead-letter behavior.
+  AzureEventgridEventSubscription = 2196 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azeges"
+    prerequisites: [AzureEventgridTopic]
+  }];
+  // The Azure Event Grid namespace -- the capacity-scaled hub of the
+  // newer Event Grid: hosts CloudEvents namespace topics and an
+  // optional MQTT broker behind one set of regional endpoints, sized
+  // in throughput units.
+  AzureEventgridNamespace = 2197 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegns"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Data Factory -- the workspace every other Data Factory
+  // resource lives inside: pipelines, data flows, linked services,
+  // datasets, triggers, and integration runtimes are all created
+  // against a factory's ARM ID.
+  AzureDataFactory = 2198 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdf"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // One unit of work inside an Azure Data Factory
+  // ({factory_id}/pipelines/{name}) -- an ordered set of activities
+  // that executes as a whole when triggered.
+  AzureDataFactoryPipeline = 2199 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfpipe"
+    prerequisites: [AzureDataFactory]
+  }];
+  // A Data Factory data flow ({factory_id}/dataflows/{name}) -- a
+  // visually-designed data transformation executed on managed Spark,
+  // or, as a flowlet, a reusable snippet other data flows embed. One
+  // kind covers both provider forms (they share one schema and one
+  // name namespace inside the factory).
+  AzureDataFactoryDataFlow = 2200 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfflow"
+    prerequisites: [AzureDataFactory]
+  }];
+  // A Data Factory linked service
+  // ({factory_id}/linkedservices/{name}) -- a saved connection in the
+  // factory's address book: where an external system lives and how to
+  // authenticate to it. One kind covers every connection type Azure
+  // models as a first-class resource (storage, SQL family, Cosmos DB,
+  // Databricks, Key Vault, SFTP, web APIs, and more) as variants in
+  // one factory-scoped name namespace, plus the raw-JSON custom form.
+  AzureDataFactoryLinkedService = 2201 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfls"
+    prerequisites: [AzureDataFactory]
+  }];
+  // A Data Factory dataset ({factory_id}/datasets/{name}) -- a named
+  // view of data inside a system a linked service already connects
+  // to: which container and path, which table, which file format.
+  // One kind covers every data shape Azure models as a first-class
+  // dataset resource (delimited text/CSV, JSON, Parquet, binary,
+  // blob, HTTP, the SQL family, Snowflake, Cosmos DB) as variants in
+  // one factory-scoped name namespace, plus the raw-JSON custom form.
+  AzureDataFactoryDataset = 2202 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfds"
+    prerequisites: [AzureDataFactoryLinkedService]
+  }];
+  // A Data Factory trigger ({factory_id}/triggers/{name}) -- the
+  // instruction that starts pipelines automatically: on a clock
+  // schedule, per contiguous tumbling window, on storage blob events,
+  // or on Event Grid custom events. One kind covers all four provider
+  // trigger resources as variants (one ARM namespace, one
+  // started/stopped lifecycle).
+  AzureDataFactoryTrigger = 2203 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdftrig"
+    prerequisites: [
+      AzureDataFactory,
+      AzureDataFactoryPipeline
+    ]
+  }];
+  // A Data Factory integration runtime
+  // ({factory_id}/integrationRuntimes/{name}) -- the compute engine a
+  // factory's pipelines, data flows, and copy activities run on. One
+  // kind covers all three engine flavors as variants in one
+  // factory-scoped name namespace: the managed data-flow compute, the
+  // managed SSIS package runtime, and the self-hosted agent
+  // registration (which issues the authorization keys agents join
+  // with).
+  AzureDataFactoryIntegrationRuntime = 2204 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdfir"
+    prerequisites: [AzureDataFactory]
+  }];
+  // The Azure Compute Gallery -- the shared library an organization
+  // keeps its approved VM images in. Image definitions
+  // (AzureComputeGalleryImage) live inside it; VMs and scale sets
+  // deploy from their published, region-replicated versions.
+  AzureComputeGallery = 2205 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcgal"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // A gallery image ({gallery_id}/images/{name}) -- one image
+  // definition inside a Compute Gallery (marketplace-style identity,
+  // OS type, security posture) plus its published versions, each
+  // replicated to its own target regions. VMs deploy from a version's
+  // ARM ID or from the definition's ID to get the latest version.
+  AzureComputeGalleryImage = 2206 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azcgimg"
+    prerequisites: [AzureComputeGallery]
+  }];
+  // The availability set -- the classic pre-zones placement grouping
+  // that spreads VMs across separate fault and update domains so one
+  // hardware failure or maintenance window cannot take them all down.
+  // VMs join the set at creation.
+  AzureAvailabilitySet = 2207 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azavset"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The managed disk snapshot -- a point-in-time copy of a disk used
+  // for backup, cloning, and as the source of gallery image versions.
+  // Incremental snapshots store only the delta since the previous
+  // snapshot of the same disk.
+  AzureDiskSnapshot = 2208 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdsnap"
+    prerequisites: [AzureManagedDisk]
+  }];
+  // The Azure Container Instance container group -- serverless
+  // containers billed per second: one or more containers sharing a
+  // lifecycle, network, and volumes (plus one-shot init containers),
+  // with no cluster or VM to manage. Public, subnet-private, or
+  // IP-less postures.
+  AzureContainerInstance = 2209 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azaci"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Function App on the Flex Consumption plan -- Azure's
+  // newest serverless Functions hosting model: per-instance memory
+  // selection, a configurable scale-out ceiling, always-ready instance
+  // pools, and explicit blob-container deployment storage. Requires an
+  // FC1-SKU service plan, which is deliberately NOT a registry
+  // prerequisite: the shared plan fixture serves the classic app tiers,
+  // and an FC1 plan is cheap to create per scenario (no idle compute
+  // cost), so scenarios bring their own plan fixture -- the same
+  // reasoning that keeps the globally-unique storage account
+  // scenario-local for AzureFunctionApp.
+  AzureFunctionAppFlexConsumption = 2210 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfnflex"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Azure Cosmos DB for MongoDB vCore cluster -- Azure's modern
+  // managed MongoDB: a real MongoDB engine on dedicated vCore tiers
+  // with sharding, zone-redundant HA, and point-in-time restore.
+  AzureMongoCluster = 2211 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmongo"
+    prerequisites: [AzureResourceGroup]
+  }];
+  // The Microsoft Fabric capacity -- the billing and compute anchor of
+  // Microsoft Fabric: workspaces assign themselves to a capacity, and
+  // its F-SKU sets how much compute every workload on it shares.
+  // azurerm's entire Fabric surface is this one resource (workspaces
+  // and items live in Microsoft's dedicated fabric provider).
+  AzureFabricCapacity = 2212 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azfabcap"
+    prerequisites: [AzureResourceGroup]
+  }];
   // Registers a storage account with a Recovery Services vault as a
   // backup container (.../protectionContainers/StorageContainer;...)
   // -- one registration per storage-account-and-vault pair, required
@@ -3051,6 +3339,69 @@ enum CloudResourceKind {
       AzurePrivateDnsResolverForwardingRuleset,
       AzureVirtualNetwork
     ]
+  }];
+  // The attachment that puts ONE machine under an Azure Monitor data
+  // collection rule ({target_id}/providers/Microsoft.Insights/
+  // dataCollectionRuleAssociations/{name}) -- an extension resource on
+  // the TARGET machine, many per rule, machines joining and leaving
+  // monitoring independently (which is why the association is a
+  // standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink).
+  // AzureVirtualMachine is a prerequisite because the smoke scenario
+  // attaches the fixture VM; the rule prerequisite chains the rule's
+  // own install manifest. Part of the Monitor family (2191-2192)
+  // despite the out-of-run number -- enum numbers are pinned by the
+  // registry snapshot; never renumber.
+  AzureMonitorDataCollectionRuleAssociation = 2216 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azdcra"
+    prerequisites: [
+      AzureMonitorDataCollectionRule,
+      AzureVirtualMachine
+    ]
+  }];
+  // One named event stream inside an Azure Event Grid domain
+  // ({domain_id}/topics/{name}) -- the per-tenant mailbox of the
+  // multi-tenant pattern: many per domain, each with its own
+  // subscriptions and lifecycle, tenants joining and leaving without
+  // touching the domain (which is why the domain topic is a standalone
+  // kind, exactly like AzureEventHubConsumerGroup on a shared hub).
+  // Part of the Event Grid family (2193-2194) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureEventgridDomainTopic = 2217 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegdt"
+    prerequisites: [AzureEventgridDomain]
+  }];
+  // One named CloudEvents stream inside an Azure Event Grid namespace
+  // ({namespace_id}/topics/{name}) -- many per namespace, publishers
+  // and teams creating and deleting their own against the shared
+  // namespace (which is why the topic is a standalone kind, exactly
+  // like AzureEventgridDomainTopic and AzureEventHubConsumerGroup).
+  // Part of the Event Grid family (2193-2197) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureEventgridNamespaceTopic = 2218 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azegnst"
+    prerequisites: [AzureEventgridNamespace]
+  }];
+  // Grants one Microsoft Entra principal access to an Azure Cosmos DB
+  // for MongoDB vCore cluster ({cluster_id}/users/{object_id}) -- an
+  // access binding, not a password user: many per cluster, principals
+  // joining and leaving independently (which is why the grant is a
+  // standalone kind, the access-grant class of AzureRoleAssignment).
+  // Part of the Mongo vCore family (2211) despite the out-of-run
+  // number -- enum numbers are pinned by the registry snapshot; never
+  // renumber.
+  AzureMongoClusterUser = 2219 [(kind_meta) = {
+    provider: azure
+    version: "v1alpha1"
+    id_prefix: "azmongou"
+    prerequisites: [AzureMongoCluster]
   }];
 
   // 3000–3999: GCP resources

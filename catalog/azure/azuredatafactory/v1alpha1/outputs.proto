@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactory.v1alpha1;
+
+// **AzureDataFactoryStackOutputs** captures the outputs from
+// provisioning an Azure Data Factory.
+message AzureDataFactoryStackOutputs {
+  // The factory's Azure Resource Manager ID -- the target an
+  // AzureDataFactoryPipeline's data_factory_id references.
+  string data_factory_id = 1;
+
+  // The factory's name.
+  string data_factory_name = 2;
+
+  // The principal ID of the factory's system-assigned identity
+  // (empty when no system-assigned identity is configured) -- grant
+  // this on data stores the factory reads and writes with its own
+  // identity.
+  string identity_principal_id = 3;
+
+  // The ARM IDs of the factory's named credentials, keyed by
+  // credential name ({factory_id}/credentials/{name}) -- covers both
+  // credential flavors.
+  map<string, string> credential_ids = 4;
+
+  // The ARM IDs of the factory's managed private endpoints, keyed by
+  // endpoint name
+  // ({factory_id}/managedVirtualNetworks/default/managedPrivateEndpoints/{name}).
+  map<string, string> managed_private_endpoint_ids = 5;
+}

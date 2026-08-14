@@ -77,7 +77,9 @@ spec:
     workerConfig:
       numInstances: 3
       minNumInstances: 2
-      machineType: n2-standard-4
+      # No machineType: the flexibility policy below replaces it — the
+      # API provisions from the ranked selections and drops a paired
+      # machineTypeUri (mutually exclusive, CEL-enforced).
       diskConfig:
         bootDiskSizeGb: 200
         bootDiskType: hyperdisk-balanced
@@ -574,6 +576,7 @@ Master node configuration. If not specified, GCP defaults to
 1 master with a default machine type and 500 GB pd-standard disk.
 
 - rule: provisioning_model_mix applies to secondary workers only
+- rule: machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead
 
 ### spec.clusterConfig.masterConfig.numInstances
 
@@ -759,6 +762,7 @@ to 2 workers. For a single-node cluster set the software property
 worker count of zero.
 
 - rule: provisioning_model_mix applies to secondary workers only
+- rule: machine_type and instance_flexibility_policy are mutually exclusive; rank machine types in the flexibility policy's instance_selection_list instead
 
 ### spec.clusterConfig.workerConfig.numInstances
 

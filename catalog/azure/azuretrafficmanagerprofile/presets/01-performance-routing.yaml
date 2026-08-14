@@ -1,0 +1,16 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureTrafficManagerProfile
+metadata:
+  name: my-app-director
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-app-director
+  routingMethod: Performance
+  dnsConfig:
+    relativeName: <your-globally-unique-dns-label> # becomes <label>.trafficmanager.net -- shared namespace, prefix with your org
+    ttlSeconds: 60
+  monitorConfig:
+    protocol: HTTPS
+    port: 443
+    path: /healthz

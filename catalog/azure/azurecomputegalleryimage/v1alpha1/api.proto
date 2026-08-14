@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecomputegalleryimage.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azurecomputegalleryimage/v1alpha1/outputs.proto";
+import "catalog/azure/azurecomputegalleryimage/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureComputeGalleryImage represents one image definition inside an
+// Azure Compute Gallery -- its marketplace-style identity, OS type,
+// security posture, and recommended sizing -- plus the published,
+// region-replicated versions VMs actually deploy.
+message AzureComputeGalleryImage {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureComputeGalleryImage'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureComputeGalleryImageSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureComputeGalleryImageStatus status = 5;
+}
+
+// AzureComputeGalleryImageStatus represents the status of a gallery
+// image deployment.
+message AzureComputeGalleryImageStatus {
+  //stack-outputs
+  //  azure-compute-gallery-image stack-outputs
+  AzureComputeGalleryImageStackOutputs outputs = 1;
+}

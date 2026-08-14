@@ -1,0 +1,84 @@
+# Minimal AzureMonitorAutoscaleSetting scenario: a default profile with
+# one CPU rule plus a weekend recurrence profile, on a scenario-local
+# Standard S1 App Service plan (the cheapest scalable target -- the
+# shared fixture plan is Basic, which autoscale rejects; see the
+# path-declared extra fixture). The rule's threshold sits far above
+# anything the idle plan produces and both profiles share the same
+# one-instance shape, so the lane never actually scales -- it proves the
+# CREATE surface: the rule tree, the schedule arm, the notification
+# block, and the target/metric references.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorAutoscaleSetting
+metadata:
+  name: planton-oss-e2e-azuremonitorautoscalesetting-smoke
+  id: planton-oss-e2e-azuremonitorautoscalesetting-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremonitorautoscalesetting
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "catalog/azure/azuremonitorautoscalesetting/e2e/scale-target-plan.yaml"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-azautoscale-smoke
+  # Must match the scenario-local plan's region (autoscale is evaluated
+  # in the target's region).
+  region: centralus
+  targetResourceId:
+    valueFrom:
+      kind: AzureServicePlan
+      name: planton-oss-e2e-azautoscale-fixture-plan
+      fieldPath: status.outputs.service_plan_id
+  profiles:
+    - name: default
+      capacity:
+        minimum: 1
+        maximum: 2
+        default: 1
+      rules:
+        # Threshold far above idle-plan CPU -- the rule exists to prove
+        # the create surface, never to fire.
+        - metricTrigger:
+            metricName: CpuPercentage
+            metricResourceId:
+              valueFrom:
+                kind: AzureServicePlan
+                name: planton-oss-e2e-azautoscale-fixture-plan
+                fieldPath: status.outputs.service_plan_id
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT10M
+            timeAggregation: Average
+            operator: GreaterThan
+            threshold: 95
+          scaleAction:
+            direction: Increase
+            type: ChangeCount
+            value: 1
+            cooldown: PT5M
+    # The schedule arm, proven live: same one-instance shape as the
+    # default profile, so activation never changes capacity.
+    - name: weekend
+      capacity:
+        minimum: 1
+        maximum: 2
+        default: 1
+      recurrence:
+        days: [Saturday, Sunday]
+        hour: 0
+        minute: 0
+  notification:
+    email:
+      # Recipient addresses are the only email wiring ARM still accepts
+      # (the admin-flag arms were retired in April 2024 -- caught live by
+      # this lane); the rule never fires, so nothing is ever sent.
+      customEmails:
+        - oncall@planton.ai
+  tags:
+    purpose: e2e-smoke

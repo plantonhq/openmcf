@@ -1,0 +1,53 @@
+# Deep-shape example for docs and offline validation: a Gen2
+# trusted-launch Linux image with recommended sizing, disk-type
+# exclusions, and one snapshot-sourced version replicated to two
+# regions (one with a customer-managed-key disk encryption set).
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGalleryImage
+metadata:
+  name: test-gallery-image
+  id: test-gallery-image
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  galleryName:
+    value: platform.images
+  name: ubuntu-base
+  region: eastus
+  identifier:
+    publisher: acme
+    offer: ubuntu
+    sku: 22-04-lts-gen2
+  osType: Linux
+  hyperVGeneration: V2
+  trustedLaunchEnabled: true
+  acceleratedNetworkSupportEnabled: true
+  diskTypesNotAllowed:
+    - Standard_LRS
+  minRecommendedVcpuCount: 2
+  maxRecommendedVcpuCount: 16
+  minRecommendedMemoryInGb: 4
+  maxRecommendedMemoryInGb: 64
+  endOfLifeDate: "2030-01-01T00:00:00Z"
+  releaseNoteUri: https://acme.example/images/ubuntu-base/releases
+  description: Hardened Ubuntu 22.04 Gen2 base image
+  versions:
+    - name: 1.0.0
+      osDiskSnapshotId:
+        value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/snapshots/ubuntu-base-1-0-0
+      replicationMode: Full
+      targetRegions:
+        - name: eastus
+          regionalReplicaCount: 2
+          storageAccountType: Standard_ZRS
+        - name: westeurope
+          regionalReplicaCount: 1
+          diskEncryptionSetId:
+            value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.Compute/diskEncryptionSets/images-des
+      tags:
+        release: stable
+  tags:
+    costCenter: platform

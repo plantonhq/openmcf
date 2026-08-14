@@ -67,10 +67,16 @@ spec:
           blockEnabled: true
           source: Prompt
           severityThreshold: LOW
-        - name: Jailbreak
+        # Graded filters only: severity-less filters (the binary
+        # Jailbreak/Indirect Attack/Protected Material filters) deploy
+        # through Terraform ONLY -- PARITY-EXCEPTION on the spec's
+        # severity_threshold field. The canonical example stays
+        # engine-portable.
+        - name: Violence
           filterEnabled: true
           blockEnabled: true
-          source: Prompt
+          source: Completion
+          severityThreshold: MEDIUM
       mode: BLOCKING
   tags:
     purpose: hack-test

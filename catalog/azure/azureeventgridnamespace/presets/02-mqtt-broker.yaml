@@ -1,0 +1,29 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespace
+metadata:
+  name: mqtt-broker
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: my-org-mqtt-broker
+  region: eastus
+  capacity: 1
+  # The MQTT block is CREATE-ONLY: it cannot be added or removed
+  # later. Presence enables the broker.
+  topicSpacesConfiguration:
+    # Which certificate field carries a client's identity -- pick one
+    # convention fleet-wide before onboarding devices.
+    alternativeAuthenticationNameSources:
+      - ClientCertificateSubject
+    maximumClientSessionsPerAuthenticationName: 1
+    maximumSessionExpiryInHours: 1
+    # Route every MQTT message into a custom topic for fan-out to
+    # non-MQTT subscribers (the one bridge into the classic delivery
+    # machinery). Remove the block to keep traffic inside the broker.
+    routeTopicId:
+      valueFrom:
+        name: <your-eventgrid-topic>
+    dynamicRoutingEnrichments:
+      - key: clientname
+        value: ${client.authenticationName}

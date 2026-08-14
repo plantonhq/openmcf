@@ -1,6 +1,6 @@
 # Consumer-scoped GcpServiceNetworkingConnection install profile for the
-# Cloud SQL chain. Peers the run-scoped prerequisite VPC with Google's
-# managed-services producer using the run-scoped VPC_PEERING range.
+# Cloud SQL chain. Peers the scenario+run-scoped prerequisite VPC with
+# Google's managed-services producer using the matching VPC_PEERING range.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceNetworkingConnection
 metadata:
@@ -26,3 +26,15 @@ spec:
         kind: GcpGlobalAddress
         name: planton-oss-e2e-gcpgip-psa-prereq
         fieldPath: status.outputs.name
+  # ABANDON, not DELETE: Cloud SQL's producer holds this connection long
+  # after the private instance is destroyed — live-measured beyond 42
+  # minutes of "Producer services are still using this connection"
+  # rejections (2026-08-12; the documented norm was ~4). Waiting is
+  # unbounded, and the parent VPC is ephemeral anyway: abandoning lets the
+  # chain tear down instantly, the VPC delete clears the consumer-side
+  # peering, and the producer record — tied to a scenario+run-scoped
+  # network name that is never reused — is unreachable, unbillable residue
+  # GCP reaps on its own schedule (the undeletable-classes zero-orphan
+  # posture). Customer-facing DELETE semantics were live-proven in this
+  # kind's own lanes; this is a fixture-lifecycle choice only.
+  deletionPolicy: ABANDON

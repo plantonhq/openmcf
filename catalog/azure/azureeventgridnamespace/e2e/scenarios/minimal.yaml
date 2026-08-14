@@ -1,0 +1,35 @@
+# Minimal AzureEventgridNamespace scenario: a 1-TU namespace in the
+# fixture resource group with one inbound CIDR and the MQTT broker
+# enabled at its defaults (block presence IS the switch -- the
+# create-only decision this lane proves live). The route-topic
+# enrichment arm stays offline-proven (reason: it drags a custom-topic
+# chain for zero extra proof of THIS kind's surface; the offline plan
+# renders it). The cloud-side name carries the run-id token -- the
+# name rides the namespace's regional hostnames (the topic/domain
+# precedent). NOT free at rest: ~1 TU-hour of spend per lane.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespace
+metadata:
+  name: planton-oss-e2e-azureeventgridnamespace-smoke
+  id: planton-oss-e2e-azureeventgridnamespace-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azureeventgridnamespace
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-egns-${E2E_RUN_ID}
+  region: eastus
+  capacity: 1
+  inboundIpRules:
+    - 203.0.113.0/24
+  topicSpacesConfiguration:
+    alternativeAuthenticationNameSources:
+      - ClientCertificateSubject

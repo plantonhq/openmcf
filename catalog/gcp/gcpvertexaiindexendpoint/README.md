@@ -25,7 +25,7 @@ Three mutually exclusive modes:
 
 1. **Public** -- set `publicEndpointEnabled: true`. Queries go to the `public_endpoint_domain_name` output.
 2. **VPC-peered** -- set `network`. Reachable only inside the peered VPC; requires Private Services Access on the network. The IaC modules normalize a network self-link (the `GcpVpcNetwork` reference's canonical output) to the relative form the Vertex AI API expects.
-3. **Private Service Connect** -- set `privateServiceConnectConfig`. Consumers connect through a service attachment (surfaced on the deployed index's outputs); no peering needed. `pscAutomationConfigs` entries additionally ask Vertex AI to create the consumer-side PSC endpoints itself (per project/network pair) instead of consumers wiring forwarding rules by hand.
+3. **Private Service Connect** -- set `privateServiceConnectConfig`. Consumers connect through a service attachment (surfaced on the deployed index's outputs); no peering needed. Wire consumers through `projectAllowlist` (they create their own forwarding rules): `pscAutomationConfigs` is refused by validation on this kind because the live Vertex AI API accepts and silently discards it on index endpoints -- nothing is stored and no consumer-side endpoint is ever provisioned (automation works on online-prediction endpoints only).
 
 Omitting all three creates an endpoint that only Google-internal networks can reach -- almost always you want one of the arms.
 

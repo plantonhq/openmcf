@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactorypipeline.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredatafactorypipeline/v1alpha1/outputs.proto";
+import "catalog/azure/azuredatafactorypipeline/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataFactoryPipeline represents an Azure Data Factory pipeline
+// -- one unit of work inside a factory (AzureDataFactory): an ordered
+// set of activities that executes as a whole when triggered.
+message AzureDataFactoryPipeline {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataFactoryPipeline'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDataFactoryPipelineSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDataFactoryPipelineStatus status = 5;
+}
+
+// AzureDataFactoryPipelineStatus represents the status of an Azure
+// Data Factory pipeline deployment.
+message AzureDataFactoryPipelineStatus {
+  //stack-outputs
+  //  azure-data-factory-pipeline stack-outputs
+  AzureDataFactoryPipelineStackOutputs outputs = 1;
+}

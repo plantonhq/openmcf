@@ -1,0 +1,22 @@
+# The blob container holding the minimal scenario's deployment package
+# storage -- Flex Consumption's storage_container_endpoint points at it
+# (https://pltnosse2eflexsa.blob.core.windows.net/deployments).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureStorageContainer
+metadata:
+  name: planton-oss-e2e-flex-fixture-container
+  id: planton-oss-e2e-flex-fixture-container
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azurestoragecontainer
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  storageAccountId:
+    valueFrom:
+      name: planton-oss-e2e-flex-fixture-account
+  containerName: deployments

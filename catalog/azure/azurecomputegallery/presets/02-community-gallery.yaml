@@ -1,0 +1,24 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureComputeGallery
+metadata:
+  name: public-gallery
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: public.images
+  region: eastus
+  description: Publicly published images
+  # Community sharing is a PUBLIC storefront: everything published in
+  # this gallery becomes publicly deployable under the generated
+  # community name. The whole block is create-only.
+  sharing:
+    permission: Community
+    communityGallery:
+      eula: <your-eula-url>
+      # 5-16 letters and numbers (replace with your brand); Azure
+      # appends a suffix to form the public community name (the
+      # community_gallery_name output).
+      prefix: myorgimages
+      publisherEmail: <your-publisher-email>
+      publisherUri: <your-publisher-uri>

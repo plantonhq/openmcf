@@ -98,6 +98,13 @@ func indexEndpoint(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provide
 		// projects. The API wants the relative network form; references
 		// arrive as self-links and are normalized exactly like the
 		// endpoint's own network — identical to the Terraform module.
+		// NOTE: spec validation refuses non-empty configs on this kind —
+		// the live API accepts an index endpoint create carrying them but
+		// silently drops them (nothing stored, no consumer endpoint ever
+		// provisioned; API-verified), and the immutable PSC block would
+		// turn that drop into a perpetual replacement diff. The rendering
+		// stays so the module is ready the day Google extends automation
+		// to vector search and the CEL relaxes.
 		if len(spec.PrivateServiceConnectConfig.PscAutomationConfigs) > 0 {
 			automationArgs := make(vertex.AiIndexEndpointPrivateServiceConnectConfigPscAutomationConfigArray,
 				0, len(spec.PrivateServiceConnectConfig.PscAutomationConfigs))

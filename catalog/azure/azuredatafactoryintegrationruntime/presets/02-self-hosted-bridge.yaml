@@ -1,0 +1,14 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: self-hosted-bridge
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: onprem-bridge
+  description: The self-hosted bridge to on-premises data -- install the agent and hand it an authorization key from this component's outputs.
+  # An empty block is a complete registration: Azure allocates it and
+  # issues the two authorization keys (sensitive outputs) the agent
+  # installer asks for.
+  selfHosted: {}

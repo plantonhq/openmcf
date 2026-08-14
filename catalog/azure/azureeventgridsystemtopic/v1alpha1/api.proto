@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridsystemtopic.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azureeventgridsystemtopic/v1alpha1/outputs.proto";
+import "catalog/azure/azureeventgridsystemtopic/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureEventgridSystemTopic represents an Azure Event Grid system
+// topic -- the subscription surface for events Azure itself publishes
+// about one of your resources (a storage account's blob events, a
+// resource group's lifecycle events). One system topic per source
+// resource; event subscriptions attach to it to route events to
+// handlers. For events your own application publishes, see
+// AzureEventgridTopic.
+message AzureEventgridSystemTopic {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureEventgridSystemTopic'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureEventgridSystemTopicSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureEventgridSystemTopicStatus status = 5;
+}
+
+// AzureEventgridSystemTopicStatus represents the status of an Azure
+// Event Grid system topic deployment.
+message AzureEventgridSystemTopicStatus {
+  //stack-outputs
+  //  azure-eventgrid-system-topic stack-outputs
+  AzureEventgridSystemTopicStackOutputs outputs = 1;
+}

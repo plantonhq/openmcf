@@ -1,0 +1,49 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorDataCollectionRule
+metadata:
+  name: linux-baseline
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: linux-baseline
+  region: <your-region> # co-locate with the destination workspace
+  dataSources:
+    # Security-relevant syslog only -- filtering at the rule is what
+    # keeps the workspace bill honest ("*" facilities is the classic
+    # surprise).
+    syslogs:
+      - name: linux-syslog
+        facilityNames:
+          - auth
+          - authpriv
+          - daemon
+        logLevels:
+          - Warning
+          - Error
+          - Critical
+          - Alert
+          - Emergency
+        streams:
+          - Microsoft-Syslog
+    # CPU/memory/disk baseline, sampled once a minute.
+    performanceCounters:
+      - name: linux-perf
+        samplingFrequencyInSeconds: 60
+        counterSpecifiers:
+          - Processor(*)\% Processor Time
+          - Memory(*)\% Used Memory
+          - Logical Disk(*)\% Used Space
+        streams:
+          - Microsoft-Perf
+  destinations:
+    logAnalytics:
+      - name: ops-workspace
+        workspaceResourceId:
+          valueFrom:
+            name: <your-log-analytics-workspace>
+  dataFlows:
+    - streams:
+        - Microsoft-Syslog
+        - Microsoft-Perf
+      destinations:
+        - ops-workspace

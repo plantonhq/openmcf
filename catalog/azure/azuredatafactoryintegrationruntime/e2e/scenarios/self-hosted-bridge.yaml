@@ -1,0 +1,28 @@
+# The self-hosted registration lane: an empty block is a complete
+# registration, and Azure issues REAL authorization keys at create --
+# proving the kind's sensitive-output seam through the harness's
+# secrets reader (the provider does not flag the keys; the modules
+# do). No agent joins in the lane (the registration is complete
+# without one -- the node install is the operator's step). Free on
+# Azure's side.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: planton-oss-e2e-azuredatafactoryintegrationruntime-shir
+  id: planton-oss-e2e-azuredatafactoryintegrationruntime-shir
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactoryintegrationruntime
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-onprem-bridge
+  description: E2E smoke self-hosted registration -- proves the authorization-key outputs.
+  selfHosted: {}

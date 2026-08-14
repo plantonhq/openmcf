@@ -65,7 +65,7 @@ In a hybrid-connectivity chart, the circuit anchors the chain: circuit → priva
 
 These are the most important decisions when configuring a circuit. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Provisioning mode** -- exactly one (spec-enforced): the service-provider trio (`serviceProviderName` + `peeringLocation` + `bandwidthInMbps`, all fixed at creation except bandwidth, which can only GROW) or the ExpressRoute Direct pair (`expressRoutePortId` + `bandwidthInGbps`).
+**Provisioning mode** -- exactly one (spec-enforced): the service-provider trio (`serviceProviderName` + `peeringLocation` + `bandwidthInMbps`, all fixed at creation except bandwidth, which can only GROW) or the ExpressRoute Direct pair (`expressRoutePortId` + `bandwidthInGbps`). The port is a reference: point it at an `AzureExpressRoutePort` component by name (its id output resolves at deploy time), or pass a literal ARM id for a port managed outside Planton.
 
 **SKU** -- `skuTier` sizes reach (LOCAL: the circuit's metro only, no egress fees; STANDARD: the geopolitical area -- the common choice; PREMIUM: global reach and higher route limits) and `skuFamily` sizes billing (METERED_DATA per outbound GB, UNLIMITED_DATA flat -- economical above roughly two-thirds sustained utilization).
 

@@ -1,0 +1,38 @@
+# The raw-JSON escape hatch: a custom Excel dataset over the blob
+# linked service -- the third wire form (the linked_service BLOCK,
+# the only one that can carry reference parameters) plus the
+# JSON-normalization seam (type_properties_json round-trips through
+# ARM's canonical form; the blind import must read it back
+# zero-change). Rides the same chain as the blob lanes. Free at
+# rest; creates in seconds.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryDataset
+metadata:
+  name: planton-oss-e2e-azuredatafactorydataset-custom
+  id: planton-oss-e2e-azuredatafactorydataset-custom
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorydataset
+  annotations:
+    planton.dev/e2e: "true"
+    # The blob linked service instance this dataset reads through
+    # installs via the kind's registry prerequisite (the linked
+    # service publishes e2e/prerequisite.yaml -- the blob-variant
+    # instance this scenario references by name).
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-orders-excel
+  description: E2E smoke custom dataset -- an Excel shape as raw type-properties JSON.
+  custom:
+    linkedService:
+      name:
+        valueFrom:
+          name: planton-oss-e2e-azuredatafactorylinkedservice-blob
+    type: Excel
+    typePropertiesJson: '{"location":{"type":"AzureBlobStorageLocation","container":"landing","folderPath":"raw/orders","fileName":"orders.xlsx"},"sheetName":"Sheet1","firstRowAsHeader":true}'

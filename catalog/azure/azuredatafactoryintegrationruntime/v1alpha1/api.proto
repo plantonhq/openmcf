@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuredatafactoryintegrationruntime.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/azure/azuredatafactoryintegrationruntime/v1alpha1/outputs.proto";
+import "catalog/azure/azuredatafactoryintegrationruntime/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// AzureDataFactoryIntegrationRuntime represents an Azure Data Factory
+// integration runtime -- the compute engine a factory
+// (AzureDataFactory) runs its pipelines, data flows, and copy
+// activities on. One kind covers all three engine flavors Azure
+// models: the managed data-flow compute, the managed SSIS package
+// runtime, and the self-hosted agent registration.
+message AzureDataFactoryIntegrationRuntime {
+  //api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'azure.planton.dev/v1alpha1'];
+
+  //resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'AzureDataFactoryIntegrationRuntime'];
+
+  //metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  //spec
+  AzureDataFactoryIntegrationRuntimeSpec spec = 4 [(buf.validate.field).required = true];
+
+  //status
+  AzureDataFactoryIntegrationRuntimeStatus status = 5;
+}
+
+// AzureDataFactoryIntegrationRuntimeStatus represents the status of
+// an Azure Data Factory integration runtime deployment.
+message AzureDataFactoryIntegrationRuntimeStatus {
+  //stack-outputs
+  //  azure-data-factory-integration-runtime stack-outputs
+  AzureDataFactoryIntegrationRuntimeStackOutputs outputs = 1;
+}

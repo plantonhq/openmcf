@@ -59,3 +59,10 @@ workflow, cancels running executions, and erases history. `ABANDON`
 keeps the workflow running unmanaged — the right escape when handing a
 workflow to another team's IaC. `PREVENT` is defense in depth on top of
 deletion_protection for compliance-critical orchestrations.
+
+The guard's exact behavior, live-verified: with `deletionProtection`
+ON, a destroy fails with "cannot destroy workflow without setting
+deletion_protection=false and running `terraform apply`" and the
+workflow is untouched. Disarming is a TWO-step operation by design —
+apply the `false` first, then destroy; there is no single-shot
+override.

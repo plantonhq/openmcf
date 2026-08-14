@@ -105,10 +105,16 @@ type GcpVertexAiIndexEndpointPrivateServiceConnectConfig struct {
 	ProjectAllowlist []string `protobuf:"bytes,2,rep,name=project_allowlist,json=projectAllowlist,proto3" json:"project_allowlist,omitempty"`
 	// PSC endpoints Vertex AI creates automatically in consumer
 	// projects/networks (instead of consumers wiring forwarding rules by
-	// hand). The provider documents this field as used by online
-	// inference (prediction) endpoints only — on index endpoints, prefer
-	// project_allowlist with consumer-managed forwarding rules until
-	// Google extends automation to vector search. Immutable.
+	// hand). The provider models this field on index endpoints, but the
+	// live API does NOT honor it there: a create carrying automation
+	// configs succeeds while the stored endpoint omits them and no
+	// consumer-side endpoint is ever provisioned (API-verified against a
+	// live index endpoint; the provider documents the field as used by
+	// online inference endpoints only). Because the PSC block is
+	// immutable, that silent drop would surface to users as a perpetual
+	// replacement diff on every re-plan — so this field is refused by
+	// validation until Google extends automation to vector search. Use
+	// project_allowlist with consumer-managed forwarding rules. Immutable.
 	PscAutomationConfigs []*GcpVertexAiIndexEndpointPscAutomationConfig `protobuf:"bytes,3,rep,name=psc_automation_configs,json=pscAutomationConfigs,proto3" json:"psc_automation_configs,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
@@ -364,12 +370,13 @@ const file_catalog_gcp_gcpvertexaiindexendpoint_v1alpha1_spec_proto_rawDesc = ""
 	"+GcpVertexAiIndexEndpointPscAutomationConfig\x12\x81\x01\n" +
 	"\anetwork\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB3\xbaH\x03\xc8\x01\x01\x88\xd4a\xc2\x17\x92\xd4a status.outputs.network_self_link\x98\xd4a\x01R\anetwork\x12{\n" +
 	"\n" +
-	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xfe\x03\n" +
+	"project_id\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\"\xee\x06\n" +
 	"3GcpVertexAiIndexEndpointPrivateServiceConnectConfig\x12\x82\x02\n" +
 	"\x1eenable_private_service_connect\x18\x01 \x01(\bB\xbc\x01\xbaH\xb8\x01\xba\x01\xb4\x01\n" +
 	"\x17psc_enable_must_be_true\x12\x8a\x01enable_private_service_connect must be true when the Private Service Connect block is present — remove the block instead of disabling it\x1a\fthis == trueR\x1benablePrivateServiceConnect\x12+\n" +
 	"\x11project_allowlist\x18\x02 \x03(\tR\x10projectAllowlist\x12\x94\x01\n" +
-	"\x16psc_automation_configs\x18\x03 \x03(\v2^.dev.planton.gcp.gcpvertexaiindexendpoint.v1alpha1.GcpVertexAiIndexEndpointPscAutomationConfigR\x14pscAutomationConfigs\"\xdf\r\n" +
+	"\x16psc_automation_configs\x18\x03 \x03(\v2^.dev.planton.gcp.gcpvertexaiindexendpoint.v1alpha1.GcpVertexAiIndexEndpointPscAutomationConfigR\x14pscAutomationConfigs:\xed\x02\xbaH\xe9\x02\x1a\xe6\x02\n" +
+	"-psc_automation_unsupported_on_index_endpoints\x12\x8c\x02psc_automation_configs is not honored on index endpoints — the Vertex AI API accepts the create but silently drops the configs (nothing is stored and no consumer-side endpoint is ever provisioned); use project_allowlist with consumer-managed forwarding rules instead\x1a&size(this.psc_automation_configs) == 0\"\xdf\r\n" +
 	"\x1cGcpVertexAiIndexEndpointSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12&\n" +

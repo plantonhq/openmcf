@@ -1,6 +1,11 @@
-# Consumer-scoped GcpVpcNetwork install profile for the Cloud SQL chain. Cloud-side
-# network names carry ${E2E_RUN_ID} so parallel runs and stale orphans from a
-# half-finished teardown never collide; metadata.name stays fixed for FK
+# Consumer-scoped GcpVpcNetwork install profile for the Cloud SQL chain.
+# Cloud-side network names carry ${E2E_SCENARIO} AND ${E2E_RUN_ID}:
+# run-scoping keeps parallel runs and stale orphans from colliding, and
+# scenario-scoping keeps the SECOND scenario's chain from inheriting the
+# first's producer-side service-networking ghost — a connection create on a
+# same-named fresh network silently attaches to the stale producer record
+# left when the first scenario's teardown outlived Cloud SQL's release of
+# the connection (live-caught 2026-08-12). metadata.name stays fixed for FK
 # resolution across the prerequisite chain.
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpVpcNetwork
@@ -17,5 +22,5 @@ metadata:
   tags:
     - planton-e2e
 spec:
-  networkName: planton-oss-e2e-vpc-${E2E_RUN_ID}
+  networkName: planton-oss-e2e-vpc-${E2E_SCENARIO}-${E2E_RUN_ID}
   autoCreateSubnetworks: false

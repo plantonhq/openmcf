@@ -1448,10 +1448,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -1605,9 +1605,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -2330,10 +2359,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -2487,9 +2516,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -4365,10 +4423,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -4522,9 +4580,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -5247,10 +5334,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -5404,9 +5491,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -7318,10 +7434,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -7475,9 +7591,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`
@@ -8200,10 +8345,10 @@ Allowed values (use exactly as shown):
 - `AwsRestApiUsagePlan` -- A usage plan metering REST API consumers - stage coverage, quota, throttles, and the API keys it admits. No registry prerequisite: a plan is valid with no stage coverage (scenarios compose the REST API via annotations).
 - `AwsRestApiVpcLink` -- A REST API VPC link fronting an internal Network Load Balancer so REST integrations reach private services. AwsNlb is a prerequisite because AWS rejects link creation without the target balancer.
 - `AwsApiGatewayAccountSettings` -- Region settings singleton (one API Gateway account object per account+region; identity = the region). The CloudWatch role is an optional reference (unset = the explicit no-logging posture), so prerequisites stay empty and E2E fixtures ride scenario annotations.
-- `AwsCloudTrail`
-- `AwsConfigRecorder`
-- `AwsConfigRule`
-- `AwsGuardDuty`
+- `AwsCloudTrail` -- The account's API audit trail. AwsS3Bucket is a prerequisite because AWS rejects trail creation without a delivery bucket carrying the CloudTrail service-principal policy. 1240 opens the governance sub-band (1240-1249).
+- `AwsConfigRecorder` -- Region singleton (one AWS Config recorder per region, named "default" by AWS; identity = the region). AwsIamRole is a prerequisite because the recorder cannot exist without its service role.
+- `AwsConfigRule` -- One AWS Config compliance rule (managed, custom-lambda, or custom-policy; account- or organization-scoped) with optional auto-remediation. Managed rules need no prerequisites; the custom-lambda arm's function reference is conditional, so E2E fixtures ride scenario annotations.
+- `AwsGuardDuty` -- Region singleton (AWS allows one GuardDuty detector per account+region; the detector has no name - identity = the region). Satellite references (S3 export bucket, KMS key) are conditional, so E2E fixtures ride scenario annotations.
 - `AwsSesAccountSettings` -- Account/region settings singleton (one SES account object per account+region): the suppression list and VDM posture. 1360 opens the SES P1 sub-band (1360-1369).
 - `AzureResourceGroup` -- 2000–2999: Azure resources
 - `AzureAksCluster` -- AzureResourceGroup is the only required parent: the cluster is created inside a referenced resource group. Subnet is optional on the default node pool (AKS provisions managed networking when unset).
@@ -8357,9 +8502,38 @@ Allowed values (use exactly as shown):
 - `AzureNetworkWatcherFlowLog` -- AzureVirtualNetwork and AzureStorageAccount are prerequisites because a flow log records a network-scoped target (a virtual network in the common case; subnets and network interfaces chain through the network) into a referenced storage account. The regional Network Watcher parent is NOT a prerequisite: Azure auto-creates it ("NetworkWatcher_{region}" in "NetworkWatcherRG") the moment the region hosts a virtual network, and the flow log references it by name. Traffic Analytics' Log Analytics workspace is an optional arm, declared by scenarios that use it.
 - `AzurePrivateDnsResolver` -- AzureVirtualNetwork and AzureSubnet are prerequisites because a DNS Private Resolver anchors to a referenced virtual network (at most ONE resolver per network -- Azure enforces it) and each of its inbound/outbound endpoints occupies its own dedicated subnet delegated to "Microsoft.Network/dnsResolvers" (the resource group chains transitively through the network and subnets).
 - `AzurePrivateDnsResolverForwardingRuleset` -- AzurePrivateDnsResolver is a prerequisite because a DNS forwarding ruleset steers a resolver's OUTBOUND endpoints -- it binds their ARM ids (at most 2, same resolver) at creation. (The resource group and network chain transitively through the resolver's own prerequisite declarations.)
+- `AzurePrivateDnsRecord`
+- `AzureTrafficManagerProfile`
+- `AzureTrafficManagerEndpoint`
+- `AzureMonitorAutoscaleSetting`
+- `AzureMonitorDataCollectionRule`
+- `AzureEventgridTopic`
+- `AzureEventgridDomain`
+- `AzureEventgridSystemTopic`
+- `AzureEventgridEventSubscription`
+- `AzureEventgridNamespace`
+- `AzureDataFactory`
+- `AzureDataFactoryPipeline`
+- `AzureDataFactoryDataFlow`
+- `AzureDataFactoryLinkedService`
+- `AzureDataFactoryDataset`
+- `AzureDataFactoryTrigger`
+- `AzureDataFactoryIntegrationRuntime`
+- `AzureComputeGallery`
+- `AzureComputeGalleryImage`
+- `AzureAvailabilitySet`
+- `AzureDiskSnapshot`
+- `AzureContainerInstance`
+- `AzureFunctionAppFlexConsumption`
+- `AzureMongoCluster`
+- `AzureFabricCapacity`
 - `AzureBackupContainerStorageAccount` -- Registers a storage account with a Recovery Services vault as a backup container (.../protectionContainers/StorageContainer;...) -- one registration per storage-account-and-vault pair, required BEFORE any of the account's file shares can be protected. Part of the backup family (2175-2179) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzureDataProtectionResourceGuard` -- The Data Protection Resource Guard (Microsoft.DataProtection/ resourceGuards) -- the approval gate behind Multi-User Authorization: privileged vault operations (disabling soft delete, reducing retention) require an approval through a guard, which typically lives in a DIFFERENT administrator's scope. Vaults reference a guard by its ARM ID. Part of the backup family (2175-2182) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
 - `AzurePrivateDnsResolverVirtualNetworkLink` -- The attachment that makes a DNS forwarding ruleset take effect in one virtual network ({ruleset_id}/virtualNetworkLinks/{name}) -- one link per ruleset-network pair, up to 500 per ruleset, spokes joining and leaving independently (which is why the link is a standalone kind, exactly like AzurePrivateDnsZoneVirtualNetworkLink). Part of the DNS Private Resolver family (2186-2187) despite the out-of-run number -- enum numbers are pinned by the registry snapshot; never renumber.
+- `AzureMonitorDataCollectionRuleAssociation`
+- `AzureEventgridDomainTopic`
+- `AzureEventgridNamespaceTopic`
+- `AzureMongoClusterUser`
 - `GcpArtifactRegistryRepo` -- 3000–3999: GCP resources
 - `GcpTargetHttpsProxy` -- The URL map is the parent a proxy cannot exist without; the classic compute certificate kinds and the SSL policy are the fixture parents the committed scenarios attach. The Certificate Manager certificate list (certificate_manager_certificates, honored only by the cross-region internal ALB) is optional composition -- a scenario that arms it declares GcpCertManagerCert via the e2e-prerequisites annotation, never a registry edge that would tax every proxy and forwarding-rule chain.
 - `GcpCloudFunction`

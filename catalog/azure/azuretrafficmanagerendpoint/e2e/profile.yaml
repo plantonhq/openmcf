@@ -1,0 +1,27 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuretrafficmanagerendpoint
+spec:
+  # PROVEN live on both engines (2026-08-13): `minimal` (an external
+  # endpoint bound to the fixture profile BY REFERENCE) -- all phases
+  # green, 2/2 outputs on both engines, the profile-output wiring edge
+  # confirmed through the fixture chain, the service-assigned priority
+  # read back clean. Blind import round-trip: zero-change (the
+  # type-carrying ARM id addressed the ExternalEndpoints variant).
+  # Measured: Pulumi lane 3m15s, Terraform lane 2m51s incl. 11s import
+  # round-trip; the fixture profile adds ~25s to the chain.
+  # OFFLINE-ONLY with reasons: the azure variant needs a fixture
+  # holding a public IP the endpoint may bind (a Basic Public IP is not
+  # steerable -- Traffic Manager requires Standard; worth a dedicated
+  # fixture only when a consumer needs the shape live -- unblock: a
+  # consumer chart composing azure endpoints); the nested variant needs
+  # a SECOND profile fixture (a parent-child pair -- unblock: same);
+  # both are the same CreateOrUpdate body as the external lane with a
+  # different target property (plan-verified with rendered-value
+  # inspection). Subnet/geo claims are property writes evaluated by the
+  # profile's routing method (plan-verified).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 30

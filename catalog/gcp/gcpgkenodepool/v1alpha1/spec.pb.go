@@ -142,7 +142,11 @@ type GcpGkeNodePoolSpec struct {
 	// How nodes drain when the POOL ITSELF is deleted or replaced: grace
 	// periods and whether PodDisruptionBudgets are honored during the
 	// teardown. Distinct from upgrade_settings, which paces upgrades of a
-	// pool that continues to exist.
+	// pool that continues to exist. NOTE: customized node drain requires
+	// project-level enablement from GCP support — on a project without it,
+	// the API rejects the create with "customized node drain timeout is not
+	// enabled for this project, please contact your account manager or open
+	// a support case to enable it".
 	NodeDrainConfig *GcpGkeNodePoolNodeDrainConfig `protobuf:"bytes,20,opt,name=node_drain_config,json=nodeDrainConfig,proto3" json:"node_drain_config,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -349,7 +353,9 @@ func (*GcpGkeNodePoolSpec_NodeCount) isGcpGkeNodePoolSpec_NodePoolSize() {}
 func (*GcpGkeNodePoolSpec_Autoscaling) isGcpGkeNodePoolSpec_NodePoolSize() {}
 
 // GcpGkeNodePoolNodeDrainConfig controls draining behavior when the pool
-// is deleted or replaced.
+// is deleted or replaced. The feature is allowlist-gated per project: GCP
+// support must enable "customized node drain timeout" before the API
+// accepts a pool carrying this block.
 type GcpGkeNodePoolNodeDrainConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Grace period each node gets to finish draining before it is removed,
@@ -3335,20 +3341,23 @@ func (x *GcpGkeNodePoolEvictionGracePeriods) GetPidAvailable() string {
 }
 
 // GcpGkeNodePoolEvictionMinimumReclaim sets per-signal minimum reclaim
-// amounts (quantities like "500Mi" or percentages).
+// amounts. Unlike the soft-eviction thresholds (which accept absolute
+// quantities OR percentages), GKE accepts ONLY percentages here — the API
+// rejects quantities at create with 'invalid percentage "100Mi", must end
+// with "%"'. Values are percentage strings like "10%".
 type GcpGkeNodePoolEvictionMinimumReclaim struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Minimum reclaim for memory.available.
+	// Minimum reclaim for memory.available, percentage like "10%".
 	MemoryAvailable string `protobuf:"bytes,1,opt,name=memory_available,json=memoryAvailable,proto3" json:"memory_available,omitempty"`
-	// Minimum reclaim for nodefs.available.
+	// Minimum reclaim for nodefs.available, percentage like "10%".
 	NodefsAvailable string `protobuf:"bytes,2,opt,name=nodefs_available,json=nodefsAvailable,proto3" json:"nodefs_available,omitempty"`
-	// Minimum reclaim for nodefs.inodesFree.
+	// Minimum reclaim for nodefs.inodesFree, percentage like "10%".
 	NodefsInodesFree string `protobuf:"bytes,3,opt,name=nodefs_inodes_free,json=nodefsInodesFree,proto3" json:"nodefs_inodes_free,omitempty"`
-	// Minimum reclaim for imagefs.available.
+	// Minimum reclaim for imagefs.available, percentage like "10%".
 	ImagefsAvailable string `protobuf:"bytes,4,opt,name=imagefs_available,json=imagefsAvailable,proto3" json:"imagefs_available,omitempty"`
-	// Minimum reclaim for imagefs.inodesFree.
+	// Minimum reclaim for imagefs.inodesFree, percentage like "10%".
 	ImagefsInodesFree string `protobuf:"bytes,5,opt,name=imagefs_inodes_free,json=imagefsInodesFree,proto3" json:"imagefs_inodes_free,omitempty"`
-	// Minimum reclaim for pid.available.
+	// Minimum reclaim for pid.available, percentage like "10%".
 	PidAvailable  string `protobuf:"bytes,6,opt,name=pid_available,json=pidAvailable,proto3" json:"pid_available,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -4348,14 +4357,20 @@ const file_catalog_gcp_gcpgkenodepool_v1alpha1_spec_proto_rawDesc = "" +
 	"\x12nodefs_inodes_free\x18\x03 \x01(\tR\x10nodefsInodesFree\x12+\n" +
 	"\x11imagefs_available\x18\x04 \x01(\tR\x10imagefsAvailable\x12.\n" +
 	"\x13imagefs_inodes_free\x18\x05 \x01(\tR\x11imagefsInodesFree\x12#\n" +
-	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\xac\x02\n" +
-	"$GcpGkeNodePoolEvictionMinimumReclaim\x12)\n" +
-	"\x10memory_available\x18\x01 \x01(\tR\x0fmemoryAvailable\x12)\n" +
-	"\x10nodefs_available\x18\x02 \x01(\tR\x0fnodefsAvailable\x12,\n" +
-	"\x12nodefs_inodes_free\x18\x03 \x01(\tR\x10nodefsInodesFree\x12+\n" +
-	"\x11imagefs_available\x18\x04 \x01(\tR\x10imagefsAvailable\x12.\n" +
-	"\x13imagefs_inodes_free\x18\x05 \x01(\tR\x11imagefsInodesFree\x12#\n" +
-	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\x89\x02\n" +
+	"\rpid_available\x18\x06 \x01(\tR\fpidAvailable\"\xf2\v\n" +
+	"$GcpGkeNodePoolEvictionMinimumReclaim\x12\xf1\x01\n" +
+	"\x10memory_available\x18\x01 \x01(\tB\xc5\x01\xbaH\xc1\x01\xba\x01\xbd\x01\n" +
+	"\x12reclaim_memory_pct\x12reviction_minimum_reclaim.memory_available must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\x0fmemoryAvailable\x12\xf1\x01\n" +
+	"\x10nodefs_available\x18\x02 \x01(\tB\xc5\x01\xbaH\xc1\x01\xba\x01\xbd\x01\n" +
+	"\x12reclaim_nodefs_pct\x12reviction_minimum_reclaim.nodefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\x0fnodefsAvailable\x12\xfd\x01\n" +
+	"\x12nodefs_inodes_free\x18\x03 \x01(\tB\xce\x01\xbaH\xca\x01\xba\x01\xc6\x01\n" +
+	"\x19reclaim_nodefs_inodes_pct\x12teviction_minimum_reclaim.nodefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\x10nodefsInodesFree\x12\xf5\x01\n" +
+	"\x11imagefs_available\x18\x04 \x01(\tB\xc7\x01\xbaH\xc3\x01\xba\x01\xbf\x01\n" +
+	"\x13reclaim_imagefs_pct\x12seviction_minimum_reclaim.imagefs_available must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\x10imagefsAvailable\x12\x81\x02\n" +
+	"\x13imagefs_inodes_free\x18\x05 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc8\x01\n" +
+	"\x1areclaim_imagefs_inodes_pct\x12ueviction_minimum_reclaim.imagefs_inodes_free must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\x11imagefsInodesFree\x12\xe5\x01\n" +
+	"\rpid_available\x18\x06 \x01(\tB\xbf\x01\xbaH\xbb\x01\xba\x01\xb7\x01\n" +
+	"\x0freclaim_pid_pct\x12oeviction_minimum_reclaim.pid_available must be a percentage like \"10%\" — GKE rejects absolute quantities here\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?%$')R\fpidAvailable\"\x89\x02\n" +
 	"\x1eGcpGkeNodePoolCrashLoopBackOff\x12\xe6\x01\n" +
 	"\x1cmax_container_restart_period\x18\x01 \x01(\tB\xa4\x01\xbaH\xa0\x01\xba\x01\x9c\x01\n" +
 	"\x19max_restart_period_format\x12Jmax_container_restart_period must be a seconds-format duration like \"300s\"\x1a3this == '' || this.matches('^[0-9]+(\\\\.[0-9]+)?s$')R\x19maxContainerRestartPeriod\"\xac\x01\n" +

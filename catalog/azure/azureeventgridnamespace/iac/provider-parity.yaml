@@ -1,0 +1,49 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_eventgrid_namespace:
+    mappings:
+      # Family-wide renames: the spec says what the field IS (a resource
+      # group, a region), where the provider inherits ARM's property
+      # names.
+      - spec: spec.resource_group
+        arg: resource_group_name
+      - spec: spec.region
+        arg: location
+      # The family bool shape over the provider's Enabled/Disabled token
+      # pair (the module maps true/false onto the tokens).
+      - spec: spec.public_network_access_enabled
+        arg: public_network_access
+      # The rule entry IS the CIDR: the spec models the list as repeated
+      # strings; the module builds {ip_mask, action} pairs.
+      - spec: spec.inbound_ip_rules
+        arg: inbound_ip_rule.ip_mask
+      # Plural list names over the provider's singular block names.
+      - spec: spec.topic_spaces_configuration.alternative_authentication_name_sources
+        arg: topic_spaces_configuration.alternative_authentication_name_source
+      - spec: spec.topic_spaces_configuration.dynamic_routing_enrichments.key
+        arg: topic_spaces_configuration.dynamic_routing_enrichment.key
+      - spec: spec.topic_spaces_configuration.dynamic_routing_enrichments.value
+        arg: topic_spaces_configuration.dynamic_routing_enrichment.value
+      - spec: spec.topic_spaces_configuration.static_routing_enrichments.key
+        arg: topic_spaces_configuration.static_routing_enrichment.key
+      - spec: spec.topic_spaces_configuration.static_routing_enrichments.value
+        arg: topic_spaces_configuration.static_routing_enrichment.value
+    exclusions:
+      # Single legal value at v5 ("Standard" -- the provider's vocabulary
+      # has exactly one token). Deliberately not part of the spec; both
+      # engines send it explicitly. The field widens if Azure ships more
+      # SKUs.
+      - arg: sku
+        reason: single-legal-value
+      # Allow-only vocabulary at v5 (the provider rejects anything else).
+      # Both engines send "Allow" explicitly; deny rules would widen the
+      # spec's repeated-CIDR shape if Azure ever ships them.
+      - arg: inbound_ip_rule.action
+        reason: single-legal-value

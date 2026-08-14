@@ -1,0 +1,46 @@
+# Custom-event-variant scenario: subscribed to a SCENARIO-LOCAL Event
+# Grid topic for an event type nothing publishes -- deployed STARTED
+# (exercising the Start lifecycle live, including the webhook
+# subscription Data Factory creates on the topic) but never firing.
+# LIVE-EARNED (proof session): the topic must use the default
+# "EventGridSchema" input schema -- Data Factory's webhook subscriber
+# cannot answer the OPTIONS handshake CloudEvents-schema topics
+# validate with (Start fails MethodNotAllowed), so this scenario
+# declares its own compatible topic doc instead of chaining the topic
+# kind's CloudEvents-shaped smoke instance.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: planton-oss-e2e-azuredatafactorytrigger-customevent
+  id: planton-oss-e2e-azuredatafactorytrigger-customevent
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorytrigger
+  annotations:
+    planton.dev/e2e: "true"
+    # The subscribed topic is a scenario-local doc (EventGridSchema --
+    # the schema Data Factory's webhook subscription requires), not
+    # the topic kind's CloudEvents-shaped smoke instance.
+    planton.dev/e2e-prerequisites: "catalog/azure/azuredatafactorytrigger/e2e/eventgrid-topic-smoke.yaml"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-customevent
+  description: E2E smoke custom event trigger -- started, event type never published.
+  activated: true
+  customEvent:
+    eventgridTopicId:
+      valueFrom:
+        name: planton-oss-e2e-azuredatafactorytrigger-egt
+    events:
+      - planton.e2e.never
+    subjectBeginsWith: /planton-e2e-never/
+    pipelines:
+      - name:
+          valueFrom:
+            name: planton-oss-e2e-azuredatafactorypipeline-smoke

@@ -1,0 +1,35 @@
+# The flagship lane: the managed data-flow compute joined to the
+# factory's managed virtual network (the variant's only ForceNew
+# contract -- and provable live because the factory smoke instance
+# deploys managedVirtualNetworkEnabled: true). Proves the union
+# plumbing, the typed factory reference through the registry chain,
+# the vnet membership, and the import round-trip. Runtime names are
+# factory-scoped (no run-id needed -- the parent factory's name
+# carries it). Creating the compute is free: clusters bill only while
+# data flows run, and this lane runs none. The interactive-authoring
+# TTL stays OFF -- its enable operation starts a billed debug session
+# (offline-proven per the profile).
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryIntegrationRuntime
+metadata:
+  name: planton-oss-e2e-azuredatafactoryintegrationruntime-azure
+  id: planton-oss-e2e-azuredatafactoryintegrationruntime-azure
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactoryintegrationruntime
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-dataflow-compute
+  description: E2E smoke data-flow compute inside the factory's managed virtual network.
+  azure:
+    region: eastus
+    virtualNetworkEnabled: true
+    timeToLiveMin: 5

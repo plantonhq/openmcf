@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dev.planton.azure.azurecomputegallery.v1alpha1;
+
+// **AzureComputeGalleryStackOutputs** captures the outputs from
+// provisioning an Azure Compute Gallery.
+message AzureComputeGalleryStackOutputs {
+  // The gallery's Azure Resource Manager ID.
+  string gallery_id = 1;
+
+  // The gallery's name -- what image definitions
+  // (AzureComputeGalleryImage) reference as their gallery.
+  string gallery_name = 2;
+
+  // The globally unique name Azure assigns the gallery (distinct from
+  // the user-chosen name; used in cross-tenant and community
+  // addressing).
+  string unique_name = 3;
+
+  // The public community-gallery name generated from the sharing
+  // prefix. Empty unless the gallery is Community-shared.
+  string community_gallery_name = 4;
+}

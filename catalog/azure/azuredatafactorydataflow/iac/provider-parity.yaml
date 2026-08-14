@@ -1,0 +1,56 @@
+# Provider-parity manifest: this kind's recorded judgment against the
+# pinned azurerm provider (checked by `planton provider-parity --check`;
+# format documented in pkg/providerparity).
+#
+# ONE kind covers two provider resources as forms of the same object --
+# Azure stores mapping data flows and flowlets in one factory-scoped
+# dataflow namespace, differing only in the ARM type token, and the
+# provider builds both resources from one shared schema. The spec's
+# `flowlet` flag selects which resource the module creates.
+#
+# Only divergences are recorded -- an argument absent from this file must
+# match its spec field by exact name. Every exclusion carries its reason:
+# omission is a decision, never an accident.
+
+resources:
+  azurerm_data_factory_data_flow:
+    mappings:
+      # The spec names say what the lists ARE (plural collections),
+      # where the provider uses singular block names.
+      - spec: spec.sources
+        arg: source
+      - spec: spec.sinks
+        arg: sink
+      - spec: spec.transformations
+        arg: transformation
+    exclusions:
+      # The provider's shared source/sink schema ACCEPTS these on
+      # sources, but its own expand/flatten silently drops them there --
+      # rejected-row routing is sink-only in the ARM data flow model.
+      # Offering them on sources would let users write config that does
+      # nothing.
+      - arg: source.rejected_linked_service.name
+        reason: schema-visible but dead on sources -- the provider's expand maps rejected-row routing on sinks only; the spec offers it there alone
+      - arg: source.rejected_linked_service.parameters
+        reason: schema-visible but dead on sources -- the provider's expand maps rejected-row routing on sinks only; the spec offers it there alone
+
+  azurerm_data_factory_flowlet_data_flow:
+    mappings:
+      - spec: spec.sources
+        arg: source
+      - spec: spec.sinks
+        arg: sink
+      - spec: spec.transformations
+        arg: transformation
+    exclusions:
+      - arg: source.rejected_linked_service.name
+        reason: schema-visible but dead on sources -- the provider's expand maps rejected-row routing on sinks only; the spec offers it there alone
+      - arg: source.rejected_linked_service.parameters
+        reason: schema-visible but dead on sources -- the provider's expand maps rejected-row routing on sinks only; the spec offers it there alone
+
+specExclusions:
+  # The form discriminator: which of the two provider resources the
+  # module creates (mapping data flow vs flowlet). A spec-only concept
+  # -- the provider expresses the same choice as two resource types.
+  - field: spec.flowlet
+    reason: variant discriminator -- selects the mapping vs flowlet provider resource; the provider models the choice as two resource types

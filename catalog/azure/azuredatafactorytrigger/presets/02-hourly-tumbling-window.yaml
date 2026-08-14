@@ -1,0 +1,31 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryTrigger
+metadata:
+  name: hourly-tumbling-window
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: <your-data-factory>
+  name: hourly-loads
+  description: Processes one contiguous hour per run; backfills from start_time.
+  # Deploy stopped, verify the pipeline's Debug run, then flip to true.
+  activated: false
+  tumblingWindow:
+    frequency: Hour
+    interval: 1
+    # Every window between here and now BACKFILLS when the trigger
+    # starts -- point at history deliberately, never accidentally.
+    startTime: "2026-09-01T00:00:00Z"
+    # What the sink tables tolerate in parallel (Azure's default is 50).
+    maxConcurrency: 4
+    retry:
+      count: 3
+      interval: 120
+    pipeline:
+      name:
+        valueFrom:
+          name: <your-pipeline>
+      parameters:
+        # Each run receives its own window's bounds.
+        windowStart: "@trigger().outputs.windowStartTime"
+        windowEnd: "@trigger().outputs.windowEndTime"

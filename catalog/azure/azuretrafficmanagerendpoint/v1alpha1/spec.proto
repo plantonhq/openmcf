@@ -1,0 +1,239 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuretrafficmanagerendpoint.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
+
+// **AzureTrafficManagerEndpointSpec** defines one destination a Traffic
+// Manager profile (AzureTrafficManagerProfile) can steer traffic to.
+//
+// The endpoint type is declared by which variant block is present: set
+// exactly one of `azure`, `external`, or `nested` -- mirroring Azure's
+// three endpoint types.
+//   - `azure`: a public Azure resource, by ARM ID (a Public IP, an App
+//     Service, another profile's fronted service). Azure tracks the
+//     target's address itself, so the endpoint follows the resource.
+//   - `external`: anything with a DNS name or IP address -- services in
+//     other clouds, on-premises, or Azure resources you prefer to
+//     address by name.
+//   - `nested`: ANOTHER Traffic Manager profile, composing routing
+//     methods into trees (e.g. a Performance parent choosing between
+//     regional Weighted children).
+//
+// Fields every type shares (weight, priority, enabled, health-probe
+// headers, geo/subnet claims) live at the spec root; each variant block
+// carries only what its type actually accepts.
+//
+// **Which shared fields matter depends on the PROFILE's routing
+// method** (Azure evaluates them there; nothing enforces them here):
+// weight steers Weighted profiles, priority steers Priority profiles,
+// geo_mappings steer Geographic profiles (every region must be claimed
+// by exactly one endpoint), subnets steer Subnet profiles (ranges must
+// not overlap across endpoints). MultiValue profiles require external
+// endpoints whose targets are literal IPv4/IPv6 addresses.
+message AzureTrafficManagerEndpointSpec {
+  // The Traffic Manager profile this endpoint belongs to, by ARM
+  // resource ID -- defaults to referencing an
+  // AzureTrafficManagerProfile's traffic_manager_profile_id output.
+  // Changing it replaces the endpoint.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureTrafficManagerProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.traffic_manager_profile_id"
+  ];
+
+  // The endpoint's name, unique per type within the profile. Changing
+  // it replaces the endpoint.
+  string name = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // A public Azure resource as the destination. Set exactly one
+  // variant block on this spec.
+  AzureTrafficManagerAzureEndpoint azure = 3;
+
+  // A DNS name or IP address as the destination. Set exactly one
+  // variant block on this spec.
+  AzureTrafficManagerExternalEndpoint external = 4;
+
+  // Another Traffic Manager profile as the destination. Set exactly
+  // one variant block on this spec.
+  AzureTrafficManagerNestedEndpoint nested = 5;
+
+  // For Weighted profiles: this endpoint's share of traffic relative
+  // to its siblings (1-1000). Unspecified applies 1, the provider's
+  // default -- the modules always send the effective value explicitly.
+  // Updatable in place.
+  optional int32 weight = 6 [
+    (dev.planton.shared.options.default) = "1",
+    (buf.validate.field).int32 = {
+      gte: 1
+      lte: 1000
+    }
+  ];
+
+  // For Priority profiles: this endpoint's failover position (1-1000,
+  // lower serves first, no two endpoints may share a value). Leave
+  // unset to let Azure assign the next free value in creation order --
+  // the service owns the default, so the modules send it only when
+  // set. Updatable in place.
+  optional int32 priority = 7 [(buf.validate.field).int32 = {
+    gte: 1
+    lte: 1000
+  }];
+
+  // Whether the endpoint participates in routing. Unspecified applies
+  // true, the provider's default -- set false to drain the endpoint
+  // (it leaves DNS answers) without deleting it. Updatable in place.
+  optional bool enabled = 8 [(dev.planton.shared.options.default) = "true"];
+
+  // For Geographic profiles: the regions this endpoint answers for, as
+  // Traffic Manager geographic-hierarchy codes ("WORLD", "GEO-EU",
+  // "DE", ...). Azure requires every code to be claimed by exactly ONE
+  // endpoint in the profile -- claims are validated apply-time against
+  // the live hierarchy. Updatable in place.
+  repeated string geo_mappings = 9 [(buf.validate.field).repeated.items.string.min_len = 1];
+
+  // For Subnet profiles: the caller source-IP ranges this endpoint
+  // answers for. Ranges must not overlap across the profile's
+  // endpoints (Azure enforces apply-time). FIXED AT CREATION -- any
+  // change replaces the endpoint.
+  repeated AzureTrafficManagerEndpointSubnet subnets = 10;
+
+  // Health-probe headers for THIS endpoint, overriding the profile's
+  // monitor_config headers on collision (e.g. a per-endpoint Host
+  // header). Updatable in place.
+  repeated AzureTrafficManagerEndpointCustomHeader custom_headers = 11;
+
+  // The endpoint type is whichever variant block is present --
+  // requiring exactly one keeps an endpoint from being declared with
+  // two types or with none.
+  option (buf.validate.message).cel = {
+    id: "azure_traffic_manager_endpoint_exactly_one_variant"
+    message: "Set exactly one endpoint variant -- azure, external, or nested -- the variant determines the endpoint type"
+    expression: "(has(this.azure) ? 1 : 0) + (has(this.external) ? 1 : 0) + (has(this.nested) ? 1 : 0) == 1"
+  };
+}
+
+// A public Azure resource as the destination. Azure reads the target's
+// address (and its region, for Performance routing) from the resource
+// itself.
+message AzureTrafficManagerAzureEndpoint {
+  // The target resource's ARM ID. The resource must expose a public IP
+  // address (a Public IP, an App Service, ...). Reference the owning
+  // kind's id output with an explicit valueFrom (e.g. an
+  // AzurePublicIp's public_ip_id) or pass a literal ID -- no kind
+  // dominates Azure endpoint targets, so there is no default.
+  // Retargeting updates the endpoint in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_resource_id = 1 [(buf.validate.field).required = true];
+
+  // Serve this endpoint even when probes call it unhealthy (health
+  // checks are disabled). Useful when probes cannot reach the target
+  // but users can. Off by default. Updatable in place.
+  optional bool always_serve_enabled = 2 [(dev.planton.shared.options.default) = "false"];
+}
+
+// A DNS name or IP address as the destination.
+message AzureTrafficManagerExternalEndpoint {
+  // The destination: a fully qualified DNS name or an IP address
+  // (MultiValue profiles require literal IPv4/IPv6 addresses). A
+  // reference or a literal -- no kind dominates external targets, so
+  // references declare their kind explicitly. Retargeting updates the
+  // endpoint in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target = 1 [(buf.validate.field).required = true];
+
+  // The Azure region Traffic Manager treats as this endpoint's
+  // location, for latency-based decisions (e.g. "eastus"). REQUIRED by
+  // the service when the profile routes by Performance (external
+  // targets carry no discoverable region); ignored otherwise --
+  // enforced apply-time, the shape only the service can check.
+  string endpoint_location = 2;
+
+  // Serve this endpoint even when probes call it unhealthy (health
+  // checks are disabled). Useful when probes cannot reach the target
+  // but users can. Off by default. Updatable in place.
+  optional bool always_serve_enabled = 3 [(dev.planton.shared.options.default) = "false"];
+}
+
+// Another Traffic Manager profile as the destination, composing
+// routing methods into trees. The child profile must have MultiValue
+// routing disabled (Azure enforces the composition rules apply-time).
+message AzureTrafficManagerNestedEndpoint {
+  // The CHILD profile's ARM resource ID -- defaults to referencing an
+  // AzureTrafficManagerProfile's traffic_manager_profile_id output.
+  // Retargeting updates the endpoint in place.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef target_profile_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = AzureTrafficManagerProfile,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.traffic_manager_profile_id"
+  ];
+
+  // The minimum number of healthy endpoints the child profile must
+  // hold for THIS endpoint to count as healthy (at least 1). Updatable
+  // in place.
+  optional int32 minimum_child_endpoints = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).int32.gte = 1
+  ];
+
+  // Of the child's healthy endpoints, how many must be IPv4-addressed
+  // for this endpoint to count as healthy. 0 (or unset) applies no
+  // IPv4 floor -- the modules send the value only when positive,
+  // mirroring the provider. Updatable in place.
+  optional int32 minimum_required_child_endpoints_ipv4 = 3 [(buf.validate.field).int32.gte = 0];
+
+  // Of the child's healthy endpoints, how many must be IPv6-addressed
+  // for this endpoint to count as healthy. 0 (or unset) applies no
+  // IPv6 floor -- the modules send the value only when positive,
+  // mirroring the provider. Updatable in place.
+  optional int32 minimum_required_child_endpoints_ipv6 = 4 [(buf.validate.field).int32.gte = 0];
+
+  // The Azure region Traffic Manager treats as this endpoint's
+  // location, for latency-based decisions (e.g. "eastus"). REQUIRED by
+  // the service when the PARENT profile routes by Performance; ignored
+  // otherwise -- enforced apply-time, the shape only the service can
+  // check.
+  string endpoint_location = 5;
+}
+
+// One caller source-IP range claim, for Subnet-routed profiles. Give
+// first+last for an address range, first+scope for a CIDR block, or
+// first alone for a single address.
+message AzureTrafficManagerEndpointSubnet {
+  // The range's first IPv4 address (or its only one).
+  string first = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.ipv4 = true
+  ];
+
+  // The range's last IPv4 address, inclusive (range form).
+  string last = 2 [(buf.validate.field).cel = {
+    id: "azure_traffic_manager_endpoint_subnet_last_ipv4"
+    message: "last must be an IPv4 address"
+    expression: "this == '' || this.isIp(4)"
+  }];
+
+  // The CIDR prefix length applied to first (CIDR form), 0-32.
+  optional int32 scope = 3 [(buf.validate.field).int32 = {
+    gte: 0
+    lte: 32
+  }];
+}
+
+// One health-probe header override for this endpoint.
+message AzureTrafficManagerEndpointCustomHeader {
+  // The header name (e.g. "Host").
+  string name = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+
+  // The header value.
+  string value = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.min_len = 1
+  ];
+}

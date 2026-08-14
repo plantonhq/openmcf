@@ -90,7 +90,7 @@ These are the most important decisions when configuring a Cloud Tasks queue. Exp
 
 **Authentication** -- For queues targeting Cloud Run or Cloud Functions, configure `httpTarget.oidcToken` with a service account email. For queues targeting Google APIs, use `httpTarget.oauthToken` instead. These are mutually exclusive.
 
-**Pause and resume** -- The queue's dispatch state (RUNNING/PAUSED) is a runtime operation, deliberately not part of this declarative spec: pause with `gcloud tasks queues pause` during maintenance windows and resume afterwards, without touching the deployed configuration. Tasks can still be enqueued to a paused queue.
+**Pause and resume** -- Set `desiredState: PAUSED` and apply to hold every task in the queue while producers keep enqueueing; flip it back to `RUNNING` and apply to resume dispatch. One boundary to know: the field only acts when its value changes between applies -- a queue paused out-of-band with `gcloud tasks queues pause` is not resumed by re-applying an unchanged spec (resume it the way it was paused, or flip the spec value through `PAUSED` and back).
 
 ## Outputs and Dependencies
 

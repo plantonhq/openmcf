@@ -17,6 +17,16 @@ is not yours to consume. The two paths are mutually exclusive
 (enforced pre-deploy), and the egress mode (`directVpcEgress:
 ALL_TRAFFIC`) is what enables static egress IPs via Cloud NAT.
 
+One teardown consequence to plan around: a direct-VPC function leaves a
+`serverless-ipv4-*` address reservation in its subnetwork after the
+function is deleted. The reservation belongs to Google's serverless
+service agent — you cannot delete it — and Google garbage-collects it on
+an hours scale (live-verified: it survives the service delete and blocks
+subnet deletion). Deleting a direct-VPC function therefore does NOT free
+its subnet immediately; plan subnet/VPC decommissioning a few hours
+behind the function's, or keep direct-VPC functions on subnets with an
+independent lifecycle.
+
 ## Identity: one function, one service account
 
 The default compute service account is broad by default; give each

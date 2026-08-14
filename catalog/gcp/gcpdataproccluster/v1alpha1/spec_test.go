@@ -1407,6 +1407,39 @@ var _ = ginkgo.Describe("GcpDataprocClusterSpec", func() {
 		gomega.Expect(validator.Validate(msg)).To(gomega.Succeed())
 	})
 
+	// The API silently drops a machineTypeUri paired with a flexibility
+	// policy; because machine_type is create-only, the pairing re-plans as
+	// whole-cluster replacement on every apply (live-verified 2026-08-12).
+	ginkgo.It("should reject machine_type paired with flexibility on the master", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			MasterConfig: &GcpDataprocClusterMasterConfig{
+				MachineType: "n2-standard-4",
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+						{MachineTypes: []string{"n2-standard-4"}, Rank: 1},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
+	ginkgo.It("should reject machine_type paired with flexibility on primary workers", func() {
+		msg := minimal()
+		msg.Spec.ClusterConfig = &GcpDataprocClusterConfig{
+			WorkerConfig: &GcpDataprocClusterWorkerConfig{
+				MachineType: "e2-standard-2",
+				InstanceFlexibilityPolicy: &GcpDataprocClusterInstanceFlexibilityPolicy{
+					InstanceSelectionList: []*GcpDataprocClusterInstanceSelection{
+						{MachineTypes: []string{"e2-standard-2", "n2-standard-2"}, Rank: 1},
+					},
+				},
+			},
+		}
+		gomega.Expect(validator.Validate(msg)).ToNot(gomega.Succeed())
+	})
+
 	// ──────────────── Resource manager tags ────────────────
 
 	ginkgo.It("should accept resource manager tags on the GCE config", func() {

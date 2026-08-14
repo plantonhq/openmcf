@@ -1,0 +1,22 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azuretrafficmanagerprofile
+spec:
+  # PROVEN live on both engines (2026-08-13): `minimal` (a Performance
+  # profile with an HTTPS probe; run-id DNS relative name) -- all phases
+  # green, 3/3 outputs on both engines, the global trafficmanager.net
+  # namespace accepted both engines' run-id names. Blind import
+  # round-trip: zero-change. Measured: Pulumi lane 3m12s (deploy 34s,
+  # destroy 39s), Terraform lane 2m34s incl. 19s import round-trip.
+  # OFFLINE-ONLY with reasons: the five other routing methods and the
+  # monitor dials (ranges, headers, fast interval, MultiValue's
+  # max_return) are pure ARM property writes on the exact create path
+  # the minimal lane proved (one CreateOrUpdate body differing only in
+  # property values -- plan-verified with rendered-value inspection);
+  # Traffic View is a billing switch on the same body (verified
+  # rendering "Enabled" offline).
+  tier: 1
+  status: green
+  validated_provisioners: [pulumi, terraform]
+  timeout_minutes: 30

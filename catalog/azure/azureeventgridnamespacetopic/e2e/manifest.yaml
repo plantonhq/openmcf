@@ -1,0 +1,15 @@
+# Example for docs and offline validation: one CloudEvents stream
+# inside a namespace, with the retention window set explicitly.
+# References are literal values so the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridNamespaceTopic
+metadata:
+  name: test-eventgrid-namespace-topic
+  id: test-eventgrid-namespace-topic
+  org: test-org
+  env: test
+spec:
+  namespaceId:
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Microsoft.EventGrid/namespaces/acme-events-hub
+  name: orders
+  eventRetentionInDays: 3

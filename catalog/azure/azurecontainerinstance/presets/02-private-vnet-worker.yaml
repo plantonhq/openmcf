@@ -1,0 +1,41 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureContainerInstance
+metadata:
+  name: queue-worker
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: queue-worker
+  region: eastus
+  osType: Linux
+  # Private: the group gets an IP inside the subnet -- no public
+  # surface at all. The subnet must be delegated to
+  # Microsoft.ContainerInstance/containerGroups.
+  ipAddressType: Private
+  subnetId:
+    valueFrom:
+      name: <your-delegated-subnet>
+  # The group's containers authenticate to Azure services as this
+  # identity -- no connection strings in the environment.
+  identity:
+    type: USER_ASSIGNED
+    identityIds:
+      - valueFrom:
+          name: <your-user-assigned-identity>
+  containers:
+    - name: worker
+      image: <your-registry>.azurecr.io/queue-worker:stable
+      cpu: 1
+      memory: 2
+      environmentVariables:
+        QUEUE_NAME: orders
+  imageRegistryCredentials:
+    # The identity form: grant the identity AcrPull on the registry --
+    # no password to rotate.
+    - server:
+        valueFrom:
+          name: <your-container-registry>
+      userAssignedIdentityId:
+        valueFrom:
+          name: <your-user-assigned-identity>

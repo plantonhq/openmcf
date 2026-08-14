@@ -1,0 +1,21 @@
+# Deep-shape example for docs and offline validation: an F2 capacity
+# with two administrators and tags. References are literal values so
+# the manifest validates standalone.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureFabricCapacity
+metadata:
+  name: test-fabric-capacity
+  id: test-fabric-capacity
+  org: test-org
+  env: test
+spec:
+  resourceGroup:
+    value: test-rg
+  name: testorgfabric
+  region: eastus
+  skuName: F2
+  administrationMembers:
+    - admin@testorg.example
+    - 11111111-2222-3333-4444-555555555555
+  tags:
+    costCenter: analytics

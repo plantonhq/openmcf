@@ -99,8 +99,8 @@ func buildLinuxArgs(locals *Locals) *compute.LinuxVirtualMachineArgs {
 		if availability.Zone != "" {
 			args.Zone = pulumi.String(availability.Zone)
 		}
-		if availability.AvailabilitySetId != "" {
-			args.AvailabilitySetId = pulumi.String(availability.AvailabilitySetId)
+		if availability.AvailabilitySetId.GetValue() != "" {
+			args.AvailabilitySetId = pulumi.String(availability.AvailabilitySetId.GetValue())
 		}
 		if availability.ProximityPlacementGroupId != "" {
 			args.ProximityPlacementGroupId = pulumi.String(availability.ProximityPlacementGroupId)
@@ -368,8 +368,8 @@ func buildWindowsArgs(locals *Locals) *compute.WindowsVirtualMachineArgs {
 		if availability.Zone != "" {
 			args.Zone = pulumi.String(availability.Zone)
 		}
-		if availability.AvailabilitySetId != "" {
-			args.AvailabilitySetId = pulumi.String(availability.AvailabilitySetId)
+		if availability.AvailabilitySetId.GetValue() != "" {
+			args.AvailabilitySetId = pulumi.String(availability.AvailabilitySetId.GetValue())
 		}
 		if availability.ProximityPlacementGroupId != "" {
 			args.ProximityPlacementGroupId = pulumi.String(availability.ProximityPlacementGroupId)

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azuremongoclusteruser.v1alpha1;
+
+// **AzureMongoClusterUserStackOutputs** captures the outputs from
+// provisioning an Azure Cosmos DB for MongoDB vCore user grant.
+message AzureMongoClusterUserStackOutputs {
+  // The grant's Azure Resource Manager ID
+  // ({cluster_id}/users/{object_id}).
+  string mongo_cluster_user_id = 1;
+
+  // The grant's ARM name -- the granted principal's object id.
+  string mongo_cluster_user_name = 2;
+}

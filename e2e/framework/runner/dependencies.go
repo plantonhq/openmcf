@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -73,6 +74,20 @@ type DependencyState struct {
 // All fixtures join the same transitive reference resolution, and teardown
 // runs in reverse across the merged chain.
 const scenarioPrerequisitesAnnotation = "planton.dev/e2e-prerequisites"
+
+// teardownAttemptsAnnotation lets a prerequisite's install manifest raise the
+// destroy retry budget for ITS OWN teardown above the global default. It
+// exists for producer-side releases that are measured in TENS OF MINUTES —
+// longer than the deliberately tight dependencyDestroyAttempts default, but
+// still far from the hours-class releases the E2E coverage policy excludes
+// from live runs entirely. First user: the Cloud SQL chains' service
+// networking connection — deleting a private-IP instance releases the
+// producer's hold on the connection well after the ~6-minute default budget
+// (live-measured >9m in 2026-08; the annotation sizes the wait to the
+// documented producer, exactly where the next fixture author reads it).
+// The value is the TOTAL number of destroy attempts, spaced by
+// dependencyDestroyBackoff.
+const teardownAttemptsAnnotation = "planton.dev/e2e-teardown-attempts"
 
 // ResolveDependencies returns the ordered, deduplicated list of prerequisite
 // deployments a component needs before its own scenario is applied. Dependencies
@@ -531,21 +546,22 @@ func TeardownDependencies(deployed []DependencyState) error {
 	var failures []error
 	for i := len(deployed) - 1; i >= 0; i-- {
 		dep := deployed[i]
+		attempts := teardownAttempts(dep.Dependency.ManifestPath)
 		fmt.Printf("  [deps] Destroying dependency %s...\n", dep.Dependency.KindSlug)
 
 		var destroyErr error
-		for attempt := 1; attempt <= dependencyDestroyAttempts; attempt++ {
+		for attempt := 1; attempt <= attempts; attempt++ {
 			if _, destroyErr = pulumiDestroyFn(dep.ModuleDir, dep.StackName, dep.BackendURL, dep.StackInputPath); destroyErr == nil {
 				break
 			}
-			if attempt < dependencyDestroyAttempts {
+			if attempt < attempts {
 				fmt.Printf("  [deps] dependency %s destroy attempt %d/%d failed (waiting %s): %v\n",
-					dep.Dependency.KindSlug, attempt, dependencyDestroyAttempts, dependencyDestroyBackoff, destroyErr)
+					dep.Dependency.KindSlug, attempt, attempts, dependencyDestroyBackoff, destroyErr)
 				time.Sleep(dependencyDestroyBackoff)
 			}
 		}
 		if destroyErr != nil {
-			failures = append(failures, errors.Wrapf(destroyErr, "dependency %s (stack %s) destroy failed after %d attempts", dep.Dependency.KindSlug, dep.StackName, dependencyDestroyAttempts))
+			failures = append(failures, errors.Wrapf(destroyErr, "dependency %s (stack %s) destroy failed after %d attempts", dep.Dependency.KindSlug, dep.StackName, attempts))
 			continue
 		}
 		if err := pulumiRemoveStackFn(dep.ModuleDir, dep.StackName, dep.BackendURL); err != nil {
@@ -553,6 +569,28 @@ func TeardownDependencies(deployed []DependencyState) error {
 		}
 	}
 	return stderrors.Join(failures...)
+}
+
+// teardownAttempts resolves a dependency's destroy retry budget: the
+// teardownAttemptsAnnotation on its install manifest when present and valid,
+// else the global default. A malformed value falls back to the default
+// rather than failing teardown — the annotation only ever WIDENS a retry
+// window, and teardown must run regardless.
+func teardownAttempts(manifestPath string) int {
+	if manifestPath == "" {
+		return dependencyDestroyAttempts
+	}
+	raw, err := manifestAnnotation(manifestPath, teardownAttemptsAnnotation)
+	if err != nil || raw == "" {
+		return dependencyDestroyAttempts
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || n < 1 {
+		fmt.Printf("  [deps] ignoring invalid %s=%q on %s (using default %d)\n",
+			teardownAttemptsAnnotation, raw, manifestPath, dependencyDestroyAttempts)
+		return dependencyDestroyAttempts
+	}
+	return n
 }
 
 func pathExists(path string) bool {

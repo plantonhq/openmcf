@@ -302,7 +302,8 @@ message GcpEventarcMessageBusPipelineDestination {
   // projects/{project}/topics/{topic}). The provider documents the form
   // projects/{project}/locations/{location}/topics/{topic} for this field;
   // both name the same topic — the live API accepts the canonical Pub/Sub
-  // form.
+  // form (live-verified: a pipeline created with the canonical form went
+  // ACTIVE and re-planned clean on both engines).
   dev.planton.shared.foreignkey.v1.StringValueOrRef topic = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpPubSubTopic,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.topic_id"

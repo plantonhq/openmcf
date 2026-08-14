@@ -1,0 +1,25 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoCluster
+metadata:
+  name: dev-sandbox
+spec:
+  resourceGroup:
+    valueFrom:
+      name: <your-resource-group>
+  name: my-org-dev-sandbox
+  region: eastus
+  administratorUsername: mongoadmin
+  administratorPassword:
+    value: <choose-a-password>
+  version: "8.0"
+  # One Free cluster per subscription; no HA, one shard -- Azure's
+  # sandbox walls, enforced at manifest time here.
+  computeTier: Free
+  storageSizeInGb: 32
+  shardCount: 1
+  highAvailabilityMode: Disabled
+  # Replace both with your dev machine's public IPv4 (curl ifconfig.me).
+  firewallRules:
+    - name: dev-machine
+      startIpAddress: 198.51.100.7
+      endIpAddress: 198.51.100.7

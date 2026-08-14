@@ -638,7 +638,9 @@ type GcpAlloydbClusterRestoreContinuousBackupSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The source cluster to restore from — its full resource name
 	// "projects/{project}/locations/{location}/clusters/{cluster}", or a
-	// reference to a GcpAlloydbCluster resource.
+	// reference to a GcpAlloydbCluster resource. Restore provenance, not
+	// physical placement: the new cluster is seeded FROM the source, never
+	// contained IN it (containment_exempt).
 	Cluster *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=cluster,proto3" json:"cluster,omitempty"`
 	// The point in time to restore to, in RFC 3339 format (e.g.
 	// "2026-08-01T12:00:00Z"). Must fall inside the source cluster's
@@ -1802,9 +1804,9 @@ const file_catalog_gcp_gcpalloydbcluster_v1alpha1_spec_proto_rawDesc = "" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\"O\n" +
 	"$GcpAlloydbClusterRestoreBackupSource\x12'\n" +
 	"\vbackup_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"backupName\"\xd4\x01\n" +
-	".GcpAlloydbClusterRestoreContinuousBackupSource\x12v\n" +
-	"\acluster\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB(\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x17\x92\xd4a\x19status.outputs.cluster_idR\acluster\x12*\n" +
+	"backupName\"\xd8\x01\n" +
+	".GcpAlloydbClusterRestoreContinuousBackupSource\x12z\n" +
+	"\acluster\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\xbaH\x03\xc8\x01\x01\x88\xd4a\xd6\x17\x92\xd4a\x19status.outputs.cluster_id\x98\xd4a\x01R\acluster\x12*\n" +
 	"\rpoint_in_time\x18\x02 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\vpointInTime\"N\n" +
 	",GcpAlloydbClusterRestoreBackupdrBackupSource\x12\x1e\n" +
 	"\x06backup\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\x06backup\"\x81\x01\n" +

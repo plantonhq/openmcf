@@ -1,0 +1,65 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMonitorAutoscaleSetting
+metadata:
+  name: my-plan-autoscale
+spec:
+  resourceGroup:
+    value: "<your-resource-group-name>"
+  name: my-plan-autoscale
+  region: <your-region> # must match the App Service plan's region
+  targetResourceId:
+    value: "<your-service-plan-arm-id>"
+  profiles:
+    # The overnight/weekend shape -- also the default when no schedule
+    # matches.
+    - name: off-hours
+      capacity:
+        minimum: 1
+        maximum: 2
+        default: 1
+    # Weekday business hours: a bigger envelope with a CPU rule guarding
+    # surprises inside it. A schedule marks a START -- the off-hours
+    # profile below returns capacity to normal at 18:00.
+    - name: weekday-business-hours
+      capacity:
+        minimum: 3
+        maximum: 8
+        default: 3
+      recurrence:
+        timezone: Eastern Standard Time
+        days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+        hour: 8
+        minute: 0
+      rules:
+        - metricTrigger:
+            metricName: CpuPercentage
+            metricResourceId:
+              value: "<your-service-plan-arm-id>"
+            timeGrain: PT1M
+            statistic: Average
+            timeWindow: PT10M
+            timeAggregation: Average
+            operator: GreaterThan
+            threshold: 70
+          scaleAction:
+            direction: Increase
+            type: ChangeCount
+            value: 1
+            cooldown: PT5M
+    # The partner profile that ends the business-hours window.
+    - name: weekday-evenings
+      capacity:
+        minimum: 1
+        maximum: 2
+        default: 1
+      recurrence:
+        timezone: Eastern Standard Time
+        days: [Monday, Tuesday, Wednesday, Thursday, Friday]
+        hour: 18
+        minute: 0
+  notification:
+    email:
+      # ARM retired the subscription-administrator email flags in April
+      # 2024; name the on-call inbox explicitly.
+      customEmails:
+        - oncall@example.com

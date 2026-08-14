@@ -1,0 +1,19 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: azureeventgrideventsubscription
+spec:
+  # pending_proof: authored to the full offline bar (spec/CEL tests,
+  # both engine builds, offline tofu plans green); live dual-engine
+  # proof has not yet run. TWO scenarios run, one per addressing
+  # wiring: `minimal` (scope-addressed on the Event Grid topic kind's
+  # smoke instance) and `system-topic` (a child of the system topic
+  # kind's smoke instance) -- both delivering to scenario-local
+  # storage queues on the fixture account. The system-topic scenario
+  # stands up a system topic on the fixture storage account, so this
+  # kind's lane must never run concurrently with the system topic
+  # kind's own lane (one system topic per source per topic type).
+  tier: 1
+  status: pending_proof
+  validated_provisioners: []
+  timeout_minutes: 45

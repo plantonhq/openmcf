@@ -1,0 +1,17 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azureprivatednsrecord
+spec:
+  # The record set's identity is its full ARM resource ID
+  # (.../privateDnsZones/{zone}/{TYPE}/{name}) -- the TYPE segment names
+  # the record type, so the same id shape serves all seven variant
+  # resources; the spec's payload decides which one the module created.
+  values:
+    - name: record_id
+      derivations:
+        - from_stack_output: record_id
+      where_to_find: >-
+        Compose {private-dns-zone-id}/{TYPE}/{record-name} (TYPE is A,
+        AAAA, CNAME, MX, PTR, SRV, or TXT), or `az network private-dns
+        record-set list -g <rg> -z <zone> --query [].id`.

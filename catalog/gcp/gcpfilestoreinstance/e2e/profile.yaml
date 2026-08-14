@@ -6,15 +6,23 @@ spec:
   # BASIC_HDD creates in ~5-12 minutes — under the plan-only threshold, so
   # the kind is proven live end to end on the chained VPC (DIRECT_PEERING).
   # Instance names carry ${E2E_RUN_ID}: deletes finalize asynchronously,
-  # so reruns must never collide with a draining predecessor. ENTERPRISE/
-  # REGIONAL tiers, replication, and PSA/PSC connect modes are proven
-  # offline (cost + slow provisioning).
+  # so reruns must never collide with a draining predecessor.
+  #
+  # Live-proven 2026-08-13 both engines under the apply-idempotency gate:
+  # the basic scenario's create carried the explicit desired_replica_state
+  # READY cleanly and every phase re-planned diff-free (deletion_policy
+  # DELETE round-trip included).
+  #
+  # Offline-proven-only arms with unblock conditions: LDAP directory
+  # services (needs a reachable directory-server fixture), PSC connect
+  # mode + psc_endpoint_project (needs consumer-side PSC wiring),
+  # source_backupdr_backup / source_backup restore provenance (needs a
+  # Backup and DR vault / source backup), replication + PAUSED
+  # desired_replica_state (PAUSED is API-meaningful only as an UPDATE on
+  # an ACTIVE replica pair — needs a REGIONAL replica fixture), and the
+  # ENTERPRISE/REGIONAL tiers (cost + slow provisioning; the BASIC tier
+  # proves the module contract).
   tier: 1
-  # The prior green predates the current spec shape (LDAP directory
-  # services, PSC endpoint project, per-export network, BackupDR restore,
-  # desired_replica_state sent explicitly, deletion_policy modeled from
-  # the spec instead of the Pulumi-side DELETE pin) — awaits live
-  # re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40

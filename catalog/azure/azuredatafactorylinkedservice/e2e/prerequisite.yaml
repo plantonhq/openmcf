@@ -1,0 +1,38 @@
+# Install profile: the instance dependent lanes get when they list
+# AzureDataFactoryLinkedService as a registry prerequisite (a dataset
+# cannot exist without a connection, so the registry edge is real).
+# The shape is the blob-variant connection -- the safest arm: fixture
+# storage endpoint by reference, managed identity, zero secret
+# material -- kept deliberately IDENTICAL in shape and instance name
+# to scenarios/blob-managed-identity.yaml, so the scenario that
+# proves this kind live is the same object this profile installs.
+# Keep the two files in lockstep.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureDataFactoryLinkedService
+metadata:
+  name: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  id: planton-oss-e2e-azuredatafactorylinkedservice-blob
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuredatafactorylinkedservice
+  annotations:
+    planton.dev/e2e: "true"
+    # The referenced storage account is the fixture -- deployed ahead
+    # of this connection by the dependency graph.
+    planton.dev/e2e-prerequisites: "AzureStorageAccount"
+  tags:
+    - planton-e2e
+spec:
+  dataFactoryId:
+    valueFrom:
+      name: planton-oss-e2e-azuredatafactory-smoke
+  name: smoke-lakehouse-blob
+  description: E2E fixture blob connection -- endpoint + managed identity, no secret material.
+  azureBlobStorage:
+    serviceEndpoint:
+      valueFrom:
+        name: planton-oss-e2e-azure-fixture-sa
+    useManagedIdentity: true
+    storageKind: StorageV2

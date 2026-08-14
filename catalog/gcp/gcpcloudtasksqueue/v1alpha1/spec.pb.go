@@ -718,9 +718,15 @@ func (x *GcpCloudTasksQueueLoggingConfig) GetSamplingRatio() float64 {
 //
 //   - Cloud Tasks queues do NOT support GCP labels.
 //
-//   - Pause/resume is declarative here: desired_state pins the queue's
-//     dispatch state (RUNNING or PAUSED) and reconciles it on every apply —
-//     a gcloud pause is undone by the next apply unless the spec says PAUSED.
+//   - Pause/resume is declarative here: editing desired_state and applying
+//     pauses or resumes the queue. But the provider tracks the field as a
+//     config-only (virtual) value — it never reads the queue's live dispatch
+//     state back into it — so an out-of-band gcloud pause is INVISIBLE to an
+//     apply whose desired_state did not change (live-verified: the apply
+//     plans zero changes and the queue stays paused). To recover a queue
+//     paused out-of-band, either resume it out-of-band or flip the spec
+//     PAUSED → apply → RUNNING → apply (the value must change for the
+//     provider to issue the resume call).
 //
 //   - Rate limits and retry config have GCP-computed defaults when not specified.
 //     For most workloads, the defaults are reasonable starting points.
@@ -768,8 +774,14 @@ type GcpCloudTasksQueueSpec struct {
 	//	             the safe holding state during target maintenance or
 	//	             incident response
 	//
-	// Declarative and reconciled on every apply: an out-of-band gcloud
-	// pause/resume is reverted to this value on the next apply.
+	// Declarative for spec-driven transitions: editing this value and
+	// applying pauses/resumes the queue (live-verified both directions).
+	// NOT drift-correcting: the provider treats this as a config-only
+	// (virtual) field and never reads the live dispatch state back, so an
+	// out-of-band gcloud pause survives applies whose spec value is
+	// unchanged. Recover by resuming out-of-band, or by flipping this field
+	// PAUSED → apply → RUNNING → apply so the value change triggers the
+	// provider's resume call.
 	DesiredState string `protobuf:"bytes,9,opt,name=desired_state,json=desiredState,proto3" json:"desired_state,omitempty"`
 	// What destroying this resource does to the queue:
 	//

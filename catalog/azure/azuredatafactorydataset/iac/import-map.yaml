@@ -1,0 +1,15 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: azuredatafactorydataset
+spec:
+  values:
+    - name: dataset_id
+      derivations:
+        - from_stack_output: dataset_id
+      where_to_find: >-
+        Compose it from the factory's resource ID plus
+        /datasets/<dataset-name>, or `az datafactory dataset show
+        --factory-name <factory> --resource-group <rg> --name <name>
+        --query id`; also the component's own dataset_id stack output.
+        The same ID shape serves all 13 dataset types.

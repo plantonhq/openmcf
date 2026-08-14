@@ -1,0 +1,22 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureCognitiveDeployment
+metadata:
+  name: chat
+spec:
+  cognitiveAccountId:
+    value: "<your-cognitive-account-id>"
+  # The name applications pass as the model parameter.
+  name: chat
+  model:
+    format: OpenAI
+    # A current mini-class chat model. Azure REJECTS models whose
+    # catalog lifecycle is "Deprecating" for new deployments -- pick
+    # from `az cognitiveservices model list -l <region> --query
+    # "[?model.lifecycleStatus=='GenerallyAvailable'].model.name"`.
+    name: gpt-5.4-mini
+  sku:
+    # Azure-wide routing -- the widest model availability, per-token
+    # billing (capacity is a rate limit, not idle cost).
+    name: GlobalStandard
+    # Thousands of tokens per minute.
+    capacity: 50

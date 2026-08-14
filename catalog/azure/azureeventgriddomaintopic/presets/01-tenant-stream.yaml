@@ -1,0 +1,13 @@
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureEventgridDomainTopic
+metadata:
+  name: my-tenant-stream
+spec:
+  # The domain reference uses the default wiring -- only the Planton
+  # resource name is needed.
+  domainId:
+    valueFrom:
+      name: <your-eventgrid-domain>
+  # The name publishers stamp into every event's topic field -- name it
+  # after the stable identity it carries (your tenant registry's slug).
+  name: customer-fabrikam

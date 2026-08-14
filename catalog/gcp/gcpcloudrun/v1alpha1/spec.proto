@@ -678,7 +678,11 @@ message GcpCloudRunGrpcAction {
 // a failing instance is pulled from serving (and re-added when it
 // recovers) without being restarted. Deliberately a different shape from
 // startup/liveness probes — the API gives readiness no initial delay and
-// no TCP handler, and adds a success threshold for re-admission.
+// no TCP handler. There is no success threshold: the GA API's probe
+// message carries no such field (verified live against the v2 discovery
+// document — the control plane silently drops the value the Terraform
+// provider models, leaving a perpetual re-plan diff), so re-admission
+// after recovery is single-success by API design.
 message GcpCloudRunReadinessProbe {
   option (buf.validate.message).cel = {
     id: "readiness_probe.timeout_lte_period"
@@ -699,24 +703,20 @@ message GcpCloudRunReadinessProbe {
     lte: 3600
   }];
 
-  // Consecutive successes required before a previously failing instance
-  // is re-admitted to serving (GCP default 2).
-  optional int32 success_threshold = 3 [(buf.validate.field).int32.gte = 1];
-
   // Consecutive failures after which the instance is pulled from serving
   // (GCP default 3). The instance is NOT restarted — that is the liveness
   // probe's job.
-  optional int32 failure_threshold = 4 [(buf.validate.field).int32.gte = 1];
+  optional int32 failure_threshold = 3 [(buf.validate.field).int32.gte = 1];
 
   // The check to perform. HTTP and gRPC only — readiness has no TCP arm.
   oneof handler {
     option (buf.validate.oneof).required = true;
 
     // HTTP GET against a path on the container; 2xx is success.
-    GcpCloudRunReadinessHttpGetAction http_get = 5;
+    GcpCloudRunReadinessHttpGetAction http_get = 4;
 
     // Standard gRPC health-check protocol (grpc.health.v1.Health/Check).
-    GcpCloudRunGrpcAction grpc = 6;
+    GcpCloudRunGrpcAction grpc = 5;
   }
 }
 

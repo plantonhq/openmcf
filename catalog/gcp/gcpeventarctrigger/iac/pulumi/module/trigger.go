@@ -68,7 +68,7 @@ func trigger(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) err
 	}
 	args.MatchingCriterias = criteria
 
-	args.Destination = expandDestination(spec.Destination)
+	args.Destination = expandDestination(spec.Destination, spec.Location)
 
 	if spec.ServiceAccount.GetValue() != "" {
 		args.ServiceAccount = pulumi.String(spec.ServiceAccount.GetValue())
@@ -170,7 +170,13 @@ func trigger(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) err
 		return errors.Wrap(err, "failed to create trigger")
 	}
 
-	ctx.Export(OpTriggerName, createdTrigger.Name)
+	// The module-derived name, not the provider's `name` echo: the
+	// provider stores the SHORT name at create but reads back the FULL
+	// resource name on refresh (live-caught flip on the Terraform side by
+	// the idempotency gate; same latent class here). The name is
+	// immutable and the create succeeded with exactly this value.
+	// PARITY: matches the Terraform module's local.trigger_name output.
+	ctx.Export(OpTriggerName, pulumi.String(locals.TriggerName))
 	// The resource ID is the full trigger resource name
 	// (projects/{p}/locations/{l}/triggers/{name}) with the ambient
 	// project resolved — the trigger's canonical API handle.
@@ -182,18 +188,23 @@ func trigger(ctx *pulumi.Context, locals *Locals, gcpProvider *gcp.Provider) err
 // expandDestination maps the spec's exactly-one destination arm onto the
 // provider's destination block. The provider validates arm exclusivity
 // only server-side; the spec's CEL wall guarantees exactly one arm here.
-func expandDestination(destination *gcpeventarctriggerv1alpha1.GcpEventarcTriggerDestination) *eventarc.TriggerDestinationArgs {
+// triggerLocation feeds the Cloud Run region default (see below).
+func expandDestination(destination *gcpeventarctriggerv1alpha1.GcpEventarcTriggerDestination, triggerLocation string) *eventarc.TriggerDestinationArgs {
 	destinationArgs := &eventarc.TriggerDestinationArgs{}
 
 	if cloudRun := destination.CloudRunService; cloudRun != nil {
 		cloudRunArgs := &eventarc.TriggerDestinationCloudRunServiceArgs{
 			Service: pulumi.String(cloudRun.Service.GetValue()),
 		}
-		// Optional+Computed in the provider: sent only when set, so GCP
-		// resolves the region from the trigger's location otherwise (the
-		// send-only-when-set posture for computed args).
+		// The API REQUIRES the region on every create (live-verified:
+		// 400 "cloud_run.region is empty" — it never infers it from the
+		// trigger's location), so an empty spec region defaults to the
+		// trigger's own location. A "global" trigger cannot self-default;
+		// the spec CEL forces an explicit region there.
 		if cloudRun.Region != "" {
 			cloudRunArgs.Region = pulumi.StringPtr(cloudRun.Region)
+		} else {
+			cloudRunArgs.Region = pulumi.StringPtr(triggerLocation)
 		}
 		if cloudRun.Path != "" {
 			cloudRunArgs.Path = pulumi.StringPtr(cloudRun.Path)

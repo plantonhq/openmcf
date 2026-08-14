@@ -1,0 +1,37 @@
+# Minimal AzureMongoClusterUser scenario: the fixture identity's
+# service principal granted root on the admin database of the cluster
+# kind's own smoke instance. The registry prerequisite chains the
+# cluster (which enables MicrosoftEntraID auth in its smoke shape for
+# exactly this lane); the fixture identity is declared here, not on
+# the registry -- a grant does not universally need a managed
+# identity, only THIS scenario's principal does. Proves the three-kind
+# reference chain live: cluster id + principal id resolving into the
+# grant. The grant itself is free; the lane pays the cluster chain.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoClusterUser
+metadata:
+  name: planton-oss-e2e-azuremongoclusteruser-smoke
+  id: planton-oss-e2e-azuremongoclusteruser-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremongoclusteruser
+  annotations:
+    planton.dev/e2e: "true"
+    planton.dev/e2e-prerequisites: "AzureUserAssignedIdentity"
+  tags:
+    - planton-e2e
+spec:
+  mongoClusterId:
+    valueFrom:
+      name: planton-oss-e2e-azuremongocluster-smoke
+  objectId:
+    valueFrom:
+      kind: AzureUserAssignedIdentity
+      name: planton-oss-e2e-azure-fixture-identity
+      fieldPath: status.outputs.principal_id
+  principalType: servicePrincipal
+  roles:
+    - database: admin
+      role: root

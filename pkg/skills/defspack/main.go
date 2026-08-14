@@ -27,6 +27,16 @@ func main() {
 	version := flag.String("version", "", "release version (vX.Y.Z) to stamp into the manifest; required with -out")
 	outDir := flag.String("out", "", "directory to write release artifacts into; omit to validate only")
 	root := flag.String("root", "", "repository root (defaults to the working directory)")
+	// The catalog skill's assembled pack is ~18MB, and Stigmer engines cap
+	// gRPC messages at 10MB in both directions (hardcoded in the engine's
+	// server library, contradicting the skill layer's own 100MB acceptance
+	// -- reported upstream: https://github.com/stigmer/stigmer/issues/675).
+	// Until that lifts, PACKAGING excludes the pack by default -- released
+	// artifacts stay pushable and mountable -- while loading and VALIDATION
+	// always assemble it, so a pull request that breaks the pack fails the
+	// lint gate today, and activation is this one flag on the day the cap
+	// lifts.
+	embedPack := flag.Bool("embed-catalog-pack", false, "package the catalog skill self-contained (its components/ reference pack inside the archive)")
 	flag.Parse()
 
 	repoRoot := *root
@@ -55,6 +65,9 @@ func main() {
 	}
 	if *version == "" {
 		fatal(fmt.Errorf("-version is required when packaging with -out"))
+	}
+	if !*embedPack {
+		StripPackFiles(tree)
 	}
 	manifest, err := PackageRelease(tree, *version, *outDir)
 	if err != nil {

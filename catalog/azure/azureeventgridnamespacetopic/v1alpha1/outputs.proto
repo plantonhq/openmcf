@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package dev.planton.azure.azureeventgridnamespacetopic.v1alpha1;
+
+// **AzureEventgridNamespaceTopicStackOutputs** captures the outputs
+// from provisioning an Azure Event Grid namespace topic.
+message AzureEventgridNamespaceTopicStackOutputs {
+  // The namespace topic's Azure Resource Manager ID
+  // ({namespace_id}/topics/{name}).
+  string namespace_topic_id = 1;
+
+  // The namespace topic's name.
+  string namespace_topic_name = 2;
+}

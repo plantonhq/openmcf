@@ -3,16 +3,19 @@ kind: ComponentE2EProfile
 metadata:
   name: azurevirtualhub
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests, both
-  # engine builds, offline tofu plan green); live dual-engine proof has
-  # not yet run. A NEW slow class for the suite: ARM takes 15-30 minutes
-  # to bring the hub's managed router to a Provisioned routing state,
-  # and the hub bills (~$0.25/hr class) from creation -- the timeout
-  # leaves headroom for a slow region day plus the composed children
-  # (route table, route map) and teardown. The hub is also the fixture
-  # pivot of the Virtual WAN family: connection and gateway lanes chain
-  # through this kind's install profile.
+  # Proven live on both engines (full lifecycle + blind import round-trip
+  # of the hub AND its composed route table/route map, zero-change plan).
+  # Measured: deploy ~35m (the router's Provisioned settling dominates;
+  # the composed route map alone ran ~17m -- the provider polls the
+  # router around the child create), destroy ~11-13m, lane total ~50m
+  # per engine. The hub bills (~$0.25/hr class) from creation; the
+  # timeout leaves headroom for a slow region day. The hub is also the
+  # fixture pivot of the Virtual WAN family: connection and gateway
+  # lanes chain through this kind's install profile (~17-20m fixture
+  # create inside their lanes). Offline-proven-only arms (recorded, live
+  # needs no catalog kind provides): BGP peerings (a real NVA) and
+  # routing intent (a hub firewall).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90

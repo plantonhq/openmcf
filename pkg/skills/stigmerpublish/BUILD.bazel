@@ -1,0 +1,35 @@
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "stigmerpublish_lib",
+    srcs = [
+        "main.go",
+        "publish.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/skills/stigmerpublish",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_stigmer_stigmer_sdk_go_v3//:go",
+        "@com_github_stigmer_stigmer_sdk_go_v3//proto/ai/stigmer/agentic/skill/v1:skill",
+    ],
+)
+
+go_binary(
+    name = "stigmerpublish",
+    embed = [":stigmerpublish_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "stigmerpublish_test",
+    srcs = ["publish_test.go"],
+    embed = [":stigmerpublish_lib"],
+    deps = [
+        "@com_github_stigmer_stigmer_sdk_go_v3//:go",
+        "@com_github_stigmer_stigmer_sdk_go_v3//proto/ai/stigmer/agentic/skill/v1:skill",
+        "@com_github_stigmer_stigmer_sdk_go_v3//proto/ai/stigmer/commons/apiresource",
+        "@org_golang_google_grpc//:grpc",
+        "@org_golang_google_grpc//codes",
+        "@org_golang_google_grpc//status",
+    ],
+)

@@ -5,10 +5,21 @@ metadata:
 spec:
   # Fast control-plane object. The schema-validated scenario composes the
   # GcpPubSubSchema prerequisite live (schema FK resolution proof).
+  #
+  # Live-proven 2026-08-12 on both engines under the apply-idempotency
+  # gate, both scenarios. The schema-validated arm pins BOTH revision
+  # bounds to the prerequisite schema's revision_id output; the provider
+  # models the bounds as plain Optional (no Computed, no diff
+  # suppression), so the gate's clean re-plan is mechanical proof the
+  # pins were stored and echoed by the API.
+  #
+  # OFFLINE-PROVEN ARMS (deferrals with unblock conditions):
+  #   - ai_inference message transform: needs a DEPLOYED Vertex AI
+  #     endpoint (expensive fixture). Unblock: a lane that composes a
+  #     GcpVertexAiEndpoint fixture with a deployed model.
+  #   - resource_manager_tags: needs org-level tagKeys/tagValues the E2E
+  #     identity cannot create (the standing org-fixture item).
   tier: 1
-  # The prior green predates the current spec shape (deletion_policy,
-  # revision-range pinning refs, the ai_inference transform arm,
-  # resource-manager tags) — awaits live re-proof.
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

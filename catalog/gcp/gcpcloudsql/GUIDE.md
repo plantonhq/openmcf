@@ -35,9 +35,15 @@ Private IP requires the VPC to already carry a service networking
 connection (compose `GcpGlobalAddress` + `GcpServiceNetworkingConnection`
 first — the provider fails fast, and a failed create still burns the
 name). Private network attachment is one-way: it can be set or changed,
-never removed. PSC is the modern alternative when peering topology is the
-problem — with `autoDnsEnabled`, consumers resolve the instance by name
-instead of tracking endpoint IPs. A public IP with an empty
+never removed. And the attachment outlives the instance: after a
+private-IP instance is deleted, Cloud SQL's producer releases its hold
+on the service networking connection asynchronously — live-measured at
+over 40 minutes in 2026-08 — so a same-pass teardown of instance +
+connection + VPC must either budget for that lag or abandon the
+connection and retire the whole network (the connection kind's GUIDE
+covers both shapes). PSC is the modern alternative when peering topology
+is the problem — with `autoDnsEnabled`, consumers resolve the instance
+by name instead of tracking endpoint IPs. A public IP with an empty
 `authorizedNetworks` list is safer than it looks: only the Auth Proxy and
 IAM-authenticated connectors can use it.
 

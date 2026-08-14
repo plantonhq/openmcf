@@ -27,11 +27,3 @@
 - key: catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|catalog/azure/azurefrontdoorroute/e2e/scenarios/rule-set-attach.yaml|origin_ids|AzureFrontDoorOrigin/planton-oss-e2e-fd-origin-prereq
   owner: azure-provider catalog maintainers
   note: consequence of the unloadable origin install profile above
-
-# ── GCP: GcpCertManagerCert sits in GcpTargetHttpsProxy's registry
-#    prerequisites but ships no install manifest (no e2e/prerequisite.yaml
-#    and no scenarios/minimal.yaml -- its only scenario is
-#    managed-dns-auth.yaml), so every chain through the https proxy fails to
-#    resolve. Owned by the proxy kinds' next proof pass: either publish an
-#    install profile for the cert or move the optional cert edge out of the
-#    registry prerequisites.

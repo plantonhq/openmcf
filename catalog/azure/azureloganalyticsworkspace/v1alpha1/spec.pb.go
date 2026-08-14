@@ -251,13 +251,12 @@ type AzureLogAnalyticsWorkspaceSpec struct {
 	// compliance: normally Azure keeps data recoverable for a short period beyond
 	// the retention window; this switch removes that grace period.
 	ImmediateDataPurgeOn_30DaysEnabled bool `protobuf:"varint,14,opt,name=immediate_data_purge_on_30_days_enabled,json=immediateDataPurgeOn30DaysEnabled,proto3" json:"immediate_data_purge_on_30_days_enabled,omitempty"`
-	// The ARM ID of an Azure Monitor Data Collection Rule to set as the
-	// workspace's default DCR (applied to data flowing in without an explicit
-	// rule). Format:
-	// /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.Insights/dataCollectionRules/{name}
-	// Provide the literal ARM ID of a rule managed outside this catalog; leave
-	// empty for Azure's default handling.
-	DataCollectionRuleId string `protobuf:"bytes,15,opt,name=data_collection_rule_id,json=dataCollectionRuleId,proto3" json:"data_collection_rule_id,omitempty"`
+	// The Azure Monitor Data Collection Rule to set as the workspace's
+	// default DCR (applied to data flowing in without an explicit rule), by
+	// ARM resource ID. Can be a literal ARM ID or a reference to an
+	// AzureMonitorDataCollectionRule output. Leave unset for Azure's default
+	// handling.
+	DataCollectionRuleId *v1.StringValueOrRef `protobuf:"bytes,15,opt,name=data_collection_rule_id,json=dataCollectionRuleId,proto3" json:"data_collection_rule_id,omitempty"`
 	// Tags to apply to the workspace, merged over the Planton-derived
 	// metadata tags (user values win on key conflicts). ARM tags are Azure's
 	// first-class governance surface -- Azure Policy enforces them and
@@ -395,11 +394,11 @@ func (x *AzureLogAnalyticsWorkspaceSpec) GetImmediateDataPurgeOn_30DaysEnabled()
 	return false
 }
 
-func (x *AzureLogAnalyticsWorkspaceSpec) GetDataCollectionRuleId() string {
+func (x *AzureLogAnalyticsWorkspaceSpec) GetDataCollectionRuleId() *v1.StringValueOrRef {
 	if x != nil {
 		return x.DataCollectionRuleId
 	}
-	return ""
+	return nil
 }
 
 func (x *AzureLogAnalyticsWorkspaceSpec) GetTags() map[string]string {
@@ -477,7 +476,7 @@ var File_catalog_azure_azureloganalyticsworkspace_v1alpha1_spec_proto protorefle
 
 const file_catalog_azure_azureloganalyticsworkspace_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/azure/azureloganalyticsworkspace/v1alpha1/spec.proto\x125dev.planton.azure.azureloganalyticsworkspace.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xfa\x12\n" +
+	"<catalog/azure/azureloganalyticsworkspace/v1alpha1/spec.proto\x125dev.planton.azure.azureloganalyticsworkspace.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe0\x13\n" +
 	"\x1eAzureLogAnalyticsWorkspaceSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -495,8 +494,8 @@ const file_catalog_azure_azureloganalyticsworkspace_v1alpha1_spec_proto_rawDesc 
 	"\x16internet_query_enabled\x18\v \x01(\bB\b\x8a\xa6\x1d\x04trueH\x05R\x14internetQueryEnabled\x88\x01\x01\x12T\n" +
 	"\x1fallow_resource_only_permissions\x18\f \x01(\bB\b\x8a\xa6\x1d\x04trueH\x06R\x1callowResourceOnlyPermissions\x88\x01\x01\x12/\n" +
 	"\x14cmk_for_query_forced\x18\r \x01(\bR\x11cmkForQueryForced\x12R\n" +
-	"'immediate_data_purge_on_30_days_enabled\x18\x0e \x01(\bR!immediateDataPurgeOn30DaysEnabled\x125\n" +
-	"\x17data_collection_rule_id\x18\x0f \x01(\tR\x14dataCollectionRuleId\x12s\n" +
+	"'immediate_data_purge_on_30_days_enabled\x18\x0e \x01(\bR!immediateDataPurgeOn30DaysEnabled\x12\x9a\x01\n" +
+	"\x17data_collection_rule_id\x18\x0f \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB/\x88\xd4a\x90\x11\x92\xd4a&status.outputs.data_collection_rule_idR\x14dataCollectionRuleId\x12s\n" +
 	"\x04tags\x18\x10 \x03(\v2_.dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
@@ -554,14 +553,15 @@ var file_catalog_azure_azureloganalyticsworkspace_v1alpha1_spec_proto_depIdxs = 
 	5, // 0: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.resource_group:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
 	0, // 1: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.sku:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSku
 	3, // 2: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.identity:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentity
-	4, // 3: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.tags:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.TagsEntry
-	1, // 4: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentity.type:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentityType
-	5, // 5: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	5, // 3: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.data_collection_rule_id:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	4, // 4: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.tags:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceSpec.TagsEntry
+	1, // 5: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentity.type:type_name -> dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentityType
+	5, // 6: dev.planton.azure.azureloganalyticsworkspace.v1alpha1.AzureLogAnalyticsWorkspaceIdentity.user_assigned_identity_ids:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_catalog_azure_azureloganalyticsworkspace_v1alpha1_spec_proto_init() }
