@@ -1998,6 +1998,15 @@ owns two responsibilities beyond wiring verifiers:
   First `az ml` on a machine without the `ml` extension hangs forever on
   a dynamic-install prompt no non-interactive shell can answer -- install
   it explicitly (`az extension add --name ml`) before any sweep.
+  The class covers the whole workspace FAMILY: AI Foundry hubs and
+  projects are ML workspaces at ARM (kind "Hub" / "Project") and ghost
+  the same way. The hub resource honors the purge features flag (the
+  hub module enables it, dual-engine fixed-name recreate proven); the
+  PROJECT resource has NO purge seam -- its delete never consults the
+  flag, so setting it in a project module is a silent no-op. Measured
+  live: a project ghost does not block recreating the same name (the
+  hub's purge sweeps its children's ghosts); a stranded standalone
+  project ghost, should one ever surface, is a portal-only purge.
 - **A workspace managed VNet (approved-outbound + provision-on-creation)
   is a new medium-slow AND fragile class.** Create of the workspace object
   is ~1 min; adding the managed VNet plus a private-endpoint outbound

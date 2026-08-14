@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	azureaifoundryv1alpha1 "github.com/plantonhq/planton/catalog/azure/azureaifoundry/v1alpha1"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/azure/pulumiazureprovider"
+	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure"
 	"github.com/pulumi/pulumi-azure/sdk/v6/go/azure/aifoundry"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -12,8 +13,17 @@ func Resources(ctx *pulumi.Context, stackInput *azureaifoundryv1alpha1.AzureAiFo
 	locals := initializeLocals(ctx, stackInput)
 
 	// Build the Azure provider from the stack input via the shared builder, which resolves
-	// the right credential mechanism (static client secret, keyless web identity, or ambient chain).
-	azureProvider, err := pulumiazureprovider.Get(ctx, stackInput.ProviderConfig)
+	// the right credential mechanism (static client secret, keyless web identity, or ambient
+	// chain). The machine_learning features flag makes destroy purge the soft-delete ghost
+	// that would otherwise keep holding the hub NAME (hubs are ML workspaces at ARM and the
+	// provider default leaves the ghost); a soft-delete recovery window is not part of this
+	// module's contract -- mirrors the Terraform module's provider features block.
+	azureProvider, err := pulumiazureprovider.GetWithFeatures(ctx, stackInput.ProviderConfig,
+		azure.ProviderFeaturesArgs{
+			MachineLearning: azure.ProviderFeaturesMachineLearningArgs{
+				PurgeSoftDeletedWorkspaceOnDestroy: pulumi.Bool(true),
+			},
+		})
 	if err != nil {
 		return errors.Wrap(err, "failed to create azure provider")
 	}

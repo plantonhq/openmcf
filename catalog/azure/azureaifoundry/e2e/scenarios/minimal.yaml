@@ -6,11 +6,12 @@
 # workspace GUID the outputs surface.
 #
 # The hub provisions in a few minutes and is free at rest. Deletion is
-# a SOFT delete: the ghost holds the hub name until purged; the orphan
-# sweep's recycle-bin check is `az ml workspace list --archived`. The
-# CMK / user-assigned / isolation arms are offline-proven only (they
-# need pre-granted key access the minimal lane deliberately does not
-# compose).
+# a SOFT delete: the ghost holds the hub name until purged; both
+# modules purge on destroy, and no CLI or REST API lists ML ghosts
+# (the portal's "Recently deleted" view is the one listing surface).
+# The CMK / user-assigned / isolation arms are offline-proven only
+# (they need pre-granted key access the minimal lane deliberately does
+# not compose).
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAiFoundry
 metadata:
