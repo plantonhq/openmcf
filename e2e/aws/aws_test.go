@@ -1353,6 +1353,38 @@ func TestAwsGuardDuty_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "awsguardduty", "terraform")
 }
 
+func TestAwsCloudTrailEventDataStore_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "pulumi")
+}
+
+func TestAwsCloudTrailEventDataStore_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awscloudtraileventdatastore", "terraform")
+}
+
+func TestAwsConfigAggregator_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "pulumi")
+}
+
+func TestAwsConfigAggregator_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigaggregator", "terraform")
+}
+
+func TestAwsConfigConformancePack_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "pulumi")
+}
+
+func TestAwsConfigConformancePack_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsconfigconformancepack", "terraform")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "pulumi")
+}
+
+func TestAwsGuardDutyMalwareProtectionPlan_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "awsguarddutymalwareprotectionplan", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for an AWS component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {
 	t.Helper()

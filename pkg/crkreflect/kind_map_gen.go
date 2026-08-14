@@ -81,6 +81,7 @@ import (
 	awsclientvpnv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsclientvpn/v1alpha1"
 	awscloudfrontv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudfront/v1alpha1"
 	awscloudtrailv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtrail/v1alpha1"
+	awscloudtraileventdatastorev1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudtraileventdatastore/v1alpha1"
 	awscloudwatchalarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchalarm/v1alpha1"
 	awscloudwatchcompositealarmv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchcompositealarm/v1alpha1"
 	awscloudwatchloggroupv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscloudwatchloggroup/v1alpha1"
@@ -90,6 +91,8 @@ import (
 	awscognitoresourceserverv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitoresourceserver/v1alpha1"
 	awscognitouserpoolv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitouserpool/v1alpha1"
 	awscognitouserpoolclientv1alpha1 "github.com/plantonhq/planton/catalog/aws/awscognitouserpoolclient/v1alpha1"
+	awsconfigaggregatorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigaggregator/v1alpha1"
+	awsconfigconformancepackv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigconformancepack/v1alpha1"
 	awsconfigrecorderv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrecorder/v1alpha1"
 	awsconfigrulev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsconfigrule/v1alpha1"
 	awsdocumentdbv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsdocumentdb/v1alpha1"
@@ -122,6 +125,7 @@ import (
 	awsglobalacceleratorv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsglobalaccelerator/v1alpha1"
 	awsgluecatalogdatabasev1alpha1 "github.com/plantonhq/planton/catalog/aws/awsgluecatalogdatabase/v1alpha1"
 	awsguarddutyv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsguardduty/v1alpha1"
+	awsguarddutymalwareprotectionplanv1alpha1 "github.com/plantonhq/planton/catalog/aws/awsguarddutymalwareprotectionplan/v1alpha1"
 	awshttpapidomainv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapidomain/v1alpha1"
 	awshttpapigatewayv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapigateway/v1alpha1"
 	awshttpapivpclinkv1alpha1 "github.com/plantonhq/planton/catalog/aws/awshttpapivpclink/v1alpha1"
@@ -853,6 +857,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsClientVpn:                           &awsclientvpnv1alpha1.AwsClientVpn{},
 	cloudresourcekind.CloudResourceKind_AwsCloudFront:                          &awscloudfrontv1alpha1.AwsCloudFront{},
 	cloudresourcekind.CloudResourceKind_AwsCloudTrail:                          &awscloudtrailv1alpha1.AwsCloudTrail{},
+	cloudresourcekind.CloudResourceKind_AwsCloudTrailEventDataStore:            &awscloudtraileventdatastorev1alpha1.AwsCloudTrailEventDataStore{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchAlarm:                     &awscloudwatchalarmv1alpha1.AwsCloudwatchAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchCompositeAlarm:            &awscloudwatchcompositealarmv1alpha1.AwsCloudwatchCompositeAlarm{},
 	cloudresourcekind.CloudResourceKind_AwsCloudwatchLogGroup:                  &awscloudwatchloggroupv1alpha1.AwsCloudwatchLogGroup{},
@@ -862,6 +867,8 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsCognitoResourceServer:               &awscognitoresourceserverv1alpha1.AwsCognitoResourceServer{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoUserPool:                     &awscognitouserpoolv1alpha1.AwsCognitoUserPool{},
 	cloudresourcekind.CloudResourceKind_AwsCognitoUserPoolClient:               &awscognitouserpoolclientv1alpha1.AwsCognitoUserPoolClient{},
+	cloudresourcekind.CloudResourceKind_AwsConfigAggregator:                    &awsconfigaggregatorv1alpha1.AwsConfigAggregator{},
+	cloudresourcekind.CloudResourceKind_AwsConfigConformancePack:               &awsconfigconformancepackv1alpha1.AwsConfigConformancePack{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRecorder:                      &awsconfigrecorderv1alpha1.AwsConfigRecorder{},
 	cloudresourcekind.CloudResourceKind_AwsConfigRule:                          &awsconfigrulev1alpha1.AwsConfigRule{},
 	cloudresourcekind.CloudResourceKind_AwsDocumentDb:                          &awsdocumentdbv1alpha1.AwsDocumentDb{},
@@ -894,6 +901,7 @@ var ProviderAwsMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 	cloudresourcekind.CloudResourceKind_AwsGlobalAccelerator:                   &awsglobalacceleratorv1alpha1.AwsGlobalAccelerator{},
 	cloudresourcekind.CloudResourceKind_AwsGlueCatalogDatabase:                 &awsgluecatalogdatabasev1alpha1.AwsGlueCatalogDatabase{},
 	cloudresourcekind.CloudResourceKind_AwsGuardDuty:                           &awsguarddutyv1alpha1.AwsGuardDuty{},
+	cloudresourcekind.CloudResourceKind_AwsGuardDutyMalwareProtectionPlan:      &awsguarddutymalwareprotectionplanv1alpha1.AwsGuardDutyMalwareProtectionPlan{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiDomain:                       &awshttpapidomainv1alpha1.AwsHttpApiDomain{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiGateway:                      &awshttpapigatewayv1alpha1.AwsHttpApiGateway{},
 	cloudresourcekind.CloudResourceKind_AwsHttpApiVpcLink:                      &awshttpapivpclinkv1alpha1.AwsHttpApiVpcLink{},

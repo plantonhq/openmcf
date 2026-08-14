@@ -1,0 +1,23 @@
+# Canonical AwsCloudTrailEventDataStore example (hack/dev manifest and
+# refgen Example source): a KMS-encrypted, fixed-pricing CloudTrail
+# Lake store scoped to management events with a 90-day queryable
+# window. Literal ARNs stand in for composed references so the offline
+# `tofu plan` renders every arm.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrailEventDataStore
+metadata:
+  name: security-lake-store
+  id: security-lake-store
+  org: test-org
+  env: dev
+spec:
+  region: us-west-2
+  billingMode: FIXED_RETENTION_PRICING
+  kmsKeyId:
+    value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+  retentionPeriodDays: 90
+  advancedEventSelectors:
+    - name: Management events
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Management"]

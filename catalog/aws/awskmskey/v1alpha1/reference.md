@@ -413,6 +413,7 @@ Fields on other kinds that can point at this resource:
 | AwsBedrockKnowledgeBase | `spec.dataSources[].kmsKeyArn` | `status.outputs.key_arn` |
 | AwsBedrockPrompt | `spec.customerEncryptionKeyArn` | `status.outputs.key_arn` |
 | AwsCloudTrail | `spec.kmsKeyId` | `status.outputs.key_arn` |
+| AwsCloudTrailEventDataStore | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCloudwatchLogGroup | `spec.kmsKeyId` | `status.outputs.key_arn` |
 | AwsCodeBuildProject | `spec.encryptionKey` | `status.outputs.key_arn` |
 | AwsCodePipeline | `spec.artifactStores[].encryptionKeyId` | `status.outputs.key_arn` |

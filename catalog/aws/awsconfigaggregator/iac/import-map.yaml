@@ -1,0 +1,23 @@
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: awsconfigaggregator
+spec:
+  values:
+    - name: aggregator_name
+      derivations:
+        # The aggregator's name IS metadata.name on both engines.
+        - from_metadata_name: true
+      where_to_find: >-
+        Config console -> Aggregators (the aggregator's name), or
+        `aws configservice describe-configuration-aggregators`.
+    - name: authorization_key
+      derivations:
+        # Grant identity IS its instance key -- the modules key each
+        # grant "{account_id}:{authorized_aws_region}", exactly the
+        # provider's composed import ID.
+        - from_address_key: true
+      where_to_find: >-
+        Each spec.authorizations entry as
+        "<account_id>:<authorized_aws_region>" (`aws configservice
+        describe-aggregation-authorizations` in the source account).

@@ -348,6 +348,7 @@ Fields on other kinds that can point at this resource:
 | AwsCognitoUserPool | `spec.smsConfiguration.snsCallerArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPool | `spec.userGroups[].roleArn` | `status.outputs.role_arn` |
 | AwsCognitoUserPoolClient | `spec.analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| AwsConfigAggregator | `spec.aggregation.organizationSource.roleArn` | `status.outputs.role_arn` |
 | AwsConfigRecorder | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEcsCluster | `spec.managedInstancesCapacityProviders[].infrastructureRoleArn` | `status.outputs.role_arn` |
 | AwsEcsService | `spec.loadBalancers[].advancedConfiguration.roleArn` | `status.outputs.role_arn` |
@@ -366,6 +367,7 @@ Fields on other kinds that can point at this resource:
 | AwsEksNodeGroup | `spec.nodeRoleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsEventBridgeRule | `spec.targets[].roleArn` | `status.outputs.role_arn` |
+| AwsGuardDutyMalwareProtectionPlan | `spec.roleArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.routes[].integration.credentialsArn` | `status.outputs.role_arn` |
 | AwsHttpApiGateway | `spec.authorizers[].authorizerCredentialsArn` | `status.outputs.role_arn` |
 | AwsIamInstanceProfile | `spec.role` | `status.outputs.role_name` |

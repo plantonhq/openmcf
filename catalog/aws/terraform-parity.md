@@ -28,10 +28,10 @@ that has progressed.
 | | |
 |---|---|
 | Provider schema (parity baseline) | `aws@6.58.0` |
-| Kinds in the catalog | 150 |
-| Distinct provider resources consumed | 375 |
-| Spec fields authored across all kinds | 5969 |
-| Module pins on `aws` | `~> 6.58` × 150 |
+| Kinds in the catalog | 154 |
+| Distinct provider resources consumed | 381 |
+| Spec fields authored across all kinds | 6008 |
+| Module pins on `aws` | `~> 6.58` × 154 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -46,7 +46,7 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**150 of 150 kinds are at total accounting; 113 proven live.**
+**154 of 154 kinds are at total accounting; 113 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
@@ -83,6 +83,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsClientVpn | 47 | 29 | 7 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudTrail | 30 | 9 | 18 | 3 | 0 | ✅ | — |
+| AwsCloudTrailEventDataStore | 19 | 6 | 10 | 3 | 0 | ✅ | — |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
@@ -92,6 +93,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsConfigAggregator | 14 | 0 | 9 | 5 | 0 | ✅ | — |
+| AwsConfigConformancePack | 17 | 9 | 6 | 2 | 0 | ✅ | — |
 | AwsConfigRecorder | 24 | 9 | 11 | 4 | 0 | ✅ | — |
 | AwsConfigRule | 72 | 18 | 44 | 10 | 0 | ✅ | — |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
@@ -124,6 +127,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsGlobalAccelerator | 28 | 12 | 11 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsGuardDuty | 79 | 27 | 31 | 21 | 0 | ✅ | — |
+| AwsGuardDutyMalwareProtectionPlan | 6 | 0 | 5 | 1 | 0 | ✅ | — |
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
@@ -207,10 +211,10 @@ All resources of `aws@6.58.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 374 | consumed by a kind's Terraform module today |
+| Modeled | 380 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 28 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 619 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 613 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 541 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 129 | deprecated or superseded provider surface |
 | **Total** | **1691** | |
@@ -220,7 +224,7 @@ All resources of `aws@6.58.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (374)
+### Modeled (380)
 
 | Resource | Consuming kinds |
 |---|---|
@@ -321,6 +325,7 @@ rather than trusted.
 | `aws_cloudfront_monitoring_subscription` | consumed by AwsCloudFront |
 | `aws_cloudfront_origin_access_control` | consumed by AwsCloudFront |
 | `aws_cloudtrail` | consumed by AwsCloudTrail |
+| `aws_cloudtrail_event_data_store` | consumed by AwsCloudTrailEventDataStore |
 | `aws_cloudtrail_organization_delegated_admin_account` | consumed by AwsCloudTrail |
 | `aws_cloudwatch_composite_alarm` | consumed by AwsCloudwatchCompositeAlarm |
 | `aws_cloudwatch_event_archive` | consumed by AwsEventBridgeBus |
@@ -348,10 +353,14 @@ rather than trusted.
 | `aws_cognito_user_pool` | consumed by AwsCognitoUserPool |
 | `aws_cognito_user_pool_client` | consumed by AwsCognitoUserPoolClient |
 | `aws_cognito_user_pool_domain` | consumed by AwsCognitoUserPool |
+| `aws_config_aggregate_authorization` | consumed by AwsConfigAggregator |
 | `aws_config_config_rule` | consumed by AwsConfigRule |
+| `aws_config_configuration_aggregator` | consumed by AwsConfigAggregator |
 | `aws_config_configuration_recorder` | consumed by AwsConfigRecorder |
 | `aws_config_configuration_recorder_status` | consumed by AwsConfigRecorder |
+| `aws_config_conformance_pack` | consumed by AwsConfigConformancePack |
 | `aws_config_delivery_channel` | consumed by AwsConfigRecorder |
+| `aws_config_organization_conformance_pack` | consumed by AwsConfigConformancePack |
 | `aws_config_organization_custom_policy_rule` | consumed by AwsConfigRule |
 | `aws_config_organization_custom_rule` | consumed by AwsConfigRule |
 | `aws_config_organization_managed_rule` | consumed by AwsConfigRule |
@@ -429,6 +438,7 @@ rather than trusted.
 | `aws_guardduty_filter` | consumed by AwsGuardDuty |
 | `aws_guardduty_invite_accepter` | consumed by AwsGuardDuty |
 | `aws_guardduty_ipset` | consumed by AwsGuardDuty |
+| `aws_guardduty_malware_protection_plan` | consumed by AwsGuardDutyMalwareProtectionPlan |
 | `aws_guardduty_member` | consumed by AwsGuardDuty |
 | `aws_guardduty_member_detector_feature` | consumed by AwsGuardDuty |
 | `aws_guardduty_organization_admin_account` | consumed by AwsGuardDuty |
@@ -632,7 +642,7 @@ rather than trusted.
 | `aws_wafv2_web_acl_rule` | covered by AwsWafWebAcl.spec.rules -- this satellite manages a single rule of an existing web ACL out-of-band, an alternative delivery mechanism for the same statement grammar the kind models inline in full; mixing out-of-band rules with an ACL whose rules are declared inline fights over one rule set |
 | `aws_wafv2_web_acl_rule_group_association` | covered by AwsWafWebAcl.spec.rules (the rule_group_reference and managed_rule_group arms with rule_action_overrides) -- this satellite injects a group-reference rule into an existing web ACL out-of-band; the kind models the same attachment inline, and mixing the two fights over one rule set |
 
-### Planned (619)
+### Planned (613)
 
 | Resource | Recorded reason |
 |---|---|
@@ -717,7 +727,6 @@ rather than trusted.
 | `aws_cloudfront_vpc_origin` | account-scoped provisioned VPC origin shareable across distributions (and cross-account); judged as a planned AwsCloudFrontVpcOrigin kind -- AwsCloudFront models the attachment (origins[].vpc_origin.vpc_origin_id) today |
 | `aws_cloudfrontkeyvaluestore_key` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
 | `aws_cloudfrontkeyvaluestore_keys_exclusive` | judged as part of the planned AwsCloudFrontFunction kind (key-value stores and keys) |
-| `aws_cloudtrail_event_data_store` | judged as a planned AwsCloudTrailEventDataStore kind: CloudTrail Lake carries no trail edge -- it deploys with zero trails and owns its own billing mode, retention, and termination protection (re-judged 2026-08-14 out of the AwsCloudTrail fold by the standalone-vs-satellite test) |
 | `aws_cloudwatch_alarm_mute_rule` | judged as a planned AwsCloudwatchAlarmMuteRule kind: one rule mutes up to 100 alarms on a recurring schedule -- multi-alarm scope, not per-alarm configuration, so a fold onto AwsCloudwatchAlarm would misrepresent it (the CloudFront-companion class) |
 | `aws_cloudwatch_dashboard` | judged as a planned AwsCloudwatchDashboard kind |
 | `aws_cloudwatch_event_api_destination` | judged as a planned AwsEventbridgeApiDestination kind (API destinations with connections) |
@@ -748,10 +757,6 @@ rather than trusted.
 | `aws_cognito_identity_pool_roles_attachment` | judged as a planned AwsCognitoIdentityPool kind (identity pools with roles attachments and provider principal tags) |
 | `aws_cognito_managed_login_branding` | judged as a planned AwsCognitoManagedLoginBranding kind: client-scoped managed-login design assets (smithy-JSON settings plus up to 40 binary asset payloads with whole-set replacement semantics) -- a distinct artifact lifecycle, not pool or client configuration |
 | `aws_cognito_managed_user_pool_client` | judged as a planned AwsCognitoManagedUserPoolClient kind: ADOPTS an app client AWS created on the account's behalf (discovers by name pattern, updates in place, no-op delete) -- an adoption lifecycle distinct from AwsCognitoUserPoolClient's create-own lifecycle (the transit-gateway accepter class) |
-| `aws_config_aggregate_authorization` | judged as a planned AwsConfigAggregator kind: the reciprocal grant of cross-account aggregation -- no recorder edge (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test) |
-| `aws_config_configuration_aggregator` | judged as a planned AwsConfigAggregator kind: aggregation references no recorder and works in an account with zero recorders (re-judged 2026-08-14 out of the AwsConfigRecorder fold by the standalone-vs-satellite test) |
-| `aws_config_conformance_pack` | judged as a planned AwsConfigConformancePack kind: a pack is a template bundle that creates its own rules with its own delivery bucket -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test) |
-| `aws_config_organization_conformance_pack` | judged as a planned AwsConfigConformancePack kind: the org-scoped arm of the pack bundle -- no config-rule edge (re-judged 2026-08-14 out of the AwsConfigRule fold by the standalone-vs-satellite test) |
 | `aws_controltower_baseline` | judged as a planned AwsControlTower kind (controls, baselines, landing zones) |
 | `aws_controltower_control` | judged as a planned AwsControlTower kind (controls, baselines, landing zones) |
 | `aws_controltower_landing_zone` | judged as a planned AwsControlTower kind (controls, baselines, landing zones) |
@@ -903,7 +908,6 @@ rather than trusted.
 | `aws_grafana_workspace_saml_configuration` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
 | `aws_grafana_workspace_service_account` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
 | `aws_grafana_workspace_service_account_token` | judged as a planned AwsManagedGrafana kind (workspaces with licenses, SAML, API keys, service accounts) |
-| `aws_guardduty_malware_protection_plan` | judged as a planned AwsGuardDutyMalwareProtectionPlan kind: the plan carries no detector_id anywhere in its schema -- it protects an S3 bucket, not a detector (re-judged 2026-08-14 out of the AwsGuardDuty fold by the standalone-vs-satellite test) |
 | `aws_iam_account_alias` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
 | `aws_iam_account_password_policy` | judged as a planned AwsIamAccountSettings kind (alias, password policy, STS preferences, organization features) |
 | `aws_iam_group` | judged as a planned AwsIamGroup kind (groups, memberships, group policies and attachments) |

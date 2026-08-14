@@ -1,0 +1,19 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCloudTrailEventDataStore
+metadata:
+  name: s3-data-events-store
+spec:
+  region: <aws-region>
+  billingMode: FIXED_RETENTION_PRICING
+  retentionPeriodDays: 90
+  advancedEventSelectors:
+    - name: S3 object writes in one bucket
+      fieldSelectors:
+        - field: eventCategory
+          equals: ["Data"]
+        - field: resources.type
+          equals: ["AWS::S3::Object"]
+        - field: resources.ARN
+          startsWith: ["arn:aws:s3:::<data-bucket>/"]
+        - field: readOnly
+          equals: ["false"]

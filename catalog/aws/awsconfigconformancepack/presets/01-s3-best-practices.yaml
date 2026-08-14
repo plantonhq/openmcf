@@ -1,0 +1,29 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigConformancePack
+metadata:
+  name: s3-best-practices
+spec:
+  region: <aws-region>
+  templateBody: |
+    Resources:
+      S3BucketPublicReadProhibited:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-public-read-prohibited
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+      S3BucketPublicWriteProhibited:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-public-write-prohibited
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+      S3BucketVersioningEnabled:
+        Type: AWS::Config::ConfigRule
+        Properties:
+          ConfigRuleName: s3-bucket-versioning-enabled
+          Source:
+            Owner: AWS
+            SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED

@@ -1,0 +1,20 @@
+target:
+    apiVersion: aws.planton.dev/v1alpha1
+    kind: AwsCloudTrailEventDataStore
+    metadata:
+        env: dev
+        id: security-lake-store
+        name: security-lake-store
+        org: test-org
+    spec:
+        advancedEventSelectors:
+            - fieldSelectors:
+                - equals:
+                    - Management
+                  field: eventCategory
+              name: Management events
+        billingMode: FIXED_RETENTION_PRICING
+        kmsKeyId:
+            value: arn:aws:kms:us-west-2:123456789012:key/1234abcd-12ab-34cd-56ef-1234567890ab
+        region: us-west-2
+        retentionPeriodDays: 90

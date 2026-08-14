@@ -1746,11 +1746,13 @@ Fields on other kinds that can point at this resource:
 | AwsCodeBuildProject | `spec.logsConfig.s3Logs.location` | `status.outputs.bucket_id` |
 | AwsCodePipeline | `spec.artifactStores[].location` | `status.outputs.bucket_id` |
 | AwsCognitoUserPool | `spec.logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
+| AwsConfigConformancePack | `spec.deliveryS3Bucket` | `status.outputs.bucket_id` |
 | AwsConfigRecorder | `spec.deliveryChannel.s3BucketName` | `status.outputs.bucket_id` |
 | AwsDynamodb | `spec.importTable.s3Bucket` | `status.outputs.bucket_id` |
 | AwsEcsTaskDefinition | `spec.volumes[].s3files.fileSystemArn` | `status.outputs.bucket_arn` |
 | AwsGlobalAccelerator | `spec.flowLogs.s3Bucket` | `status.outputs.bucket_id` |
 | AwsGuardDuty | `spec.publishingDestination.bucketArn` | `status.outputs.bucket_arn` |
+| AwsGuardDutyMalwareProtectionPlan | `spec.s3BucketName` | `status.outputs.bucket_id` |
 | AwsKinesisFirehose | `spec.extendedS3.bucketArn` | `status.outputs.bucket_arn` |
 | AwsKinesisFirehose | `spec.extendedS3.s3Backup.bucketArn` | `status.outputs.bucket_arn` |
 | AwsKinesisFirehose | `spec.opensearch.s3Config.bucketArn` | `status.outputs.bucket_arn` |

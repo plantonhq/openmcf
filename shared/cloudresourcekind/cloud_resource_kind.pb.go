@@ -502,6 +502,28 @@ const (
 	// region). Satellite references (S3 export bucket, KMS key) are
 	// conditional, so E2E fixtures ride scenario annotations.
 	CloudResourceKind_AwsGuardDuty CloudResourceKind = 1243
+	// CloudTrail Lake: a queryable, immutable event data store with its
+	// own retention and billing lifecycle - no trail required. The KMS
+	// key reference is conditional, so E2E fixtures ride scenario
+	// annotations.
+	CloudResourceKind_AwsCloudTrailEventDataStore CloudResourceKind = 1244
+	// AWS Config cross-account/cross-region aggregation: the aggregator
+	// (collector side) and/or the reciprocal authorization grants
+	// (source-account side). Works with zero recorders; the org-source
+	// role reference is conditional, so E2E fixtures ride scenario
+	// annotations.
+	CloudResourceKind_AwsConfigAggregator CloudResourceKind = 1245
+	// An AWS Config conformance pack (account- or organization-scoped):
+	// a template bundle that creates its own Config rules. Deployment
+	// requires an active Config recorder in the region (a service-side
+	// requirement, not a spec reference), so E2E fixtures ride scenario
+	// annotations.
+	CloudResourceKind_AwsConfigConformancePack CloudResourceKind = 1246
+	// GuardDuty Malware Protection for S3: scans new objects in one
+	// bucket - a standalone plan protecting a bucket, not a detector
+	// satellite (its schema carries no detector reference). The
+	// execution role and the protected bucket are required references.
+	CloudResourceKind_AwsGuardDutyMalwareProtectionPlan CloudResourceKind = 1247
 	// Account/region settings singleton (one SES account object per
 	// account+region): the suppression list and VDM posture. 1360 opens
 	// the SES P1 sub-band (1360-1369).
@@ -2055,6 +2077,10 @@ var (
 		1241:  "AwsConfigRecorder",
 		1242:  "AwsConfigRule",
 		1243:  "AwsGuardDuty",
+		1244:  "AwsCloudTrailEventDataStore",
+		1245:  "AwsConfigAggregator",
+		1246:  "AwsConfigConformancePack",
+		1247:  "AwsGuardDutyMalwareProtectionPlan",
 		1360:  "AwsSesAccountSettings",
 		2000:  "AzureResourceGroup",
 		2001:  "AzureAksCluster",
@@ -2803,6 +2829,10 @@ var (
 		"AwsConfigRecorder":                              1241,
 		"AwsConfigRule":                                  1242,
 		"AwsGuardDuty":                                   1243,
+		"AwsCloudTrailEventDataStore":                    1244,
+		"AwsConfigAggregator":                            1245,
+		"AwsConfigConformancePack":                       1246,
+		"AwsGuardDutyMalwareProtectionPlan":              1247,
 		"AwsSesAccountSettings":                          1360,
 		"AzureResourceGroup":                             2000,
 		"AzureAksCluster":                                2001,
@@ -3774,7 +3804,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*\xb2\xcf\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\xaa\xd1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -3936,7 +3966,11 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\rAwsCloudTrail\x10\xd8\t\x1a\x1e\xa2\xf7\x04\x1a\b\f\x12\bv1alpha1\"\bawstrail:\x02\xf5\a\x125\n" +
 	"\x11AwsConfigRecorder\x10\xd9\t\x1a\x1d\xa2\xf7\x04\x19\b\f\x12\bv1alpha1\"\aawscfgr:\x02\xf0\a\x12.\n" +
 	"\rAwsConfigRule\x10\xda\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscfgrl\x12*\n" +
-	"\fAwsGuardDuty\x10\xdb\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsgd\x126\n" +
+	"\fAwsGuardDuty\x10\xdb\t\x1a\x17\xa2\xf7\x04\x13\b\f\x12\bv1alpha1\"\x05awsgd\x12:\n" +
+	"\x1bAwsCloudTrailEventDataStore\x10\xdc\t\x1a\x18\xa2\xf7\x04\x14\b\f\x12\bv1alpha1\"\x06awseds\x125\n" +
+	"\x13AwsConfigAggregator\x10\xdd\t\x1a\x1b\xa2\xf7\x04\x17\b\f\x12\bv1alpha1\"\tawscfgagg\x129\n" +
+	"\x18AwsConfigConformancePack\x10\xde\t\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawscfgcp\x12H\n" +
+	"!AwsGuardDutyMalwareProtectionPlan\x10\xdf\t\x1a \xa2\xf7\x04\x1c\b\f\x12\bv1alpha1\"\bawsgdmpp:\x04\xf0\a\xf5\a\x126\n" +
 	"\x15AwsSesAccountSettings\x10\xd0\n" +
 	"\x1a\x1a\xa2\xf7\x04\x16\b\f\x12\bv1alpha1\"\bawssesas\x121\n" +
 	"\x12AzureResourceGroup\x10\xd0\x0f\x1a\x18\xa2\xf7\x04\x14\b\r\x12\bv1alpha1\"\x04azrg0\x01\x121\n" +

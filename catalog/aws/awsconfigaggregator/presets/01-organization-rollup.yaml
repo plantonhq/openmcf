@@ -1,0 +1,14 @@
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsConfigAggregator
+metadata:
+  name: organization-rollup
+spec:
+  region: <aws-region>
+  aggregation:
+    organizationSource:
+      roleArn:
+        valueFrom:
+          kind: AwsIamRole
+          name: <config-org-role>
+          fieldPath: status.outputs.role_arn
+      allRegions: true

@@ -158,10 +158,14 @@ var verifiers = map[string]Verifier{
 
 	// The governance family (audit/compliance posture; per-kind
 	// contracts in governance.go).
-	"awscloudtrail":     &cloudTrailVerifier{},
-	"awsconfigrecorder": &configRecorderVerifier{},
-	"awsconfigrule":     &configRuleVerifier{},
-	"awsguardduty":      &guardDutyVerifier{},
+	"awscloudtrail":                     &cloudTrailVerifier{},
+	"awsconfigrecorder":                 &configRecorderVerifier{},
+	"awsconfigrule":                     &configRuleVerifier{},
+	"awsguardduty":                      &guardDutyVerifier{},
+	"awscloudtraileventdatastore":       &eventDataStoreVerifier{},
+	"awsconfigaggregator":               &configAggregatorVerifier{},
+	"awsconfigconformancepack":          &conformancePackVerifier{},
+	"awsguarddutymalwareprotectionplan": &malwareProtectionPlanVerifier{},
 
 	"awstransitgateway":              &transitGatewayVerifier{},
 	"awstransitgatewayvpcattachment": &transitGatewayVpcAttachmentVerifier{},
