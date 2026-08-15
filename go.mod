@@ -106,7 +106,7 @@ require (
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/stigmer/stigmer/sdk/go/v3 v3.10.0
+	github.com/stigmer/stigmer/sdk/go/v3 v3.12.4
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.16.3
 	github.com/zyedidia/clipboard v1.0.4

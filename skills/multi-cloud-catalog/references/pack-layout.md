@@ -21,11 +21,32 @@ resolves the pack from where you are working.
 ├── _patterns/                    # architecture patterns (README.md lists
 │                                 # them; one .md per pattern, each with
 │                                 # validated manifests)
+├── _pricing/
+│   └── estimates/
+│       └── <kinddir>.yaml        # GENERATED per-preset monthly estimates
+│                                 # (kinddir = kind lowercased, awsalb.yaml);
+│                                 # exact decimal strings, price source URL +
+│                                 # verification date on every line -- present
+│                                 # only for covered components
+├── _compliance/
+│   ├── controls-catalog.yaml     # the central control catalog: every
+│   │                             # control's id, name, and statement
+│   └── frameworks/
+│       └── <framework>.yaml      # crosswalks (hipaa-security-rule, cis-aws)
+│                                 # mapping framework requirements to controls
 └── <provider>/                   # aws/, gcp/, azure/, kubernetes/, ...
     ├── reference-index.md        # every kind in the provider, one line each
     └── <kind>/
         ├── GUIDE.md              # authored judgment -- present only where
         │                         # wisdom has been written
+        ├── cost.yaml             # fact-sheet: billing model, baseline
+        │                         # charges, cost drivers, exclusions --
+        │                         # present only for covered components
+        ├── controls.yaml         # fact-sheet: posture on every catalog
+        │                         # control, with evidence
+        ├── iac/
+        │   └── permissions.yaml  # fact-sheet: least-privilege runner
+        │                         # permissions, derived/proven provenance
         └── <api-version>/
             └── reference.md      # the component's complete reference page
 ```
@@ -78,15 +99,22 @@ Two per-component fallbacks, in order of preference:
    Download into the workspace you already own and read there -- the fetch
    stays inside your filesystem boundary, and the page carries the same
    facts the pack ships. The provider index
-   (`catalog/<provider>/reference-index.md`) and the commons page fetch the
-   same way when discovery or grammar questions arise. Prefer fetching only
-   the pages the answer needs over mirroring the tree.
+   (`catalog/<provider>/reference-index.md`), the commons page, and the
+   fact-sheet files (`catalog/<provider>/<kind>/cost.yaml`,
+   `.../controls.yaml`, `.../iac/permissions.yaml`,
+   `catalog/_pricing/estimates/<kinddir>.yaml`,
+   `catalog/_compliance/...`) fetch the same way when cost, posture, or
+   permission questions arise. Prefer fetching only the pages the answer
+   needs over mirroring the tree.
 
 Be honest about what per-component fallbacks cannot give you: full-text
 capability search, the inbound `Referenced By` view, the catalog-wide graph,
 and the authored guides and patterns (the fetched index partially covers
-"what exists"). When an answer would have needed one of those, say so
-instead of approximating.
+"what exists"). `planton explain` carries schema facts only -- no prices,
+postures, or permissions; those live in the fact-sheet files, so when no
+rung reaches them, say the verified cost/posture/permission data is not
+reachable rather than reciting figures from memory. When an answer would
+have needed any of these, say so instead of approximating.
 
 ## Freshness
 

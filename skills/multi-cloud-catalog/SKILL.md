@@ -1,6 +1,6 @@
 ---
 name: multi-cloud-catalog
-description: Research Planton's cloud component catalog from its file-based reference pack, shipped inside this skill -- generated per-component reference pages (spec fields, validation rules, outputs, cross-component wiring in both directions, a validated example manifest), per-provider and root indexes, the catalog-wide foreign-key graph, and the authored GUIDE.md / patterns wisdom layer. Use when composing or reviewing an architecture and you need component facts (what exists for a provider, which fields a component requires, what an output is called, what can reference what), operational judgment before choosing between components, or a compatible alternative when the software the user asked for has no component of its own. Also covers giving wisdom back -- when a session learns judgment the pack does not teach, this skill's contribution workflow turns it into a reviewed pull request against the catalog's guides and patterns. The discipline is absolute -- every schema claim is read from a pack file at answer time, never recalled from model memory; when no pack is reachable, fall back to `planton explain` per component and say what that fallback cannot see. Do not use for editing schemas or generated reference pages (facts are fixed at their proto source, never on the page) and do not use for deploying resources -- this skill is the research layer, plus the loop that improves it, that other workflows build on.
+description: Research Planton's cloud component catalog from its file-based reference pack, shipped inside this skill -- generated per-component reference pages (spec fields, validation rules, outputs, cross-component wiring in both directions, a validated example manifest), per-provider and root indexes, the catalog-wide foreign-key graph, the authored GUIDE.md / patterns wisdom layer, and the verified fact-sheet layer (per-component cost profiles with per-preset dollar estimates, security-control postures with evidence, and least-privilege runner permission manifests). Use when composing or reviewing an architecture and you need component facts (what exists for a provider, which fields a component requires, what an output is called, what can reference what, what a component costs per month, which security controls it enforces, what cloud permissions its deployment runner needs), operational judgment before choosing between components, or a compatible alternative when the software the user asked for has no component of its own. Also covers giving wisdom back -- when a session learns judgment the pack does not teach, this skill's contribution workflow turns it into a reviewed pull request against the catalog's guides and patterns. The discipline is absolute -- every schema claim, price, posture, and permission is read from a pack file at answer time, never recalled from model memory; when no pack is reachable, fall back to `planton explain` per component and say what that fallback cannot see. Do not use for editing schemas or generated reference pages (facts are fixed at their proto source, never on the page) and do not use for deploying resources -- this skill is the research layer, plus the loop that improves it, that other workflows build on.
 ---
 
 # Multi-Cloud Catalog
@@ -9,9 +9,13 @@ Planton's deployable building blocks -- cloud components spanning AWS, GCP,
 Azure, Kubernetes, and every other supported provider -- are documented as a
 reference pack: plain files you read and search. One page per component,
 regenerated from the schemas so facts cannot drift, plus indexes, a
-catalog-wide wiring graph, and an authored wisdom layer. This skill is how
-you research that pack: which file answers which question, in what order to
-look, and the discipline that keeps answers grounded.
+catalog-wide wiring graph, an authored wisdom layer, and -- for covered
+components -- verified fact-sheets: what it costs (with per-preset dollar
+estimates citing the provider price document and verification date), which
+security controls it enforces with evidence, and exactly what permissions
+its deployment runner needs. This skill is how you research that pack:
+which file answers which question, in what order to look, and the
+discipline that keeps answers grounded.
 
 ## The one law: facts are read, never recalled
 
@@ -46,6 +50,9 @@ fallbacks when no pack is reachable at all. Everything below writes
 | What does K export after deployment? | K's `## Outputs` table |
 | How do components wire together? | K's `## References` (outbound) and `## Referenced By` (inbound) tables; `_docs/reference-graph.yaml` for catalog-wide edges |
 | What is the judgment call before choosing K? | `GUIDE.md` beside K's page -- the page head links it when one exists -- and `_patterns/` for multi-component recipes |
+| What does K cost per month? | K's `cost.yaml` (billing model, always-on baseline charges, the spec fields that move the bill, exclusions) + the per-preset dollar estimates at `_pricing/estimates/<kinddir>.yaml`, where `<kinddir>` is the kind lowercased (e.g. `awsalb.yaml`) |
+| Which security controls does K enforce? | K's `controls.yaml` -- every control's stance with evidence; control ids resolve to names and statements in `_compliance/controls-catalog.yaml`; framework views (HIPAA, CIS) via `_compliance/frameworks/*.yaml` |
+| What permissions does K's runner need? | K's `iac/permissions.yaml` -- the least-privilege provisioning manifest per provider, each entry marked `derived` or `proven` |
 | The asked-for software has no component of its own | The catalog guide (`_docs/GUIDE.md`) owns this workflow: search the pack by the name the user said, propose the compatible alternative openly, generic mechanisms only as the last resort |
 | Manifest grammar: envelope, value/valueFrom, fieldPath spelling | `_docs/reference-commons.md` -- read it once per session; it also documents the search grammar these pages share |
 | This session learned judgment the pack does not teach | `references/contributing-wisdom.md` -- offer once, verify, draft, and deliver it as a pull request |
@@ -76,6 +83,33 @@ learned so you do not relearn them -- are in
    disagree on a fact, the generated page wins -- and the disagreement is
    worth contributing back (`references/contributing-wisdom.md`), as is any
    judgment this session had to work out that no guide teaches.
+
+## Money, posture, and permissions: the honesty grammar
+
+The fact-sheet layer carries claims with real-world consequences, so the
+one law gets four extra clauses when you read it:
+
+- **Money is echoed verbatim, never recomputed or rounded silently.** Every
+  dollar figure in an estimate is an exact decimal string with the provider
+  price document it was read from and the date it was verified -- quote it
+  as written (round only when presenting, and say so). Estimates are list
+  prices for a named preset with stated exclusions -- never a bill
+  prediction, never a quote.
+- **Absence is "not yet published", never $0 and never a guess.** Coverage
+  is component by component: a kind without fact-sheets has no cost.yaml
+  and no estimate document, and a covered kind whose rate lives on a
+  referenced resource ships no estimate on purpose (its cost.yaml notes say
+  where the honest estimate happens). Say the data is not published;
+  never fill the gap from memory.
+- **Posture language never becomes "compliant."** controls.yaml states
+  technical control posture with evidence; the crosswalks map it onto
+  framework requirements. No component is ever "HIPAA-compliant" by itself
+  -- say "enforces/exposes these controls, which map to these
+  requirements."
+- **Provenance is part of the answer.** Permission entries are `derived`
+  (read from the official module sources by static analysis) or `proven`
+  (observed from live provisioning runs) -- state which, and that manifests
+  describe the official modules as shipped.
 
 ## Speak the user's language
 

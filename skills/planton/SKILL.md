@@ -524,7 +524,7 @@ shared state and needs the user's explicit go-ahead:
 | `references/aws-architecture.md` | Choosing AWS service combinations; security and network defaults |
 | `references/kubernetes-architecture.md` | What runs on the cluster: the Istio/external-dns paved road; the shared-infra vs environment-chart split |
 | `references/environments.md` | The user mentions environments; how many clusters; cross-env connection authorization |
-| `references/cost-transparency.md` | Estimating monthly cost; the always-on charges; saving levers |
+| `references/cost-transparency.md` | The monthly cost picture from the catalog's verified estimates (read, never recalled); honesty rules for money; saving levers |
 | `references/filing-platform-gaps.md` | Planton fell short of a need; filing the gap as a GitHub issue |
 | `references/build-contract.md` | Parsing build output; exit codes; CI usage; endpoint pinning |
 | `references/issue-catalog.md` | A build failed and you need the fix pattern for an error |

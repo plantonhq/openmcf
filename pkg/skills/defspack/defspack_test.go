@@ -251,6 +251,14 @@ func TestCatalogSkillAssemblesPack(t *testing.T) {
 		"components/aws/reference-index.md",
 		"components/aws/awsvpc/v1alpha1/reference.md",
 		"components/aws/awsvpc/GUIDE.md",
+		// The fact-sheet layer: per-component sidecars by name, the
+		// central estimates and compliance trees by path.
+		"components/aws/awsvpc/cost.yaml",
+		"components/aws/awsvpc/controls.yaml",
+		"components/aws/awsvpc/iac/permissions.yaml",
+		"components/_pricing/estimates/awsvpc.yaml",
+		"components/_compliance/controls-catalog.yaml",
+		"components/_compliance/frameworks/cis-aws.yaml",
 	}
 	for _, path := range wantPresent {
 		if _, ok := catalogSkill.PackFiles[path]; !ok {
@@ -261,6 +269,12 @@ func TestCatalogSkillAssemblesPack(t *testing.T) {
 		"components/aws/awsvpc/v1alpha1/spec.proto", // not a pack file name
 		"components/_test/fake/v1alpha1/reference.md",
 		"components/aws/awsvpc/README.md",
+		// Pricing-pipeline machinery never ships: agents read estimates,
+		// engines read models/derivations/books.
+		"components/_pricing/models/awsvpc.yaml",
+		"components/_pricing/pricebook/aws.yaml",
+		"components/_pricing/derivations/awsvpc.yaml",
+		"components/_compliance/README.md", // central trees ship .yaml documents only
 	}
 	for _, path := range wantAbsent {
 		if _, ok := catalogSkill.PackFiles[path]; ok {
@@ -296,11 +310,11 @@ func TestCatalogSkillAssemblesPack(t *testing.T) {
 	}
 }
 
-// TestStripPackFilesGatesPackaging pins the shipping gate: packaging without
-// the pack (today's default -- the engines' 10MB transport cap refuses the
-// assembled artifact) produces a catalog archive with no components/
-// entries, while the assembled build carries them. Validation always sees
-// the pack either way (the strip happens after Validate).
+// TestStripPackFilesGatesPackaging pins the shipping gate: packaging
+// without -embed-catalog-pack (the release lanes pass it) produces a
+// catalog archive with no components/ entries, while the assembled build
+// carries them. Validation always sees the pack either way (the strip
+// happens after Validate).
 func TestStripPackFilesGatesPackaging(t *testing.T) {
 	tree, err := LoadTree(writeTree(t, catalogFixtureTree()))
 	if err != nil {
@@ -403,6 +417,35 @@ func TestValidateCatchesBrokenPacks(t *testing.T) {
 	}
 }
 
+// TestPackSelectionMirroredInReleaseLane is the two-homes tripwire: the
+// self-contained skill's pack assembly (this package) and the release
+// content lane's reference-pack.zip (tools/ci/release/package_content.sh)
+// are the same pack on two transports, so every selection token this
+// package uses must appear in the script's find clause. This cannot parse
+// shell, so it asserts token presence -- enough to make "extended one home,
+// forgot the other" fail loudly with the file to fix named.
+func TestPackSelectionMirroredInReleaseLane(t *testing.T) {
+	root := repoRoot(t)
+	scriptPath := filepath.Join(root, "tools", "ci", "release", "package_content.sh")
+	script, err := os.ReadFile(scriptPath)
+	if err != nil {
+		// Same sandbox posture as TestCommittedTreeValidates: the
+		// enforcing lane is `go test` from the repo root.
+		t.Skipf("release packaging script not present at %s (sandboxed run)", scriptPath)
+	}
+	text := string(script)
+	for name := range packFileNames {
+		if !strings.Contains(text, "'"+name+"'") {
+			t.Errorf("pack file name %q is selected here but missing from %s -- extend the reference-pack find clause to keep the two homes mirrored", name, scriptPath)
+		}
+	}
+	for _, prefix := range packPathPrefixes {
+		if !strings.Contains(text, prefix) {
+			t.Errorf("pack path prefix %q is selected here but missing from %s -- extend the reference-pack find clause to keep the two homes mirrored", prefix, scriptPath)
+		}
+	}
+}
+
 // validFixtureTree is a minimal tree satisfying the whole structure
 // contract; broken-tree cases mutate exactly one thing at a time.
 func validFixtureTree() map[string]string {
@@ -417,8 +460,10 @@ func validFixtureTree() map[string]string {
 // catalogFixtureTree is validFixtureTree plus a minimal catalog skill and
 // a miniature catalog/ tree exercising every selection rule: the _docs
 // root files, a patterns page, a provider index, a component reference
-// page with authored wisdom, a non-pack file that must be ignored, and a
-// _test fixture that must be excluded.
+// page with authored wisdom, the component's fact-sheet sidecars, the
+// central estimates and compliance documents, the pricing-machinery
+// siblings that must be ignored, a non-pack file that must be ignored,
+// and a _test fixture that must be excluded.
 func catalogFixtureTree() map[string]string {
 	files := validFixtureTree()
 	files["skills/multi-cloud-catalog/SKILL.md"] = "---\nname: multi-cloud-catalog\ndescription: Research the catalog pack.\n---\n\n# Catalog\n\nRead `references/pack-layout.md` first.\n"
@@ -433,6 +478,16 @@ func catalogFixtureTree() map[string]string {
 	files["catalog/aws/awsvpc/GUIDE.md"] = "AwsVpc wisdom.\n"
 	files["catalog/aws/awsvpc/v1alpha1/spec.proto"] = "syntax = \"proto3\";\n"
 	files["catalog/aws/awsvpc/README.md"] = "Not part of the pack.\n"
+	files["catalog/aws/awsvpc/cost.yaml"] = "billingModel: usage_based\n"
+	files["catalog/aws/awsvpc/controls.yaml"] = "controls: []\n"
+	files["catalog/aws/awsvpc/iac/permissions.yaml"] = "providers: {}\n"
+	files["catalog/_pricing/estimates/awsvpc.yaml"] = "presets: []\n"
+	files["catalog/_pricing/models/awsvpc.yaml"] = "machinery, never ships\n"
+	files["catalog/_pricing/pricebook/aws.yaml"] = "machinery, never ships\n"
+	files["catalog/_pricing/derivations/awsvpc.yaml"] = "machinery, never ships\n"
+	files["catalog/_compliance/controls-catalog.yaml"] = "controls: []\n"
+	files["catalog/_compliance/frameworks/cis-aws.yaml"] = "mappings: []\n"
+	files["catalog/_compliance/README.md"] = "Not a pack document.\n"
 	files["catalog/_test/fake/v1alpha1/reference.md"] = "# Fake\n"
 	return files
 }

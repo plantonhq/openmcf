@@ -65,9 +65,13 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Package definitions release
+        # -embed-catalog-pack ships the catalog skill self-contained (its
+        # components/ reference pack inside the archive). Artifacts above
+        # the engines' 10MB inline lane ride the capability-URL transfer
+        # lane; pushing them needs Stigmer SDK >= v3.12.3 (go.mod pins it).
         run: |
           VERSION="${{ inputs.version }}"
-          go run ./pkg/skills/defspack -version "${VERSION:-$GITHUB_REF_NAME}" -out build/definitions
+          go run ./pkg/skills/defspack -version "${VERSION:-$GITHUB_REF_NAME}" -out build/definitions -embed-catalog-pack
 
       - name: Discover skills
         id: discover
