@@ -15,7 +15,6 @@ spec:
     keys enabled on day one, and nothing is exposed until you compose
     exposure in front of it.
   iconUrl: https://downloads.planton.dev/catalog/logos/kubernetes/kuberneteskeycloak/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/identity-and-access-platform
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/identity-and-access-platform/README.md

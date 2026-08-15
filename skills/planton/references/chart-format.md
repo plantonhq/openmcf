@@ -20,7 +20,6 @@ spec:
   description: Configurable EKS environment with custom VPC, Route 53,
     autoscaled managed node group and toggleable Kubernetes add-ons.
   iconUrl: https://assets.planton.ai/…/logo.svg   # optional
-  isReady: true                                    # optional; catalog visibility
   webLinks:                                        # optional
     chartWebUrl: https://github.com/org/repo/tree/main/charts/aws/eks-environment
     readmeRawUrl: https://raw.githubusercontent.com/org/repo/main/charts/aws/eks-environment/README.md
