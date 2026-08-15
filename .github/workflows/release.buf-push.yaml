@@ -54,5 +54,8 @@ jobs:
           BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
         run: |
           set -euo pipefail
-          buf push --label "${GITHUB_REF_NAME}"
-          echo "pushed buf.build/planton/planton with label ${GITHUB_REF_NAME}"
+          # The tag label is the consumed contract (the platform's pinned dep);
+          # main is ALSO moved so the BSR UI's default view tracks releases
+          # instead of showing a stale "Latest" forever.
+          buf push --label "${GITHUB_REF_NAME}" --label main
+          echo "pushed buf.build/planton/planton with labels ${GITHUB_REF_NAME} + main"
