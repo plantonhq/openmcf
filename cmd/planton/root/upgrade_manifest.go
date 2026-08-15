@@ -88,6 +88,14 @@ func upgradeManifestHandler(cmd *cobra.Command, args []string) {
 // conversion operates on the raw document (an old-version manifest cannot
 // parse into current stubs -- that inability is the whole point), and the
 // RESULT is validated through the normal offline validator before returning.
+//
+// The document must be in MANIFEST spelling (camelCase field names -- the
+// form conversion specs address). This binary compiles only served-version
+// schemas, so it cannot canonicalize a document authored in storage spelling
+// (proto-name keys, the form stored-document exports carry) at its OLD
+// version: a storage-spelled document refuses honestly below with the way
+// out named, never a silent op no-op. Descriptor-holding lanes (the
+// platform's server and CLI) canonicalize any spelling.
 func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss, error) {
 	raw, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -109,6 +117,20 @@ func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss
 	}
 
 	apiVersion, _ := doc["apiVersion"].(string)
+	if apiVersion == "" {
+		// The envelope read is dual-spelling: a document whose version stamp
+		// arrives under the storage key is a stored-document export, and this
+		// binary cannot canonicalize its body (see the function doc) -- refuse
+		// with the way out, never no-op the conversion ops on storage keys.
+		if storageStamp, _ := doc["api_version"].(string); storageStamp != "" {
+			return nil, nil, fmt.Errorf(
+				"this document carries storage field spelling (api_version) -- a stored-document" +
+					" export, not an authored manifest. This offline converter reads manifest" +
+					" spelling (camelCase field names) only; re-author the manifest in that" +
+					" spelling, or use the Planton platform CLI's upgrade-manifest, which" +
+					" canonicalizes any spelling")
+		}
+	}
 	_, current, found := cutLastSlash(apiVersion)
 	if !found {
 		return nil, nil, fmt.Errorf("the manifest's apiVersion %q carries no version segment", apiVersion)
@@ -148,13 +170,23 @@ func upgradeManifestFile(manifestPath string) ([]byte, []conversion.DeclaredLoss
 
 	// The conversion is only done when its OUTPUT passes the same offline
 	// validation apply runs -- an upgrade that produces an invalid manifest
-	// is an engine or spec defect, and it surfaces here, not at the server.
+	// surfaces here, not at the server. Two causes share this failure: field
+	// names the conversion ops could not address (a manifest carrying proto-
+	// name spelling this binary cannot translate), or a genuine conversion-
+	// spec defect. The wording admits both -- blaming release data for a
+	// spelling this tool declares out of scope would be a lie.
 	loaded, err := manifest.LoadManifestBytes(out, manifestPath+" (upgraded)")
 	if err != nil {
-		return nil, nil, fmt.Errorf("the upgraded manifest does not load against %s -- this is a conversion-spec defect, report it: %w", served, err)
+		return nil, nil, fmt.Errorf("the upgraded manifest does not load against %s -- if the input"+
+			" manifest carries storage field spelling (proto-name keys), re-author it in manifest"+
+			" spelling or use the Planton platform CLI's upgrade-manifest; otherwise this is a"+
+			" conversion-spec defect, report it: %w", served, err)
 	}
 	if err := manifest.ValidateLoaded(loaded); err != nil {
-		return nil, nil, fmt.Errorf("the upgraded manifest does not validate against %s -- this is a conversion-spec defect, report it: %w", served, err)
+		return nil, nil, fmt.Errorf("the upgraded manifest does not validate against %s -- if the"+
+			" input manifest carries storage field spelling (proto-name keys), re-author it in"+
+			" manifest spelling or use the Planton platform CLI's upgrade-manifest; otherwise this"+
+			" is a conversion-spec defect, report it: %w", served, err)
 	}
 	return out, losses, nil
 }
