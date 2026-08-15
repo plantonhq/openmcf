@@ -14,7 +14,6 @@ spec:
     backing databases. Notebooks open pre-wired — the tracking server and
     the Ray client address are already in every user's environment.
   iconUrl: https://downloads.planton.dev/catalog/logos/kubernetes/kubernetesmlflow/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/ml-platform
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/ml-platform/README.md

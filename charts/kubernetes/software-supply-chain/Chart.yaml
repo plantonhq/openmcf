@@ -15,7 +15,6 @@ spec:
     default: generated admin credentials, authenticated stores, no public
     chart defaults anywhere.
   iconUrl: https://downloads.planton.dev/catalog/logos/kubernetes/kubernetesharbor/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/software-supply-chain
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/software-supply-chain/README.md

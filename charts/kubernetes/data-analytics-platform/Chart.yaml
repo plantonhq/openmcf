@@ -14,7 +14,6 @@ spec:
     by reference through operator-maintained Secrets — no wiring left to
     do, SQL on the first login.
   iconUrl: https://downloads.planton.dev/catalog/logos/kubernetes/kubernetestrino/logo.svg
-  isReady: true
   webLinks:
     chartWebUrl: https://github.com/plantonhq/planton/tree/main/charts/kubernetes/data-analytics-platform
     readmeRawUrl: https://raw.githubusercontent.com/plantonhq/planton/refs/heads/main/charts/kubernetes/data-analytics-platform/README.md
