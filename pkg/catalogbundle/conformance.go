@@ -12,6 +12,7 @@ import (
 	controlprofilev1 "github.com/plantonhq/planton/compliance/componentcontrolprofile/v1"
 	controlcatalogv1 "github.com/plantonhq/planton/compliance/controlcatalog/v1"
 	frameworkcrosswalkv1 "github.com/plantonhq/planton/compliance/frameworkcrosswalk/v1"
+	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
 	costprofilev1 "github.com/plantonhq/planton/finops/componentcostprofile/v1"
 	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
@@ -289,6 +290,10 @@ func cargoProblems(bundle *Bundle) []string {
 	parseTree(estimatesPrefix, func(key string) proto.Message {
 		cargoAt(key).estimate = &costestimatev1.ComponentCostEstimate{}
 		return cargoAt(key).estimate
+	})
+	parseTree(derivationsPrefix, func(key string) proto.Message {
+		cargoAt(key).derivation = &derivationv1.ComponentCostDerivation{}
+		return cargoAt(key).derivation
 	})
 
 	// Whole-or-not-at-all per component, and estimates only for covered

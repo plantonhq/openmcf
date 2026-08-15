@@ -24,10 +24,14 @@
 //	                      (iac/permissions.yaml)
 //	estimates/**          covered components' generated per-preset cost
 //	                      estimates, provider/kind layout
+//	derivations/**        derived components' machine-executable cost
+//	                      derivations (value-to-quantity rules a server-side
+//	                      estimator evaluates against live manifests),
+//	                      provider/kind layout
 //	compliance/**         the central control catalog and the framework
 //	                      crosswalks the control profiles are read against
 //	pricebooks/**         the pinned per-provider price books the estimates
-//	                      were generated from
+//	                      were generated from and the derivations price by
 //
 // Fact-sheet coverage is presence-based: a component without the cost/
 // controls/permissions sidecars ships no cargo and its entry carries no

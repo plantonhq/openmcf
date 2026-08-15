@@ -1,0 +1,80 @@
+# Cost derivation: the machine-executable rules turning any AwsNatGateway
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awsnatgateway.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsnatgateway
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-west-2
+  lines:
+    - sku_meter: NAT gateway hours
+      applies_when:
+        - field_path: availability_mode
+          op: not_equals
+          value: regional
+      quantity:
+        - hours_in_month: true
+      price_slug: nat-gateway-hours-us-west-2
+      basis: one zonal gateway, billed every hour of the month
+    - sku_meter: NAT gateway hours
+      applies_when:
+        - field_path: availability_mode
+          op: equals
+          value: regional
+      quantity:
+        - constant: "2"
+        - hours_in_month: true
+      price_slug: nat-gateway-hours-us-west-2
+      basis: a regional gateway bills NAT hours once per Availability Zone it spans; priced at the two-AZ minimum of a multi-AZ VPC, 2 x 730 hours
+  exclusions:
+    - text: data processing bills per GB in both directions -- the dominant real-world cost, entirely traffic-dependent
+    - applies_when:
+        - field_path: connectivity_type
+          op: equals
+          value: public
+        - field_path: availability_mode
+          op: not_equals
+          value: regional
+      text: the attached Elastic IP bills as a public IPv4 address on its own AwsElasticIp component
+    - applies_when:
+        - field_path: availability_mode
+          op: not_equals
+          value: regional
+      text: cross-AZ transfer applies for traffic reaching the gateway from other zones
+    - applies_when:
+        - field_path: availability_mode
+          op: equals
+          value: regional
+      text: each additional Availability Zone in the VPC adds another 730 gateway-hours per month
+    - applies_when:
+        - field_path: availability_mode
+          op: equals
+          value: regional
+      text: the AWS-managed public IPv4 addresses (one per zone) bill per address
+  notes:
+    - applies_when:
+        - field_path: connectivity_type
+          op: equals
+          value: public
+        - field_path: availability_mode
+          op: not_equals
+          value: regional
+      text: The hourly charge is the committed floor; a chatty private subnet can multiply it through data processing.
+    - applies_when:
+        - field_path: connectivity_type
+          op: equals
+          value: private
+      text: Private connectivity holds no public IPv4 addresses, removing that charge entirely -- the NAT rates are unchanged.
+    - applies_when:
+        - field_path: availability_mode
+          op: equals
+          value: regional
+      text: Estimated at the smallest multi-AZ layout; a three-AZ VPC raises the gateway-hours line by half again.

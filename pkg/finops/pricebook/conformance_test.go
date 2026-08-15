@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -33,6 +34,12 @@ var (
 //     region code, and usage type; Azure needs a meter identity (a meter
 //     ID, or a service plus at least one meter-identifying name filter);
 //     GCP needs the service ID and SKU ID.
+//  5. An entry's attributes, when present, carry non-empty keys and
+//     values, and no two entries wear the same lookup identity
+//     (service_name, pricing_unit, region, currency, attributes) -- a
+//     value-keyed lookup must resolve to exactly one entry, so a
+//     duplicate identity would turn every match into an ambiguity
+//     refusal.
 //
 // Whether entries are actually referenced (and agree with component cost
 // profiles on units) is the estimate generator's cross-artifact check --
@@ -73,6 +80,7 @@ func TestPriceBookConformance(t *testing.T) {
 			}
 
 			seen := map[string]bool{}
+			identities := map[string]string{}
 			for _, entry := range book.GetSpec().GetEntries() {
 				name := entry.GetName()
 				if !slugPattern.MatchString(name) {
@@ -105,6 +113,25 @@ func TestPriceBookConformance(t *testing.T) {
 				if !datePattern.MatchString(entry.GetRetrievedOn()) {
 					t.Errorf("entry %q retrieved_on %q is not a YYYY-MM-DD date -- a dated price is a fact, an undated price is a rumor",
 						name, entry.GetRetrievedOn())
+				}
+
+				if attributes := entry.GetAttributes(); len(attributes) > 0 {
+					keys := make([]string, 0, len(attributes))
+					for key, value := range attributes {
+						if strings.TrimSpace(key) == "" || strings.TrimSpace(value) == "" {
+							t.Errorf("entry %q has an attribute with an empty key or value", name)
+						}
+						keys = append(keys, key)
+					}
+					sort.Strings(keys)
+					identity := entry.GetServiceName() + "|" + entry.GetPricingUnit() + "|" + entry.GetRegion() + "|" + entry.GetCurrency()
+					for _, key := range keys {
+						identity += "|" + key + "=" + attributes[key]
+					}
+					if holder, taken := identities[identity]; taken {
+						t.Errorf("entries %q and %q wear the same lookup identity -- a value-keyed lookup could never resolve between them", holder, name)
+					}
+					identities[identity] = name
 				}
 
 				if selector := entry.GetAwsSelector(); selector != nil {

@@ -1,0 +1,47 @@
+# Cost derivation: the machine-executable rules for AwsVpc -- which are
+# deliberately NO priced lines. A VPC is free AWS infrastructure: the
+# derivation derives the honest zero, with configuration-scoped
+# exclusions naming where the network's real spend lives. The estimate
+# generator replays the catalog presets through these rules to emit
+# ../estimates/awsvpc.yaml. Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awsvpc
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  exclusions:
+    - applies_when:
+        - field_path: assign_generated_ipv6_cidr_block
+          op: equals
+          value: "true"
+      text: the VPC, its Amazon-provided IPv6 block, and its DNS attributes bill nothing at any scale
+    - applies_when:
+        - field_path: assign_generated_ipv6_cidr_block
+          op: not_equals
+          value: "true"
+        - field_path: ipv4_ipam_pool_id
+          op: is_unset
+      text: the VPC and its DNS attributes bill nothing at any scale
+    - applies_when:
+        - field_path: ipv4_ipam_pool_id
+          op: is_set
+      text: IPAM-sourced CIDRs bill per active IP under the account's IPAM Advanced tier -- the cost follows the account's IPAM footprint, not this manifest
+    - applies_when:
+        - field_path: encryption_control
+          op: is_set
+      text: VPC Encryption Control in enforce mode is free
+    - text: the network's real spend lives in separate components deployed into it -- NAT gateways, VPC endpoints, public IPv4 addresses, load balancers
+  notes:
+    - applies_when:
+        - field_path: ipv4_ipam_pool_id
+          op: is_unset
+      text: A VPC is free AWS infrastructure -- the estimate is zero by the provider's pricing, not by omission.
+    - applies_when:
+        - field_path: ipv4_ipam_pool_id
+          op: is_set
+      text: The VPC itself remains free; this manifest's only money lever is that its address space is IPAM-governed, and IPAM bills on the account operating it.

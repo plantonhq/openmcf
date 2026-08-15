@@ -386,9 +386,11 @@ generate-reference: generate-proto-docs
 	go run ./pkg/explain/refgen
 
 # Regenerates the committed per-component cost estimates
-# (catalog/_pricing/estimates/) by joining each component's estimate model
-# (catalog/_pricing/models/) with its provider's price book
-# (catalog/_pricing/pricebook/). Always whole-tree: the dead-price sweep
+# (catalog/_pricing/estimates/): derived components replay every preset
+# through their cost derivation (catalog/_pricing/derivations/), modeled
+# components join their estimate model (catalog/_pricing/models/) with the
+# provider's price book (catalog/_pricing/pricebook/). Always whole-tree:
+# the dead-price sweep
 # needs every model's references. Offline and deterministic: unchanged
 # inputs regenerate byte-identical files (enforced by the drift test in
 # pkg/finops/estimategen).

@@ -1,7 +1,8 @@
 # The GCP price book: every Google Cloud unit price the catalog's cost
 # estimates cite, pinned with source URL and retrieval date. Entries are
-# referenced by slug from the estimate models under ../models/; the
-# estimate generator joins the two. Entries with a gcp_selector are
+# referenced by slug from the estimate models under ../models/ and
+# selected by value-keyed attribute identity from the cost derivations
+# under ../derivations/. Entries with a gcp_selector are
 # machine-refreshed from the Cloud Billing Catalog API by the price-book
 # fetcher (make generate-price-book; needs GCP_BILLING_API_KEY or gcloud
 # application-default credentials). Entries without a selector are

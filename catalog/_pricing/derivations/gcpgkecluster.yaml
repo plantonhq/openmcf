@@ -1,0 +1,48 @@
+# Cost derivation: the machine-executable rules turning any GcpGkeCluster
+# manifest's spec values into metered quantities and price choices. The
+# cluster's own committed cost is the flat management fee (identical for
+# zonal and regional clusters); node compute lives on GcpGkeNodePool
+# resources or, in Autopilot, on per-pod charges -- both named in the
+# exclusions. The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/gcpgkecluster.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: gcpgkecluster
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: location
+    assumption: us-central1
+    zone_to_region: true
+  lines:
+    - sku_meter: cluster management fee
+      quantity:
+        - hours_in_month: true
+      price_slug: gke-cluster-management-fee
+      basis: one cluster, billed every hour of the month at the flat per-cluster rate (identical for zonal and regional clusters)
+  exclusions:
+    - applies_when:
+        - field_path: enable_autopilot
+          op: not_equals
+          value: "true"
+      text: node compute -- this Standard-mode cluster runs its workloads on separate GcpGkeNodePool resources with their own estimates
+    - applies_when:
+        - field_path: enable_autopilot
+          op: equals
+          value: "true"
+      text: Autopilot pod charges -- running pods bill per second for the vCPU, memory, and ephemeral storage they request, entirely workload-dependent
+    - text: Cloud Logging ingestion for the enabled log components, network egress, and Cloud NAT for private nodes
+  notes:
+    - applies_when:
+        - field_path: enable_autopilot
+          op: equals
+          value: "true"
+      text: The GKE free tier credits $74.40 per month per billing account and applies to Autopilot clusters -- the account's first Autopilot or zonal cluster effectively pays no management fee. List total shown without the credit.
+    - applies_when:
+        - field_path: enable_autopilot
+          op: not_equals
+          value: "true"
+      text: Zonal clusters share the GKE free-tier credit; a REGIONAL cluster never receives it and pays the management fee in full. List total shown without any credit.

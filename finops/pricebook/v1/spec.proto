@@ -56,6 +56,18 @@ message PriceBookEntry {
   // Prices drift; a dated price is a fact, an undated price is a rumor.
   string retrieved_on = 8;
 
+  // The entry's decomposed identity, for value-keyed lookups: the spec
+  // values that select this price, in the catalog's own vocabulary
+  // (e.g. instance_class: db.m6g.large, engine: postgres, deployment:
+  // multi-az). A component's cost derivation binds these keys from
+  // manifest values to pick the entry, so slugs stay human naming while
+  // attributes are the machine join. Entries carrying attributes must
+  // be unique per (service_name, pricing_unit, region, attributes) --
+  // the conformance gate enforces it, and a lookup matching zero or
+  // several entries is a refusal, never a pick. Empty for entries only
+  // referenced by slug.
+  map<string, string> attributes = 12;
+
   // How the price-book fetcher re-reads this price from the provider's
   // public price API. At most one selector, matching the book's own
   // provider (the conformance gate enforces the pairing; the oneof makes

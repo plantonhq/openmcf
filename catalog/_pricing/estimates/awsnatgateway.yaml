@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -40,14 +43,14 @@ spec:
           sku_meter: NAT gateway hours
           pricing_unit: hours
           pricing_quantity: "730"
-          quantity_basis: one zonal private gateway, billed every hour of the month at the same NAT rate as public
+          quantity_basis: one zonal gateway, billed every hour of the month
           list_unit_price: "0.045"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20260814011739/us-west-2/index.json
           retrieved_on: "2026-08-14"
           list_cost: "32.8500"
       total_list_cost: "32.8500"
       exclusions:
-        - data processing bills per GB in both directions, entirely traffic-dependent
+        - data processing bills per GB in both directions -- the dominant real-world cost, entirely traffic-dependent
         - cross-AZ transfer applies for traffic reaching the gateway from other zones
       notes: Private connectivity holds no public IPv4 addresses, removing that charge entirely -- the NAT rates are unchanged.
     - preset: 03-regional-nat-gateway
@@ -66,7 +69,7 @@ spec:
           list_cost: "65.7000"
       total_list_cost: "65.7000"
       exclusions:
+        - data processing bills per GB in both directions -- the dominant real-world cost, entirely traffic-dependent
         - each additional Availability Zone in the VPC adds another 730 gateway-hours per month
         - the AWS-managed public IPv4 addresses (one per zone) bill per address
-        - data processing bills per GB in both directions, entirely traffic-dependent
       notes: Estimated at the smallest multi-AZ layout; a three-AZ VPC raises the gateway-hours line by half again.

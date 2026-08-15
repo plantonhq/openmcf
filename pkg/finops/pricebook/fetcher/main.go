@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -129,6 +130,21 @@ func renderBook(header string, book *pricebookv1.PriceBook) string {
 		yamlemit.WriteKV(&b, 6, "list_unit_price", entry.GetListUnitPrice(), true)
 		yamlemit.WriteKV(&b, 6, "price_source", entry.GetPriceSource(), strings.Contains(entry.GetPriceSource(), " "))
 		yamlemit.WriteKV(&b, 6, "retrieved_on", entry.GetRetrievedOn(), true)
+		// Attributes are hand-authored lookup identity, never fetched --
+		// but a refresh rewrites the whole book, so dropping them here
+		// would silently destroy every value-keyed price. Sorted keys keep
+		// the rendering deterministic.
+		if attributes := entry.GetAttributes(); len(attributes) > 0 {
+			b.WriteString("      attributes:\n")
+			keys := make([]string, 0, len(attributes))
+			for key := range attributes {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				yamlemit.WriteKV(&b, 8, key, attributes[key], false)
+			}
+		}
 		if selector := entry.GetAwsSelector(); selector != nil {
 			b.WriteString("      aws_selector:\n")
 			yamlemit.WriteKV(&b, 8, "offer_code", selector.GetOfferCode(), false)

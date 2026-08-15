@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -35,7 +38,7 @@ spec:
       hours_per_month: 730
       total_list_cost: "0.00"
       exclusions:
-        - IPAM-sourced CIDRs (the primary /16, secondary /20, and IPv6 /56) bill per active IP under the account's IPAM Advanced tier -- the cost follows the account's IPAM footprint, not this manifest
+        - the VPC and its DNS attributes bill nothing at any scale
         - VPC Encryption Control in enforce mode is free
-        - the network's real spend lives in separate components deployed into it
-      notes: The VPC itself remains free; this preset's only money lever is that its address space is IPAM-governed, and IPAM bills on the account operating it.
+        - the network's real spend lives in separate components deployed into it -- NAT gateways, VPC endpoints, public IPv4 addresses, load balancers
+      notes: A VPC is free AWS infrastructure -- the estimate is zero by the provider's pricing, not by omission.

@@ -148,6 +148,15 @@ func (b *Bundle) CostEstimates() map[string][]byte {
 	return b.subtree(estimatesPrefix)
 }
 
+// CostDerivations returns the bundle's machine-executable cost derivations
+// keyed by entry name (derivations/<provider>/<kind>.yaml), sorted. A
+// server-side estimator evaluates these rules against live manifests with
+// the aboard price books -- zero external calls; components without a
+// derivation aboard are estimated at their preset ranges only.
+func (b *Bundle) CostDerivations() map[string][]byte {
+	return b.subtree(derivationsPrefix)
+}
+
 // Compliance returns the bundle's central compliance documents keyed by
 // entry name (compliance/controls-catalog.yaml and
 // compliance/frameworks/<framework>.yaml), sorted.

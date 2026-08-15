@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -20,7 +23,7 @@ spec:
           sku_meter: node pool VM hours
           pricing_unit: hours
           pricing_quantity: "2190"
-          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+          quantity_basis: default pool at the autoscaling floor (min_count) x 730 hours, Linux pay-as-you-go
           list_unit_price: "0.192"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
@@ -56,7 +59,7 @@ spec:
           sku_meter: standard static public IP
           pricing_unit: IP-hours
           pricing_quantity: "730"
-          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+          quantity_basis: the managed outbound public IPs (Azure's default is one) x 730 hours
           list_unit_price: "0.005"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
@@ -64,7 +67,7 @@ spec:
       total_list_cost: "574.5100"
       exclusions:
         - Log Analytics ingestion for Container Insights (oms_agent) depends on workload log volume
-        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - autoscaled nodes above the floor are workload-dependent (max_count sets the VM ceiling)
         - load balancer data processed and network egress are traffic-dependent
       notes: Estimated at the autoscaling floor -- the committed always-on spend.
     - preset: 02-private
@@ -76,7 +79,7 @@ spec:
           sku_meter: node pool VM hours
           pricing_unit: hours
           pricing_quantity: "2190"
-          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+          quantity_basis: default pool at the autoscaling floor (min_count) x 730 hours, Linux pay-as-you-go
           list_unit_price: "0.192"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
@@ -112,7 +115,7 @@ spec:
           sku_meter: standard static public IP
           pricing_unit: IP-hours
           pricing_quantity: "730"
-          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+          quantity_basis: the managed outbound public IPs (Azure's default is one) x 730 hours
           list_unit_price: "0.005"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
@@ -120,7 +123,7 @@ spec:
       total_list_cost: "574.5100"
       exclusions:
         - private endpoint and private DNS zone charges for the private API server
-        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - autoscaled nodes above the floor are workload-dependent (max_count sets the VM ceiling)
         - load balancer data processed and network egress are traffic-dependent
       notes: Estimated at the autoscaling floor -- the committed always-on spend.
     - preset: 03-hardened-enterprise
@@ -132,7 +135,7 @@ spec:
           sku_meter: node pool VM hours
           pricing_unit: hours
           pricing_quantity: "2190"
-          quantity_basis: default pool at the autoscaling floor (min_count 3) x 730 hours, Standard_D4s_v5 Linux pay-as-you-go
+          quantity_basis: default pool at the autoscaling floor (min_count) x 730 hours, Linux pay-as-you-go
           list_unit_price: "0.192"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
@@ -168,15 +171,15 @@ spec:
           sku_meter: standard static public IP
           pricing_unit: IP-hours
           pricing_quantity: "730"
-          quantity_basis: one managed outbound public IP (the default managed_outbound_ip_count) x 730 hours
+          quantity_basis: the managed outbound public IPs (Azure's default is one) x 730 hours
           list_unit_price: "0.005"
           price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Network' and armRegionName eq 'Global' and meterName eq 'Standard IPv4 Static Public IP' and productName eq 'IP Addresses' and priceType eq 'Consumption'"
           retrieved_on: "2026-08-14"
           list_cost: "3.6500"
       total_list_cost: "574.5100"
       exclusions:
+        - Log Analytics ingestion for Container Insights (oms_agent) depends on workload log volume
         - Microsoft Defender for Containers plan charges (billed per protected vCPU per month)
-        - Log Analytics ingestion for Container Insights and Defender depends on workload volume
-        - autoscaled nodes above the floor (max_count 5 raises the VM ceiling to about $700.80)
+        - autoscaled nodes above the floor are workload-dependent (max_count sets the VM ceiling)
         - load balancer data processed and network egress are traffic-dependent
       notes: Estimated at the autoscaling floor -- the committed always-on spend. Host encryption on the default pool adds no charge of its own.

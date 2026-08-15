@@ -13,6 +13,7 @@ import (
 	controlprofilev1 "github.com/plantonhq/planton/compliance/componentcontrolprofile/v1"
 	controlcatalogv1 "github.com/plantonhq/planton/compliance/controlcatalog/v1"
 	frameworkcrosswalkv1 "github.com/plantonhq/planton/compliance/frameworkcrosswalk/v1"
+	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	costestimatev1 "github.com/plantonhq/planton/finops/componentcostestimate/v1"
 	costprofilev1 "github.com/plantonhq/planton/finops/componentcostprofile/v1"
 	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
@@ -33,6 +34,7 @@ const (
 	controlsPrefix    = "controls/"    // controls/<provider>/<kind>.yaml    <- catalog/<provider>/<kind>/controls.yaml
 	permissionsPrefix = "permissions/" // permissions/<provider>/<kind>.yaml <- catalog/<provider>/<kind>/iac/permissions.yaml
 	estimatesPrefix   = "estimates/"   // estimates/<provider>/<kind>.yaml   <- catalog/_pricing/estimates/<component>.yaml
+	derivationsPrefix = "derivations/" // derivations/<provider>/<kind>.yaml <- catalog/_pricing/derivations/<component>.yaml
 	compliancePrefix  = "compliance/"  // the control catalog + frameworks/<framework>.yaml crosswalks
 	pricebooksPrefix  = "pricebooks/"  // pricebooks/<provider>.yaml         <- catalog/_pricing/pricebook/<provider>.yaml
 
@@ -56,6 +58,11 @@ type componentCargo struct {
 	// estimate document (rate-delegated components whose honest price
 	// exists only at composition time).
 	estimate *costestimatev1.ComponentCostEstimate
+	// derivation is nil for covered components whose estimates are still
+	// hand-modeled -- derivations join component by component, and a
+	// server-side estimator prices exactly the components whose rules are
+	// aboard.
+	derivation *derivationv1.ComponentCostDerivation
 }
 
 // collectCargo gathers the catalog tree's fact-sheet sidecars and central
@@ -174,6 +181,35 @@ func collectCargo(catalogDir string, entries map[string][]byte) (map[string]*com
 		}
 		c.estimate = estimate
 		entries[estimatesPrefix+c.provider+"/"+c.kindDir+".yaml"] = content
+	}
+
+	// Cost derivations are authored centrally, one document per derived
+	// component, re-keyed to the same provider/kind convention. Presence
+	// is per component: a derivation requires its component's cost cargo,
+	// never the other way around.
+	derivationMatches, err := filepath.Glob(filepath.Join(catalogDir, "_pricing", "derivations", "*.yaml"))
+	if err != nil {
+		return nil, err
+	}
+	for _, match := range derivationMatches {
+		kindDir := strings.TrimSuffix(filepath.Base(match), ".yaml")
+		c := byKindDir[kindDir]
+		if c == nil {
+			problems = append(problems, fmt.Sprintf(
+				"derivation %s belongs to no component with a cost profile -- derivations price covered components only", match))
+			continue
+		}
+		content, err := os.ReadFile(match)
+		if err != nil {
+			return nil, err
+		}
+		derivation := &derivationv1.ComponentCostDerivation{}
+		if err := protobufyaml.LoadYamlBytes(content, derivation); err != nil {
+			problems = append(problems, fmt.Sprintf("%s does not parse against its schema: %v", match, err))
+			continue
+		}
+		c.derivation = derivation
+		entries[derivationsPrefix+c.provider+"/"+c.kindDir+".yaml"] = content
 	}
 
 	// The central documents ride whenever any component cargo does: control

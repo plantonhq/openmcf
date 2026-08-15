@@ -16,6 +16,7 @@ go_library(
         "//compliance/componentcontrolprofile/v1:componentcontrolprofile",
         "//compliance/controlcatalog/v1:controlcatalog",
         "//compliance/frameworkcrosswalk/v1:frameworkcrosswalk",
+        "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/componentcostestimate/v1:componentcostestimate",
         "//finops/componentcostprofile/v1:componentcostprofile",
         "//finops/pricebook/v1:pricebook",

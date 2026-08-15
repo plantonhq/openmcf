@@ -43,6 +43,7 @@ func TestFactSheetCargoRoundTrip(t *testing.T) {
 		"controls/aws/awsalb.yaml":    filepath.Join(catalogDir(t), "aws", "awsalb", "controls.yaml"),
 		"permissions/aws/awsalb.yaml": filepath.Join(catalogDir(t), "aws", "awsalb", "iac", "permissions.yaml"),
 		"estimates/aws/awsalb.yaml":   filepath.Join(catalogDir(t), "_pricing", "estimates", "awsalb.yaml"),
+		"derivations/aws/awsalb.yaml": filepath.Join(catalogDir(t), "_pricing", "derivations", "awsalb.yaml"),
 	} {
 		want, err := os.ReadFile(treePath)
 		if err != nil {
@@ -198,6 +199,13 @@ func TestConformanceRefusesIncoherentCargo(t *testing.T) {
 			},
 			wantFinding: "does not parse against its schema",
 		},
+		{
+			name: "malformed derivation document",
+			contents: map[string][]byte{
+				"derivations/aws/awsvpc.yaml": []byte("kind: ComponentCostDerivation\nnot_a_field: true\n"),
+			},
+			wantFinding: "does not parse against its schema",
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -236,5 +244,26 @@ func TestCollectCargoRefusesPartialCoverage(t *testing.T) {
 		t.Fatal("a cost profile without controls and permissions must fail cargo collection")
 	} else if !strings.Contains(err.Error(), "whole-or-not-at-all") {
 		t.Fatalf("the refusal must name the standard, got: %v", err)
+	}
+}
+
+// A derivation whose component ships no cost profile fails the BUILD with
+// the file named -- derivations price covered components only.
+func TestCollectCargoRefusesOrphanDerivation(t *testing.T) {
+	dir := t.TempDir()
+	derivationsDir := filepath.Join(dir, "_pricing", "derivations")
+	if err := os.MkdirAll(derivationsDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	derivationDoc := "apiVersion: finops.planton.dev/v1\nkind: ComponentCostDerivation\nmetadata:\n  name: awswidget\nspec:\n  currency: USD\n"
+	if err := os.WriteFile(filepath.Join(derivationsDir, "awswidget.yaml"), []byte(derivationDoc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	entries := map[string][]byte{}
+	if _, err := collectCargo(dir, entries); err == nil {
+		t.Fatal("a derivation without a covered component must fail cargo collection")
+	} else if !strings.Contains(err.Error(), "derivations price covered components only") {
+		t.Fatalf("the refusal must name the rule, got: %v", err)
 	}
 }

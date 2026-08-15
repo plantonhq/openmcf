@@ -1,7 +1,8 @@
 # The Azure price book: every Azure unit price the catalog's cost
 # estimates cite, pinned with source URL and retrieval date. Entries are
-# referenced by slug from the estimate models under ../models/; the
-# estimate generator joins the two. Entries with an azure_selector are
+# referenced by slug from the estimate models under ../models/ and
+# selected by value-keyed attribute identity from the cost derivations
+# under ../derivations/. Entries with an azure_selector are
 # machine-refreshed from the Microsoft Retail Prices API by the price-book
 # fetcher (make generate-price-book); their sources are version-pinned
 # filter URLs that can be fetched again. Entries without a selector are
@@ -20,6 +21,8 @@ spec:
       list_unit_price: "0.192"
       price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Virtual Machines' and armRegionName eq 'eastus' and armSkuName eq 'Standard_D4s_v5' and meterName eq 'D4s v5' and productName eq 'Virtual Machines Dsv5 Series' and priceType eq 'Consumption'"
       retrieved_on: "2026-08-14"
+      attributes:
+        vm_size: Standard_D4s_v5
       azure_selector:
         service_name: Virtual Machines
         arm_region_name: eastus

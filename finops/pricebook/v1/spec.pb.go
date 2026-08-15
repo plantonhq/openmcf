@@ -108,6 +108,17 @@ type PriceBookEntry struct {
 	// The date the unit price was read from price_source (YYYY-MM-DD).
 	// Prices drift; a dated price is a fact, an undated price is a rumor.
 	RetrievedOn string `protobuf:"bytes,8,opt,name=retrieved_on,json=retrievedOn,proto3" json:"retrieved_on,omitempty"`
+	// The entry's decomposed identity, for value-keyed lookups: the spec
+	// values that select this price, in the catalog's own vocabulary
+	// (e.g. instance_class: db.m6g.large, engine: postgres, deployment:
+	// multi-az). A component's cost derivation binds these keys from
+	// manifest values to pick the entry, so slugs stay human naming while
+	// attributes are the machine join. Entries carrying attributes must
+	// be unique per (service_name, pricing_unit, region, attributes) --
+	// the conformance gate enforces it, and a lookup matching zero or
+	// several entries is a refusal, never a pick. Empty for entries only
+	// referenced by slug.
+	Attributes map[string]string `protobuf:"bytes,12,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// How the price-book fetcher re-reads this price from the provider's
 	// public price API. At most one selector, matching the book's own
 	// provider (the conformance gate enforces the pairing; the oneof makes
@@ -208,6 +219,13 @@ func (x *PriceBookEntry) GetRetrievedOn() string {
 		return x.RetrievedOn
 	}
 	return ""
+}
+
+func (x *PriceBookEntry) GetAttributes() map[string]string {
+	if x != nil {
+		return x.Attributes
+	}
+	return nil
 }
 
 func (x *PriceBookEntry) GetSelector() isPriceBookEntry_Selector {
@@ -595,7 +613,7 @@ const file_finops_pricebook_v1_spec_proto_rawDesc = "" +
 	"\n" +
 	"\x1efinops/pricebook/v1/spec.proto\x12\x1fdev.planton.finops.pricebook.v1\"Z\n" +
 	"\rPriceBookSpec\x12I\n" +
-	"\aentries\x18\x01 \x03(\v2/.dev.planton.finops.pricebook.v1.PriceBookEntryR\aentries\"\xa6\x04\n" +
+	"\aentries\x18\x01 \x03(\v2/.dev.planton.finops.pricebook.v1.PriceBookEntryR\aentries\"\xc6\x05\n" +
 	"\x0ePriceBookEntry\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12!\n" +
@@ -604,11 +622,17 @@ const file_finops_pricebook_v1_spec_proto_rawDesc = "" +
 	"\bcurrency\x18\x05 \x01(\tR\bcurrency\x12&\n" +
 	"\x0flist_unit_price\x18\x06 \x01(\tR\rlistUnitPrice\x12!\n" +
 	"\fprice_source\x18\a \x01(\tR\vpriceSource\x12!\n" +
-	"\fretrieved_on\x18\b \x01(\tR\vretrievedOn\x12V\n" +
+	"\fretrieved_on\x18\b \x01(\tR\vretrievedOn\x12_\n" +
+	"\n" +
+	"attributes\x18\f \x03(\v2?.dev.planton.finops.pricebook.v1.PriceBookEntry.AttributesEntryR\n" +
+	"attributes\x12V\n" +
 	"\faws_selector\x18\t \x01(\v21.dev.planton.finops.pricebook.v1.AwsPriceSelectorH\x00R\vawsSelector\x12\\\n" +
 	"\x0eazure_selector\x18\n" +
 	" \x01(\v23.dev.planton.finops.pricebook.v1.AzurePriceSelectorH\x00R\razureSelector\x12V\n" +
-	"\fgcp_selector\x18\v \x01(\v21.dev.planton.finops.pricebook.v1.GcpPriceSelectorH\x00R\vgcpSelectorB\n" +
+	"\fgcp_selector\x18\v \x01(\v21.dev.planton.finops.pricebook.v1.GcpPriceSelectorH\x00R\vgcpSelector\x1a=\n" +
+	"\x0fAttributesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\n" +
 	"\n" +
 	"\bselector\"\xc2\x01\n" +
 	"\x10AwsPriceSelector\x12\x1d\n" +
@@ -652,24 +676,26 @@ func file_finops_pricebook_v1_spec_proto_rawDescGZIP() []byte {
 	return file_finops_pricebook_v1_spec_proto_rawDescData
 }
 
-var file_finops_pricebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_finops_pricebook_v1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_finops_pricebook_v1_spec_proto_goTypes = []any{
 	(*PriceBookSpec)(nil),      // 0: dev.planton.finops.pricebook.v1.PriceBookSpec
 	(*PriceBookEntry)(nil),     // 1: dev.planton.finops.pricebook.v1.PriceBookEntry
 	(*AwsPriceSelector)(nil),   // 2: dev.planton.finops.pricebook.v1.AwsPriceSelector
 	(*AzurePriceSelector)(nil), // 3: dev.planton.finops.pricebook.v1.AzurePriceSelector
 	(*GcpPriceSelector)(nil),   // 4: dev.planton.finops.pricebook.v1.GcpPriceSelector
+	nil,                        // 5: dev.planton.finops.pricebook.v1.PriceBookEntry.AttributesEntry
 }
 var file_finops_pricebook_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.finops.pricebook.v1.PriceBookSpec.entries:type_name -> dev.planton.finops.pricebook.v1.PriceBookEntry
-	2, // 1: dev.planton.finops.pricebook.v1.PriceBookEntry.aws_selector:type_name -> dev.planton.finops.pricebook.v1.AwsPriceSelector
-	3, // 2: dev.planton.finops.pricebook.v1.PriceBookEntry.azure_selector:type_name -> dev.planton.finops.pricebook.v1.AzurePriceSelector
-	4, // 3: dev.planton.finops.pricebook.v1.PriceBookEntry.gcp_selector:type_name -> dev.planton.finops.pricebook.v1.GcpPriceSelector
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 1: dev.planton.finops.pricebook.v1.PriceBookEntry.attributes:type_name -> dev.planton.finops.pricebook.v1.PriceBookEntry.AttributesEntry
+	2, // 2: dev.planton.finops.pricebook.v1.PriceBookEntry.aws_selector:type_name -> dev.planton.finops.pricebook.v1.AwsPriceSelector
+	3, // 3: dev.planton.finops.pricebook.v1.PriceBookEntry.azure_selector:type_name -> dev.planton.finops.pricebook.v1.AzurePriceSelector
+	4, // 4: dev.planton.finops.pricebook.v1.PriceBookEntry.gcp_selector:type_name -> dev.planton.finops.pricebook.v1.GcpPriceSelector
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_finops_pricebook_v1_spec_proto_init() }
@@ -688,7 +714,7 @@ func file_finops_pricebook_v1_spec_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_finops_pricebook_v1_spec_proto_rawDesc), len(file_finops_pricebook_v1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
