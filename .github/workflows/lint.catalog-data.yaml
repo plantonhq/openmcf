@@ -7,7 +7,10 @@
 # that fails strict schema parsing, references a control the central catalog
 # does not define, skips a control the catalog does define, names a spec
 # field path that no longer resolves against the served contract, or ships
-# a permission entry without provenance or structural validity. Also guards
+# a permission entry without provenance or structural validity, or an AWS
+# permission action that does not exist in the provider's own inventory
+# (pkg/iac/actioninventory's committed snapshot -- an invented or
+# misspelled action name cannot ship). Also guards
 # the central control catalog and framework crosswalks themselves
 # (catalog/_compliance/) and the whole cost-estimate pipeline
 # (catalog/_pricing/): the price books' pinned prices must carry sources
@@ -21,7 +24,8 @@
 # allowlist. See pkg/finops/costprofile, pkg/finops/pricebook,
 # pkg/finops/estimatemodel, pkg/finops/estimategen (the drift gate),
 # pkg/finops/costestimate, pkg/compliance/controlcatalog,
-# pkg/compliance/controlprofile, pkg/iac/permissions.
+# pkg/compliance/controlprofile, pkg/iac/permissions,
+# pkg/iac/actioninventory.
 # =============================================================================
 
 name: lint.catalog-data
@@ -33,6 +37,7 @@ on:
       - 'pkg/finops/**'
       - 'pkg/compliance/**'
       - 'pkg/iac/permissions/**'
+      - 'pkg/iac/actioninventory/**'
       - 'pkg/specpath/**'
       - 'pkg/yamlemit/**'
       - '.github/workflows/lint.catalog-data.yaml'
@@ -44,6 +49,7 @@ on:
       - 'pkg/finops/**'
       - 'pkg/compliance/**'
       - 'pkg/iac/permissions/**'
+      - 'pkg/iac/actioninventory/**'
       - 'pkg/specpath/**'
       - 'pkg/yamlemit/**'
       - '.github/workflows/lint.catalog-data.yaml'
@@ -64,4 +70,4 @@ jobs:
           go-version-file: 'go.mod'
 
       - name: Run catalog-data gates
-        run: go test ./pkg/specpath/... ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/...
+        run: go test ./pkg/specpath/... ./pkg/finops/... ./pkg/compliance/... ./pkg/iac/permissions/... ./pkg/iac/actioninventory/...

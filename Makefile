@@ -410,6 +410,16 @@ generate-cost-estimates:
 generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
+# Refreshes the committed AWS action-inventory snapshot
+# (pkg/iac/actioninventory/aws.yaml) from AWS's machine-readable service
+# reference, scoped to the services the committed runner permissions
+# manifests reference. Requires network access; CI never fetches -- it
+# validates every manifest action against the committed snapshot (an
+# invented or misspelled action name cannot ship).
+.PHONY: generate-action-inventory
+generate-action-inventory:
+	go run ./pkg/iac/actioninventory/fetcher
+
 .PHONY: build-go
 build-go: fmt deps vet
 	GOOS=darwin GOARCH=amd64 ${build_cmd} -o ${build_dir}/${name}-darwin-amd64 .
