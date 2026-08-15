@@ -1,0 +1,58 @@
+# =============================================================================
+# Buf Schema Registry Push (Reusable Workflow)
+# =============================================================================
+# Pushes this repo's buf module (buf.build/planton/planton) to the BSR with
+# the release tag as a label. The platform repo resolves its upstream proto
+# IMPORTS from this module via a label-pinned dep
+# (buf.build/planton/planton:{tag} in its apis/buf.yaml).
+#
+# Why the label is load-bearing: the consumer's dep is PINNED to the tag
+# label, so if this job fails or lags, the platform's `buf dep update` fails
+# loudly ("resource ... not found") instead of silently serving the previous
+# release's protos. That loud-fail pinning is what made returning to the BSR
+# safe after the July 2026 silent-drift incident (an UNPINNED registry dep
+# served two-week-stale protos without any error; see the platform repo's
+# local-proto-codegen ADR and its reversal ADR).
+#
+# Idempotent: pushing identical content reuses the existing BSR commit and
+# just attaches the label, so re-runs are safe.
+#
+# Note this serves import RESOLUTION only. Stub GENERATION stays local /
+# prebuilt (the stub-sdks artifacts): buf.build's hosted codegen service has
+# a ~120s server-side ceiling this proto surface exceeds, which is why remote
+# plugins were retired and must not return.
+#
+# Called by: .github/workflows/release.yaml (after its github-release job)
+# =============================================================================
+
+name: release.buf-push
+
+on:
+  workflow_call:
+    secrets:
+      BUF_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  buf-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+
+      - name: Push module to the BSR with the release tag as label
+        env:
+          BUF_TOKEN: ${{ secrets.BUF_TOKEN }}
+        run: |
+          set -euo pipefail
+          buf push --label "${GITHUB_REF_NAME}"
+          echo "pushed buf.build/planton/planton with label ${GITHUB_REF_NAME}"
