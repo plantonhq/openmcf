@@ -1057,6 +1057,7 @@ violations:
   - catalog/azure/azurewebapplicationfirewallpolicy/iac:missing-permissions
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-control-profile
   - catalog/azure/azurewebapplicationfirewallpolicy:missing-cost-profile
+  - catalog/cloudflare/cloudflarecachesettings/iac:missing-permissions
   - catalog/cloudflare/cloudflarecertificatepack/iac:missing-permissions
   - catalog/cloudflare/cloudflarecertificatepack:missing-control-profile
   - catalog/cloudflare/cloudflarecertificatepack:missing-cost-profile
@@ -1147,6 +1148,8 @@ violations:
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/iac:missing-permissions
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-control-profile
   - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork:missing-cost-profile
+  - catalog/cloudflare/cloudflarezonesettings/iac:missing-permissions
+  - catalog/cloudflare/cloudflarezonetlssettings/iac:missing-permissions
   - catalog/digitalocean/digitaloceanappplatformservice/iac:missing-permissions
   - catalog/digitalocean/digitaloceanappplatformservice:missing-control-profile
   - catalog/digitalocean/digitaloceanappplatformservice:missing-cost-profile

@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package dev.planton.cloudflare.cloudflarecachesettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "catalog/cloudflare/cloudflarecachesettings/v1alpha1/outputs.proto";
+import "catalog/cloudflare/cloudflarecachesettings/v1alpha1/spec.proto";
+import "shared/metadata.proto";
+
+// CloudflareCacheSettings is a KRM-style resource for managing a Cloudflare zone's
+// caching and performance posture: tiered caching (smart and generic), Cache
+// Reserve, regional tiered cache, cache variants, and Argo Smart Routing.
+message CloudflareCacheSettings {
+  // api-version
+  string api_version = 1 [(buf.validate.field).string.const = 'cloudflare.planton.dev/v1alpha1'];
+
+  // resource-kind
+  string kind = 2 [(buf.validate.field).string.const = 'CloudflareCacheSettings'];
+
+  // metadata
+  dev.planton.shared.CloudResourceMetadata metadata = 3 [(buf.validate.field).required = true];
+
+  // spec
+  CloudflareCacheSettingsSpec spec = 4 [(buf.validate.field).required = true];
+
+  // status
+  CloudflareCacheSettingsStatus status = 5;
+}
+
+// CloudflareCacheSettingsStatus represents the observed state of a zone's cache settings.
+message CloudflareCacheSettingsStatus {
+  // stack-outputs from the IaC deployment
+  CloudflareCacheSettingsStackOutputs outputs = 1;
+}

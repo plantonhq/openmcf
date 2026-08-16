@@ -291,6 +291,27 @@ func TestCloudflareCustomHostnameFallbackOrigin_Terraform(t *testing.T) {
 	runAllScenariosForComponent(t, "cloudflarecustomhostnamefallbackorigin", "terraform")
 }
 
+func TestCloudflareZoneSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezonesettings", "pulumi")
+}
+func TestCloudflareZoneSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezonesettings", "terraform")
+}
+
+func TestCloudflareCacheSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarecachesettings", "pulumi")
+}
+func TestCloudflareCacheSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarecachesettings", "terraform")
+}
+
+func TestCloudflareZoneTlsSettings_Pulumi(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezonetlssettings", "pulumi")
+}
+func TestCloudflareZoneTlsSettings_Terraform(t *testing.T) {
+	runAllScenariosForComponent(t, "cloudflarezonetlssettings", "terraform")
+}
+
 // runAllScenariosForComponent discovers and runs all E2E scenarios for a
 // Cloudflare component.
 func runAllScenariosForComponent(t *testing.T, component, engine string) {

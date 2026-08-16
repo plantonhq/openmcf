@@ -379,6 +379,21 @@ var verifiers = map[string]Verifier{
 		outputKeys:     []string{"zone_id"},
 		absentStatuses: []string{"pending_deletion", "deleted"},
 	},
+	// The zone-settings singleton class (settings surfaces that always exist
+	// while the zone does; destroy is a NO-OP -- per-class contract in
+	// zone_settings.go). Each probes its own family's settings endpoint.
+	"cloudflarezonesettings": &settingsSingletonVerifier{
+		component:  "cloudflarezonesettings",
+		pathFormat: "zones/%s/settings",
+	},
+	"cloudflarecachesettings": &settingsSingletonVerifier{
+		component:  "cloudflarecachesettings",
+		pathFormat: "zones/%s/cache/cache_reserve",
+	},
+	"cloudflarezonetlssettings": &settingsSingletonVerifier{
+		component:  "cloudflarezonetlssettings",
+		pathFormat: "zones/%s/ssl/universal/settings",
+	},
 	"cloudflarelist": &apiPathVerifier{
 		component:     "cloudflarelist",
 		pathFormat:    "accounts/%s/rules/lists/%s",

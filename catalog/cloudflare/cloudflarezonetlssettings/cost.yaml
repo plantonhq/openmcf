@@ -1,0 +1,10 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezonetlssettings
+spec:
+  billing_model: free
+  notes: Universal SSL, per-hostname TLS overrides, origin TLS compliance modes, auto origin key exchange, and CA hostname associations are free features. Total TLS may require the zone's Advanced Certificate Manager subscription (a zone-level add-on that bills on the zone, never through this component) -- the live-proof lane verifies the exact entitlement. Certificate UPLOADS (custom SSL, mTLS) are separate components with their own profiles.

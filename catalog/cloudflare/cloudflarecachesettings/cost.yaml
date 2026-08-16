@@ -1,0 +1,22 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecachesettings
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: argo_smart_routing
+      sku_meter: Argo Smart Routing
+      pricing_unit: base fee + GB of routed traffic
+      impact: Turning this on starts a monthly base fee plus a per-GB charge on all traffic Argo routes. Cloudflare has NO delete for this setting -- destroying the resource with it still on KEEPS BILLING; apply false first when retiring the feature.
+    - field_path: cache_reserve
+      sku_meter: Cache Reserve storage and operations
+      pricing_unit: GB-months + read/write operations
+      impact: Turning this on persists cached objects in Cloudflare's durable storage tier, billing for stored bytes and operations while enabled. Like Argo, it has no delete -- turn it off explicitly to stop the storage charges.
+  estimate_exclusions:
+    - Argo per-GB charges are traffic-dependent
+    - Cache Reserve storage volume depends on the zone's cacheable content and eviction pattern
+  notes: Tiered caching (smart and generic), regional tiered cache, and cache variants are free features on every plan. The two paid toggles are the only cost surface, and both keep billing until explicitly turned off -- destroy alone never stops them.

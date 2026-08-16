@@ -1,0 +1,62 @@
+# Provider-parity manifest: recorded modeling judgment for CloudflareCacheSettings
+# against the cloudflare@5.23.0 distilled schema. Only divergences are recorded;
+# everything else must exact-name-match.
+#
+# The kind wraps six zone-singleton cache resources. Each provider resource
+# carries one `value` argument; the spec names each setting for what it IS
+# (smart_tiered_cache, cache_reserve, ...) so every mapping is a rename of the
+# provider's uniform `value` onto the setting's own field.
+resources:
+  cloudflare_tiered_cache:
+    mappings:
+      # Rename: the provider's generic value IS the smart-tiered-cache toggle
+      # (the resource manages Smart Tiered Cache; the module maps true/false
+      # to the API's on/off).
+      - spec: spec.smart_tiered_cache
+        arg: value
+  cloudflare_argo_tiered_caching:
+    mappings:
+      # Rename: generic tiered caching's on/off value.
+      - spec: spec.tiered_caching
+        arg: value
+  cloudflare_zone_cache_reserve:
+    mappings:
+      # Rename: Cache Reserve's on/off value.
+      - spec: spec.cache_reserve
+        arg: value
+  cloudflare_regional_tiered_cache:
+    mappings:
+      # Rename: Regional Tiered Cache's on/off value.
+      - spec: spec.regional_tiered_cache
+        arg: value
+  cloudflare_argo_smart_routing:
+    mappings:
+      # Rename: Argo Smart Routing's on/off value.
+      - spec: spec.argo_smart_routing
+        arg: value
+  cloudflare_zone_cache_variants:
+    mappings:
+      # Fan-in: the provider nests the eleven per-extension MIME lists under
+      # one `value` object; the spec models them as the cache_variants message.
+      - spec: spec.cache_variants.avif
+        arg: value
+      - spec: spec.cache_variants.bmp
+        arg: value
+      - spec: spec.cache_variants.gif
+        arg: value
+      - spec: spec.cache_variants.jp2
+        arg: value
+      - spec: spec.cache_variants.jpeg
+        arg: value
+      - spec: spec.cache_variants.jpg
+        arg: value
+      - spec: spec.cache_variants.jpg2
+        arg: value
+      - spec: spec.cache_variants.png
+        arg: value
+      - spec: spec.cache_variants.tif
+        arg: value
+      - spec: spec.cache_variants.tiff
+        arg: value
+      - spec: spec.cache_variants.webp
+        arg: value

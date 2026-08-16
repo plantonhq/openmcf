@@ -1,0 +1,22 @@
+# The free-surface arm: smart tiered cache, regional tiered cache, and cache
+# variants (all free on every plan). The paid toggles (cache_reserve,
+# argo_smart_routing) never enter a live lane from authoring -- see
+# e2e/paid-arms-plan.yaml and the profile prose. Runs FIRST (filename
+# order); revert-defaults runs last.
+apiVersion: cloudflare.planton.dev/v1alpha1
+kind: CloudflareCacheSettings
+metadata:
+  name: e2e-cache-free-${E2E_RUN_ID}
+spec:
+  zone_id:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: planton-oss-e2e-cloudflarednszone-prereq
+      fieldPath: status.outputs.zone_id
+  smart_tiered_cache: true
+  regional_tiered_cache: true
+  cache_variants:
+    jpg:
+      - image/webp
+    jpeg:
+      - image/webp

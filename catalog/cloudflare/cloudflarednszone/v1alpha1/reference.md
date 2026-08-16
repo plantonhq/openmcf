@@ -1206,6 +1206,7 @@ Fields on other kinds that can point at this resource:
 
 | Kind | Field | Reads |
 |---|---|---|
+| CloudflareCacheSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCertificatePack | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCustomHostname | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareCustomHostnameFallbackOrigin | `spec.zoneId` | `status.outputs.zone_id` |
@@ -1220,6 +1221,8 @@ Fields on other kinds that can point at this resource:
 | CloudflareWorker | `spec.routes[].zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessApplication | `spec.zoneId` | `status.outputs.zone_id` |
 | CloudflareZeroTrustAccessGroup | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareZoneSettings | `spec.zoneId` | `status.outputs.zone_id` |
+| CloudflareZoneTlsSettings | `spec.zoneId` | `status.outputs.zone_id` |
 | KubernetesExternalDns | `spec.cloudflare.zoneIdFilters` | `status.outputs.zone_id` |
 
 ## See Also

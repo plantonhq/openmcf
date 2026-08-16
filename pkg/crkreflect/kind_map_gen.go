@@ -366,6 +366,7 @@ import (
 	azurevpnserverconfigurationv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnserverconfiguration/v1alpha1"
 	azurevpnsitev1alpha1 "github.com/plantonhq/planton/catalog/azure/azurevpnsite/v1alpha1"
 	azurewebapplicationfirewallpolicyv1alpha1 "github.com/plantonhq/planton/catalog/azure/azurewebapplicationfirewallpolicy/v1alpha1"
+	cloudflarecachesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecachesettings/v1alpha1"
 	cloudflarecertificatepackv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecertificatepack/v1alpha1"
 	cloudflarecustomhostnamev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostname/v1alpha1"
 	cloudflarecustomhostnamefallbackoriginv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarecustomhostnamefallbackorigin/v1alpha1"
@@ -396,6 +397,8 @@ import (
 	cloudflarezerotrusttunnelv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnel/v1alpha1"
 	cloudflarezerotrusttunnelroutev1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelroute/v1alpha1"
 	cloudflarezerotrusttunnelvirtualnetworkv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/v1alpha1"
+	cloudflarezonesettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonesettings/v1alpha1"
+	cloudflarezonetlssettingsv1alpha1 "github.com/plantonhq/planton/catalog/cloudflare/cloudflarezonetlssettings/v1alpha1"
 	digitaloceanappplatformservicev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanappplatformservice/v1alpha1"
 	digitaloceanbucketv1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceanbucket/v1alpha1"
 	digitaloceancertificatev1alpha1 "github.com/plantonhq/planton/catalog/digitalocean/digitaloceancertificate/v1alpha1"
@@ -1016,6 +1019,7 @@ var ProviderAzureMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
 }
 
 var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Message{
+	cloudresourcekind.CloudResourceKind_CloudflareCacheSettings:                 &cloudflarecachesettingsv1alpha1.CloudflareCacheSettings{},
 	cloudresourcekind.CloudResourceKind_CloudflareCertificatePack:               &cloudflarecertificatepackv1alpha1.CloudflareCertificatePack{},
 	cloudresourcekind.CloudResourceKind_CloudflareCustomHostname:                &cloudflarecustomhostnamev1alpha1.CloudflareCustomHostname{},
 	cloudresourcekind.CloudResourceKind_CloudflareCustomHostnameFallbackOrigin:  &cloudflarecustomhostnamefallbackoriginv1alpha1.CloudflareCustomHostnameFallbackOrigin{},
@@ -1046,6 +1050,8 @@ var ProviderCloudflareMap = map[cloudresourcekind.CloudResourceKind]proto.Messag
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnel:               &cloudflarezerotrusttunnelv1alpha1.CloudflareZeroTrustTunnel{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelRoute:          &cloudflarezerotrusttunnelroutev1alpha1.CloudflareZeroTrustTunnelRoute{},
 	cloudresourcekind.CloudResourceKind_CloudflareZeroTrustTunnelVirtualNetwork: &cloudflarezerotrusttunnelvirtualnetworkv1alpha1.CloudflareZeroTrustTunnelVirtualNetwork{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneSettings:                  &cloudflarezonesettingsv1alpha1.CloudflareZoneSettings{},
+	cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings:               &cloudflarezonetlssettingsv1alpha1.CloudflareZoneTlsSettings{},
 }
 
 var ProviderDigitalOceanMap = map[cloudresourcekind.CloudResourceKind]proto.Message{

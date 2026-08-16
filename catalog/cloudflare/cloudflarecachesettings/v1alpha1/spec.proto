@@ -1,0 +1,113 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarecachesettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareCacheSettingsSpec manages a zone's caching and performance posture:
+// tiered caching, Cache Reserve, regional tiered cache, cache variants, and Argo
+// Smart Routing.
+//
+// A field left unset is NOT MANAGED: the module never sends it and the zone keeps
+// whatever value it already carries. Most of these settings also have NO DELETE at
+// Cloudflare -- destroying the resource abandons the last-applied values rather
+// than reverting them (smart tiered cache and cache variants are the exceptions
+// with real deletes). Argo Smart Routing deserves the loudest warning: it is a
+// PAID feature billed monthly plus usage, and because its delete is a no-op,
+// destroying this resource with argo_smart_routing still true KEEPS BILLING until
+// someone turns it off explicitly. Apply false first when retiring it.
+//
+// Smart vs generic tiered caching are the same product family behind two API
+// objects: smart_tiered_cache picks the single best upper-tier data center
+// automatically (the recommended mode), while tiered_caching enables the generic
+// tiered topology. The Cloudflare dashboard's "Tiered Cache" toggle maps to
+// smart_tiered_cache.
+message CloudflareCacheSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_setting"
+    message: "configure at least one cache setting -- a CloudflareCacheSettings resource that manages nothing would deploy nothing"
+    expression: "has(this.smart_tiered_cache) || has(this.tiered_caching) || has(this.cache_reserve) || has(this.regional_tiered_cache) || has(this.argo_smart_routing) || has(this.cache_variants)"
+  };
+
+  // The zone whose cache settings are managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Smart Tiered Cache: route cache misses through the single best upper-tier
+  // data center for the origin (the dashboard's Tiered Cache toggle). This is the
+  // one cache setting with a real delete at Cloudflare: destroying the resource
+  // while this is managed disables smart tiered cache.
+  optional bool smart_tiered_cache = 2;
+
+  // Generic tiered caching: enable the tiered cache topology where lower-tier
+  // data centers ask upper tiers before the origin. Use smart_tiered_cache unless
+  // a specific generic topology is required. No delete at Cloudflare -- destroy
+  // abandons the last-applied value.
+  optional bool tiered_caching = 3;
+
+  // Cache Reserve: persist cached objects in Cloudflare's durable storage tier so
+  // they survive cache eviction. Paid feature billed by storage and operations;
+  // no delete at Cloudflare -- destroy abandons the last-applied value (turn it
+  // off explicitly before retiring to stop the storage charges).
+  optional bool cache_reserve = 4;
+
+  // Regional Tiered Cache: add a regional tier between lower tiers and the
+  // upper tier, cutting long-haul trips for cache misses in distant regions.
+  // No delete at Cloudflare -- destroy abandons the last-applied value.
+  optional bool regional_tiered_cache = 5;
+
+  // Argo Smart Routing: route origin-bound traffic over Cloudflare's measured
+  // fastest paths. PAID: a monthly base fee plus per-GB usage. Cloudflare has no
+  // delete for this setting -- destroying the resource while this is true KEEPS
+  // THE FEATURE ON AND KEEPS BILLING. Apply false first when retiring it.
+  optional bool argo_smart_routing = 6;
+
+  // Cache variants: which additional Accept-header content types Cloudflare may
+  // serve for cached image extensions (for example serving image/webp variants
+  // of .jpg URLs when Polish/WebP is active). Real delete at Cloudflare:
+  // destroying the resource resets variants to defaults.
+  CloudflareCacheSettingsVariants cache_variants = 7;
+}
+
+// Per-extension lists of content types Cloudflare may serve as variants of a
+// cached asset. Each field names the file extension of the ORIGINAL asset; the
+// list carries the MIME types of acceptable variants (for example image/webp,
+// image/avif). Only extensions with at least one value are sent.
+message CloudflareCacheSettingsVariants {
+  // Variant content types for .avif assets.
+  repeated string avif = 1;
+
+  // Variant content types for .bmp assets.
+  repeated string bmp = 2;
+
+  // Variant content types for .gif assets.
+  repeated string gif = 3;
+
+  // Variant content types for .jp2 assets.
+  repeated string jp2 = 4;
+
+  // Variant content types for .jpeg assets.
+  repeated string jpeg = 5;
+
+  // Variant content types for .jpg assets.
+  repeated string jpg = 6;
+
+  // Variant content types for .jpg2 assets.
+  repeated string jpg2 = 7;
+
+  // Variant content types for .png assets.
+  repeated string png = 8;
+
+  // Variant content types for .tif assets.
+  repeated string tif = 9;
+
+  // Variant content types for .tiff assets.
+  repeated string tiff = 10;
+
+  // Variant content types for .webp assets.
+  repeated string webp = 11;
+}

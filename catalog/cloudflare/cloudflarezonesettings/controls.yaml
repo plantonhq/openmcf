@@ -1,0 +1,73 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezonesettings
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: Zone settings store no customer data -- they configure how Cloudflare's edge serves an existing zone.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to encrypt (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: ssl
+      evidence:
+        type: spec_default
+        reference: Unset means the zone keeps its current encryption mode; setting ssl=full encrypts Cloudflare-to-origin connections and ssl=strict also validates the origin certificate. min_tls_version raises the floor for client connections.
+      notes: Production zones should set ssl=strict -- flexible terminates TLS at the edge and speaks plain http to the origin. The spec comment carries the same warning.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: Zone settings configure how a publicly-served zone behaves; there is no component endpoint to hide. Access restriction for a zone's applications is CloudflareRuleset and Zero Trust Access territory.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No ingress of its own (see no-public-access).
+    - control_id: edge-protection
+      status: configurable
+      field_path: security_level
+      evidence:
+        type: spec_default
+        reference: Unset means the zone keeps its current profile; security_level tunes how aggressively Cloudflare challenges suspicious visitors (up to under_attack), and browser_check plus the legacy waf toggle add request filtering.
+      notes: Modern WAF rules are CloudflareRuleset territory; this kind carries the zone-wide filtering posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership posture, not a component choice; the settings expose no data plane of their own.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own; legacy TLS protocol floors are covered under enc-in-transit via min_tls_version and tls_1_2_only.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records zone-setting changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: nel
+      evidence:
+        type: spec_default
+        reference: Unset means Network Error Logging keeps its current state; enabling nel has browsers report connectivity failures for the zone into Cloudflare's NEL analytics.
+      notes: Zone analytics themselves are always on; NEL is the one monitoring signal this kind switches.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest; no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Settings apply zone-wide across Cloudflare's global anycast edge; replication is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Cloudflare has NO delete for zone settings -- destroying this component abandons the live values rather than removing anything, so there is no destructive deletion to protect against. The spec and GUIDE teach the revert-before-retire discipline instead.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates and patches the edge that serves these settings; no customer-visible patch surface exists.

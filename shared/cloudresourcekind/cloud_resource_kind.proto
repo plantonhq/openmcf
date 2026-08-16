@@ -5342,7 +5342,10 @@ enum CloudResourceKind {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cferr"
-    prerequisites: [CloudflareDnsZone, CloudflareEmailRoutingZone]
+    prerequisites: [
+      CloudflareDnsZone,
+      CloudflareEmailRoutingZone
+    ]
   }];
   CloudflareEmailRoutingAddress = 7025 [(kind_meta) = {
     provider: cloudflare
@@ -5378,6 +5381,36 @@ enum CloudResourceKind {
     provider: cloudflare
     version: "v1alpha1"
     id_prefix: "cfchfo"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
+  // --- 7150-7179: Cloudflare zone TLS-posture sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
+  // configuration -- the spec's zone_id reference must resolve first.
+  CloudflareZoneTlsSettings = 7150 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cftls"
+    prerequisites: [CloudflareDnsZone]
+  }];
+
+  // --- 7180-7209: Cloudflare zone-behavior sub-band ---
+
+  // CloudflareDnsZone is a prerequisite because zone settings configure an
+  // existing zone -- the spec's zone_id reference must resolve first.
+  CloudflareZoneSettings = 7180 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfzset"
+    prerequisites: [CloudflareDnsZone]
+  }];
+  // CloudflareDnsZone is a prerequisite because cache settings configure an
+  // existing zone -- the spec's zone_id reference must resolve first.
+  CloudflareCacheSettings = 7181 [(kind_meta) = {
+    provider: cloudflare
+    version: "v1alpha1"
+    id_prefix: "cfcache"
     prerequisites: [CloudflareDnsZone]
   }];
 

@@ -48,18 +48,9 @@ resources:
     disposition: deferred
     reason: "Enterprise-only entitlement: secondary DNS zone transfers"
   # ---- Zone configuration ---------------------------------------------------
-  - resource: cloudflare_zone_setting
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZoneSettings kind (the zone's setting map: SSL mode, minimum TLS, HTTP/3, and kin)"
-  - resource: cloudflare_managed_transforms
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneSettings kind (managed request/response header toggles are zone settings by another API name)"
-  - resource: cloudflare_url_normalization_settings
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneSettings kind (two-field zone singleton)"
-  - resource: cloudflare_origin_cloud_region
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneSettings kind (per-origin-IP region hints are zone-scoped configuration rows)"
+  # (cloudflare_zone_setting, cloudflare_managed_transforms,
+  # cloudflare_url_normalization_settings, and cloudflare_origin_cloud_region
+  # are consumed by CloudflareZoneSettings -- census-proven, so absent here.)
   - resource: cloudflare_custom_pages
     disposition: model-planned
     reason: "judged as a planned CloudflareCustomPage kind (one instance per error-page identifier with independent lifecycle)"
@@ -76,46 +67,19 @@ resources:
     disposition: deferred
     reason: "legacy surface superseded by the Rulesets engine, which the catalog already models; Cloudflare is migrating users off Page Rules"
   # ---- Caching & performance ------------------------------------------------
-  - resource: cloudflare_tiered_cache
-    disposition: model-planned
-    reason: "judged as a planned CloudflareCacheSettings kind (the zone's cache and performance settings)"
-  - resource: cloudflare_zone_cache_reserve
-    disposition: model-planned
-    reason: "folds into the planned CloudflareCacheSettings kind (single cache-reserve toggle)"
-  - resource: cloudflare_zone_cache_variants
-    disposition: model-planned
-    reason: "folds into the planned CloudflareCacheSettings kind (variant list is cache configuration)"
-  - resource: cloudflare_regional_tiered_cache
-    disposition: model-planned
-    reason: "folds into the planned CloudflareCacheSettings kind (single regional-cache toggle)"
-  - resource: cloudflare_argo_smart_routing
-    disposition: model-planned
-    reason: "folds into the planned CloudflareCacheSettings kind (performance toggle of the zone)"
-  - resource: cloudflare_argo_tiered_caching
-    disposition: model-planned
-    reason: "folds into the planned CloudflareCacheSettings kind (single tiered-caching toggle)"
+  # (cloudflare_tiered_cache, cloudflare_zone_cache_reserve,
+  # cloudflare_zone_cache_variants, cloudflare_regional_tiered_cache,
+  # cloudflare_argo_smart_routing, and cloudflare_argo_tiered_caching are
+  # consumed by CloudflareCacheSettings -- census-proven, so absent here.)
   - resource: cloudflare_observatory_scheduled_test
     disposition: model-planned
     reason: "judged as a planned CloudflareObservatoryScheduledTest kind (scheduled speed tests per page)"
   # ---- TLS & certificates ---------------------------------------------------
-  - resource: cloudflare_universal_ssl_setting
-    disposition: model-planned
-    reason: "judged as a planned CloudflareZoneTlsSettings kind (the zone's TLS posture: Universal SSL, Total TLS, per-hostname settings)"
-  - resource: cloudflare_total_tls
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneTlsSettings kind (toggle plus certificate-authority choice)"
-  - resource: cloudflare_zone_auto_origin_tls_kex
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneTlsSettings kind (one boolean)"
-  - resource: cloudflare_hostname_tls_setting
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneTlsSettings kind (per-hostname setting rows within the zone's TLS posture)"
-  - resource: cloudflare_origin_tls_compliance_modes
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneTlsSettings kind (origin compliance singleton)"
-  - resource: cloudflare_certificate_authorities_hostname_associations
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneTlsSettings kind (CA-to-hostname association list, zone-scoped configuration)"
+  # (cloudflare_universal_ssl_setting, cloudflare_total_tls,
+  # cloudflare_zone_auto_origin_tls_kex, cloudflare_hostname_tls_setting,
+  # cloudflare_origin_tls_compliance_modes, and
+  # cloudflare_certificate_authorities_hostname_associations are consumed by
+  # CloudflareZoneTlsSettings -- census-proven, so absent here.)
   - resource: cloudflare_custom_ssl
     disposition: model-planned
     reason: "judged as a planned CloudflareCustomSslCertificate kind (bring-your-own certificate upload with rotation lifecycle)"
@@ -197,9 +161,8 @@ resources:
   - resource: cloudflare_waiting_room_rules
     disposition: model-planned
     reason: "folds into the planned CloudflareWaitingRoom kind (the room's singleton bypass-rule list)"
-  - resource: cloudflare_waiting_room_settings
-    disposition: model-planned
-    reason: "folds into the planned CloudflareZoneSettings kind (one zone-wide crawler-bypass boolean; a zone setting, not a room property)"
+  # (cloudflare_waiting_room_settings is consumed by CloudflareZoneSettings --
+  # census-proven, so absent here.)
   # ---- Workers platform --------------------------------------------------------
   - resource: cloudflare_worker
     disposition: model-planned

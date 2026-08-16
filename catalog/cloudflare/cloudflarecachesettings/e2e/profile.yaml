@@ -1,0 +1,28 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarecachesettings
+spec:
+  # Cache settings under live E2E: the harness deploys the CloudflareDnsZone
+  # prerequisite (a run-scoped pending zone), resolves zone_id, then runs
+  # deploy -> settings-surface verify -> destroy -> verify on both
+  # provisioners. Destroy classes are MIXED: smart tiered cache and cache
+  # variants have real deletes; the other four toggles have literally empty
+  # provider Deletes, so verify-destroyed asserts the settings surface still
+  # answers -- never absence. Zero-orphan cleanup comes from the run-scoped
+  # zone fixture. The live scenario covers the free surface (smart tiered
+  # cache, regional tiered cache, cache variants); the PAID toggles never
+  # enter a live lane from authoring: cache_reserve bills storage while on,
+  # and argo_smart_routing bills monthly plus per-GB AND KEEPS BILLING after
+  # destroy (its Delete is a no-op) -- both are offline-plan-proven via
+  # e2e/paid-arms-plan.yaml and deferred to a budget-approved proof lane.
+  # Watch item: create==update semantics differ on tiered_cache only (POST
+  # New vs PATCH Edit) -- the idempotency re-plan is the canary. Settings
+  # apply in seconds; the live scenario costs nothing.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10
+  cost_class: cheap_ephemeral

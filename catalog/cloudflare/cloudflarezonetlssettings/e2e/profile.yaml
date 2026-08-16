@@ -1,0 +1,32 @@
+apiVersion: qa.planton.dev/v1
+kind: ComponentE2EProfile
+metadata:
+  name: cloudflarezonetlssettings
+spec:
+  # Zone TLS settings under live E2E: the harness deploys the
+  # CloudflareDnsZone prerequisite (a run-scoped pending zone), resolves
+  # zone_id, then runs deploy -> settings-surface verify -> destroy ->
+  # verify on both provisioners. Destroy classes are MIXED: per-hostname
+  # overrides and origin TLS compliance modes have real deletes; Universal
+  # SSL, Total TLS, auto origin key exchange, and CA hostname associations
+  # have literally empty provider Deletes, so verify-destroyed asserts the
+  # settings surface still answers -- never absence. Zero-orphan cleanup
+  # comes from the run-scoped zone fixture. Live scenarios: the
+  # hostname-overrides arm (per-hostname min_tls_version/http2/ciphers +
+  # compliance modes -- free surface) and the total-tls arm (SEPARATE
+  # scenario so an entitlement failure never sinks the base lane: whether
+  # Total TLS needs the zone's Advanced Certificate Manager subscription is
+  # UNVERIFIED offline -- the recorded watch item). NEVER in a live lane:
+  # the universal-ssl-disable arm (offline-plan-proven via
+  # e2e/universal-ssl-disable-plan.yaml) -- disabling issuance on a zone is
+  # the unreachability class, and even a throwaway zone stays reachable for
+  # the lane's own verification. Import caution for the proving session:
+  # the provider's hostname_tls_setting ImportState is defective at v5.23.0
+  # (never restores hostname; a post-import plan replaces) -- the import map
+  # documents re-assert-from-config. Settings apply in seconds at zero cost.
+  tier: 1
+  # Authored to the full offline bar; awaiting the first live proof session
+  # (no Cloudflare account exists yet). The proving session flips this to
+  # green after both engine lanes and the blind import round-trip pass.
+  status: pending_proof
+  timeout_minutes: 10

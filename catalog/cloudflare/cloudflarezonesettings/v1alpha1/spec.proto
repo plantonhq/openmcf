@@ -1,0 +1,541 @@
+syntax = "proto3";
+package dev.planton.cloudflare.cloudflarezonesettings.v1alpha1;
+
+import "buf/validate/validate.proto";
+import "shared/foreignkey/v1/foreign_key.proto";
+
+// CloudflareZoneSettingsSpec manages a zone's behavior settings: the HTTP, SSL/TLS,
+// cache-adjacent, and network posture the Cloudflare dashboard shows under the
+// Speed, Security, and Network tabs.
+//
+// Each setting field maps to one Cloudflare zone setting (the API's
+// PATCH /zones/{zone_id}/settings/{setting_id}). A field left unset is NOT MANAGED:
+// the module never sends it, and whatever value the zone already carries stays
+// untouched. Setting a field manages that setting; clearing it back to unset stops
+// managing it but does NOT revert the live value -- Cloudflare has no delete for
+// zone settings, so destroy abandons the last-applied configuration. To return a
+// setting to a specific value, set that value explicitly before removing the field.
+//
+// Boundary: DNS plumbing (SOA, NS TTL, CNAME flattening at the DNS level, DNSSEC)
+// belongs to CloudflareDnsZone's dns_settings. This kind owns the serving posture:
+// how Cloudflare terminates, caches, transforms, and protects HTTP traffic for the
+// zone. Managed transforms, URL normalization, origin cloud-region hints, and the
+// waiting-room crawler bypass are zone-wide serving configuration by other API
+// names, so they live here too.
+//
+// Plan gating: several settings are only editable on paid plans (for example
+// advanced_ddos, orange_to_orange, image_resizing). The API answers with
+// editable=false when the zone's plan does not include a setting; the module
+// surfaces that as an apply error rather than silently skipping.
+message CloudflareZoneSettingsSpec {
+  option (buf.validate.message).cel = {
+    id: "spec.at_least_one_setting"
+    message: "configure at least one zone setting -- a CloudflareZoneSettings resource that manages nothing would deploy nothing"
+    expression: "this.managed_request_headers.size() > 0 || this.managed_response_headers.size() > 0 || has(this.url_normalization) || this.origin_cloud_regions.size() > 0 || has(this.waiting_room_crawler_bypass) || has(this.zero_rtt) || has(this.advanced_ddos) || has(this.aegis) || has(this.always_online) || has(this.always_use_https) || has(this.automatic_https_rewrites) || has(this.automatic_platform_optimization) || has(this.brotli) || has(this.browser_cache_ttl) || has(this.browser_check) || has(this.cache_level) || has(this.challenge_ttl) || this.ciphers.size() > 0 || has(this.cname_flattening) || has(this.content_converter) || has(this.development_mode) || has(this.early_hints) || has(this.edge_cache_ttl) || has(this.email_obfuscation) || has(this.h2_prioritization) || has(this.hotlink_protection) || has(this.http2) || has(this.http3) || has(this.image_resizing) || has(this.ip_geolocation) || has(this.ipv6) || has(this.max_upload) || has(this.min_tls_version) || has(this.mirage) || has(this.nel) || has(this.opportunistic_encryption) || has(this.opportunistic_onion) || has(this.orange_to_orange) || has(this.origin_error_page_pass_thru) || has(this.origin_h2_max_streams) || has(this.origin_max_http_version) || has(this.polish) || has(this.prefetch_preload) || has(this.privacy_pass) || has(this.proxy_read_timeout) || has(this.pseudo_ipv4) || has(this.redirects_for_ai_training) || has(this.replace_insecure_js) || has(this.response_buffering) || has(this.rocket_loader) || has(this.search_for_agents) || has(this.security_header) || has(this.security_level) || has(this.server_side_exclude) || has(this.sha1_support) || has(this.sort_query_string_for_cache) || has(this.ssl) || has(this.ssl_recommender) || has(this.tls_1_2_only) || has(this.tls_1_3) || has(this.tls_client_auth) || has(this.transformations) || has(this.transformations_allowed_origins) || has(this.true_client_ip_header) || has(this.waf) || has(this.webp) || has(this.websockets) || has(this.long_lived_grpc)"
+  };
+
+  // The zone whose settings are managed.
+  // When using value_from, defaults to CloudflareDnsZone kind and status.outputs.zone_id field path.
+  dev.planton.shared.foreignkey.v1.StringValueOrRef zone_id = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = CloudflareDnsZone,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.zone_id"
+  ];
+
+  // Managed request headers to toggle (Cloudflare-defined transforms that add headers
+  // to requests before they reach the origin, for example add_true_client_ip_headers
+  // or add_visitor_location_headers). Each row names a Cloudflare-managed transform id
+  // and whether it is enabled. Removing a row stops managing that transform; Cloudflare
+  // keeps its last state.
+  repeated CloudflareZoneSettingsManagedHeader managed_request_headers = 2;
+
+  // Managed response headers to toggle (Cloudflare-defined transforms that add headers
+  // to responses sent to clients, for example remove_x-powered-by_header or
+  // add_security_headers). Same semantics as managed_request_headers.
+  repeated CloudflareZoneSettingsManagedHeader managed_response_headers = 3;
+
+  // URL normalization: how Cloudflare rewrites URLs before rules match them and
+  // before they reach the origin. Unset means not managed.
+  CloudflareZoneSettingsUrlNormalization url_normalization = 4;
+
+  // Origin cloud-region hints: per-origin-IP declarations of which cloud vendor and
+  // region an origin lives in, used by Cloudflare to optimize origin-facing routing.
+  // Each row is keyed by origin_ip (changing the IP replaces the row's API object).
+  repeated CloudflareZoneSettingsOriginCloudRegion origin_cloud_regions = 5;
+
+  // Allow verified search-engine crawlers to bypass the waiting room on this zone.
+  // This is the zone-wide waiting-room setting (one boolean); per-room configuration
+  // lives on the waiting room itself. Cloudflare's default is false.
+  optional bool waiting_room_crawler_bypass = 6;
+
+  // --- The zone settings fan-out: one field per Cloudflare setting_id, in the
+  // --- API's own vocabulary. Field names match setting ids exactly, except 0rtt
+  // --- (proto identifiers cannot start with a digit -- see zero_rtt).
+
+  // 0-RTT session resumption (setting_id "0rtt"): lets returning TLS 1.3 visitors
+  // send application data in the first round trip. Slightly faster repeat visits;
+  // replay-sensitive endpoints should keep it off.
+  optional bool zero_rtt = 10;
+
+  // Advanced DDoS protection (setting_id "advanced_ddos"). Enterprise-plan zones
+  // only -- the API reports this setting as not editable on lower plans.
+  optional bool advanced_ddos = 11;
+
+  // Aegis dedicated egress IPs: pin the Cloudflare-to-origin traffic for this zone
+  // to a dedicated egress IP pool, so origin firewalls can allowlist stable
+  // addresses. Requires an Aegis entitlement and a provisioned pool.
+  CloudflareZoneSettingsAegis aegis = 12;
+
+  // Always Online: serve limited cached copies of pages from the Internet Archive
+  // when the origin is unreachable.
+  optional bool always_online = 13;
+
+  // Always Use HTTPS: answer every plain-http request with a 301 redirect to the
+  // https equivalent.
+  optional bool always_use_https = 14;
+
+  // Automatic HTTPS Rewrites: rewrite http:// references inside served HTML to
+  // https:// when the target is known to support it, fixing mixed content.
+  optional bool automatic_https_rewrites = 15;
+
+  // Automatic Platform Optimization for WordPress: serve the whole site from
+  // Cloudflare's edge cache with the APO WordPress plugin invalidating on change.
+  // The API requires every field of this object on writes.
+  CloudflareZoneSettingsAutomaticPlatformOptimization automatic_platform_optimization = 16;
+
+  // Brotli compression for responses to clients that accept it.
+  optional bool brotli = 17;
+
+  // Browser Cache TTL in seconds: how long browsers may cache Cloudflare-served
+  // resources. The API accepts a fixed value set (0 and specific durations from 30
+  // seconds to one year); values outside the set are rejected by Cloudflare, and 0
+  // means "respect existing headers".
+  optional int64 browser_cache_ttl = 18 [(buf.validate.field).int64.gte = 0];
+
+  // Browser Integrity Check: block requests whose HTTP headers are commonly abused
+  // by spammers and bots.
+  optional bool browser_check = 19;
+
+  // Cache Level: basic caches static content ignoring query strings, simplified
+  // ignores query strings entirely, aggressive caches static content with all
+  // query-string variants.
+  optional string cache_level = 20 [(buf.validate.field).string = {
+    in: [
+      "aggressive",
+      "basic",
+      "simplified"
+    ]
+  }];
+
+  // Challenge TTL in seconds: how long a visitor who passed a challenge is allowed
+  // in before being re-challenged. The API accepts a fixed value set (300 through
+  // 31536000); out-of-set values are rejected by Cloudflare.
+  optional int64 challenge_ttl = 21 [(buf.validate.field).int64.gte = 0];
+
+  // TLS cipher allowlist for this zone's HTTPS termination, in BoringSSL format
+  // (for example ECDHE-ECDSA-AES128-GCM-SHA256). An empty list is "not managed";
+  // to reset the zone to Cloudflare defaults, apply the API's documented reset
+  // (an empty value) manually -- the module never sends an empty list.
+  repeated string ciphers = 22;
+
+  // CNAME flattening behavior at the zone apex and beyond: flatten_at_root
+  // flattens only the root record, flatten_all flattens every CNAME.
+  optional string cname_flattening = 23 [(buf.validate.field).string = {
+    in: [
+      "flatten_at_root",
+      "flatten_all"
+    ]
+  }];
+
+  // Content converter (setting_id "content_converter"): when a client sends an
+  // Accept header requesting text/markdown for an HTML page, convert the response
+  // to Markdown at the edge.
+  optional bool content_converter = 24;
+
+  // Development Mode: temporarily bypass Cloudflare's edge cache so origin changes
+  // are visible immediately. Cloudflare auto-disables it after three hours; a
+  // managed "on" re-enables it on the next apply.
+  optional bool development_mode = 25;
+
+  // Early Hints: send HTTP 103 responses with Link headers from cached 200s while
+  // the origin is still thinking.
+  optional bool early_hints = 26;
+
+  // Edge Cache TTL in seconds: how long Cloudflare's edge keeps a resource before
+  // revalidating. The API accepts a fixed value set (30 seconds through 31 days on
+  // Enterprise; shorter maxima on lower plans).
+  optional int64 edge_cache_ttl = 27 [(buf.validate.field).int64.gte = 0];
+
+  // Email Obfuscation: hide email addresses on pages from bots while keeping them
+  // visible to humans.
+  optional bool email_obfuscation = 28;
+
+  // HTTP/2 Edge Prioritization: custom enables the enhanced scheduler that
+  // reprioritizes resources based on browser signals.
+  optional string h2_prioritization = 29 [(buf.validate.field).string = {
+    in: [
+      "on",
+      "off",
+      "custom"
+    ]
+  }];
+
+  // Hotlink Protection: block other sites from embedding this zone's images.
+  optional bool hotlink_protection = 30;
+
+  // HTTP/2 support for client connections.
+  optional bool http2 = 31;
+
+  // HTTP/3 (QUIC) support for client connections.
+  optional bool http3 = 32;
+
+  // Image Transformations for this zone: on restricts transforms to this zone's
+  // own URLs, open also allows transforming remote images fetched by URL.
+  optional string image_resizing = 33 [(buf.validate.field).string = {
+    in: [
+      "on",
+      "off",
+      "open"
+    ]
+  }];
+
+  // IP Geolocation: add the CF-IPCountry header with the visitor's country to
+  // origin-bound requests.
+  optional bool ip_geolocation = 34;
+
+  // IPv6 termination on all Cloudflare-proxied hostnames of the zone.
+  optional bool ipv6 = 35;
+
+  // Maximum upload size in megabytes for requests through this zone. The API
+  // accepts a fixed value set (100 through 1000 depending on plan).
+  optional int64 max_upload = 36 [(buf.validate.field).int64.gte = 0];
+
+  // Minimum TLS version accepted for HTTPS connections to this zone.
+  optional string min_tls_version = 37 [(buf.validate.field).string = {
+    in: [
+      "1.0",
+      "1.1",
+      "1.2",
+      "1.3"
+    ]
+  }];
+
+  // Mirage: optimize image delivery for slow mobile connections (lazy loading,
+  // low-resolution placeholders).
+  optional bool mirage = 38;
+
+  // Network Error Logging: have browsers report connectivity failures for this
+  // zone to Cloudflare.
+  CloudflareZoneSettingsNel nel = 39;
+
+  // Opportunistic Encryption: advertise TLS capability to browsers for
+  // plain-http resources via Alt-Svc.
+  optional bool opportunistic_encryption = 40;
+
+  // Opportunistic Onion: serve Tor visitors over Cloudflare's onion services via
+  // an Alt-Svc header, avoiding Tor exit-node challenges.
+  optional bool opportunistic_onion = 41;
+
+  // Orange-to-Orange (O2O): allow this zone to CNAME to another Cloudflare-proxied
+  // zone and layer both zones' features. Enterprise feature; the API reports it as
+  // not editable on lower plans.
+  optional bool orange_to_orange = 42;
+
+  // Origin error page pass-through: hand origin 502/504 error pages to visitors
+  // untouched instead of showing Cloudflare's error page.
+  optional bool origin_error_page_pass_thru = 43;
+
+  // Origin H2 Max Streams: the maximum concurrent requests Cloudflare multiplexes
+  // onto one HTTP/2 origin connection (1 through 200; API-validated).
+  optional int64 origin_h2_max_streams = 44 [(buf.validate.field).int64.gte = 0];
+
+  // Origin Max HTTP Version: the highest HTTP version Cloudflare speaks to the
+  // origin ("2" or "1").
+  optional string origin_max_http_version = 45 [(buf.validate.field).string = {
+    in: [
+      "1",
+      "2"
+    ]
+  }];
+
+  // Polish: strip image metadata and recompress. lossless keeps pixel data intact;
+  // lossy also recompresses JPEGs for further savings.
+  optional string polish = 46 [(buf.validate.field).string = {
+    in: [
+      "off",
+      "lossless",
+      "lossy"
+    ]
+  }];
+
+  // Prefetch URLs from response headers: fetch URLs named in Link prefetch headers
+  // into cache before visitors ask for them. Enterprise feature.
+  optional bool prefetch_preload = 47;
+
+  // Privacy Pass v1 compatibility (legacy browser extension support). Cloudflare
+  // has deprecated the product; the setting remains writable.
+  optional bool privacy_pass = 48;
+
+  // Proxy Read Timeout in seconds: how long Cloudflare waits between reads from
+  // the origin before serving a 524 (1 through 6000; API-validated; Enterprise).
+  optional int64 proxy_read_timeout = 49 [(buf.validate.field).int64.gte = 0];
+
+  // Pseudo IPv4: how to represent IPv6 visitors to IPv4-only origins --
+  // add_header adds Cf-Pseudo-IPv4, overwrite_header overwrites the visitor IP
+  // headers with the pseudo address.
+  optional string pseudo_ipv4 = 50 [(buf.validate.field).string = {
+    in: [
+      "off",
+      "add_header",
+      "overwrite_header"
+    ]
+  }];
+
+  // Redirect verified AI training crawlers to canonical content locations.
+  optional bool redirects_for_ai_training = 51;
+
+  // Replace insecure JavaScript libraries with safer, faster alternatives at the
+  // edge where a compatible replacement exists.
+  optional bool replace_insecure_js = 52;
+
+  // Response Buffering: buffer the full origin response at the edge before sending
+  // it to the visitor, instead of streaming as it arrives. Enterprise feature.
+  optional bool response_buffering = 53;
+
+  // Rocket Loader: defer JavaScript loading until after render for faster paint
+  // times. Test carefully -- it rewrites how scripts execute.
+  optional bool rocket_loader = 54;
+
+  // Search for agents (setting_id "search_for_agents"): provision an AI Search
+  // instance for the zone and expose site search endpoints to AI agents.
+  optional bool search_for_agents = 55;
+
+  // HTTP Strict Transport Security and related security headers for the zone.
+  CloudflareZoneSettingsSecurityHeader security_header = 56;
+
+  // Security Level: how aggressively Cloudflare challenges suspicious visitors.
+  // under_attack shows an interstitial challenge to everyone.
+  optional string security_level = 57 [(buf.validate.field).string = {
+    in: [
+      "off",
+      "essentially_off",
+      "low",
+      "medium",
+      "high",
+      "under_attack"
+    ]
+  }];
+
+  // Server Side Excludes: strip content between <!--sse--> tags from pages served
+  // to suspicious visitors.
+  optional bool server_side_exclude = 58;
+
+  // SHA1 certificate support for legacy clients.
+  optional bool sha1_support = 59;
+
+  // Sort query strings before cache lookup, so ?a=1&b=2 and ?b=2&a=1 share one
+  // cache entry. Enterprise feature.
+  optional bool sort_query_string_for_cache = 60;
+
+  // SSL/TLS encryption mode between Cloudflare and the origin: off disables HTTPS
+  // entirely, flexible terminates TLS at the edge and speaks plain http to the
+  // origin, full encrypts to the origin without validating its certificate, strict
+  // also validates the origin certificate. Production zones should use strict.
+  optional string ssl = 61 [(buf.validate.field).string = {
+    in: [
+      "off",
+      "flexible",
+      "full",
+      "strict"
+    ]
+  }];
+
+  // SSL/TLS Recommender: have Cloudflare probe the origin and email
+  // recommendations for the strongest workable ssl mode. The provider's schema
+  // requires the on/off value form on writes (its documented enabled-attribute
+  // form fails validation at v5.23.0), so the module sends value on/off.
+  optional bool ssl_recommender = 62;
+
+  // Accept only TLS 1.2 connections (legacy zone setting; prefer min_tls_version).
+  optional bool tls_1_2_only = 63;
+
+  // TLS 1.3 support: zrt enables TLS 1.3 with Cloudflare's zero round-trip
+  // resumption.
+  optional string tls_1_3 = 64 [(buf.validate.field).string = {
+    in: [
+      "on",
+      "off",
+      "zrt"
+    ]
+  }];
+
+  // TLS Client Auth: require client certificates on connections to the origin
+  // (Cloudflare presents a certificate the origin validates).
+  optional bool tls_client_auth = 65;
+
+  // Media Transformations for this zone: on restricts transforms to this zone's
+  // own media URLs, open also allows transforming remote media fetched by URL.
+  optional string transformations = 66 [(buf.validate.field).string = {
+    in: [
+      "on",
+      "off",
+      "open"
+    ]
+  }];
+
+  // Media Transformations allowed origins: a space-separated list of origins
+  // permitted to request transformations, restricting who may use this zone's
+  // transformation endpoints.
+  optional string transformations_allowed_origins = 67;
+
+  // True-Client-IP header: send the visitor's IP in the True-Client-IP header to
+  // the origin (Akamai-compatible). Enterprise feature.
+  optional bool true_client_ip_header = 68;
+
+  // Legacy WAF (setting_id "waf"): the previous-generation WAF toggle. New WAF
+  // configuration belongs to CloudflareRuleset phases; this setting remains for
+  // zones still on the legacy WAF.
+  optional bool waf = 69;
+
+  // WebP conversion: serve WebP variants of cached images to clients that accept
+  // them (effective when Polish is enabled).
+  optional bool webp = 70;
+
+  // WebSockets support for proxied connections on this zone.
+  optional bool websockets = 71;
+
+  // Long-lived gRPC connections (setting_id "long_lived_grpc"): keep gRPC streams
+  // on this zone open beyond standard proxy read timeouts. Undocumented in the
+  // API's setting table at provider v5.23.0 but accepted by the settings endpoint
+  // (the provider's own regression tests exercise it).
+  optional bool long_lived_grpc = 72;
+}
+
+// One Cloudflare-managed header transform toggle.
+message CloudflareZoneSettingsManagedHeader {
+  // The Cloudflare-defined transform id, for example add_true_client_ip_headers,
+  // add_visitor_location_headers, remove_x-powered-by_header. The API rejects
+  // unknown ids; Cloudflare's documentation lists the available transforms.
+  string id = 1 [(buf.validate.field).required = true];
+
+  // Whether the managed transform is enabled. Both fields are required by the
+  // API on every row.
+  bool enabled = 2;
+}
+
+// URL normalization configuration for the zone.
+message CloudflareZoneSettingsUrlNormalization {
+  // Which URLs are normalized: incoming normalizes URLs before rules match them,
+  // both also normalizes the URL sent to the origin, none disables normalization.
+  string scope = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "incoming",
+        "both",
+        "none"
+      ]
+    }
+  ];
+
+  // The normalization standard: cloudflare applies Cloudflare's normalization,
+  // rfc3986 applies RFC 3986 normalization only.
+  string type = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "cloudflare",
+        "rfc3986"
+      ]
+    }
+  ];
+}
+
+// One origin cloud-region hint: declares where an origin IP lives so Cloudflare
+// can optimize routing toward it.
+message CloudflareZoneSettingsOriginCloudRegion {
+  // The origin server's IP address this hint describes. Changing the IP replaces
+  // the API object (the IP is the row's identity).
+  string origin_ip = 1 [(buf.validate.field).required = true];
+
+  // The vendor-specific region name the origin lives in (for example us-east-1
+  // for aws). Free-form; Cloudflare validates it against the vendor's region set.
+  string region = 2 [(buf.validate.field).required = true];
+
+  // The cloud vendor hosting the origin.
+  string vendor = 3 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string = {
+      in: [
+        "aws",
+        "azure",
+        "gcp",
+        "oci"
+      ]
+    }
+  ];
+}
+
+// Aegis dedicated egress IP configuration (setting_id "aegis").
+message CloudflareZoneSettingsAegis {
+  // Whether Aegis egress is enabled for the zone.
+  optional bool enabled = 1;
+
+  // The Aegis IP pool to egress from. Pools are provisioned by Cloudflare under
+  // the Aegis entitlement; the id comes from the Aegis dashboard or API.
+  string pool_id = 2;
+}
+
+// Automatic Platform Optimization for WordPress (setting_id
+// "automatic_platform_optimization"). The API requires EVERY field of this object
+// on writes -- there are no server-side defaults for omitted members.
+message CloudflareZoneSettingsAutomaticPlatformOptimization {
+  // Whether APO serves this zone from the edge cache.
+  bool enabled = 1;
+
+  // Cache separately by device type (mobile, tablet, desktop).
+  bool cache_by_device_type = 2;
+
+  // Whether the zone is proxied through Cloudflare (the API expects the current
+  // proxy state; true for orange-clouded zones).
+  bool cf = 3;
+
+  // The WordPress hostnames APO serves, for example example.com and
+  // www.example.com.
+  repeated string hostnames = 4 [(buf.validate.field).repeated.min_items = 1];
+
+  // Whether the origin runs WordPress.
+  bool wordpress = 5;
+
+  // Whether the Cloudflare APO WordPress plugin is installed (the plugin purges
+  // the edge cache on content changes).
+  bool wp_plugin = 6;
+}
+
+// Network Error Logging configuration (setting_id "nel").
+message CloudflareZoneSettingsNel {
+  // Whether browsers report network errors for this zone to Cloudflare.
+  bool enabled = 1;
+}
+
+// Security header (HSTS) configuration (setting_id "security_header"). The module
+// nests these fields under the API's strict_transport_security object.
+message CloudflareZoneSettingsSecurityHeader {
+  // Whether Strict-Transport-Security is emitted.
+  bool enabled = 1;
+
+  // Apply HSTS to all subdomains. Only enable when every subdomain serves HTTPS --
+  // browsers will refuse plain http on all of them for max_age seconds.
+  bool include_subdomains = 2;
+
+  // The Strict-Transport-Security max-age in seconds. Common production value is
+  // 31536000 (one year). 0 tells browsers to drop the pin.
+  int64 max_age = 3 [(buf.validate.field).int64.gte = 0];
+
+  // Emit X-Content-Type-Options: nosniff alongside HSTS.
+  bool nosniff = 4;
+
+  // Add the preload directive, requesting inclusion in browser preload lists.
+  // Preload-list removal is slow and manual -- enable deliberately.
+  bool preload = 5;
+}

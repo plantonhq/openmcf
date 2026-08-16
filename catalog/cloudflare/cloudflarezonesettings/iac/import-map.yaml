@@ -1,0 +1,28 @@
+# Import map: where each {placeholder} in this component's import IDs comes
+# from (formats live in catalog/cloudflare/aa_import/catalog.yaml). Zone
+# settings are a zone singleton -- the zone id derives from the stack output;
+# the setting id is per-managed-setting knowledge.
+apiVersion: iac.planton.dev/v1
+kind: ComponentImportMap
+metadata:
+  name: cloudflarezonesettings
+spec:
+  values:
+    - name: zone_id
+      derivations:
+        - from_stack_output: zone_id
+      where_to_find: >-
+        Cloudflare dashboard -> the zone's Overview page (Zone ID in the
+        right-hand API panel), or `GET /zones?name=<domain>` on the
+        Cloudflare v4 API (the id field).
+    - name: setting_id
+      where_to_find: >-
+        The Cloudflare setting id being adopted (always_use_https, ssl,
+        min_tls_version, ...) -- exactly the spec field name of the setting,
+        except zero_rtt which maps to the API's "0rtt". Import one
+        cloudflare_zone_setting address per managed setting.
+    - name: origin_ip
+      where_to_find: >-
+        The origin server IP of the cloudflare_origin_cloud_region row being
+        adopted -- the spec's origin_cloud_regions[].origin_ip value, listed
+        by `GET /zones/{zone_id}/origin_cloud_regions` on the v4 API.

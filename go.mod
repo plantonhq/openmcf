@@ -98,7 +98,7 @@ require (
 	github.com/pulumi/pulumi-azure-native-sdk/machinelearningservices/v3 v3.12.1
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.12.1
 	github.com/pulumi/pulumi-azure/sdk/v6 v6.38.0
-	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.17.0
+	github.com/pulumi/pulumi-cloudflare/sdk/v6 v6.19.0
 	github.com/pulumi/pulumi-digitalocean/sdk/v4 v4.49.0
 	github.com/pulumi/pulumi-gcp/sdk/v9 v9.29.0
 	github.com/pulumi/pulumi-kubernetes/sdk/v4 v4.33.0

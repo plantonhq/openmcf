@@ -1862,6 +1862,15 @@ const (
 	// zone-level SSL-for-SaaS setting -- the spec's zone_id reference must
 	// resolve first.
 	CloudResourceKind_CloudflareCustomHostnameFallbackOrigin CloudResourceKind = 7029
+	// CloudflareDnsZone is a prerequisite because TLS settings are zone-scoped
+	// configuration -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareZoneTlsSettings CloudResourceKind = 7150
+	// CloudflareDnsZone is a prerequisite because zone settings configure an
+	// existing zone -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareZoneSettings CloudResourceKind = 7180
+	// CloudflareDnsZone is a prerequisite because cache settings configure an
+	// existing zone -- the spec's zone_id reference must resolve first.
+	CloudResourceKind_CloudflareCacheSettings CloudResourceKind = 7181
 	// 8000–8999: Auth0 resources
 	CloudResourceKind_Auth0Connection     CloudResourceKind = 8000
 	CloudResourceKind_Auth0Client         CloudResourceKind = 8001
@@ -2495,6 +2504,9 @@ var (
 		7027: "CloudflareCertificatePack",
 		7028: "CloudflareCustomHostname",
 		7029: "CloudflareCustomHostnameFallbackOrigin",
+		7150: "CloudflareZoneTlsSettings",
+		7180: "CloudflareZoneSettings",
+		7181: "CloudflareCacheSettings",
 		8000: "Auth0Connection",
 		8001: "Auth0Client",
 		8002: "Auth0EventStream",
@@ -3121,6 +3133,9 @@ var (
 		"CloudflareCertificatePack":                      7027,
 		"CloudflareCustomHostname":                       7028,
 		"CloudflareCustomHostnameFallbackOrigin":         7029,
+		"CloudflareZoneTlsSettings":                      7150,
+		"CloudflareZoneSettings":                         7180,
+		"CloudflareCacheSettings":                        7181,
 		"Auth0Connection":                                8000,
 		"Auth0Client":                                    8001,
 		"Auth0EventStream":                               8002,
@@ -3510,7 +3525,7 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1cKubernetesManifestProjection\x12\x1f\n" +
 	"\vapi_version\x18\x01 \x01(\tR\n" +
 	"apiVersion\x12\x12\n" +
-	"\x04kind\x18\x02 \x01(\tR\x04kind*ϟ\x02\n" +
+	"\x04kind\x18\x02 \x01(\tR\x04kind*\x84\xa1\x02\n" +
 	"\x11CloudResourceKind\x12\x0f\n" +
 	"\vunspecified\x10\x00\x12b\n" +
 	"\x18TestCloudResourceGeneric\x10\x01\x1aD\xa2\xf7\x04@\b\x01\x12\bv1alpha2\"\x04tcrgJ,\n" +
@@ -4166,7 +4181,10 @@ const file_shared_cloudresourcekind_cloud_resource_kind_proto_rawDesc = "" +
 	"\x1dCloudflareOriginCaCertificate\x10\xf26\x1a\x17\xa2\xf7\x04\x13\b\x0f\x12\bv1alpha1\"\x05cfoca\x12=\n" +
 	"\x19CloudflareCertificatePack\x10\xf36\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcertp:\x02\xd86\x12<\n" +
 	"\x18CloudflareCustomHostname\x10\xf46\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfchost:\x02\xd86\x12I\n" +
-	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12.\n" +
+	"&CloudflareCustomHostnameFallbackOrigin\x10\xf56\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfchfo:\x02\xd86\x12;\n" +
+	"\x19CloudflareZoneTlsSettings\x10\xee7\x1a\x1b\xa2\xf7\x04\x17\b\x0f\x12\bv1alpha1\"\x05cftls:\x02\xd86\x129\n" +
+	"\x16CloudflareZoneSettings\x10\x8c8\x1a\x1c\xa2\xf7\x04\x18\b\x0f\x12\bv1alpha1\"\x06cfzset:\x02\xd86\x12;\n" +
+	"\x17CloudflareCacheSettings\x10\x8d8\x1a\x1d\xa2\xf7\x04\x19\b\x0f\x12\bv1alpha1\"\acfcache:\x02\xd86\x12.\n" +
 	"\x0fAuth0Connection\x10\xc0>\x1a\x18\xa2\xf7\x04\x14\b\x15\x12\bv1alpha1\"\x06a0conn\x12)\n" +
 	"\vAuth0Client\x10\xc1>\x1a\x17\xa2\xf7\x04\x13\b\x15\x12\bv1alpha1\"\x05a0cli\x12-\n" +
 	"\x10Auth0EventStream\x10\xc2>\x1a\x16\xa2\xf7\x04\x12\b\x15\x12\bv1alpha1\"\x04a0es\x120\n" +

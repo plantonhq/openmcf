@@ -29,11 +29,11 @@ that has progressed.
 |---|---|
 | Provider schema | `aws@6.58.0` |
 | Provider schema (parity baseline) | `cloudflare@5.23.0` |
-| Kinds in the catalog | 30 |
-| Distinct provider resources consumed | 51 |
-| Spec fields authored across all kinds | 1266 |
+| Kinds in the catalog | 33 |
+| Distinct provider resources consumed | 68 |
+| Spec fields authored across all kinds | 1379 |
 | Module pins on `aws` | `~> 5.0` × 1 |
-| Module pins on `cloudflare` | `~> 5.23` × 30 |
+| Module pins on `cloudflare` | `~> 5.23` × 33 |
 | Module pins on `tls` | `~> 4.0` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
@@ -48,10 +48,11 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**30 of 30 kinds are at total accounting; 0 proven live.**
+**33 of 33 kinds are at total accounting; 0 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
+| CloudflareCacheSettings | 12 | 6 | 6 | 0 | 0 | ✅ | — |
 | CloudflareCertificatePack | 7 | 7 | 0 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostname | 6 | 5 | 1 | 0 | 0 | ✅ | — |
 | CloudflareCustomHostnameFallbackOrigin | 2 | 2 | 0 | 0 | 0 | ✅ | — |
@@ -82,6 +83,8 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | CloudflareZeroTrustTunnel | 8 | 5 | 2 | 1 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelRoute | 5 | 5 | 0 | 0 | 0 | ✅ | — |
 | CloudflareZeroTrustTunnelVirtualNetwork | 4 | 4 | 0 | 0 | 0 | ✅ | — |
+| CloudflareZoneSettings | 16 | 5 | 9 | 2 | 0 | ✅ | — |
+| CloudflareZoneTlsSettings | 16 | 6 | 9 | 1 | 0 | ✅ | — |
 
 ## Breadth: every GA resource, one disposition
 
@@ -89,10 +92,10 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 
 | Disposition | Resources | Meaning |
 |---|---|---|
-| Modeled | 49 | consumed by a kind's Terraform module today |
+| Modeled | 66 | consumed by a kind's Terraform module today |
 | IAM-covered | 0 | per-resource IAM member/binding/policy triplets, covered by the owning kinds' additive `iam_members` fields |
 | Composed | 0 | capability covered through an existing kind's surface rather than a kind of its own |
-| Planned | 156 | judged to be covered by a planned kind or planned composition, not built yet |
+| Planned | 139 | judged to be covered by a planned kind or planned composition, not built yet |
 | Deferred | 45 | deliberately not offered, each with the recorded reason |
 | Excluded as deprecated | 7 | deprecated or superseded provider surface |
 | **Total** | **257** | |
@@ -102,10 +105,13 @@ All resources of `cloudflare@5.23.0` land in exactly one class:
 The full per-resource record, so the accounting above is verifiable
 rather than trusted.
 
-### Modeled (49)
+### Modeled (66)
 
 | Resource | Consuming kinds |
 |---|---|
+| `cloudflare_argo_smart_routing` | consumed by CloudflareCacheSettings |
+| `cloudflare_argo_tiered_caching` | consumed by CloudflareCacheSettings |
+| `cloudflare_certificate_authorities_hostname_associations` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_certificate_pack` | consumed by CloudflareCertificatePack |
 | `cloudflare_custom_hostname` | consumed by CloudflareCustomHostname |
 | `cloudflare_custom_hostname_fallback_origin` | consumed by CloudflareCustomHostnameFallbackOrigin |
@@ -116,13 +122,17 @@ rather than trusted.
 | `cloudflare_email_routing_dns` | consumed by CloudflareEmailRoutingZone |
 | `cloudflare_email_routing_rule` | consumed by CloudflareEmailRoutingRule |
 | `cloudflare_email_routing_settings` | consumed by CloudflareEmailRoutingZone |
+| `cloudflare_hostname_tls_setting` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_hyperdrive_config` | consumed by CloudflareHyperdriveConfig |
 | `cloudflare_list` | consumed by CloudflareList |
 | `cloudflare_list_item` | consumed by CloudflareListItem |
 | `cloudflare_load_balancer` | consumed by CloudflareLoadBalancer |
 | `cloudflare_load_balancer_monitor` | consumed by CloudflareLoadBalancerMonitor |
 | `cloudflare_load_balancer_pool` | consumed by CloudflareLoadBalancerPool |
+| `cloudflare_managed_transforms` | consumed by CloudflareZoneSettings |
 | `cloudflare_origin_ca_certificate` | consumed by CloudflareOriginCaCertificate |
+| `cloudflare_origin_cloud_region` | consumed by CloudflareZoneSettings |
+| `cloudflare_origin_tls_compliance_modes` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_pages_domain` | consumed by CloudflarePagesProject |
 | `cloudflare_pages_project` | consumed by CloudflarePagesProject |
 | `cloudflare_queue` | consumed by CloudflareQueue |
@@ -134,8 +144,14 @@ rather than trusted.
 | `cloudflare_r2_bucket_lock` | consumed by CloudflareR2Bucket |
 | `cloudflare_r2_custom_domain` | consumed by CloudflareR2Bucket |
 | `cloudflare_r2_managed_domain` | consumed by CloudflareR2Bucket |
+| `cloudflare_regional_tiered_cache` | consumed by CloudflareCacheSettings |
 | `cloudflare_ruleset` | consumed by CloudflareRuleset |
+| `cloudflare_tiered_cache` | consumed by CloudflareCacheSettings |
+| `cloudflare_total_tls` | consumed by CloudflareZoneTlsSettings |
 | `cloudflare_turnstile_widget` | consumed by CloudflareTurnstileWidget |
+| `cloudflare_universal_ssl_setting` | consumed by CloudflareZoneTlsSettings |
+| `cloudflare_url_normalization_settings` | consumed by CloudflareZoneSettings |
+| `cloudflare_waiting_room_settings` | consumed by CloudflareZoneSettings |
 | `cloudflare_workers_cron_trigger` | consumed by CloudflareWorker |
 | `cloudflare_workers_custom_domain` | consumed by CloudflareWorker |
 | `cloudflare_workers_kv` | consumed by CloudflareWorkersKvPair |
@@ -151,12 +167,16 @@ rather than trusted.
 | `cloudflare_zero_trust_tunnel_cloudflared_route` | consumed by CloudflareZeroTrustTunnelRoute |
 | `cloudflare_zero_trust_tunnel_cloudflared_virtual_network` | consumed by CloudflareZeroTrustTunnelVirtualNetwork |
 | `cloudflare_zone` | consumed by CloudflareDnsZone |
+| `cloudflare_zone_auto_origin_tls_kex` | consumed by CloudflareZoneTlsSettings |
+| `cloudflare_zone_cache_reserve` | consumed by CloudflareCacheSettings |
+| `cloudflare_zone_cache_variants` | consumed by CloudflareCacheSettings |
 | `cloudflare_zone_dns_settings` | consumed by CloudflareDnsZone |
 | `cloudflare_zone_dnssec` | consumed by CloudflareDnsZone |
 | `cloudflare_zone_hold` | consumed by CloudflareDnsZone |
+| `cloudflare_zone_setting` | consumed by CloudflareZoneSettings |
 | `cloudflare_zone_subscription` | consumed by CloudflareDnsZone |
 
-### Planned (156)
+### Planned (139)
 
 | Resource | Recorded reason |
 |---|---|
@@ -175,8 +195,6 @@ rather than trusted.
 | `cloudflare_api_shield_operation` | folds into the planned CloudflareApiShield kind (endpoint registrations are per-zone configuration rows meaningless outside the shield) |
 | `cloudflare_api_shield_schema_validation_settings` | folds into the planned CloudflareApiShield kind (zone validation defaults) |
 | `cloudflare_api_token` | judged as a planned CloudflareApiToken kind (user-scoped tokens; the API and ownership model differ from account tokens) |
-| `cloudflare_argo_smart_routing` | folds into the planned CloudflareCacheSettings kind (performance toggle of the zone) |
-| `cloudflare_argo_tiered_caching` | folds into the planned CloudflareCacheSettings kind (single tiered-caching toggle) |
 | `cloudflare_authenticated_origin_pulls` | judged as a planned CloudflareAuthenticatedOriginPulls kind (zone and hostname authenticated-origin-pulls enablement) |
 | `cloudflare_authenticated_origin_pulls_certificate` | judged as a planned CloudflareAuthenticatedOriginPullsCertificate kind (uploaded client certificate with independent rotation lifecycle) |
 | `cloudflare_authenticated_origin_pulls_hostname_certificate` | folds into the planned CloudflareAuthenticatedOriginPullsCertificate kind (hostname-scoped variant of the same certificate upload) |
@@ -184,7 +202,6 @@ rather than trusted.
 | `cloudflare_bot_management` | judged as a planned CloudflareBotManagement kind (zone-singleton bot management configuration) |
 | `cloudflare_calls_sfu_app` | judged as a planned CloudflareCallsSfuApp kind (realtime SFU application credentials provisioned per application) |
 | `cloudflare_calls_turn_app` | judged as a planned CloudflareCallsTurnApp kind (TURN service credentials provisioned per application) |
-| `cloudflare_certificate_authorities_hostname_associations` | folds into the planned CloudflareZoneTlsSettings kind (CA-to-hostname association list, zone-scoped configuration) |
 | `cloudflare_client_certificate` | judged as a planned CloudflareClientCertificate kind (Cloudflare-issued client certificates for API Shield mTLS) |
 | `cloudflare_cloud_connector_rules` | judged as a planned CloudflareCloudConnectorRules kind (zone-singleton ordered routing table to cloud storage origins) |
 | `cloudflare_connectivity_directory_service` | judged as a planned CloudflareConnectivityDirectoryService kind (service directory entries referencing tunnels) |
@@ -200,14 +217,12 @@ rather than trusted.
 | `cloudflare_flagship_flag` | judged as a planned CloudflareFlagshipFlag kind (flags with independent lifecycle referenced by SDKs) |
 | `cloudflare_google_tag_gateway` | judged as a planned CloudflareGoogleTagGateway kind (zone-singleton tag-gateway configuration) |
 | `cloudflare_healthcheck` | judged as a planned CloudflareHealthcheck kind (standalone zone health checks, no load balancer required) |
-| `cloudflare_hostname_tls_setting` | folds into the planned CloudflareZoneTlsSettings kind (per-hostname setting rows within the zone's TLS posture) |
 | `cloudflare_image_variant` | judged as a planned CloudflareImagesVariant kind (named transformation preset referenced by delivery URLs) |
 | `cloudflare_leaked_credential_check` | judged as a planned CloudflareLeakedCredentialCheck kind (enablement plus custom detection rules in one kind) |
 | `cloudflare_leaked_credential_check_rule` | folds into the planned CloudflareLeakedCredentialCheck kind (detection rows are meaningless without the check) |
 | `cloudflare_load_balancer_monitor_group` | judged as a planned CloudflareLoadBalancerMonitorGroup kind (monitor groups referenced by pools) |
 | `cloudflare_logpush_job` | judged as a planned CloudflareLogpushJob kind (log delivery jobs, the observability backbone) |
 | `cloudflare_logpush_ownership_challenge` | folds into the planned CloudflareLogpushJob kind (the challenge is a destination-validation step, not an object) |
-| `cloudflare_managed_transforms` | folds into the planned CloudflareZoneSettings kind (managed request/response header toggles are zone settings by another API name) |
 | `cloudflare_mtls_certificate` | judged as a planned CloudflareMtlsCertificate kind (CA certificates referenced by Workers mTLS bindings and authenticated origin pulls) |
 | `cloudflare_notification_policy` | judged as a planned CloudflareNotificationPolicy kind (alerting policies for every Cloudflare product) |
 | `cloudflare_notification_policy_webhooks` | judged as a planned CloudflareNotificationWebhook kind (webhook destinations referenced by policies) |
@@ -215,14 +230,11 @@ rather than trusted.
 | `cloudflare_observatory_scheduled_test` | judged as a planned CloudflareObservatoryScheduledTest kind (scheduled speed tests per page) |
 | `cloudflare_organization` | judged as a planned CloudflareOrganization kind (organization hierarchy container) |
 | `cloudflare_organization_profile` | folds into the planned CloudflareOrganization kind (the profile is settings of the organization) |
-| `cloudflare_origin_cloud_region` | folds into the planned CloudflareZoneSettings kind (per-origin-IP region hints are zone-scoped configuration rows) |
-| `cloudflare_origin_tls_compliance_modes` | folds into the planned CloudflareZoneTlsSettings kind (origin compliance singleton) |
 | `cloudflare_pipeline` | judged as a planned CloudflarePipeline kind (ingestion pipeline referencing sinks and streams) |
 | `cloudflare_pipeline_sink` | judged as a planned CloudflarePipelineSink kind (pipeline destination, e.g. an R2 bucket) |
 | `cloudflare_pipeline_stream` | judged as a planned CloudflarePipelineStream kind (pipeline stream input) |
 | `cloudflare_r2_bucket_sippy` | folds into the existing CloudflareR2Bucket kind's planned depth expansion (incremental-migration setting of a bucket) |
 | `cloudflare_r2_data_catalog` | folds into the existing CloudflareR2Bucket kind's planned depth expansion (per-bucket data catalog toggle) |
-| `cloudflare_regional_tiered_cache` | folds into the planned CloudflareCacheSettings kind (single regional-cache toggle) |
 | `cloudflare_schema_validation_operation_settings` | folds into the planned CloudflareApiShield kind (per-operation validation overrides) |
 | `cloudflare_schema_validation_schemas` | judged as a planned CloudflareSchemaValidationSchema kind (uploaded OpenAPI schema with its own upload and activation lifecycle) |
 | `cloudflare_schema_validation_settings` | folds into the planned CloudflareApiShield kind (v2 zone validation defaults) |
@@ -238,19 +250,14 @@ rather than trusted.
 | `cloudflare_stream_live_input` | judged as a planned CloudflareStreamLiveInput kind (live ingest endpoint with keys and independent lifecycle) |
 | `cloudflare_stream_watermark` | judged as a planned CloudflareStreamWatermarkProfile kind (created once, referenced at every upload) |
 | `cloudflare_stream_webhook` | judged as a planned CloudflareStreamWebhook kind (account-level notification webhook singleton) |
-| `cloudflare_tiered_cache` | judged as a planned CloudflareCacheSettings kind (the zone's cache and performance settings) |
 | `cloudflare_token_validation_config` | judged as a planned CloudflareTokenValidationConfig kind (JWT credential sets referenced by validation rules) |
 | `cloudflare_token_validation_rules` | folds into the planned CloudflareApiShield kind (zone-level JWT rules spanning multiple credential configs) |
-| `cloudflare_total_tls` | folds into the planned CloudflareZoneTlsSettings kind (toggle plus certificate-authority choice) |
-| `cloudflare_universal_ssl_setting` | judged as a planned CloudflareZoneTlsSettings kind (the zone's TLS posture: Universal SSL, Total TLS, per-hostname settings) |
-| `cloudflare_url_normalization_settings` | folds into the planned CloudflareZoneSettings kind (two-field zone singleton) |
 | `cloudflare_user_agent_blocking_rule` | judged as a planned CloudflareUserAgentBlockingRule kind (standalone user-agent blocking rule object) |
 | `cloudflare_user_group` | judged as a planned CloudflareUserGroup kind (permission groups referenced by policies) |
 | `cloudflare_user_group_members` | folds into the planned CloudflareUserGroup kind (membership rows of the group) |
 | `cloudflare_waiting_room` | judged as a planned CloudflareWaitingRoom kind (the room itself) |
 | `cloudflare_waiting_room_event` | judged as a planned CloudflareWaitingRoomEvent kind (scheduled events created and deleted on their own cadence per launch) |
 | `cloudflare_waiting_room_rules` | folds into the planned CloudflareWaitingRoom kind (the room's singleton bypass-rule list) |
-| `cloudflare_waiting_room_settings` | folds into the planned CloudflareZoneSettings kind (one zone-wide crawler-bypass boolean; a zone setting, not a room property) |
 | `cloudflare_web_analytics_rule` | folds into the planned CloudflareWebAnalyticsSite kind (path rules of the site) |
 | `cloudflare_web_analytics_site` | judged as a planned CloudflareWebAnalyticsSite kind (real-user-monitoring site) |
 | `cloudflare_worker` | folds into the existing CloudflareWorker kind's planned depth expansion (the modern script-settings surface of the worker the kind already owns) |
@@ -311,11 +318,7 @@ rather than trusted.
 | `cloudflare_zero_trust_risk_scoring_integration` | folds into the planned CloudflareZeroTrustRiskScoring kind (SIEM/IdP integration exists in service of risk scoring) |
 | `cloudflare_zero_trust_tunnel_warp_connector` | judged as a planned CloudflareZeroTrustWarpConnector kind (site-to-site WARP connector tunnels) |
 | `cloudflare_zero_trust_tunnel_warp_connector_config` | folds into the planned CloudflareZeroTrustWarpConnector kind (configuration of the connector, mirroring the cloudflared pattern) |
-| `cloudflare_zone_auto_origin_tls_kex` | folds into the planned CloudflareZoneTlsSettings kind (one boolean) |
-| `cloudflare_zone_cache_reserve` | folds into the planned CloudflareCacheSettings kind (single cache-reserve toggle) |
-| `cloudflare_zone_cache_variants` | folds into the planned CloudflareCacheSettings kind (variant list is cache configuration) |
 | `cloudflare_zone_lockdown` | judged as a planned CloudflareZoneLockdown kind (URL lockdown rules, many per zone with independent lifecycle) |
-| `cloudflare_zone_setting` | judged as a planned CloudflareZoneSettings kind (the zone's setting map: SSL mode, minimum TLS, HTTP/3, and kin) |
 
 ### Deferred (45)
 

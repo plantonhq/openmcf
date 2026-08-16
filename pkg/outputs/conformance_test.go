@@ -5506,6 +5506,36 @@ func TestStackOutputsConformance(t *testing.T) {
 			mustPopulate: []string{"status", "zone_id"},
 		},
 		{
+			// CloudflareZoneSettings: a zone singleton with no resource id of its
+			// own -- both engines emit the zone id (the settings' API identity).
+			name: "CloudflareZoneSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZoneSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			// CloudflareCacheSettings: a zone singleton with no resource id of
+			// its own -- both engines emit the zone id.
+			name: "CloudflareCacheSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareCacheSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
+			// CloudflareZoneTlsSettings: a zone singleton with no resource id of
+			// its own -- both engines emit the zone id.
+			name: "CloudflareZoneTlsSettings",
+			kind: cloudresourcekind.CloudResourceKind_CloudflareZoneTlsSettings,
+			rawOutputs: map[string]interface{}{
+				"zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+			},
+			mustPopulate: []string{"zone_id"},
+		},
+		{
 			// AzureResourceGroup: flat scalar outputs from both engines (ARM id,
 			// name, region) must each land on the StackOutputs proto --
 			// resource_group_name is the FK target every other Azure kind
